@@ -8,12 +8,16 @@ export default function Sidebarpost() {
   const [activeCat, setActiveCat] = useState('all');
 
   useEffect(() => {
-    const handleToggle = () => setIsOpen(true);
-    const menuBtn = document.getElementById('mobileMenuBtn');
-    if (menuBtn) menuBtn.addEventListener('click', handleToggle);
+    // FIX UTAMA: Sidebar sekarang "mendengarkan" event global 'openSidebar'
+    const handleOpen = () => {
+      console.log("Sinyal diterima: Membuka Sidebar...");
+      setIsOpen(true);
+    };
+
+    window.addEventListener('openSidebar', handleOpen);
 
     return () => {
-      if (menuBtn) menuBtn.removeEventListener('click', handleToggle);
+      window.removeEventListener('openSidebar', handleOpen);
     };
   }, []);
 
@@ -27,17 +31,18 @@ export default function Sidebarpost() {
 
   return (
     <>
-      {/* 1. OVERLAY (Z-Index di bawah Sidebar) */}
+      {/* 1. OVERLAY */}
       <div 
         className={`sidebar-overlay ${isOpen ? 'active' : ''}`} 
         onClick={() => setIsOpen(false)}
         style={{
           position: 'fixed',
           inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          zIndex: 10000, // Sangat tinggi
+          backgroundColor: 'rgba(0,0,0,0.6)', // Gelapkan dikit biar fokus
+          zIndex: 20000, // Z-index super tinggi
           display: isOpen ? 'block' : 'none',
-          backdropFilter: 'blur(4px)'
+          backdropFilter: 'blur(4px)',
+          transition: 'all 0.3s ease'
         }}
       />
 
@@ -45,21 +50,31 @@ export default function Sidebarpost() {
       <aside 
         className={`sidebar ${isOpen ? 'active' : ''}`} 
         style={{ 
-          zIndex: 10001, // Paling tinggi, di atas Navbar & Overlay
-          backgroundColor: '#ffffff', // Putih bersih
-          boxShadow: '10px 0 30px rgba(0,0,0,0.1)' 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '280px',
+          height: '100vh',
+          zIndex: 20001, // Di atas overlay
+          backgroundColor: '#ffffff',
+          boxShadow: '10px 0 30px rgba(0,0,0,0.2)',
+          padding: '40px 30px',
+          transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+          transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+          display: 'block' // Pastikan tidak hidden
         }}
       >
         <div className="sidebar-header" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 className="sidebar-logo" style={{ color: '#000', margin: 0, fontWeight: '700' }}>MENU</h2>
+          <h2 className="sidebar-logo" style={{ color: '#000', margin: 0, fontWeight: '800', fontSize: '24px' }}>MENU</h2>
           <button 
             onClick={() => setIsOpen(false)} 
             style={{ 
               background: 'none', 
               border: 'none', 
               color: '#000', 
-              fontSize: '35px', 
-              cursor: 'pointer' 
+              fontSize: '32px', 
+              cursor: 'pointer',
+              lineHeight: '1'
             }}
           >
             ×
@@ -71,7 +86,6 @@ export default function Sidebarpost() {
             <button 
               key={item} 
               onClick={() => handleCategoryClick(item)}
-              className={`nav-item ${activeCat === item ? 'active' : ''}`}
               style={{
                 width: '100%',
                 textAlign: 'left',
@@ -79,42 +93,29 @@ export default function Sidebarpost() {
                 border: 'none',
                 padding: '18px 0',
                 cursor: 'pointer',
-                display: 'block',
-                fontSize: '16px',
-                fontWeight: activeCat === item ? '700' : '400',
-                // FIX UTAMA: Warna teks harus hitam biar kelihatan di bg putih
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '15px',
+                fontWeight: activeCat === item ? '700' : '500',
                 color: activeCat === item ? '#00a2ff' : '#333333',
-                borderBottom: '1px solid #f0f0f0',
+                borderBottom: '1px solid #f5f5f5',
                 textTransform: 'uppercase',
-                letterSpacing: '1px'
+                letterSpacing: '1px',
+                transition: 'all 0.2s ease'
               }}
             >
               {item}
-              {activeCat === item && <span style={{ float: 'right' }}>●</span>}
+              {activeCat === item && <span style={{ color: '#00a2ff' }}>●</span>}
             </button>
           ))}
         </nav>
       </aside>
 
-      <style jsx>{`
-        .sidebar {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 280px;
-          height: 100vh;
-          padding: 40px 30px;
-          transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-          transform: translateX(-100%);
-        }
-        .sidebar.active {
-          transform: translateX(0);
-        }
-        .nav-item {
-          transition: all 0.3s ease;
-        }
-        .nav-item:active {
-          background-color: #f9f9f9;
+      {/* Global CSS Fallback */}
+      <style jsx global>{`
+        body.sidebar-open {
+          overflow: hidden;
         }
       `}</style>
     </>

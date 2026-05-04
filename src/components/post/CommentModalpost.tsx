@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// 1. IMPORT DARI UI-UTILS DI SINI
-import { showNotif, requireLogin } from '@/lib/ui-utils'; 
+// 1. TAMBAHKAN getUserBadge DI SINI
+import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
 import './CommentModal.css';
 
 export default function CommentModalpost() {
@@ -30,7 +30,6 @@ export default function CommentModalpost() {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // 2. PANGGIL REQUIRE LOGIN DI SINI
           requireLogin(); 
           return;
         }
@@ -113,7 +112,6 @@ export default function CommentModalpost() {
         await loadComments(currentPostId!);
 
       } catch (err) {
-        // 3. PANGGIL SHOW NOTIF DI SINI
         showNotif("Gagal mengirim komentar", "error"); 
       } finally {
         setIsSubmitting(false);
@@ -125,6 +123,9 @@ export default function CommentModalpost() {
     const isPostOwner = comment.user_id === currentCreatorId;
     const p = comment.profiles;
     const avatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
+    
+    // 2. AMBIL HTML BADGE BERDASARKAN ROLE USER
+    const badgeHtml = getUserBadge(p?.role || 'user');
 
     const content = (
       <>
@@ -135,6 +136,10 @@ export default function CommentModalpost() {
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/data?id=${p?.id}`}>
               {p?.username} 
+              
+              {/* 3. RENDER BADGE DI SINI PAKAI dangerouslySetInnerHTML */}
+              <span dangerouslySetInnerHTML={{ __html: badgeHtml }} style={{ display: 'inline-flex', alignItems: 'center' }} />
+              
               {isPostOwner && <span style={{ background: '#1DA1F2', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', marginLeft: '4px', fontWeight: 800 }}>CREATOR</span>}
             </span>
           </div>

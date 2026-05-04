@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getUserBadge } from '@/lib/ui-utils'; // Pastikan file ui-utils.ts sudah ada
+import { getUserBadge } from '@/lib/ui-utils'; 
 import './Gallery.css';
 
 export default function Gallerypost() {
@@ -10,24 +10,18 @@ export default function Gallerypost() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   
-  // State untuk Engagement (Menghindari reload fetch semua data)
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number }>>({});
   
-  // State untuk animasi tombol repost
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
 
-  // Ref untuk mengawasi scroll (Autoplay Music)
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
     initGallery();
-
-    // Event listener custom 'changeCategory'
     const handleCategoryChange = (e: any) => fetchPosts(e.detail.category);
     window.addEventListener('changeCategory', handleCategoryChange);
-
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, []);
 
@@ -58,7 +52,6 @@ export default function Gallerypost() {
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
         
-        // Fetch Engagements Batching
         const [likesRes, commentsRes, repostsRes] = await Promise.all([
           supabase.from("likes").select("post_id").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -83,8 +76,6 @@ export default function Gallerypost() {
       }
 
       setPosts(fetchedPosts);
-      
-      // Setup Observer untuk Music
       setTimeout(initAutoPlayObserver, 500);
 
     } catch (err) {
@@ -99,7 +90,6 @@ export default function Gallerypost() {
     
     const isLiked = myLikedPosts.has(postId);
     
-    // Optimistic UI Update
     setMyLikedPosts(prev => {
       const newSet = new Set(prev);
       isLiked ? newSet.delete(postId) : newSet.add(postId);
@@ -129,7 +119,6 @@ export default function Gallerypost() {
     
     const isReposted = myRepostedPosts.has(postId);
 
-    // Trigger Animasi
     setAnimatingReposts(prev => new Set(prev).add(postId));
     setTimeout(() => {
       setAnimatingReposts(prev => {
@@ -139,7 +128,6 @@ export default function Gallerypost() {
       });
     }, 400);
 
-    // Optimistic UI Update
     setMyRepostedPosts(prev => {
       const newSet = new Set(prev);
       isReposted ? newSet.delete(postId) : newSet.add(postId);
@@ -213,6 +201,36 @@ export default function Gallerypost() {
     );
   };
 
+  // ==========================================
+  // HELPER: ENGAGEMENT BUTTONS (DRY PRINCIPLE)
+  // ==========================================
+  const renderEngagementButtons = (post: any, postIdStr: string) => (
+    <div className="engagement-group">
+      {/* Gift Button */}
+      <button className="icon-btn gift-btn" data-post={post.id} data-creator={post.creator_id}>
+        <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+      </button>
+      
+      {/* Repost Button */}
+      <button className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} onClick={() => handleRepost(postIdStr)}>
+        <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M23.77 15.67c-.292-.293-.767-.293-1.06 0l-2.22 2.22V7.65c0-2.068-1.683-3.75-3.75-3.75h-5.85c-.414 0-.75.336-.75.75s.336.75.75.75h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22c-.293-.292-.768-.292-1.06 0s-.294.768 0 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5c.294-.292.294-.767 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22c.148.147.34.22.532.22s.384-.073.53-.22c.293-.293.293-.768 0-1.06l-3.5-3.5c-.293-.294-.768-.294-1.06 0l-3.5 3.5c-.294.292-.294.767 0 1.06s.767.293 1.06 0l2.22-2.22V16.7c0 2.068 1.683 3.75 3.75 3.75h5.85c.414 0 .75-.336.75-.75s-.337-.75-.75-.75z"></path></svg>
+        <span className="repost-count" style={{ marginLeft: '4px' }}>{counts[postIdStr]?.reposts || 0}</span>
+      </button>
+
+      {/* Like Button */}
+      <button className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} onClick={() => handleLike(postIdStr, post.creator_id)}>
+        <svg viewBox="0 0 24 24" className="icon heart" fill="currentColor"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg>
+        <span className="like-count">{counts[postIdStr]?.likes || 0}</span>
+      </button>
+      
+      {/* Comment Button */}
+      <button className="icon-btn comment-toggle" data-post={post.id} data-creator={post.creator_id}>
+        <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+        <span className="comment-count">{counts[postIdStr]?.comments || 0}</span>
+      </button>
+    </div>
+  );
+
   return (
     <section>
       <div className="gallery" id="mainGallery">
@@ -226,7 +244,7 @@ export default function Gallerypost() {
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>Tidak ada postingan.</p>
         ) : (
           posts.map(post => {
-            const badge = getUserBadge(post.profiles?.role); // Butuh ui-utils
+            const badge = getUserBadge(post.profiles?.role);
             const avatarUrl = post.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + post.profiles?.username;
             const formattedDate = new Date(post.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
             const isOwner = currentUser && currentUser.id === post.creator_id;
@@ -258,27 +276,8 @@ export default function Gallerypost() {
                       
                       <div className="actions">
                         <a href={`/data?id=${post.creator_id}`} className="primary">Detail</a>
-                        <div className="engagement-group">
-                           {/* ENGAGEMENT BUTTONS AREA */}
-                           <button className="icon-btn gift-btn" data-post={post.id} data-creator={post.creator_id}>
-                              <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
-                           </button>
-                            
-                           <button className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} onClick={() => handleRepost(postIdStr)}>
-                             <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M23.77 15.67c-.292-.293-.767-.293-1.06 0l-2.22 2.22V7.65c0-2.068-1.683-3.75-3.75-3.75h-5.85c-.414 0-.75.336-.75.75s.336.75.75.75h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22c-.293-.292-.768-.292-1.06 0s-.294.768 0 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5c.294-.292.294-.767 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22c.148.147.34.22.532.22s.384-.073.53-.22c.293-.293.293-.768 0-1.06l-3.5-3.5c-.293-.294-.768-.294-1.06 0l-3.5 3.5c-.294.292-.294.767 0 1.06s.767.293 1.06 0l2.22-2.22V16.7c0 2.068 1.683 3.75 3.75 3.75h5.85c.414 0 .75-.336.75-.75s-.337-.75-.75-.75z"></path></svg>
-                             <span className="repost-count" style={{ marginLeft: '4px' }}>{counts[postIdStr]?.reposts || 0}</span>
-                           </button>
-
-                           <button className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} onClick={() => handleLike(postIdStr, post.creator_id)}>
-                             <svg viewBox="0 0 24 24" className="icon heart" fill="currentColor"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg>
-                             <span className="like-count">{counts[postIdStr]?.likes || 0}</span>
-                           </button>
-                            
-                           <button className="icon-btn comment-toggle" data-post={post.id} data-creator={post.creator_id}>
-                             <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
-                             <span className="comment-count">{counts[postIdStr]?.comments || 0}</span>
-                           </button>
-                        </div>
+                        {/* 1. RENDER TOMBOL UNTUK POST GAMBAR */}
+                        {renderEngagementButtons(post, postIdStr)}
                       </div>
                     </div>
                   </>
@@ -305,9 +304,8 @@ export default function Gallerypost() {
 
                     <div className="actions" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px', paddingTop: '12px' }}>
                       <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>Lihat Profil</a>
-                      <div className="engagement-group">
-                         {/* Copas BUTTONS AREA DARI ATAS KE SINI (Atau Ekstrak jadi Sub-komponen jika mau lebih rapi) */}
-                      </div>
+                      {/* 2. RENDER TOMBOL UNTUK POST TEKS DOANG */}
+                      {renderEngagementButtons(post, postIdStr)}
                     </div>
                   </>
                 )}

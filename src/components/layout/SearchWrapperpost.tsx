@@ -1,57 +1,55 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import './SearchWrapper.css';
 
 export default function SearchWrapperpost() {
   const router = useRouter();
-  const [stories, setStories] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
+  const pathname = usePathname(); 
 
-  // --- STATE UNTUK SCROLL ANIMATION ---
+  const [mounted, setMounted] = useState(false); 
+  const [stories, setStories] = useState<any[]>([]);
+  const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [isStoriesVisible, setIsStoriesVisible] = useState(true);
-  
-  // FIX: Gunakan useRef agar tidak nge-glitch saat di-scroll
-  const lastScrollY = useRef(0);
+
+  // --- CEK HALAMAN CHAT ---
+  const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat');
 
   useEffect(() => {
-    fetchStories();
+    setMounted(true);
   }, []);
 
-  // --- LOGIKA HILANG SAAT SCROLL (ANTI LAG) ---
   useEffect(() => {
+    if (mounted && !isHidden) fetchStories();
+  }, [mounted, isHidden]);
+
+  // --- LOGIKA STORY: CUMA MUNCUL DI PALING ATAS (Y=0) ---
+  useEffect(() => {
+    if (!mounted || isHidden) return; 
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        setIsStoriesVisible(false);
-      } else if (currentScrollY < lastScrollY.current) {
+      // Story cuma true kalau posisi scroll bener-bener 0
+      if (window.scrollY <= 0) {
         setIsStoriesVisible(true);
+      } else {
+        setIsStoriesVisible(false);
       }
-
-      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [mounted, isHidden]);
 
   const fetchStories = async () => {
     try {
       const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("stories")
         .select("*, profiles(username, avatar_url)")
         .gte("created_at", timeLimit)
         .order("created_at", { ascending: false });
-
-      if (error) throw error;
 
       const seenUsers = new Set();
       const uniqueStories = (data || []).filter(story => {
@@ -59,92 +57,144 @@ export default function SearchWrapperpost() {
         seenUsers.add(story.creator_id);
         return true;
       });
-
       setStories(uniqueStories);
     } catch (err) {
       console.error("Story Error:", err);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.toLowerCase();
-    document.querySelectorAll(".card").forEach((card: any) => {
-      card.style.display = card.innerText.toLowerCase().includes(val) ? "flex" : "none";
-    });
-  };
-
-  const onStoryClick = (storyId: string) => {
-    setClickedStoryId(storyId);
-    setTimeout(() => {
-      router.push(`/story/${storyId}`);
-    }, 350);
-  };
+  if (!mounted || isHidden) return null;
 
   return (
-    <div className="header-sticky-wrapper" style={{ backgroundColor: '#ffffff', width: '100%' }}>
+    <div 
+      className="header-sticky-wrapper" 
+      style={{ 
+        backgroundColor: 'transparent', // Request lo: Transparan
+        width: '100%',
+        position: 'sticky', 
+        top: 0,
+        zIndex: 15000, 
+        transition: 'all 0.3s ease'
+      }}
+    >
       
-      {/* SEARCH BAR (SELALU KELIHATAN) */}
-      <div className="search-wrapper">
-        {/* FIX 1: Ubah jadi tag <button> dan kasih padding biar gampang diklik */}
+      {/* SEARCH BAR */}
+      <div 
+        className="search-wrapper" 
+        style={{ 
+          backgroundColor: 'rgba(255,255,255,0.95)', // Putih tipis biar input kelihatan
+          backdropFilter: 'blur(10px)',
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '15px'
+        }}
+      >
+        {/* TOMBOL SIDEBAR DENGAN GARIS 3 (DIFIX LANGSUNG DI SINI) */}
         <button 
-          className="menu-toggle" 
           id="mobileMenuBtn"
+          onClick={() => window.dispatchEvent(new CustomEvent('openSidebar'))}
           style={{ 
             background: 'transparent', 
             border: 'none', 
-            padding: '5px 10px 5px 0', // Padding ekstra di kanan biar sentuhan gak meleset
-            cursor: 'pointer' 
+            cursor: 'pointer',
+            padding: '5px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            gap: '5px',
+            width: '24px',
+            height: '24px',
+            flexShrink: 0
           }}
-          aria-label="Buka Menu"
         >
-          <span></span><span></span><span></span>
+          {/* Garis 1 */}
+          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#333', borderRadius: '2px' }}></span>
+          {/* Garis 2 */}
+          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#333', borderRadius: '2px' }}></span>
+          {/* Garis 3 */}
+          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#333', borderRadius: '2px' }}></span>
         </button>
 
-        <div className="brutal-input-container">
+        <div className="brutal-input-container" style={{ flex: 1 }}>
           <input
             type="text"
             placeholder="Cari kreator..."
             className="brutal-input"
-            autoComplete="off"
-            onChange={handleSearch}
+            style={{
+              width: '100%',
+              height: '38px',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: 'none',
+              backgroundColor: '#f0f2f5',
+              outline: 'none'
+            }}
+            onChange={(e) => {
+              const val = e.target.value.toLowerCase();
+              document.querySelectorAll(".card").forEach((card: any) => {
+                card.style.display = card.innerText.toLowerCase().includes(val) ? "flex" : "none";
+              });
+            }}
           />
         </div>
 
-        <button id="openPostModalBtn" className="add-post-btn" aria-label="Tambah Postingan">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('openPostModal'))}
+          style={{ 
+            background: '#1a1a1a', 
+            border: 'none', 
+            color: '#fff', 
+            width: '36px', 
+            height: '36px', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          <span className="material-icons" style={{ fontSize: '20px' }}>add</span>
         </button>
       </div>
 
-      {/* FIX 2: STORY SECTION - HANYA MUNCUL JIKA ADA CERITA */}
+      {/* STORY SECTION - HANYA MUNCUL DI Y=0 & TRANSPARAN */}
       {stories.length > 0 && (
         <div 
           className="stories-container"
           style={{
             maxHeight: isStoriesVisible ? '120px' : '0px',
             opacity: isStoriesVisible ? 1 : 0,
-            paddingTop: isStoriesVisible ? '5px' : '0px',
-            paddingBottom: isStoriesVisible ? '15px' : '0px',
+            padding: isStoriesVisible ? '5px 15px 15px 15px' : '0',
             overflow: 'hidden',
-            willChange: 'max-height, opacity, padding',
-            transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+            backgroundColor: 'transparent', // Request lo: Transparan
+            display: 'flex',
+            gap: '15px',
+            overflowX: 'auto',
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
             pointerEvents: isStoriesVisible ? 'auto' : 'none'
           }}
         >
           {stories.map((story) => (
-            <div key={story.id} className="story-item" onClick={() => onStoryClick(story.id)}>
-              <div className={`story-circle ${clickedStoryId === story.id ? 'seen clicked' : 'unseen'}`}>
+            <div key={story.id} className="story-item" onClick={() => router.push(`/story/${story.id}`)} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              <div 
+                className={`story-circle ${clickedStoryId === story.id ? 'seen' : 'unseen'}`}
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  padding: '2.5px',
+                  background: clickedStoryId === story.id ? '#e4e6eb' : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)'
+                }}
+              >
                 <img 
                   src={story.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${story.profiles?.username}`} 
-                  alt="user" 
-                  loading="lazy" 
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff' }}
                 />
               </div>
-              <span>{story.profiles?.username || 'User'}</span>
+              <span style={{ fontSize: '11px', color: '#333', maxWidth: '65px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {story.profiles?.username}
+              </span>
             </div>
           ))}
         </div>
