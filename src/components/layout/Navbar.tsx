@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-// FIX: Tambahkan ChevronDown dan ChevronUp untuk ikon minimize/maximize
-import { Home, Bell, MessageCircle, User, Mic, ChevronDown, ChevronUp } from 'lucide-react';
+// Ganti Mic jadi Mic2 (lebih khas Voice Room)
+import { Home, Bell, MessageCircle, User, Mic2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -11,18 +11,15 @@ function NavbarContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  // State untuk auto-hide saat scroll
   const [isVisible, setIsVisible] = useState(true);
-  
-  // FIX 1: State baru untuk hide/show manual
   const [isManualHidden, setIsManualHidden] = useState(false);
-  
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
   
+  // FIX 1: State untuk trigger animasi klik
+  const [clickedItem, setClickedItem] = useState<string | null>(null);
+  
   const lastScrollY = useRef(0);
-
-  // FIX 2: Hapus pengecekan isInsideChatRoom agar muncul di SEMUA halaman
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,10 +35,8 @@ function NavbarContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Reset visibilitas saat pindah halaman
   useEffect(() => {
     setIsVisible(true);
-    // Opsional: Buka otomatis navbar saat pindah halaman
     setIsManualHidden(false); 
   }, [pathname]);
 
@@ -95,22 +90,21 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, hasBadge: hasUnreadChat },
-    { name: 'Voice', path: '/voice-room', icon: Mic },
+    // Ikon diganti jadi Mic2
+    { name: 'Voice', path: '/voice-room', icon: Mic2 },
     { name: 'Notif', path: '/notifications', icon: Bell, hasBadge: hasUnreadNotif },
     { name: 'Profil', path: '/profile', icon: User },
   ];
 
-  // Logika gabungan: Tampil jika tidak di-scroll ke bawah DAN tidak di-hide manual
   const showNavbar = isVisible && !isManualHidden;
 
   return (
     <>
-      {/* FIX 3: Tombol Manual Toggle (Minimize/Maximize) */}
+      {/* Tombol Toggle */}
       <button
         onClick={() => setIsManualHidden(!isManualHidden)}
         style={{
           position: 'fixed',
-          // Posisi turun ke bawah jika Navbar disembunyikan manual
           bottom: isManualHidden ? '20px' : '95px', 
           right: '20px',
           zIndex: 9001,
@@ -126,7 +120,6 @@ function NavbarContent() {
           boxShadow: '0 4px 15px rgba(0,0,0,0.15)',
           cursor: 'pointer',
           color: '#333',
-          // Tombol ini ikut ngilang kalau user scroll ke bawah
           transform: isVisible ? 'translateY(0)' : 'translateY(150px)',
           transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
           outline: 'none'
@@ -155,12 +148,18 @@ function NavbarContent() {
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
+            // FIX 2: Cek apakah item ini sedang diklik untuk animasi
+            const isClicked = clickedItem === item.name;
 
             return (
               <Link 
                 key={item.name} 
                 href={item.path}
                 onPointerDown={(e) => {
+                  // Trigger animasi klik
+                  setClickedItem(item.name);
+                  setTimeout(() => setClickedItem(null), 200);
+
                   const target = e.currentTarget;
                   if (target.hasPointerCapture(e.pointerId)) {
                     target.releasePointerCapture(e.pointerId);
@@ -172,23 +171,41 @@ function NavbarContent() {
                   alignItems: 'center', 
                   textDecoration: 'none', 
                   position: 'relative', 
-                  transition: 'all 0.3s', 
                   padding: '10px',
                   touchAction: 'manipulation' 
                 }}
               >
-                <div style={{ position: 'relative' }}>
+                <div style={{ 
+                  position: 'relative',
+                  // Animasi Pop (Scale up pas aktif, scale down dikit pas diklik)
+                  transform: isClicked ? 'scale(0.8)' : isActive ? 'scale(1.15)' : 'scale(1)',
+                  transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                }}>
                   <Icon 
-                    size={24} color={isActive ? '#00a2ff' : '#666666'} strokeWidth={isActive ? 2.5 : 2}
-                    style={{ transform: isActive ? 'scale(1.1)' : 'scale(1)', filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none', transition: 'all 0.3s' }}
+                    size={24} 
+                    color={isActive ? '#00a2ff' : '#666666'} 
+                    strokeWidth={isActive ? 2.5 : 2}
+                    style={{ 
+                      filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none',
+                    }}
                   />
                   {item.hasBadge && !isActive && (
                     <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff4757', border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)' }} />
                   )}
                 </div>
-                {isActive && (
-                  <div style={{ position: 'absolute', bottom: '-2px', width: '5px', height: '5px', backgroundColor: '#00a2ff', borderRadius: '50%', boxShadow: '0 0 10px #00a2ff' }} />
-                )}
+                {/* Indikator titik di bawah */}
+                <div style={{ 
+                  position: 'absolute', 
+                  bottom: '6px', 
+                  width: '5px', 
+                  height: '5px', 
+                  backgroundColor: '#00a2ff', 
+                  borderRadius: '50%', 
+                  boxShadow: '0 0 10px #00a2ff',
+                  transition: 'all 0.3s ease',
+                  opacity: isActive ? 1 : 0,
+                  transform: isActive ? 'scale(1)' : 'scale(0)'
+                }} />
               </Link>
             );
           })}
