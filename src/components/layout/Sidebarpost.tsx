@@ -1,17 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+// 1. TAMBAHIN IMPORT usePathname
+import { usePathname } from 'next/navigation'; 
 import './Sidebar.css';
 
 export default function Sidebarpost() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeCat, setActiveCat] = useState('all');
+  
+  // 2. PANGGIL usePathname
+  const pathname = usePathname();
 
+  // Efek untuk dengerin tombol hamburger diklik
   useEffect(() => {
-    // FIX UTAMA: Sidebar sekarang "mendengarkan" event global 'openSidebar'
     const handleOpen = () => {
       console.log("Sinyal diterima: Membuka Sidebar...");
       setIsOpen(true);
+      document.body.style.overflow = 'hidden'; // Kunci scroll pas kebuka
     };
 
     window.addEventListener('openSidebar', handleOpen);
@@ -21,12 +27,19 @@ export default function Sidebarpost() {
     };
   }, []);
 
+  // 3. TAMBAHIN EFEK INI: Auto-close tiap kali URL (pathname) berubah
+  useEffect(() => {
+    setIsOpen(false);
+    document.body.style.overflow = ''; // Balikin scroll body jadi normal
+  }, [pathname]);
+
   const handleCategoryClick = (cat: string) => {
     setActiveCat(cat);
     window.dispatchEvent(new CustomEvent('changeCategory', { 
       detail: { category: cat } 
     }));
     setIsOpen(false);
+    document.body.style.overflow = ''; // Balikin scroll body
   };
 
   return (
@@ -34,12 +47,15 @@ export default function Sidebarpost() {
       {/* 1. OVERLAY */}
       <div 
         className={`sidebar-overlay ${isOpen ? 'active' : ''}`} 
-        onClick={() => setIsOpen(false)}
+        onClick={() => {
+          setIsOpen(false);
+          document.body.style.overflow = '';
+        }}
         style={{
           position: 'fixed',
           inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.6)', // Gelapkan dikit biar fokus
-          zIndex: 20000, // Z-index super tinggi
+          backgroundColor: 'rgba(0,0,0,0.6)', 
+          zIndex: 20000, 
           display: isOpen ? 'block' : 'none',
           backdropFilter: 'blur(4px)',
           transition: 'all 0.3s ease'
@@ -55,19 +71,22 @@ export default function Sidebarpost() {
           left: 0,
           width: '280px',
           height: '100vh',
-          zIndex: 20001, // Di atas overlay
+          zIndex: 20001, 
           backgroundColor: '#ffffff',
           boxShadow: '10px 0 30px rgba(0,0,0,0.2)',
           padding: '40px 30px',
           transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-          display: 'block' // Pastikan tidak hidden
+          display: 'block' 
         }}
       >
         <div className="sidebar-header" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 className="sidebar-logo" style={{ color: '#000', margin: 0, fontWeight: '800', fontSize: '24px' }}>MENU</h2>
           <button 
-            onClick={() => setIsOpen(false)} 
+            onClick={() => {
+              setIsOpen(false);
+              document.body.style.overflow = '';
+            }} 
             style={{ 
               background: 'none', 
               border: 'none', 

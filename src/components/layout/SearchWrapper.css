@@ -5,7 +5,7 @@
   top: 0;
   z-index: 1000;
   background-color: var(--bg-main, #ffffff); /* Paksa putih jika var kosong */
-  border-bottom: 1px solid var(--border-card, #f0f0f0);
+  /* FIX: border-bottom dihapus total biar gak ada garis tipis yang ganggu! */
   width: 100%;
 }
 
@@ -77,16 +77,19 @@
   flex-shrink: 0;
 }
 
-/* --- STORY SECTION (FIX AREA HITAM) --- */
+/* --- STORY SECTION (FIX AREA HITAM & SCROLLBAR) --- */
 .stories-container {
   display: flex;
   gap: 15px;
   padding: 5px 15px 15px 15px;
   overflow-x: auto;
   background: var(--bg-main, #ffffff); /* FIX: Pastikan putih, bukan hitam */
+  /* FIX: Hilangkan scrollbar tipis untuk Firefox & IE */
   scrollbar-width: none; 
+  -ms-overflow-style: none;
 }
-.stories-container::-webkit-scrollbar { display: none; }
+/* FIX: Hilangkan scrollbar tipis untuk Chrome/Safari */
+.stories-container::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 .story-item {
   display: flex;

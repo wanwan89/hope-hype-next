@@ -11,12 +11,10 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Logika untuk Navbar & Sidebar (Sembunyi di halaman chat)
+  // 1. Logika untuk Sidebar (Tetap kita biarkan sembunyi di halaman chat biar nggak sempit)
   const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat');
 
-  // 2. LOGIKA BARU UNTUK SEARCH: Tampil HANYA di halaman tertentu
-  // Saat ini gue set cuma muncul di halaman utama (Home: "/")
-  // Kalau mau ditambah, misal: pathname === '/' || pathname === '/explore'
+  // 2. LOGIKA UNTUK SEARCH: Tampil HANYA di halaman utama (Home: "/")
   const showSearch = pathname === '/';
 
   return (
@@ -32,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           
-          {/* SEARCH BUKAN PAKAI !isChatPage LAGI, TAPI PAKAI showSearch */}
+          {/* SEARCH: Hanya di Home */}
           {showSearch && <SearchWrapper />}
 
           <main style={{ 
@@ -40,16 +38,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             width: '100%', 
             maxWidth: '600px',
             margin: '0 auto', 
-            // Kalau ada search, padding atas sesuaikan, kalau nggak ada biarin mepet
             paddingTop: showSearch ? '0' : '20px', 
-            paddingBottom: isChatPage ? '0' : '120px',
+            // FIX: Padding bawah kita set fix 120px di semua halaman 
+            // biar konten paling bawah (termasuk chat) gak ketutup Navbar
+            paddingBottom: '120px',
             position: 'relative'
           }}>
             {children}
           </main>
 
-          {/* NAVBAR: Tetap sembunyi di chat */}
-          {!isChatPage && <Navbar />}
+          {/* FIX UTAMA: Hapus gembok "!isChatPage &&" di sini */}
+          {/* Sekarang Navbar merdeka muncul di semua halaman! */}
+          <Navbar />
+          
         </div>
 
         {/* MODAL & NOTIFIKASI */}
