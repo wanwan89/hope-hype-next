@@ -1,0 +1,78 @@
+/* src/components/post/GiftSheet.css */
+.gift-sheet {
+  position: fixed; inset: 0; z-index: 100000;
+  display: none; align-items: flex-end;
+}
+.gift-sheet.active { display: flex; }
+
+.gift-sheet-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px); cursor: pointer;
+}
+
+.gift-sheet-content {
+  position: relative; width: 100%; background: var(--bg-modal);
+  color: var(--text-main); border-radius: 24px 24px 0 0;
+  padding: 15px 20px 30px; transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.4); z-index: 100001;
+}
+.gift-sheet.active .gift-sheet-content { transform: translateY(0); }
+
+.sheet-handle {
+  width: 40px; height: 5px; background: var(--border-card);
+  border-radius: 10px; margin: 0 auto 15px;
+}
+
+.gift-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 20px;
+}
+.gift-close-x { font-size: 22px; cursor: pointer; color: var(--text-main); }
+
+.gift-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+}
+
+.gift-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12px 5px; border-radius: 14px; border: 2px solid transparent;
+  background: var(--bg-input); transition: 0.2s ease; cursor: pointer;
+}
+.gift-item:hover { transform: translateY(-3px); }
+
+.gift-item.selected-gift {
+  background: rgba(255, 45, 85, 0.1); border-color: #ff2d55;
+  transform: scale(1.05); box-shadow: 0 0 15px rgba(255, 45, 85, 0.2);
+}
+.gift-item.selected-gift img { animation: bounceMini 0.4s ease; }
+
+@keyframes bounceMini { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+.gift-img-container { width: 50px; height: 50px; margin-bottom: 5px; }
+.img-gift { width: 100%; height: 100%; object-fit: contain; }
+
+.gift-name { font-size: 11px; font-weight: 700; color: var(--text-main); }
+.gift-price { font-size: 12px; color: #ffd700; display: flex; align-items: center; gap: 3px; font-weight: 800; }
+.img-coin-inline { width: 12px; height: 12px; }
+
+.gift-footer {
+  margin-top: 25px; display: flex; justify-content: space-between; align-items: center;
+  padding-top: 15px; border-top: 1px solid var(--border-card);
+}
+
+.user-coins-info {
+  display: flex; align-items: center; gap: 6px; color: var(--text-main);
+  font-weight: 700; cursor: pointer;
+}
+.img-coin-footer { width: 22px; height: 22px; }
+
+.btn-send-gift {
+  background: #ff2d55; color: white; border: none; padding: 12px 30px;
+  border-radius: 25px; font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.2s;
+}
+.btn-send-gift:disabled { background: var(--bg-input); color: var(--text-muted); cursor: not-allowed; }
+
+@media (max-width: 400px) {
+  .gift-grid { grid-template-columns: repeat(3, 1fr); }
+}
