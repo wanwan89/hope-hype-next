@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// Import sudah sesuai dengan lib/ui-utils.ts yang kita perbaiki tadi
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
 import './CommentModal.css';
 
@@ -29,7 +28,6 @@ export default function CommentModalpost() {
       if (btn) {
         const { data: { session } } = await supabase.auth.getSession();
         
-        // FIX: Panggil requireLogin dengan session user
         if (!requireLogin(session?.user)) {
           return;
         }
@@ -86,7 +84,6 @@ export default function CommentModalpost() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // Gunakan Number() atau parseInt dengan aman
         const pid = parseInt(currentPostId);
 
         await supabase.from("comments").insert({
@@ -108,7 +105,6 @@ export default function CommentModalpost() {
           });
         }
 
-        // Update UI Badge komentar secara manual
         const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", currentPostId);
         const countBadge = document.querySelector(`.comment-toggle[data-post="${currentPostId}"] .comment-count`);
         if (countBadge) countBadge.textContent = String(count || 0);
@@ -130,8 +126,6 @@ export default function CommentModalpost() {
     const isPostOwner = comment.user_id === currentCreatorId;
     const p = comment.profiles;
     const avatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
-    
-    // AMBIL HTML BADGE
     const badgeHtml = getUserBadge(p?.role || 'user');
 
     const content = (
@@ -148,11 +142,8 @@ export default function CommentModalpost() {
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/profile?id=${p?.id}`}>
               {p?.username} 
-              
-              {/* RENDER BADGE */}
               <span dangerouslySetInnerHTML={{ __html: badgeHtml }} style={{ display: 'inline-flex', alignItems: 'center' }} />
-              
-              {isPostOwner && <span style={{ background: '#1DA1F2', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', marginLeft: '4px', fontWeight: 800 }}>CREATOR</span>}
+              {isPostOwner && <span className="creator-tag">CREATOR</span>}
             </span>
           </div>
           <div className="comment-text">
@@ -189,13 +180,9 @@ export default function CommentModalpost() {
         
         <div className="comment-list" id="commentListContainer">
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: '#888', fontSize: '13px' }}>
-              Memuat komentar...
-            </div>
+            <div className="loading-text">Memuat komentar...</div>
           ) : comments.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: '#888', fontSize: '13px' }}>
-              Belum ada komentar. Jadilah yang pertama!
-            </div>
+            <div className="empty-text">Belum ada komentar. Jadilah yang pertama!</div>
           ) : (
             parents.map(p => {
               const childs = comments.filter(r => String(r.parent_id) === String(p.id));
@@ -203,28 +190,35 @@ export default function CommentModalpost() {
 
               return (
                 <div className="comment-thread" key={p.id}>
+                  {/* Komentar Utama */}
                   {renderComment(p, false)}
 
+                  {/* Wrapper Balasan dengan Garis */}
                   {childs.length > 0 && (
-                    <>
+                    <div className="replies-container">
                       <div 
                         className="view-replies-btn"
-                        style={{ marginLeft: '52px', fontSize: '12px', color: '#1DA1F2', cursor: 'pointer', marginTop: '5px' }}
                         onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
                       >
-                        {isExpanded ? 'Sembunyikan balasan' : `Lihat ${childs.length} balasan`}
+                        <span className="btn-line"></span>
+                        {isExpanded ? 'Sembunyikan' : `Lihat ${childs.length} balasan`}
                       </div>
 
                       {isExpanded && (
-                        <div className="reply-group" style={{ marginLeft: '40px' }}>
+                        <div className="reply-group">
+                          {/* Garis Vertikal Utama */}
+                          <div className="thread-line"></div>
+                          
                           {childs.map(c => (
                             <div className="comment-item reply" key={c.id}>
+                              {/* Garis tikungan ke avatar balasan */}
+                              <span className="reply-curve"></span>
                               {renderComment(c, true)}
                             </div>
                           ))}
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               );
