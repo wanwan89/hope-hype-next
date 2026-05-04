@@ -1,4 +1,4 @@
-'use client'; // Tambahkan ini karena kita butuh usePathname
+'use client'; 
 
 import { usePathname } from 'next/navigation';
 import "./globals.css";
@@ -11,8 +11,13 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Tentukan rute mana saja yang ingin tampilan BERSIH (tanpa sidebar/search/navbar)
+  // 1. Logika untuk Navbar & Sidebar (Sembunyi di halaman chat)
   const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat');
+
+  // 2. LOGIKA BARU UNTUK SEARCH: Tampil HANYA di halaman tertentu
+  // Saat ini gue set cuma muncul di halaman utama (Home: "/")
+  // Kalau mau ditambah, misal: pathname === '/' || pathname === '/explore'
+  const showSearch = pathname === '/';
 
   return (
     <html lang="id">
@@ -22,30 +27,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-black text-white antialiased" style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}>
         
-        {/* HANYA TAMPIL JIKA BUKAN HALAMAN CHAT */}
+        {/* SIDEBAR: Tetap sembunyi di chat */}
         {!isChatPage && <Sidebar />}
         
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           
-          {/* HANYA TAMPIL JIKA BUKAN HALAMAN CHAT */}
-          {!isChatPage && <SearchWrapper />}
+          {/* SEARCH BUKAN PAKAI !isChatPage LAGI, TAPI PAKAI showSearch */}
+          {showSearch && <SearchWrapper />}
 
           <main style={{ 
             flex: 1, 
             width: '100%', 
             maxWidth: '600px',
             margin: '0 auto', 
+            // Kalau ada search, padding atas sesuaikan, kalau nggak ada biarin mepet
+            paddingTop: showSearch ? '0' : '20px', 
             paddingBottom: isChatPage ? '0' : '120px',
             position: 'relative'
           }}>
             {children}
           </main>
 
-          {/* HANYA TAMPIL JIKA BUKAN HALAMAN CHAT */}
+          {/* NAVBAR: Tetap sembunyi di chat */}
           {!isChatPage && <Navbar />}
         </div>
 
-        {/* MODAL & NOTIFIKASI TETAP GLOBAL (Selalu Ada) */}
+        {/* MODAL & NOTIFIKASI */}
         <LoginPopup />
         <Overlays />
       </body>
