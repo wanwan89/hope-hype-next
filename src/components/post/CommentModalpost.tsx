@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// 1. TAMBAHKAN getUserBadge DI SINI
+// Import sudah sesuai dengan lib/ui-utils.ts yang kita perbaiki tadi
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
 import './CommentModal.css';
 
@@ -29,8 +29,8 @@ export default function CommentModalpost() {
       if (btn) {
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (!session) {
-          requireLogin(); 
+        // FIX: Panggil requireLogin dengan session user
+        if (!requireLogin(session?.user)) {
           return;
         }
 
@@ -74,6 +74,9 @@ export default function CommentModalpost() {
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim() && !isSubmitting) {
       e.preventDefault();
+      
+      if (!currentPostId) return;
+
       setIsSubmitting(true);
       const content = inputValue.trim();
       const parentId = replyToId;
@@ -83,33 +86,37 @@ export default function CommentModalpost() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
+        // Gunakan Number() atau parseInt dengan aman
+        const pid = parseInt(currentPostId);
+
         await supabase.from("comments").insert({
-          post_id: parseInt(currentPostId!),
+          post_id: pid,
           user_id: session.user.id,
           content: content,
           parent_id: parentId ? parseInt(parentId) : null,
           reply_to_username: targetUser || null
         });
 
-        if (currentCreatorId !== session.user.id) {
+        if (currentCreatorId !== session.user.id && currentCreatorId) {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
           await supabase.from("notifications").insert({
             user_id: currentCreatorId,
             actor_id: session.user.id,
-            post_id: parseInt(currentPostId!),
+            post_id: pid,
             type: "comment",
             message: `<b>${prof?.username}</b> mengomentari karyamu.`
           });
         }
 
-        const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", currentPostId!);
+        // Update UI Badge komentar secara manual
+        const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", currentPostId);
         const countBadge = document.querySelector(`.comment-toggle[data-post="${currentPostId}"] .comment-count`);
         if (countBadge) countBadge.textContent = String(count || 0);
 
         setReplyToId(null);
         setReplyToUsername(null);
         setInputValue("");
-        await loadComments(currentPostId!);
+        await loadComments(currentPostId);
 
       } catch (err) {
         showNotif("Gagal mengirim komentar", "error"); 
@@ -124,20 +131,25 @@ export default function CommentModalpost() {
     const p = comment.profiles;
     const avatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
     
-    // 2. AMBIL HTML BADGE BERDASARKAN ROLE USER
+    // AMBIL HTML BADGE
     const badgeHtml = getUserBadge(p?.role || 'user');
 
     const content = (
       <>
         <div className="comment-left">
-          <img className="comment-avatar" src={avatar} onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
+          <img 
+            className="comment-avatar" 
+            src={avatar} 
+            onClick={() => window.location.href = `/profile?id=${p?.id}`} 
+            alt="Avatar" 
+          />
         </div>
         <div className="comment-right">
           <div className="comment-topline">
-            <span className="comment-username" onClick={() => window.location.href = `/data?id=${p?.id}`}>
+            <span className="comment-username" onClick={() => window.location.href = `/profile?id=${p?.id}`}>
               {p?.username} 
               
-              {/* 3. RENDER BADGE DI SINI PAKAI dangerouslySetInnerHTML */}
+              {/* RENDER BADGE */}
               <span dangerouslySetInnerHTML={{ __html: badgeHtml }} style={{ display: 'inline-flex', alignItems: 'center' }} />
               
               {isPostOwner && <span style={{ background: '#1DA1F2', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', marginLeft: '4px', fontWeight: 800 }}>CREATOR</span>}
@@ -151,7 +163,7 @@ export default function CommentModalpost() {
             <span 
               className="reply-btn" 
               onClick={() => {
-                setReplyToId(isReply ? comment.parent_id : comment.id);
+                setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                 setReplyToUsername(p?.username);
               }}
             >
@@ -162,7 +174,7 @@ export default function CommentModalpost() {
       </>
     );
 
-    return isReply ? content : <div className="comment-item">{content}</div>;
+    return isReply ? content : <div className="comment-item" key={comment.id}>{content}</div>;
   };
 
   const parents = comments.filter(c => !c.parent_id);
@@ -177,11 +189,11 @@ export default function CommentModalpost() {
         
         <div className="comment-list" id="commentListContainer">
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
+            <div style={{ textAlign: 'center', padding: '30px', color: '#888', fontSize: '13px' }}>
               Memuat komentar...
             </div>
           ) : comments.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
+            <div style={{ textAlign: 'center', padding: '30px', color: '#888', fontSize: '13px' }}>
               Belum ada komentar. Jadilah yang pertama!
             </div>
           ) : (
@@ -197,13 +209,14 @@ export default function CommentModalpost() {
                     <>
                       <div 
                         className="view-replies-btn"
+                        style={{ marginLeft: '52px', fontSize: '12px', color: '#1DA1F2', cursor: 'pointer', marginTop: '5px' }}
                         onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
                       >
                         {isExpanded ? 'Sembunyikan balasan' : `Lihat ${childs.length} balasan`}
                       </div>
 
                       {isExpanded && (
-                        <div className="reply-group">
+                        <div className="reply-group" style={{ marginLeft: '40px' }}>
                           {childs.map(c => (
                             <div className="comment-item reply" key={c.id}>
                               {renderComment(c, true)}

@@ -2,11 +2,14 @@
 // DYNAMIC BADGE SYSTEM
 // =======================
 export function getUserBadge(role: string): string {
+  if (!role) return "";
   let badge = "";
-  if (role === "admin") {
+  const roleLower = role.toLowerCase();
+
+  if (roleLower === "admin") {
     badge += `<span class="admin-badge" style="background: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 5px; display: inline-flex; align-items: center; vertical-align: middle; line-height: 1; font-weight: bold; height: 16px;">🛡 Dev</span>`;
   }
-  if (role === "verified") {
+  if (roleLower === "verified") {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
   
@@ -17,11 +20,25 @@ export function getUserBadge(role: string): string {
     crown3: "/asets/png/crown3.png" 
   };
   
-  if (crowBadges[role]) {
-    badge += `<img src="${crowBadges[role]}" style="width:18px;height:18px;margin-left:5px;vertical-align:middle;object-fit:contain;display:inline-block;" alt="${role}">`;
+  if (crowBadges[roleLower]) {
+    badge += `<img src="${crowBadges[roleLower]}" style="width:18px;height:18px;margin-left:5px;vertical-align:middle;object-fit:contain;display:inline-block;" alt="${role}">`;
   }
   return badge;
 }
+
+// =======================
+// AUTH PROTECTOR (FIX)
+// =======================
+// Fungsi ini yang tadi bikin build Vercel gagal karena belum ada
+export const requireLogin = (currentUser: any) => {
+  if (!currentUser) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('openLoginPopup'));
+    }
+    return false;
+  }
+  return true;
+};
 
 // =======================
 // TOAST MODERN
@@ -32,23 +49,26 @@ function getToastIcon(type: string): string {
   switch (type) { 
     case "success": return "✓"; 
     case "warning": return "⚠"; 
-    case "error": return "✕"; // Gue ganti ke silang (X) biar makin elegan
+    case "error": return "✕"; 
     default: return "i"; 
   }
 }
 
 export function hideToast() {
-  // Pelindung Next.js SSR
   if (typeof window === 'undefined') return;
 
   const toast = document.getElementById("toast");
   if (!toast) return;
   toast.classList.remove("show");
-  setTimeout(() => { toast.className = ""; toast.innerHTML = ""; }, 260);
+  setTimeout(() => { 
+    if (toast) {
+        toast.className = ""; 
+        toast.innerHTML = ""; 
+    }
+  }, 260);
 }
 
 export function showToast(title: string, message: string = "", type: "info" | "success" | "warning" | "error" = "info") {
-  // Pelindung Next.js SSR
   if (typeof window === 'undefined') return;
 
   let toast = document.getElementById("toast");
@@ -61,7 +81,6 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   clearTimeout(toastTimer);
   toast.className = "";
   
-  // HTML Toast
   toast.innerHTML = `
     <div class="toast-icon-wrap ${type}"><div class="toast-icon">${getToastIcon(type)}</div></div>
     <div class="toast-content">
@@ -73,7 +92,6 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   
   toast.classList.add("toast-card", type);
   
-  // Memastikan animasi jalan mulus di React
   requestAnimationFrame(() => toast!.classList.add("show"));
   
   const closeBtn = toast.querySelector(".toast-close") as HTMLButtonElement;
@@ -82,7 +100,6 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   toastTimer = setTimeout(() => hideToast(), 3200);
 }
 
-// ALIAS: Biar kompatibel dengan fungsi `showNotif` yang ada di modal-modal sebelumnya
 export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
   showToast(type === 'error' ? 'Gagal' : type === 'success' ? 'Berhasil' : 'Info', msg, type);
 };
@@ -92,7 +109,6 @@ export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | '
 // =======================
 let isMidtransLoading = false;
 export function loadMidtrans() {
-  // Pelindung Next.js SSR
   if (typeof window === 'undefined') return;
   if ((window as any).snap || isMidtransLoading) return;
   
@@ -110,7 +126,6 @@ export function loadMidtrans() {
 // PARTICLES
 // ==========================================
 export function createParticles(x: number, y: number) {
-  // Pelindung Next.js SSR
   if (typeof window === 'undefined') return;
 
   const colors = ["#f09f33", "#00d2ff", "#4ade80", "#ff758c", "#ffffff"];
@@ -127,7 +142,7 @@ export function createParticles(x: number, y: number) {
     p.style.position = "fixed"; 
     p.style.pointerEvents = "none"; 
     p.style.borderRadius = "50%"; 
-    p.style.zIndex = "100000"; // Paksa z-index tinggi biar gak ketutup navbar
+    p.style.zIndex = "100000"; 
     
     document.body.appendChild(p);
 
