@@ -28,7 +28,6 @@ export default function Gallerypost() {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user || null;
     setCurrentUser(user);
-    // Jalankan fetchPosts setelah kita tahu status user-nya
     await fetchPosts("all", user);
   };
 
@@ -49,17 +48,15 @@ export default function Gallerypost() {
       if (error) throw error;
 
       let fetchedPosts = rawPosts || [];
-      // Acak jika kategori "all"
       if (category === "all") fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
 
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
         
-        // Ambil data Engagement
         const [likesRes, commentsRes, repostsRes] = await Promise.all([
-          supabase.from("likes").select("post_id"),
-          supabase.from("comments").select("post_id"),
-          supabase.from("reposts").select("post_id")
+          supabase.from("likes").select("post_id").in("post_id", postIds),
+          supabase.from("comments").select("post_id").in("post_id", postIds),
+          supabase.from("reposts").select("post_id").in("post_id", postIds)
         ]);
 
         const newCounts: any = {};
@@ -70,10 +67,9 @@ export default function Gallerypost() {
         repostsRes.data?.forEach(r => { if(newCounts[r.post_id]) newCounts[r.post_id].reposts++; });
         setCounts(newCounts);
 
-        // Ambil status like user saat ini
         if (userObj) {
-          const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id);
-          const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id);
+          const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
+          const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           
           setMyLikedPosts(new Set(myLikes?.map(l => String(l.post_id))));
           setMyRepostedPosts(new Set(myReposts?.map(r => String(r.post_id))));
@@ -90,13 +86,12 @@ export default function Gallerypost() {
   };
 
   const handleLike = async (postId: string, creatorId: string) => {
-    // 1. Cek Login
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     
     const isLiked = myLikedPosts.has(postId);
-    const numericPostId = parseInt(postId);
+    const numericPostId = parseInt(postId); // Supabase BigInt fix
     
-    // 2. Optimistic Update (UI berubah instan)
+    // Optimistic Update
     setMyLikedPosts(prev => {
       const newSet = new Set(prev);
       isLiked ? newSet.delete(postId) : newSet.add(postId);
@@ -110,25 +105,16 @@ export default function Gallerypost() {
 
     try {
       if (isLiked) {
-        // Hapus dari Supabase
-        const { error } = await supabase.from("likes")
-          .delete()
-          .match({ post_id: numericPostId, user_id: currentUser.id });
+        const { error } = await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
         if (error) throw error;
       } else {
-        // Simpan ke Supabase
-        const { error } = await supabase.from("likes")
-          .insert({ post_id: numericPostId, user_id: currentUser.id });
+        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
         if (error) throw error;
 
-        // Kirim Notifikasi jika bukan postingan sendiri
         if (creatorId !== currentUser.id) {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
           await supabase.from("notifications").insert({
-            user_id: creatorId, 
-            actor_id: currentUser.id, 
-            post_id: numericPostId, 
-            type: "like",
+            user_id: creatorId, actor_id: currentUser.id, post_id: numericPostId, type: "like",
             message: `<b>${prof?.username}</b> menyukai karyamu.`
           });
         }
@@ -136,7 +122,6 @@ export default function Gallerypost() {
     } catch (err) {
       console.error("Like Error:", err);
       showNotif("Gagal menyimpan like", "error");
-      // Opsional: Rollback state di sini jika gagal
     }
   };
 
@@ -185,7 +170,6 @@ export default function Gallerypost() {
       entries.forEach(entry => {
         const audio = entry.target.querySelector('.post-audio-element') as HTMLAudioElement;
         if (!audio) return;
-
         if (entry.isIntersecting) {
           document.querySelectorAll('.post-audio-element').forEach(el => { 
             if (el !== audio) { (el as HTMLAudioElement).pause(); (el as HTMLAudioElement).muted = true; }

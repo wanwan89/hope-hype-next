@@ -1,4 +1,5 @@
 /* src/components/post/Gallery.css */
+
 .gallery { 
   max-width: 420px; 
   margin: auto; 
@@ -59,19 +60,46 @@
 }
 .primary:hover { background: #0b84e3; }
 
-.icon-btn {
-  background: none; border: none; color: var(--text-main);
-  display: flex; align-items: center; gap: 6px;
-  cursor: pointer; font-size: 14px; transition: 0.2s; padding: 0; font-family: 'Poppins', sans-serif;
+/* FIX: Perbaikan tombol icon agar tidak muncul kotak saat diklik */
+.icon-btn, .options-btn {
+  background: transparent !important; 
+  border: none !important; 
+  color: var(--text-main);
+  display: flex; 
+  align-items: center; 
+  gap: 6px;
+  cursor: pointer; 
+  font-size: 14px; 
+  transition: 0.2s; 
+  padding: 0; 
+  font-family: 'Poppins', sans-serif;
+  outline: none !important; /* Hapus kotak garis biru/hitam */
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent; /* Hapus highlight di HP */
 }
+
+/* FIX KHUSUS: Titik tiga biar areanya enak diklik tapi tetep clean */
+.options-btn {
+  padding: 5px !important;
+  border-radius: 50%;
+}
+
 .icon { width: 22px; height: 22px; fill: var(--icon-fill); transition: transform 0.2s, fill 0.3s; }
 .icon-btn.liked .icon { fill: #ff2e63; }
 .icon-btn.reposted .icon { stroke: #1DA1F2; fill: #1DA1F2; } 
 .icon-btn.reposted .repost-count { color: #1DA1F2; font-weight: bold; }
 
 .like-count, .comment-count, .repost-count { font-size: 13px; color: var(--text-main); }
-.icon-btn:hover { transform: scale(1.1); opacity: 0.8; }
-.icon-btn:active .icon { transform: scale(0.8); }
+
+/* Animasi hover dikit biar user tau itu tombol */
+.icon-btn:hover, .options-btn:hover { 
+  transform: scale(1.1); 
+  opacity: 0.8; 
+}
+
+.icon-btn:active .icon, .options-btn:active { 
+  transform: scale(0.8); 
+}
 
 @keyframes marquee-play { 0% { transform: translateX(100%); } 100% { transform: translateX(-150%); } }
 .marquee-text { display: inline-block; white-space: nowrap; will-change: transform; }
