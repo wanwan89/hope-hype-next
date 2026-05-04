@@ -53,6 +53,6 @@
 .button-submit:hover { background-color: #1f63cf; transform: translateY(-2px); }
 .button-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 
-/* Dark Mode Overrides */
-:global(html.dark) .button-submit { background-color: white; color: black; }
-:global(html.dark) .button-submit:hover { background-color: #e0e0e0; }
+/* FIX: Hapus kata :global karena Next.js Turbopack gak kenal kalau bukan di file .module.css */
+html.dark .button-submit { background-color: white; color: black; }
+html.dark .button-submit:hover { background-color: #e0e0e0; }

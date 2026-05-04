@@ -14,7 +14,8 @@
   --tg-hover: #f9fafb;
 }
 
-:global(html.dark) {
+/* FIX: Hapus :global() */
+html.dark {
   --tg-bg: #15171a;
   --tg-bg-secondary: #1f2226;
   --tg-text: #f9fafb;
@@ -36,7 +37,8 @@ body {
   transition: background 0.3s ease; 
   min-height: 100vh;
 }
-:global(html.dark) body { background: #000000; }
+/* FIX: Hapus :global() */
+html.dark body { background: #000000; }
 
 .telegram-wrapper { 
   position: fixed; 
@@ -57,7 +59,8 @@ body {
   height: 100dvh;
   overflow: hidden; 
 }
-:global(html.dark) .telegram-wrapper { box-shadow: none; border-left: 1px solid var(--tg-border); border-right: 1px solid var(--tg-border); }
+/* FIX: Hapus :global() */
+html.dark .telegram-wrapper { box-shadow: none; border-left: 1px solid var(--tg-border); border-right: 1px solid var(--tg-border); }
 
 /* HEADER TETAP DI ATAS */
 .tg-header { 
@@ -142,8 +145,9 @@ body {
 .btn-cari-doi { color: var(--tg-primary) !important; justify-content: space-between; }
 .btn-cari-doi .material-icons { color: var(--tg-primary) !important; }
 
+/* FIX: Hapus :global() */
 .limit-badge { background: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
-:global(html.dark) .limit-badge { background: rgba(239,68,68,0.15); }
+html.dark .limit-badge { background: rgba(239,68,68,0.15); }
 
 .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s ease; }
 .custom-modal-content { background: var(--tg-bg); width: 100%; max-width: 480px; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 24px; padding-bottom: max(24px, env(safe-area-inset-bottom) + 24px); animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; }
