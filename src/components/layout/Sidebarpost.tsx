@@ -1,36 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// 1. TAMBAHIN IMPORT usePathname
 import { usePathname } from 'next/navigation'; 
 import './Sidebar.css';
 
 export default function Sidebarpost() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeCat, setActiveCat] = useState('all');
-  
-  // 2. PANGGIL usePathname
   const pathname = usePathname();
 
-  // Efek untuk dengerin tombol hamburger diklik
+  // Efek untuk dengerin tombol hamburger diklik (Event Global)
   useEffect(() => {
     const handleOpen = () => {
-      console.log("Sinyal diterima: Membuka Sidebar...");
       setIsOpen(true);
-      document.body.style.overflow = 'hidden'; // Kunci scroll pas kebuka
+      document.body.style.overflow = 'hidden'; 
     };
-
     window.addEventListener('openSidebar', handleOpen);
-
-    return () => {
-      window.removeEventListener('openSidebar', handleOpen);
-    };
+    return () => window.removeEventListener('openSidebar', handleOpen);
   }, []);
 
-  // 3. TAMBAHIN EFEK INI: Auto-close tiap kali URL (pathname) berubah
+  // Auto-close tiap kali URL berubah
   useEffect(() => {
     setIsOpen(false);
-    document.body.style.overflow = ''; // Balikin scroll body jadi normal
+    document.body.style.overflow = ''; 
   }, [pathname]);
 
   const handleCategoryClick = (cat: string) => {
@@ -39,18 +31,21 @@ export default function Sidebarpost() {
       detail: { category: cat } 
     }));
     setIsOpen(false);
-    document.body.style.overflow = ''; // Balikin scroll body
+    document.body.style.overflow = ''; 
+  };
+
+  // Fungsi khusus buat nutup pas klik layar (Overlay)
+  const closeSidebar = () => {
+    setIsOpen(false);
+    document.body.style.overflow = '';
   };
 
   return (
     <>
-      {/* 1. OVERLAY */}
+      {/* 1. OVERLAY (Klik area ini buat nutup) */}
       <div 
         className={`sidebar-overlay ${isOpen ? 'active' : ''}`} 
-        onClick={() => {
-          setIsOpen(false);
-          document.body.style.overflow = '';
-        }}
+        onClick={closeSidebar} // Ini kuncinya biar diklik layar langsung nutup
         style={{
           position: 'fixed',
           inset: 0,
@@ -74,31 +69,13 @@ export default function Sidebarpost() {
           zIndex: 20001, 
           backgroundColor: '#ffffff',
           boxShadow: '10px 0 30px rgba(0,0,0,0.2)',
-          padding: '40px 30px',
+          padding: '40px 30px', // Tetep ada padding biar menu gak nempel ke atas banget
           transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
           display: 'block' 
         }}
       >
-        <div className="sidebar-header" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 className="sidebar-logo" style={{ color: '#000', margin: 0, fontWeight: '800', fontSize: '24px' }}>MENU</h2>
-          <button 
-            onClick={() => {
-              setIsOpen(false);
-              document.body.style.overflow = '';
-            }} 
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: '#000', 
-              fontSize: '32px', 
-              cursor: 'pointer',
-              lineHeight: '1'
-            }}
-          >
-            ×
-          </button>
-        </div>
+        {/* HEADER (MENU & X) DIHAPUS TOTAL DI SINI */}
 
         <nav className="sidebar-nav">
           {['all', 'karya', 'prestasi', 'photography', 'mountain', 'thread'].map((item) => (
@@ -131,7 +108,6 @@ export default function Sidebarpost() {
         </nav>
       </aside>
 
-      {/* Global CSS Fallback */}
       <style jsx global>{`
         body.sidebar-open {
           overflow: hidden;
