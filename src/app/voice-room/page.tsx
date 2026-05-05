@@ -17,7 +17,6 @@ export default function VoiceLobbyPage() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
-  // Modal Create Room States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newRoomForm, setNewRoomForm] = useState({
@@ -29,19 +28,19 @@ export default function VoiceLobbyPage() {
   // --- INIT USER ---
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.push('/login');
         return;
       }
 
       const { data: profile } = await supabase.from('profiles')
-        .select('username, avatar_url, coins')
-        .eq('id', user.id)
+        .select('username, avatar_url, coins, id')
+        .eq('id', session.user.id)
         .single();
 
       if (profile) {
-        setCurrentUser({ ...user, ...profile });
+        setCurrentUser(profile);
       }
     };
 
@@ -52,7 +51,6 @@ export default function VoiceLobbyPage() {
   useEffect(() => {
     const loadRooms = async () => {
       setIsLoadingRooms(true);
-      
       try {
         let query = supabase.from('rooms').select('id, name, description').eq('is_active', true);
 
@@ -67,11 +65,9 @@ export default function VoiceLobbyPage() {
 
         if (!fetchedRooms || fetchedRooms.length === 0) {
           setRooms([]);
-          setIsLoadingRooms(false);
           return;
         }
 
-        // Ambil data user yang lagi nongkrong (occupied slots)
         const roomIds = fetchedRooms.map(r => r.id);
         const { data: occupiedSlots } = await supabase.from('room_slots')
           .select('room_id')
@@ -101,13 +97,11 @@ export default function VoiceLobbyPage() {
     loadRooms();
   }, [activeCategory]);
 
-  // --- CREATE ROOM LOGIC ---
+  // --- LOGIKA BUKA ROOM ---
   const handleStartSinging = async () => {
-    // FIX ARGUMEN SHOW NOTIF
     if (!currentUser) return showNotif("Login dulu Bree!", "warning");
 
     try {
-      // Cek apakah user udah punya room yang aktif
       const { data: existingRoom } = await supabase.from('rooms')
         .select('id, name')
         .eq('owner_id', currentUser.id)
@@ -115,10 +109,8 @@ export default function VoiceLobbyPage() {
         .maybeSingle(); 
 
       if (existingRoom) {
-        // Langsung lompat ke room lamanya
         router.push(`/voice?id=${existingRoom.id}&name=${encodeURIComponent(existingRoom.name)}`);
       } else {
-        // Buka modal buat bikin room baru
         setIsModalOpen(true);
       }
     } catch (err) {
@@ -128,15 +120,11 @@ export default function VoiceLobbyPage() {
 
   const confirmCreateRoom = async () => {
     const { name, desc, category } = newRoomForm;
-
-    // FIX ARGUMEN SHOW NOTIF
     if (!name.trim()) return showNotif("Kasih nama panggung dulu dong!", "warning");
-    if (!currentUser) return showNotif("Sesi login hilang, coba refresh/login ulang.", "error");
+    if (!currentUser) return showNotif("Sesi hilang, login ulang ya.", "error");
 
     setIsCreating(true);
-
     try {
-      // 1. Bersihin room lama milik user ini (Sesuai logika Vanilla JS lu)
       const { data: oldRooms } = await supabase.from('rooms').select('id').eq('owner_id', currentUser.id);
       if (oldRooms && oldRooms.length > 0) {
         const oldRoomIds = oldRooms.map(r => r.id);
@@ -144,10 +132,9 @@ export default function VoiceLobbyPage() {
         await supabase.from('rooms').delete().in('id', oldRoomIds);
       }
 
-      // 2. Insert Room Baru
       const { data: newRoom, error: roomError } = await supabase.from('rooms').insert([{
         name: name.trim(),
-        description: desc.trim() || 'Ayo nyanyi bareng di panggung ini!',
+        description: desc.trim() || 'Ayo nyanyi bareng!',
         category: category,
         owner_id: currentUser.id,
         is_active: true
@@ -155,27 +142,18 @@ export default function VoiceLobbyPage() {
 
       if (roomError) throw roomError;
 
-      // 3. Siapin 6 Slot Kosong (sebagai kursi buat penyanyi/speaker)
       const slots = Array.from({ length: 6 }, (_, i) => ({
         room_id: newRoom.id,
         slot_index: i,
         profile_id: null
       }));
       
-      const { error: slotError } = await supabase.from('room_slots').insert(slots);
-      if (slotError) throw slotError;
-
-      // FIX ARGUMEN SHOW NOTIF
-      showNotif("Panggung lo udah siap!", "success");
+      await supabase.from('room_slots').insert(slots);
+      showNotif("Panggung siap!", "success");
       setIsModalOpen(false);
-
-      // 4. Pindah ke room voice
       router.push(`/voice?id=${newRoom.id}&name=${encodeURIComponent(newRoom.name)}`);
-
     } catch (e) {
-      console.error("Gagal bikin panggung:", e);
-      // FIX ARGUMEN SHOW NOTIF
-      showNotif("Gagal bikin panggung nih.", "error");
+      showNotif("Gagal buat panggung.", "error");
     } finally {
       setIsCreating(false);
     }
@@ -183,26 +161,29 @@ export default function VoiceLobbyPage() {
 
   return (
     <div className="voice-lobby-container">
-      {/* HEADER */}
+      {/* HEADER (Sticky Fix) */}
       <header className="lobby-header">
         <div className="header-profile">
-          <img src={currentUser?.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
+          <img src={currentUser?.avatar_url || '/asets/png/profile.webp'} alt="Av" />
           <div className="header-info">
-            <h3>{currentUser?.username || 'Loading...'}</h3>
+            <h3>{currentUser?.username || 'Hi, Bree!'}</h3>
             <div className="coin-badge">
-              <span className="material-icons" style={{fontSize: '16px'}}>monetization_on</span>
+              <span className="material-icons" style={{fontSize: '14px'}}>monetization_on</span>
               {currentUser ? (currentUser.coins || 0).toLocaleString() : 0}
             </div>
           </div>
         </div>
+        <button className="icon-btn" onClick={() => router.push('/settings')}>
+           <span className="material-icons">settings</span>
+        </button>
       </header>
 
       {/* HERO BANNER */}
       <section className="hero-banner">
         <h2>Panggung Lo, Aturan Lo!</h2>
-        <p>Bikin panggung suara lo sendiri, nyanyi bareng, atau sekadar ngobrol santai sama yang lain.</p>
+        <p>Bikin panggung suara lo sendiri, nyanyi bareng, atau sekadar ngobrol santai.</p>
         <button className="btn-start-singing" onClick={handleStartSinging}>
-          <span className="material-icons" style={{verticalAlign: 'middle', marginRight: '5px', fontSize: '18px'}}>mic</span>
+          <span className="material-icons">mic</span>
           Mulai Bikin Panggung
         </button>
       </section>
@@ -223,13 +204,15 @@ export default function VoiceLobbyPage() {
       {/* ROOM LIST */}
       <main className="room-list">
         {isLoadingRooms ? (
-          <>
-            <div className="skeleton-card"><div className="skeleton skeleton-thumb"></div><div style={{flex: 1}}><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-desc" style={{width: '70%'}}></div></div></div>
-            <div className="skeleton-card"><div className="skeleton skeleton-thumb"></div><div style={{flex: 1}}><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-desc" style={{width: '40%'}}></div></div></div>
-          </>
+          [1,2,3].map(i => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton skeleton-thumb"></div>
+              <div style={{flex: 1}}><div className="skeleton" style={{height:'15px', width:'60%', marginBottom:'8px'}}></div><div className="skeleton" style={{height:'10px', width:'80%'}}></div></div>
+            </div>
+          ))
         ) : rooms.length === 0 ? (
           <div style={{textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: '13px'}}>
-            Belum ada panggung di kategori {activeCategory}. <br/> Jadilah yang pertama buat panggung!
+            Belum ada panggung di kategori ini.
           </div>
         ) : (
           rooms.map(room => (
@@ -247,8 +230,8 @@ export default function VoiceLobbyPage() {
               </div>
               <div className="room-status">
                 <div className="online-pill">
-                  <span style={{width: '6px', height: '6px', background: '#2ecc71', borderRadius: '50%', display: 'inline-block'}}></span>
-                  {room.onlineCount} Online
+                   <div style={{width:'6px', height:'6px', background:'#16a34a', borderRadius:'50%'}}></div>
+                   {room.onlineCount} Online
                 </div>
               </div>
             </div>
@@ -261,45 +244,20 @@ export default function VoiceLobbyPage() {
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Siapin Panggung Lo</h3>
-            
             <div className="form-group">
               <label>Nama Panggung</label>
-              <input 
-                type="text" 
-                placeholder="Cth: Nongkrong Santai" 
-                maxLength={25}
-                value={newRoomForm.name}
-                onChange={e => setNewRoomForm({...newRoomForm, name: e.target.value})}
-              />
+              <input type="text" placeholder="Cth: Nongkrong Santai" maxLength={25} value={newRoomForm.name} onChange={e => setNewRoomForm({...newRoomForm, name: e.target.value})} />
             </div>
-            
-            <div className="form-group">
-              <label>Deskripsi (Opsional)</label>
-              <input 
-                type="text" 
-                placeholder="Ayo mabar ml sini..." 
-                maxLength={50}
-                value={newRoomForm.desc}
-                onChange={e => setNewRoomForm({...newRoomForm, desc: e.target.value})}
-              />
-            </div>
-            
             <div className="form-group">
               <label>Kategori</label>
-              <select 
-                value={newRoomForm.category}
-                onChange={e => setNewRoomForm({...newRoomForm, category: e.target.value})}
-              >
+              <select value={newRoomForm.category} onChange={e => setNewRoomForm({...newRoomForm, category: e.target.value})}>
                 <option value="Nyanyi">Nyanyi</option>
                 <option value="Ngobrol">Ngobrol</option>
                 <option value="Mabar">Mabar</option>
               </select>
             </div>
-
             <div className="modal-actions">
-              <button className="modal-btn btn-cancel" onClick={() => setIsModalOpen(false)} disabled={isCreating}>
-                Batal
-              </button>
+              <button className="modal-btn btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
               <button className="modal-btn btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
                 {isCreating ? 'Membangun...' : 'Buat Sekarang'}
               </button>
