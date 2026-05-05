@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
-import SearchWrapper from "@/components/layout/SearchWrapperpost";
+import SearchWrapper from "@/components/layout/SearchWrapperpost"; // Opsional: hapus jika sudah tidak dipakai di sini
 import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar"; 
@@ -11,12 +11,13 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 👇 FIX 1: Daftarin '/voice' biar DIKECUALIKAN dari layout global 👇
+  // FIX 1: Deteksi halaman voice
   const isVoicePage = pathname?.includes('/voice');
+  // Kecualikan sidebar di chat dan voice
   const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat') || isVoicePage;
 
-  // 2. LOGIKA UNTUK SEARCH: Tampil HANYA di halaman utama (Home: "/")
-  const showSearch = pathname === '/';
+  // FIX 2: Hapus logika showSearch di sini karena bikin double render
+  // Lebih baik SearchWrapper ditaruh langsung di file app/page.tsx lu sendiri
 
   return (
     <html lang="id">
@@ -26,29 +27,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-black text-white antialiased" style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}>
         
-        {/* SIDEBAR: Sekarang otomatis SEMBUNYI di halaman /voice juga! */}
+        {/* SIDEBAR */}
         {!isChatPage && <Sidebar />}
         
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           
-          {/* SEARCH: Hanya di Home */}
-          {showSearch && <SearchWrapper />}
+          {/* 🔥 FIX UTAMA: SearchWrapper gw hapus dari sini! 🔥
+             Pastikan di file app/page.tsx (halaman home lu) sudah ada <SearchWrapper />.
+             Kalau belum ada, lu tinggal pasang di sana aja biar nggak double.
+          */}
 
           <main style={{ 
             flex: 1, 
             width: '100%', 
             maxWidth: '600px',
             margin: '0 auto', 
-            // 👇 FIX 2: Hapus gap 20px di atas KUSUS buat halaman Voice biar mepet atas 👇
-            paddingTop: (showSearch || isVoicePage) ? '0' : '20px', 
-            // 👇 FIX 3: Hapus padding 120px di bawah KUSUS buat Voice biar tinggi layarnya pas 👇
+            paddingTop: isVoicePage ? '0' : '20px', 
             paddingBottom: isVoicePage ? '0' : '120px',
             position: 'relative'
           }}>
             {children}
           </main>
 
-          {/* 👇 FIX 4: Sembunyikan Navbar bawah KUSUS di halaman Voice 👇 */}
+          {/* NAVBAR */}
           {!isVoicePage && <Navbar />}
           
         </div>
