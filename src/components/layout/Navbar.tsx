@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-// Ganti Mic jadi Mic2 (lebih khas Voice Room)
 import { Home, Bell, MessageCircle, User, Mic2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -13,16 +12,14 @@ function NavbarContent() {
   
   const [isVisible, setIsVisible] = useState(true);
   const [isManualHidden, setIsManualHidden] = useState(false);
-  const [hasUnreadChat, setHasUnreadChat] = useState(false);
+  
+  // FIX: Kita ganti dari boolean (true/false) jadi angka (number) biar bisa nampilin jumlah chat masuk
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
   
-  // FIX 1: State untuk trigger animasi klik
   const [clickedItem, setClickedItem] = useState<string | null>(null);
-  
   const lastScrollY = useRef(0);
 
-  // --- LOGIKA HIDE NAVBAR DI CHATROOM ---
-  // Jika path dimulai dengan '/hypetalk/' dan BUKAN '/hypetalk' (lobby), berarti sedang di chatroom.
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
 
   useEffect(() => {
@@ -44,6 +41,7 @@ function NavbarContent() {
     setIsManualHidden(false); 
   }, [pathname]);
 
+  // --- LOGIKA MENGHITUNG PESAN & NOTIFIKASI ---
   useEffect(() => {
     let isMounted = true;
     let badgeChannel: any;
@@ -53,15 +51,19 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
+      // Hitung JUMLAH pesan yang masuk ke kita dan statusnya BUKAN 'read'
       const { count: chatCount } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
         .ilike('room_id', `pv_%${userId}%`) 
         .neq('user_id', userId) 
-        .eq('status', 'sent'); 
+        .neq('status', 'read'); // FIX: Pokoknya selama belum 'read', hitung!
 
-      if (isMounted && chatCount && chatCount > 0) setHasUnreadChat(true);
+      if (isMounted && chatCount !== null) {
+        setUnreadChatCount(chatCount);
+      }
 
+      // Hitung notif biasa
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -70,10 +72,18 @@ function NavbarContent() {
 
       if (isMounted && notifCount && notifCount > 0) setHasUnreadNotif(true);
 
+      // Realtime Listener: Kalo ada pesan baru masuk pas kita lagi di luar room
       badgeChannel = supabase.channel('navbar-badges')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
           if (payload.new.room_id.includes(userId) && payload.new.user_id !== userId) {
-            setHasUnreadChat(true);
+            // Tambah 1 ke jumlah unread chat
+            setUnreadChatCount(prev => prev + 1);
+          }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+          // Kalo pesannya udah kita read, kurangin angkanya
+          if (payload.new.status === 'read' && payload.old.status !== 'read') {
+             setUnreadChatCount(prev => Math.max(0, prev - 1));
           }
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
@@ -91,17 +101,17 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
-  // Jika sedang di dalam Chatroom, jangan render Navbar sama sekali (return null)
   if (isChatRoom) {
     return null;
   }
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
-    { name: 'Chat', path: '/hypetalk', icon: MessageCircle, hasBadge: hasUnreadChat },
-    // Ikon diganti jadi Mic2
+    // Chat pakai badge count (angka)
+    { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
     { name: 'Voice', path: '/voice-room', icon: Mic2 },
-    { name: 'Notif', path: '/notifications', icon: Bell, hasBadge: hasUnreadNotif },
+    // Notif pakai badge dot (titik biasa)
+    { name: 'Notif', path: '/notifications', icon: Bell, hasDot: hasUnreadNotif },
     { name: 'Profil', path: '/profile', icon: User },
   ];
 
@@ -109,7 +119,6 @@ function NavbarContent() {
 
   return (
     <>
-      {/* Tombol Toggle */}
       <button
         onClick={() => setIsManualHidden(!isManualHidden)}
         style={{
@@ -137,7 +146,6 @@ function NavbarContent() {
         {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
       </button>
 
-      {/* NAVBAR UTAMA */}
       <div style={{
         position: 'fixed', bottom: '20px', left: '0', right: '0',
         zIndex: 9000, display: 'flex', justifyContent: 'center', padding: '0 20px',
@@ -157,7 +165,6 @@ function NavbarContent() {
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
-            // FIX 2: Cek apakah item ini sedang diklik untuk animasi
             const isClicked = clickedItem === item.name;
 
             return (
@@ -165,7 +172,6 @@ function NavbarContent() {
                 key={item.name} 
                 href={item.path}
                 onPointerDown={(e) => {
-                  // Trigger animasi klik
                   setClickedItem(item.name);
                   setTimeout(() => setClickedItem(null), 200);
 
@@ -186,7 +192,6 @@ function NavbarContent() {
               >
                 <div style={{ 
                   position: 'relative',
-                  // Animasi Pop (Scale up pas aktif, scale down dikit pas diklik)
                   transform: isClicked ? 'scale(0.8)' : isActive ? 'scale(1.15)' : 'scale(1)',
                   transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                 }}>
@@ -198,11 +203,28 @@ function NavbarContent() {
                       filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none',
                     }}
                   />
-                  {item.hasBadge && !isActive && (
+                  
+                  {/* FIX: BADGE ANGKA UNTUK CHAT (Jika count > 0) */}
+                  {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
+                    <div style={{ 
+                      position: 'absolute', top: '-4px', right: '-8px', 
+                      backgroundColor: '#ff4757', color: 'white', 
+                      fontSize: '10px', fontWeight: 'bold', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '2px 5px', minWidth: '18px', height: '18px',
+                      borderRadius: '10px', border: '2px solid #ffffff', 
+                      boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)' 
+                    }}>
+                      {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                    </div>
+                  )}
+
+                  {/* FIX: BADGE TITIK UNTUK NOTIF */}
+                  {item.hasDot && !isActive && (
                     <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff4757', border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)' }} />
                   )}
                 </div>
-                {/* Indikator titik di bawah */}
+                
                 <div style={{ 
                   position: 'absolute', 
                   bottom: '6px', 
