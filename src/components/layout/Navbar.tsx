@@ -21,6 +21,10 @@ function NavbarContent() {
   
   const lastScrollY = useRef(0);
 
+  // --- LOGIKA HIDE NAVBAR DI CHATROOM ---
+  // Jika path dimulai dengan '/hypetalk/' dan BUKAN '/hypetalk' (lobby), berarti sedang di chatroom.
+  const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
+
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -86,6 +90,11 @@ function NavbarContent() {
       if (badgeChannel) supabase.removeChannel(badgeChannel);
     };
   }, [pathname]); 
+
+  // Jika sedang di dalam Chatroom, jangan render Navbar sama sekali (return null)
+  if (isChatRoom) {
+    return null;
+  }
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
