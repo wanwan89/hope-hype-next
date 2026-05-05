@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Room, RoomEvent } from 'livekit-client';
 import { showNotif } from '@/lib/ui-utils';
 import './Voice.css'; // Sesuaikan jika nama file css beda
 
-export default function VoiceRoomPage() {
+// KITA PISAHKAN ISI UTAMANYA KE KOMPONEN INI BREE
+function VoiceRoomContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -500,5 +501,14 @@ export default function VoiceRoomPage() {
       )}
 
     </div>
+  );
+}
+
+// BUNGKUS KOMPONEN UTAMA DENGAN SUSPENSE
+export default function VoiceRoomPage() {
+  return (
+    <Suspense fallback={<div className="app-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-main)' }}>Memuat Panggung...</div>}>
+      <VoiceRoomContent />
+    </Suspense>
   );
 }
