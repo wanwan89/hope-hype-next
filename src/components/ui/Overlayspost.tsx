@@ -2,12 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+// FIX 1: Pastikan lo import PostModal-nya di sini!
+// Sesuaikan path-nya kalau folder lo beda (misal: @/components/post/PostModal)
+import PostModal from '../post/PostModalpost'; 
 import './Overlays.css';
 
 export default function Overlayspost() {
   const [bigImgSrc, setBigImgSrc] = useState<string | null>(null);
+  
+  // FIX 2: State untuk kontrol buka/tutup Modal Post
+  const [isPostOpen, setIsPostOpen] = useState(false);
 
   useEffect(() => {
+    // --- FIX 3: SENSOR UNTUK MODAL POST ---
+    const handleOpenPost = () => {
+      console.log("Sinyal Open Post diterima di Overlays!");
+      setIsPostOpen(true);
+    };
+
+    window.addEventListener('openPostModal', handleOpenPost);
+
     // --- 1. TOAST NOTIFIKASI ---
     (window as any).showNotif = (msg: string, type: string = "info") => {
       const container = document.getElementById("toast");
@@ -39,7 +53,7 @@ export default function Overlayspost() {
       }, 3500);
     };
 
-    // --- 2. ZOOM IMAGE (BIG IMAGE) ---
+    // --- 2. ZOOM IMAGE ---
     (window as any).openBigImage = (src: string) => {
       setBigImgSrc(src);
       const container = document.getElementById("bigImageContainer");
@@ -61,7 +75,7 @@ export default function Overlayspost() {
       }
     };
 
-    // --- 4. ACTION SHEET (POST OPTIONS) ---
+    // --- 4. ACTION SHEET ---
     (window as any).openPostOptions = (postId: string, isOwner: boolean, creatorId: string) => {
       const sheet = document.getElementById('postOptionsSheet');
       const content = document.getElementById('sheetOptionsContent');
@@ -111,6 +125,11 @@ export default function Overlayspost() {
         (window as any).showNotif(err.message, "error");
       }
     };
+
+    // Clean up listener
+    return () => {
+      window.removeEventListener('openPostModal', handleOpenPost);
+    };
   }, []);
 
   const handleCloseBigImage = () => {
@@ -125,10 +144,15 @@ export default function Overlayspost() {
 
   return (
     <>
+      {/* FIX 4: RENDER MODAL POST DI SINI */}
+      {isPostOpen && (
+        <PostModal onClose={() => setIsPostOpen(false)} />
+      )}
+
       {/* Container untuk notifikasi melayang */}
       <div id="toast" style={{ zIndex: 30000 }}></div>
 
-      {/* Container Zoom Foto (Nempel di depan Sidebar/Navbar) */}
+      {/* Container Zoom Foto */}
       <div id="bigImageContainer" className="overlay-container" style={{ zIndex: 25000 }}>
         <div className="overlay-bg" onClick={handleCloseBigImage}></div>
         {bigImgSrc && (
@@ -145,7 +169,7 @@ export default function Overlayspost() {
       {/* Animasi Kado/Gift */}
       <div id="giftAnimationContainer" style={{ zIndex: 26000 }}></div>
 
-      {/* Action Sheet (Menu Bawah) - Dipaksa paling depan (Z-Index 20000+) */}
+      {/* Action Sheet */}
       <div 
         id="postOptionsSheet" 
         className="action-sheet-overlay" 
