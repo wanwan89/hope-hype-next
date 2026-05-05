@@ -11,10 +11,9 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Deteksi Halaman
-  const isVoicePage = pathname === '/voice' || pathname?.startsWith('/voice/');
-  const isHomePage = pathname === '/';
-  // Kecualikan sidebar di chat dan voice
+  // 1. Deteksi Halaman lebih akurat
+  const isHomePage = pathname === '/' || pathname === '';
+  const isVoicePage = pathname?.includes('/voice');
   const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat') || isVoicePage;
 
   return (
@@ -25,28 +24,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-black text-white antialiased" style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}>
         
-        {/* SIDEBAR */}
+        {/* SIDEBAR: Muncul kecuali di Chat & Voice */}
         {!isChatPage && <Sidebar />}
         
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           
-          {/* 👇 FIX SEARCH: Muncul HANYA di Home (/) 👇 */}
-          {isHomePage && <SearchWrapper />}
+          {/* SEARCH WRAPPER: Pakai logika ini biar pasti nongol di Home */}
+          {isHomePage && (
+            <div style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
+              <SearchWrapper />
+            </div>
+          )}
 
           <main style={{ 
             flex: 1, 
             width: '100%', 
             maxWidth: '600px',
             margin: '0 auto', 
-            // Kalau voice, rapetin ke atas (0). Kalau home, karena udah ada SearchWrapper, kasih gap dikit.
-            paddingTop: isVoicePage ? '0' : '10px', 
+            // Kalau voice 0, kalau home 10, selain itu 20
+            paddingTop: isVoicePage ? '0' : (isHomePage ? '10px' : '20px'), 
             paddingBottom: isVoicePage ? '0' : '120px',
             position: 'relative'
           }}>
             {children}
           </main>
 
-          {/* NAVBAR */}
+          {/* NAVBAR: Hilangkan hanya di Voice */}
           {!isVoicePage && <Navbar />}
           
         </div>
