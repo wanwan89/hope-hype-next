@@ -1,32 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* 🔥 MODERN VIBRANT PALETTE 🔥 */
-  --bg-app: #f8fafc;
+  /* 🔥 CLEAN BLUE PALETTE 🔥 */
+  --bg-app: #f4f7fa;
   --bg-card: #ffffff;      
-  --primary: #6366f1; /* Indigo Modern */
-  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  --primary-light: #eef2ff; 
+  --primary: #0084ff; /* Pure Blue */
+  --primary-gradient: linear-gradient(135deg, #0084ff 0%, #0052d4 100%);
+  --primary-light: #e0f2fe; 
   --text-dark: #0f172a;    
   --text-muted: #64748b;   
   --accent-coin: #f59e0b;
-  --glass: rgba(255, 255, 255, 0.7);
-  --border-glass: rgba(255, 255, 255, 0.3);
-  --shadow-sm: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-  --shadow-premium: 0 20px 25px -5px rgba(99, 102, 241, 0.15);
+  --glass: rgba(255, 255, 255, 0.9);
+  --border-glass: rgba(0, 132, 255, 0.1);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 html.dark {
   --bg-app: #020617;
   --bg-card: #0f172a;      
-  --primary: #818cf8;
-  --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-  --primary-light: rgba(99, 102, 241, 0.1); 
+  --primary: #38bdf8;
+  --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  --primary-light: rgba(56, 189, 248, 0.1); 
   --text-dark: #f8fafc;    
   --text-muted: #94a3b8;   
   --accent-coin: #fbbf24;
-  --glass: rgba(15, 23, 42, 0.7);
+  --glass: rgba(15, 23, 42, 0.9);
   --border-glass: rgba(255, 255, 255, 0.05);
 }
 
@@ -38,39 +37,24 @@ html.dark {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* FIX: Pastikan container mulai dari paling atas */
 .voice-lobby-container {
-  padding-bottom: 120px; 
+  padding-bottom: 140px; /* Jarak aman biar gak ketutup Navbar bawah */
   max-width: 480px; 
   margin: 0 auto;
   min-height: 100vh;
   background-color: var(--bg-app);
   position: relative;
-  overflow-x: hidden;
-}
-
-/* Background Abstract Blobs */
-.voice-lobby-container::before {
-  content: "";
-  position: absolute;
-  top: -100px;
-  right: -100px;
-  width: 300px;
-  height: 300px;
-  background: var(--primary-gradient);
-  filter: blur(100px);
-  opacity: 0.15;
-  z-index: 0;
-  pointer-events: none;
 }
 
 /* =========================================
-   1. STICKY GLASS HEADER
+   1. STICKY COMPACT HEADER
    ========================================= */
 .lobby-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 12px 16px; /* Dikecilkan ukurannya */
   background: var(--glass);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
@@ -83,273 +67,202 @@ html.dark {
 .header-profile {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .header-profile img {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px; /* Squircle */
+  width: 40px; /* Dikecilkan */
+  height: 40px;
+  border-radius: 12px;
   object-fit: cover;
-  border: 2px solid var(--bg-card);
-  box-shadow: var(--shadow-md);
+  border: 1.5px solid var(--primary-light);
 }
 
 .header-info h3 { 
   margin: 0; 
-  font-size: 16px; 
-  font-weight: 800; 
-  letter-spacing: -0.3px;
+  font-size: 15px; 
+  font-weight: 700; 
   color: var(--text-dark);
 }
 
 .coin-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--accent-coin);
   background: var(--bg-card);
-  padding: 5px 12px;
-  border-radius: 12px;
-  margin-top: 5px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  margin-top: 2px;
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(245, 158, 11, 0.1);
 }
 
 /* =========================================
-   2. DYNAMIC HERO BANNER
+   2. COMPACT HERO BANNER
    ========================================= */
 .hero-banner {
-  margin: 20px;
-  padding: 30px 24px;
+  margin: 16px;
+  padding: 20px; /* Dikecilkan paddingnya */
   background: var(--primary-gradient);
-  border-radius: 30px;
+  border-radius: 20px; /* Dikecilkan radiusnya */
   color: white;
-  text-align: left;
-  box-shadow: var(--shadow-premium);
+  box-shadow: 0 10px 20px -5px rgba(0, 132, 255, 0.3);
   position: relative;
   overflow: hidden;
-  z-index: 1;
 }
 
+/* Mic background icon lebih samar */
 .hero-banner::after {
   content: "mic";
   font-family: "Material Icons";
   position: absolute;
-  right: -20px;
-  bottom: -20px;
-  font-size: 150px;
-  opacity: 0.1;
+  right: -10px;
+  bottom: -10px;
+  font-size: 100px;
+  opacity: 0.08;
   transform: rotate(-15deg);
 }
 
 .hero-banner h2 { 
-  margin: 0 0 10px; 
-  font-size: 24px; 
+  margin: 0 0 6px; 
+  font-size: 18px; /* Lebih kecil */
   font-weight: 800; 
   line-height: 1.2;
 }
 
 .hero-banner p { 
-  margin: 0 0 20px; 
-  font-size: 14px; 
+  margin: 0 0 16px; 
+  font-size: 13px; 
   opacity: 0.9; 
-  line-height: 1.6;
-  max-width: 85%;
+  line-height: 1.4;
 }
 
 .btn-start-singing {
   background: white;
   color: var(--primary);
   border: none;
-  padding: 14px 28px;
-  border-radius: 20px;
+  padding: 10px 20px;
+  border-radius: 12px;
   font-weight: 800;
-  font-size: 15px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  transition: all 0.2s;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 6px;
   width: fit-content;
 }
 
-.btn-start-singing:active { transform: scale(0.95); }
-
 /* =========================================
-   3. PILL SHAPED TABS
+   3. MODERN TABS
    ========================================= */
 .tabs-container {
   display: flex;
-  gap: 12px;
-  padding: 10px 20px;
+  gap: 8px;
+  padding: 5px 16px;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .tabs-container::-webkit-scrollbar { display: none; }
 
 .tab-item {
-  padding: 10px 22px;
-  border-radius: 16px;
-  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-muted);
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
+  background: white;
+  border: 1px solid transparent;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
 }
 
 .tab-item.active {
-  background: var(--text-dark);
-  color: white;
-  border-color: var(--text-dark);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 /* =========================================
-   4. PREMIUM ROOM CARDS
+   4. COMPACT ROOM CARDS
    ========================================= */
 .room-list {
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  position: relative;
-  z-index: 1;
+  gap: 12px;
 }
 
 .room-card {
   display: flex;
   align-items: center;
-  padding: 20px;
+  padding: 14px;
   background: var(--bg-card);
-  border-radius: 28px;
-  gap: 16px;
+  border-radius: 16px;
+  gap: 12px;
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid var(--border-glass);
+  border: 1px solid rgba(0,0,0,0.03);
+  transition: transform 0.1s;
 }
 
-.room-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-premium);
-  border-color: var(--primary-light);
-}
+.room-card:active { transform: scale(0.98); }
 
 .room-thumb {
-  width: 58px;
-  height: 58px;
-  border-radius: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: var(--primary-gradient);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 8px 15px -5px rgba(99, 102, 241, 0.4);
+  font-size: 20px;
 }
 
 .room-info { flex: 1; min-width: 0; }
 .room-info h4 { 
-  margin: 0 0 5px; 
-  font-size: 17px; 
-  font-weight: 800; 
-  letter-spacing: -0.4px;
+  margin: 0 0 2px; 
+  font-size: 14px; 
+  font-weight: 700; 
   color: var(--text-dark);
 }
 .room-info p { 
   margin: 0; 
-  font-size: 13px; 
+  font-size: 12px; 
   color: var(--text-muted); 
-  opacity: 0.8;
 }
 
 .online-pill {
   background: #f0fdf4;
   color: #16a34a;
-  padding: 6px 12px;
-  border-radius: 14px;
-  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
   font-weight: 800;
   display: flex;
   align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(22, 163, 74, 0.1);
-}
-html.dark .online-pill {
-  background: rgba(34, 197, 94, 0.1);
+  gap: 4px;
 }
 
 /* =========================================
-   5. SKELETONS & MODALS
+   5. MODALS
    ========================================= */
-.skeleton-card {
-  display: flex; gap: 16px; padding: 20px; 
-  background: var(--bg-card); border-radius: 28px;
-}
-.skeleton {
-  background: linear-gradient(90deg, var(--bg-app) 25%, var(--primary-light) 50%, var(--bg-app) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
-  border-radius: 10px;
-}
-.skeleton-thumb { width: 58px; height: 58px; border-radius: 20px; }
-
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(2, 6, 23, 0.8);
-  backdrop-filter: blur(10px); z-index: 10000;
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-
 .modal-content {
-  background: var(--bg-card); width: 100%; max-width: 360px;
-  border-radius: 32px; padding: 32px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: 24px;
+  padding: 24px;
+  max-width: 320px;
 }
 
-.modal-content h3 { 
-  margin: 0 0 24px; font-size: 22px; font-weight: 800; 
-  text-align: center; letter-spacing: -0.5px;
-}
+.modal-content h3 { font-size: 18px; }
 
-.form-group { margin-bottom: 20px; }
-.form-group label { 
-  display: block; font-size: 13px; color: var(--text-dark); 
-  margin-bottom: 8px; font-weight: 700; opacity: 0.8;
-}
-
-.form-group input, .form-group select {
-  width: 100%; padding: 14px 18px; border-radius: 16px;
-  border: 2px solid transparent; background: var(--bg-app);
-  color: var(--text-dark); outline: none; font-size: 15px;
-  transition: all 0.3s;
-}
-
-.form-group input:focus {
-  border-color: var(--primary);
-  background: var(--bg-card);
-  box-shadow: 0 0 0 4px var(--primary-light);
-}
-
-.modal-actions { display: flex; gap: 12px; margin-top: 28px; }
 .modal-btn { 
-  flex: 1; padding: 14px; border-radius: 18px; 
-  font-weight: 800; border: none; cursor: pointer; transition: all 0.2s;
+  padding: 12px; border-radius: 14px; font-size: 14px;
 }
 
-.btn-cancel { background: var(--bg-app); color: var(--text-muted); }
-.btn-confirm { background: var(--primary-gradient); color: white; box-shadow: 0 10px 15px -5px rgba(99, 102, 241, 0.4); }
-
-@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.btn-confirm { background: var(--primary-gradient); }
