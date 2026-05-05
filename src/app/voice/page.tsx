@@ -10,8 +10,11 @@ import './Voice.css'; // Sesuaikan jika nama file css beda
 export default function VoiceRoomPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const CURRENT_ROOM_ID = searchParams.get('id');
-  const CURRENT_ROOM_NAME = searchParams.get('name') || "Voice Room";
+  
+  // FIX-NYA DI SINI BREE 👇 (Tambahin tanda ?)
+  const CURRENT_ROOM_ID = searchParams?.get('id');
+  const CURRENT_ROOM_NAME = searchParams?.get('name') || "Voice Room";
+
 
   // --- STATE USER & ROOM ---
   const [currentUser, setCurrentUser] = useState<any>(null);
