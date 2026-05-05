@@ -90,7 +90,6 @@ export default function HypetalkPage() {
           const pId = msg.room_id.replace("pv_", "").split("_").find((id: string) => id !== userId);
           if (pId) {
             if (!lastPvMap.has(pId)) lastPvMap.set(pId, msg);
-            // Hitung pesan unread dari lawan bicara
             if (msg.status !== 'read' && msg.user_id !== userId) {
               unreadMap.set(pId, (unreadMap.get(pId) || 0) + 1);
             }
@@ -121,7 +120,6 @@ export default function HypetalkPage() {
         }
       }
 
-      // Opsional: Load Group Chats
       const { data: myGroups } = await supabase.from('group_members').select('group_id, groups(name, photo_url)').eq('user_id', userId);
       if (myGroups) {
         myGroups.forEach((g: any) => {
@@ -155,7 +153,6 @@ export default function HypetalkPage() {
       .subscribe();
   };
 
-  // FIX: Sinkronisasi nama Channel Presence dengan ChatRoom (hapus kata -typing-)
   const privateChatIds = chats.filter(c => c.type === 'private').map(c => c.id).sort().join(',');
 
   useEffect(() => {
@@ -163,14 +160,11 @@ export default function HypetalkPage() {
     
     const ids = privateChatIds.split(',');
     const channels = ids.map(chatId => {
-      // Pastikan urutan ID persis sama dengan yang ada di ChatRoom.tsx
       const userIds = [currentUser.id, chatId].sort();
       const roomId = `pv_${userIds[0]}_${userIds[1]}`;
       
-      // Di ChatRoom, channelnya bernama `presence-${roomId}`
       return supabase.channel(`presence-${roomId}`)
         .on('broadcast', { event: 'typing' }, (p: any) => {
-          // Hanya tangkap kalau yang ngetik BUKAN diri kita sendiri
           if (p.payload.username !== currentUser.username) {
             setTypingStatus(prev => ({ ...prev, [chatId]: true }));
             setTimeout(() => setTypingStatus(prev => ({ ...prev, [chatId]: false })), 3000);
@@ -281,9 +275,7 @@ export default function HypetalkPage() {
             </button>
             <h2>Hypetalk</h2>
           </div>
-          <button className="icon-btn" onClick={() => router.push('/settings')}>
-            <span className="material-icons">settings</span>
-          </button>
+          {/* FIXED: Tombol Settings Dihapus */}
         </div>
         <div className="tg-search-container">
           <div className="tg-search-box">
@@ -299,13 +291,10 @@ export default function HypetalkPage() {
         ) : (
           filteredChats.map(chat => (
             <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
-              
               <div className="tg-avatar global-avatar">
                 {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
               </div>
-              
               <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                
                 <div className="tg-chat-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {chat.name} <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} />
@@ -314,7 +303,6 @@ export default function HypetalkPage() {
                     {chat.time}
                   </span>
                 </div>
-                
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   {typingStatus[chat.id] ? (
                     <p className="tg-preview" style={{ color: '#3a7bd5', fontStyle: 'italic', fontWeight: 600, margin: 0, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
@@ -325,14 +313,12 @@ export default function HypetalkPage() {
                       {chat.preview}
                     </p>
                   )}
-
                   {chat.unread > 0 && (
                     <div style={{ background: '#3a7bd5', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
                       {chat.unread}
                     </div>
                   )}
                 </div>
-
               </div>
             </div>
           ))
@@ -359,7 +345,7 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* MODAL SEARCH ID */}
+      {/* MODALS */}
       {activeModal === 'search' && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -373,7 +359,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL BUAT GRUP */}
       {activeModal === 'group' && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -387,7 +372,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL BIO */}
       {activeModal === 'bio' && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -404,7 +388,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL DOI CARD DENGAN FULL BIO */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
