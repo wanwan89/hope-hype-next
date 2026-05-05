@@ -11,8 +11,9 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Logika untuk Sidebar (Tetap kita biarkan sembunyi di halaman chat biar nggak sempit)
-  const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat');
+  // 👇 FIX 1: Daftarin '/voice' biar DIKECUALIKAN dari layout global 👇
+  const isVoicePage = pathname?.includes('/voice');
+  const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat') || isVoicePage;
 
   // 2. LOGIKA UNTUK SEARCH: Tampil HANYA di halaman utama (Home: "/")
   const showSearch = pathname === '/';
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-black text-white antialiased" style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}>
         
-        {/* SIDEBAR: Tetap sembunyi di chat */}
+        {/* SIDEBAR: Sekarang otomatis SEMBUNYI di halaman /voice juga! */}
         {!isChatPage && <Sidebar />}
         
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -38,18 +39,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             width: '100%', 
             maxWidth: '600px',
             margin: '0 auto', 
-            paddingTop: showSearch ? '0' : '20px', 
-            // FIX: Padding bawah kita set fix 120px di semua halaman 
-            // biar konten paling bawah (termasuk chat) gak ketutup Navbar
-            paddingBottom: '120px',
+            // 👇 FIX 2: Hapus gap 20px di atas KUSUS buat halaman Voice biar mepet atas 👇
+            paddingTop: (showSearch || isVoicePage) ? '0' : '20px', 
+            // 👇 FIX 3: Hapus padding 120px di bawah KUSUS buat Voice biar tinggi layarnya pas 👇
+            paddingBottom: isVoicePage ? '0' : '120px',
             position: 'relative'
           }}>
             {children}
           </main>
 
-          {/* FIX UTAMA: Hapus gembok "!isChatPage &&" di sini */}
-          {/* Sekarang Navbar merdeka muncul di semua halaman! */}
-          <Navbar />
+          {/* 👇 FIX 4: Sembunyikan Navbar bawah KUSUS di halaman Voice 👇 */}
+          {!isVoicePage && <Navbar />}
           
         </div>
 
