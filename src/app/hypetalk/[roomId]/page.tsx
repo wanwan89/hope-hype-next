@@ -446,8 +446,9 @@ const groupName = searchParams?.get('gname');
             {['❤️', '😂', '😮', '🔥', '👍'].map(emoji => (
               <span key={emoji} className="reaction-emoji" onClick={async () => {
                 const msg = messages.find(m => m.id === reactionMenu.id);
-                const newRx = { ...(msg?.reactions || {}), [currentUser.id]: emoji };
-                await supabase.from('messages').update({ reactions: newReactions }).eq('id', reactionMenu.id);
+                const newReactions = { ...(msg?.reactions || {}), [currentUser.id]: emoji };
+await supabase.from('messages').update({ reactions: newReactions }).eq('id', reactionMenu.id);
+
                 setReactionMenu(null);
               }}>{emoji}</span>
             ))}
