@@ -7,6 +7,15 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import * as LiveKit from 'livekit-client';
 import './ChatRoom.css';
 
+// --- HELPER: ICON STATUS WHATSAPP ---
+const getStatusIcon = (status: string) => {
+  if (status === 'sending') return <span className="status-icon sending" style={{fontSize: '10px', opacity: 0.6}}>🕒</span>;
+  if (status === 'sent') return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  if (status === 'delivered') return <span className="status-icon delivered" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  if (status === 'read') return <span className="status-icon read" style={{color: '#4fc3f7'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; // fallback
+};
+
 // --- SUB-COMPONENT: MESSAGE BUBBLE (Untuk Swipe & Double Tap) ---
 const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -114,8 +123,13 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
               <img src={msg.sticker_url} className="chat-sticker" alt="sticker" />
             ) : msg.audio_url ? (
               <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`}>
-                <button onClick={toggleVN} className="vn-play-btn">
-                  {isPlaying ? '⏸' : '▶'}
+                {/* --- FIX: Tombol Play VN dibuat bulat cantik khas native --- */}
+                <button onClick={toggleVN} className="vn-play-btn" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary-blue)', border: 'none', cursor: 'pointer', flexShrink: 0}}>
+                  {isPlaying ? (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
+                  )}
                 </button>
                 <div className="vn-waveform">
                   {[...Array(10)].map((_, i) => <span key={i} className="bar"></span>)}
@@ -136,7 +150,8 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
             
             <div className="message-info">
               <span className="timestamp">{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-              {isMe && <span className="status-icon read">✓✓</span>}
+              {/* --- FIX: Ceklis Tanda Baca --- */}
+              {isMe && getStatusIcon(msg.status || 'sent')}
             </div>
           </div>
         </>
@@ -151,9 +166,8 @@ function ChatCore() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromId = searchParams?.get('from');
-const groupId = searchParams?.get('group');
-const groupName = searchParams?.get('gname');
-
+  const groupId = searchParams?.get('group');
+  const groupName = searchParams?.get('gname');
 
   const [roomId, setRoomId] = useState('room-1');
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -162,6 +176,7 @@ const groupName = searchParams?.get('gname');
   const [targetId, setTargetId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // FIX: State skeleton loading
   const [inputValue, setInputValue] = useState('');
   const [onlineCount, setOnlineCount] = useState(0);
   const [typingUser, setTypingUser] = useState<string | null>(null);
@@ -173,7 +188,11 @@ const groupName = searchParams?.get('gname');
   const [deleteMenu, setDeleteMenu] = useState<any>(null);
 
   const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
+  const vnTouchStartX = useRef(0);
+  const vnIsCanceled = useRef(false);
+
   const [callStatus, setCallStatus] = useState<'idle'|'calling'|'incoming'|'connected'>('idle');
   const [callData, setCallData] = useState<any>({ seconds: 0 });
 
@@ -194,6 +213,7 @@ const groupName = searchParams?.get('gname');
   useEffect(() => {
     initApp();
     return () => cleanup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromId, groupId]);
 
   const initApp = async () => {
@@ -211,7 +231,6 @@ const groupName = searchParams?.get('gname');
     };
     if (refs.audio.current.ring) refs.audio.current.ring.loop = true;
 
-    // Routing Logic
     let currentRoom = 'room-1';
     if (groupId) {
       currentRoom = `group_${groupId}`;
@@ -239,8 +258,10 @@ const groupName = searchParams?.get('gname');
   };
 
   const fetchMessages = async (room: string) => {
+    setIsLoading(true);
     const { data } = await supabase.from('messages').select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)').eq('room_id', room).order('created_at', { ascending: true }).limit(50);
     if (data) setMessages(data);
+    setIsLoading(false);
     scrollToBottom();
   };
 
@@ -256,7 +277,13 @@ const groupName = searchParams?.get('gname');
           newMsg.profiles = p || undefined;
           
           setMessages(prev => [...prev, newMsg]);
-          if (newMsg.user_id !== user.id) refs.audio.current?.receive.play().catch(()=>{});
+          if (newMsg.user_id !== user.id) {
+            refs.audio.current?.receive.play().catch(()=>{});
+            // Auto Read Trigger
+            if (newMsg.status !== 'read') {
+              await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
+            }
+          }
           scrollToBottom();
         } else if (payload.eventType === 'UPDATE') {
           setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
@@ -294,7 +321,7 @@ const groupName = searchParams?.get('gname');
     }
   };
 
-  // --- Voice Note Logic ---
+  // --- Voice Note Logic dengan Logika Batal ---
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -312,18 +339,49 @@ const groupName = searchParams?.get('gname');
       };
 
       refs.mediaRecorder.current.start();
-      setIsRecording(true); setRecordTime(0);
+      setIsRecording(true); 
+      isRecordingRef.current = true;
+      setRecordTime(0);
       refs.recordTimer.current = setInterval(() => setRecordTime(p => p + 1), 1000);
       if (navigator.vibrate) navigator.vibrate(50);
     } catch (e) { showNotif("Gagal akses Mic", "error"); }
   };
 
   const stopVN = (cancel = false) => {
-    if (!isRecording) return;
-    setIsRecording(false); clearInterval(refs.recordTimer.current);
+    if (!isRecordingRef.current) return;
+    setIsRecording(false); 
+    isRecordingRef.current = false;
+    clearInterval(refs.recordTimer.current);
     if (cancel) { refs.mediaRecorder.current!.onstop = null; showNotif("VN Dibatalkan", "info"); }
     refs.mediaRecorder.current?.stop();
     refs.audioChunks.current = [];
+  };
+
+  // --- Touch handler tombol Mic ---
+  const handleMicTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!inputValue.trim()) {
+      vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
+      vnIsCanceled.current = false;
+      startVN();
+    }
+  };
+
+  const handleMicTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (isRecordingRef.current && !vnIsCanceled.current) {
+      const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
+      const diff = vnTouchStartX.current - clientX;
+      // FIX: Geser 80px ke kiri otomatis batalkan VN
+      if (diff > 80) {
+        vnIsCanceled.current = true;
+        stopVN(true); 
+      }
+    }
+  };
+
+  const handleMicTouchEnd = () => {
+    if (isRecordingRef.current && !vnIsCanceled.current) {
+      stopVN(false); 
+    }
   };
 
   // --- Call Logic ---
@@ -394,14 +452,30 @@ const groupName = searchParams?.get('gname');
 
       {/* Messages */}
       <main className="chat-messages">
-        <div className="encryption-notice">🔒 Pesan ini dienkripsi end-to-end.</div>
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} isMe={msg.user_id === currentUser?.id} 
-            onReply={setReplyTo} 
-            onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })}
-            onDelete={(id:any) => setDeleteMenu(id)}
-          />
-        ))}
+        {isLoading ? (
+          // --- FIX: SKELETON LOADING UI ---
+          <div className="chat-loading-screen">
+            <div className="skeleton-msg left"><div className="skeleton-avatar"></div><div className="skeleton-bubble"><div className="skeleton-line w1"></div><div className="skeleton-line w2"></div><div className="skeleton-line w3"></div></div></div>
+            <div className="skeleton-msg right"><div className="skeleton-bubble me"><div className="skeleton-line w4"></div><div className="skeleton-line w5"></div></div></div>
+            <div className="skeleton-msg left"><div className="skeleton-avatar"></div><div className="skeleton-bubble typing-bubble"><span></span><span></span><span></span></div></div>
+            <div className="loading-chat-hint">Menyambungkan obrolan...</div>
+          </div>
+        ) : (
+          <>
+            {/* --- FIX: PESAN ENKRIPSI WHATSAPP STYLE --- */}
+            <div className="encryption-notice">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
+              <span>Pesan dan panggilan dienkripsi secara <strong>end-to-end</strong>. Tidak ada orang di luar chat ini yang dapat membaca atau mendengarkannya.</span>
+            </div>
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} msg={msg} isMe={msg.user_id === currentUser?.id} 
+                onReply={setReplyTo} 
+                onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })}
+                onDelete={(id:any) => setDeleteMenu(id)}
+              />
+            ))}
+          </>
+        )}
         <div ref={refs.scroll} />
       </main>
 
@@ -421,16 +495,28 @@ const groupName = searchParams?.get('gname');
           </div>
         )}
 
-        {isRecording && <div id="vn-overlay" style={{ display: 'flex' }}><span className="online-dot"></span> <span>Merekam... {Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span></div>}
-
         <div className="input-row">
-          <div className="input-group-wrapper" style={{ visibility: isRecording ? 'hidden' : 'visible' }}>
-            <button id="sticker-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}><span className="material-icons">emoji_emotions</span></button>
-            <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} />
+          <div className="input-group-wrapper">
+            {isRecording ? (
+              // --- FIX: TAMPILAN RECORDING DI DALAM BOX INPUT ---
+              <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, animation: 'fadeIn 0.2s ease', padding: '12px 0' }}>
+                <span className="online-dot" style={{ background: '#ff4757', boxShadow: '0 0 5px #ff4757' }}></span>
+                <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
+                <span style={{ marginLeft: 'auto', fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span className="material-icons" style={{fontSize: '16px'}}>chevron_left</span> Geser batal
+                </span>
+              </div>
+            ) : (
+              <>
+                <button id="sticker-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}><span className="material-icons">emoji_emotions</span></button>
+                <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} />
+              </>
+            )}
           </div>
+          
           <button id="action-btn" className={inputValue.trim() ? 'mode-typing' : (isRecording ? 'is-recording' : '')}
-            onMouseDown={() => !inputValue.trim() && startVN()} onMouseUp={() => !inputValue.trim() && stopVN()}
-            onTouchStart={() => !inputValue.trim() && startVN()} onTouchEnd={() => !inputValue.trim() && stopVN()}
+            onMouseDown={handleMicTouchStart} onMouseMove={handleMicTouchMove} onMouseUp={handleMicTouchEnd}
+            onTouchStart={handleMicTouchStart} onTouchMove={handleMicTouchMove} onTouchEnd={handleMicTouchEnd}
             onClick={() => inputValue.trim() && sendMessage()}
           >
             <span className="material-icons">{inputValue.trim() ? 'send' : 'mic'}</span>
@@ -445,10 +531,18 @@ const groupName = searchParams?.get('gname');
           <div className="reaction-menu" style={{ display: 'flex', position: 'fixed', left: Math.min(reactionMenu.x, window.innerWidth - 200), top: Math.min(reactionMenu.y - 60, window.innerHeight - 100) }}>
             {['❤️', '😂', '😮', '🔥', '👍'].map(emoji => (
               <span key={emoji} className="reaction-emoji" onClick={async () => {
+                if (!currentUser) return;
                 const msg = messages.find(m => m.id === reactionMenu.id);
-                const newReactions = { ...(msg?.reactions || {}), [currentUser.id]: emoji };
-await supabase.from('messages').update({ reactions: newReactions }).eq('id', reactionMenu.id);
+                if (!msg) return;
 
+                let newReactions = { ...(msg.reactions || {}) };
+                if (newReactions[currentUser.id] === emoji) {
+                  delete newReactions[currentUser.id];
+                } else {
+                  newReactions[currentUser.id] = emoji;
+                }
+
+                await supabase.from('messages').update({ reactions: newReactions }).eq('id', reactionMenu.id);
                 setReactionMenu(null);
               }}>{emoji}</span>
             ))}
