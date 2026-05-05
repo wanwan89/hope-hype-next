@@ -2,19 +2,20 @@
 
 import { useEffect } from 'react';
 import Script from 'next/script';
-import { supabase as sb } from '../lib/supabase'; // Sesuaikan path supabase lu
 
-// IMPORT COMPONENTS (Nanti lu kirim kodenya satu-satu)
-import Sidebar from '../components/room/Sidebarroom';
-import Modals from '../components/room/Modalsroom';
-import Header from '../components/room/Headerroom';
-import Stage from '../components/room/Stageroom';
-import ChatBox from '../components/room/ChatBoxroom';
-import Footer from '../components/room/Footerroom';
-import GiftDrawer from '../components/room/GiftDrawerroom';
-import GiftAnimOverlay from '../components/room/GiftAnimOverlayroom';
+// 👇 FIX JALUR IMPORT: Pake alias @/ biar Next.js otomatis nyari dari folder src 👇
+import { supabase as sb } from '@/lib/supabase'; 
 
-// IMPORT CSS (Tetap ditaruh di file .css terpisah ya bro biar stylingnya rapi)
+import Sidebar from '@/components/room/Sidebarroom';
+import Modals from '@/components/room/Modalsroom';
+import Header from '@/components/room/Headerroom';
+import Stage from '@/components/room/Stageroom';
+import ChatBox from '@/components/room/ChatBoxroom';
+import Footer from '@/components/room/Footerroom';
+import GiftDrawer from '@/components/room/GiftDrawerroom';
+import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
+
+// IMPORT CSS (Karena voice.css ada di folder yang sama dengan page.jsx, pake ./)
 import './voice.css';
 
 export default function RoomPage() {
