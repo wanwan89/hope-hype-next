@@ -105,9 +105,17 @@ function VoiceRoomContent() {
       await supabase.from('room_slots').insert(newSlots);
       setSlots(newSlots);
     } else {
-      setSlots(stg);
+      // FIX: Supabase terkadang mengembalikan relasi sebagai Array.
+      // Kita normalisasi agar selalu jadi Object tunggal (Bypass TypeScript Error).
+      const normalizedStg = stg.map((slot: any) => ({
+        ...slot,
+        profiles: Array.isArray(slot.profiles) ? slot.profiles[0] : slot.profiles
+      }));
+
+      setSlots(normalizedStg);
+      
       // Update toggle mic status jika kita sedang di panggung
-      const mySlot = stg.find(s => s.profile_id === currentUser?.id);
+      const mySlot = normalizedStg.find((s: any) => s.profile_id === currentUser?.id);
       if (mySlot && mySlot.profiles) {
         setIsMicOn(!mySlot.profiles.mic_off);
       }
