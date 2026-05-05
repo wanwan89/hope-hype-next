@@ -1,11 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ==================================================
-   1. THEME VARIABLES (PREMIUM PALETTE)
+   1. THEME VARIABLES (PREMIUM FINTECH)
 ================================================== */
 :root, [data-theme="light"] {
     --primary: #3b82f6;         
-    --primary-soft: rgba(59, 130, 246, 0.1);
     --bg-base: #f8fafc;         
     --panel-bg: #ffffff;        
     --border: rgba(0, 0, 0, 0.05); 
@@ -15,243 +14,83 @@
     --text-main: #0f172a;       
     --text-muted: #64748b;      
     --danger: #ef4444;
-    --vh: 1vh;
     
-    /* Variables for specific components */
-    --msg-bg: rgba(255, 255, 255, 0.95);
-    --msg-border: rgba(0, 0, 0, 0.04);
-    --msg-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
-    --sys-bg: rgba(245, 158, 11, 0.08);
-    --sys-border: rgba(245, 158, 11, 0.2);
-    --sys-gift-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
-    --sys-gift-text: #d97706; 
-    --input-bg: #f1f5f9;
-    --footer-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
     --header-bg: rgba(255, 255, 255, 0.85); 
-    --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-    --overlay-bg: rgba(255, 255, 255, 0.3);
-    --gift-spotlight: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
-    --modal-bg: #ffffff;
-    --modal-overlay: rgba(0, 0, 0, 0.4);
-    --sidebar-shadow: -10px 0 40px rgba(0, 0, 0, 0.08);
+    --msg-bg: rgba(255, 255, 255, 0.95);
+    --overlay-bg: rgba(15, 23, 42, 0.4);
+    --sidebar-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
 }
 
 [data-theme="dark"] {
-    --primary: #3b82f6;         
-    --primary-soft: rgba(59, 130, 246, 0.2);
     --bg-base: #0f172a;         
     --panel-bg: #1e293b;        
     --border: rgba(255, 255, 255, 0.06); 
-    --empty-slot: #0f172a;      
-    --accent: #fbc02d;          
-    --success: #00ff88;         
     --text-main: #f8fafc;       
-    --text-muted: #94a3b8;      
-    --danger: #ff4d4d;
-    
-    /* Variables for specific components */
-    --msg-bg: rgba(30, 41, 59, 0.85); 
-    --msg-border: rgba(255, 255, 255, 0.05);
-    --msg-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    --sys-bg: rgba(245, 158, 11, 0.1);
-    --sys-border: rgba(245, 158, 11, 0.15);
-    --sys-gift-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
-    --sys-gift-text: #fbbf24; 
-    --input-bg: rgba(255, 255, 255, 0.05); 
-    --footer-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    --text-muted: #94a3b8;
     --header-bg: rgba(30, 41, 59, 0.85);
-    --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    --overlay-bg: rgba(15, 23, 42, 0.4); 
-    --gift-spotlight: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, rgba(15, 23, 42, 0) 60%);
-    --modal-bg: #1e293b;
-    --modal-overlay: rgba(15, 23, 42, 0.6);
-    --sidebar-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
+    --msg-bg: rgba(30, 41, 59, 0.85); 
 }
 
 /* ==================================================
-   2. RESET & PERFORMANCE OPTIMIZATION
+   2. RESET & PERFORMANCE (CRITICAL FIX)
 ================================================== */
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
-    outline: none;
-    margin: 0;
-    padding: 0;
+    outline: none; margin: 0; padding: 0;
     user-select: none; 
 }
 
 body, html {
-    width: 100%;
-    height: 100%;
-    height: calc(var(--vh, 1vh) * 100);
-    background-color: #cbd5e1; /* BG Luar Frame */
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 100%; height: 100%;
+    background-color: #cbd5e1; 
+    font-family: 'Inter', sans-serif;
     color: var(--text-main);
-    overflow: hidden; 
-    overscroll-behavior: none; 
+    /* Jangan kasih overflow: hidden di sini secara global! */
+}
+
+/* Class pemicu lock scroll hanya saat room aktif */
+body.room-active {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    position: fixed; /* Mencegah karet scroll di iOS */
+    width: 100%;
 }
 
 .app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    position: relative; /* FIX: Supaya elemen fixed/absolute terkunci di sini */
+    display: flex; flex-direction: column;
+    height: 100dvh; /* Dynamic Viewport Height */
+    width: 100%; max-width: 480px; 
+    margin: 0 auto; position: relative;
     background-color: var(--bg-base);
-    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease;
-    max-width: 480px; 
-    margin: 0 auto;
-    box-shadow: 0 0 30px rgba(0,0,0,0.1);
-    overflow: hidden;
+    box-shadow: 0 0 50px rgba(0,0,0,0.15);
+    overflow: hidden; /* WAJIB: Biar sidebar/drawer gak meluber keluar frame */
 }
 
-input, textarea, .msg span, .msg .user {
-    user-select: text;
-}
-
-::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-}
+input, textarea, .msg span, .msg .user { user-select: text; }
+::-webkit-scrollbar { display: none; }
 
 /* ==================================================
-   3. MAIN HEADER (PREMIUM LOOK)
+   3. COMPONENTS (HEADER & STAGE)
 ================================================== */
 .main-header {
-    padding: calc(12px + env(safe-area-inset-top)) 20px 12px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--header-bg); 
-    border-bottom: 1px solid var(--border); 
-    z-index: 800; 
-    position: relative; 
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: var(--header-shadow); 
-    transition: background-color 0.3s ease, border-bottom-color 0.3s ease;
+    padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;
+    background: var(--header-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); z-index: 100; position: relative;
 }
 
-.header-left { 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center;
-    gap: 4px;
-}
-
-.room-title { 
-    font-size: 18px; 
-    font-weight: 800; 
-    color: var(--text-main); 
-    letter-spacing: -0.4px; 
-    margin: 0;
-    text-transform: uppercase;
-}
-
-.online-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--text-muted);
-    font-weight: 600;
-    background: var(--empty-slot); 
-    padding: 3px 10px 3px 6px;
-    border-radius: 12px;
-    width: max-content;
-}
-
-.online-status b {
-    color: var(--text-main);
-    font-weight: 800;
-}
-
-.online-dot {
-    width: 8px;
-    height: 8px;
-    background-color: #10b981; 
-    border-radius: 50%;
-    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
-    animation: pulseGreen 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
-}
-
-@keyframes pulseGreen {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.85); }
-}
-
-.top-gifters-wrapper {
-    display: flex; 
-    align-items: center; 
-    margin-right: 15px; 
-    cursor: pointer;
-    transition: transform 0.15s ease;
-}
-
-.menu-btn { 
-    background: transparent; 
-    border: none; 
-    cursor: pointer; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px; 
-    margin-right: -6px; 
-    border-radius: 50%;
-}
-.menu-btn .material-icons { color: var(--text-main); }
-
-/* ==================================================
-   4. STAGE CONTAINER (PREMIUM LOOK)
-================================================== */
 .stage-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px 12px; 
-    padding: 24px 16px;
-    background: var(--panel-bg);
-    border-radius: 0 0 32px 32px;
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    z-index: 90;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-}
-
-.speaker-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px 12px; 
+    padding: 24px 16px; background: var(--panel-bg);
+    border-radius: 0 0 32px 32px; z-index: 90; flex-shrink: 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
 }
 
 .avatar {
-    width: 72px; 
-    height: 72px;
-    border-radius: 50%; 
-    background: var(--empty-slot);
-    position: relative;
-    border: 3px solid var(--panel-bg);
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    cursor: pointer;
-}
-
-.avatar img { 
-    width: 100%; 
-    height: 100%; 
-    border-radius: 50%; 
-    object-fit: cover; 
-}
-
-.speaker-item.empty .avatar { 
-    background: var(--empty-slot); 
-    border: 2px dashed var(--border);
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.06);
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--empty-slot); position: relative; border: 3px solid var(--panel-bg);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .avatar.speaking {
@@ -260,234 +99,75 @@ input, textarea, .msg span, .msg .user {
 }
 
 @keyframes sonar-premium {
-    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5), 0 6px 15px rgba(0,0,0,0.08); }
-    70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0), 0 6px 15px rgba(0,0,0,0.08); }
-    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), 0 6px 15px rgba(0,0,0,0.08); }
-}
-
-.name-label {
-    margin-top: 12px;
-    font-size: 13px; 
-    font-weight: 800;
-    color: var(--text-main);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.mute-badge {
-    display: flex; position: absolute; bottom: 0; right: 0; 
-    background: rgba(0,0,0,0.7); border-radius: 50%; 
-    width: 22px; height: 22px; align-items: center; justify-content: center; 
-    border: 2px solid white; z-index: 10;
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+    70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 /* ==================================================
-   5. CHAT DISPLAY CONTAINER
+   4. NAVIGATION OVERLAYS (THE HARD FIX)
 ================================================== */
-.chat-display {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 18px; 
-    display: flex;
-    flex-direction: column;
-    gap: 12px; 
-    padding-bottom: 20px; 
-    scrollbar-width: none; 
-    scroll-behavior: smooth;
-}
 
-.msg {
-    background: var(--msg-bg);
-    box-shadow: var(--msg-shadow);
-    border: 1px solid var(--msg-border); 
-    border-radius: 18px 18px 18px 4px; 
-    padding: 10px 16px; 
-    max-width: 85%;
-    font-size: 13.5px; 
-    line-height: 1.5; 
-    color: var(--text-main); 
-    align-self: flex-start;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    animation: chatSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-}
-
-.msg.system { 
-    background: var(--sys-bg); 
-    border: 1px solid var(--sys-border);
-    border-left: 4px solid var(--accent); 
-    border-radius: 8px 16px 16px 8px; 
-    font-size: 12.5px;
-    padding: 12px 16px;
-    align-self: center;
-    width: 100%;
-}
-
-.msg.system-gift {
-    background: var(--sys-gift-bg) !important;
-    border: 1px solid var(--sys-border) !important;
-    border-radius: 24px !important; 
-    align-self: center !important; 
-    padding: 8px 20px;
-    font-weight: 700;
-    color: var(--sys-gift-text); 
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.1);
-    animation: giftPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
-}
-
-@keyframes chatSlideUp {
-    0% { opacity: 0; transform: translateY(12px) scale(0.95); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ==================================================
-   6. FOOTER CHAT AREA (PREMIUM DOCK)
-================================================== */
-.footer-controls {
-    position: relative; /* FIXED ke container */
-    padding: 12px 16px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
-    background: var(--panel-bg); 
-    border-top: 1px solid var(--border); 
-    box-shadow: var(--footer-shadow); 
-    display: flex; 
-    gap: 12px; 
-    align-items: center; 
-    z-index: 800; 
-}
-
-.btn-gift-main {
-    width: 46px; height: 46px; 
-    border-radius: 50%; 
-    background: linear-gradient(135deg, #fbbf24, #d97706); 
-    border: none; 
-    display: flex; align-items: center; justify-content: center;
-    color: #ffffff; cursor: pointer; flex-shrink: 0; 
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35); 
-}
-
-.input-wrapper {
-    flex: 1; display: flex; align-items: center;
-    background: var(--input-bg); border: 1px solid var(--border); 
-    border-radius: 24px; padding: 4px 6px 4px 18px; height: 46px; 
-}
-
-#chat-input { flex: 1; background: transparent; border: none; color: var(--text-main); font-size: 13.5px; outline: none; }
-
-.btn-send {
-    width: 36px; height: 36px; border-radius: 50%; 
-    background: var(--primary); border: none; 
-    display: flex; align-items: center; justify-content: center;
-    color: white; cursor: pointer;
-}
-
-/* ==================================================
-   7. DRAWER KADO & OVERLAY (LOCKED TO CONTAINER)
-================================================== */
+/* Dasar Overlay */
 .drawer-overlay, .sidebar-overlay, .modal-overlay {
-    position: absolute; /* FIX: Biar nempel di container 480px */
-    inset: 0; 
-    background: rgba(0, 0, 0, 0.5); 
-    z-index: 2000; 
-    display: none; 
-    opacity: 0; 
+    position: absolute; inset: 0; 
+    background: var(--overlay-bg); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    z-index: 1000; opacity: 0; visibility: hidden; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.drawer-overlay.show, .sidebar-overlay.active, .modal-overlay.show { display: block; opacity: 1; pointer-events: auto !important; }
 
-.gift-drawer {
-    position: absolute; /* FIX: Biar nempel di container 480px */
-    bottom: 0; left: 0; right: 0;
-    background: var(--bg-base); border-top-left-radius: 32px; border-top-right-radius: 32px;
-    z-index: 2100; padding: 24px 20px; padding-top: 32px; 
-    padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1); border-top: 1px solid var(--border); 
-    transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); 
+.drawer-overlay.show, .sidebar-overlay.active, .modal-overlay.show {
+    opacity: 1; visibility: visible;
 }
-.gift-drawer.open { transform: translateY(0); }
 
-.handle { width: 48px; height: 5px; background: var(--border); border-radius: 10px; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); }
-
-.drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.coin-panel { background: rgba(245, 158, 11, 0.12); padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; }
-
-.target-list { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
-.target-user { display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0.4; transition: 0.3s; cursor: pointer; }
-.target-user.selected { opacity: 1; }
-.target-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid transparent; }
-.target-user.selected .target-avatar { border-color: var(--primary); }
-
-.gift-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 280px; overflow-y: auto; scrollbar-width: none; }
-.gift-item { background: var(--panel-bg); padding: 16px 8px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border); }
-.gift-img { width: 50px; height: 50px; object-fit: contain; margin-bottom: 10px; }
-.gift-price { font-size: 12px; color: var(--accent); font-weight: 800; margin-top: 4px; }
-
-/* ==================================================
-   8. SIDEBAR PANEL (LOCKED TO CONTAINER)
-================================================== */
+/* Sidebar: Meluncur dari Kanan */
 .sidebar {
-    position: absolute; /* FIX: Biar nempel di container 480px */
-    top: 0; right: 0; width: 290px; height: 100%;
-    background: var(--panel-bg); z-index: 2500;
-    padding: calc(24px + env(safe-area-inset-top)) 20px;
-    display: flex; flex-direction: column; 
-    border-top-left-radius: 28px; border-bottom-left-radius: 28px; 
-    border-left: 1px solid var(--border); 
-    box-shadow: var(--sidebar-shadow); 
-    transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); 
+    position: absolute; top: 0; right: 0; width: 290px; height: 100%;
+    background: var(--panel-bg); z-index: 1100;
+    /* FIX: Initial state sembunyi total di koordinat X */
+    transform: translate3d(100%, 0, 0); 
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: var(--sidebar-shadow);
 }
-.sidebar.active { transform: translateX(0); }
+.sidebar.active { transform: translate3d(0, 0, 0); }
 
-.sidebar-header { display: flex; flex-direction: column; align-items: center; padding-bottom: 28px; position: relative; }
-.profile-img-wrapper { background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899); padding: 3px; border-radius: 50%; margin-bottom: 12px; }
-.sidebar-profile-img { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; border: 3px solid var(--panel-bg); }
+/* Gift Drawer: Meluncur dari Bawah */
+.gift-drawer {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--bg-base); border-top-left-radius: 32px; border-top-right-radius: 32px;
+    z-index: 1100; padding: 24px 20px;
+    /* FIX: Initial state sembunyi total di koordinat Y */
+    transform: translate3d(0, 100%, 0); 
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+}
+.gift-drawer.open { transform: translate3d(0, 0, 0); }
 
-.sidebar-menu { display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.sidebar-menu a { display: flex; align-items: center; gap: 14px; color: var(--text-main); text-decoration: none; padding: 10px 14px; border-radius: 16px; font-size: 14.5px; font-weight: 600; }
-.menu-icon-box { width: 38px; height: 38px; background: var(--empty-slot); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-
-/* ==================================================
-   9. MODAL CARD (LOCKED TO CONTAINER)
-================================================== */
+/* Modal Box: Zoom Center */
 .modal-box { 
-    background: var(--modal-bg); 
-    width: 88%; 
-    max-width: 380px; 
-    border-radius: 28px; 
-    padding: 26px 24px; 
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    z-index: 3000;
-    position: absolute; /* FIX: Center in container */
-    top: 50%; left: 50%;
-    transform: translate(-50%, -40%);
-    opacity: 0; pointer-events: none;
-    transition: 0.3s;
+    position: absolute; top: 50%; left: 50%; width: 88%; max-width: 380px;
+    background: var(--modal-bg); border-radius: 28px; padding: 26px 24px; z-index: 1200;
+    opacity: 0; visibility: hidden;
+    transform: translate3d(-50%, -45%, 0) scale(0.9);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.modal-overlay.show + .modal-box, 
-.modal-overlay.show .modal-box { 
-    opacity: 1; pointer-events: auto; 
-    transform: translate(-50%, -50%); 
+.modal-overlay.show + .modal-box {
+    opacity: 1; visibility: visible;
+    transform: translate3d(-50%, -50%, 0) scale(1);
 }
-
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
-.modal-body input, .modal-body textarea { width: 100%; background: var(--input-bg); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px; font-size: 14.5px; outline: none; }
-.btn-save-setting { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 16px; font-weight: 700; }
-
-.modal-confirm { text-align: center; padding: 32px 24px; }
-.modal-actions { display: flex; gap: 12px; }
-.btn-danger { background: #ef4444; color: white; border: none; flex: 1; padding: 14px; border-radius: 16px; font-weight: 700; }
-.btn-cancel { background: var(--empty-slot); border: none; flex: 1; padding: 14px; border-radius: 16px; font-weight: 700; }
-
-.leaderboard-list { display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; scrollbar-width: none; }
 
 /* ==================================================
-   10. GIFT ANIMATION OVERLAY (EPIC SPOTLIGHT)
+   5. GIFT ANIMATION OVERLAY
 ================================================== */
-#gift-anim-overlay { position: absolute !important; inset: 0; display: none; justify-content: center; align-items: center; z-index: 10000; pointer-events: none !important; }
-#gift-anim-overlay.show { display: flex; background: var(--gift-spotlight), var(--overlay-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-#gift-anim-img { width: 320px !important; max-width: 85% !important; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3)) drop-shadow(0 0 40px rgba(245, 158, 11, 0.6)) !important; animation: giftEpicPopUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important; }
-#gift-combo-text { text-shadow: 0 4px 0 #d97706, 0 8px 10px rgba(0,0,0,0.4), 0 0 30px rgba(255, 215, 0, 0.9) !important; }
+#gift-anim-overlay {
+    position: absolute !important; inset: 0; display: none;
+    justify-content: center; align-items: center; z-index: 2000;
+    pointer-events: none !important;
+}
+#gift-anim-overlay.show { display: flex; background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(0,0,0,0.5) 100%); backdrop-filter: blur(8px); }
+#gift-anim-img { width: 320px; max-width: 85%; filter: drop-shadow(0 10px 40px rgba(0,0,0,0.5)); animation: giftEpicPopUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 
-@keyframes giftEpicPopUp { 0% { opacity: 0; transform: scale(0.2) translateY(100px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes giftEpicPopUp { 
+    0% { opacity: 0; transform: scale(0.2) translateY(100px); } 
+    100% { opacity: 1; transform: scale(1) translateY(0); } 
+}
