@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { showNotif } from '@/lib/ui-utils'; // Pastikan lo punya fungsi ini, atau ganti pake alert/toast kesukaan lo
+import { showNotif } from '@/lib/ui-utils'; 
 import './VoiceLobby.css';
 
 const KATEGORI_LIST = ['Populer', 'Nyanyi', 'Ngobrol', 'Mabar'];
@@ -103,7 +103,8 @@ export default function VoiceLobbyPage() {
 
   // --- CREATE ROOM LOGIC ---
   const handleStartSinging = async () => {
-    if (!currentUser) return showNotif("Waduh", "Login dulu Bree!", "warning");
+    // FIX ARGUMEN SHOW NOTIF
+    if (!currentUser) return showNotif("Login dulu Bree!", "warning");
 
     try {
       // Cek apakah user udah punya room yang aktif
@@ -128,8 +129,9 @@ export default function VoiceLobbyPage() {
   const confirmCreateRoom = async () => {
     const { name, desc, category } = newRoomForm;
 
-    if (!name.trim()) return showNotif("Waduh", "Kasih nama panggung dulu dong!", "warning");
-    if (!currentUser) return showNotif("Error", "Sesi login hilang, coba refresh/login ulang.", "error");
+    // FIX ARGUMEN SHOW NOTIF
+    if (!name.trim()) return showNotif("Kasih nama panggung dulu dong!", "warning");
+    if (!currentUser) return showNotif("Sesi login hilang, coba refresh/login ulang.", "error");
 
     setIsCreating(true);
 
@@ -163,7 +165,8 @@ export default function VoiceLobbyPage() {
       const { error: slotError } = await supabase.from('room_slots').insert(slots);
       if (slotError) throw slotError;
 
-      showNotif("Berhasil", "Panggung lo udah siap!", "success");
+      // FIX ARGUMEN SHOW NOTIF
+      showNotif("Panggung lo udah siap!", "success");
       setIsModalOpen(false);
 
       // 4. Pindah ke room voice
@@ -171,7 +174,8 @@ export default function VoiceLobbyPage() {
 
     } catch (e) {
       console.error("Gagal bikin panggung:", e);
-      showNotif("Error", "Gagal bikin panggung nih.", "error");
+      // FIX ARGUMEN SHOW NOTIF
+      showNotif("Gagal bikin panggung nih.", "error");
     } finally {
       setIsCreating(false);
     }
@@ -221,7 +225,7 @@ export default function VoiceLobbyPage() {
         {isLoadingRooms ? (
           <>
             <div className="skeleton-card"><div className="skeleton skeleton-thumb"></div><div style={{flex: 1}}><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-desc" style={{width: '70%'}}></div></div></div>
-            <div className="skeleton-card"><div class="skeleton skeleton-thumb"></div><div style={{flex: 1}}><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-desc" style={{width: '40%'}}></div></div></div>
+            <div className="skeleton-card"><div className="skeleton skeleton-thumb"></div><div style={{flex: 1}}><div className="skeleton skeleton-title"></div><div className="skeleton skeleton-desc" style={{width: '40%'}}></div></div></div>
           </>
         ) : rooms.length === 0 ? (
           <div style={{textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: '13px'}}>
