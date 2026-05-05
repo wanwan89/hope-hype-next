@@ -89,9 +89,8 @@ export default function Gallerypost() {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     
     const isLiked = myLikedPosts.has(postId);
-    const numericPostId = parseInt(postId); // Supabase BigInt fix
+    const numericPostId = parseInt(postId);
     
-    // Optimistic Update
     setMyLikedPosts(prev => {
       const newSet = new Set(prev);
       isLiked ? newSet.delete(postId) : newSet.add(postId);
@@ -105,12 +104,9 @@ export default function Gallerypost() {
 
     try {
       if (isLiked) {
-        const { error } = await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
-        if (error) throw error;
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
       } else {
-        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
-        if (error) throw error;
-
+        await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
         if (creatorId !== currentUser.id) {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
           await supabase.from("notifications").insert({
@@ -257,7 +253,14 @@ export default function Gallerypost() {
                   <>
                     <div className="slider">
                       <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}>{getMusicHtml(post)}</div>
-                      <img src={post.image_url} className="active" loading="lazy" alt="Post" />
+                      {/* --- FIX: TAMBAHIN onClick openBigImage --- */}
+                      <img 
+                        src={post.image_url} 
+                        className="active" 
+                        loading="lazy" 
+                        alt="Post" 
+                        onClick={() => (window as any).openBigImage && (window as any).openBigImage(post.image_url)}
+                      />
                       <div className="watermark-overlay"><img src="/asets/svg/watermark.svg" alt="watermark" /></div>
                     </div>
                     
