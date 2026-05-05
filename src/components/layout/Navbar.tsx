@@ -13,7 +13,6 @@ function NavbarContent() {
   const [isVisible, setIsVisible] = useState(true);
   const [isManualHidden, setIsManualHidden] = useState(false);
   
-  // FIX: Kita ganti dari boolean (true/false) jadi angka (number) biar bisa nampilin jumlah chat masuk
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
   
@@ -21,6 +20,8 @@ function NavbarContent() {
   const lastScrollY = useRef(0);
 
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
+  // 👇 INI YANG BIKIN HILANG DI VOICE 👇
+  const isVoiceRoom = pathname?.includes('/voice'); 
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,7 +58,7 @@ function NavbarContent() {
         .select('id', { count: 'exact', head: true })
         .ilike('room_id', `pv_%${userId}%`) 
         .neq('user_id', userId) 
-        .neq('status', 'read'); // FIX: Pokoknya selama belum 'read', hitung!
+        .neq('status', 'read'); 
 
       if (isMounted && chatCount !== null) {
         setUnreadChatCount(chatCount);
@@ -76,12 +77,10 @@ function NavbarContent() {
       badgeChannel = supabase.channel('navbar-badges')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
           if (payload.new.room_id.includes(userId) && payload.new.user_id !== userId) {
-            // Tambah 1 ke jumlah unread chat
             setUnreadChatCount(prev => prev + 1);
           }
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
-          // Kalo pesannya udah kita read, kurangin angkanya
           if (payload.new.status === 'read' && payload.old.status !== 'read') {
              setUnreadChatCount(prev => Math.max(0, prev - 1));
           }
@@ -101,16 +100,15 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
-  if (isChatRoom) {
+  // 👇 INI YANG BIKIN HILANG DI VOICE 👇
+  if (isChatRoom || isVoiceRoom) {
     return null;
   }
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
-    // Chat pakai badge count (angka)
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: Mic2 },
-    // Notif pakai badge dot (titik biasa)
+    { name: 'Voice', path: '/voice', icon: Mic2 }, // Ganti ke /voice biar nyambung sama foldernya
     { name: 'Notif', path: '/notifications', icon: Bell, hasDot: hasUnreadNotif },
     { name: 'Profil', path: '/profile', icon: User },
   ];
@@ -204,7 +202,6 @@ function NavbarContent() {
                     }}
                   />
                   
-                  {/* FIX: BADGE ANGKA UNTUK CHAT (Jika count > 0) */}
                   {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                     <div style={{ 
                       position: 'absolute', top: '-4px', right: '-8px', 
@@ -219,7 +216,6 @@ function NavbarContent() {
                     </div>
                   )}
 
-                  {/* FIX: BADGE TITIK UNTUK NOTIF */}
                   {item.hasDot && !isActive && (
                     <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff4757', border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)' }} />
                   )}
