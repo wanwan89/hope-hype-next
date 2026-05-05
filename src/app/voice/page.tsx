@@ -466,9 +466,9 @@ export default function VoiceRoomPage() {
          <button onClick={() => setIsSidebarOpen(false)} style={{ width: '100%', padding: '10px', marginTop: '10px' }}>Tutup Menu</button>
       </div>
 
-      {/* --- MODAL CONFIRM TURUN MIC --- */}
+      {/* --- FIX: MODAL CONFIRM TURUN MIC --- */}
       {activeModal === 'turun' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justify: 'center', zIndex: 3000 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
            <div style={{ background: 'var(--panel-bg)', padding: '20px', borderRadius: '15px', textAlign: 'center' }}>
              <h3>Turun dari Panggung?</h3>
              <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
@@ -479,9 +479,9 @@ export default function VoiceRoomPage() {
         </div>
       )}
 
-      {/* --- MODAL LEADERBOARD KADO --- */}
+      {/* --- FIX: MODAL LEADERBOARD KADO --- */}
       {activeModal === 'leaderboard' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justify: 'center', zIndex: 3000 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
            <div style={{ background: 'var(--panel-bg)', padding: '20px', borderRadius: '15px', width: '90%', maxWidth: '400px', maxHeight: '80vh', overflowY: 'auto' }}>
              <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>THE SULTAN</h3>
              {leaderboard.length === 0 ? <p style={{ textAlign: 'center' }}>Belum ada kado.</p> : leaderboard.map((u, i) => (
