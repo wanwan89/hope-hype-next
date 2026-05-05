@@ -238,15 +238,22 @@ export default function ChatRoomPage() {
     audioRefs.current?.ring.play().catch(() => {});
   };
 
-  const connectLiveKit = async (rName: string) => {
+    const connectLiveKit = async (rName: string) => {
     try {
-      const res = await fetch(`${supabase.supabaseUrl}/functions/v1/get-livekit-token`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${supabase.supabaseKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: myProfile?.username, identity: currentUser.id, roomName: rName })
+      // --- FIX SAKTI: Pake invoke biar gak error protected property ---
+      const { data, error } = await supabase.functions.invoke('get-livekit-token', {
+        body: { 
+          username: myProfile?.username, 
+          identity: currentUser.id, 
+          roomName: rName 
+        }
       });
-      const { token } = await res.json();
 
+      if (error || !data) throw error || new Error("Gagal ambil token");
+
+      const token = data.token;
+
+      // Inisialisasi LiveKit Room
       lkRoom.current = new LiveKit.Room();
       await lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", token);
       await lkRoom.current.localParticipant.setMicrophoneEnabled(true);
@@ -259,7 +266,10 @@ export default function ChatRoomPage() {
           startCallTimer();
         }
       });
-    } catch (e) { endCall(); }
+    } catch (e) { 
+      console.error("Gagal koneksi LiveKit:", e);
+      endCall(); 
+    }
   };
 
   const endCall = (silent = false) => {
