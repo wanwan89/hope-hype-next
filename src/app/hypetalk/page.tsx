@@ -23,9 +23,8 @@ export default function HypetalkPage() {
   const [bioForm, setBioForm] = useState({ umur: '', gender: 'Pria', zodiak: '', pekerjaan: '', hobi: '' });
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [searchUserId, setSearchUserId] = useState(''); 
-  const [groupName, setGroupName] = useState(''); // FIX 4: State buat nama grup
+  const [groupName, setGroupName] = useState(''); 
 
-  // FIX 3: State untuk nangkep siapa yang lagi ngetik
   const [typingStatus, setTypingStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function HypetalkPage() {
 
       if (pvMsgs) {
         const lastPvMap = new Map();
-        const unreadMap = new Map(); // FIX 2: Map buat ngitung pesan belum dibaca
+        const unreadMap = new Map(); 
 
         pvMsgs.forEach(msg => {
           const pId = msg.room_id.replace("pv_", "").split("_").find((id: string) => id !== userId);
@@ -115,13 +114,13 @@ export default function HypetalkPage() {
               preview: msgPreview,
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
               sortTime: new Date(lastMsg.created_at).getTime(),
-              unread: unreadMap.get(p.id) || 0 // FIX 2: Masukin jumlah unread
+              unread: unreadMap.get(p.id) || 0 
             });
           });
         }
       }
 
-      // Opsional: Load Group Chats juga kalau ada
+      // Opsional: Load Group Chats
       const { data: myGroups } = await supabase.from('group_members').select('group_id, groups(name, photo_url)').eq('user_id', userId);
       if (myGroups) {
         myGroups.forEach((g: any) => {
@@ -138,7 +137,6 @@ export default function HypetalkPage() {
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
   };
 
-  // FIX 1: Dengerin Semua Event (Biar auto update tanpa refresh)
   const subscribeToInbox = (userId: string) => {
     supabase.channel(`inbox-lobby-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: any) => {
@@ -149,7 +147,6 @@ export default function HypetalkPage() {
       .subscribe();
   };
 
-  // FIX 3: Dengerin Status Typing dari setiap Private Chat
   useEffect(() => {
     if (!currentUser || chats.length === 0) return;
     
@@ -218,7 +215,6 @@ export default function HypetalkPage() {
     }
   };
 
-  // FIX 4: Logic Buat Grup Baru
   const handleCreateGroup = async () => {
     if (!groupName.trim()) return showNotif("Nama grup tidak boleh kosong", "error");
     try {
@@ -231,6 +227,33 @@ export default function HypetalkPage() {
       router.push(`/hypetalk/chat?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
     } catch (err) {
       showNotif("Gagal membuat grup", "error");
+    }
+  };
+
+  // FIX: Fungsi Buka Chat (Otomatis hapus badge & update status read di DB)
+  const handleOpenChat = (chat: any) => {
+    // 1. Optimistic Update (Biar UI langsung ilang badgenya)
+    setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
+
+    // 2. Tandai pesan jadi 'read' di DB secara background
+    if (chat.type === 'private') {
+      const ids = [currentUser.id, chat.id].sort();
+      const roomId = `pv_${ids[0]}_${ids[1]}`;
+      supabase.from('messages')
+        .update({ status: 'read' })
+        .eq('room_id', roomId)
+        .neq('user_id', currentUser.id) // Cuma ubah pesan dari lawan
+        .neq('status', 'read')
+        .then();
+    }
+
+    // 3. Navigasi
+    if (chat.type === 'global') {
+      router.push('/hypetalk/room-1');
+    } else if (chat.type === 'group') {
+      router.push(`/hypetalk/chat?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
+    } else {
+      router.push(`/hypetalk/chat?from=${chat.id}`);
     }
   };
 
@@ -263,27 +286,44 @@ export default function HypetalkPage() {
           <div className="loading-state"><span className="material-icons loading-spinner">sync</span><p>Memuat...</p></div>
         ) : (
           filteredChats.map(chat => (
-            <div key={chat.id} className="tg-chat-item" onClick={() => router.push(chat.type === 'global' ? '/hypetalk/room-1' : (chat.type === 'group' ? `/hypetalk/chat?group=${chat.id}&gname=${encodeURIComponent(chat.name)}` : `/hypetalk/chat?from=${chat.id}`))}>
-              <div className="tg-avatar global-avatar">{chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}</div>
-              <div className="tg-chat-info">
-                <div className="tg-chat-top">
-                  <h4 className="tg-name">{chat.name} <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} /></h4>
-                  <span className="tg-time">{chat.time}</span>
-                </div>
-                {/* FIX 3: Tanda Sedang Mengetik */}
-                {typingStatus[chat.id] ? (
-                  <p className="tg-preview" style={{ color: '#3a7bd5', fontStyle: 'italic', fontWeight: 600 }}>sedang mengetik...</p>
-                ) : (
-                  <p className="tg-preview">{chat.preview}</p>
-                )}
+            // FIX: Gunakan handleOpenChat
+            <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
+              
+              <div className="tg-avatar global-avatar">
+                {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
               </div>
               
-              {/* FIX 2: Tanda Badge Pesan Baru (Unread) */}
-              {chat.unread > 0 && (
-                <div style={{ background: '#ff4757', color: 'white', borderRadius: '12px', padding: '2px 8px', fontSize: '11px', fontWeight: 'bold', marginLeft: '10px' }}>
-                  {chat.unread}
+              {/* FIX: Perbaikan Layout Waktu dan Badge */}
+              <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                
+                <div className="tg-chat-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {chat.name} <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} />
+                  </h4>
+                  <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#2ecc71' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
+                    {chat.time}
+                  </span>
                 </div>
-              )}
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {typingStatus[chat.id] ? (
+                    <p className="tg-preview" style={{ color: '#3a7bd5', fontStyle: 'italic', fontWeight: 600, margin: 0, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                      sedang mengetik...
+                    </p>
+                  ) : (
+                    <p className="tg-preview" style={{ margin: 0, color: 'var(--text-muted)', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                      {chat.preview}
+                    </p>
+                  )}
+
+                  {chat.unread > 0 && (
+                    <div style={{ background: '#2ecc71', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
+                      {chat.unread}
+                    </div>
+                  )}
+                </div>
+
+              </div>
             </div>
           ))
         )}
@@ -323,7 +363,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* FIX 4: MODAL BUAT GRUP */}
+      {/* MODAL BUAT GRUP */}
       {activeModal === 'group' && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -354,7 +394,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* FIX 5: MODAL DOI CARD DENGAN FULL BIO */}
+      {/* MODAL DOI CARD DENGAN FULL BIO */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>

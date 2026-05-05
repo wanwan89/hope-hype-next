@@ -104,7 +104,9 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
         <div className="system-text">{msg.message}</div>
       ) : (
         <>
-          {!isMe && <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />}
+          {/* FIX 1: Avatar dimunculkan untuk kedua sisi (isMe dan yang bukan) */}
+          <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
+          
           <div className="content" style={{ display: 'flex', flexDirection: 'column', minWidth: '90px' }}>
             <div className="username" style={{ marginBottom: '4px' }}>
               {msg.profiles?.username} 
@@ -176,7 +178,6 @@ function ChatCore() {
   const [inputValue, setInputValue] = useState('');
   const [onlineCount, setOnlineCount] = useState(0);
   
-  // FIX: Ganti statenya biar bisa nyimpen avatar dan username barengan
   const [typingUser, setTypingUser] = useState<{ username: string, avatar_url: string } | null>(null);
 
   const [replyTo, setReplyTo] = useState<any>(null);
@@ -184,6 +185,9 @@ function ChatCore() {
   const [stickers, setStickers] = useState<any[]>([]);
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
   const [deleteMenu, setDeleteMenu] = useState<any>(null);
+  
+  // FIX 2: State untuk modal setting grup
+  const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
 
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -290,7 +294,6 @@ function ChatCore() {
     refs.presenceChannel.current = supabase.channel(`presence-${room}`)
       .on('presence', { event: 'sync' }, () => setOnlineCount(Object.keys(refs.presenceChannel.current.presenceState()).length))
       .on('broadcast', { event: 'typing' }, (p: any) => { 
-        // FIX: Nangkap username dan avatar
         setTypingUser({ username: p.payload.username, avatar_url: p.payload.avatar_url }); 
         setTimeout(() => setTypingUser(null), 3000); 
       })
@@ -318,7 +321,6 @@ function ChatCore() {
   const handleTyping = (e: any) => {
     setInputValue(e.target.value);
     if (refs.presenceChannel.current && refs.presenceChannel.current.state === 'joined') {
-      // FIX: Kirim juga avatar kita ke broadcast
       refs.presenceChannel.current.send({ type: 'broadcast', event: 'typing', payload: { username: myProfile?.username, avatar_url: myProfile?.avatar_url } });
     }
   };
@@ -475,7 +477,19 @@ function ChatCore() {
             <div className="status-container">{typingUser ? <span className="status-typing">{typingUser.username} mengetik...</span> : <span className="status-online">{onlineCount} Online</span>}</div>
           </div>
         </div>
-        {targetId && <div className="header-right"><button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button></div>}
+        
+        {/* FIX 2: Tampilkan Telepon jika chat private, tampilkan Info/Setting jika chat Grup */}
+        <div className="header-right">
+          {targetId ? (
+            <button className="btn-call" onClick={startCall}>
+              <span className="material-icons">call</span>
+            </button>
+          ) : groupId ? (
+            <button className="btn-call" onClick={() => setIsGroupSettingsOpen(true)}>
+              <span className="material-icons">info</span>
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <main className="chat-messages">
@@ -502,7 +516,6 @@ function ChatCore() {
           </>
         )}
 
-        {/* FIX: TYPING BUBBLE DENGAN FOTO PROFIL */}
         {typingUser && (
           <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
             <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
@@ -610,6 +623,43 @@ function ChatCore() {
           </div>
         </div>
       )}
+
+      {/* FIX 2: MODAL PENGATURAN GRUP (KHUSUS JIKA DI DALAM GRUP) */}
+      {isGroupSettingsOpen && groupId && (
+        <div className="custom-modal-overlay" style={{ display: 'flex', zIndex: 100000 }} onClick={() => setIsGroupSettingsOpen(false)}>
+          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px', width: '90%', maxWidth: '320px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-color)' }}>Info Grup</h3>
+              <button className="close-modal-btn" style={{ background: 'none', border: 'none', color: '#ff4757', cursor: 'pointer' }} onClick={() => setIsGroupSettingsOpen(false)}>
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-blue), #00d2ff)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', boxShadow: '0 4px 10px rgba(58,123,213,0.3)' }}>
+                <span className="material-icons" style={{fontSize: '35px'}}>groups</span>
+              </div>
+              <h3 style={{ margin: '0 0 5px', color: 'var(--text-color)', fontSize: '20px' }}>{headerInfo.title}</h3>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '13px' }}>
+                ID Grup: <strong style={{ color: 'var(--primary-blue)', letterSpacing: '1px' }}>{groupId}</strong>
+              </p>
+            </div>
+
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '20px' }}>
+              Bagikan ID ini ke temanmu agar mereka bisa mencarinya di menu <b>Pencarian Chat</b> dan bergabung ke dalam grup.
+            </p>
+
+            <button className="action-btn" style={{ width: '100%', padding: '12px', background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => {
+              navigator.clipboard.writeText(groupId as string);
+              showNotif("ID Grup berhasil disalin!", "success");
+              setIsGroupSettingsOpen(false);
+            }}>
+              Salin ID Grup
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
