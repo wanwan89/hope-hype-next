@@ -28,7 +28,7 @@ interface Message {
   reply_to?: string | number;
   reply_to_msg?: { id: any, username: string, message: string };
   reactions?: Record<string, string>;
-  profiles?: Profile; // Sesuai kontrak: Profile atau undefined
+  profiles?: Profile; 
 }
 
 export default function ChatRoomPage() {
@@ -48,7 +48,6 @@ export default function ChatRoomPage() {
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordTime, setRecordTime] = useState(0);
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
 
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
@@ -56,7 +55,7 @@ export default function ChatRoomPage() {
 
   // --- Refs ---
   const scrollRef = useRef<HTMLDivElement>(null);
-  const channels = useRef<{ msg?: any, presence?: any, global?: any }>({});
+  const channels = useRef<{ msg?: any, presence?: any }>({});
   const audioRefs = useRef<{ send: HTMLAudioElement, receive: HTMLAudioElement, ring: HTMLAudioElement } | null>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
@@ -91,7 +90,8 @@ export default function ChatRoomPage() {
     setupRealtime();
 
     return () => {
-      Object.values(channels.current).forEach(ch => ch && supabase.removeChannel(ch));
+      if (channels.current.msg) supabase.removeChannel(channels.current.msg);
+      if (channels.current.presence) supabase.removeChannel(channels.current.presence);
       if (lkRoom.current) lkRoom.current.disconnect();
     };
   }, [currentUser, roomId]);
@@ -109,7 +109,6 @@ export default function ChatRoomPage() {
             endCall(true);
           }
           
-          // --- FIX DISINI: Konversi null ke undefined agar TypeScript senang ---
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, role').eq('id', newMsg.user_id).single();
           newMsg.profiles = p || undefined; 
           
@@ -191,6 +190,7 @@ export default function ChatRoomPage() {
         const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
         const d = await res.json();
         if (d.secure_url) sendMessage(undefined, undefined, d.secure_url);
+        stream.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorder.current.start();
@@ -214,12 +214,14 @@ export default function ChatRoomPage() {
   const fetchStickers = async (q = "") => {
     const key = "vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08";
     const url = q ? `https://api.giphy.com/v1/stickers/search?api_key=${key}&q=${q}&limit=15` : `https://api.giphy.com/v1/stickers/trending?api_key=${key}&limit=15`;
-    const res = await fetch(url);
-    const d = await res.json();
-    setStickers(d.data || []);
+    try {
+      const res = await fetch(url);
+      const d = await res.json();
+      setStickers(d.data || []);
+    } catch (err) { console.error(err); }
   };
 
-  // --- 6. Call System ---
+  // --- 6. Call System (FIX: Pake Invoke) ---
   const startCall = async () => {
     const partnerId = roomId.replace('pv_', '').split('_').find(id => id !== currentUser.id);
     const { data: partner } = await supabase.from('profiles').select('username, avatar_url').eq('id', partnerId).single();
@@ -238,24 +240,15 @@ export default function ChatRoomPage() {
     audioRefs.current?.ring.play().catch(() => {});
   };
 
-    const connectLiveKit = async (rName: string) => {
+  const connectLiveKit = async (rName: string) => {
     try {
-      // --- FIX SAKTI: Pake invoke biar gak error protected property ---
       const { data, error } = await supabase.functions.invoke('get-livekit-token', {
-        body: { 
-          username: myProfile?.username, 
-          identity: currentUser.id, 
-          roomName: rName 
-        }
+        body: { username: myProfile?.username, identity: currentUser.id, roomName: rName }
       });
+      if (error || !data) throw error || new Error("No token");
 
-      if (error || !data) throw error || new Error("Gagal ambil token");
-
-      const token = data.token;
-
-      // Inisialisasi LiveKit Room
       lkRoom.current = new LiveKit.Room();
-      await lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", token);
+      await lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
       await lkRoom.current.localParticipant.setMicrophoneEnabled(true);
 
       lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (track) => {
@@ -266,10 +259,7 @@ export default function ChatRoomPage() {
           startCallTimer();
         }
       });
-    } catch (e) { 
-      console.error("Gagal koneksi LiveKit:", e);
-      endCall(); 
-    }
+    } catch (e) { endCall(); }
   };
 
   const endCall = (silent = false) => {
@@ -309,13 +299,13 @@ export default function ChatRoomPage() {
     <div className="telegram-chat">
       {/* --- Call Overlays --- */}
       {callStatus !== 'idle' && (
-        <div className="call-overlay" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 100000, color: 'white' }}>
-          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" style={{ width: 100, height: 100, borderRadius: '50%' }} />
+        <div className="call-overlay">
+          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
           <h2>{callData.partnerName}</h2>
           <p>{callStatus === 'connected' ? `${Math.floor(callData.seconds/60)}:${String(callData.seconds%60).padStart(2,'0')}` : callStatus.toUpperCase()}</p>
           <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
-            {callStatus === 'incoming' && <button onClick={() => connectLiveKit(callData.room || roomId)} style={{ background: '#2ecc71', border: 'none', padding: '15px 30px', borderRadius: 30, color: 'white' }}>Jawab</button>}
-            <button onClick={() => endCall()} style={{ background: '#ff4757', border: 'none', padding: '15px 30px', borderRadius: 30, color: 'white' }}>Tutup</button>
+            {callStatus === 'incoming' && <button onClick={() => connectLiveKit(callData.room || roomId)} className="btn-answer">Jawab</button>}
+            <button onClick={() => endCall()} className="btn-decline">Tutup</button>
           </div>
         </div>
       )}
@@ -347,7 +337,6 @@ export default function ChatRoomPage() {
             id={`msg-${msg.id}`}
             className={`chat-message ${msg.user_id === currentUser?.id ? 'self' : 'other'} ${msg.is_system ? 'system' : ''}`}
             onTouchStart={(e) => {
-               // Logic double tap mobile sederhana
                const now = Date.now();
                const lastTap = (e.currentTarget as any).lastTap || 0;
                if (now - lastTap < 300) handleDoubleTap(msg, e);
@@ -360,7 +349,11 @@ export default function ChatRoomPage() {
                 <div className="system-text">{msg.message}</div>
               ) : (
                 <>
-                  <div className="username">{msg.profiles?.username} <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role)}}/></div>
+                  <div className="username">
+                    {msg.profiles?.username} 
+                    {/* --- FIX: Fallback string kosong agar tidak error undefined --- */}
+                    <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
+                  </div>
                   {msg.reply_to_msg && <div className="reply-preview-in-chat"><b>{msg.reply_to_msg.username}</b>: {msg.reply_to_msg.message}</div>}
                   {msg.sticker_url ? <img src={msg.sticker_url} className="chat-sticker" alt="sticker" /> : 
                    msg.audio_url ? (
@@ -382,7 +375,7 @@ export default function ChatRoomPage() {
       {/* --- Input --- */}
       <footer className="chat-input-container">
         {replyTo && (
-           <div id="reply-preview-box" style={{ display: 'flex' }}>
+           <div id="reply-preview-box">
              <div className="reply-content-wrapper">
                <div className="reply-title">Membalas {replyTo.profiles?.username}</div>
                <div className="reply-text-preview">{replyTo.message}</div>
@@ -392,7 +385,7 @@ export default function ChatRoomPage() {
         )}
 
         {isStickerOpen && (
-          <div id="sticker-menu" style={{ display: 'flex' }}>
+          <div id="sticker-menu">
             <input placeholder="Cari Giphy..." onChange={(e) => fetchStickers(e.target.value)} />
             <div id="sticker-list">
               {stickers.map((s, idx) => <img key={idx} src={s.images.fixed_width_small.url} alt="sticker" onClick={() => sendMessage(undefined, s.images.fixed_width.url)} />)}
@@ -401,7 +394,7 @@ export default function ChatRoomPage() {
         )}
 
         {isRecording && (
-          <div id="vn-overlay" style={{ display: 'flex' }}>
+          <div id="vn-overlay">
              <span className="online-dot"></span> <span>Recording...</span>
           </div>
         )}
@@ -416,7 +409,6 @@ export default function ChatRoomPage() {
               placeholder="Tulis pesan..." 
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onFocus={() => markAsRead('all')}
             />
           </div>
           <button 
