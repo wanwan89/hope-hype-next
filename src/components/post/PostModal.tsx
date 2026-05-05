@@ -7,13 +7,18 @@ import './PostModal.css';
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
-export default function PostModal() {
-  const [isOpen, setIsOpen] = useState(false);
+// --- 1. TAMBAHKAN INTERFACE PROPS ---
+interface PostModalProps {
+  onClose: () => void;
+}
+
+// --- 2. TERIMA PROPS onClose ---
+export default function PostModal({ onClose }: PostModalProps) {
+  // FIX: Hapus state [isOpen, setIsOpen] karena dikontrol Parent (Overlays)
+  
   const [postType, setPostType] = useState<'image' | 'text'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [caption, setCaption] = useState('');
-  
-  // FIX: Hapus isDropdownOpen karena kita akan pakai native Select
   const [category, setCategory] = useState('Karya');
   
   // Image State
@@ -29,20 +34,9 @@ export default function PostModal() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Listen Global Open Event
-  useEffect(() => {
-    const handleOpen = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('#openPostModalBtn')) {
-        setIsOpen(true);
-        document.body.style.overflow = "hidden";
-      }
-    };
-    document.body.addEventListener("click", handleOpen);
-    return () => document.body.removeEventListener("click", handleOpen);
-  }, []);
+  // FIX: Hapus useEffect yang handleOpen via click ID karena sudah lewat CustomEvent di Overlays
 
-  // 2. iTunes Music Search Logic
+  // iTunes Music Search Logic
   useEffect(() => {
     if (!searchMusic.trim()) {
       setMusicResults([]);
@@ -129,7 +123,8 @@ export default function PostModal() {
         });
       }
 
-      setIsOpen(false);
+      // --- FIX: Panggil onClose() setelah berhasil ---
+      onClose();
       document.body.style.overflow = "";
       window.location.reload();
     } catch (err: any) {
@@ -139,19 +134,20 @@ export default function PostModal() {
     }
   };
 
-  if (!isOpen) return null;
+  // FIX: Karena kontrol di parent, kita tidak perlu "if (!isOpen) return null" lagi di sini.
+  // Komponen ini hanya akan di-mount kalau isPostOpen di parent bernilai true.
 
   return (
     <div className={`post-modal active`}>
       <div className="post-modal-content">
-        <button className="post-close-btn" onClick={() => { setIsOpen(false); document.body.style.overflow = ""; }}>&times;</button>
+        {/* --- FIX: Gunakan onClose untuk menutup --- */}
+        <button type="button" className="post-close-btn" onClick={() => { onClose(); document.body.style.overflow = ""; }}>&times;</button>
 
         <h2 className="post-modal-title">Upload Post</h2>
         <p className="post-modal-subtitle">Karya kamu akan dikirim untuk direview dulu ya</p>
 
         <form onSubmit={handleSubmit} className="post-form">
           
-          {/* --- DESTINATION TOGGLE --- */}
           <div className="destination-container">
             <p className="section-label">Kirim Ke:</p>
             <div className="dest-toggle-group">
@@ -183,13 +179,11 @@ export default function PostModal() {
             </div>
           </div>
 
-          {/* --- POST TYPE TOGGLE --- */}
           <div className="post-type-toggle">
             <button type="button" className={`type-btn ${postType === 'image' ? 'active' : ''}`} onClick={() => setPostType('image')}>Foto</button>
             <button type="button" className={`type-btn ${postType === 'text' ? 'active' : ''}`} onClick={() => setPostType('text')}>Teks Saja</button>
           </div>
 
-          {/* --- UPLOAD FOTO --- */}
           {postType === 'image' && (
             <div className="post-upload-area" onClick={() => fileInputRef.current?.click()}>
               <input type="file" ref={fileInputRef} accept="image/*" hidden onChange={handleFileChange} />
@@ -212,7 +206,6 @@ export default function PostModal() {
             onChange={(e) => setCaption(e.target.value)}
           />
 
-          {/* --- NATIVE SELECT DROPDOWN (100% BUG FREE DI MOBILE) --- */}
           <div style={{ position: 'relative', marginTop: '15px' }}>
             <select 
               value={category}
@@ -222,7 +215,7 @@ export default function PostModal() {
                 padding: '12px 15px',
                 border: '1px solid #ccc',
                 borderRadius: '8px',
-                appearance: 'none', // Menghilangkan panah jelek bawaan browser
+                appearance: 'none',
                 WebkitAppearance: 'none',
                 backgroundColor: '#fff',
                 fontSize: '15px',
@@ -236,7 +229,6 @@ export default function PostModal() {
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-            {/* Panah kustom biar tetep estetik */}
             <i style={{ 
               position: 'absolute', 
               right: '15px', 
@@ -248,7 +240,6 @@ export default function PostModal() {
             }}>▼</i>
           </div>
 
-          {/* --- MUSIC PICKER --- */}
           <div className="music-picker-section" style={{ marginTop: '20px' }}>
             <div className="section-label-bold">Pilih Musik (Opsional)</div>
             {!selectedMusic ? (
