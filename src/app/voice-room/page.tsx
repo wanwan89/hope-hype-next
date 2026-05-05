@@ -168,14 +168,11 @@ export default function VoiceLobbyPage() {
           <div className="header-info">
             <h3>{currentUser?.username || 'Hi, Bree!'}</h3>
             <div className="coin-badge">
-              <span className="material-icons" style={{fontSize: '14px'}}>monetization_on</span>
+              {/* FIX: Ikon Koin Dihapus, Hanya Sisa Angka Saja */}
               {currentUser ? (currentUser.coins || 0).toLocaleString() : 0}
             </div>
           </div>
         </div>
-        <button className="icon-btn" onClick={() => router.push('/settings')}>
-           <span className="material-icons">settings</span>
-        </button>
       </header>
 
       {/* HERO BANNER */}
