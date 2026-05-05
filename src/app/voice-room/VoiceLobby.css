@@ -1,32 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* 🔥 CLEAN BLUE PALETTE 🔥 */
-  --bg-app: #f4f7fa;
+  /* 🔥 PURE BLUE TECH PALETTE 🔥 */
+  --bg-app: #f6f9ff;
   --bg-card: #ffffff;      
-  --primary: #0084ff; /* Pure Blue */
-  --primary-gradient: linear-gradient(135deg, #0084ff 0%, #0052d4 100%);
-  --primary-light: #e0f2fe; 
+  --primary: #0070f3; /* Biru Next.js / Facebook Style */
+  --primary-gradient: linear-gradient(135deg, #0070f3 0%, #00a2ff 100%);
+  --primary-light: #e6f2ff; 
   --text-dark: #0f172a;    
   --text-muted: #64748b;   
   --accent-coin: #f59e0b;
-  --glass: rgba(255, 255, 255, 0.9);
-  --border-glass: rgba(0, 132, 255, 0.1);
-  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --glass: rgba(255, 255, 255, 0.98); /* Lebih solid biar gak tembus berantakan */
+  --border-glass: rgba(0, 112, 243, 0.1);
 }
 
 html.dark {
   --bg-app: #020617;
   --bg-card: #0f172a;      
   --primary: #38bdf8;
-  --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  --primary-gradient: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
   --primary-light: rgba(56, 189, 248, 0.1); 
   --text-dark: #f8fafc;    
   --text-muted: #94a3b8;   
   --accent-coin: #fbbf24;
-  --glass: rgba(15, 23, 42, 0.9);
-  --border-glass: rgba(255, 255, 255, 0.05);
+  --glass: rgba(15, 23, 42, 0.98);
 }
 
 * {
@@ -37,31 +34,39 @@ html.dark {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* FIX: Pastikan container mulai dari paling atas */
+/* FIX: Hilangkan sela di atas dan kunci lebar */
 .voice-lobby-container {
-  padding-bottom: 140px; /* Jarak aman biar gak ketutup Navbar bawah */
+  padding-bottom: 140px; 
   max-width: 480px; 
   margin: 0 auto;
   min-height: 100vh;
   background-color: var(--bg-app);
   position: relative;
+  /* Pastikan tidak ada overflow yang merusak sticky */
+  overflow: visible; 
 }
 
 /* =========================================
-   1. STICKY COMPACT HEADER
+   1. FIXED HEADER (NO GAP)
    ========================================= */
 .lobby-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px; /* Dikecilkan ukurannya */
+  padding: 10px 16px; /* Lebih tipis */
   background: var(--glass);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
+  /* KUNCI DI ATAS */
   position: sticky;
-  top: 0;
-  z-index: 1000;
+  top: 0; 
+  left: 0;
+  right: 0;
+  z-index: 9999; /* Sangat tinggi biar gak ketutup apapun */
+  
   border-bottom: 1px solid var(--border-glass);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
 }
 
 .header-profile {
@@ -71,16 +76,16 @@ html.dark {
 }
 
 .header-profile img {
-  width: 40px; /* Dikecilkan */
-  height: 40px;
-  border-radius: 12px;
+  width: 38px; /* Lebih kecil */
+  height: 38px;
+  border-radius: 10px;
   object-fit: cover;
   border: 1.5px solid var(--primary-light);
 }
 
 .header-info h3 { 
   margin: 0; 
-  font-size: 15px; 
+  font-size: 14px; 
   font-weight: 700; 
   color: var(--text-dark);
 }
@@ -89,132 +94,125 @@ html.dark {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   color: var(--accent-coin);
-  background: var(--bg-card);
-  padding: 4px 10px;
-  border-radius: 10px;
+  background: var(--primary-light);
+  padding: 3px 10px;
+  border-radius: 8px;
   margin-top: 2px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(245, 158, 11, 0.1);
 }
 
 /* =========================================
    2. COMPACT HERO BANNER
    ========================================= */
 .hero-banner {
-  margin: 16px;
-  padding: 20px; /* Dikecilkan paddingnya */
+  margin: 12px 16px;
+  padding: 18px; /* Diperkecil */
   background: var(--primary-gradient);
-  border-radius: 20px; /* Dikecilkan radiusnya */
+  border-radius: 18px;
   color: white;
-  box-shadow: 0 10px 20px -5px rgba(0, 132, 255, 0.3);
+  box-shadow: 0 8px 20px -4px rgba(0, 112, 243, 0.3);
   position: relative;
   overflow: hidden;
 }
 
-/* Mic background icon lebih samar */
+/* Mic icon samar */
 .hero-banner::after {
   content: "mic";
   font-family: "Material Icons";
   position: absolute;
-  right: -10px;
+  right: -5px;
   bottom: -10px;
-  font-size: 100px;
-  opacity: 0.08;
-  transform: rotate(-15deg);
+  font-size: 80px;
+  opacity: 0.1;
+  transform: rotate(-10deg);
 }
 
 .hero-banner h2 { 
-  margin: 0 0 6px; 
-  font-size: 18px; /* Lebih kecil */
+  margin: 0 0 5px; 
+  font-size: 17px; 
   font-weight: 800; 
   line-height: 1.2;
 }
 
 .hero-banner p { 
-  margin: 0 0 16px; 
-  font-size: 13px; 
+  margin: 0 0 14px; 
+  font-size: 12px; 
   opacity: 0.9; 
   line-height: 1.4;
+  max-width: 85%;
 }
 
 .btn-start-singing {
   background: white;
   color: var(--primary);
   border: none;
-  padding: 10px 20px;
-  border-radius: 12px;
+  padding: 8px 18px;
+  border-radius: 10px;
   font-weight: 800;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
-  gap: 6px;
-  width: fit-content;
+  gap: 5px;
 }
 
 /* =========================================
-   3. MODERN TABS
+   3. MINI TABS
    ========================================= */
 .tabs-container {
   display: flex;
   gap: 8px;
-  padding: 5px 16px;
+  padding: 4px 16px;
   overflow-x: auto;
   scrollbar-width: none;
 }
-.tabs-container::-webkit-scrollbar { display: none; }
 
 .tab-item {
-  padding: 8px 16px;
+  padding: 7px 16px;
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
   background: white;
-  border: 1px solid transparent;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: 0.2s;
+  border: 1px solid transparent;
 }
 
 .tab-item.active {
-  background: var(--primary-light);
-  color: var(--primary);
-  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 10px rgba(0, 112, 243, 0.2);
 }
 
 /* =========================================
    4. COMPACT ROOM CARDS
    ========================================= */
 .room-list {
-  padding: 16px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .room-card {
   display: flex;
   align-items: center;
-  padding: 14px;
+  padding: 12px; /* Lebih rapat */
   background: var(--bg-card);
-  border-radius: 16px;
+  border-radius: 18px;
   gap: 12px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   cursor: pointer;
-  border: 1px solid rgba(0,0,0,0.03);
-  transition: transform 0.1s;
+  border: 1px solid rgba(0,0,0,0.02);
 }
 
-.room-card:active { transform: scale(0.98); }
-
 .room-thumb {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   background: var(--primary-gradient);
   color: white;
@@ -222,7 +220,7 @@ html.dark {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .room-info { flex: 1; min-width: 0; }
@@ -234,7 +232,7 @@ html.dark {
 }
 .room-info p { 
   margin: 0; 
-  font-size: 12px; 
+  font-size: 11px; 
   color: var(--text-muted); 
 }
 
@@ -242,27 +240,21 @@ html.dark {
   background: #f0fdf4;
   color: #16a34a;
   padding: 4px 10px;
-  border-radius: 10px;
-  font-size: 11px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: 800;
   display: flex;
   align-items: center;
   gap: 4px;
+  border: 1px solid rgba(22, 163, 74, 0.1);
 }
 
-/* =========================================
-   5. MODALS
-   ========================================= */
+/* Modal UI Fix */
 .modal-content {
   border-radius: 24px;
   padding: 24px;
   max-width: 320px;
 }
-
-.modal-content h3 { font-size: 18px; }
-
-.modal-btn { 
-  padding: 12px; border-radius: 14px; font-size: 14px;
+.btn-confirm {
+  background: var(--primary-gradient);
 }
-
-.btn-confirm { background: var(--primary-gradient); }
