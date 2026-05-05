@@ -34,7 +34,7 @@ interface Message {
 export default function ChatRoomPage() {
   const params = useParams();
   const router = useRouter();
-  const roomId = params.roomId as string;
+  const roomId = params?.roomId as string;
 
   // --- States ---
   const [messages, setMessages] = useState<Message[]>([]);
