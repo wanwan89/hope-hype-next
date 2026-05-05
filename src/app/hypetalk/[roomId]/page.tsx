@@ -478,16 +478,16 @@ function ChatCore() {
         )}
 
         <div className="input-row">
-          {/* --- FIX: BUNGKUSAN REPLY DAN INPUT DIJADIKAN SATU (WA STYLE) --- */}
           <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo ? '16px' : '24px' }}>
             
+            {/* --- FIX REPLY BOX: Tanda X ditarik sampai ke kanan mentok --- */}
             {replyTo && (
-              <div id="reply-preview-box" style={{ display: 'flex', width: '100%', background: 'rgba(0,0,0,0.03)', borderRadius: '12px 12px 4px 4px', margin: '0 0 4px 0', borderLeft: '4px solid var(--primary-blue)', padding: '8px 10px' }}>
-                <div className="reply-content-wrapper">
+              <div id="reply-preview-box" style={{ display: 'flex', alignItems: 'center', width: '100%', background: 'rgba(0,0,0,0.04)', borderRadius: '12px 12px 4px 4px', margin: '0 0 6px 0', borderLeft: '4px solid var(--primary-blue)', padding: '8px 12px' }}>
+                <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                   <div className="reply-title" style={{color: 'var(--primary-blue)', fontSize: '12px', fontWeight: 'bold'}}>Membalas {replyTo.profiles?.username}</div>
                   <div className="reply-text-preview" style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || "Media"}</div>
                 </div>
-                <div className="close-reply-btn" onClick={() => setReplyTo(null)} style={{fontSize: '20px', padding: '0 8px', cursor: 'pointer', color: '#64748b'}}>&times;</div>
+                <div className="close-reply-btn" onClick={() => setReplyTo(null)} style={{fontSize: '24px', paddingLeft: '12px', cursor: 'pointer', color: '#94a3b8', lineHeight: 1}}>&times;</div>
               </div>
             )}
 
@@ -502,10 +502,12 @@ function ChatCore() {
                 </div>
               ) : (
                 <>
-                  <button id="sticker-btn" style={{padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
-                    <span className="material-icons" style={{fontSize: '22px'}}>emoji_emotions</span>
+                  {/* --- FIX TOMBOL STIKER: Ganti ikon murni SVG anti bug HP --- */}
+                  <button id="sticker-btn" style={{ border: 'none', background: 'transparent', outline: 'none', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 1.5 8.5 1.5zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                    </svg>
                   </button>
-                  {/* --- FIX: TEXTAREA TIDAK GENDUT --- */}
                   <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} style={{ padding: '8px 0', minHeight: '36px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px' }} />
                 </>
               )}
