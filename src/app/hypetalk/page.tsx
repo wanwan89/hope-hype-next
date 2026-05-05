@@ -137,10 +137,16 @@ export default function HypetalkPage() {
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
   };
 
+  // FIX 1: Perbaikan Realtime Subscribe
   const subscribeToInbox = (userId: string) => {
-    supabase.channel(`inbox-lobby-${userId}`)
+    // Pastikan channel name-nya sangat unik dan spesifik untuk menghindari tabrakan
+    const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
+    
+    supabase.channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: any) => {
-        if (payload.new?.room_id?.includes(userId) || payload.old?.room_id?.includes(userId)) {
+        // Cek kalau pesan baru berkaitan dengan user ini
+        const isRelated = payload.new?.room_id?.includes(userId) || payload.old?.room_id?.includes(userId);
+        if (isRelated) {
           loadAllChats(userId);
         }
       })
@@ -230,19 +236,18 @@ export default function HypetalkPage() {
     }
   };
 
-  // FIX: Fungsi Buka Chat (Otomatis hapus badge & update status read di DB)
   const handleOpenChat = (chat: any) => {
-    // 1. Optimistic Update (Biar UI langsung ilang badgenya)
+    // 1. Optimistic Update 
     setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
 
-    // 2. Tandai pesan jadi 'read' di DB secara background
+    // 2. Tandai pesan jadi 'read' di DB
     if (chat.type === 'private') {
       const ids = [currentUser.id, chat.id].sort();
       const roomId = `pv_${ids[0]}_${ids[1]}`;
       supabase.from('messages')
         .update({ status: 'read' })
         .eq('room_id', roomId)
-        .neq('user_id', currentUser.id) // Cuma ubah pesan dari lawan
+        .neq('user_id', currentUser.id) 
         .neq('status', 'read')
         .then();
     }
@@ -286,21 +291,20 @@ export default function HypetalkPage() {
           <div className="loading-state"><span className="material-icons loading-spinner">sync</span><p>Memuat...</p></div>
         ) : (
           filteredChats.map(chat => (
-            // FIX: Gunakan handleOpenChat
             <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
               
               <div className="tg-avatar global-avatar">
                 {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
               </div>
               
-              {/* FIX: Perbaikan Layout Waktu dan Badge */}
               <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 
                 <div className="tg-chat-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {chat.name} <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} />
                   </h4>
-                  <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#2ecc71' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
+                  {/* FIX 2: Waktu (Time) */}
+                  <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#3a7bd5' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
                     {chat.time}
                   </span>
                 </div>
@@ -316,8 +320,9 @@ export default function HypetalkPage() {
                     </p>
                   )}
 
+                  {/* FIX 2: Badge Angka Warna Biru (Primary Blue) */}
                   {chat.unread > 0 && (
-                    <div style={{ background: '#2ecc71', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
+                    <div style={{ background: '#3a7bd5', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
                       {chat.unread}
                     </div>
                   )}
