@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
 import { showNotif, getUserBadge } from '@/lib/ui-utils';
-import * as LiveKit from 'livekit-client'; // Wajib: npm install livekit-client
+import * as LiveKit from 'livekit-client';
 import './ChatRoom.css';
 
 // --- Interfaces ---
@@ -28,7 +28,7 @@ interface Message {
   reply_to?: string | number;
   reply_to_msg?: { id: any, username: string, message: string };
   reactions?: Record<string, string>;
-  profiles?: Profile;
+  profiles?: Profile; // Sesuai kontrak: Profile atau undefined
 }
 
 export default function ChatRoomPage() {
@@ -44,7 +44,6 @@ export default function ChatRoomPage() {
   const [onlineUsers, setOnlineCount] = useState(0);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   
-  // Interaction States
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
@@ -52,7 +51,6 @@ export default function ChatRoomPage() {
   const [recordTime, setRecordTime] = useState(0);
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
 
-  // Call States
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
   const [callData, setCallData] = useState<{ partnerName?: string, partnerAvatar?: string, room?: string, seconds: number }>({ seconds: 0 });
 
@@ -65,7 +63,7 @@ export default function ChatRoomPage() {
   const lkRoom = useRef<LiveKit.Room | null>(null);
   const callTimerInterval = useRef<any>(null);
 
-  // --- 1. Initial Setup (Auth & Audio) ---
+  // --- 1. Initial Setup ---
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -75,7 +73,6 @@ export default function ChatRoomPage() {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       setMyProfile(prof);
 
-      // Load Sounds
       audioRefs.current = {
         send: new Audio("/asets/sound/send.mp3"),
         receive: new Audio("/asets/sound/receive.mp3"),
@@ -94,17 +91,17 @@ export default function ChatRoomPage() {
     setupRealtime();
 
     return () => {
-      Object.values(channels.current).forEach(ch => supabase.removeChannel(ch));
+      Object.values(channels.current).forEach(ch => ch && supabase.removeChannel(ch));
       if (lkRoom.current) lkRoom.current.disconnect();
     };
   }, [currentUser, roomId]);
 
   const setupRealtime = () => {
-    // A. Message Channel
     channels.current.msg = supabase.channel(`msg-${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as Message;
+          
           if (newMsg.is_system && newMsg.message.includes("📞 Memanggil") && newMsg.user_id !== currentUser.id) {
             handleIncomingCallSignal(newMsg);
           }
@@ -112,9 +109,9 @@ export default function ChatRoomPage() {
             endCall(true);
           }
           
-          // Fetch profile for new message
+          // --- FIX DISINI: Konversi null ke undefined agar TypeScript senang ---
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, role').eq('id', newMsg.user_id).single();
-          newMsg.profiles = p;
+          newMsg.profiles = p || undefined; 
           
           setMessages(prev => [...prev, newMsg]);
           if (newMsg.user_id !== currentUser.id) {
@@ -127,7 +124,6 @@ export default function ChatRoomPage() {
         }
       }).subscribe();
 
-    // B. Presence & Typing Channel
     channels.current.presence = supabase.channel(`presence-${roomId}`)
       .on('presence', { event: 'sync' }, () => {
         const state = channels.current.presence.presenceState();
@@ -147,7 +143,7 @@ export default function ChatRoomPage() {
   // --- 3. Core Functions ---
   const fetchMessages = async () => {
     const { data } = await supabase.from('messages').select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)').eq('room_id', roomId).order('created_at', { ascending: true }).limit(50);
-    if (data) setMessages(data);
+    if (data) setMessages(data as Message[]);
     scrollToBottom();
   };
 
@@ -179,7 +175,7 @@ export default function ChatRoomPage() {
     }
   };
 
-  // --- 4. Voice Note (Cloudinary) ---
+  // --- 4. Voice Note Logic ---
   const handleStartRecord = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -207,14 +203,14 @@ export default function ChatRoomPage() {
     if (!isRecording) return;
     setIsRecording(false);
     if (cancel) {
-      mediaRecorder.current!.onstop = null;
+      if (mediaRecorder.current) mediaRecorder.current.onstop = null;
       mediaRecorder.current?.stop();
     } else {
       mediaRecorder.current?.stop();
     }
   };
 
-  // --- 5. Stickers (Giphy) ---
+  // --- 5. Stickers ---
   const fetchStickers = async (q = "") => {
     const key = "vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08";
     const url = q ? `https://api.giphy.com/v1/stickers/search?api_key=${key}&q=${q}&limit=15` : `https://api.giphy.com/v1/stickers/trending?api_key=${key}&limit=15`;
@@ -223,7 +219,7 @@ export default function ChatRoomPage() {
     setStickers(d.data || []);
   };
 
-  // --- 6. Call System (LiveKit) ---
+  // --- 6. Call System ---
   const startCall = async () => {
     const partnerId = roomId.replace('pv_', '').split('_').find(id => id !== currentUser.id);
     const { data: partner } = await supabase.from('profiles').select('username, avatar_url').eq('id', partnerId).single();
@@ -268,9 +264,9 @@ export default function ChatRoomPage() {
 
   const endCall = (silent = false) => {
     audioRefs.current?.ring.pause();
-    lkRoom.current?.disconnect();
+    if (lkRoom.current) lkRoom.current.disconnect();
     setCallStatus('idle');
-    clearInterval(callTimerInterval.current);
+    if (callTimerInterval.current) clearInterval(callTimerInterval.current);
     if (!silent) showNotif("Panggilan berakhir", "info");
   };
 
@@ -304,11 +300,11 @@ export default function ChatRoomPage() {
       {/* --- Call Overlays --- */}
       {callStatus !== 'idle' && (
         <div className="call-overlay" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 100000, color: 'white' }}>
-          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} style={{ width: 100, height: 100, borderRadius: '50%' }} />
+          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" style={{ width: 100, height: 100, borderRadius: '50%' }} />
           <h2>{callData.partnerName}</h2>
-          <p>{callStatus === 'connected' ? `${Math.floor(callData.seconds/60)}:${callData.seconds%60}` : callStatus.toUpperCase()}</p>
+          <p>{callStatus === 'connected' ? `${Math.floor(callData.seconds/60)}:${String(callData.seconds%60).padStart(2,'0')}` : callStatus.toUpperCase()}</p>
           <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
-            {callStatus === 'incoming' && <button onClick={() => connectLiveKit(callData.room!)} style={{ background: '#2ecc71', border: 'none', padding: '15px 30px', borderRadius: 30, color: 'white' }}>Jawab</button>}
+            {callStatus === 'incoming' && <button onClick={() => connectLiveKit(callData.room || roomId)} style={{ background: '#2ecc71', border: 'none', padding: '15px 30px', borderRadius: 30, color: 'white' }}>Jawab</button>}
             <button onClick={() => endCall()} style={{ background: '#ff4757', border: 'none', padding: '15px 30px', borderRadius: 30, color: 'white' }}>Tutup</button>
           </div>
         </div>
@@ -335,14 +331,20 @@ export default function ChatRoomPage() {
       {/* --- Messages --- */}
       <main className="chat-messages">
         <div className="encryption-notice">🔒 Pesan ini dienkripsi end-to-end.</div>
-        {messages.map((msg, i) => (
+        {messages.map((msg) => (
           <div 
             key={msg.id} 
             id={`msg-${msg.id}`}
             className={`chat-message ${msg.user_id === currentUser?.id ? 'self' : 'other'} ${msg.is_system ? 'system' : ''}`}
-            onDoubleClick={(e) => handleDoubleTap(msg, e)}
+            onTouchStart={(e) => {
+               // Logic double tap mobile sederhana
+               const now = Date.now();
+               const lastTap = (e.currentTarget as any).lastTap || 0;
+               if (now - lastTap < 300) handleDoubleTap(msg, e);
+               (e.currentTarget as any).lastTap = now;
+            }}
           >
-            {!msg.is_system && <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} />}
+            {!msg.is_system && <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />}
             <div className="content">
               {msg.is_system ? (
                 <div className="system-text">{msg.message}</div>
@@ -350,7 +352,7 @@ export default function ChatRoomPage() {
                 <>
                   <div className="username">{msg.profiles?.username} <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role)}}/></div>
                   {msg.reply_to_msg && <div className="reply-preview-in-chat"><b>{msg.reply_to_msg.username}</b>: {msg.reply_to_msg.message}</div>}
-                  {msg.sticker_url ? <img src={msg.sticker_url} className="chat-sticker" /> : 
+                  {msg.sticker_url ? <img src={msg.sticker_url} className="chat-sticker" alt="sticker" /> : 
                    msg.audio_url ? (
                      <div className="vn-custom-player">
                        <button onClick={() => new Audio(msg.audio_url).play()} className="vn-play-btn">▶</button>
@@ -383,7 +385,7 @@ export default function ChatRoomPage() {
           <div id="sticker-menu" style={{ display: 'flex' }}>
             <input placeholder="Cari Giphy..." onChange={(e) => fetchStickers(e.target.value)} />
             <div id="sticker-list">
-              {stickers.map((s, idx) => <img key={idx} src={s.images.fixed_width_small.url} onClick={() => sendMessage(undefined, s.images.fixed_width.url)} />)}
+              {stickers.map((s, idx) => <img key={idx} src={s.images.fixed_width_small.url} alt="sticker" onClick={() => sendMessage(undefined, s.images.fixed_width.url)} />)}
             </div>
           </div>
         )}
@@ -412,6 +414,8 @@ export default function ChatRoomPage() {
             className={inputValue.trim() ? 'mode-typing' : ''}
             onMouseDown={handleStartRecord}
             onMouseUp={() => handleStopRecord()}
+            onTouchStart={handleStartRecord}
+            onTouchEnd={() => handleStopRecord()}
             onClick={() => inputValue.trim() && sendMessage()}
           >
             <div className="icon-stack">
