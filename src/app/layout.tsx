@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
-import SearchWrapper from "@/components/layout/SearchWrapperpost"; // Opsional: hapus jika sudah tidak dipakai di sini
+import SearchWrapper from "@/components/layout/SearchWrapperpost";
 import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar"; 
@@ -11,13 +11,11 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // FIX 1: Deteksi halaman voice
-  const isVoicePage = pathname?.includes('/voice');
+  // 1. Deteksi Halaman
+  const isVoicePage = pathname === '/voice' || pathname?.startsWith('/voice/');
+  const isHomePage = pathname === '/';
   // Kecualikan sidebar di chat dan voice
   const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat') || isVoicePage;
-
-  // FIX 2: Hapus logika showSearch di sini karena bikin double render
-  // Lebih baik SearchWrapper ditaruh langsung di file app/page.tsx lu sendiri
 
   return (
     <html lang="id">
@@ -32,17 +30,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           
-          {/* 🔥 FIX UTAMA: SearchWrapper gw hapus dari sini! 🔥
-             Pastikan di file app/page.tsx (halaman home lu) sudah ada <SearchWrapper />.
-             Kalau belum ada, lu tinggal pasang di sana aja biar nggak double.
-          */}
+          {/* 👇 FIX SEARCH: Muncul HANYA di Home (/) 👇 */}
+          {isHomePage && <SearchWrapper />}
 
           <main style={{ 
             flex: 1, 
             width: '100%', 
             maxWidth: '600px',
             margin: '0 auto', 
-            paddingTop: isVoicePage ? '0' : '20px', 
+            // Kalau voice, rapetin ke atas (0). Kalau home, karena udah ada SearchWrapper, kasih gap dikit.
+            paddingTop: isVoicePage ? '0' : '10px', 
             paddingBottom: isVoicePage ? '0' : '120px',
             position: 'relative'
           }}>
