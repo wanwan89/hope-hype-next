@@ -25,7 +25,12 @@ html.dark {
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
-/* FIX 1: Kembalikan Body ke normal agar halaman lain bisa scroll */
+html, body, button, a, div { 
+  -webkit-tap-highlight-color: transparent !important; 
+  outline: none !important;
+}
+
+/* Biar halaman lain tetap bisa di-scroll normal */
 body { 
   background: #e5e7eb; 
   transition: background 0.3s ease; 
@@ -33,9 +38,8 @@ body {
 }
 html.dark body { background: #000000; }
 
-/* FIX 2: Telegram Wrapper yang kita buat seolah-olah menjadi "Layar HP" tersendiri */
 .telegram-wrapper { 
-  position: fixed; /* Dia melayang menutupi layar agar diam */
+  position: fixed; 
   top: 0; 
   bottom: 0; 
   left: 50%; 
@@ -43,27 +47,27 @@ html.dark body { background: #000000; }
   width: 100%; 
   max-width: 480px; 
   display: flex; 
-  flex-direction: column; /* HEADER (Atas) & CHAT LIST (Bawah) */
+  flex-direction: column; /* Struktur: Header di atas, Chat List di bawah */
   background: var(--tg-bg); 
   box-shadow: 0 0 20px rgba(0,0,0,0.05); 
   transition: background 0.3s ease; 
-  z-index: 1000; /* Tinggi agar di atas konten body */
-  height: 100dvh; /* Kunci tinggi wrapper agar tetap seukuran layar */
+  z-index: 10;
+  height: 100dvh; /* Kunci tinggi wrapper seukuran layar HP */
   overflow: hidden; /* Matikan scroll wrapper utama */
 }
-
 html.dark .telegram-wrapper { box-shadow: none; border-left: 1px solid var(--tg-border); border-right: 1px solid var(--tg-border); }
 
-/* FIX 3: Header dibuat flex-shrink: 0 agar TIDAK PERNAH bergerak/mengecil */
+/* ===================================================
+   HEADER & SEARCH: DI LAYER BAWAH SIDEBAR (Z-INDEX: 100)
+   =================================================== */
 .tg-header { 
   background: var(--tg-bg); 
-  z-index: 1001; 
+  z-index: 100; /* Lebih rendah dari sidebar */
   transition: background 0.3s ease; 
   padding-top: env(safe-area-inset-top);
-  flex-shrink: 0; /* Kunci Header */
+  flex-shrink: 0; /* WAJIB: Agar header & search diam membeku tidak bergeser */
   border-bottom: 1px solid var(--tg-border);
 }
-
 .tg-header-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
 .tg-header-left { display: flex; align-items: center; gap: 16px; }
 .tg-header-left h2 { font-size: 20px; font-weight: 700; color: var(--tg-text); transition: color 0.3s ease; }
@@ -78,11 +82,13 @@ html.dark .telegram-wrapper { box-shadow: none; border-left: 1px solid var(--tg-
 .tg-search-box input { flex: 1; border: none; background: transparent; outline: none; font-size: 15px; color: var(--tg-text); }
 .tg-search-box input::placeholder { color: var(--tg-text-muted); }
 
-/* FIX 4: Berikan Izin Scroll HANYA untuk list chat saja */
+/* ===================================================
+   CHAT LIST: AREA SCROLLING (FLEX: 1)
+   =================================================== */
 .tg-chat-list { 
-  flex: 1; /* Ambil semua sisa ruang yang ada di layar */
-  overflow-y: auto; /* Hidupkan scroll khusus di sini */
-  padding-bottom: 120px; 
+  flex: 1; /* Mengambil sisa ruang layar */
+  overflow-y: auto; /* Aktifkan scroll hanya di area chat */
+  padding-bottom: 100px; 
   -webkit-overflow-scrolling: touch; 
 }
 .tg-chat-list::-webkit-scrollbar { width: 0; display: none; } 
@@ -97,10 +103,6 @@ html.dark .telegram-wrapper { box-shadow: none; border-left: 1px solid var(--tg-
 .tg-chat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .tg-name { font-size: 16px; font-weight: 600; color: var(--tg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
 .tg-time { font-size: 12px; font-weight: 500; color: var(--tg-text-muted); flex-shrink: 0; }
-.tg-chat-item.unread .tg-time { color: var(--tg-primary); font-weight: 600; }
-.tg-chat-bottom { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.tg-preview { font-size: 14px; color: var(--tg-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; display: flex; align-items: center; gap: 4px; }
-.tg-chat-item.unread .tg-preview { color: var(--tg-text); font-weight: 500; }
 .tg-unread-badge { background: var(--tg-primary); color: white; font-size: 11px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 6px; flex-shrink: 0; transition: all 0.3s ease; }
 .tg-unread-badge.bump { animation: badgeBounce 0.4s ease; }
 
@@ -110,13 +112,32 @@ html.dark .telegram-wrapper { box-shadow: none; border-left: 1px solid var(--tg-
   box-shadow: 0 4px 14px rgba(29, 161, 242, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; 
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50; 
 }
-.tg-fab:active { transform: scale(0.9); }
 
-.sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 100; animation: fadeIn 0.2s ease; }
+/* ===================================================
+   SIDEBAR & MODALS: DI LAYER PALING ATAS (Z-INDEX: 2000+)
+   =================================================== */
+.sidebar-overlay { 
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0,0,0,0.5); 
+  backdrop-filter: blur(2px); 
+  z-index: 2000; /* Menutupi header & search */
+  animation: fadeIn 0.2s ease; 
+}
 .tg-sidebar { 
-  position: fixed; top: 0; bottom: 0; left: 50%; width: 100%; max-width: 320px; background: var(--tg-bg); 
-  transform: translateX(calc(-50% - 100vw)); z-index: 105; display: flex; flex-direction: column; 
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1); box-shadow: 5px 0 25px rgba(0,0,0,0.1);
+  position: fixed; 
+  top: 0; 
+  bottom: 0; 
+  left: 50%; 
+  width: 100%; 
+  max-width: 320px; 
+  background: var(--tg-bg); 
+  transform: translateX(calc(-50% - 100vw)); 
+  z-index: 2100; /* Lapisan tertinggi */
+  display: flex; 
+  flex-direction: column; 
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1); 
+  box-shadow: 5px 0 25px rgba(0,0,0,0.1);
 }
 .tg-sidebar.open { transform: translateX(-50%); } 
 @media (max-width: 480px) {
@@ -129,130 +150,29 @@ html.dark .telegram-wrapper { box-shadow: none; border-left: 1px solid var(--tg-
 .sidebar-user-info { display: flex; flex-direction: column; gap: 2px; }
 .side-username { font-size: 18px; font-weight: 700; color: var(--tg-text); }
 .side-id { font-size: 13px; color: var(--tg-text-muted); cursor: pointer; transition: color 0.2s; }
-.side-id:active { color: var(--tg-primary); }
 .btn-edit-bio { background: var(--tg-primary); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 5px; }
 
 .sidebar-menu { display: flex; flex-direction: column; padding: 10px 0; overflow-y: auto; }
 .menu-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: transparent; border: none; font-size: 15px; font-weight: 600; color: var(--tg-text); cursor: pointer; text-align: left; outline: none; }
 .menu-item:active { background: transparent; transform: scale(0.98); }
-.menu-item .material-icons { color: var(--tg-text-muted); }
-.btn-cari-doi { color: var(--tg-primary) !important; justify-content: space-between; }
-.btn-cari-doi .material-icons { color: var(--tg-primary) !important; }
 
 .limit-badge { background: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
 html.dark .limit-badge { background: rgba(239,68,68,0.15); }
 
-.custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s ease; }
+.custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 3000; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s ease; }
 .custom-modal-content { background: var(--tg-bg); width: 100%; max-width: 480px; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 24px; padding-bottom: max(24px, env(safe-area-inset-bottom) + 24px); animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; }
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.modal-header h3 { color: var(--tg-text); font-size: 18px; font-weight: 700; }
-.close-modal-btn { background: var(--tg-bg-secondary); border: none; color: var(--tg-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; }
-.modal-desc { font-size: 13px; color: var(--tg-text-muted); margin-bottom: 16px; }
 
-.input-group { display: flex; align-items: center; background: var(--tg-bg-secondary); border-radius: 12px; padding: 12px 16px; gap: 12px; border: 1px solid var(--tg-border); width: 100%; margin-bottom: 16px;}
-.input-group input, .input-group select { flex: 1; border: none; background: transparent; outline: none; font-size: 14px; color: var(--tg-text); width: 100%; }
-.input-group .material-icons { color: var(--tg-text-muted); font-size: 18px; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-
-.action-btn { width: 100%; background: var(--tg-primary); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-align: center; }
-.action-btn:active { transform: scale(0.98); }
-.action-btn.outline { background: transparent; border: 2px solid var(--tg-border); color: var(--tg-text); }
-.love-btn { background: linear-gradient(135deg, #1DA1F2, #007bb5); }
-
-.group-photo-upload { display: flex; justify-content: center; margin-bottom: 20px; }
-.group-photo-upload label { position: relative; cursor: pointer; display: inline-block; }
-.group-photo-upload img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tg-border); }
-.upload-badge { position: absolute; bottom: 0; right: 0; background: var(--tg-primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--tg-bg); }
-.upload-badge .material-icons { font-size: 14px; }
-
-.doi-result-card { align-items: center; text-align: center; }
-.doi-profile-box { margin-bottom: 20px; width: 100%; }
-.doi-profile-box img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid var(--tg-bg-secondary); margin-bottom: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
-.doi-profile-box h2 { font-size: 20px; color: var(--tg-text); margin-bottom: 16px; }
-.doi-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.d-tag { background: var(--tg-bg-secondary); color: var(--tg-text); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
-.d-tag .material-icons { font-size: 14px; color: var(--tg-text-muted); }
-
-/* ==== ANIMASI RADAR CARI DOI (RETAINED) ==== */
+/* Radar Cari Doi */
 .doi-search-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 4000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(8px); animation: fadeIn 0.3s ease; }
 
-.paper-plane-container { 
-  position: relative; 
-  width: 250px; 
-  height: 250px; 
-  margin-bottom: 30px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-}
-
-.paper-plane-container::before, .paper-plane-container::after {
-  content: '';
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 2px solid var(--tg-primary);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: radar-ripple 2s infinite cubic-bezier(0.1, 0.7, 0.3, 1);
-}
-
-.paper-plane-container::after {
-  animation-delay: 1s;
-}
-
-@keyframes radar-ripple {
-  0% { width: 60px; height: 60px; opacity: 1; border-width: 3px; }
-  100% { width: 300px; height: 300px; opacity: 0; border-width: 1px; }
-}
-
-.paper-plane-icon { 
-  font-size: 55px !important; 
-  color: var(--tg-primary); 
-  position: absolute; 
-  z-index: 10; 
-  filter: drop-shadow(0 5px 15px rgba(29, 161, 242, 0.8)); 
-  animation: float-plane 3s ease-in-out infinite; 
-}
-
-@keyframes float-plane {
-  0% { transform: translateY(0px) scale(1) rotate(0deg); }
-  50% { transform: translateY(-15px) scale(1.1) rotate(5deg); }
-  100% { transform: translateY(0px) scale(1) rotate(0deg); }
-}
-
-.floating-avatar { 
-  position: absolute; 
-  width: 48px; 
-  height: 48px; 
-  border-radius: 50%; 
-  object-fit: cover; 
-  border: 2px solid var(--tg-primary); 
-  box-shadow: 0 0 15px rgba(29, 161, 242, 0.6); 
-  opacity: 0; 
-  z-index: 15; 
-  transform-origin: center;
-  animation: popInAndOut 1.5s ease-in-out forwards; 
-}
-
-@keyframes popInAndOut { 
-  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; } 
-  20% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 
-  80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 
-  100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; } 
-}
-
-.search-title-glow { color: white; font-size: 20px; margin-bottom: 8px; text-shadow: 0 0 10px var(--tg-primary); font-weight: 700; letter-spacing: 0.5px; }
-.search-subtitle-glow { color: #ccc; font-size: 14px; font-weight: 500; }
+.paper-plane-container { position: relative; width: 250px; height: 250px; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; }
+.paper-plane-container::before, .paper-plane-container::after { content: ''; position: absolute; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--tg-primary); top: 50%; left: 50%; transform: translate(-50%, -50%); animation: radar-ripple 2s infinite cubic-bezier(0.1, 0.7, 0.3, 1); }
+.paper-plane-container::after { animation-delay: 1s; }
+@keyframes radar-ripple { 0% { width: 60px; height: 60px; opacity: 1; border-width: 3px; } 100% { width: 300px; height: 300px; opacity: 0; border-width: 1px; } }
+.paper-plane-icon { font-size: 55px !important; color: var(--tg-primary); position: absolute; z-index: 10; filter: drop-shadow(0 5px 15px rgba(29, 161, 242, 0.8)); animation: float-plane 3s ease-in-out infinite; }
+@keyframes float-plane { 0% { transform: translateY(0px) scale(1) rotate(0deg); } 50% { transform: translateY(-15px) scale(1.1) rotate(5deg); } 100% { transform: translateY(0px) scale(1) rotate(0deg); } }
+.floating-avatar { position: absolute; width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tg-primary); box-shadow: 0 0 15px rgba(29, 161, 242, 0.6); opacity: 0; z-index: 15; transform-origin: center; animation: popInAndOut 1.5s ease-in-out forwards; }
+@keyframes popInAndOut { 0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; } }
 
 .loading-state { text-align: center; padding: 60px 20px; color: var(--tg-text-muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .loading-spinner { font-size: 32px; animation: spin 1s linear infinite; color: var(--tg-primary); }
-.loading-state p { font-size: 14px; font-weight: 500; }
-.text-center { text-align: center; }
-
-.anim-calling-avatar { animation: radar-pulse-call 1.5s infinite cubic-bezier(0.66, 0, 0, 1); border: 3px solid #10b981; border-radius: 50%; }
-.anim-calling-text { animation: text-blink 1.5s infinite ease-in-out; color: #10b981 !important; font-weight: bold; letter-spacing: 2px; }
-@keyframes radar-pulse-call { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7), 0 0 0 0 rgba(16, 185, 129, 0.4); transform: scale(0.95); } 50% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0), 0 0 0 30px rgba(16, 185, 129, 0.2); transform: scale(1); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), 0 0 0 45px rgba(16, 185, 129, 0); transform: scale(0.95); } }
-@keyframes text-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
