@@ -17,21 +17,21 @@ const GIFTS = [
   { name: 'Kiyowo', price: 10000, id: 7 },
   { name: 'Gomawo', price: 25000, id: 8 },
   { name: 'Daesang', price: 50000, id: 9 },
-  { name: 'Sultan', price: 100000, id: 10 }
+  { name: 'Sultan', price: 100000, id: 10 },
 ];
 
 function VoiceRoomContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const CURRENT_ROOM_ID = searchParams?.get('id');
-  const CURRENT_ROOM_NAME = searchParams?.get('name') || "Voice Room";
+  const CURRENT_ROOM_NAME = searchParams?.get('name') || 'Voice Room';
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const [slots, setSlots] = useState<any[]>(Array(6).fill({ profile_id: null }));
   const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [chatInput, setChatInput] = useState("");
+  const [chatInput, setChatInput] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -41,15 +41,20 @@ function VoiceRoomContent() {
   const [activeSpeakers, setActiveSpeakers] = useState<string[]>([]);
   const [isMicOn, setIsMicOn] = useState(false);
   const [giftAnim, setGiftAnim] = useState({ show: false, giftId: 1, count: 1 });
+
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const roomRef = useRef<Room | null>(null); // untuk menyimpan room LiveKit agar bisa di-cleanup
+  const roomRef = useRef<Room | null>(null);
+
+  // Debug: pastiin state awal false
+  useEffect(() => {
+    console.log('State awal - isSidebarOpen:', isSidebarOpen, 'isDrawerOpen:', isDrawerOpen);
+  }, []);
 
   // Efek utama: init & cleanup
   useEffect(() => {
     if (!CURRENT_ROOM_ID) return;
     checkUserAndInit();
 
-    // Cleanup saat komponen unmount atau CURRENT_ROOM_ID berubah
     return () => {
       if (roomRef.current) {
         roomRef.current.disconnect();
@@ -59,7 +64,9 @@ function VoiceRoomContent() {
   }, [CURRENT_ROOM_ID]);
 
   const checkUserAndInit = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) return router.push('/login');
 
     const { data: profile } = await supabase
@@ -71,7 +78,6 @@ function VoiceRoomContent() {
     if (!profile) return;
     setCurrentUser(profile);
 
-    // Update room active jika owner
     const { data: roomData } = await supabase
       .from('rooms')
       .select('owner_id, is_active')
@@ -83,7 +89,6 @@ function VoiceRoomContent() {
       await supabase.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
     }
 
-    // Kirim profile.id ke fetchStage agar tidak bergantung state currentUser yang asinkron
     fetchStage(profile.id);
     fetchTopGifters();
     initLiveKit(profile.id, profile.username);
@@ -107,7 +112,6 @@ function VoiceRoomContent() {
     );
     setSlots(finalSlots);
 
-    // Gunakan userId yang diberikan, fallback ke currentUser.id jika tidak ada
     const currentId = userId || currentUser?.id;
     const mySlot = normalized.find((s: any) => s.profile_id === currentId);
     if (mySlot?.profiles) {
@@ -117,7 +121,6 @@ function VoiceRoomContent() {
 
   const initLiveKit = async (userId: string, username: string) => {
     try {
-      // Putuskan room sebelumnya jika ada (mencegah dobel koneksi)
       if (roomRef.current) {
         roomRef.current.disconnect();
       }
@@ -163,7 +166,6 @@ function VoiceRoomContent() {
   };
 
   const listenRealtime = () => {
-    // Hapus semua channel sebelum membuat baru agar tidak dobel
     supabase.removeAllChannels();
 
     supabase
@@ -171,7 +173,7 @@ function VoiceRoomContent() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'room_slots' },
-        () => fetchStage() // fetchStage bisa pakai currentUser.id sekarang (aman)
+        () => fetchStage()
       )
       .on(
         'postgres_changes',
@@ -201,7 +203,7 @@ function VoiceRoomContent() {
         .eq('id', currentUser.id);
       setIsMicOn(nextStatus);
       setIsSidebarOpen(false);
-      fetchStage(); // refresh tampilan mute
+      fetchStage();
     } catch (e) {
       console.error('Toggle mic error:', e);
     }
@@ -209,10 +211,6 @@ function VoiceRoomContent() {
 
   const sendGift = async (giftName: string, harga: number, giftId: number) => {
     try {
-      // ⚠️ Di sini lo bisa tambahkan RPC transfer koin, history, dsb. Pakai await!
-      // const { error } = await supabase.rpc('transfer_gift', { ... });
-      // if (error) throw error;
-
       const { error: msgError } = await supabase.from('room_messages').insert([
         {
           room_id: CURRENT_ROOM_ID,
@@ -224,7 +222,6 @@ function VoiceRoomContent() {
       ]);
       if (msgError) throw msgError;
 
-      // Update UI (optimistic)
       setCurrentUser((prev: any) => ({ ...prev, coins: prev.coins - harga }));
       setGiftAnim({ show: true, giftId, count: 1 });
       setTimeout(() => setGiftAnim(prev => ({ ...prev, show: false })), 3000);
@@ -245,6 +242,7 @@ function VoiceRoomContent() {
 
   return (
     <div className="app-container">
+      {/* HEADER */}
       <header className="main-header">
         <div className="header-left">
           <h1 className="room-title">{CURRENT_ROOM_NAME}</h1>
@@ -252,11 +250,18 @@ function VoiceRoomContent() {
             <div className="online-dot" /> <span>Online</span>
           </div>
         </div>
-        <span className="material-icons" onClick={() => setIsSidebarOpen(true)}>
+        <span
+          className="material-icons"
+          onClick={() => {
+            console.log('Menu diklik, buka sidebar');
+            setIsSidebarOpen(true);
+          }}
+        >
           menu
         </span>
       </header>
 
+      {/* STAGE */}
       <section className="stage-container">
         {slots.map((s, i) => (
           <div key={i} className="speaker-item">
@@ -281,6 +286,7 @@ function VoiceRoomContent() {
         ))}
       </section>
 
+      {/* CHAT */}
       <div className="chat-display">
         {chatMessages.map(m => (
           <div
@@ -293,8 +299,15 @@ function VoiceRoomContent() {
         <div ref={chatEndRef} />
       </div>
 
+      {/* FOOTER */}
       <footer className="footer-controls">
-        <button className="btn-gift-main" onClick={() => setIsDrawerOpen(true)}>
+        <button
+          className="btn-gift-main"
+          onClick={() => {
+            console.log('Tombol gift diklik, buka drawer');
+            setIsDrawerOpen(true);
+          }}
+        >
           <span className="material-icons">redeem</span>
         </button>
         <div className="input-wrapper">
@@ -307,10 +320,13 @@ function VoiceRoomContent() {
         </div>
       </footer>
 
-      {/* Sidebar */}
+      {/* SIDEBAR OVERLAY + SIDEBAR */}
       <div
         className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
-        onClick={() => setIsSidebarOpen(false)}
+        onClick={() => {
+          console.log('Overlay sidebar diklik, tutup sidebar');
+          setIsSidebarOpen(false);
+        }}
       />
       <aside className={`sidebar ${isSidebarOpen ? 'active' : ''}`}>
         <div className="sidebar-header">
@@ -342,17 +358,20 @@ function VoiceRoomContent() {
         </div>
       </aside>
 
-      {/* Gift Drawer */}
+      {/* GIFT DRAWER */}
       <div
         className={`drawer-overlay ${isDrawerOpen ? 'show' : ''}`}
-        onClick={() => setIsDrawerOpen(false)}
+        onClick={() => {
+          console.log('Overlay drawer diklik, tutup drawer');
+          setIsDrawerOpen(false);
+        }}
       />
       <div className={`gift-drawer ${isDrawerOpen ? 'open' : ''}`}>
         <div className="handle" />
         <div className="drawer-header">
           <span className="drawer-title">KIRIM HADIAH</span>
           <div className="coin-panel">
-            <span>{currentUser?.coins}</span>
+            <span>{currentUser?.coins ?? 0}</span>
           </div>
         </div>
         <div className="gift-list">
@@ -362,14 +381,26 @@ function VoiceRoomContent() {
               className="gift-item"
               onClick={() => sendGift(g.name, g.price, g.id)}
             >
-              <img src={`/asets/png/gift${g.id}.png`} className="gift-img" alt={g.name} />
+              <img
+                src={`/asets/png/gift${g.id}.png`}
+                className="gift-img"
+                alt={g.name}
+                onError={(e) => {
+                  // fallback biar gak gambar pecah
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const fallback = document.createElement('span');
+                  fallback.textContent = '🎁';
+                  fallback.style.fontSize = '30px';
+                  (e.target as HTMLImageElement).parentElement?.appendChild(fallback);
+                }}
+              />
               <div className="gift-price">{g.price}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Gift Animation Overlay */}
+      {/* GIFT ANIMATION OVERLAY */}
       <div id="gift-anim-overlay" className={giftAnim.show ? 'show' : ''}>
         <img
           id="gift-anim-img"
