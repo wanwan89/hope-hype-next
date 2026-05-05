@@ -7,7 +7,7 @@
     --primary: #3b82f6;         
     --bg-base: #f8fafc;         
     --panel-bg: #ffffff;        
-    --border: rgba(0, 0, 0, 0.05); 
+    --border: rgba(0, 0, 0, 0.06); 
     --empty-slot: #f1f5f9;      
     --accent: #f59e0b;          
     --success: #10b981;         
@@ -15,24 +15,24 @@
     --text-muted: #64748b;      
     --danger: #ef4444;
     
-    --header-bg: rgba(255, 255, 255, 0.85); 
-    --msg-bg: rgba(255, 255, 255, 0.95);
-    --overlay-bg: rgba(15, 23, 42, 0.4);
-    --sidebar-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
+    --header-bg: rgba(255, 255, 255, 0.82); 
+    --msg-bg: rgba(255, 255, 255, 0.9);
+    --overlay-bg: rgba(15, 23, 42, 0.45);
+    --sidebar-shadow: -15px 0 50px rgba(0, 0, 0, 0.12);
 }
 
 [data-theme="dark"] {
     --bg-base: #0f172a;         
     --panel-bg: #1e293b;        
-    --border: rgba(255, 255, 255, 0.06); 
+    --border: rgba(255, 255, 255, 0.08); 
     --text-main: #f8fafc;       
     --text-muted: #94a3b8;
-    --header-bg: rgba(30, 41, 59, 0.85);
+    --header-bg: rgba(30, 41, 59, 0.82);
     --msg-bg: rgba(30, 41, 59, 0.85); 
 }
 
 /* ==================================================
-   2. RESET & PERFORMANCE (CRITICAL FIX)
+   2. RESET & PERFORMANCE (MOBILE OPTIMIZED)
 ================================================== */
 * {
     box-sizing: border-box;
@@ -46,25 +46,22 @@ body, html {
     background-color: #cbd5e1; 
     font-family: 'Inter', sans-serif;
     color: var(--text-main);
-    /* Jangan kasih overflow: hidden di sini secara global! */
 }
 
-/* Class pemicu lock scroll hanya saat room aktif */
 body.room-active {
     overflow: hidden !important;
-    overscroll-behavior: none;
-    position: fixed; /* Mencegah karet scroll di iOS */
+    position: fixed; /* Mencegah karet scroll di mobile */
     width: 100%;
 }
 
 .app-container {
     display: flex; flex-direction: column;
-    height: 100dvh; /* Dynamic Viewport Height */
+    height: 100dvh; /* FIX: Gunakan dynamic vh agar pas di mobile browser */
     width: 100%; max-width: 480px; 
     margin: 0 auto; position: relative;
     background-color: var(--bg-base);
-    box-shadow: 0 0 50px rgba(0,0,0,0.15);
-    overflow: hidden; /* WAJIB: Biar sidebar/drawer gak meluber keluar frame */
+    box-shadow: 0 0 60px rgba(0,0,0,0.2);
+    overflow: hidden; /* WAJIB: Pagar utama */
 }
 
 input, textarea, .msg span, .msg .user { user-select: text; }
@@ -75,7 +72,7 @@ input, textarea, .msg span, .msg .user { user-select: text; }
 ================================================== */
 .main-header {
     padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;
-    background: var(--header-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    background: var(--header-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border); z-index: 100; position: relative;
 }
 
@@ -93,14 +90,14 @@ input, textarea, .msg span, .msg .user { user-select: text; }
     box-shadow: 0 6px 15px rgba(0,0,0,0.08); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Speaking Animation */
 .avatar.speaking {
     border-color: var(--success) !important;
     animation: sonar-premium 2s infinite ease-out;
 }
-
 @keyframes sonar-premium {
     0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
-    70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+    70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
@@ -108,129 +105,92 @@ input, textarea, .msg span, .msg .user { user-select: text; }
    4. NAVIGATION OVERLAYS (THE ELITE FIX)
 ================================================== */
 
-/* Dasar Overlay (Glassmorphism Effect) */
+/* Dasar Overlay: Efek Glassmorphism yang bener-bener smooth */
 .drawer-overlay, .sidebar-overlay, .modal-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.4); /* Darker overlay for focus */
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    z-index: 1000;
-    opacity: 0;
-    visibility: hidden; /* FIX: Bener-bener ilang dari DOM tree */
-    pointer-events: none; /* FIX: Biar nggak bisa diklik pas ngumpet */
+    position: absolute; inset: 0; 
+    background: var(--overlay-bg); 
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    z-index: 1000; 
+    opacity: 0; 
+    visibility: hidden; /* FIX: Tidak akan pernah interupsi klik pas hidden */
+    pointer-events: none;
     transition: opacity 0.4s ease, visibility 0.4s;
 }
 
 .drawer-overlay.show, .sidebar-overlay.active, .modal-overlay.show {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
+    opacity: 1; visibility: visible; pointer-events: auto;
 }
 
 /* Sidebar: Elite Slide dari Kanan */
 .sidebar {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 290px;
-    height: 100%;
-    background: var(--panel-bg);
-    z-index: 1100;
-    border-top-left-radius: 32px;
-    border-bottom-left-radius: 32px;
-    
-    /* FIX: Initial State harus bener-bener di luar dan hidden */
-    transform: translate3d(105%, 0, 0); /* 105% biar shadow nggak peeking */
+    position: absolute; top: 0; right: 0; width: 290px; height: 100%;
+    background: var(--panel-bg); z-index: 1100;
+    /* FIX: Initial state geser 110% agar shadow bener-bener ilang */
+    transform: translate3d(110%, 0, 0); 
     visibility: hidden;
     pointer-events: none;
-    
-    /* Smooth cubic-bezier untuk feel premium */
     transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), visibility 0.5s;
-    box-shadow: -15px 0 50px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
+    box-shadow: var(--sidebar-shadow);
+    border-top-left-radius: 28px;
+    border-bottom-left-radius: 28px;
+}
+.sidebar.active { 
+    transform: translate3d(0, 0, 0); 
+    visibility: visible; 
+    pointer-events: auto; 
 }
 
-.sidebar.active {
-    transform: translate3d(0, 0, 0);
-    visibility: visible;
-    pointer-events: auto;
-}
-
-/* Gift Drawer: Premium Claymorphism/Glassmorphism */
+/* Gift Drawer: Meluncur dari Bawah */
 .gift-drawer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--bg-base);
-    z-index: 1100;
-    border-top-left-radius: 32px;
-    border-top-right-radius: 32px;
-    padding: 24px 20px;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
-    
-    /* FIX: Sembunyi total di bawah */
-    transform: translate3d(0, 105%, 0);
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--bg-base); border-top-left-radius: 32px; border-top-right-radius: 32px;
+    z-index: 1100; padding: 24px 20px;
+    /* FIX: Geser 110% ke bawah */
+    transform: translate3d(0, 110%, 0); 
     visibility: hidden;
     pointer-events: none;
-    
     transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), visibility 0.5s;
-    box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.15);
     border-top: 1px solid var(--border);
 }
-
-.gift-drawer.open {
-    transform: translate3d(0, 0, 0);
-    visibility: visible;
-    pointer-events: auto;
+.gift-drawer.open { 
+    transform: translate3d(0, 0, 0); 
+    visibility: visible; 
+    pointer-events: auto; 
 }
 
-/* Modal Box: Pop-up Modern */
+/* Modal Box: Elite Zoom Pop */
 .modal-box { 
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 88%;
-    max-width: 380px;
-    background: var(--modal-bg);
-    border-radius: 32px;
-    padding: 28px;
-    z-index: 1200;
-    
-    /* FIX: Pop-up animation */
-    opacity: 0;
-    visibility: hidden;
-    transform: translate3d(-50%, -45%, 0) scale(0.9);
+    position: absolute; top: 50%; left: 50%; width: 88%; max-width: 380px;
+    background: var(--modal-bg); border-radius: 32px; padding: 28px; z-index: 1200;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transform: translate3d(-50%, -45%, 0) scale(0.92);
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
 }
-
-.modal-overlay.show + .modal-box { 
-    opacity: 1;
-    visibility: visible;
+.modal-overlay.show + .modal-box {
+    opacity: 1; visibility: visible; pointer-events: auto;
     transform: translate3d(-50%, -50%, 0) scale(1);
 }
 
-/* FIX: Pastikan Container Chat & Stage nggak kegeser pas Sidebar muncul */
-.chat-display, .stage-container {
-    width: 100%;
-    position: relative;
+/* ==================================================
+   5. CHAT & ANIMATIONS (PREMIUM REFINEMENT)
+================================================== */
+.chat-display {
+    flex: 1; overflow-y: auto; padding: 16px 18px; 
+    display: flex; flex-direction: column; gap: 10px;
+}
+.msg {
+    background: var(--msg-bg); padding: 10px 16px; border-radius: 18px 18px 18px 4px;
+    font-size: 13.5px; line-height: 1.5; color: var(--text-main);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border);
+    animation: chatSlideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-/* ==================================================
-   5. GIFT ANIMATION OVERLAY
-================================================== */
 #gift-anim-overlay {
     position: absolute !important; inset: 0; display: none;
     justify-content: center; align-items: center; z-index: 2000;
     pointer-events: none !important;
 }
-#gift-anim-overlay.show { display: flex; background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(0,0,0,0.5) 100%); backdrop-filter: blur(8px); }
-#gift-anim-img { width: 320px; max-width: 85%; filter: drop-shadow(0 10px 40px rgba(0,0,0,0.5)); animation: giftEpicPopUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-
-@keyframes giftEpicPopUp { 
-    0% { opacity: 0; transform: scale(0.2) translateY(100px); } 
-    100% { opacity: 1; transform: scale(1) translateY(0); } 
-}
+#gift-anim-overlay.show { display: flex; background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, rgba(0,0,0,0.4) 100%); backdrop-filter: blur(8px); }
+#gift-anim-img { width: 300px; filter: drop-shadow(0 10px 40px rgba(0,0,0,0.5)); animation: giftEpicPopUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
