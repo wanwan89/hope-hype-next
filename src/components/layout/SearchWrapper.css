@@ -1,12 +1,13 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
-/* Gabungkan search dan stories biar satu warna background */
 .header-sticky-wrapper {
   position: sticky;
   top: 0;
-  z-index: 1000;
-  background-color: var(--bg-main, #ffffff); /* Paksa putih jika var kosong */
-  /* FIX: border-bottom dihapus total biar gak ada garis tipis yang ganggu! */
+  z-index: 15000; /* Naikkan biar di atas segalanya */
+  background-color: var(--bg-main, #ffffff);
   width: 100%;
+  /* Hilangkan border-bottom jika mengganggu garis story */
+  border-bottom: none; 
+  transition: all 0.3s ease;
 }
 
 .search-wrapper {
@@ -14,7 +15,9 @@
   display: flex;
   align-items: center; 
   gap: 15px; 
-  background: transparent; /* Ikut wrapper atas */
+  background: transparent;
+  position: relative;
+  z-index: 15001; /* Pastikan area search di atas container story */
 }
 
 /* --- INPUT PENCARIAN --- */
@@ -30,7 +33,7 @@
   font-size: 14px;
   font-family: 'Poppins', sans-serif;
   color: var(--text-main, #1a1a1a);
-  background: var(--bg-secondary, #f0f2f5); /* Abu-abu muda ala IG */
+  background: var(--bg-secondary, #f0f2f5); 
   border: 1px solid transparent;
   border-radius: 20px; 
   outline: none;
@@ -43,26 +46,7 @@
   box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.1); 
 }
 
-/* --- TOMBOL MENU & TAMBAH --- */
-.menu-toggle {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  flex-shrink: 0; 
-}
-
-.menu-toggle span {
-  display: block;
-  width: 100%;
-  height: 2px;
-  background-color: var(--text-main, #333); 
-  border-radius: 2px;
-}
-
+/* --- TOMBOL TAMBAH (FIX KLIK) --- */
 .add-post-btn {
   display: flex;
   align-items: center;
@@ -75,21 +59,32 @@
   color: var(--bg-main, #fff); 
   cursor: pointer;
   flex-shrink: 0;
+  /* FIX UTAMA: Kasih posisi dan z-index tinggi agar tidak tertutup */
+  position: relative;
+  z-index: 16000;
+  pointer-events: auto !important; /* Paksa agar bisa diklik */
+  transition: transform 0.1s ease;
 }
 
-/* --- STORY SECTION (FIX AREA HITAM & SCROLLBAR) --- */
+.add-post-btn:active {
+  transform: scale(0.9);
+}
+
+/* --- STORY SECTION (FIX AREA HITAM) --- */
 .stories-container {
   display: flex;
   gap: 15px;
-  padding: 5px 15px 15px 15px;
+  padding: 8px 15px 15px 15px;
   overflow-x: auto;
-  background: var(--bg-main, #ffffff); /* FIX: Pastikan putih, bukan hitam */
-  /* FIX: Hilangkan scrollbar tipis untuk Firefox & IE */
+  background: var(--bg-main, #ffffff);
   scrollbar-width: none; 
   -ms-overflow-style: none;
+  position: relative;
+  z-index: 14000; /* Di bawah search bar */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* FIX: Hilangkan scrollbar tipis untuk Chrome/Safari */
-.stories-container::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+.stories-container::-webkit-scrollbar { display: none; }
 
 .story-item {
   display: flex;
@@ -100,15 +95,6 @@
   cursor: pointer;
 }
 
-.story-item span {
-  font-size: 11px;
-  color: var(--text-main, #333); 
-  max-width: 65px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .story-circle {
   width: 64px;
   height: 64px;
@@ -117,14 +103,13 @@
   align-items: center;
   justify-content: center;
   padding: 2.5px; 
+  transition: all 0.2s ease;
 }
 
-/* Warna gradasi story belum dilihat */
 .story-circle.unseen { 
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); 
 }
 
-/* Warna story sudah dilihat */
 .story-circle.seen { 
   background: var(--border-card, #e4e6eb); 
 }
@@ -135,22 +120,16 @@
   border-radius: 50%;
   object-fit: cover;
   background: #eee;
-  border: 2px solid var(--bg-main, #fff); /* Gap putih ala IG */
+  border: 2px solid var(--bg-main, #fff);
 }
 
-/* --- ANIMASI POP TIKTOK --- */
+/* --- ANIMASI POP --- */
 .story-circle.clicked {
   animation: storyPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 @keyframes storyPop {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.9); }
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.9); opacity: 0.5; }
   100% { transform: scale(1.1); opacity: 0; }
-}
-
-.no-story {
-  font-size: 12px;
-  color: var(--text-muted, #888);
-  margin-left: 5px;
 }
