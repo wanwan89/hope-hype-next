@@ -241,6 +241,7 @@ function NavbarContent() {
     </>
   );
 }
+
 export default function Navbar() {
   return (
     <Suspense fallback={null}>
