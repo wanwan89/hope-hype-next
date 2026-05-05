@@ -42,96 +42,204 @@ function VoiceRoomContent() {
   const [isMicOn, setIsMicOn] = useState(false);
   const [giftAnim, setGiftAnim] = useState({ show: false, giftId: 1, count: 1 });
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const roomRef = useRef<Room | null>(null); // untuk menyimpan room LiveKit agar bisa di-cleanup
 
+  // Efek utama: init & cleanup
   useEffect(() => {
     if (!CURRENT_ROOM_ID) return;
     checkUserAndInit();
+
+    // Cleanup saat komponen unmount atau CURRENT_ROOM_ID berubah
+    return () => {
+      if (roomRef.current) {
+        roomRef.current.disconnect();
+      }
+      supabase.removeAllChannels();
+    };
   }, [CURRENT_ROOM_ID]);
 
   const checkUserAndInit = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return router.push('/login');
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
     if (!profile) return;
     setCurrentUser(profile);
 
-    const { data: roomData } = await supabase.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
+    // Update room active jika owner
+    const { data: roomData } = await supabase
+      .from('rooms')
+      .select('owner_id, is_active')
+      .eq('id', CURRENT_ROOM_ID)
+      .maybeSingle();
+
     if (roomData?.owner_id === profile.id) {
-        setIsOwner(true);
-        await supabase.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
+      setIsOwner(true);
+      await supabase.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
     }
-    fetchStage();
+
+    // Kirim profile.id ke fetchStage agar tidak bergantung state currentUser yang asinkron
+    fetchStage(profile.id);
     fetchTopGifters();
     initLiveKit(profile.id, profile.username);
     listenRealtime();
   };
 
-  const fetchStage = async () => {
-    const { data: stg } = await supabase.from('room_slots')
-        .select(`slot_index, profile_id, profiles (username, avatar_url, mic_off, level, role)`)
-        .eq('room_id', CURRENT_ROOM_ID)
-        .order('slot_index', { ascending: true });
-    
+  const fetchStage = async (userId?: string) => {
+    const { data: stg } = await supabase
+      .from('room_slots')
+      .select(`slot_index, profile_id, profiles (username, avatar_url, mic_off, level, role)`)
+      .eq('room_id', CURRENT_ROOM_ID)
+      .order('slot_index', { ascending: true });
+
     const normalized = (stg || []).map((s: any) => ({
       ...s,
-      profiles: Array.isArray(s.profiles) ? s.profiles[0] : s.profiles
+      profiles: Array.isArray(s.profiles) ? s.profiles[0] : s.profiles,
     }));
 
-    const finalSlots = Array.from({ length: 6 }, (_, i) => normalized.find(s => s.slot_index === i) || { slot_index: i, profile_id: null });
+    const finalSlots = Array.from({ length: 6 }, (_, i) =>
+      normalized.find(s => s.slot_index === i) || { slot_index: i, profile_id: null }
+    );
     setSlots(finalSlots);
 
-    const mySlot = normalized.find((s: any) => s.profile_id === currentUser?.id);
-    if (mySlot?.profiles) setIsMicOn(!mySlot.profiles.mic_off);
+    // Gunakan userId yang diberikan, fallback ke currentUser.id jika tidak ada
+    const currentId = userId || currentUser?.id;
+    const mySlot = normalized.find((s: any) => s.profile_id === currentId);
+    if (mySlot?.profiles) {
+      setIsMicOn(!mySlot.profiles.mic_off);
+    }
   };
 
   const initLiveKit = async (userId: string, username: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-livekit-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ username, identity: userId, roomName: CURRENT_ROOM_ID })
-      });
+      // Putuskan room sebelumnya jika ada (mencegah dobel koneksi)
+      if (roomRef.current) {
+        roomRef.current.disconnect();
+      }
+
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!anonKey) throw new Error('Anon key not found');
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-livekit-token`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: anonKey,
+            Authorization: `Bearer ${anonKey}`,
+          },
+          body: JSON.stringify({ username, identity: userId, roomName: CURRENT_ROOM_ID }),
+        }
+      );
       const { token } = await res.json();
+
       const lkRoom = new Room({ adaptiveStream: true });
-      lkRoom.on(RoomEvent.ActiveSpeakersChanged, (s) => setActiveSpeakers(s.map(p => p.identity)));
-      lkRoom.on(RoomEvent.TrackSubscribed, (t) => { if (t.kind === "audio") { const el = t.attach(); document.body.appendChild(el); el.play().catch(()=>{}); }});
-      await lkRoom.connect("wss://voicegrup-zxmeibkn.livekit.cloud", token);
+
+      lkRoom.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        setActiveSpeakers(speakers.map(p => p.identity));
+      });
+
+      lkRoom.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind === 'audio') {
+          const el = track.attach();
+          document.body.appendChild(el);
+          el.play().catch(() => {});
+        }
+      });
+
+      await lkRoom.connect('wss://voicegrup-zxmeibkn.livekit.cloud', token);
+
       setRoomLk(lkRoom);
-    } catch (e) { console.error(e); }
+      roomRef.current = lkRoom;
+    } catch (e) {
+      console.error('LiveKit init error:', e);
+    }
   };
 
   const listenRealtime = () => {
-    supabase.channel(`voice_${CURRENT_ROOM_ID}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots' }, fetchStage)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages' }, (p) => {
-        setChatMessages(prev => [...prev, p.new]);
-        if (p.new.username === "SISTEM_GIFT") fetchTopGifters();
-      })
+    // Hapus semua channel sebelum membuat baru agar tidak dobel
+    supabase.removeAllChannels();
+
+    supabase
+      .channel(`voice_${CURRENT_ROOM_ID}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'room_slots' },
+        () => fetchStage() // fetchStage bisa pakai currentUser.id sekarang (aman)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'room_messages' },
+        (payload) => {
+          setChatMessages(prev => [...prev, payload.new]);
+          if (payload.new.username === 'SISTEM_GIFT') {
+            fetchTopGifters();
+          }
+        }
+      )
       .subscribe();
   };
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   const toggleMic = async () => {
     if (!roomLk) return;
     const nextStatus = !isMicOn;
-    await roomLk.localParticipant.setMicrophoneEnabled(nextStatus);
-    await supabase.from('profiles').update({ mic_off: !nextStatus }).eq('id', currentUser.id);
-    setIsMicOn(nextStatus);
-    setIsSidebarOpen(false);
-    fetchStage();
+    try {
+      await roomLk.localParticipant.setMicrophoneEnabled(nextStatus);
+      await supabase
+        .from('profiles')
+        .update({ mic_off: !nextStatus })
+        .eq('id', currentUser.id);
+      setIsMicOn(nextStatus);
+      setIsSidebarOpen(false);
+      fetchStage(); // refresh tampilan mute
+    } catch (e) {
+      console.error('Toggle mic error:', e);
+    }
   };
 
   const sendGift = async (giftName: string, harga: number, giftId: number) => {
-    // Logic gift original lo (RPC transfer, history, insert message) - Disederhanakan untuk UI
-    setCurrentUser((prev:any) => ({ ...prev, coins: prev.coins - harga }));
-    setGiftAnim({ show: true, giftId, count: 1 });
-    setTimeout(() => setGiftAnim(prev => ({ ...prev, show: false })), 3000);
-    await supabase.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM_GIFT", text: `${currentUser.username} mengirim ${giftName} x1`, role: giftId.toString(), level: 1 }]);
+    try {
+      // ⚠️ Di sini lo bisa tambahkan RPC transfer koin, history, dsb. Pakai await!
+      // const { error } = await supabase.rpc('transfer_gift', { ... });
+      // if (error) throw error;
+
+      const { error: msgError } = await supabase.from('room_messages').insert([
+        {
+          room_id: CURRENT_ROOM_ID,
+          username: 'SISTEM_GIFT',
+          text: `${currentUser.username} mengirim ${giftName} x1`,
+          role: giftId.toString(),
+          level: 1,
+        },
+      ]);
+      if (msgError) throw msgError;
+
+      // Update UI (optimistic)
+      setCurrentUser((prev: any) => ({ ...prev, coins: prev.coins - harga }));
+      setGiftAnim({ show: true, giftId, count: 1 });
+      setTimeout(() => setGiftAnim(prev => ({ ...prev, show: false })), 3000);
+    } catch (e) {
+      console.error('Send gift error:', e);
+    }
   };
 
   const fetchTopGifters = async () => {
-    const { data } = await supabase.from('profiles').select('username, avatar_url, total_gift_sent').gt('total_gift_sent', 0).order('total_gift_sent', { ascending: false }).limit(3); 
+    const { data } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, total_gift_sent')
+      .gt('total_gift_sent', 0)
+      .order('total_gift_sent', { ascending: false })
+      .limit(3);
     if (data) setTopGifters(data);
   };
 
@@ -140,26 +248,45 @@ function VoiceRoomContent() {
       <header className="main-header">
         <div className="header-left">
           <h1 className="room-title">{CURRENT_ROOM_NAME}</h1>
-          <div className="online-status"><div className="online-dot" /> <span>Online</span></div>
+          <div className="online-status">
+            <div className="online-dot" /> <span>Online</span>
+          </div>
         </div>
-        <span className="material-icons" onClick={() => setIsSidebarOpen(true)}>menu</span>
+        <span className="material-icons" onClick={() => setIsSidebarOpen(true)}>
+          menu
+        </span>
       </header>
 
       <section className="stage-container">
         {slots.map((s, i) => (
           <div key={i} className="speaker-item">
-            <div className={`avatar ${activeSpeakers.includes(s.profile_id) ? 'speaking' : ''}`}>
-              {s.profiles ? <img src={s.profiles.avatar_url} /> : <span className="material-icons">add</span>}
-              {s.profiles?.mic_off && <div className="mute-badge"><span className="material-icons" style={{fontSize:'12px',color:'red'}}>mic_off</span></div>}
+            <div
+              className={`avatar ${activeSpeakers.includes(s.profile_id) ? 'speaking' : ''}`}
+            >
+              {s.profiles ? (
+                <img src={s.profiles.avatar_url} alt="avatar" />
+              ) : (
+                <span className="material-icons">add</span>
+              )}
+              {s.profiles?.mic_off && (
+                <div className="mute-badge">
+                  <span className="material-icons" style={{ fontSize: '12px', color: 'red' }}>
+                    mic_off
+                  </span>
+                </div>
+              )}
             </div>
-            <span className="name-label">{s.profiles?.username || "KOSONG"}</span>
+            <span className="name-label">{s.profiles?.username || 'KOSONG'}</span>
           </div>
         ))}
       </section>
 
       <div className="chat-display">
         {chatMessages.map(m => (
-          <div key={m.id} className={`msg ${m.username === 'SISTEM_GIFT' ? 'system-gift' : ''}`}>
+          <div
+            key={m.id}
+            className={`msg ${m.username === 'SISTEM_GIFT' ? 'system-gift' : ''}`}
+          >
             {m.username !== 'SISTEM_GIFT' && <b>{m.username}: </b>} {m.text}
           </div>
         ))}
@@ -167,48 +294,97 @@ function VoiceRoomContent() {
       </div>
 
       <footer className="footer-controls">
-        <button className="btn-gift-main" onClick={() => setIsDrawerOpen(true)}><span className="material-icons">redeem</span></button>
+        <button className="btn-gift-main" onClick={() => setIsDrawerOpen(true)}>
+          <span className="material-icons">redeem</span>
+        </button>
         <div className="input-wrapper">
-          <input id="chat-input" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ketik komentar..." />
+          <input
+            id="chat-input"
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            placeholder="Ketik komentar..."
+          />
         </div>
       </footer>
 
-      {/* OVERLAYS - SEMUA FIXED KE CONTAINER */}
-      <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      {/* Sidebar */}
+      <div
+        className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
       <aside className={`sidebar ${isSidebarOpen ? 'active' : ''}`}>
         <div className="sidebar-header">
-            <div className="profile-img-wrapper">
-                <img src={currentUser?.avatar_url || '/asets/png/profile.png'} className="sidebar-profile-img" />
-            </div>
-            <b>{currentUser?.username}</b>
+          <div className="profile-img-wrapper">
+            <img
+              src={currentUser?.avatar_url || '/asets/png/profile.png'}
+              className="sidebar-profile-img"
+              alt="profile"
+            />
+          </div>
+          <b>{currentUser?.username}</b>
         </div>
         <div className="sidebar-menu">
-            <a onClick={toggleMic} style={{cursor:'pointer'}}><div className="menu-icon-box"><span className="material-icons">{isMicOn ? 'mic' : 'mic_off'}</span></div><span>{isMicOn ? 'Matikan Mic' : 'Nyalakan Mic'}</span></a>
-            <a onClick={() => router.push('/voice-room')} style={{cursor:'pointer', color:'red'}}><div className="menu-icon-box" style={{background:'#fee2e2'}}><span className="material-icons">logout</span></div><span>Keluar Ruangan</span></a>
+          <a onClick={toggleMic} style={{ cursor: 'pointer' }}>
+            <div className="menu-icon-box">
+              <span className="material-icons">{isMicOn ? 'mic' : 'mic_off'}</span>
+            </div>
+            <span>{isMicOn ? 'Matikan Mic' : 'Nyalakan Mic'}</span>
+          </a>
+          <a
+            onClick={() => router.push('/voice-room')}
+            style={{ cursor: 'pointer', color: 'red' }}
+          >
+            <div className="menu-icon-box" style={{ background: '#fee2e2' }}>
+              <span className="material-icons">logout</span>
+            </div>
+            <span>Keluar Ruangan</span>
+          </a>
         </div>
       </aside>
 
-      <div className={`drawer-overlay ${isDrawerOpen ? 'show' : ''}`} onClick={() => setIsDrawerOpen(false)} />
+      {/* Gift Drawer */}
+      <div
+        className={`drawer-overlay ${isDrawerOpen ? 'show' : ''}`}
+        onClick={() => setIsDrawerOpen(false)}
+      />
       <div className={`gift-drawer ${isDrawerOpen ? 'open' : ''}`}>
         <div className="handle" />
-        <div className="drawer-header"><span className="drawer-title">KIRIM HADIAH</span><div className="coin-panel"><span>{currentUser?.coins}</span></div></div>
+        <div className="drawer-header">
+          <span className="drawer-title">KIRIM HADIAH</span>
+          <div className="coin-panel">
+            <span>{currentUser?.coins}</span>
+          </div>
+        </div>
         <div className="gift-list">
           {GIFTS.map(g => (
-            <div key={g.id} className="gift-item" onClick={() => sendGift(g.name, g.price, g.id)}>
-              <img src={`/asets/png/gift${g.id}.png`} className="gift-img"/>
+            <div
+              key={g.id}
+              className="gift-item"
+              onClick={() => sendGift(g.name, g.price, g.id)}
+            >
+              <img src={`/asets/png/gift${g.id}.png`} className="gift-img" alt={g.name} />
               <div className="gift-price">{g.price}</div>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Gift Animation Overlay */}
       <div id="gift-anim-overlay" className={giftAnim.show ? 'show' : ''}>
-         <img id="gift-anim-img" src={`/asets/gif/giftvid${giftAnim.giftId}.gif`} />
+        <img
+          id="gift-anim-img"
+          src={`/asets/gif/giftvid${giftAnim.giftId}.gif`}
+          alt="gift animation"
+        />
       </div>
     </div>
   );
 }
 
 export default function VoiceRoomPage() {
-  return <Suspense fallback={null}><VoiceRoomContent /></Suspense>;
+  return (
+    <Suspense fallback={null}>
+      <VoiceRoomContent />
+    </Suspense>
+  );
 }

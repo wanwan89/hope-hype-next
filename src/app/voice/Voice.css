@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ==================================================
-   1. THEME VARIABLES (PREMIUM PALETTE) - TETAP SAMA
+   1. THEME VARIABLES (PREMIUM PALETTE)
 ================================================== */
 :root, [data-theme="light"] {
     --primary: #3b82f6;         
@@ -15,7 +15,6 @@
     --text-main: #0f172a;       
     --text-muted: #64748b;      
     --danger: #ef4444;
-    --vh: 1vh;
     --msg-bg: rgba(255, 255, 255, 0.95);
     --msg-border: rgba(0, 0, 0, 0.04);
     --msg-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
@@ -65,59 +64,156 @@
 }
 
 /* ==================================================
-   2. RESET & PERFORMANCE OPTIMIZATION
+   2. RESET & BASE
 ================================================== */
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; margin: 0; padding: 0; user-select: none; }
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
 
-/* FIX: Jangan kunci overflow di body agar halaman lain bisa scroll */
 body, html {
     width: 100%;
     height: 100%;
-    background-color: #cbd5e1; /* Background luar panggung */
+    background-color: #cbd5e1;
     font-family: 'Inter', sans-serif;
+    /* Jangan kunci overflow di sini, hanya di app-container */
 }
 
-/* Kunci overflow HANYA di app-container */
+/* Container utama: layar penuh, max 480px, jadi seperti HP di tengah */
 .app-container {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
+    height: 100dvh; /* dynamic viewport height */
     width: 100%;
-    position: relative; /* JANGKAR UNTUK MODAL/SIDEBAR */
+    position: relative; /* PENTING: jadi anchor untuk absolute child (sidebar, drawer, overlay) */
     background-color: var(--bg-base);
     transition: background-color 0.4s ease;
-    max-width: 480px; 
+    max-width: 480px;
     margin: 0 auto;
-    box-shadow: 0 0 40px rgba(0,0,0,0.15);
-    overflow: hidden; /* Scroll dikunci cuma di sini */
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
+    overflow: hidden; /* cegah scroll container ini sendiri; scroll hanya di chat-display */
 }
 
-input, textarea, .msg span, .msg .user { user-select: text; }
-::-webkit-scrollbar { width: 0px; background: transparent; display: none; }
+/* Bagian teks tertentu bisa diseleksi */
+input, textarea, .msg span, .msg b {
+    user-select: text;
+}
 
-/* === HEADER, STAGE, CHAT (TETAP SAMA) === */
+::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+    display: none;
+}
+
+/* ==================================================
+   3. HEADER
+================================================== */
 .main-header {
     padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-    display: flex; justify-content: space-between; align-items: center;
-    background: var(--header-bg); border-bottom: 1px solid var(--border); 
-    backdrop-filter: blur(12px); z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 100;
+    flex-shrink: 0;
 }
 
+.header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.room-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.online-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--success);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.online-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--success);
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.material-icons {
+    font-size: 24px;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+/* ==================================================
+   4. STAGE (SPEAKER GRID)
+================================================== */
 .stage-container {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 15px 12px; padding: 20px 16px; background: var(--panel-bg);
-    border-radius: 0 0 32px 32px; border-bottom: 1px solid var(--border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); z-index: 90; flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px 12px;
+    padding: 20px 16px;
+    background: var(--panel-bg);
+    border-radius: 0 0 32px 32px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    z-index: 90;
+    flex-shrink: 0;
+}
+
+.speaker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
 }
 
 .avatar {
-    width: 72px; height: 72px; border-radius: 50%; 
-    background: var(--empty-slot); position: relative; border: 3px solid var(--panel-bg);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.08); transition: 0.3s; cursor: pointer;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--empty-slot);
+    position: relative;
+    border: 3px solid var(--panel-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+    transition: 0.3s;
+    cursor: pointer;
 }
-.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-.avatar.speaking { border-color: var(--success) !important; animation: sonar-premium 2s infinite ease-out; }
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar.speaking {
+    border-color: var(--success) !important;
+    animation: sonar-premium 2s infinite ease-out;
+}
 
 @keyframes sonar-premium {
     0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
@@ -125,49 +221,388 @@ input, textarea, .msg span, .msg .user { user-select: text; }
     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
-.chat-display { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
-
-/* === FIXED OVERLAYS FIX (KUNCI KE CONTAINER) === */
-
-/* Overlay, Sidebar, dan Drawer pakai ABSOLUTE agar nempel di kotak 480px */
-.drawer-overlay, .sidebar-overlay, .modal-overlay, #gift-anim-overlay {
-    position: absolute !important; 
-    inset: 0; 
-    z-index: 500; 
-    background: rgba(0, 0, 0, 0.5); 
-    display: none; 
+.mute-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: var(--danger);
+    border-radius: 50%;
+    padding: 2px;
+    border: 2px solid var(--panel-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.drawer-overlay.show, .sidebar-overlay.active, .modal-overlay.show, #gift-anim-overlay.show { display: flex; align-items: center; justify-content: center; }
 
-.gift-drawer {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background: var(--bg-base); border-top-left-radius: 32px; border-top-right-radius: 32px;
-    z-index: 510; padding: 24px 20px; transform: translateY(100%); 
-    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+.name-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    max-width: 80px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
-.gift-drawer.open { transform: translateY(0); }
 
-.sidebar {
-    position: absolute; top: 0; right: 0; bottom: 0; width: 290px;
-    background: var(--panel-bg); z-index: 520; transform: translateX(100%);
-    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-    box-shadow: var(--sidebar-shadow); border-left: 1px solid var(--border);
-    display: flex; flex-direction: column; padding: 24px 20px;
+/* ==================================================
+   5. CHAT AREA
+================================================== */
+.chat-display {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
-.sidebar.active { transform: translateX(0); }
 
-.modal-box { 
-    background: var(--modal-bg); width: 88%; max-width: 380px; 
-    border-radius: 28px; padding: 26px 24px; border: 1px solid var(--border);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); z-index: 530;
-    transform: scale(0.9) translateY(20px); opacity: 0; pointer-events: none; transition: 0.3s;
+/* Pesan biasa */
+.msg {
+    background: var(--msg-bg);
+    border: 1px solid var(--msg-border);
+    border-radius: 16px;
+    padding: 10px 14px;
+    box-shadow: var(--msg-shadow);
+    font-size: 13px;
+    color: var(--text-main);
+    line-height: 1.5;
+    max-width: 85%;
+    align-self: flex-start;
+    word-wrap: break-word;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
-.modal-overlay.show .modal-box { transform: scale(1) translateY(0); opacity: 1; pointer-events: auto; }
 
-/* Action Bar Fixed ke Container */
+.msg b {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+/* Pesan system / gift */
+.msg.system-gift {
+    background: var(--sys-gift-bg);
+    border: 1px solid var(--sys-border);
+    color: var(--sys-gift-text);
+    font-weight: 600;
+    text-align: center;
+    max-width: 90%;
+    align-self: center;
+}
+
+/* ==================================================
+   6. FOOTER
+================================================== */
 .footer-controls {
-    padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom));
-    background: var(--panel-bg); border-top: 1px solid var(--border); 
-    display: flex; gap: 12px; align-items: center; z-index: 400;
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: var(--panel-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    z-index: 400;
+    flex-shrink: 0;
+    box-shadow: var(--footer-shadow);
+}
+
+.btn-gift-main {
+    background: linear-gradient(135deg, var(--accent), #f97316);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-gift-main:active {
+    transform: scale(0.92);
+}
+
+.btn-gift-main .material-icons {
+    color: white;
+    font-size: 22px;
+}
+
+.input-wrapper {
+    flex: 1;
+    background: var(--input-bg);
+    border-radius: 28px;
+    overflow: hidden;
+    padding: 4px;
+}
+
+#chat-input {
+    width: 100%;
+    height: 40px;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 14px;
+    padding: 0 16px;
+    border-radius: 28px;
+    font-family: 'Inter', sans-serif;
+}
+
+#chat-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+/* ==================================================
+   7. OVERLAY & SIDEBAR (ABSOLUTE, DI DALAM CONTAINER)
+================================================== */
+/* Overlay dasar (sidebar, drawer, modal) */
+.sidebar-overlay,
+.drawer-overlay,
+.modal-overlay,
+#gift-anim-overlay {
+    position: absolute !important;
+    inset: 0;
+    z-index: 500;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    transition: opacity 0.3s;
+}
+
+/* Saat aktif, overlay muncul */
+.sidebar-overlay.active,
+.drawer-overlay.show,
+.modal-overlay.show,
+#gift-anim-overlay.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Sidebar */
+.sidebar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 290px;
+    background: var(--panel-bg);
+    z-index: 520;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: var(--sidebar-shadow);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 20px;
+}
+
+.sidebar.active {
+    transform: translateX(0);
+}
+
+.sidebar-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+}
+
+.profile-img-wrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--primary-soft);
+}
+
+.sidebar-profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-menu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    text-decoration: none;
+    color: var(--text-main);
+    font-weight: 600;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.sidebar-menu a:active {
+    background: var(--primary-soft);
+}
+
+.menu-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--input-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-icon-box .material-icons {
+    font-size: 20px;
+}
+
+/* Gift Drawer (dari bawah) */
+.gift-drawer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-base);
+    border-top-left-radius: 32px;
+    border-top-right-radius: 32px;
+    z-index: 510;
+    padding: 24px 20px 32px;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+}
+
+.gift-drawer.open {
+    transform: translateY(0);
+}
+
+.handle {
+    width: 36px;
+    height: 5px;
+    background: var(--border);
+    border-radius: 10px;
+    margin: 0 auto 20px;
+    opacity: 0.6;
+}
+
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.drawer-title {
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 16px;
+}
+
+.coin-panel {
+    background: var(--accent);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.gift-list {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+.gift-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.gift-item:active {
+    transform: scale(0.9);
+}
+
+.gift-img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+}
+
+.gift-price {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--input-bg);
+    padding: 2px 10px;
+    border-radius: 20px;
+}
+
+/* ==================================================
+   8. GIFT ANIMATION (TENGAH LAYAR)
+================================================== */
+#gift-anim-overlay {
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 600;
+}
+
+#gift-anim-img {
+    max-width: 70%;
+    max-height: 70%;
+    object-fit: contain;
+    animation: gift-pop 0.4s ease-out;
+}
+
+@keyframes gift-pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    80% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* ==================================================
+   9. MODAL (JIKA DIPAKAI NANTI)
+================================================== */
+.modal-box {
+    background: var(--modal-bg);
+    width: 88%;
+    max-width: 380px;
+    border-radius: 28px;
+    padding: 26px 24px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    z-index: 530;
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.3s;
+}
+
+.modal-overlay.show .modal-box {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ==================================================
+   10. RESPONSIVE UNTUK LAYAR SANGAT KECIL
+================================================== */
+@media (max-width: 360px) {
+    .avatar {
+        width: 60px;
+        height: 60px;
+    }
+    .stage-container {
+        gap: 10px 8px;
+        padding: 14px 12px;
+    }
 }
