@@ -112,6 +112,8 @@ export default function HypetalkPage() {
               avatar: p.avatar_url, 
               role: p.role, 
               preview: msgPreview,
+              lastMsgUserId: lastMsg.user_id, // Untuk ceklis
+              lastMsgStatus: lastMsg.status, // Untuk ceklis
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
               sortTime: new Date(lastMsg.created_at).getTime(),
               unread: unreadMap.get(p.id) || 0 
@@ -142,13 +144,10 @@ export default function HypetalkPage() {
 
   const subscribeToInbox = (userId: string) => {
     const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
-    
     supabase.channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: any) => {
         const isRelated = payload.new?.room_id?.includes(userId) || payload.old?.room_id?.includes(userId);
-        if (isRelated) {
-          loadAllChats(userId, true);
-        }
+        if (isRelated) loadAllChats(userId, true);
       })
       .subscribe();
   };
@@ -157,12 +156,10 @@ export default function HypetalkPage() {
 
   useEffect(() => {
     if (!currentUser || !privateChatIds) return;
-    
     const ids = privateChatIds.split(',');
     const channels = ids.map(chatId => {
       const userIds = [currentUser.id, chatId].sort();
       const roomId = `pv_${userIds[0]}_${userIds[1]}`;
-      
       return supabase.channel(`presence-${roomId}`)
         .on('broadcast', { event: 'typing' }, (p: any) => {
           if (p.payload.username !== currentUser.username) {
@@ -172,7 +169,6 @@ export default function HypetalkPage() {
         })
         .subscribe();
     });
-
     return () => { channels.forEach(c => c && supabase.removeChannel(c)); };
   }, [privateChatIds, currentUser]);
 
@@ -194,15 +190,12 @@ export default function HypetalkPage() {
   const handleCariDoi = async () => {
     if (sisaLimitDoi <= 0) return openModal('limit-doi');
     if (!currentUser?.gender) return openModal('bio');
-
     const newLimit = sisaLimitDoi - 1;
     setSisaLimitDoi(newLimit);
     localStorage.setItem('doi_limit', String(newLimit));
     setIsSidebarOpen(false);
     setIsSearchingDoi(true);
-
     const lawanJenis = currentUser.gender === "Pria" ? "Wanita" : "Pria";
-    
     setTimeout(async () => {
       try {
         const { data: users } = await supabase.from("profiles").select("*").neq("id", currentUser.id).eq("gender", lawanJenis);
@@ -218,11 +211,8 @@ export default function HypetalkPage() {
     if(!searchUserId) return;
     const cleanId = searchUserId.replace('#', '').toUpperCase();
     const { data: target } = await supabase.from('profiles').select('id').eq('short_id', cleanId).maybeSingle();
-    if (target) {
-      router.push(`/hypetalk/chat?from=${target.id}`);
-    } else {
-      showNotif("ID tidak ditemukan", "error");
-    }
+    if (target) router.push(`/hypetalk/chat?from=${target.id}`);
+    else showNotif("ID tidak ditemukan", "error");
   };
 
   const handleCreateGroup = async () => {
@@ -230,37 +220,23 @@ export default function HypetalkPage() {
     try {
       const { data: newGroup, error } = await supabase.from('groups').insert([{ name: groupName, created_by: currentUser.id }]).select().single();
       if (error) throw error;
-      
       await supabase.from('group_members').insert([{ group_id: newGroup.id, user_id: currentUser.id }]);
       showNotif("Grup berhasil dibuat!", "success");
       closeModal();
       router.push(`/hypetalk/chat?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
-    } catch (err) {
-      showNotif("Gagal membuat grup", "error");
-    }
+    } catch (err) { showNotif("Gagal membuat grup", "error"); }
   };
 
   const handleOpenChat = (chat: any) => {
     setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
-
     if (chat.type === 'private') {
       const ids = [currentUser.id, chat.id].sort();
       const roomId = `pv_${ids[0]}_${ids[1]}`;
-      supabase.from('messages')
-        .update({ status: 'read' })
-        .eq('room_id', roomId)
-        .neq('user_id', currentUser.id) 
-        .neq('status', 'read')
-        .then();
+      supabase.from('messages').update({ status: 'read' }).eq('room_id', roomId).neq('user_id', currentUser.id).neq('status', 'read').then();
     }
-
-    if (chat.type === 'global') {
-      router.push('/hypetalk/room-1');
-    } else if (chat.type === 'group') {
-      router.push(`/hypetalk/chat?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
-    } else {
-      router.push(`/hypetalk/chat?from=${chat.id}`);
-    }
+    if (chat.type === 'global') router.push('/hypetalk/room-1');
+    else if (chat.type === 'group') router.push(`/hypetalk/chat?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
+    else router.push(`/hypetalk/chat?from=${chat.id}`);
   };
 
   const filteredChats = chats.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -275,7 +251,6 @@ export default function HypetalkPage() {
             </button>
             <h2>Hypetalk</h2>
           </div>
-          {/* FIXED: Tombol Settings Dihapus */}
         </div>
         <div className="tg-search-container">
           <div className="tg-search-box">
@@ -304,15 +279,20 @@ export default function HypetalkPage() {
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {typingStatus[chat.id] ? (
-                    <p className="tg-preview" style={{ color: '#3a7bd5', fontStyle: 'italic', fontWeight: 600, margin: 0, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                      sedang mengetik...
+                  <div className="tg-preview-container" style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    
+                    {/* FIX: TAMBAHKAN CEKLIS TANDA BACA */}
+                    {!typingStatus[chat.id] && chat.lastMsgUserId === currentUser?.id && chat.type === 'private' && (
+                      <span className="material-icons" style={{ fontSize: '15px', marginRight: '4px', color: chat.lastMsgStatus === 'read' ? '#3a7bd5' : 'var(--text-muted)' }}>
+                        {chat.lastMsgStatus === 'read' ? 'done_all' : 'done'}
+                      </span>
+                    )}
+
+                    <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#3a7bd5' : 'var(--text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {typingStatus[chat.id] ? 'sedang mengetik...' : chat.preview}
                     </p>
-                  ) : (
-                    <p className="tg-preview" style={{ margin: 0, color: 'var(--text-muted)', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                      {chat.preview}
-                    </p>
-                  )}
+                  </div>
+
                   {chat.unread > 0 && (
                     <div style={{ background: '#3a7bd5', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
                       {chat.unread}
@@ -345,7 +325,30 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* MODALS */}
+      {/* MODAL DOI CARD DENGAN DESIGN PREMIUM (NO ICON SYSTEM JELEK) */}
+      {activeModal === 'doi-card' && foundDoi && (
+        <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
+          <div className="custom-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header"><h3>Kecocokan Ditemukan!</h3><button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button></div>
+            
+            <div className="doi-profile-box" style={{ padding: '10px 0', textAlign: 'center' }}>
+              <img src={foundDoi.avatar_url || "/asets/png/profile.webp"} alt="Doi" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #ff4757', boxShadow: '0 0 15px rgba(255, 71, 87, 0.3)', marginBottom: '12px' }} />
+              <h2 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 15px 0', color: 'var(--text-color)' }}>{foundDoi.username}, {foundDoi.umur || '??'}</h2>
+              
+              <div className="doi-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
+                {foundDoi.pekerjaan && <span className="d-tag" style={{ background: '#eef2ff', color: '#4f46e5', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>work</span> {foundDoi.pekerjaan}</span>}
+                {foundDoi.hobi && <span className="d-tag" style={{ background: '#fef2f2', color: '#dc2626', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>palette</span> {foundDoi.hobi}</span>}
+                {foundDoi.zodiak && <span className="d-tag" style={{ background: '#fff7ed', color: '#d97706', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>auto_awesome</span> {foundDoi.zodiak}</span>}
+                {!foundDoi.pekerjaan && !foundDoi.hobi && !foundDoi.zodiak && <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Belum mengisi bio lengkap</span>}
+              </div>
+            </div>
+
+            <button className="action-btn love-btn" onClick={() => router.push(`/hypetalk/chat?from=${foundDoi.id}`)} style={{ width: '100%', background: 'linear-gradient(135deg, #ff4757, #ff7755)', borderRadius: '15px', fontWeight: '800' }}>Gas Chat 🚀</button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SEARCH ID */}
       {activeModal === 'search' && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -359,6 +362,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
+      {/* MODAL BUAT GRUP */}
       {activeModal === 'group' && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -372,6 +376,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
+      {/* MODAL BIO */}
       {activeModal === 'bio' && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -380,29 +385,10 @@ export default function HypetalkPage() {
               <div className="input-group"><input type="number" placeholder="Umur" value={bioForm.umur} onChange={e => setBioForm({...bioForm, umur: e.target.value})} /></div>
               <div className="input-group"><select value={bioForm.gender} onChange={e => setBioForm({...bioForm, gender: e.target.value})}><option value="Pria">Pria</option><option value="Wanita">Wanita</option></select></div>
               <input type="text" className="input-group" placeholder="Pekerjaan" value={bioForm.pekerjaan} onChange={e => setBioForm({...bioForm, pekerjaan: e.target.value})} />
-              <input type="text" className="input-group" placeholder="Hobi (Contoh: Main Game)" value={bioForm.hobi} onChange={e => setBioForm({...bioForm, hobi: e.target.value})} />
+              <input type="text" className="input-group" placeholder="Hobi" value={bioForm.hobi} onChange={e => setBioForm({...bioForm, hobi: e.target.value})} />
               <input type="text" className="input-group" placeholder="Zodiak" value={bioForm.zodiak} onChange={e => setBioForm({...bioForm, zodiak: e.target.value})} />
             </div>
             <button className="action-btn" onClick={handleSaveBio} disabled={isSavingBio}>Simpan</button>
-          </div>
-        </div>
-      )}
-
-      {activeModal === 'doi-card' && foundDoi && (
-        <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
-          <div className="custom-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header"><h3>Kecocokan Ditemukan!</h3><button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button></div>
-            <div className="doi-profile-box" style={{ padding: '20px', background: 'var(--label-bg)', borderRadius: '16px', marginBottom: '20px' }}>
-              <img src={foundDoi.avatar_url || "/asets/png/profile.webp"} alt="Doi" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #ff4757', marginBottom: '10px' }} />
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 5px 0' }}>{foundDoi.username}, {foundDoi.umur}</h2>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6', textAlign: 'center' }}>
-                {foundDoi.pekerjaan && <div>💼 {foundDoi.pekerjaan}</div>}
-                {foundDoi.hobi && <div>🎨 {foundDoi.hobi}</div>}
-                {foundDoi.zodiak && <div>✨ {foundDoi.zodiak}</div>}
-                {!foundDoi.pekerjaan && !foundDoi.hobi && !foundDoi.zodiak && <div><i>Belum mengisi bio lengkap</i></div>}
-              </div>
-            </div>
-            <button className="action-btn love-btn" onClick={() => router.push(`/hypetalk/chat?from=${foundDoi.id}`)} style={{ width: '100%', background: 'linear-gradient(135deg, #ff4757, #ff7755)' }}>Gas Chat 🚀</button>
           </div>
         </div>
       )}
