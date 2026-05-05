@@ -1,0 +1,188 @@
+:root {
+  --bg-app: #f4f7fc;
+  --bg-card: #ffffff;      
+  --primary: #2563eb;
+  --primary-light: #eff6ff; 
+  --text-dark: #0f172a;    
+  --text-muted: #64748b;   
+  --accent-coin: #f59e0b;  
+}
+
+html.dark {
+  --bg-app: #0f172a;
+  --bg-card: #1e293b;      
+  --primary: #3b82f6;
+  --primary-light: rgba(59, 130, 246, 0.1); 
+  --text-dark: #f8fafc;    
+  --text-muted: #94a3b8;   
+  --accent-coin: #fbbf24;  
+}
+
+.voice-lobby-container {
+  padding-bottom: 100px; 
+  max-width: 480px; 
+  margin: 0 auto;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+  font-family: 'Inter', sans-serif;
+  color: var(--text-dark);
+}
+
+/* Header & Profile */
+.lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+}
+.header-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-profile img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--primary);
+}
+.header-info h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.coin-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-coin);
+  background: rgba(245, 158, 11, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-top: 4px;
+}
+
+/* Hero Section */
+.hero-banner {
+  margin: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--primary), #00d2ff);
+  border-radius: 20px;
+  color: white;
+  text-align: center;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+}
+.hero-banner h2 { margin: 0 0 10px; font-size: 20px; font-weight: 800; }
+.hero-banner p { margin: 0 0 15px; font-size: 13px; opacity: 0.9; }
+.btn-start-singing {
+  background: white;
+  color: var(--primary);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.btn-start-singing:active { transform: scale(0.95); }
+
+/* Tabs */
+.tabs-container {
+  display: flex;
+  gap: 10px;
+  padding: 0 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tabs-container::-webkit-scrollbar { display: none; }
+.tab-item {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color, #e2e8f0);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+.tab-item.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Room List */
+.room-list {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.room-card {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  gap: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.room-card:active { transform: scale(0.98); }
+.room-thumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.room-info { flex: 1; min-width: 0; }
+.room-info h4 { margin: 0 0 4px; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-info p { margin: 0; font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.online-pill {
+  background: rgba(46, 204, 113, 0.1);
+  color: #2ecc71;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Skeletons */
+.skeleton { background: linear-gradient(90deg, var(--bg-card) 25%, var(--primary-light) 50%, var(--bg-card) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite linear; border-radius: 8px; }
+.skeleton-card { display: flex; gap: 15px; padding: 15px; background: var(--bg-card); border-radius: 16px; }
+.skeleton-thumb { width: 50px; height: 50px; border-radius: 12px; }
+.skeleton-title { height: 16px; width: 60%; margin-bottom: 8px; }
+.skeleton-desc { height: 12px; width: 80%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Create Room Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease; }
+.modal-content { background: var(--bg-card); width: 100%; max-width: 320px; border-radius: 24px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.modal-content h3 { margin: 0 0 20px; font-size: 18px; text-align: center; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+.form-group input, .form-group select { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: var(--bg-app); color: var(--text-dark); outline: none; font-family: 'Inter', sans-serif; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-btn { flex: 1; padding: 12px; border-radius: 14px; font-weight: 700; border: none; cursor: pointer; }
+.btn-cancel { background: var(--bg-app); color: var(--text-muted); }
+.btn-confirm { background: var(--primary); color: white; }
+.btn-confirm:disabled { opacity: 0.7; cursor: not-allowed; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
