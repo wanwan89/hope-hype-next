@@ -568,7 +568,6 @@ function ChatCore() {
     </div>
   );
 }
-
 // Wrapper for useSearchParams
 export default function ChatPageWrapper() {
   return (
