@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import './SearchWrapper.css';
@@ -30,8 +30,8 @@ export default function SearchWrapperpost() {
     if (!mounted || isHidden) return; 
 
     const handleScroll = () => {
-      // Story cuma true kalau posisi scroll bener-bener 0
-      if (window.scrollY <= 0) {
+      // Story muncul hanya jika posisi scroll benar-benar di atas
+      if (window.scrollY <= 5) {
         setIsStoriesVisible(true);
       } else {
         setIsStoriesVisible(false);
@@ -69,7 +69,7 @@ export default function SearchWrapperpost() {
     <div 
       className="header-sticky-wrapper" 
       style={{ 
-        backgroundColor: 'transparent', // Request lo: Transparan
+        backgroundColor: 'transparent',
         width: '100%',
         position: 'sticky', 
         top: 0,
@@ -78,21 +78,24 @@ export default function SearchWrapperpost() {
       }}
     >
       
-      {/* SEARCH BAR */}
+      {/* SEARCH BAR AREA */}
       <div 
         className="search-wrapper" 
         style={{ 
-          backgroundColor: 'rgba(255,255,255,0.95)', // Putih tipis biar input kelihatan
-          backdropFilter: 'blur(10px)',
+          backgroundColor: 'rgba(255,255,255,0.96)', 
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           padding: '12px 18px',
           display: 'flex',
           alignItems: 'center',
-          gap: '15px'
+          gap: '15px',
+          borderBottom: isStoriesVisible ? 'none' : '1px solid rgba(0,0,0,0.05)'
         }}
       >
-        {/* TOMBOL SIDEBAR DENGAN GARIS 3 (DIFIX LANGSUNG DI SINI) */}
+        {/* TOMBOL SIDEBAR (HAMBURGER) */}
         <button 
           id="mobileMenuBtn"
+          type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('openSidebar'))}
           style={{ 
             background: 'transparent', 
@@ -105,17 +108,16 @@ export default function SearchWrapperpost() {
             gap: '5px',
             width: '24px',
             height: '24px',
-            flexShrink: 0
+            flexShrink: 0,
+            outline: 'none'
           }}
         >
-          {/* Garis 1 */}
-          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#333', borderRadius: '2px' }}></span>
-          {/* Garis 2 */}
-          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#333', borderRadius: '2px' }}></span>
-          {/* Garis 3 */}
-          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#333', borderRadius: '2px' }}></span>
+          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#1a1a1a', borderRadius: '2px' }}></span>
+          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#1a1a1a', borderRadius: '2px' }}></span>
+          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#1a1a1a', borderRadius: '2px' }}></span>
         </button>
 
+        {/* INPUT PENCARIAN */}
         <div className="brutal-input-container" style={{ flex: 1 }}>
           <input
             type="text"
@@ -128,7 +130,9 @@ export default function SearchWrapperpost() {
               borderRadius: '20px',
               border: 'none',
               backgroundColor: '#f0f2f5',
-              outline: 'none'
+              color: '#1a1a1a',
+              outline: 'none',
+              fontSize: '14px'
             }}
             onChange={(e) => {
               const val = e.target.value.toLowerCase();
@@ -139,35 +143,50 @@ export default function SearchWrapperpost() {
           />
         </div>
 
+        {/* TOMBOL ADD POST (FIXED) */}
         <button 
-          onClick={() => window.dispatchEvent(new CustomEvent('openPostModal'))}
+          type="button"
+          id="addPostBtn"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent('openPostModal'));
+          }}
           style={{ 
             background: '#1a1a1a', 
             border: 'none', 
             color: '#fff', 
-            width: '36px', 
-            height: '36px', 
+            width: '38px', 
+            height: '38px', 
             borderRadius: '50%', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            flexShrink: 0,
+            zIndex: 16000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            transition: 'transform 0.1s ease',
+            outline: 'none'
           }}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+          onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <span className="material-icons" style={{ fontSize: '20px' }}>add</span>
+          <span className="material-icons" style={{ fontSize: '22px', pointerEvents: 'none' }}>add</span>
         </button>
       </div>
 
-      {/* STORY SECTION - HANYA MUNCUL DI Y=0 & TRANSPARAN */}
+      {/* STORY SECTION */}
       {stories.length > 0 && (
         <div 
           className="stories-container"
           style={{
             maxHeight: isStoriesVisible ? '120px' : '0px',
             opacity: isStoriesVisible ? 1 : 0,
-            padding: isStoriesVisible ? '5px 15px 15px 15px' : '0',
+            padding: isStoriesVisible ? '8px 15px 15px 15px' : '0',
             overflow: 'hidden',
-            backgroundColor: 'transparent', // Request lo: Transparan
+            backgroundColor: 'transparent',
             display: 'flex',
             gap: '15px',
             overflowX: 'auto',
@@ -176,7 +195,12 @@ export default function SearchWrapperpost() {
           }}
         >
           {stories.map((story) => (
-            <div key={story.id} className="story-item" onClick={() => router.push(`/story/${story.id}`)} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+            <div 
+              key={story.id} 
+              className="story-item" 
+              onClick={() => router.push(`/story/${story.id}`)} 
+              style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+            >
               <div 
                 className={`story-circle ${clickedStoryId === story.id ? 'seen' : 'unseen'}`}
                 style={{
@@ -184,15 +208,17 @@ export default function SearchWrapperpost() {
                   height: '64px',
                   borderRadius: '50%',
                   padding: '2.5px',
-                  background: clickedStoryId === story.id ? '#e4e6eb' : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)'
+                  background: clickedStoryId === story.id ? '#e4e6eb' : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
+                  transition: 'all 0.2s ease'
                 }}
               >
                 <img 
                   src={story.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${story.profiles?.username}`} 
+                  alt="avatar"
                   style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff' }}
                 />
               </div>
-              <span style={{ fontSize: '11px', color: '#333', maxWidth: '65px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '11px', color: '#1a1a1a', fontWeight: '500', maxWidth: '65px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {story.profiles?.username}
               </span>
             </div>
