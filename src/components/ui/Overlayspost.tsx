@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
  * PASTIKAN nama file di 'src/components/post/' adalah 'PostModalpost.tsx' 
  * Jika nama filenya 'PostModal.tsx', ganti import di bawah jadi: '@/components/post/PostModal'
  */
-import PostModal from '@/components/post/PostModalpost'; 
+import PostModal from '@/components/post/Modalpost'; 
 import './Overlays.css';
 
 export default function Overlayspost() {
