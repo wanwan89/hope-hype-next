@@ -1,18 +1,16 @@
 // src/app/page.tsx
 import Gallery from '@/components/post/Gallerypost';
-import CommentModal from '@/components/post/CommentModalpost';
-import PostModal from '@/components/post/PostModal';
-import GiftSheet from '@/components/post/GiftSheetpost';
+
+/**
+ * HomePage sekarang bener-bener bersih.
+ * Modal (Comment, Post, Gift) sudah ditangani secara global 
+ * di layout.tsx lewat komponen Overlays.
+ */
 
 export default function HomePage() {
   return (
-    <>
-      {/* Cukup panggil Gallery saja di sini */}
+    <main>
       <Gallery />
-      
-      <CommentModal />
-      <PostModal />
-      <GiftSheet />
-    </>
+    </main>
   );
 }
