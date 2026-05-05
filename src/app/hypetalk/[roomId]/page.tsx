@@ -104,9 +104,7 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
         <div className="system-text">{msg.message}</div>
       ) : (
         <>
-          {/* FIX 2: Tampilkan Avatar buat isMe & !isMe */}
-          <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
-          
+          {!isMe && <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />}
           <div className="content" style={{ display: 'flex', flexDirection: 'column', minWidth: '90px' }}>
             <div className="username" style={{ marginBottom: '4px' }}>
               {msg.profiles?.username} 
@@ -177,7 +175,9 @@ function ChatCore() {
   const [isLoading, setIsLoading] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const [onlineCount, setOnlineCount] = useState(0);
-  const [typingUser, setTypingUser] = useState<string | null>(null);
+  
+  // FIX: Ganti statenya biar bisa nyimpen avatar dan username barengan
+  const [typingUser, setTypingUser] = useState<{ username: string, avatar_url: string } | null>(null);
 
   const [replyTo, setReplyTo] = useState<any>(null);
   const [isStickerOpen, setIsStickerOpen] = useState(false);
@@ -289,7 +289,11 @@ function ChatCore() {
 
     refs.presenceChannel.current = supabase.channel(`presence-${room}`)
       .on('presence', { event: 'sync' }, () => setOnlineCount(Object.keys(refs.presenceChannel.current.presenceState()).length))
-      .on('broadcast', { event: 'typing' }, (p: any) => { setTypingUser(p.payload.username); setTimeout(() => setTypingUser(null), 3000); })
+      .on('broadcast', { event: 'typing' }, (p: any) => { 
+        // FIX: Nangkap username dan avatar
+        setTypingUser({ username: p.payload.username, avatar_url: p.payload.avatar_url }); 
+        setTimeout(() => setTypingUser(null), 3000); 
+      })
       .subscribe(async (s) => { if (s === 'SUBSCRIBED') await refs.presenceChannel.current.track({ user_id: user.id, online: true }); });
   };
 
@@ -314,7 +318,8 @@ function ChatCore() {
   const handleTyping = (e: any) => {
     setInputValue(e.target.value);
     if (refs.presenceChannel.current && refs.presenceChannel.current.state === 'joined') {
-      refs.presenceChannel.current.send({ type: 'broadcast', event: 'typing', payload: { username: myProfile?.username } });
+      // FIX: Kirim juga avatar kita ke broadcast
+      refs.presenceChannel.current.send({ type: 'broadcast', event: 'typing', payload: { username: myProfile?.username, avatar_url: myProfile?.avatar_url } });
     }
   };
 
@@ -378,7 +383,6 @@ function ChatCore() {
     }
   };
 
-  // --- FIX 4: Call Logic Waiting Timer ---
   const startCall = async () => {
     if (!targetId) return;
 
@@ -468,7 +472,7 @@ function ChatCore() {
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
           <div className="header-info">
             <h3>{headerInfo.title}</h3>
-            <div className="status-container">{typingUser ? <span className="status-typing">{typingUser} mengetik...</span> : <span className="status-online">{onlineCount} Online</span>}</div>
+            <div className="status-container">{typingUser ? <span className="status-typing">{typingUser.username} mengetik...</span> : <span className="status-online">{onlineCount} Online</span>}</div>
           </div>
         </div>
         {targetId && <div className="header-right"><button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button></div>}
@@ -498,12 +502,12 @@ function ChatCore() {
           </>
         )}
 
-        {/* FIX 5: TYPING BUBBLE INDICATOR */}
+        {/* FIX: TYPING BUBBLE DENGAN FOTO PROFIL */}
         {typingUser && (
           <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
-            <img className="avatar" src="/asets/png/profile.webp" alt="avatar" />
+            <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
             <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="username" style={{ marginBottom: '4px' }}>{typingUser}</div>
+              <div className="username" style={{ marginBottom: '4px' }}>{typingUser.username}</div>
               <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 6px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                 <div className="typing-bubble" style={{ padding: 0 }}><span></span><span></span><span></span></div>
               </div>
@@ -551,7 +555,6 @@ function ChatCore() {
                       <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 1.5 8.5 1.5zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
                     </svg>
                   </button>
-                  {/* FIX 3: TEXTAREA PADDING DISESUAIKAN */}
                   <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} style={{ paddingTop: '10px', paddingBottom: '10px', minHeight: '40px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px', lineHeight: '20px' }} />
                 </>
               )}
