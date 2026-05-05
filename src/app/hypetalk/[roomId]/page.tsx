@@ -150,9 +150,10 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
 function ChatCore() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromId = searchParams.get('from');
-  const groupId = searchParams.get('group');
-  const groupName = searchParams.get('gname');
+  const fromId = searchParams?.get('from');
+const groupId = searchParams?.get('group');
+const groupName = searchParams?.get('gname');
+
 
   const [roomId, setRoomId] = useState('room-1');
   const [currentUser, setCurrentUser] = useState<any>(null);
