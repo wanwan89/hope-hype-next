@@ -13,10 +13,10 @@ const getStatusIcon = (status: string) => {
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
   if (status === 'delivered') return <span className="status-icon delivered" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
   if (status === 'read') return <span className="status-icon read" style={{color: '#4fc3f7'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
-  return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; // fallback
+  return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
-// --- SUB-COMPONENT: MESSAGE BUBBLE (Untuk Swipe & Double Tap) ---
+// --- SUB-COMPONENT: MESSAGE BUBBLE ---
 const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
@@ -56,7 +56,6 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
     clearTimeout(holdTimer.current);
     let diff = touchCurrentX.current - touchStartX.current;
 
-    // Double Tap Logic
     const now = Date.now();
     if (now - lastTap.current < 300 && Math.abs(diff) < 10 && msg.message !== "Pesan ini telah dihapus") {
       onReaction(msg, e.changedTouches ? e.changedTouches[0] : (e as any));
@@ -75,7 +74,6 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
     isSwiping.current = false;
   };
 
-  // VN Player Internal State
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -106,7 +104,9 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
         <div className="system-text">{msg.message}</div>
       ) : (
         <>
-          {!isMe && <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />}
+          {/* FIX 2: Tampilkan Avatar buat isMe & !isMe */}
+          <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
+          
           <div className="content" style={{ display: 'flex', flexDirection: 'column', minWidth: '90px' }}>
             <div className="username" style={{ marginBottom: '4px' }}>
               {msg.profiles?.username} 
@@ -269,7 +269,7 @@ function ChatCore() {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as any;
           if (newMsg.is_system && newMsg.message.includes("📞 Memanggil") && newMsg.user_id !== user.id) handleIncomingCall(newMsg);
-          if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak"))) endCall(true);
+          if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) endCall(true);
           
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, role').eq('id', newMsg.user_id).single();
           newMsg.profiles = p || undefined;
@@ -318,7 +318,6 @@ function ChatCore() {
     }
   };
 
-  // --- Voice Note Logic ---
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -379,11 +378,23 @@ function ChatCore() {
     }
   };
 
-  // --- Call Logic ---
+  // --- FIX 4: Call Logic Waiting Timer ---
   const startCall = async () => {
     if (!targetId) return;
-    setCallStatus('calling'); setCallData({ partnerName: headerInfo.title, seconds: 0 });
+
+    const { data: pTarget } = await supabase.from('profiles').select('avatar_url').eq('id', targetId).single();
+
+    setCallStatus('calling'); 
+    setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
+    
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
+    
+    // Nunggu 30 Detik
+    refs.callTimer.current = setTimeout(async () => {
+      endCall(true);
+      await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
+    }, 30000);
+
     connectLiveKit(roomId);
   };
 
@@ -396,14 +407,34 @@ function ChatCore() {
   const connectLiveKit = async (rName: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('get-livekit-token', { body: { username: myProfile?.username, identity: currentUser.id, roomName: rName } });
-      if (error || !data) throw new Error("Gagal ambil token");
+      if (error || !data) throw new Error("Gagal ambil token: " + error?.message);
+      
       refs.lkRoom.current = new LiveKit.Room();
       await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
       await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
-      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (t) => {
-        if (t.kind === "audio") { document.body.appendChild(t.attach()); setCallStatus('connected'); refs.callTimer.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000); }
+
+      // Kalo diangkat lawan / lawan udah di room duluan
+      if (refs.lkRoom.current.remoteParticipants.size > 0) {
+         setCallStatus('connected');
+         clearTimeout(refs.callTimer.current);
+         refs.callTimer.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
+      }
+
+      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, () => {
+        setCallStatus('connected');
+        clearTimeout(refs.callTimer.current);
+        refs.callTimer.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
       });
-    } catch (e) { endCall(); }
+
+      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (t) => {
+        if (t.kind === "audio") { document.body.appendChild(t.attach()); }
+      });
+
+    } catch (e: any) { 
+      console.error(e);
+      showNotif("Koneksi Panggilan Gagal", "error");
+      endCall(); 
+    }
   };
 
   const endCall = (silent = false) => {
@@ -466,6 +497,20 @@ function ChatCore() {
             ))}
           </>
         )}
+
+        {/* FIX 5: TYPING BUBBLE INDICATOR */}
+        {typingUser && (
+          <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
+            <img className="avatar" src="/asets/png/profile.webp" alt="avatar" />
+            <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className="username" style={{ marginBottom: '4px' }}>{typingUser}</div>
+              <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 6px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <div className="typing-bubble" style={{ padding: 0 }}><span></span><span></span><span></span></div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div ref={refs.scroll} />
       </main>
 
@@ -480,7 +525,6 @@ function ChatCore() {
         <div className="input-row">
           <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo ? '16px' : '24px' }}>
             
-            {/* --- FIX REPLY BOX: Tanda X ditarik sampai ke kanan mentok --- */}
             {replyTo && (
               <div id="reply-preview-box" style={{ display: 'flex', alignItems: 'center', width: '100%', background: 'rgba(0,0,0,0.04)', borderRadius: '12px 12px 4px 4px', margin: '0 0 6px 0', borderLeft: '4px solid var(--primary-blue)', padding: '8px 12px' }}>
                 <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -502,13 +546,13 @@ function ChatCore() {
                 </div>
               ) : (
                 <>
-                  {/* --- FIX TOMBOL STIKER: Ganti ikon murni SVG anti bug HP --- */}
                   <button id="sticker-btn" style={{ border: 'none', background: 'transparent', outline: 'none', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                       <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 1.5 8.5 1.5zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
                     </svg>
                   </button>
-                  <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} style={{ padding: '8px 0', minHeight: '36px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px' }} />
+                  {/* FIX 3: TEXTAREA PADDING DISESUAIKAN */}
+                  <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} style={{ paddingTop: '10px', paddingBottom: '10px', minHeight: '40px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px', lineHeight: '20px' }} />
                 </>
               )}
             </div>
