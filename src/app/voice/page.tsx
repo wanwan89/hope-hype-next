@@ -15,7 +15,6 @@ export default function VoiceRoomPage() {
   const CURRENT_ROOM_ID = searchParams?.get('id');
   const CURRENT_ROOM_NAME = searchParams?.get('name') || "Voice Room";
 
-
   // --- STATE USER & ROOM ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -192,6 +191,16 @@ export default function VoiceRoomPage() {
       fetchStage();
     } catch (e) {
       showNotif("Gagal naik panggung", "error");
+    }
+  };
+
+  // FIX: Fungsi mintaNaik yang hilang ditambahkan di sini
+  const mintaNaik = () => {
+    const emptySlotIndex = slots.findIndex(s => !s.profile_id);
+    if (emptySlotIndex !== -1) {
+      handleNaikStage(emptySlotIndex);
+    } else {
+      showNotif("Panggung penuh!", "warning");
     }
   };
 
