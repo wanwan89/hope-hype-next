@@ -195,7 +195,6 @@ function VoiceRoomContent() {
     }
   };
 
-  // FIX: Fungsi mintaNaik yang hilang ditambahkan di sini
   const mintaNaik = () => {
     const emptySlotIndex = slots.findIndex(s => !s.profile_id);
     if (emptySlotIndex !== -1) {
@@ -309,9 +308,7 @@ function VoiceRoomContent() {
 
   // --- 10. SYSTEM GIFTING (DISEDERHANAKAN UNTUK REACT) ---
   const playGiftAnimation = (giftId: number, forcedCombo: number | null = null) => {
-    // Fungsi ini bisa dibuat merender overlay khusus di React, 
-    // tapi karena panjang, kita simpan logikanya dalam State khusus atau biarkan terpisah.
-    // (Bisa gunakan komponen modal transparan untuk animasinya)
+    // Logic animasi dipisah agar tidak memberatkan render main UI
   };
 
   const sendGift = async (giftName: string, harga: number, giftId: number) => {
@@ -371,17 +368,8 @@ function VoiceRoomContent() {
         </div>
       </header>
 
-      {/* --- TOP GIFTERS --- */}
-      <div id="top-gifters-container" onClick={openLeaderboard} style={{ display: 'flex', padding: '8px 16px', cursor: 'pointer' }}>
-        <span style={{ fontSize: '11px', color: '#FFD700', fontWeight: 800, marginRight: '6px' }}>🏆 TOP</span>
-        <div style={{ display: 'flex' }}>
-          {topGifters.map((user, i) => (
-             <img key={i} src={user.avatar_url} style={{ width: '28px', height: '28px', borderRadius: '50%', border: `2px solid ${i===0?'#FFD700':i===1?'#C0C0C0':'#CD7F32'}`, marginLeft: i===0?'0':'-12px', zIndex: 3-i }} />
-          ))}
-        </div>
-      </div>
-
       {/* --- STAGE GRID --- */}
+      {/* Top gifters dipindah, jadi stage grid langsung ada di bawah header agar lebih lega */}
       <div id="stage-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', padding: '20px' }}>
         {slots.map((slot, i) => {
           const user = slot.profiles;
@@ -460,14 +448,25 @@ function VoiceRoomContent() {
 
       {/* --- SIDEBAR MENU --- */}
       <div className={`sidebar ${isSidebarOpen ? 'active' : ''}`} style={{ position: 'fixed', top: 0, bottom: 0, left: 0, width: '250px', background: 'var(--panel-bg)', transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.3s', zIndex: 2000, padding: '20px' }}>
-         <h3>Menu Panggung</h3>
+         <h3 style={{ marginBottom: '10px' }}>Menu Panggung</h3>
+         
+         {/* FIX: TOP GIFTER PINDAH KE SINI */}
+         <div onClick={() => { openLeaderboard(); setIsSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--empty-slot)', borderRadius: '12px', marginTop: '15px', cursor: 'pointer' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>🏆 Top Gifter</span>
+            <div style={{ display: 'flex' }}>
+              {topGifters.map((user, i) => (
+                 <img key={i} src={user.avatar_url} style={{ width: '24px', height: '24px', borderRadius: '50%', border: `2px solid ${i===0?'#FFD700':i===1?'#C0C0C0':'#CD7F32'}`, marginLeft: i===0?'0':'-10px', zIndex: 3-i }} />
+              ))}
+            </div>
+         </div>
+
          <button onClick={toggleMic} style={{ width: '100%', padding: '10px', marginTop: '20px' }}>
            {isMicOn ? "Matikan Mic" : "Nyalakan Mic"}
          </button>
          <button onClick={() => setIsSidebarOpen(false)} style={{ width: '100%', padding: '10px', marginTop: '10px' }}>Tutup Menu</button>
       </div>
 
-      {/* --- FIX: MODAL CONFIRM TURUN MIC --- */}
+      {/* MODAL CONFIRM TURUN MIC */}
       {activeModal === 'turun' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
            <div style={{ background: 'var(--panel-bg)', padding: '20px', borderRadius: '15px', textAlign: 'center' }}>
@@ -480,7 +479,7 @@ function VoiceRoomContent() {
         </div>
       )}
 
-      {/* --- FIX: MODAL LEADERBOARD KADO --- */}
+      {/* MODAL LEADERBOARD KADO */}
       {activeModal === 'leaderboard' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
            <div style={{ background: 'var(--panel-bg)', padding: '20px', borderRadius: '15px', width: '90%', maxWidth: '400px', maxHeight: '80vh', overflowY: 'auto' }}>
@@ -504,7 +503,7 @@ function VoiceRoomContent() {
   );
 }
 
-// BUNGKUS KOMPONEN UTAMA DENGAN SUSPENSE
+// BUNGKUS KOMPONEN UTAMA DENGAN SUSPENSE (WAJIB NEXT.JS)
 export default function VoiceRoomPage() {
   return (
     <Suspense fallback={<div className="app-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-main)' }}>Memuat Panggung...</div>}>
