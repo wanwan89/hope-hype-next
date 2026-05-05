@@ -107,34 +107,33 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
       ) : (
         <>
           {!isMe && <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />}
-          <div className="content">
-            <div className="username">
+          <div className="content" style={{ display: 'flex', flexDirection: 'column', minWidth: '90px' }}>
+            <div className="username" style={{ marginBottom: '4px' }}>
               {msg.profiles?.username} 
               <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
             </div>
             
             {msg.reply_to_msg && (
-              <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${msg.reply_to_msg.id}`)?.scrollIntoView({behavior: 'smooth'})}>
-                <b>{msg.reply_to_msg.username}</b>: {msg.reply_to_msg.message || "Stiker/Audio"}
+              <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${msg.reply_to_msg.id}`)?.scrollIntoView({behavior: 'smooth'})} style={{ marginBottom: '6px', opacity: 0.9 }}>
+                <b>{msg.reply_to_msg.username}</b>: {msg.reply_to_msg.message || "Media"}
               </div>
             )}
 
             {msg.sticker_url ? (
-              <img src={msg.sticker_url} className="chat-sticker" alt="sticker" />
+              <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px' }} />
             ) : msg.audio_url ? (
-              <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`}>
-                {/* --- FIX: Tombol Play VN dibuat bulat cantik khas native --- */}
-                <button onClick={toggleVN} className="vn-play-btn" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary-blue)', border: 'none', cursor: 'pointer', flexShrink: 0}}>
+              <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: isMe ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.04)', padding: '6px 12px', borderRadius: '20px', minWidth: '150px' }}>
+                <button onClick={toggleVN} className="vn-play-btn" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary-blue)', border: 'none', cursor: 'pointer', flexShrink: 0}}>
                   {isPlaying ? (
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
                   )}
                 </button>
-                <div className="vn-waveform">
-                  {[...Array(10)].map((_, i) => <span key={i} className="bar"></span>)}
+                <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, height: '18px' }}>
+                  {[...Array(12)].map((_, i) => <span key={i} className="bar" style={{ width: '3px', height: isPlaying ? (i % 2 === 0 ? '16px' : '8px') : '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '2px', transition: 'height 0.2s ease' }}></span>)}
                 </div>
-                <span className="vn-time">Voice Note</span>
+                <span className="vn-time" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>VN</span>
               </div>
             ) : (
               <div className={`text ${msg.message === "Pesan ini telah dihapus" ? "deleted" : ""}`}>
@@ -143,14 +142,13 @@ const MessageBubble = ({ msg, isMe, onReply, onReaction, onDelete }: any) => {
             )}
 
             {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-              <div className="message-reactions">
+              <div className="message-reactions" style={{ marginTop: '4px' }}>
                 {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
               </div>
             )}
             
-            <div className="message-info">
-              <span className="timestamp">{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-              {/* --- FIX: Ceklis Tanda Baca --- */}
+            <div className="message-info" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px', marginTop: '4px', alignSelf: 'flex-end' }}>
+              <span className="timestamp" style={{ fontSize: '10px', opacity: 0.6 }}>{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
               {isMe && getStatusIcon(msg.status || 'sent')}
             </div>
           </div>
@@ -176,7 +174,7 @@ function ChatCore() {
   const [targetId, setTargetId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // FIX: State skeleton loading
+  const [isLoading, setIsLoading] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const [onlineCount, setOnlineCount] = useState(0);
   const [typingUser, setTypingUser] = useState<string | null>(null);
@@ -279,7 +277,6 @@ function ChatCore() {
           setMessages(prev => [...prev, newMsg]);
           if (newMsg.user_id !== user.id) {
             refs.audio.current?.receive.play().catch(()=>{});
-            // Auto Read Trigger
             if (newMsg.status !== 'read') {
               await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
             }
@@ -321,7 +318,7 @@ function ChatCore() {
     }
   };
 
-  // --- Voice Note Logic dengan Logika Batal ---
+  // --- Voice Note Logic ---
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -357,7 +354,6 @@ function ChatCore() {
     refs.audioChunks.current = [];
   };
 
-  // --- Touch handler tombol Mic ---
   const handleMicTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (!inputValue.trim()) {
       vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
@@ -370,7 +366,6 @@ function ChatCore() {
     if (isRecordingRef.current && !vnIsCanceled.current) {
       const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       const diff = vnTouchStartX.current - clientX;
-      // FIX: Geser 80px ke kiri otomatis batalkan VN
       if (diff > 80) {
         vnIsCanceled.current = true;
         stopVN(true); 
@@ -425,7 +420,6 @@ function ChatCore() {
 
   return (
     <div className="telegram-chat">
-      {/* Call Overlay */}
       {callStatus !== 'idle' && (
         <div className="call-overlay">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
@@ -438,7 +432,6 @@ function ChatCore() {
         </div>
       )}
 
-      {/* Header */}
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
@@ -450,10 +443,8 @@ function ChatCore() {
         {targetId && <div className="header-right"><button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button></div>}
       </header>
 
-      {/* Messages */}
       <main className="chat-messages">
         {isLoading ? (
-          // --- FIX: SKELETON LOADING UI ---
           <div className="chat-loading-screen">
             <div className="skeleton-msg left"><div className="skeleton-avatar"></div><div className="skeleton-bubble"><div className="skeleton-line w1"></div><div className="skeleton-line w2"></div><div className="skeleton-line w3"></div></div></div>
             <div className="skeleton-msg right"><div className="skeleton-bubble me"><div className="skeleton-line w4"></div><div className="skeleton-line w5"></div></div></div>
@@ -462,7 +453,6 @@ function ChatCore() {
           </div>
         ) : (
           <>
-            {/* --- FIX: PESAN ENKRIPSI WHATSAPP STYLE --- */}
             <div className="encryption-notice">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
               <span>Pesan dan panggilan dienkripsi secara <strong>end-to-end</strong>. Tidak ada orang di luar chat ini yang dapat membaca atau mendengarkannya.</span>
@@ -479,15 +469,7 @@ function ChatCore() {
         <div ref={refs.scroll} />
       </main>
 
-      {/* Input Container */}
       <footer className="chat-input-container">
-        {replyTo && (
-           <div id="reply-preview-box" style={{ display: 'flex' }}>
-             <div className="reply-content-wrapper"><div className="reply-title">Membalas {replyTo.profiles?.username}</div><div className="reply-text-preview">{replyTo.message || "Media"}</div></div>
-             <div className="close-reply-btn" onClick={() => setReplyTo(null)}>&times;</div>
-           </div>
-        )}
-
         {isStickerOpen && (
           <div id="sticker-menu" style={{ display: 'flex' }}>
             <div className="sticker-search-wrapper"><input placeholder="Cari stiker..." onChange={(e) => fetchStickers(e.target.value)} /></div>
@@ -496,22 +478,38 @@ function ChatCore() {
         )}
 
         <div className="input-row">
-          <div className="input-group-wrapper">
-            {isRecording ? (
-              // --- FIX: TAMPILAN RECORDING DI DALAM BOX INPUT ---
-              <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, animation: 'fadeIn 0.2s ease', padding: '12px 0' }}>
-                <span className="online-dot" style={{ background: '#ff4757', boxShadow: '0 0 5px #ff4757' }}></span>
-                <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
-                <span style={{ marginLeft: 'auto', fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span className="material-icons" style={{fontSize: '16px'}}>chevron_left</span> Geser batal
-                </span>
+          {/* --- FIX: BUNGKUSAN REPLY DAN INPUT DIJADIKAN SATU (WA STYLE) --- */}
+          <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo ? '16px' : '24px' }}>
+            
+            {replyTo && (
+              <div id="reply-preview-box" style={{ display: 'flex', width: '100%', background: 'rgba(0,0,0,0.03)', borderRadius: '12px 12px 4px 4px', margin: '0 0 4px 0', borderLeft: '4px solid var(--primary-blue)', padding: '8px 10px' }}>
+                <div className="reply-content-wrapper">
+                  <div className="reply-title" style={{color: 'var(--primary-blue)', fontSize: '12px', fontWeight: 'bold'}}>Membalas {replyTo.profiles?.username}</div>
+                  <div className="reply-text-preview" style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || "Media"}</div>
+                </div>
+                <div className="close-reply-btn" onClick={() => setReplyTo(null)} style={{fontSize: '20px', padding: '0 8px', cursor: 'pointer', color: '#64748b'}}>&times;</div>
               </div>
-            ) : (
-              <>
-                <button id="sticker-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}><span className="material-icons">emoji_emotions</span></button>
-                <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} />
-              </>
             )}
+
+            <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+              {isRecording ? (
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, animation: 'fadeIn 0.2s ease', padding: '8px 6px' }}>
+                  <span className="online-dot" style={{ background: '#ff4757', boxShadow: '0 0 5px #ff4757' }}></span>
+                  <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="material-icons" style={{fontSize: '16px'}}>chevron_left</span> Geser batal
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <button id="sticker-btn" style={{padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
+                    <span className="material-icons" style={{fontSize: '22px'}}>emoji_emotions</span>
+                  </button>
+                  {/* --- FIX: TEXTAREA TIDAK GENDUT --- */}
+                  <textarea id="chat-input" placeholder="Tulis pesan..." value={inputValue} onChange={handleTyping} style={{ padding: '8px 0', minHeight: '36px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px' }} />
+                </>
+              )}
+            </div>
           </div>
           
           <button id="action-btn" className={inputValue.trim() ? 'mode-typing' : (isRecording ? 'is-recording' : '')}
@@ -524,7 +522,6 @@ function ChatCore() {
         </div>
       </footer>
 
-      {/* Reaction Menu */}
       {reactionMenu && (
         <>
           <div style={{position:'fixed', inset:0, zIndex:10005}} onClick={()=>setReactionMenu(null)}></div>
@@ -550,7 +547,6 @@ function ChatCore() {
         </>
       )}
 
-      {/* Delete Menu */}
       {deleteMenu && (
         <div className="delete-overlay" style={{display:'flex'}}>
           <div className="delete-menu">
@@ -568,7 +564,7 @@ function ChatCore() {
     </div>
   );
 }
-// Wrapper for useSearchParams
+
 export default function ChatPageWrapper() {
   return (
     <Suspense fallback={<div className="loading-state">Loading Chat...</div>}>

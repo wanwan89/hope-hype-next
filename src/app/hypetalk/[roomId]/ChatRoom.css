@@ -92,7 +92,7 @@ html, body {
    ========================================= */
 .chat-messages {
   flex: 1 1 auto !important; min-height: 0; padding: 12px;
-  padding-bottom: 160px !important; /* Batas aman scroll */
+  padding-bottom: 120px !important; /* Biar chat terakhir gak ketutup kolom input */
   overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
   -webkit-overflow-scrolling: touch;
 }
@@ -104,26 +104,21 @@ html, body {
 .chat-message::before { content: "↩"; position: absolute; left: -25px; top: 50%; transform: translateY(-50%); font-size: 18px; opacity: 0.4; }
 .chat-message.self { background: var(--chat-self-bg); color: var(--text-color); align-self: flex-end; border-bottom-right-radius: 2px; flex-direction: row-reverse; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
 .chat-message.other { background: var(--bg-panel); color: var(--text-color); align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
-.chat-message.system { align-self: center; max-width: 90%; background: none; box-shadow: none; justify-content: center; }
+.chat-message.system { align-self: center; max-width: 90%; background: none; box-shadow: none; justify-content: center; padding: 0;}
 .chat-message .avatar { width: 35px; height: 35px; border-radius: 50%; margin: 0 8px; flex-shrink: 0; object-fit: cover; object-position: center; background: #eee; }
 .chat-message .content { position: relative; display: flex; flex-direction: column; padding-bottom: 5px; }
 .chat-message .username { font-weight: 700; font-size: 12px; color: var(--username-color); margin-bottom: 2px; }
 .chat-message .text { font-size: 14px; }
 .chat-message .timestamp { font-size: 10px; color: var(--text-muted); align-self: flex-end; margin-top: 2px; }
-.chat-message.self .message-info { color: rgba(255, 255, 255, 0.7); }
-html.dark .chat-message.self .message-info { color: rgba(255, 255, 255, 0.5); }
-.message-info { margin-top: -5px; padding-bottom: 2px; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .text.deleted { font-style: italic; color: #aaa !important; }
 
-/* System Text (Memanggil dll) */
 .system-text { background: rgba(0, 0, 0, 0.06); color: var(--text-color); font-size: 11px; padding: 5px 14px; border-radius: 20px; font-weight: 500; border: 1px solid rgba(0,0,0,0.03); text-align: center; }
 html.dark .system-text { background: rgba(255, 255, 255, 0.08); border-color: rgba(255,255,255,0.05); color: #ccc;}
 
-/* Reply Preview in Chat */
 .reply-preview-in-chat { cursor: pointer; background: rgba(0,0,0,0.05); border-left: 3px solid var(--primary-blue); padding: 5px 8px; border-radius: 4px; margin-bottom: 5px; font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.dark .reply-preview-in-chat { background: rgba(255,255,255,0.05); }
 
-/* --- FIX 1: SKELETON LOADING UI --- */
+/* --- FIX 1: SKELETON LOADING UI (Hadir kembali!) --- */
 .chat-loading-screen { display: flex; flex-direction: column; gap: 14px; padding: 18px 14px 24px; animation: fadeInChatLoading 0.25s ease; }
 .skeleton-msg { display: flex; align-items: flex-end; gap: 8px; max-width: 82%; }
 .skeleton-msg.left { align-self: flex-start; }
@@ -146,50 +141,27 @@ html.dark .skeleton-line { background: linear-gradient(90deg, rgba(255,255,255,0
 /* =========================================
    4. CHAT INPUT LAYER (STYLES DASAR)
    ========================================= */
-.input-row {
-  display: flex; width: 100%; align-items: flex-end; gap: 8px; position: relative; z-index: 100;
-}
+.input-row { display: flex; width: 100%; align-items: flex-end; gap: 8px; position: relative; z-index: 100; }
+
 .input-group-wrapper {
-  /* --- FIX 2: Mencegah input kelebaran --- */
+  /* --- FIX 2: Mencegah input kelebaran (Fat Input) --- */
   flex: 1 1 auto; min-width: 0; display: flex; align-items: center;
   background: var(--glass-bg) !important; 
   backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-  border-radius: 24px !important; 
-  padding: 6px 14px; position: relative; min-height: 48px;
+  position: relative; min-height: 48px;
   box-sizing: border-box; border: 1px solid var(--border-color);
   box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
-  max-width: calc(100vw - 80px); /* Cadangan space untuk action-btn */
+  max-width: calc(100vw - 70px); /* Bikin proporsional dgn action-btn (Mic) */
 }
 html.dark .input-group-wrapper { box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
 
 #chat-input {
   flex: 1; min-width: 0; border: none; outline: none; background: transparent !important;
-  resize: none; max-height: 100px; padding: 12px 0; font-family: 'Inter', sans-serif;
+  resize: none; padding: 12px 0; font-family: 'Inter', sans-serif;
   font-size: 16px; color: var(--text-color); line-height: 1.4; overflow-y: auto;
 }
-#sticker-btn {
-  background: none; border: none; cursor: pointer; padding: 5px; margin-right: 4px;
-  display: flex; align-items: center; color: var(--text-muted);
-  position: relative; z-index: 50; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
-}
+#chat-input::placeholder { color: var(--text-muted); opacity: 0.8; }
 
-/* =========================================
-   5. STICKER MENU & REPLY BOX (BASE)
-   ========================================= */
-.reply-content-wrapper { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
-.reply-title { font-size: 11px; color: var(--primary-blue) !important; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.reply-text-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.close-reply-btn { font-size: 24px; color: #ff4757; font-weight: bold; cursor: pointer; flex-shrink: 0; padding: 0 5px; line-height: 1; transition: transform 0.2s;}
-.close-reply-btn:active { transform: scale(0.8); }
-
-#sticker-menu input, .sticker-container input {
-  background: var(--bg-main) !important; color: var(--text-color) !important; border: 1px solid var(--border-color) !important;
-  border-radius: 20px; padding: 8px 15px; outline: none; flex: 1; min-width: 0;
-}
-
-/* =========================================
-   6. MIC & SEND BUTTON ANIMATIONS
-   ========================================= */
 #action-btn { 
   width: 48px; height: 48px; min-width: 48px; border-radius: 50%; border: none; 
   display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
@@ -198,7 +170,6 @@ html.dark .input-group-wrapper { box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
   box-shadow: 0 4px 10px rgba(58, 123, 213, 0.3); 
 }
 html.dark #action-btn { box-shadow: 0 4px 10px rgba(58, 123, 213, 0.4); }
-#action-btn.mode-typing { background-color: var(--primary-blue) !important; }
 #action-btn.is-recording { background-color: #ff4757 !important; transform: scale(1.1); }
 #action-btn:active { transform: scale(0.9); box-shadow: 0 2px 0 rgba(42, 92, 184, 0.8), 0 3px 6px rgba(0,0,0,0.2); }
 
@@ -219,7 +190,6 @@ html.dark #action-btn { box-shadow: 0 4px 10px rgba(58, 123, 213, 0.4); }
 #confirm-delete { background: linear-gradient(135deg, var(--primary-blue), #00d2ff) !important; color: white; box-shadow: 0 4px 15px rgba(58, 123, 213, 0.3) !important; }
 .btn-cancel { background: var(--label-bg); color: var(--text-muted); }
 
-/* Status, Typing, Etc */
 .online-dot { height: 8px; width: 8px; background-color: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 5px #2ecc71; animation: pulse-dot 1.5s infinite; }
 .status-icon { display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; vertical-align: middle; line-height: 1; transform: translateY(1px); }
 .encryption-notice { display: flex; align-items: flex-start; justify-content: center; gap: 6px; background: #fff3c4; color: #856404; font-size: 11px; text-align: center; padding: 8px 12px; border-radius: 10px; margin: 10px auto 20px auto; max-width: 85%; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); animation: fadeIn 0.4s ease; }
@@ -231,20 +201,7 @@ html.dark .encryption-notice { background: rgba(212, 175, 55, 0.1); color: #eab3
 .call-overlay h2 { font-size: 24px; font-weight: bold; margin-bottom: 10px;}
 .call-overlay p { font-size: 14px; opacity: 0.8; letter-spacing: 2px;}
 
-/* Voice Note Player */
-.vn-custom-player { display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, 0.05); padding: 8px 12px; border-radius: 20px; min-width: 190px; margin: 5px 0; box-sizing: border-box; }
-html.dark .vn-custom-player { background: rgba(255,255,255,0.08); }
-.vn-play-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue); border: none; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; }
-.vn-play-btn:active { transform: scale(0.9); }
-.vn-waveform { display: flex; align-items: center; gap: 3px; height: 20px; flex-grow: 1; }
-.vn-waveform .bar { width: 3px; height: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 2px; display: inline-block; }
-html.dark .vn-waveform .bar { background: rgba(255,255,255,0.3); }
-.vn-waveform .bar:nth-child(odd) { height: 18px; }
-.vn-waveform .bar:nth-child(3n) { height: 8px; }
-.vn-time { font-size: 10px; font-weight: 600; color: var(--text-muted); white-space: nowrap; margin-left: 5px; }
-.playing .bar { animation: waveAnim 0.6s infinite alternate; background: var(--primary-blue); }
-
-/* Animation Keyframes */
+/* Animations */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
@@ -254,7 +211,7 @@ html.dark .vn-waveform .bar { background: rgba(255,255,255,0.3); }
 @keyframes slideUpFadeWA { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
 
 /* =========================================
-   🔥 FULL FIX OVERRIDE SAKTI: STICKER & REPLY BOX 🔥
+   🔥 STICKER & INPUT OVERRIDES 🔥
    ========================================= */
 .chat-input-container {
     position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
@@ -265,27 +222,17 @@ html.dark .vn-waveform .bar { background: rgba(255,255,255,0.3); }
 }
 .chat-input-container > * { pointer-events: auto !important; }
 
-#reply-preview-box {
-    order: 1 !important; position: relative !important; bottom: auto !important; top: auto !important; left: auto !important; right: auto !important;
-    width: 100% !important; margin: 0 0 8px 0 !important; box-sizing: border-box !important; z-index: 10001 !important;
-}
-
-#sticker-menu, .sticker-container {
+#sticker-menu {
     position: absolute !important; bottom: 100% !important; left: 0 !important; right: 0 !important; width: auto !important;
     margin: 0 12px 8px 12px !important; z-index: 10010 !important; box-sizing: border-box !important; top: auto !important;
-}
-
-#reply-preview-box[style*="display: block"], #reply-preview-box[style*="display: flex"] {
-    display: flex !important; align-items: center !important; justify-content: space-between !important;
-    background: var(--bg-panel) !important; border-left: 4px solid var(--primary-blue) !important;
-    border-radius: 12px !important; padding: 10px 14px !important; box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
-    animation: slideUpFadeWA 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
-}
-
-#sticker-menu[style*="display: block"], #sticker-menu[style*="display: flex"] {
     display: flex !important; flex-direction: column !important; background: var(--bg-panel) !important;
     border-radius: 16px !important; padding: 12px !important; box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
     animation: slideUpFadeWA 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+#sticker-menu input {
+  background: var(--bg-main) !important; color: var(--text-color) !important; border: 1px solid var(--border-color) !important;
+  border-radius: 20px; padding: 8px 15px; outline: none; flex: 1; min-width: 0;
 }
 
 .chat-input-container #sticker-list {
