@@ -16,7 +16,7 @@ import GiftDrawer from '@/components/room/GiftDrawerroom';
 import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
 
 // IMPORT CSS (Karena voice.css ada di folder yang sama dengan page.jsx, pake ./)
-import './voice.css';
+import './Voice.css';
 
 export default function RoomPage() {
   
