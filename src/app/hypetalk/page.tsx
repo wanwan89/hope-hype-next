@@ -56,12 +56,15 @@ export default function HypetalkPage() {
       });
     }
     
-    await loadAllChats(user.id);
+    // FIX 1: Panggilan pertama kali (bukan background, pakai loading)
+    await loadAllChats(user.id, false);
     subscribeToInbox(user.id);
   };
 
-  const loadAllChats = async (userId: string) => {
-    setIsLoading(true);
+  // FIX 1: Tambah parameter isBackground supaya gak munculin tulisan "Memuat..." tiap kali ada chat masuk
+  const loadAllChats = async (userId: string, isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
+    
     try {
       const waktu24JamLalu = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: pvMsgs } = await supabase.from("messages")
@@ -134,43 +137,48 @@ export default function HypetalkPage() {
       }
 
       setChats(finalChats.sort((a, b) => b.sortTime - a.sortTime));
-    } catch (err) { console.error(err); } finally { setIsLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      if (!isBackground) setIsLoading(false); 
+    }
   };
 
-  // FIX 1: Perbaikan Realtime Subscribe
   const subscribeToInbox = (userId: string) => {
-    // Pastikan channel name-nya sangat unik dan spesifik untuk menghindari tabrakan
     const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
     
     supabase.channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: any) => {
-        // Cek kalau pesan baru berkaitan dengan user ini
         const isRelated = payload.new?.room_id?.includes(userId) || payload.old?.room_id?.includes(userId);
         if (isRelated) {
-          loadAllChats(userId);
+          // FIX 1: Panggil loadAllChats pake true (isBackground = true) biar UI gak kedip refresh
+          loadAllChats(userId, true);
         }
       })
       .subscribe();
   };
 
+  // FIX 2: Supaya koneksi 'typing' gak putus nyambung pas pesan masuk
+  const privateChatIds = chats.filter(c => c.type === 'private').map(c => c.id).sort().join(',');
+
   useEffect(() => {
-    if (!currentUser || chats.length === 0) return;
+    if (!currentUser || !privateChatIds) return;
     
-    const channels = chats.map(chat => {
-      if (chat.type !== 'private') return null;
-      const ids = [currentUser.id, chat.id].sort();
-      const roomId = `pv_${ids[0]}_${ids[1]}`;
+    const ids = privateChatIds.split(',');
+    const channels = ids.map(chatId => {
+      const userIds = [currentUser.id, chatId].sort();
+      const roomId = `pv_${userIds[0]}_${userIds[1]}`;
       
       return supabase.channel(`presence-typing-${roomId}`)
         .on('broadcast', { event: 'typing' }, () => {
-          setTypingStatus(prev => ({ ...prev, [chat.id]: true }));
-          setTimeout(() => setTypingStatus(prev => ({ ...prev, [chat.id]: false })), 3000);
+          setTypingStatus(prev => ({ ...prev, [chatId]: true }));
+          setTimeout(() => setTypingStatus(prev => ({ ...prev, [chatId]: false })), 3000);
         })
         .subscribe();
     });
 
     return () => { channels.forEach(c => c && supabase.removeChannel(c)); };
-  }, [chats, currentUser]);
+  }, [privateChatIds, currentUser]);
 
   const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
   const closeModal = () => setActiveModal(null);
@@ -237,10 +245,8 @@ export default function HypetalkPage() {
   };
 
   const handleOpenChat = (chat: any) => {
-    // 1. Optimistic Update 
     setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
 
-    // 2. Tandai pesan jadi 'read' di DB
     if (chat.type === 'private') {
       const ids = [currentUser.id, chat.id].sort();
       const roomId = `pv_${ids[0]}_${ids[1]}`;
@@ -252,7 +258,6 @@ export default function HypetalkPage() {
         .then();
     }
 
-    // 3. Navigasi
     if (chat.type === 'global') {
       router.push('/hypetalk/room-1');
     } else if (chat.type === 'group') {
@@ -303,7 +308,6 @@ export default function HypetalkPage() {
                   <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {chat.name} <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} />
                   </h4>
-                  {/* FIX 2: Waktu (Time) */}
                   <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#3a7bd5' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
                     {chat.time}
                   </span>
@@ -320,7 +324,6 @@ export default function HypetalkPage() {
                     </p>
                   )}
 
-                  {/* FIX 2: Badge Angka Warna Biru (Primary Blue) */}
                   {chat.unread > 0 && (
                     <div style={{ background: '#3a7bd5', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
                       {chat.unread}
