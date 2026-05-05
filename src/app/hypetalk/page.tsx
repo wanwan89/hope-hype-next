@@ -56,12 +56,10 @@ export default function HypetalkPage() {
       });
     }
     
-    // FIX 1: Panggilan pertama kali (bukan background, pakai loading)
     await loadAllChats(user.id, false);
     subscribeToInbox(user.id);
   };
 
-  // FIX 1: Tambah parameter isBackground supaya gak munculin tulisan "Memuat..." tiap kali ada chat masuk
   const loadAllChats = async (userId: string, isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     
@@ -151,14 +149,13 @@ export default function HypetalkPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: any) => {
         const isRelated = payload.new?.room_id?.includes(userId) || payload.old?.room_id?.includes(userId);
         if (isRelated) {
-          // FIX 1: Panggil loadAllChats pake true (isBackground = true) biar UI gak kedip refresh
           loadAllChats(userId, true);
         }
       })
       .subscribe();
   };
 
-  // FIX 2: Supaya koneksi 'typing' gak putus nyambung pas pesan masuk
+  // FIX: Sinkronisasi nama Channel Presence dengan ChatRoom (hapus kata -typing-)
   const privateChatIds = chats.filter(c => c.type === 'private').map(c => c.id).sort().join(',');
 
   useEffect(() => {
@@ -166,13 +163,18 @@ export default function HypetalkPage() {
     
     const ids = privateChatIds.split(',');
     const channels = ids.map(chatId => {
+      // Pastikan urutan ID persis sama dengan yang ada di ChatRoom.tsx
       const userIds = [currentUser.id, chatId].sort();
       const roomId = `pv_${userIds[0]}_${userIds[1]}`;
       
-      return supabase.channel(`presence-typing-${roomId}`)
-        .on('broadcast', { event: 'typing' }, () => {
-          setTypingStatus(prev => ({ ...prev, [chatId]: true }));
-          setTimeout(() => setTypingStatus(prev => ({ ...prev, [chatId]: false })), 3000);
+      // Di ChatRoom, channelnya bernama `presence-${roomId}`
+      return supabase.channel(`presence-${roomId}`)
+        .on('broadcast', { event: 'typing' }, (p: any) => {
+          // Hanya tangkap kalau yang ngetik BUKAN diri kita sendiri
+          if (p.payload.username !== currentUser.username) {
+            setTypingStatus(prev => ({ ...prev, [chatId]: true }));
+            setTimeout(() => setTypingStatus(prev => ({ ...prev, [chatId]: false })), 3000);
+          }
         })
         .subscribe();
     });
