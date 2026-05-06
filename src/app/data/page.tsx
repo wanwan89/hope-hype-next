@@ -23,7 +23,7 @@ function ProfileContent() {
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
 
-  // 🔥 STATE EDIT PROFIL LENGKAP 🔥
+  // STATE MODALS & SIDEBAR
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '' });
@@ -115,14 +115,13 @@ function ProfileContent() {
       try { await navigator.share(shareData); } catch (err) {}
     } else {
       navigator.clipboard.writeText(window.location.href);
-      showNotif("Link profil disalin!", "success");
+      showNotif("Link disalin ke clipboard!", "success");
     }
   };
 
-  // 🔥 LOGIKA SIMPAN PERUBAHAN 🔥
   const handleSaveSettings = async () => {
     if (!myId) return;
-    if (!editData.username.trim()) return showNotif("Username wajib diisi", "warning");
+    if (!editData.username.trim()) return showNotif("Username tidak boleh kosong", "warning");
 
     setIsSaving(true);
     try {
@@ -134,7 +133,7 @@ function ProfileContent() {
         formData.append("file", selectedFile);
         formData.append("upload_preset", "post_hope"); 
         const res = await fetch("https://api.cloudinary.com/v1_1/dhhmkb8kl/image/upload", { method: "POST", body: formData });
-        if (!res.ok) throw new Error("Gagal upload gambar");
+        if (!res.ok) throw new Error("Gagal unggah foto");
         const resData = await res.json();
         finalAvatarUrl = resData.secure_url;
       }
@@ -142,12 +141,12 @@ function ProfileContent() {
       const { error } = await supabase.from("profiles").update({
         username: editData.username,
         bio: editData.bio,
-        avatar_url: finalAvatarUrl
+        avatar_url: finalAvatarUrl || profile.avatar_url
       }).eq("id", myId);
 
       if (error) throw error;
 
-      showNotif("Profil diperbarui!", "success");
+      showNotif("Profil berhasil diperbarui!", "success");
       setIsEditModalOpen(false);
       setTimeout(() => location.reload(), 800);
     } catch (err: any) {
@@ -190,6 +189,7 @@ function ProfileContent() {
   return (
     <div className="profile-page-container">
       
+      {/* HEADER */}
       <header className="profile-header">
         <button className="header-btn" onClick={() => router.back()}>
            <span className="material-icons">arrow_back</span>
@@ -200,6 +200,7 @@ function ProfileContent() {
         </button>
       </header>
 
+      {/* TOP SECTION */}
       <div className="profile-top-section">
         <section className="profile-info">
           <div className="avatar-container">
@@ -269,46 +270,51 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* SIDEBAR */}
-      <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
-      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      {/* 🔥 SIDEBAR DENGAN UNIQUE CLASS & ICON BARU 🔥 */}
+      <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      
+      <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
           <div className="sidebar-search">
              <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
-             <input type="text" placeholder="Cari aset..." />
+             <input type="text" placeholder="Cari..." />
           </div>
         </div>
+
         <div className="menu-category-label">Dompet & Aset</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}>
-           <div className="icon-wrapper"><span className="material-icons">account_balance_wallet</span></div>
+           <div className="icon-wrapper"><span className="material-icons">toll</span></div>
            <div className="menu-text">Saldo HypeCoin</div>
            <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}>
-           <div className="icon-wrapper"><span className="material-icons">history_edu</span></div>
+           <div className="icon-wrapper"><span className="material-icons">receipt_long</span></div>
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
+
         <div className="menu-category-label">Misi & Hadiah</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}>
-           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">stars</span></div>
+           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div>
            <div className="menu-text">Pusat Misi</div>
            <div className="arrow-right">›</div>
         </div>
+
         <hr className="menu-divider" />
+
         <div className="menu-category-label">Alat Pribadi</div>
         <div className="menu-item-tiktok" onClick={handleShareProfile}>
-           <div className="icon-wrapper"><span className="material-icons">qr_code_2</span></div>
+           <div className="icon-wrapper"><span className="material-icons">ios_share</span></div>
            <div className="menu-text">Bagikan Profil</div>
            <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
-           <div className="icon-wrapper"><span className="material-icons">logout</span></div>
+           <div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div>
            <div className="menu-text">Keluar Akun</div>
         </div>
       </aside>
 
-      {/* 🔥 MODAL EDIT PROFIL LENGKAP 🔥 */}
+      {/* MODAL EDIT PROFIL LENGKAP */}
       <div className={`custom-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
          <div className="edit-profile-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
@@ -325,13 +331,13 @@ function ProfileContent() {
                </label>
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{display: 'none'}} />
                
-               <p className="section-label">Pilih Avatar Preset:</p>
+               <p className="section-label">Ganti Avatar:</p>
                <div className="avatar-presets">
                   {avatarPresets.map((src, i) => (
                      <img 
                         key={i} 
                         src={src} 
-                        className={`preset-img ${editData.avatar_url === src ? 'selected' : ''}`} 
+                        className={`preset-img ${previewUrl === src ? 'selected' : ''}`} 
                         onClick={() => {
                            setEditData(prev => ({ ...prev, avatar_url: src }));
                            setPreviewUrl(src);
@@ -348,7 +354,6 @@ function ProfileContent() {
                   type="text" 
                   value={editData.username} 
                   onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))}
-                  placeholder="Username baru..."
                />
             </div>
 
@@ -358,7 +363,6 @@ function ProfileContent() {
                   rows={3} 
                   value={editData.bio} 
                   onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))}
-                  placeholder="Ceritakan tentang dirimu..."
                   maxLength={150}
                />
             </div>

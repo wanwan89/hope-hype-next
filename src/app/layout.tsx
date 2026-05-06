@@ -12,23 +12,28 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Identifikasi Halaman
+  // 1. Identifikasi Halaman secara Akurat
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
-  // 🔥 TAMBAHKAN: Identifikasi halaman profil (data) 🔥
   const isDataPage = pathname?.includes('/data');
+  const isNotifPage = pathname?.includes('/notifications');
   
-  // Halaman yang harus mentok ke atas (tanpa gap padding)
-  const isFullscreenPage = isVoicePage || isDataPage || pathname?.includes('/notifications');
+  // 🔥 Halaman yang harus menempel mentok ke atas (Profile, Notif, Voice)
+  const isFullscreenPage = isVoicePage || isDataPage || isNotifPage;
 
-  // 2. Tentukan Siapa yang Harus Sembunyi
-  // 🔥 FIX: Sidebar Home WAJIB sembunyi di Voice dan di halaman Profil (Data) 🔥
+  // 2. Tentukan Visibilitas Komponen Global
+  // Sidebar Home WAJIB sembunyi di Voice dan Profile (biar gak bentrok)
   const hideSidebar = isVoicePage || isDataPage; 
+  
+  // Navbar sembunyi hanya di Voice Room
   const hideNavbar = isVoicePage;
+  
+  // Overlays (global blur/popups) sembunyi di Voice
   const hideOverlays = isVoicePage;
 
-  // JURUS SEKAT TOTAL (Cleanup sisa-sisa Voice Room)
+  // 3. JURUS SEKAT TOTAL & CLEANUP
   useEffect(() => {
+    // Jika bukan di Voice Room, paksa scroll normal & hapus sampah DOM
     if (!isVoicePage) {
       document.body.style.overflow = 'auto';
       document.body.style.position = 'static';
@@ -57,26 +62,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
       >
         
-        {/* 🔥 Sidebar Home sekarang tidak akan bocor ke halaman Profil 🔥 */}
+        {/* 🔥 FIX: Sidebar Home tidak akan muncul jika hideSidebar true 🔥 */}
         {!hideSidebar && <Sidebar />}
         
         <div className="layout-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           
+          {/* Search bar hanya muncul di Home Page asli */}
           {isHomePage && (
             <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
               <SearchWrapper />
             </div>
           )}
 
-          {/* Main content tanpa key={pathname} biar gak kedip/glitch */}
+          {/* 🔥 FIX: Main Content 🔥
+              - Hapus 'key={pathname}' agar transisi antar tab (Karya/Musik) tidak reset/kedip.
+              - Gunakan class 'is-fullscreen' untuk Profile/Data agar nempel ke Header.
+          */}
           <main className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
             {children}
           </main>
 
+          {/* Navbar bawah */}
           {!hideNavbar && <Navbar />}
           
         </div>
 
+        {/* Popups & Overlays */}
         <LoginPopup />
         {!hideOverlays && <Overlays />}
 
