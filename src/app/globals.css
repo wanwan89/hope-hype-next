@@ -103,3 +103,23 @@ input, textarea, [contenteditable="true"], .selectable {
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
 }
+/* src/app/globals.css */
+
+.main-content {
+  flex: 1;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+  /* Default padding buat Home/Chat */
+  padding-top: 10px;
+  padding-bottom: 100px;
+  /* Animasi transisi biar perpindahan antar halaman mulus */
+  transition: padding 0.2s ease-out;
+}
+
+/* Mode Fullscreen untuk Profil, Notif, dan Voice */
+.main-content.is-fullscreen {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}

@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   
-  // 🔥 JURUS ANTI GAP: Halaman yang headernya harus nempel mentok ke atas 🔥
+  // Identifikasi halaman yang harus mentok ke atas
   const isFullscreenPage = isVoicePage || pathname?.includes('/data') || pathname?.includes('/notifications');
 
   // 2. Tentukan Siapa yang Harus Sembunyi
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isVoicePage;
   const hideOverlays = isVoicePage;
 
-  // 🔥 JURUS SEKAT TOTAL 🔥
+  // JURUS SEKAT TOTAL
   useEffect(() => {
     if (!isVoicePage) {
       document.body.style.overflow = 'auto';
@@ -32,11 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       document.body.style.height = 'auto';
       
       const voiceTrash = [
-        'room-gift-drawer', 
-        'room-drawer-overlay', 
-        'gift-anim-overlay', 
-        'vip-entrance-overlay',
-        'vip-anim-styles-clean'
+        'room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 
+        'vip-entrance-overlay', 'vip-anim-styles-clean'
       ];
       
       voiceTrash.forEach(id => {
@@ -67,20 +64,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           )}
 
-          <main 
-            key={pathname} 
-            className="main-content"
-            style={{ 
-              flex: 1, 
-              width: '100%', 
-              maxWidth: '600px',
-              margin: '0 auto', 
-              // 🔥 FIX GAP: Kalau halaman fullscreen, paddingTop & paddingBottom jadi 0 🔥
-              paddingTop: isFullscreenPage ? '0' : '10px', 
-              paddingBottom: isFullscreenPage ? '0' : '100px',
-              position: 'relative'
-            }}
-          >
+          {/* 🔥 FIX: Hapus key={pathname} dan gunakan Class Name 🔥 */}
+          <main className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
             {children}
           </main>
 
