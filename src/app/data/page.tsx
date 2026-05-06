@@ -10,8 +10,9 @@ function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const urlId = searchParams.get('id');
-  const urlUser = searchParams.get('user') || searchParams.get('username');
+  // 🔥 FIX: Tambahkan tanda tanya (?) agar tidak error saat searchParams null 🔥
+  const urlId = searchParams?.get('id');
+  const urlUser = searchParams?.get('user') || searchParams?.get('username');
 
   const [myId, setMyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -46,7 +47,7 @@ function ProfileContent() {
     } else if (urlUser) {
       query = query.eq('username', urlUser);
     } else if (currentUserId) {
-      query = query.eq('id', currentUserId); // Default ke profil sendiri
+      query = query.eq('id', currentUserId); 
     } else {
       router.push('/login');
       return;
@@ -55,14 +56,11 @@ function ProfileContent() {
     const { data: profData, error } = await query.single();
 
     if (error || !profData) {
-      showNotif("User tidak ditemukan", "error");
       return;
     }
 
     setProfile(profData);
     setNewBio(profData.bio || '');
-
-    // Load Stats
     updateStats(profData.id, profData.username, currentUserId);
   };
 
@@ -70,7 +68,6 @@ function ProfileContent() {
     const { count: fers } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', targetId);
     const { count: fing } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', targetId);
     
-    // Total Likes dari postingan dia
     const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', targetId);
     let totalLikes = 0;
     if (myPosts && myPosts.length > 0) {
@@ -81,7 +78,6 @@ function ProfileContent() {
 
     setStats({ followers: fers || 0, following: fing || 0, likes: totalLikes });
 
-    // Cek status follow kalau bukan profil sendiri
     if (currentUserId && currentUserId !== targetId) {
       const { data: isF } = await supabase.from('followers').select('id').match({ follower_id: currentUserId, following_id: targetId }).maybeSingle();
       setIsFollowing(!!isF);
@@ -147,22 +143,19 @@ function ProfileContent() {
 
   return (
     <div className="profile-page-container">
-      
-      {/* HEADER */}
       <header className="profile-header">
         <button className="header-btn" onClick={() => router.back()}>
            <span className="material-icons">arrow_back</span>
         </button>
         <h2>{profile.username}</h2>
-        <button className="header-btn" onClick={() => {/* Toggle Sidebar Kanan (opsional) */}}>
+        <button className="header-btn">
            <span className="material-icons">more_vert</span>
         </button>
       </header>
 
-      {/* INFO */}
       <section className="profile-info">
         <div className="avatar-container">
-           <img className="profile-avatar" src={profile.avatar_url || '/asets/png/profile.png'} alt="Avatar" />
+           <img className="profile-avatar" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
         </div>
         <h1 className="profile-name">
            {profile.username}
@@ -190,7 +183,7 @@ function ProfileContent() {
            {isMe ? (
               <>
                  <button className="btn-action btn-secondary" onClick={() => setIsBioModalOpen(true)}>Edit Profil</button>
-                 <button className="btn-action btn-secondary" onClick={() => {/* Share logic */}}>Bagikan</button>
+                 <button className="btn-action btn-secondary">Bagikan</button>
               </>
            ) : (
               <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>
@@ -200,14 +193,12 @@ function ProfileContent() {
         </div>
       </section>
 
-      {/* TABS */}
       <div className="profile-tabs">
          <div className={`tab-item ${activeTab === 'foto' ? 'active' : ''}`} onClick={() => setActiveTab('foto')}>Karya</div>
          <div className={`tab-item ${activeTab === 'musik' ? 'active' : ''}`} onClick={() => setActiveTab('musik')}>Musik</div>
          <div className={`tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>Disukai</div>
       </div>
 
-      {/* GRID POSTS */}
       <div className="post-grid">
          {isLoadingPosts ? (
             <div className="empty-state">Memuat...</div>
@@ -231,7 +222,6 @@ function ProfileContent() {
          )}
       </div>
 
-      {/* MODAL EDIT BIO */}
       <div className={`custom-modal-overlay ${isBioModalOpen ? 'active' : ''}`} onClick={() => setIsBioModalOpen(false)}>
          <div className="custom-modal-content" onClick={e => e.stopPropagation()}>
             <h3 className="modal-header-text">Edit Bio</h3>
@@ -249,7 +239,6 @@ function ProfileContent() {
             </div>
          </div>
       </div>
-
     </div>
   );
 }
