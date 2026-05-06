@@ -14,13 +14,16 @@ function NavbarContent() {
   const [isManualHidden, setIsManualHidden] = useState(false);
   
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  
+  // 🔥 FIX 1: State untuk dot notifikasi 🔥
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const lastScrollY = useRef(0);
 
+  // Periksa apakah sedang di dalam ruang chat atau voice room
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
-  const isVoiceRoom = pathname?.includes('/voice-room'); 
+  const isVoiceRoom = pathname?.includes('/voice-room') && pathname !== '/voice-room'; 
 
   useEffect(() => {
     const handleScroll = () => {
