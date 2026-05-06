@@ -312,7 +312,8 @@ export default function HypetalkPage() {
         <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
       )}
 
-      <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+<div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+
       <aside className={`tg-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <img className="side-avatar" src={currentUser?.avatar_url || "/asets/png/profile.webp"} alt="me" />
