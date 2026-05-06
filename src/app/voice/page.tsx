@@ -15,15 +15,16 @@ import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
 
 import './Voice.css';
 
-declare global {
+re global {
   interface Window {
     __VOICE_ROOM_INIT__?: boolean;
     naikKeStage?: (index: number) => void;
     turunMic?: (index: number) => void;
     prosesTurunMic?: () => void;
     toggleSidebar?: () => void;
-    toggleMicSidebar?: (event?: any) => void; /* 🔥 INI UDAH JADI 'any' 🔥 */
-    toggleGiftDrawer?: () => void;
+    toggleMicSidebar?: (event?: any) => void;
+    // 🔥 FIX: Ganti nama ini agar tidak bentrok dengan kado di Home 🔥
+    toggleRoomGiftDrawer?: (e?: any) => void; 
     toggleKickBtn?: (el: HTMLElement, canKick: boolean) => void;
     sendGift?: (giftName: string, harga: number | string, giftId: number | string, jumlah?: number) => void;
     kickUser?: (targetId: string, targetName: string) => void;
@@ -75,10 +76,11 @@ export default function RoomPage() {
     if (chatInput) {
         chatInput.addEventListener('focus', () => {
             const drawer = document.getElementById('gift-drawer');
+            // 🔥 FIX: Ganti ke toggleRoomGiftDrawer agar sesuai dengan fungsi baru 🔥
             if (drawer && drawer.classList.contains('open')) {
-                toggleGiftDrawer();
+                toggleRoomGiftDrawer(); 
             }
-            // 🔥 FIX: Buang scrollIntoView, ganti pakai trik nahan layar tetep di atas 🔥
+            
             setTimeout(() => {
                 window.scrollTo(0, 0);
                 const chatBox = document.getElementById('chat-box');
@@ -711,29 +713,25 @@ export default function RoomPage() {
         }
     }
 
-    // 🔥 FIX: Pakai 'function' (f kecil) dan ganti nama biar gak bentrok 🔥
-    function toggleRoomGiftDrawer(e) {
+    // 🔥 Pastikan namanya toggleRoomGiftDrawer 🔥
+    function toggleRoomGiftDrawer(e?: any) {
         if (e) {
             e.preventDefault();
-            e.stopPropagation(); // Biar klik gak nembus ke belakang
+            e.stopPropagation();
         }
-        
         const drawer = document.getElementById('gift-drawer');
         const overlay = document.getElementById('drawer-overlay');
         
-        if (drawer) drawer.classList.toggle('open');
-        if (overlay) overlay.classList.toggle('show');
+        if(drawer) drawer.classList.toggle('open');
+        if(overlay) overlay.classList.toggle('show');
         
-        // Cek kalau laci lagi kebuka, baru update data target & progress
         if (drawer && drawer.classList.contains('open')) {
             updateGiftTargets();
-            if (typeof updateLevelProgressUI === "function") {
-                updateLevelProgressUI();
-            }
+            if (typeof updateLevelProgressUI === "function") updateLevelProgressUI(); 
         }
     }
 
-    // 🔥 WAJIB: Daftarkan ke window dengan nama baru 🔥
+    // Dan di bagian bawah window assignment:
     window.toggleRoomGiftDrawer = toggleRoomGiftDrawer;
 
     async function updateGiftTargets() {
