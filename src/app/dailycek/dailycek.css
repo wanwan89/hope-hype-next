@@ -13,9 +13,13 @@
   color: var(--text-main); 
   min-height: 100vh; 
   width: 100%;
-  overflow-x: hidden;
+  
+  /* 🔥 FIX: Ganti 'hidden' jadi 'clip' biar sticky-nya hidup lagi! 🔥 */
+  overflow-x: clip; 
+  
   font-family: 'Poppins', sans-serif; 
 }
+
 
 /* --- DARK MODE --- */
 html.dark .mission-wrapper { 
