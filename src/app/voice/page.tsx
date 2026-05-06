@@ -1150,7 +1150,7 @@ export default function RoomPage() {
     window.prosesTurunMic = prosesTurunMic;
     window.toggleSidebar = toggleSidebar;
     window.toggleMicSidebar = toggleMicSidebar;
-    window.toggleGiftDrawer = toggleGiftDrawer;
+    window.toggleRoomGiftDrawer = toggleRoomGiftDrawer;
     window.toggleKickBtn = toggleKickBtn;
     window.sendGift = sendGift;
     window.kickUser = kickUser;
