@@ -135,11 +135,12 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: Mic2 }, // Arahkan ke Lobby Voice
-    // 🔥 Pake badgeCount buat notif biar muncul angka 🔥
+    { name: 'Voice', path: '/voice-room', icon: Mic2 }, 
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
-    { name: 'Profil', path: '/profile', icon: User },
+    // 🔥 FIX: Ganti '/profile' jadi '/data' sesuai nama folder lu 🔥
+    { name: 'Profil', path: '/data', icon: User },
   ];
+
 
   const showNavbar = isVisible && !isManualHidden;
 
