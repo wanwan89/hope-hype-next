@@ -1191,8 +1191,8 @@ const overlay = document.getElementById('room-drawer-overlay'); // 🔥 Pakai ID
             'gift-anim-overlay', 
             'vip-entrance-overlay', 
             'vip-anim-styles-clean',
-            'room-gift-drawer',    // 👈 Tambahin ini
-            'room-drawer-overlay'  // 👈 Tambahin ini
+            'room-gift-drawer',
+            'room-drawer-overlay'
         ];
         
         overlays.forEach(id => {
@@ -1206,6 +1206,8 @@ const overlay = document.getElementById('room-drawer-overlay'); // 🔥 Pakai ID
         
         console.log("✅ Voice Room Cleaned Up!");
     };
+
+  }, []); // 🔥 FIX 1: Ini penutup useEffect yang tadi hilang 🔥
 
   return (
     <>
@@ -1226,4 +1228,4 @@ const overlay = document.getElementById('room-drawer-overlay'); // 🔥 Pakai ID
       <GiftAnimOverlay />
     </>
   );
-}
+} // 🔥 FIX 2: Ini penutup fungsi RoomPage 🔥
