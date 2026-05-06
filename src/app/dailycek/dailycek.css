@@ -26,7 +26,7 @@ html.dark .mission-wrapper {
   --border-color: #262626; 
 }
 
-/* --- CONTAINER & HEADER --- */
+/* --- CONTAINER --- */
 .mission-container { 
   width: 100%; 
   max-width: 600px; 
@@ -38,17 +38,24 @@ html.dark .mission-wrapper {
   padding-bottom: 40px;
 }
 
+/* --- 🔥 NEW: STICKY TOP WRAPPER 🔥 --- */
+.sticky-top-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-main);
+  padding-bottom: 10px; /* Biar ada jarak pas di-scroll */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03); /* Bayangan soft buat pembatas scroll */
+}
+
+/* --- HEADER --- */
 .mission-header { 
-  position: sticky; 
-  top: 0; 
   background: var(--bg-card); 
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
   padding: 10px 16px; 
   padding-top: calc(10px + env(safe-area-inset-top));
-  z-index: 50; 
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02); 
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -64,7 +71,7 @@ html.dark .mission-wrapper {
 }
 
 .header-title { 
-  font-size: 1.05rem; /* Dikecilin */
+  font-size: 1.05rem; 
   font-weight: 800; 
   flex: 1; 
   text-align: center; 
@@ -74,7 +81,7 @@ html.dark .mission-wrapper {
 .header-coin { 
   display: flex; align-items: center; gap: 4px; font-weight: 800; 
   font-size: 0.85rem; background: rgba(245, 158, 11, 0.12); 
-  padding: 5px 12px; border-radius: 99px; /* Dikecilin */
+  padding: 5px 12px; border-radius: 99px; 
   color: var(--primary);
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
@@ -82,19 +89,21 @@ html.dark .mission-wrapper {
 /* --- KARTU UTAMA (EXCHANGE & STREAK) --- */
 .mission-card { 
   background: var(--bg-card); 
-  margin: 1rem 0.8rem; /* Margin dikurangin */
-  border-radius: 16px; /* Lengkungan disesuaikan */
-  padding: 1.1rem; /* Padding dikurangin biar ga makan tempat */
+  margin: 1rem 0.8rem; 
+  border-radius: 16px; 
+  padding: 1.1rem; 
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); 
   border: 1px solid var(--border-color);
 }
 
+/* Khusus kartu tukar koin (ada di dalem sticky wrapper) */
 .mission-card[style*="linear-gradient"] {
   box-shadow: 0 8px 25px rgba(15, 23, 42, 0.15);
   border: none;
+  margin-bottom: 0; /* Biar nempel rapi di dalem sticky wrapper */
 }
 
-/* --- STREAK DAYS (Check-in) --- */
+/* --- SISA CSS TETAP SAMA --- */
 .streak-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 2px; color: var(--text-main); }
 .streak-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; }
 
@@ -105,7 +114,7 @@ html.dark .mission-wrapper {
 .streak-days-container::-webkit-scrollbar { display: none; } 
 
 .day-card { 
-  flex: 0 0 62px; /* Lebar kotak hari dikecilin */
+  flex: 0 0 62px; 
   background: var(--bg-main); 
   border: 1.5px solid var(--border-color); 
   border-radius: 12px; 
@@ -132,7 +141,7 @@ html.dark .mission-wrapper {
   content: '✓'; 
   position: absolute; top: -5px; right: -5px; 
   background: #10b981; color: white; 
-  border-radius: 50%; width: 18px; height: 18px; /* Ikon centang lebih proporsional */
+  border-radius: 50%; width: 18px; height: 18px; 
   font-size: 10px; font-weight: 800;
   display: flex; align-items: center; justify-content: center; 
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
@@ -141,11 +150,10 @@ html.dark .mission-wrapper {
 .day-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
 .day-reward { font-size: 0.85rem; font-weight: 800; color: var(--text-main); }
 
-/* --- TOMBOL UTAMA --- */
 .claim-main-btn { 
   width: 100%; margin-top: 0.5rem; 
   background: linear-gradient(135deg, var(--primary), var(--primary-hover)); 
-  color: #fff; border: none; padding: 12px; /* Padding tombol dikurangin */
+  color: #fff; border: none; padding: 12px; 
   border-radius: 12px; font-size: 0.95rem; 
   font-weight: 800; cursor: pointer; transition: 0.2s; 
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
@@ -158,7 +166,6 @@ html.dark .mission-wrapper {
   cursor: not-allowed; 
 }
 
-/* --- LIST MISI --- */
 .section-title { 
   font-size: 0.95rem; font-weight: 800; 
   margin: 1.2rem 1rem 0.5rem; 
@@ -176,13 +183,13 @@ html.dark .mission-wrapper {
 
 .mission-item { 
   display: flex; align-items: center; 
-  padding: 1rem; /* Padding item dikurangin jadi 16px */
+  padding: 1rem; 
   border-bottom: 1px solid var(--border-color); 
 }
 .mission-item:last-child { border-bottom: none; }
 
 .m-icon-box { 
-  width: 40px; height: 40px; /* Ikon disesuaikan */
+  width: 40px; height: 40px; 
   border-radius: 10px; 
   display: flex; align-items: center; justify-content: center; 
   color: white; flex-shrink: 0; 
@@ -198,7 +205,6 @@ html.dark .mission-wrapper {
 
 .coin-dot { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; }
 
-/* --- PROGRESS BAR --- */
 .progress-bar { 
   width: 100%; height: 6px; 
   background: var(--bg-main); 
@@ -208,12 +214,11 @@ html.dark .mission-wrapper {
 .progress-fill { height: 100%; background: #10b981; transition: width 0.5s ease-out; }
 .progress-text { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; }
 
-/* --- TOMBOL MISI KECIL --- */
 .m-btn { 
   background: var(--bg-main); 
   border: 1px solid var(--border-color); 
   color: var(--text-main); 
-  padding: 8px 16px; /* Padding disesuaikan */
+  padding: 8px 16px; 
   border-radius: 10px; 
   font-size: 0.8rem; font-weight: 800; 
   cursor: pointer; transition: 0.2s;
@@ -235,7 +240,6 @@ html.dark .mission-wrapper {
 }
 .m-btn.btn-done:hover { background: rgba(16, 185, 129, 0.1); transform: none; }
 
-/* --- SECURITY OVERLAY --- */
 .security-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
   z-index: 99999; color: white; display: flex; flex-direction: column; 

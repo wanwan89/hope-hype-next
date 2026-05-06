@@ -15,20 +15,26 @@ export default function PusatMisiPage() {
   const [showSecurity, setShowSecurity] = useState(false);
   const [visitorId, setVisitorId] = useState('');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [dailyProgress, setDailyProgress] = useState({ listen: 0, like: 0, comment: 0, upload: 0 });
+  
+  // Progress Misi (Listen dihapus)
+  const [dailyProgress, setDailyProgress] = useState({ like: 0, comment: 0, upload: 0 });
   const [claimedTypes, setClaimedTypes] = useState<string[]>([]);
+  
+  // State Referral
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
 
   const REWARDS = [50, 50, 100, 50, 50, 100, 300];
+  
+  // Misi Harian (Listen dihapus)
   const MISSIONS = {
-    listen: { target: 3, reward: 30, type: 'mission_listen', icon: 'headset', color: '#3b82f6' }, // Biru
-    like: { target: 5, reward: 25, type: 'mission_like', icon: 'favorite', color: '#ec4899' }, // Pink
-    comment: { target: 3, reward: 40, type: 'mission_comment', icon: 'chat', color: '#10b981' }, // Hijau
-    upload: { target: 1, reward: 100, type: 'mission_upload', icon: 'cloud_upload', color: '#8b5cf6' }, // Ungu
+    like: { target: 5, reward: 25, type: 'mission_like', icon: 'favorite', color: '#ec4899' },
+    comment: { target: 3, reward: 40, type: 'mission_comment', icon: 'chat', color: '#10b981' },
+    upload: { target: 1, reward: 100, type: 'mission_upload', icon: 'cloud_upload', color: '#8b5cf6' },
   };
 
   useEffect(() => {
     initMisi();
-    // Handle PWA Prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -37,7 +43,6 @@ export default function PusatMisiPage() {
 
   const initMisi = async () => {
     try {
-      // 1. Ambil Fingerprint & IP
       const fp = await FingerprintJS.load();
       const { visitorId: vid } = await fp.get();
       setVisitorId(vid);
@@ -45,22 +50,27 @@ export default function PusatMisiPage() {
       const ipRes = await fetch('https://api.ipify.org?format=json');
       const { ip } = await ipRes.json();
 
-      // 2. Auth Check
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return router.push('/login');
 
-      // 3. Load Profile
       const { data: prof, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (error) throw error;
 
-      // 4. Security Check (Device Multi-Account)
       const { data: dupe } = await supabase.from('profiles').select('id').eq('device_id', vid).neq('id', session.user.id).limit(1);
       if (dupe && dupe.length > 0) {
         setShowSecurity(true);
         return;
       }
 
-      setProfile(prof);
+      // Generate Kode Invite jika belum punya
+      let currentProfile = prof;
+      if (!currentProfile.invite_code) {
+         const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+         await supabase.from('profiles').update({ invite_code: newCode }).eq('id', session.user.id);
+         currentProfile.invite_code = newCode;
+      }
+
+      setProfile(currentProfile);
       await loadDailyProgress(session.user.id);
       setIsLoading(false);
     } catch (err) {
@@ -80,9 +90,7 @@ export default function PusatMisiPage() {
       supabase.from('coin_history').select('transaction_type').eq('user_id', uid).gte('created_at', isoDate)
     ]);
 
-    const ls = parseInt(localStorage.getItem('hh_daily_listens') || '0');
     setDailyProgress({
-      listen: ls,
       like: likes.count || 0,
       comment: comments.count || 0,
       upload: uploads.count || 0
@@ -90,7 +98,6 @@ export default function PusatMisiPage() {
     setClaimedTypes(claims.data?.map(c => c.transaction_type) || []);
   };
 
-  // 🔥 CORE UPDATE LOGIC
   const secureUpdate = async (updateObj: any, history: any) => {
     try {
       const { error: pErr } = await supabase.from('profiles').update({ ...updateObj, device_id: visitorId }).eq('id', profile.id);
@@ -99,7 +106,7 @@ export default function PusatMisiPage() {
       
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
       showNotif(`Hadiah diklaim! +${history.amount} Koin`, "success");
-      initMisi(); // Refresh data
+      initMisi(); 
     } catch (err: any) {
       showNotif(err.message, "error");
     }
@@ -144,6 +151,57 @@ export default function PusatMisiPage() {
     }
   };
 
+  // 🔥 LOGIKA KLAIM REFERRAL 🔥
+  const handleClaimInviteCode = async () => {
+    const code = inviteCodeInput.trim().toUpperCase();
+    if (!code) return showNotif("Masukkan kode teman", "warning");
+    if (code === profile.invite_code) return showNotif("Tidak bisa memakai kodemu sendiri", "error");
+    
+    setIsSubmittingInvite(true);
+    try {
+      const { data: friend, error: fErr } = await supabase.from('profiles').select('id, mission_coins').eq('invite_code', code).single();
+      if (fErr || !friend) throw new Error("Kode tidak ditemukan atau salah");
+
+      // Update User Sekarang
+      const { error: uErr } = await supabase.from('profiles').update({
+        referred_by: code,
+        mission_coins: (profile.mission_coins || 0) + 200,
+        device_id: visitorId
+      }).eq('id', profile.id);
+      if (uErr) throw uErr;
+
+      // Update Saldo Teman
+      await supabase.from('profiles').update({
+        mission_coins: (friend.mission_coins || 0) + 500
+      }).eq('id', friend.id);
+
+      // Catat History Keduanya
+      await supabase.from('coin_history').insert([
+        { user_id: profile.id, type: 'masuk', transaction_type: 'referral_used', amount: 200, description: 'Memakai kode undangan' },
+        { user_id: friend.id, type: 'masuk', transaction_type: 'referral_bonus', amount: 500, description: 'Teman memakai kodemu' }
+      ]);
+
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      showNotif("Berhasil! +200 Koin Misi", "success");
+      initMisi();
+    } catch (err: any) {
+      showNotif(err.message, "error");
+    } finally {
+      setIsSubmittingInvite(false);
+    }
+  };
+
+  // 🔥 LOGIKA SHARE REFERRAL 🔥
+  const handleShareLink = () => {
+    const link = `${window.location.origin}/dailycek?ref=${profile?.invite_code}`;
+    if (navigator.share) {
+      navigator.share({ title: 'HopeHype', text: `Yuk gabung HopeHype dan masukin kode undanganku: ${profile?.invite_code}`, url: link }).catch(()=>{});
+    } else {
+      navigator.clipboard.writeText(link);
+      showNotif("Link dan kode berhasil disalin!", "success");
+    }
+  };
+
   if (showSecurity) return (
     <div className="security-overlay">
       <span className="material-icons" style={{fontSize:'64px', color:'#ff4757'}}>shield</span>
@@ -156,29 +214,31 @@ export default function PusatMisiPage() {
     <div className="mission-wrapper">
       <div className="mission-container">
         
-        {/* HEADER */}
-        <header className="mission-header">
-          <button className="back-btn" onClick={() => router.back()}>
-            <span className="material-icons">arrow_back_ios</span>
-          </button>
-          <h1 className="header-title">Pusat Misi</h1>
-          <div className="header-coin">
-            <span className="material-icons" style={{color:'#f59e0b', fontSize:'18px'}}>monetization_on</span>
-            <span style={{color:'#f59e0b'}}>{profile?.mission_coins || 0}</span>
-          </div>
-        </header>
+        <div className="sticky-top-wrapper">
+          {/* HEADER */}
+          <header className="mission-header">
+            <button className="back-btn" onClick={() => router.back()}>
+              <span className="material-icons">arrow_back_ios</span>
+            </button>
+            <h1 className="header-title">Pusat Misi</h1>
+            <div className="header-coin">
+              {/* 🔥 FIX: Icon koin dihapus, sisa angka saja 🔥 */}
+              <span style={{color:'#f59e0b', fontSize: '15px'}}>{profile?.mission_coins || 0}</span>
+            </div>
+          </header>
 
-        {/* EXCHANGE */}
-        <div className="mission-card" style={{background:'linear-gradient(135deg, #1e293b, #0f172a)', border:'none', color:'white'}}>
-           <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-              <div className="m-icon-box" style={{background:'#38bdf8'}}><span className="material-icons">swap_horiz</span></div>
-              <div style={{flex:1}}>
-                 <h4 style={{fontSize:'0.9rem'}}>Tukar Koin Misi</h4>
-                 <p style={{fontSize:'0.75rem', opacity:0.7}}>1000 Misi → 10 Hope</p>
-                 <p style={{fontSize:'0.7rem', marginTop:4}}>Saldo Hope: <b style={{color:'#38bdf8'}}>{profile?.coins || 0}</b></p>
-              </div>
-              <button className="m-btn" onClick={handleExchange} style={{background:'#38bdf8', color:'white', border:'none'}}>Tukar</button>
-           </div>
+          {/* EXCHANGE (TUKAR KOIN) */}
+          <div className="mission-card" style={{background:'linear-gradient(135deg, #1e293b, #0f172a)', border:'none', color:'white'}}>
+             <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                <div className="m-icon-box" style={{background:'#38bdf8'}}><span className="material-icons">swap_horiz</span></div>
+                <div style={{flex:1}}>
+                   <h4 style={{fontSize:'0.9rem'}}>Tukar Koin Misi</h4>
+                   <p style={{fontSize:'0.75rem', opacity:0.7}}>1000 Misi → 10 Hope</p>
+                   <p style={{fontSize:'0.7rem', marginTop:4}}>Saldo Hope: <b style={{color:'#38bdf8'}}>{profile?.coins || 0}</b></p>
+                </div>
+                <button className="m-btn" onClick={handleExchange} style={{background:'#38bdf8', color:'white', border:'none'}}>Tukar</button>
+             </div>
+          </div>
         </div>
 
         {/* CHECK-IN */}
@@ -207,6 +267,56 @@ export default function PusatMisiPage() {
           </button>
         </div>
 
+        {/* MISI PEMULA & REFERRAL */}
+        <h3 className="section-title">Misi Pemula</h3>
+        <div className="mission-list">
+          
+          {/* Misi Instal PWA */}
+          {!profile?.apk_downloaded && (
+            <div className="mission-item">
+              <div className="m-icon-box" style={{background:'#10b981'}}><span className="material-icons">install_mobile</span></div>
+              <div className="m-info">
+                <h4 className="m-title">Instal Aplikasi HopeHype</h4>
+                <div className="m-reward"><div className="coin-dot" /> +300 Koin</div>
+                <span className="progress-text">Akses lebih cepat & ringan</span>
+              </div>
+              <button className="m-btn btn-klaim" onClick={handlePwaInstall}>Instal</button>
+            </div>
+          )}
+
+          {/* 🔥 Misi Input Kode Referral 🔥 */}
+          <div className="mission-item" style={{ flexWrap: 'wrap' }}>
+            <div className="m-icon-box" style={{background:'#f97316'}}><span className="material-icons">card_giftcard</span></div>
+            <div className="m-info">
+              <h4 className="m-title">Masukkan Kode Undangan</h4>
+              <div className="m-reward"><div className="coin-dot" /> +200 Koin</div>
+              
+              {!profile?.referred_by ? (
+                <input 
+                  type="text" 
+                  value={inviteCodeInput}
+                  onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                  placeholder="Kode teman..." 
+                  style={{
+                    width: '100%', padding: '8px 12px', fontSize: '13px', 
+                    borderRadius: '8px', border: '1px solid var(--border-color)', 
+                    background: 'var(--bg-main)', color: 'var(--text-main)', 
+                    outline: 'none', marginTop: '6px', fontFamily: 'monospace'
+                  }} 
+                />
+              ) : (
+                <span className="progress-text" style={{color: '#10b981', display:'block', marginTop:'4px'}}>✓ Berhasil diklaim</span>
+              )}
+            </div>
+            {!profile?.referred_by && (
+              <button className="m-btn btn-klaim" onClick={handleClaimInviteCode} disabled={isSubmittingInvite}>
+                {isSubmittingInvite ? '...' : 'Klaim'}
+              </button>
+            )}
+          </div>
+
+        </div>
+
         {/* MISI HARIAN */}
         <h3 className="section-title">Misi Harian</h3>
         <div className="mission-list">
@@ -217,11 +327,8 @@ export default function PusatMisiPage() {
 
             return (
               <div className="mission-item" key={key}>
-                {/* 🔥 FIX ICON & BACKGROUND COLOR DISINI 🔥 */}
                 <div className="m-icon-box" style={{ backgroundColor: m.color }}>
-                   <span className="material-icons" style={{ fontSize: '20px', color: 'white' }}>
-                      {m.icon}
-                   </span>
+                   <span className="material-icons" style={{ fontSize: '20px', color: 'white' }}>{m.icon}</span>
                 </div>
                 
                 <div className="m-info">
@@ -238,7 +345,6 @@ export default function PusatMisiPage() {
                     if (canClaim) {
                       secureUpdate({ mission_coins: profile.mission_coins + m.reward }, { type:'masuk', transaction_type: m.type, amount: m.reward, description:'Misi Harian' });
                     } else {
-                      // Kalo belum beres misinya, arahin ke halaman home/yang sesuai
                       router.push('/');
                     }
                   }}
@@ -250,23 +356,19 @@ export default function PusatMisiPage() {
           })}
         </div>
 
-        {/* INSTALL PWA */}
-        {!profile?.apk_downloaded && (
-          <>
-            <h3 className="section-title">Misi Pemula</h3>
-            <div className="mission-list">
-              <div className="mission-item">
-                <div className="m-icon-box" style={{background:'#10b981'}}><span className="material-icons">install_mobile</span></div>
-                <div className="m-info">
-                  <h4 className="m-title">Instal Aplikasi HopeHype</h4>
-                  <div className="m-reward"><div className="coin-dot" /> +300 Koin</div>
-                  <p style={{fontSize:'0.7rem', color:'gray', marginTop:'4px'}}>Akses lebih cepat & ringan</p>
-                </div>
-                <button className="m-btn btn-klaim" onClick={handlePwaInstall}>Instal</button>
-              </div>
+        {/* 🔥 PROGRAM REFERRAL (BAGIKAN KODE) 🔥 */}
+        <h3 className="section-title" style={{ marginTop: '1.25rem' }}>Program Referral</h3>
+        <div className="mission-list" style={{ marginBottom: '2rem' }}>
+          <div className="mission-item">
+            <div className="m-icon-box" style={{background: '#ef4444'}}><span className="material-icons">group_add</span></div>
+            <div className="m-info">
+              <h4 className="m-title">Undang & Dapat Koin</h4>
+              <div className="m-reward"><div className="coin-dot" /> +500 Koin / Teman</div>
+              <span className="progress-text">Kode: <b style={{color: 'var(--primary)', fontFamily: 'monospace', fontSize: '13px'}}>{profile?.invite_code || '...'}</b></span>
             </div>
-          </>
-        )}
+            <button className="m-btn" onClick={handleShareLink}>Bagikan</button>
+          </div>
+        </div>
 
       </div>
     </div>
