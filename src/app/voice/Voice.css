@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ==================================================
-   1. THEME VARIABLES (PREMIUM PALETTE)
+   1. THEME VARIABLES
 ================================================== */
 :root, [data-theme="light"] {
     --primary: #3b82f6;         
@@ -67,18 +67,15 @@
 }
 
 /* ==================================================
-   2. RESET & PERFORMANCE OPTIMIZATION
+   2. RESET
 ================================================== */
 * {
     box-sizing: border-box;
-    /* 🔥 FIX BIRU-BIRU: Paksa hilang pakai !important 🔥 */
     -webkit-tap-highlight-color: transparent !important;
     outline: none !important; 
     margin: 0; padding: 0;
     user-select: none; 
 }
-
-/* Body normal, gemboknya dilepas biar Home bisa di-scroll */
 body, html {
     width: 100%;
     background-color: var(--bg-base); 
@@ -87,33 +84,28 @@ body, html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
-
-input, textarea, .msg span {
-    user-select: text;
-}
+input, textarea, .msg span { user-select: text; }
 
 /* ==================================================
-   3. MAIN LAYOUT ENGINE (FLEXBOX MURNI)
+   3. APP CONTAINER
 ================================================== */
-/* Gemboknya dipindah ke sini KHUSUS buat halaman Voice Room */
 .app-container {
     display: flex;
     flex-direction: column;
-    position: fixed; /* Gembok khusus ruang chat */
-    top: 0; left: 0; right: 0; bottom: 0; /* Nempel ke seluruh layar HP */
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0; 
     width: 100%;
     max-width: 500px; 
     margin: 0 auto;
     background-color: var(--bg-base);
-    overflow: hidden; /* Biar isinya nggak tembus / layar nggak bisa ditarik */
+    overflow: hidden; 
     z-index: 10;
 }
-
 h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 ::-webkit-scrollbar { width: 0px; background: transparent; }
 
 /* ==================================================
-   HEADER UTAMA
+   4. HEADER
 ================================================== */
 .main-header { 
     flex-shrink: 0; 
@@ -135,7 +127,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 .menu-btn:active { background-color: var(--empty-slot); transform: scale(0.85); }
 
 /* ==================================================
-   STAGE CONTAINER
+   5. STAGE CONTAINER
 ================================================== */
 .stage-container {
     flex-shrink: 0; 
@@ -155,7 +147,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 .speaker-item.empty .name-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
 
 /* ==================================================
-   CHAT DISPLAY
+   6. CHAT DISPLAY
 ================================================== */
 .chat-display { 
     flex: 1; 
@@ -175,7 +167,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 @keyframes giftPopIn { 0% { opacity: 0; transform: translateY(15px) scale(0.8); } 50% { opacity: 1; transform: translateY(-3px) scale(1.05); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
 
 /* ==================================================
-   FOOTER CHAT AREA
+   7. FOOTER CHAT AREA
 ================================================== */
 .footer-controls { 
     position: relative;
@@ -196,7 +188,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 .btn-send:active { transform: scale(0.85); background: #2563eb; }
 
 /* ==================================================
-   OVERLAY UTAMA GIFT
+   8. GIFT OVERLAYS & DRAWER
 ================================================== */
 #gift-anim-overlay { position: fixed !important; inset: 0; display: none; justify-content: center; align-items: center; z-index: 1000000 !important; pointer-events: none !important; }
 #gift-anim-overlay.show, #gift-anim-overlay[style*="display: flex"] { background: var(--gift-spotlight), var(--overlay-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: fadeInGiftOverlay 0.4s ease-out forwards; }
@@ -207,9 +199,6 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 @keyframes giftEpicPopUp { 0% { opacity: 0; transform: scale(0.2) translateY(100px) rotate(-15deg); } 50% { opacity: 1; transform: scale(1.15) translateY(-15px) rotate(8deg); } 75% { transform: scale(0.95) translateY(5px) rotate(-2deg); } 100% { opacity: 1; transform: scale(1) translateY(0) rotate(0deg); } }
 @keyframes comboPulse { 0% { transform: rotate(-15deg) scale(0.5); opacity: 0; } 80% { transform: rotate(-15deg) scale(1.2); opacity: 1; } 100% { transform: rotate(-15deg) scale(1.1); opacity: 1; } }
 
-/* ==================================================
-   DRAWER LACI KADO
-================================================== */
 .drawer-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 5000; display: none; opacity: 0; transition: opacity 0.3s ease; will-change: opacity; pointer-events: none !important; }
 .drawer-overlay.show { display: block; opacity: 1; pointer-events: auto !important; animation: fadeInOverlay 0.3s ease forwards; }
 @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
@@ -241,7 +230,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 .gift-price { font-size: 12px; color: var(--accent); font-weight: 800; margin-top: 4px; display: flex; align-items: center; gap: 2px; }
 
 /* ==================================================
-   MODAL AREA
+   9. MODAL & LEADERBOARD
 ================================================== */
 .modal-overlay { position: fixed; inset: 0; background: var(--modal-overlay); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 10000; display: none; align-items: center; justify-content: center; opacity: 0; pointer-events: none !important; }
 .modal-overlay[style*="display: flex"], .modal-overlay.show { display: flex; pointer-events: auto !important; animation: fadeInModal 0.3s ease-out forwards; }
@@ -278,7 +267,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 @keyframes scaleUpModal { 0% { transform: scale(0.8) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
 
 /* ==================================================
-   SIDEBAR MENU (FIX: NEMPEL KANAN & GAK KEBABLASAN)
+   10. SIDEBAR MENU (DI KANAN, GAK KEBABLASAN)
 ================================================== */
 .sidebar-overlay { 
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); 
@@ -291,46 +280,40 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 .sidebar {
     position: fixed; 
     top: 0; 
-    right: 0; /* 🔥 KUNCI MATI DI KANAN 🔥 */
+    right: 0 !important; /* 🔥 WAJIB NEMPEL DI KANAN 🔥 */
+    left: auto !important; /* 🔥 Paksa matiin fungsi kiri kalau ada yang nyangkut 🔥 */
     width: 260px; 
     max-width: 75vw; 
-    height: 100%; /* Laci full dari atas ke bawah */
+    height: 100%; 
     background: var(--panel-bg); 
     z-index: 2000;
     padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom)) 20px;
     display: flex; flex-direction: column; 
     
-    /* 🔥 Siku di Kanan (Nempel HP), Melengkung di Kiri 🔥 */
     border-top-left-radius: 28px; 
     border-bottom-left-radius: 28px;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
     
     border-left: 1px solid var(--border); 
+    border-right: none;
     box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15); 
     
-    /* 🔥 NGUMPETNYA DI LUAR KANAN LAYAR 🔥 */
     transform: translateX(100%); 
     visibility: hidden;
     transition: transform 0.3s ease-out, visibility 0.3s ease-out; 
     will-change: transform, visibility;
 }
 
-/* 🔥 INI REM CAKRAMNYA BIAR GAK KEBABLASAN: HARUS 0 🔥 */
-.sidebar.active { 
-    transform: translateX(0); 
-    visibility: visible; 
-}
+/* 🔥 INI REM NYA BIAR GAK BABLAS 🔥 */
+.sidebar.active { transform: translateX(0); visibility: visible; }
 
-/* Biar menunya gak nabrak atas (karena headernya dihapus) */
 .sidebar-menu { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .sidebar-menu a { display: flex; align-items: center; gap: 14px; color: var(--text-main); text-decoration: none; padding: 12px 14px; border-radius: 16px; font-size: 14.5px; font-weight: 600; transition: all 0.2s ease; }
 .menu-icon-box { width: 38px; height: 38px; background: var(--empty-slot); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-main); }
 .menu-icon-box .material-icons { font-size: 20px; }
 .sidebar-menu a:active { background-color: var(--empty-slot); transform: scale(0.96); }
 .menu-divider { height: 1px; background: var(--border); margin: 10px 0; }
-
-/* 🔥 Bikin tombol Logout otomatis mentok ke dasar laci 🔥 */
 .sidebar-menu a.logout-item { color: #ef4444; margin-top: auto; }
 .logout-box { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 .sidebar-menu a.logout-item:active { background: rgba(239, 68, 68, 0.08); }
