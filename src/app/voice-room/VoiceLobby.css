@@ -246,11 +246,79 @@ html, body {
 }
 
 /* =========================================
-   6. MODALS
+   6. MODALS & ROOM CREATION FORM
    ========================================= */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100000;
+}
+
 .modal-content {
+  background: var(--bg-card);
   border-radius: 24px;
   padding: 24px;
+  width: 85%;
   max-width: 320px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  animation: modalPopUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
-.btn-confirm { background: var(--primary-gradient); }
+
+@keyframes modalPopUp {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  font-size: 18px; font-weight: 800; color: var(--text-dark); margin: 0;
+}
+
+.close-modal-btn {
+  background: var(--bg-app); border: none; width: 32px; height: 32px;
+  border-radius: 50%; color: var(--text-muted); display: flex;
+  align-items: center; justify-content: center; cursor: pointer;
+}
+
+.modal-body label {
+  display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;
+}
+
+.modal-body input {
+  width: 100%; padding: 14px 16px;
+  border-radius: 12px; border: 1px solid rgba(0,0,0,0.1);
+  background: var(--bg-app); font-size: 14px; font-weight: 600; color: var(--text-dark);
+  margin-bottom: 20px; outline: none; transition: all 0.2s ease;
+}
+
+.modal-body input:focus {
+  border-color: var(--primary); background: white;
+  box-shadow: 0 0 0 4px var(--primary-light);
+}
+
+.modal-actions {
+  display: flex; gap: 12px;
+}
+
+.modal-actions button {
+  flex: 1; padding: 14px; border: none; border-radius: 12px;
+  font-weight: 700; font-size: 14px; cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.modal-actions button:active { transform: scale(0.95); }
+
+.btn-cancel {
+  background: var(--bg-app); color: var(--text-muted);
+}
+
+.btn-confirm { 
+  background: var(--primary-gradient); color: white; 
+  box-shadow: 0 4px 15px rgba(0, 112, 243, 0.3);
+}

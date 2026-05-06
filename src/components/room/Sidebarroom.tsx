@@ -13,6 +13,7 @@ declare global {
 export default function Sidebar() {
   return (
     <>
+      {/* OVERLAY: Area transparan di luar menu. Kalo di-tap, bakal manggil toggleSidebar (nutup menu) */}
       <div 
         id="sidebar-overlay" 
         className="sidebar-overlay" 
@@ -20,22 +21,9 @@ export default function Sidebar() {
       ></div>
 
       <div id="sidebar" className="sidebar">
-        <div className="sidebar-header">
-          <button className="close-sidebar-btn" onClick={() => window.toggleSidebar && window.toggleSidebar()}>
-            <span className="material-icons">chevron_right</span>
-          </button>
-          <div className="profile-img-wrapper">
-            <img src="/asets/png/profile.png" id="sidebar-avatar" className="sidebar-profile-img" alt="Profile" />
-          </div>
-          <span id="sidebar-username">Username</span>
-        </div>
+        {/* 🔥 Bagian foto profil, nama user, dan tombol panah udah DIBASMI total dari sini 🔥 */}
 
         <div className="sidebar-menu">
-          <a href="/data">
-            <div className="menu-icon-box"><span className="material-icons">person</span></div>
-            <span>Profil</span>
-          </a>
-          
           <a href="#" id="menu-mic" onClick={(event) => window.toggleMicSidebar && window.toggleMicSidebar(event)}>
             <div className="menu-icon-box"><span className="material-icons" id="mic-icon">mic</span></div>
             <span id="mic-text">Matikan Mic</span>
