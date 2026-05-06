@@ -13,7 +13,7 @@
     flex-direction: column;
     background: var(--bg-main);
     color: var(--text-dark);
-    overflow: hidden; /* Matiin scroll body utama */
+    overflow: hidden; /* Matiin scroll body utama biar gak glitch */
 }
 
 html.dark .profile-page-container {
@@ -48,7 +48,6 @@ html.dark .profile-page-container {
 .profile-name { font-size: 19px; font-weight: 800; margin-bottom: 2px; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .profile-username { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
 
-/* Stats & Actions */
 .profile-stats { display: flex; justify-content: center; gap: 25px; margin-bottom: 15px; }
 .stat-box { display: flex; flex-direction: column; align-items: center; }
 .stat-num { font-size: 16px; font-weight: 800; }
@@ -60,11 +59,11 @@ html.dark .profile-page-container {
 .btn-secondary { background: var(--bg-secondary); color: var(--text-dark); border: 1px solid var(--border-color); }
 
 /* 🔥 Bio di bawah tombol 🔥 */
-.profile-bio { font-size: 13.5px; line-height: 1.4; color: var(--text-dark); margin: 0; padding: 0 10px; white-space: pre-wrap; text-align: center; }
+.profile-bio { font-size: 13.5px; line-height: 1.4; color: var(--text-dark); margin: 0; padding: 0 10px; white-space: pre-wrap; text-align: center; margin-bottom: 5px; }
 
 /* Tabs 4 Menu */
 .profile-tabs { display: flex; border-bottom: 1px solid var(--border-color); background: var(--bg-main); }
-.tab-item { flex: 1; padding: 12px 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--text-secondary); cursor: pointer; position: relative; }
+.tab-item { flex: 1; padding: 12px 0; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; position: relative; }
 .tab-item.active { color: var(--text-dark); }
 .tab-item.active::after { content: ""; position: absolute; bottom: 0; left: 20%; width: 60%; height: 2px; background: var(--text-dark); }
 
@@ -82,31 +81,42 @@ html.dark .profile-page-container {
 .grid-item img { width: 100%; height: 100%; object-fit: cover; }
 .grid-no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); color: var(--text-secondary); }
 
-/* ==== SIDEBAR TIKTOK STYLE ==== */
-.sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1999; opacity: 0; visibility: hidden; transition: 0.3s; }
+/* ==== SIDEBAR TIKTOK STYLE (FIXED BLUR) ==== */
+.sidebar-overlay { 
+    position: fixed; inset: 0; 
+    background: rgba(0,0,0,0.4); 
+    backdrop-filter: blur(4px); /* Blur konten belakang saja */
+    z-index: 9998; 
+    opacity: 0; visibility: hidden; transition: 0.3s; 
+}
 .sidebar-overlay.active { opacity: 1; visibility: visible; }
 
 .sidebar { 
-    position: fixed; top: 0; bottom: 0; right: -100%; width: 75%; max-width: 300px; 
-    background: var(--bg-main); z-index: 2000; 
-    transition: right 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); 
-    display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.1);
+    position: fixed; top: 0; bottom: 0; right: 0; width: 75%; max-width: 300px; 
+    background: var(--bg-main); z-index: 9999; /* Pastikan di atas overlay */
+    transform: translateX(100%); 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.2);
 }
-.sidebar.open { right: 0; }
+.sidebar.open { transform: translateX(0); }
+
 .sidebar-search-container { padding: 20px 16px 10px; }
-.sidebar-search { background: var(--bg-secondary); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; }
+.sidebar-search { background: var(--bg-secondary); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
 .sidebar-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; color: var(--text-dark); }
 
-.menu-category-label { padding: 18px 16px 8px; font-size: 12px; font-weight: 600; color: #8a8b91; text-transform: uppercase; }
-.menu-item-tiktok { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; }
+.menu-category-label { padding: 18px 16px 8px; font-size: 12px; font-weight: 700; color: #8a8b91; text-transform: uppercase; letter-spacing: 0.5px; }
+.menu-item-tiktok { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; transition: 0.2s; }
 .menu-item-tiktok:active { background: var(--bg-secondary); }
-.menu-item-tiktok .icon-wrapper { width: 28px; color: var(--text-dark); display: flex; align-items: center; }
-.menu-item-tiktok .menu-text { flex: 1; font-size: 15px; font-weight: 500; color: var(--text-dark); margin-left: 10px; }
+.menu-item-tiktok .icon-wrapper { width: 30px; color: var(--text-dark); display: flex; align-items: center; }
+.menu-item-tiktok .menu-text { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-dark); margin-left: 10px; }
 .menu-item-tiktok .arrow-right { color: #bdbebf; font-size: 18px; }
 .menu-divider { border: 0; border-top: 1px solid var(--border-color); margin: 10px 16px; }
 
+.menu-item-tiktok.logout { color: #ff4757; margin-top: auto; padding-bottom: 30px; }
+.menu-item-tiktok.logout .icon-wrapper, .menu-item-tiktok.logout .menu-text { color: #ff4757; }
+
 /* Modal Edit Bio */
-.custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
+.custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
 .custom-modal-overlay.active { opacity: 1; pointer-events: auto; }
 .custom-modal-content { background: var(--bg-main); width: 85%; max-width: 320px; border-radius: 16px; padding: 20px; }
 .bio-textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-dark); resize: none; margin-bottom: 16px; font-family: inherit; }

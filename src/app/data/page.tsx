@@ -18,7 +18,7 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   
-  // 🔥 Update 4 Tab 🔥
+  // 🔥 UPDATE: 4 Tab Menu 🔥
   const [activeTab, setActiveTab] = useState<'foto' | 'musik' | 'repost' | 'like'>('foto');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
@@ -130,7 +130,7 @@ function ProfileContent() {
         </button>
       </header>
 
-      {/* TOP SECTION */}
+      {/* TOP SECTION (STATIC) */}
       <div className="profile-top-section">
         <section className="profile-info">
           <div className="avatar-container">
@@ -161,7 +161,7 @@ function ProfileContent() {
              {isMe ? (
                 <>
                    <button className="btn-action btn-secondary" onClick={() => setIsBioModalOpen(true)}>Edit Profil</button>
-                   <button className="btn-action btn-secondary">Bagikan</button>
+                   <button className="btn-action btn-secondary" onClick={() => {/* Share logic */}}>Bagikan</button>
                 </>
              ) : (
                 <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>
@@ -170,7 +170,7 @@ function ProfileContent() {
              )}
           </div>
 
-          {/* 🔥 Bio Pindah Sini 🔥 */}
+          {/* 🔥 POSISI BIO: SEKARANG DI BAWAH TOMBOL 🔥 */}
           <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
         </section>
 
@@ -202,31 +202,32 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* 🔥 SIDEBAR TIKTOK STYLE 🔥 */}
+      {/* 🔥 SIDEBAR & OVERLAY (STYLE TIKTOK & ANTI-BLUR) 🔥 */}
       <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
           <div className="sidebar-search">
              <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
-             <input type="text" placeholder="Cari" />
+             <input type="text" placeholder="Cari aset..." />
           </div>
         </div>
 
-        <div className="menu-category-label">Aset</div>
+        <div className="menu-category-label">Dompet & Aset</div>
         <div className="menu-item-tiktok" onClick={() => router.push('/saldo')}>
            <div className="icon-wrapper"><span className="material-icons">account_balance_wallet</span></div>
-           <div className="menu-text">Saldo</div>
+           <div className="menu-text">Saldo HypeCoin</div>
            <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok" onClick={() => router.push('/historycoin')}>
-           <div className="icon-wrapper"><span className="material-icons">history</span></div>
+           <div className="icon-wrapper"><span className="material-icons">history_edu</span></div>
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
 
         <div className="menu-category-label">Misi & Hadiah</div>
         <div className="menu-item-tiktok" onClick={() => router.push('/dailycek')}>
-           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">assignment_turned_in</span></div>
+           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">stars</span></div>
            <div className="menu-text">Pusat Misi</div>
            <div className="arrow-right">›</div>
         </div>
@@ -234,14 +235,14 @@ function ProfileContent() {
         <hr className="menu-divider" />
 
         <div className="menu-category-label">Alat Pribadi</div>
-        <div className="menu-item-tiktok" onClick={() => { setIsSidebarOpen(false); /* trigger QR share */ }}>
+        <div className="menu-item-tiktok" onClick={() => { setIsSidebarOpen(false); /* Trigger QR logic */ }}>
            <div className="icon-wrapper"><span className="material-icons">qr_code_2</span></div>
            <div className="menu-text">Kode QR Anda</div>
            <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
            <div className="icon-wrapper"><span className="material-icons">logout</span></div>
-           <div className="menu-text">Keluar</div>
+           <div className="menu-text">Keluar Akun</div>
         </div>
       </aside>
 
