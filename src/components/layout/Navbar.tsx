@@ -14,8 +14,6 @@ function NavbarContent() {
   const [isManualHidden, setIsManualHidden] = useState(false);
   
   const [unreadChatCount, setUnreadChatCount] = useState(0);
-  
-  // 🔥 FIX 1: Ubah state jadi angka (count) bukan true/false lagi 🔥
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   
   const [clickedItem, setClickedItem] = useState<string | null>(null);
@@ -65,7 +63,7 @@ function NavbarContent() {
         setUnreadChatCount(chatCount);
       }
 
-      // 🔥 2. Cek Notifikasi Belum Dibaca (Ambil jumlah angkanya) 🔥
+      // 2. Cek Notifikasi Belum Dibaca
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -90,19 +88,33 @@ function NavbarContent() {
              setUnreadChatCount(prev => Math.max(0, prev - 1));
           }
         })
-        // 🔥 Realtime kalau ada Notifikasi Baru Masuk (Tambah Angka) 🔥
+        // Realtime kalau ada Notifikasi Baru Masuk
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
           if (payload.new.user_id === userId) {
             setUnreadNotifCount(prev => prev + 1);
           }
         })
-        // 🔥 Realtime kalau Notifikasi Dibaca (Kurangi Angka) 🔥
+        // Realtime kalau Notifikasi Dibaca (dari halaman notif)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
-           if (payload.new.is_read === true && payload.old.is_read === false && payload.new.user_id === userId) {
-             setUnreadNotifCount(prev => Math.max(0, prev - 1));
+           // Fitur cek ulang kalau semua notif udah dibaca
+           if (payload.new.is_read === true && payload.new.user_id === userId) {
+             checkRemainingNotifs(userId);
            }
         })
         .subscribe();
+    };
+
+    // Helper untuk update count notif
+    const checkRemainingNotifs = async (userId: string) => {
+       const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_read', false); 
+       
+       if (isMounted && count !== null) {
+         setUnreadNotifCount(count);
+       }
     };
 
     fetchBadges();
@@ -120,8 +132,8 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-lobby', icon: Mic2 }, 
-    // 🔥 FIX 2: Ganti hasDot jadi badgeCount 🔥
+    { name: 'Voice', path: '/voice-room', icon: Mic2 }, // Arahkan ke Lobby Voice
+    // 🔥 Pake badgeCount buat notif biar muncul angka 🔥
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
     { name: 'Profil', path: '/profile', icon: User },
   ];
@@ -236,7 +248,7 @@ function NavbarContent() {
                     }}
                   />
                   
-                  {/* 🔥 FIX 3: Badge Angka (Berlaku otomatis buat Chat & Notif) 🔥 */}
+                  {/* 🔥 FIX: Badge Angka Berlaku untuk Chat & Notif 🔥 */}
                   {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                     <div style={{ 
                       position: 'absolute', top: isVoice ? '0px' : '-4px', right: isVoice ? '0px' : '-8px', 
