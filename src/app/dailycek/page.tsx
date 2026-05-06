@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
@@ -16,7 +16,7 @@ export default function PusatMisiPage() {
   const [visitorId, setVisitorId] = useState('');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
-  // Progress Misi (Listen dihapus)
+  // Progress Misi
   const [dailyProgress, setDailyProgress] = useState({ like: 0, comment: 0, upload: 0 });
   const [claimedTypes, setClaimedTypes] = useState<string[]>([]);
   
@@ -26,7 +26,7 @@ export default function PusatMisiPage() {
 
   const REWARDS = [50, 50, 100, 50, 50, 100, 300];
   
-  // Misi Harian (Listen dihapus)
+  // Misi Harian
   const MISSIONS = {
     like: { target: 5, reward: 25, type: 'mission_like', icon: 'favorite', color: '#ec4899' },
     comment: { target: 3, reward: 40, type: 'mission_comment', icon: 'chat', color: '#10b981' },
@@ -47,9 +47,6 @@ export default function PusatMisiPage() {
       const { visitorId: vid } = await fp.get();
       setVisitorId(vid);
 
-      const ipRes = await fetch('https://api.ipify.org?format=json');
-      const { ip } = await ipRes.json();
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return router.push('/login');
 
@@ -62,7 +59,6 @@ export default function PusatMisiPage() {
         return;
       }
 
-      // Generate Kode Invite jika belum punya
       let currentProfile = prof;
       if (!currentProfile.invite_code) {
          const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -151,7 +147,6 @@ export default function PusatMisiPage() {
     }
   };
 
-  // 🔥 LOGIKA KLAIM REFERRAL 🔥
   const handleClaimInviteCode = async () => {
     const code = inviteCodeInput.trim().toUpperCase();
     if (!code) return showNotif("Masukkan kode teman", "warning");
@@ -162,7 +157,6 @@ export default function PusatMisiPage() {
       const { data: friend, error: fErr } = await supabase.from('profiles').select('id, mission_coins').eq('invite_code', code).single();
       if (fErr || !friend) throw new Error("Kode tidak ditemukan atau salah");
 
-      // Update User Sekarang
       const { error: uErr } = await supabase.from('profiles').update({
         referred_by: code,
         mission_coins: (profile.mission_coins || 0) + 200,
@@ -170,12 +164,10 @@ export default function PusatMisiPage() {
       }).eq('id', profile.id);
       if (uErr) throw uErr;
 
-      // Update Saldo Teman
       await supabase.from('profiles').update({
         mission_coins: (friend.mission_coins || 0) + 500
       }).eq('id', friend.id);
 
-      // Catat History Keduanya
       await supabase.from('coin_history').insert([
         { user_id: profile.id, type: 'masuk', transaction_type: 'referral_used', amount: 200, description: 'Memakai kode undangan' },
         { user_id: friend.id, type: 'masuk', transaction_type: 'referral_bonus', amount: 500, description: 'Teman memakai kodemu' }
@@ -191,7 +183,6 @@ export default function PusatMisiPage() {
     }
   };
 
-  // 🔥 LOGIKA SHARE REFERRAL 🔥
   const handleShareLink = () => {
     const link = `${window.location.origin}/dailycek?ref=${profile?.invite_code}`;
     if (navigator.share) {
@@ -214,21 +205,19 @@ export default function PusatMisiPage() {
     <div className="mission-wrapper">
       <div className="mission-container">
         
+        {/* HEADER & EXCHANGE (YANG DIEM DI ATAS) */}
         <div className="sticky-top-wrapper">
-          {/* HEADER */}
           <header className="mission-header">
             <button className="back-btn" onClick={() => router.back()}>
               <span className="material-icons">arrow_back_ios</span>
             </button>
             <h1 className="header-title">Pusat Misi</h1>
             <div className="header-coin">
-              {/* 🔥 FIX: Icon koin dihapus, sisa angka saja 🔥 */}
               <span style={{color:'#f59e0b', fontSize: '15px'}}>{profile?.mission_coins || 0}</span>
             </div>
           </header>
 
-          {/* EXCHANGE (TUKAR KOIN) */}
-          <div className="mission-card" style={{background:'linear-gradient(135deg, #1e293b, #0f172a)', border:'none', color:'white'}}>
+          <div className="mission-card" style={{background:'linear-gradient(135deg, #1e293b, #0f172a)', border:'none', color:'white', margin: '1rem 0.8rem 0'}}>
              <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
                 <div className="m-icon-box" style={{background:'#38bdf8'}}><span className="material-icons">swap_horiz</span></div>
                 <div style={{flex:1}}>
@@ -241,134 +230,138 @@ export default function PusatMisiPage() {
           </div>
         </div>
 
-        {/* CHECK-IN */}
-        <div className="mission-card">
-          <h2 className="streak-title">Check-in 7 Hari</h2>
-          <p className="streak-desc">Klaim koin gratis tiap hari!</p>
-          <div className="streak-days-container">
-            {REWARDS.map((rew, i) => {
-              const isDone = (i + 1) <= (profile?.checkin_streak || 0) && profile?.last_checkin === new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Jakarta'});
-              const isActive = (i + 1) === ((profile?.checkin_streak || 0) + 1) && !isDone;
+        {/* 🔥 WADAH SCROLL YANG KEMARIN ILANG 🔥 */}
+        <div className="mission-scroll-area">
+          
+          {/* CHECK-IN */}
+          <div className="mission-card">
+            <h2 className="streak-title">Check-in 7 Hari</h2>
+            <p className="streak-desc">Klaim koin gratis tiap hari!</p>
+            <div className="streak-days-container">
+              {REWARDS.map((rew, i) => {
+                const isDone = (i + 1) <= (profile?.checkin_streak || 0) && profile?.last_checkin === new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Jakarta'});
+                const isActive = (i + 1) === ((profile?.checkin_streak || 0) + 1) && !isDone;
+                return (
+                  <div key={i} className={`day-card ${isDone ? 'done' : ''} ${isActive ? 'active' : ''}`}>
+                    <span className="day-label">Hari {i+1}</span>
+                    <span className="material-icons" style={{color:'#f59e0b', margin:'5px 0'}}>stars</span>
+                    <span className="day-reward">+{rew}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <button 
+              className="claim-main-btn" 
+              disabled={profile?.last_checkin === new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Jakarta'})}
+              onClick={handleCheckin}
+            >
+              {profile?.last_checkin === new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Jakarta'}) ? 'Sudah Check-in' : 'Ambil Hadiah'}
+            </button>
+          </div>
+
+          {/* MISI PEMULA & REFERRAL */}
+          <h3 className="section-title">Misi Pemula</h3>
+          <div className="mission-list">
+            
+            {!profile?.apk_downloaded && (
+              <div className="mission-item">
+                <div className="m-icon-box" style={{background:'#10b981'}}><span className="material-icons">install_mobile</span></div>
+                <div className="m-info">
+                  <h4 className="m-title">Instal Aplikasi HopeHype</h4>
+                  <div className="m-reward"><div className="coin-dot" /> +300 Koin</div>
+                  <span className="progress-text">Akses lebih cepat & ringan</span>
+                </div>
+                <button className="m-btn btn-klaim" onClick={handlePwaInstall}>Instal</button>
+              </div>
+            )}
+
+            <div className="mission-item" style={{ flexWrap: 'wrap' }}>
+              <div className="m-icon-box" style={{background:'#f97316'}}><span className="material-icons">card_giftcard</span></div>
+              <div className="m-info">
+                <h4 className="m-title">Masukkan Kode Undangan</h4>
+                <div className="m-reward"><div className="coin-dot" /> +200 Koin</div>
+                
+                {!profile?.referred_by ? (
+                  <input 
+                    type="text" 
+                    value={inviteCodeInput}
+                    onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                    placeholder="Kode teman..." 
+                    style={{
+                      width: '100%', padding: '8px 12px', fontSize: '13px', 
+                      borderRadius: '8px', border: '1px solid var(--border-color)', 
+                      background: 'var(--bg-main)', color: 'var(--text-main)', 
+                      outline: 'none', marginTop: '6px', fontFamily: 'monospace'
+                    }} 
+                  />
+                ) : (
+                  <span className="progress-text" style={{color: '#10b981', display:'block', marginTop:'4px'}}>✓ Berhasil diklaim</span>
+                )}
+              </div>
+              {!profile?.referred_by && (
+                <button className="m-btn btn-klaim" onClick={handleClaimInviteCode} disabled={isSubmittingInvite}>
+                  {isSubmittingInvite ? '...' : 'Klaim'}
+                </button>
+              )}
+            </div>
+
+          </div>
+
+          {/* MISI HARIAN */}
+          <h3 className="section-title">Misi Harian</h3>
+          <div className="mission-list">
+            {Object.entries(MISSIONS).map(([key, m]) => {
+              const current = dailyProgress[key as keyof typeof dailyProgress] || 0;
+              const isDone = claimedTypes.includes(m.type);
+              const canClaim = current >= m.target && !isDone;
+
               return (
-                <div key={i} className={`day-card ${isDone ? 'done' : ''} ${isActive ? 'active' : ''}`}>
-                  <span className="day-label">Hari {i+1}</span>
-                  <span className="material-icons" style={{color:'#f59e0b', margin:'5px 0'}}>stars</span>
-                  <span className="day-reward">+{rew}</span>
+                <div className="mission-item" key={key}>
+                  <div className="m-icon-box" style={{ backgroundColor: m.color }}>
+                     <span className="material-icons" style={{ fontSize: '20px', color: 'white' }}>{m.icon}</span>
+                  </div>
+                  
+                  <div className="m-info">
+                    <h4 className="m-title">{key.toUpperCase()} {m.target}X</h4>
+                    <div className="m-reward"><div className="coin-dot" /> +{m.reward} Koin</div>
+                    <div className="progress-bar"><div className="progress-fill" style={{width: `${(current/m.target)*100}%`}} /></div>
+                    <span className="progress-text">{current}/{m.target}</span>
+                  </div>
+                  
+                  <button 
+                    className={`m-btn ${canClaim ? 'btn-klaim' : isDone ? 'btn-done' : ''}`}
+                    onClick={() => {
+                      if (isDone) return;
+                      if (canClaim) {
+                        secureUpdate({ mission_coins: profile.mission_coins + m.reward }, { type:'masuk', transaction_type: m.type, amount: m.reward, description:'Misi Harian' });
+                      } else {
+                        router.push('/');
+                      }
+                    }}
+                  >
+                    {isDone ? 'Selesai' : canClaim ? 'Klaim' : 'Mulai'}
+                  </button>
                 </div>
               );
             })}
           </div>
-          <button 
-            className="claim-main-btn" 
-            disabled={profile?.last_checkin === new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Jakarta'})}
-            onClick={handleCheckin}
-          >
-            {profile?.last_checkin === new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Jakarta'}) ? 'Sudah Check-in' : 'Ambil Hadiah'}
-          </button>
-        </div>
 
-        {/* MISI PEMULA & REFERRAL */}
-        <h3 className="section-title">Misi Pemula</h3>
-        <div className="mission-list">
-          
-          {/* Misi Instal PWA */}
-          {!profile?.apk_downloaded && (
+          {/* PROGRAM REFERRAL */}
+          <h3 className="section-title" style={{ marginTop: '1.25rem' }}>Program Referral</h3>
+          <div className="mission-list" style={{ marginBottom: '2rem' }}>
             <div className="mission-item">
-              <div className="m-icon-box" style={{background:'#10b981'}}><span className="material-icons">install_mobile</span></div>
+              <div className="m-icon-box" style={{background: '#ef4444'}}><span className="material-icons">group_add</span></div>
               <div className="m-info">
-                <h4 className="m-title">Instal Aplikasi HopeHype</h4>
-                <div className="m-reward"><div className="coin-dot" /> +300 Koin</div>
-                <span className="progress-text">Akses lebih cepat & ringan</span>
+                <h4 className="m-title">Undang & Dapat Koin</h4>
+                <div className="m-reward"><div className="coin-dot" /> +500 Koin / Teman</div>
+                <span className="progress-text">Kode: <b style={{color: 'var(--primary)', fontFamily: 'monospace', fontSize: '13px'}}>{profile?.invite_code || '...'}</b></span>
               </div>
-              <button className="m-btn btn-klaim" onClick={handlePwaInstall}>Instal</button>
+              <button className="m-btn" onClick={handleShareLink}>Bagikan</button>
             </div>
-          )}
-
-          {/* 🔥 Misi Input Kode Referral 🔥 */}
-          <div className="mission-item" style={{ flexWrap: 'wrap' }}>
-            <div className="m-icon-box" style={{background:'#f97316'}}><span className="material-icons">card_giftcard</span></div>
-            <div className="m-info">
-              <h4 className="m-title">Masukkan Kode Undangan</h4>
-              <div className="m-reward"><div className="coin-dot" /> +200 Koin</div>
-              
-              {!profile?.referred_by ? (
-                <input 
-                  type="text" 
-                  value={inviteCodeInput}
-                  onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
-                  placeholder="Kode teman..." 
-                  style={{
-                    width: '100%', padding: '8px 12px', fontSize: '13px', 
-                    borderRadius: '8px', border: '1px solid var(--border-color)', 
-                    background: 'var(--bg-main)', color: 'var(--text-main)', 
-                    outline: 'none', marginTop: '6px', fontFamily: 'monospace'
-                  }} 
-                />
-              ) : (
-                <span className="progress-text" style={{color: '#10b981', display:'block', marginTop:'4px'}}>✓ Berhasil diklaim</span>
-              )}
-            </div>
-            {!profile?.referred_by && (
-              <button className="m-btn btn-klaim" onClick={handleClaimInviteCode} disabled={isSubmittingInvite}>
-                {isSubmittingInvite ? '...' : 'Klaim'}
-              </button>
-            )}
           </div>
 
-        </div>
-
-        {/* MISI HARIAN */}
-        <h3 className="section-title">Misi Harian</h3>
-        <div className="mission-list">
-          {Object.entries(MISSIONS).map(([key, m]) => {
-            const current = dailyProgress[key as keyof typeof dailyProgress] || 0;
-            const isDone = claimedTypes.includes(m.type);
-            const canClaim = current >= m.target && !isDone;
-
-            return (
-              <div className="mission-item" key={key}>
-                <div className="m-icon-box" style={{ backgroundColor: m.color }}>
-                   <span className="material-icons" style={{ fontSize: '20px', color: 'white' }}>{m.icon}</span>
-                </div>
-                
-                <div className="m-info">
-                  <h4 className="m-title">{key.toUpperCase()} {m.target}X</h4>
-                  <div className="m-reward"><div className="coin-dot" /> +{m.reward} Koin</div>
-                  <div className="progress-bar"><div className="progress-fill" style={{width: `${(current/m.target)*100}%`}} /></div>
-                  <span className="progress-text">{current}/{m.target}</span>
-                </div>
-                
-                <button 
-                  className={`m-btn ${canClaim ? 'btn-klaim' : isDone ? 'btn-done' : ''}`}
-                  onClick={() => {
-                    if (isDone) return;
-                    if (canClaim) {
-                      secureUpdate({ mission_coins: profile.mission_coins + m.reward }, { type:'masuk', transaction_type: m.type, amount: m.reward, description:'Misi Harian' });
-                    } else {
-                      router.push('/');
-                    }
-                  }}
-                >
-                  {isDone ? 'Selesai' : canClaim ? 'Klaim' : 'Mulai'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 🔥 PROGRAM REFERRAL (BAGIKAN KODE) 🔥 */}
-        <h3 className="section-title" style={{ marginTop: '1.25rem' }}>Program Referral</h3>
-        <div className="mission-list" style={{ marginBottom: '2rem' }}>
-          <div className="mission-item">
-            <div className="m-icon-box" style={{background: '#ef4444'}}><span className="material-icons">group_add</span></div>
-            <div className="m-info">
-              <h4 className="m-title">Undang & Dapat Koin</h4>
-              <div className="m-reward"><div className="coin-dot" /> +500 Koin / Teman</div>
-              <span className="progress-text">Kode: <b style={{color: 'var(--primary)', fontFamily: 'monospace', fontSize: '13px'}}>{profile?.invite_code || '...'}</b></span>
-            </div>
-            <button className="m-btn" onClick={handleShareLink}>Bagikan</button>
-          </div>
-        </div>
+        </div> 
+        {/* 🔥 PENUTUP SCROLL AREA 🔥 */}
 
       </div>
     </div>

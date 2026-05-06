@@ -17,6 +17,7 @@ export default function VoiceLobbyPage() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
+  // States Modal Buat Room
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newRoomForm, setNewRoomForm] = useState({
@@ -25,25 +26,42 @@ export default function VoiceLobbyPage() {
     category: 'Nyanyi'
   });
 
-  // --- INIT USER ---
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+  // 🔥 STATES MODAL TOP UP KOIN 🔥
+  const [isCoinSheetOpen, setIsCoinSheetOpen] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [customCoinAmount, setCustomCoinAmount] = useState('');
+  
+  // 🔥 STATE BARU: Deteksi paket koin mana yang lagi loading 🔥
+  const [loadingPackage, setLoadingPackage] = useState<number | null>(null);
+
+  // --- 🔥 INIT USER (DIJAMIN FRESH) 🔥 ---
+  const fetchUser = async () => {
+    try {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      
+      if (authErr || !user) {
         router.push('/login');
         return;
       }
 
-      const { data: profile } = await supabase.from('profiles')
-        .select('username, avatar_url, coins, id')
-        .eq('id', session.user.id)
+      const { data: profile, error: profErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
         .single();
 
-      if (profile) {
+      if (profErr) {
+        console.error("Gagal load profil:", profErr);
+        setCurrentUser({ id: user.id, email: user.email, username: 'Bree', coins: 0 });
+      } else if (profile) {
         setCurrentUser(profile);
       }
-    };
+    } catch (error) {
+      console.error("Terjadi kesalahan:", error);
+    }
+  };
 
+  useEffect(() => {
     fetchUser();
   }, [router]);
 
@@ -159,17 +177,102 @@ export default function VoiceLobbyPage() {
     }
   };
 
+  // --- 🔥 LOGIKA PEMBAYARAN MIDTRANS KOIN 🔥 ---
+  const loadMidtransForce = () => {
+    return new Promise((resolve) => {
+      if ((window as any).snap) return resolve(true);
+      const script = document.createElement("script");
+      script.src = "https://app.sandbox.midtrans.com/snap/snap.js"; 
+      script.setAttribute("data-client-key", "SB-Mid-client-0T6dD0H1HkQvBf8G"); 
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  };
+
+  const handleBuyCoin = async (price: number, coinsAmount: number, itemName: string) => {
+    if (!currentUser) return showNotif("Data profil belum termuat, tunggu sebentar", "error");
+    
+    setLoadingPackage(coinsAmount);
+    setIsProcessingPayment(true);
+    
+    try {
+      showNotif("Menyiapkan pembayaran...", "info");
+      await loadMidtransForce();
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch("https://hqetnqnvmdxdgfnnluew.supabase.co/functions/v1/pay-coins", {
+        method: "POST", 
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          userId: currentUser.id, 
+          amount: price, 
+          coins: coinsAmount, 
+          item_name: itemName
+        }),
+      });
+
+      if (!response.ok) throw new Error("Gagal memanggil layanan pembayaran.");
+      
+      const result = await response.json();
+      const token = result.token;
+
+      (window as any).snap.pay(token, {
+        onSuccess: () => { 
+          showNotif("Pembayaran Sukses!", "success"); 
+          setIsCoinSheetOpen(false);
+          fetchUser(); 
+        },
+        onPending: async () => {
+          showNotif("Selesaikan transaksi dulu", "warning");
+          await supabase.from("notifications").insert({
+            user_id: currentUser.id, type: "payment_pending",
+            message: `Transaksi ${itemName} tertunda. Klik untuk bayar.`,
+            is_read: false, token: token 
+          });
+        },
+        onError: () => showNotif("Pembayaran gagal", "error"),
+        onClose: async () => {
+          showNotif("Kamu menutup popup sebelum bayar", "info");
+          await supabase.from("notifications").insert({
+            user_id: currentUser.id, type: "payment_pending",
+            message: `Transaksi ${itemName} belum dibayar. Klik untuk lanjut.`,
+            is_read: false, token: token 
+          });
+        }
+      });
+    } catch (err: any) {
+      showNotif(err.message, "error");
+    } finally {
+      setIsProcessingPayment(false);
+      setLoadingPackage(null);
+    }
+  };
+
+  const handleCustomCoinBuy = () => {
+    const coins = parseInt(customCoinAmount);
+    if (!coins || coins <= 0) return showNotif("Masukkan jumlah koin dengan benar", "warning");
+    if (coins < 100) return showNotif("Minimal top up 100 koin", "warning");
+    if (coins > 10000) return showNotif("Maksimal top up 10000 koin", "warning");
+    
+    handleBuyCoin(coins * 100, coins, `${coins} Koin Custom`);
+  };
+
   return (
     <div className="voice-lobby-container">
-      {/* HEADER (Sticky Fix) */}
+      {/* HEADER */}
       <header className="lobby-header">
         <div className="header-profile">
           <img src={currentUser?.avatar_url || '/asets/png/profile.webp'} alt="Av" />
           <div className="header-info">
             <h3>{currentUser?.username || 'Hi, Bree!'}</h3>
-            <div className="coin-badge">
+            
+            <div className="coin-badge" style={{ cursor: 'pointer' }} onClick={() => setIsCoinSheetOpen(true)}>
               {currentUser ? (currentUser.coins || 0).toLocaleString() : 0}
+              <span className="material-icons" style={{fontSize: '14px', marginLeft: '4px'}}>add_circle</span>
             </div>
+            
           </div>
         </div>
       </header>
@@ -238,7 +341,7 @@ export default function VoiceLobbyPage() {
         )}
       </main>
 
-      {/* 🔥 MODAL BIKIN ROOM (SUDAH DI-FIX SESUAI CSS LOBBY) 🔥 */}
+      {/* MODAL BIKIN ROOM */}
       {isModalOpen && (
         <div className="lobby-modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="lobby-modal-content" onClick={e => e.stopPropagation()}>
@@ -285,6 +388,82 @@ export default function VoiceLobbyPage() {
           </div>
         </div>
       )}
+
+      {/* 🔥 MODAL TOP UP KOIN (BOTTOM SHEET) 🔥 */}
+      <div className={`bottom-sheet ${isCoinSheetOpen ? 'active' : ''}`}>
+        <div className="sheet-overlay" onClick={() => setIsCoinSheetOpen(false)}></div>
+        <div className="sheet-content">
+          <div className="drag-handle"></div>
+          <h3>Top Up Koin Hope</h3>
+          
+          <div className="coin-product-card" onClick={() => handleBuyCoin(10000, 100, "100 Koin")}>
+            <div className="product-info-wrapper">
+              <div className="product-icon">
+                <img src="/asets/svg/koin.webp" alt="Koin" style={{width: '24px', height: '24px', objectFit: 'contain'}} />
+              </div>
+              <div className="product-text">
+                <span className="p-name">100 Koin</span>
+                <span className="p-price">Rp 10.000</span>
+              </div>
+            </div>
+            <button className={`buy-coin-btn ${loadingPackage === 100 ? 'btn-loading' : ''}`} disabled={isProcessingPayment}>Beli</button>
+          </div>
+
+          <div className="coin-product-card" onClick={() => handleBuyCoin(25000, 300, "300 Koin")}>
+            <div className="product-info-wrapper">
+              <div className="product-icon">
+                <img src="/asets/svg/koin.webp" alt="Koin" style={{width: '24px', height: '24px', objectFit: 'contain'}} />
+              </div>
+              <div className="product-text">
+                <span className="p-name">300 Koin</span>
+                <span className="p-price">Rp 25.000</span>
+              </div>
+            </div>
+            <button className={`buy-coin-btn ${loadingPackage === 300 ? 'btn-loading' : ''}`} disabled={isProcessingPayment}>Beli</button>
+          </div>
+
+          <div className="coin-product-card" onClick={() => handleBuyCoin(50000, 700, "700 Koin")}>
+            <div className="product-info-wrapper">
+              <div className="product-icon">
+                <img src="/asets/svg/koin.webp" alt="Koin" style={{width: '24px', height: '24px', objectFit: 'contain'}} />
+              </div>
+              <div className="product-text">
+                <span className="p-name">700 Koin</span>
+                <span className="p-price">Rp 50.000</span>
+              </div>
+            </div>
+            <button className={`buy-coin-btn ${loadingPackage === 700 ? 'btn-loading' : ''}`} disabled={isProcessingPayment}>Beli</button>
+          </div>
+
+          <div style={{ marginTop: '16px', marginBottom: '8px' }}>
+            <img src="/asets/png/topup.webp" alt="Promo Top Up" style={{ width: '100%', borderRadius: '12px', objectFit: 'cover' }} />
+          </div>
+
+          <div className="custom-topup">
+            <h4>Atau, Custom Top Up</h4>
+            <input 
+              type="number" 
+              placeholder="Minimal 100 Koin" 
+              value={customCoinAmount}
+              onChange={(e) => setCustomCoinAmount(e.target.value)}
+            />
+            {customCoinAmount && parseInt(customCoinAmount) > 0 && (
+              <span style={{color: '#94a3b8', fontSize: '12px'}}>
+                Harga: Rp {(parseInt(customCoinAmount) * 100).toLocaleString('id-ID')}
+              </span>
+            )}
+            <button 
+              id="buy-custom-coin-btn" 
+              className={loadingPackage === parseInt(customCoinAmount) ? 'btn-loading' : ''} 
+              onClick={handleCustomCoinBuy} 
+              disabled={isProcessingPayment}
+            >
+              Beli Custom
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }

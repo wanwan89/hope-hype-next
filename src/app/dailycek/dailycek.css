@@ -11,11 +11,17 @@
   
   background: var(--bg-main); 
   color: var(--text-main); 
-  height: 100vh; /* WAJIB PAKE HEIGHT 100VH */
-  height: 100dvh;
-  width: 100%;
-  overflow: hidden; /* Matiin scroll body */
   font-family: 'Poppins', sans-serif; 
+
+  /* 🔥 FIX TOTAL LAYOUT HP 🔥 */
+  position: fixed; /* Mengunci agar tidak ada tarikan scroll liar di browser */
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh; /* Mengikuti tinggi layar HP secara dinamis */
+  overflow: hidden; 
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- DARK MODE --- */
@@ -34,13 +40,13 @@ html.dark .mission-wrapper {
   margin: 0 auto; 
   display: flex; 
   flex-direction: column; 
-  height: 100%; /* Biar tinggi penuhin wrapper */
+  height: 100%; 
   background: var(--bg-main); 
 }
 
-/* --- 🔥 HEADER (FIXED TOP) 🔥 --- */
+/* --- HEADER (STAY DI ATAS) --- */
 .mission-header { 
-  flex-shrink: 0; /* Gak boleh mengecil */
+  flex-shrink: 0; /* Mencegah header gepeng */
   background: var(--bg-card); 
   display: flex; 
   justify-content: space-between; 
@@ -78,16 +84,15 @@ html.dark .mission-wrapper {
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-/* --- 🔥 KARTU TUKAR KOIN (FIXED TOP) 🔥 --- */
+/* --- KARTU TUKAR KOIN (STAY DI ATAS) --- */
 .exchange-card-wrapper {
-  flex-shrink: 0; /* Gak boleh mengecil */
+  flex-shrink: 0; 
   background: var(--bg-main);
   padding: 1rem 0.8rem 0;
   z-index: 10;
   position: relative;
 }
 
-/* Kasih bayangan lembut di bawah kartu tukar koin biar keliatan kepisah dari list */
 .exchange-card-wrapper::after {
   content: '';
   position: absolute;
@@ -97,7 +102,6 @@ html.dark .mission-wrapper {
   height: 15px;
   background: linear-gradient(to bottom, rgba(0,0,0,0.03), transparent);
   pointer-events: none;
-  z-index: 5;
 }
 
 .mission-card.exchange {
@@ -110,12 +114,20 @@ html.dark .mission-wrapper {
   color: white;
 }
 
-/* --- 🔥 AREA SCROLL MISI 🔥 --- */
+/* --- 🔥 AREA SCROLL MISI (BISA BERGERAK) 🔥 --- */
 .mission-scroll-area {
-  flex: 1; /* Penuhi sisa layar */
-  overflow-y: auto; /* Ini yang bikin bisa scroll! */
-  padding-bottom: 50px;
-  -webkit-overflow-scrolling: touch; /* Biar smooth di iOS */
+  flex: 1; 
+  overflow-y: auto; 
+  -webkit-overflow-scrolling: touch; /* Biar scroll smooth di iPhone */
+  padding-bottom: 20px;
+}
+
+/* 🔥 JURUS ANTI-KEPOTONG: Kasih ruang kosong di paling bawah area scroll 🔥 */
+.mission-scroll-area::after {
+  content: '';
+  display: block;
+  height: 140px; 
+  width: 100%;
 }
 
 /* Hilangin scrollbar biar rapi */
@@ -130,7 +142,6 @@ html.dark .mission-wrapper {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); 
   border: 1px solid var(--border-color);
 }
-
 
 /* --- STREAK DAYS (Check-in) --- */
 .streak-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 2px; color: var(--text-main); }

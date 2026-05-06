@@ -12,46 +12,66 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Identifikasi Halaman secara Akurat
+  // 1. Identifikasi Halaman
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
   const isNotifPage = pathname?.includes('/notifications');
-  // 🔥 TAMBAHKAN: Identifikasi halaman Pusat Misi (dailycek) 🔥
   const isDailyCekPage = pathname?.includes('/dailycek');
   
-  // 🔥 FIX: Tambahkan isDailyCekPage agar mentok ke atas (tanpa gap padding)
-  const isFullscreenPage = isVoicePage || isDataPage || isNotifPage || isDailyCekPage;
+  // Halaman bergaya Aplikasi (Full Screen & Kunci Scroll Body)
+  const isStandaloneApp = isVoicePage || isDailyCekPage;
+  const isFullscreenPage = isStandaloneApp || isDataPage || isNotifPage;
 
-  // 2. Tentukan Visibilitas Komponen Global
-  // Sidebar Home WAJIB sembunyi di Voice, Profile, dan Pusat Misi
-  const hideSidebar = isVoicePage || isDataPage || isDailyCekPage; 
-  
-  // Navbar sembunyi hanya di Voice Room
-  const hideNavbar = isVoicePage;
-  
-  // Overlays (global blur/popups) sembunyi di Voice
+  const hideSidebar = isStandaloneApp || isDataPage; 
+  const hideNavbar = isStandaloneApp;
   const hideOverlays = isVoicePage;
 
-  // 3. JURUS SEKAT TOTAL & CLEANUP
+  // 2. 🔥 JURUS ANTI GARIS HITAM & CLEANUP TOTAL 🔥
   useEffect(() => {
-    // Jika bukan di Voice Room, paksa scroll normal & hapus sampah DOM
-    if (!isVoicePage) {
-      document.body.style.overflow = 'auto';
-      document.body.style.position = 'static';
-      document.body.style.height = 'auto';
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (isStandaloneApp) {
+      // Paksa html & body setinggi layar HP murni (dvh)
+      root.style.height = '100dvh';
+      root.style.overflow = 'hidden';
+      
+      body.style.height = '100dvh';
+      body.style.overflow = 'hidden';
+      body.style.position = 'fixed'; 
+      body.style.width = '100%';
+      body.style.top = '0';
+      body.style.left = '0';
+      // Matikan efek tarik-tarikan layar (overscroll)
+      body.style.overscrollBehaviorY = 'none';
+    } else {
+      // Reset total pas pindah ke halaman lain
+      root.style.height = 'auto';
+      root.style.overflow = 'visible';
+      
+      body.style.overflow = 'auto';
+      body.style.height = 'auto';
+      body.style.position = 'static';
+      body.style.width = 'auto';
+      body.style.overscrollBehaviorY = 'auto';
       
       const voiceTrash = [
         'room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 
         'vip-entrance-overlay', 'vip-anim-styles-clean'
       ];
       
-      voiceTrash.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.remove();
-      });
+      voiceTrash.forEach(id => document.getElementById(id)?.remove());
     }
-  }, [pathname, isVoicePage]); 
+
+    // CLEANUP SAAT PINDAH HALAMAN
+    return () => {
+      root.style.height = 'auto';
+      body.style.position = 'static';
+      body.style.height = 'auto';
+      body.style.overflow = 'auto';
+    };
+  }, [pathname, isStandaloneApp]); 
 
   return (
     <html lang="id">
@@ -64,31 +84,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
       >
         
-        {/* 🔥 FIX: Sidebar Home tidak akan muncul jika hideSidebar true 🔥 */}
         {!hideSidebar && <Sidebar />}
         
-        <div className="layout-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div 
+          className="layout-wrapper" 
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            // 🔥 Gunakan dvh agar tinggi wrapper presisi biarpun address bar muncul/hilang
+            height: isStandaloneApp ? '100dvh' : 'auto',
+            minHeight: '100dvh',
+            width: '100%',
+            overflow: isStandaloneApp ? 'hidden' : 'visible',
+            position: 'relative'
+          }}
+        >
           
-          {/* Search bar hanya muncul di Home Page asli */}
           {isHomePage && (
             <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
               <SearchWrapper />
             </div>
           )}
 
-          {/* 🔥 FIX: Main Content 🔥
-              Gunakan class 'is-fullscreen' untuk Profile/Data/Notif/Misi agar nempel ke Header.
-          */}
-          <main className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
+          <main 
+            className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}
+            style={{ 
+              flex: 1, 
+              display: isStandaloneApp ? 'flex' : 'block',
+              flexDirection: 'column',
+              overflow: isStandaloneApp ? 'hidden' : 'visible',
+              height: isStandaloneApp ? '100%' : 'auto'
+            }}
+          >
             {children}
           </main>
 
-          {/* Navbar bawah */}
           {!hideNavbar && <Navbar />}
           
         </div>
 
-        {/* Popups & Overlays */}
         <LoginPopup />
         {!hideOverlays && <Overlays />}
 
