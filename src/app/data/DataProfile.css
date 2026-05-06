@@ -16,6 +16,7 @@
     color: var(--text-dark);
     overflow: hidden; 
     position: relative;
+    font-family: 'Poppins', sans-serif;
 }
 
 /* Dark Mode Support */
@@ -27,24 +28,24 @@ html.dark .profile-page-container {
     --border-color: #262626; 
 }
 
-/* --- HEADER (Nempel Mentok Atas) --- */
+/* --- HEADER (Fixed Top) --- */
 .profile-header {
     flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px; 
-    padding-top: calc(10px + env(safe-area-inset-top)); 
+    padding: 12px 20px; 
+    padding-top: calc(12px + env(safe-area-inset-top)); 
     background: var(--bg-main);
     z-index: 100;
     border-bottom: 1px solid var(--border-color);
 }
 
-.profile-header h2 { margin: 0; font-size: 17px; font-weight: 800; }
+.profile-header h2 { margin: 0; font-size: 17px; font-weight: 800; color: var(--text-dark); }
 .header-btn { background: none; border: none; color: var(--text-dark); cursor: pointer; padding: 4px; display: flex; align-items: center; }
 
-/* --- TOP SECTION (Statis) --- */
-.profile-top-section { flex-shrink: 0; background: var(--bg-main); }
+/* --- TOP SECTION (Info Profil) --- */
+.profile-top-section { flex-shrink: 0; background: var(--bg-main); border-bottom: 1px solid var(--border-color); }
 .profile-info { padding: 15px 20px; text-align: center; }
 .avatar-container { margin: 0 auto 10px; width: 85px; height: 85px; border-radius: 50%; border: 3px solid var(--primary-blue); padding: 3px; display: flex; align-items: center; justify-content: center; }
 .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
@@ -61,20 +62,20 @@ html.dark .profile-page-container {
 .btn-primary { background: var(--primary-blue); color: white; }
 .btn-secondary { background: var(--bg-secondary); color: var(--text-dark); border: 1px solid var(--border-color); }
 
-.profile-bio { font-size: 13.5px; line-height: 1.4; color: var(--text-dark); margin: 0; padding: 0 15px; white-space: pre-wrap; text-align: center; margin-bottom: 8px; }
+.profile-bio { font-size: 13px; line-height: 1.4; color: var(--text-dark); margin: 0; padding: 0 20px; white-space: pre-wrap; text-align: center; margin-bottom: 15px; }
 
 /* --- TABS --- */
-.profile-tabs { display: flex; border-bottom: 1px solid var(--border-color); background: var(--bg-main); }
+.profile-tabs { display: flex; background: var(--bg-main); }
 .tab-item { flex: 1; padding: 12px 0; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; position: relative; }
 .tab-item.active { color: var(--text-dark); }
 .tab-item.active::after { content: ""; position: absolute; bottom: 0; left: 20%; width: 60%; height: 2px; background: var(--text-dark); }
 
-/* --- GRID POSTS (Bisa di-scroll) --- */
+/* --- GRID POSTS (Scrollable Area) --- */
 .post-grid-container {
     flex: 1; 
     overflow-y: auto; 
     background: var(--bg-main);
-    padding-bottom: 90px; 
+    padding-bottom: 100px; 
     -webkit-overflow-scrolling: touch;
 }
 .post-grid-container::-webkit-scrollbar { display: none; }
@@ -83,17 +84,14 @@ html.dark .profile-page-container {
 .grid-item img { width: 100%; height: 100%; object-fit: cover; }
 .grid-no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); color: var(--text-secondary); }
 
-/* --- 🔥 P-SIDEBAR (UNIK: ANTI-BENTROK & FIX KANAN) 🔥 --- */
+/* --- 🔥 SIDEBAR PROFILE (UNIQUE & STRICT RIGHT) 🔥 --- */
 .p-sidebar-overlay { 
-    position: fixed; 
-    inset: 0; 
+    position: fixed; inset: 0; 
     background: rgba(0,0,0,0.4); 
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     z-index: 9998; 
-    opacity: 0; 
-    visibility: hidden; 
-    transition: all 0.3s ease; 
+    opacity: 0; visibility: hidden; transition: 0.3s; 
 }
 .p-sidebar-overlay.active { opacity: 1; visibility: visible; }
 
@@ -101,7 +99,7 @@ html.dark .profile-page-container {
     position: fixed !important; 
     top: 0 !important; 
     bottom: 0 !important; 
-    /* 🔥 PAKSA DI KANAN MATI 🔥 */
+    /* 🔥 PAKSA DI KANAN, MATIKAN KIRI 🔥 */
     right: 0 !important; 
     left: auto !important; 
     width: 280px; 
@@ -117,37 +115,63 @@ html.dark .profile-page-container {
     border-left: 1px solid var(--border-color);
 }
 
-/* Muncul dari kanan ke kiri (Stack di kanan) */
+/* Muncul dari kanan ke kiri saat open */
 .p-sidebar-panel.open { 
     transform: translateX(0) !important; 
 }
 
-.p-sidebar-search-container { padding: 25px 16px 10px; }
-.p-sidebar-search { background: var(--bg-secondary); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
-.p-sidebar-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; color: var(--text-dark); }
+/* SEARCH DALAM SIDEBAR */
+.sidebar-search-container { padding: 25px 16px 10px; }
+.sidebar-search { background: var(--bg-secondary); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+.sidebar-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; color: var(--text-dark); font-family: inherit; }
 
-.p-menu-category { padding: 20px 16px 8px; font-size: 11px; font-weight: 700; color: #8a8b91; text-transform: uppercase; letter-spacing: 0.5px; }
-.p-menu-item { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; transition: 0.2s; }
-.p-menu-item:active { background: var(--bg-secondary); }
-.p-menu-item .icon-wrapper { width: 32px; color: var(--text-dark); display: flex; align-items: center; }
-.p-menu-item .menu-text { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-dark); margin-left: 10px; }
-.p-menu-item .arrow-right { color: #bdbebf; font-size: 18px; }
-.p-menu-divider { border: 0; border-top: 1px solid var(--border-color); margin: 10px 16px; }
+/* MENU ITEMS DALAM SIDEBAR */
+.menu-category-label { padding: 20px 16px 8px; font-size: 11px; font-weight: 700; color: #8a8b91; text-transform: uppercase; letter-spacing: 0.5px; }
 
-.p-menu-item.logout { color: #ff4757; margin-top: auto; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+.menu-item-tiktok { 
+    display: flex; 
+    align-items: center; 
+    padding: 14px 16px; 
+    cursor: pointer; 
+    transition: background 0.2s;
+    color: var(--text-dark);
+}
+.menu-item-tiktok:active { background: var(--bg-secondary); }
 
-/* --- 🔥 FULL EDIT PROFILE MODAL 🔥 --- */
-.custom-modal-overlay { 
-    position: fixed; 
-    inset: 0; 
-    background: rgba(0,0,0,0.6); 
-    z-index: 10000; 
+.menu-item-tiktok .icon-wrapper { 
+    width: 32px; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    opacity: 0; 
-    pointer-events: none; 
-    transition: 0.3s; 
+    color: var(--text-dark);
+}
+
+.menu-item-tiktok .menu-text { 
+    flex: 1; 
+    font-size: 15px; 
+    font-weight: 600; 
+    margin-left: 10px; 
+    color: var(--text-dark);
+}
+
+.menu-item-tiktok .arrow-right { color: #bdbebf; font-size: 18px; }
+.menu-divider { border: 0; border-top: 1px solid var(--border-color); margin: 10px 16px; }
+
+.menu-item-tiktok.logout { 
+    color: #ff4757; 
+    margin-top: auto; 
+    padding-bottom: calc(30px + env(safe-area-inset-bottom)); 
+}
+.menu-item-tiktok.logout .icon-wrapper, 
+.menu-item-tiktok.logout .menu-text { color: #ff4757; }
+
+/* --- 🔥 MODAL EDIT PROFIL (Z-INDEX 10000) 🔥 --- */
+.custom-modal-overlay { 
+    position: fixed; inset: 0; 
+    background: rgba(0,0,0,0.6); 
+    z-index: 10000; 
+    display: flex; align-items: center; justify-content: center; 
+    opacity: 0; pointer-events: none; transition: 0.3s; 
 }
 .custom-modal-overlay.active { opacity: 1; pointer-events: auto; }
 
@@ -155,24 +179,33 @@ html.dark .profile-page-container {
     background: var(--bg-main);
     width: 90%;
     max-width: 360px;
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 15px 50px rgba(0,0,0,0.4);
 }
 
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h3 { margin: 0; font-size: 18px; font-weight: 800; }
+.close-btn { font-size: 24px; cursor: pointer; color: var(--text-secondary); }
+
 .avatar-edit-section { text-align: center; margin-bottom: 20px; }
-.main-preview-label { position: relative; display: inline-block; width: 90px; height: 90px; cursor: pointer; }
+.main-preview-label { position: relative; display: inline-block; width: 95px; height: 95px; cursor: pointer; }
 .avatar-main-preview { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-blue); }
 .upload-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; opacity: 0; transition: 0.3s; }
 .main-preview-label:hover .upload-overlay { opacity: 1; }
 
-.avatar-presets { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
-.preset-img { width: 45px; height: 45px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+.section-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; text-align: left; margin-bottom: 10px; }
+.avatar-presets { display: flex; gap: 12px; justify-content: center; margin-bottom: 20px; }
+.preset-img { width: 48px; height: 48px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
 .preset-img.selected { border-color: var(--primary-blue); transform: scale(1.1); }
 
-.input-group { margin-bottom: 15px; text-align: left; }
-.input-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 5px; }
+.input-group { margin-bottom: 18px; text-align: left; }
+.input-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
 .input-group input, .input-group textarea {
-    width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; color: var(--text-dark); font-family: inherit; outline: none;
+    width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px; color: var(--text-dark); font-family: inherit; font-size: 14px; outline: none; transition: 0.2s;
 }
-.save-btn-premium { width: 100%; padding: 14px; border-radius: 12px; background: var(--primary-blue); color: white; font-weight: 800; border: none; cursor: pointer; }
+.input-group input:focus, .input-group textarea:focus { border-color: var(--primary-blue); }
+
+.save-btn-premium { width: 100%; padding: 14px; border-radius: 14px; background: var(--primary-blue); color: white; font-weight: 800; font-size: 15px; border: none; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+.save-btn-premium:active { transform: scale(0.98); opacity: 0.9; }
+.save-btn-premium:disabled { opacity: 0.5; cursor: not-allowed; }
