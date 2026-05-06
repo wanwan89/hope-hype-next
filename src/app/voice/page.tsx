@@ -74,9 +74,9 @@ export default function RoomPage() {
 
     const chatInput = document.getElementById('chat-input') as HTMLInputElement;
     if (chatInput) {
-        chatInput.addEventListener('focus', () => {
-            const drawer = document.getElementById('gift-drawer');
-            // 🔥 FIX: Ganti ke toggleRoomGiftDrawer agar sesuai dengan fungsi baru 🔥
+chatInput.addEventListener('focus', () => {
+    const drawer = document.getElementById('room-gift-drawer'); // 🔥 Arahkan ke laci Voice
+
             if (drawer && drawer.classList.contains('open')) {
                 toggleRoomGiftDrawer(); 
             }
@@ -719,9 +719,9 @@ export default function RoomPage() {
             e.preventDefault();
             e.stopPropagation();
         }
-        const drawer = document.getElementById('gift-drawer');
-        const overlay = document.getElementById('drawer-overlay');
-        
+const drawer = document.getElementById('room-gift-drawer'); // 🔥 Pakai ID unik
+const overlay = document.getElementById('room-drawer-overlay'); // 🔥 Pakai ID unik
+
         if(drawer) drawer.classList.toggle('open');
         if(overlay) overlay.classList.toggle('show');
         
@@ -1096,13 +1096,12 @@ export default function RoomPage() {
         });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const giftDrawer = document.getElementById('gift-drawer');
-        const inputEl = document.getElementById('chat-input') as HTMLInputElement;
-        const drawerOverlay = document.getElementById('drawer-overlay');
+    // 🔥 FIX: Pakai ID unik biar gak bentrok dan gak macet lagi 🔥
+    const giftDrawer = document.getElementById('room-gift-drawer'); // 👈 GANTI
+    const inputEl = document.getElementById('chat-input') as HTMLInputElement;
+    const drawerOverlay = document.getElementById('room-drawer-overlay'); // 👈 GANTI
 
-        if (!giftDrawer) return;
-
+    if (giftDrawer) {
         let startY = 0;
         let currentY = 0;
 
@@ -1123,22 +1122,25 @@ export default function RoomPage() {
             const diffY = currentY - startY;
             giftDrawer.style.transform = '';
             giftDrawer.style.transition = 'transform 0.3s ease-out';
-            // 🔥 Ganti ke toggleRoomGiftDrawer 🔥
+            
+            // 🔥 Panggil fungsi unik Voice Room 🔥
             if (diffY > 80 && giftDrawer.classList.contains('open')) {
-                toggleRoomGiftDrawer(); 
+                if (window.toggleRoomGiftDrawer) window.toggleRoomGiftDrawer(); 
             }
             startY = 0; currentY = 0;
         });
+    }
 
-        if (inputEl) {
-            inputEl.addEventListener('focus', () => {
-                if (giftDrawer.classList.contains('open')) {
-                    giftDrawer.classList.remove('open');
-                    if (drawerOverlay) drawerOverlay.classList.remove('show');
-                }
-            });
-        }
-    });
+    if (inputEl) {
+        inputEl.addEventListener('focus', () => {
+            const roomDrawer = document.getElementById('room-gift-drawer');
+            const roomOverlay = document.getElementById('room-drawer-overlay');
+            if (roomDrawer && roomDrawer.classList.contains('open')) {
+                roomDrawer.classList.remove('open');
+                if (roomOverlay) roomOverlay.classList.remove('show');
+            }
+        });
+    }
 
     function closeTopGiftersModal() {
         const modal = document.getElementById('top-gifters-modal');

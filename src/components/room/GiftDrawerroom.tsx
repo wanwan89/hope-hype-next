@@ -1,9 +1,9 @@
 'use client';
 
-// 👇 FIX: Kasih tau TypeScript fungsi apa aja yang nempel di window 👇
+// 👇 FIX: Samakan dengan nama unik yang kita buat di page.tsx
 declare global {
   interface Window {
-    toggleGiftDrawer?: () => void;
+    toggleRoomGiftDrawer?: (e?: any) => void;
     sendGift?: (giftName: string, harga: number | string, giftId: number | string, jumlah?: number) => void;
   }
 }
@@ -11,15 +11,15 @@ declare global {
 export default function GiftDrawer() {
   return (
     <>
-      {/* OVERLAY */}
+      {/* OVERLAY: Pakai ID unik 'room-drawer-overlay' */}
       <div 
-        id="drawer-overlay" 
+        id="room-drawer-overlay" 
         className="drawer-overlay" 
-        onClick={() => window.toggleGiftDrawer && window.toggleGiftDrawer()}
+        onClick={(e) => window.toggleRoomGiftDrawer && window.toggleRoomGiftDrawer(e)}
       ></div>
 
-      {/* LACI KADO */}
-      <div id="gift-drawer" className="gift-drawer">
+      {/* LACI KADO: Pakai ID unik 'room-gift-drawer' */}
+      <div id="room-gift-drawer" className="gift-drawer">
         <div className="handle"></div> 
         
         <div className="drawer-header">
@@ -30,7 +30,7 @@ export default function GiftDrawer() {
             </div>
             <span 
               className="material-icons" 
-              onClick={() => window.toggleGiftDrawer && window.toggleGiftDrawer()} 
+              onClick={(e) => window.toggleRoomGiftDrawer && window.toggleRoomGiftDrawer(e)} 
               style={{ color: '#94a3b8', fontSize: '26px', cursor: 'pointer' }}
             >
               cancel
