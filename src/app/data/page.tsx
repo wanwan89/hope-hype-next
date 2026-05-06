@@ -18,8 +18,8 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   
-  // 🔥 UPDATE: Tambah 'repost' ke tipe Tab 🔥
-  const [activeTab, setActiveTab] = useState<'foto' | 'musik' | 'like' | 'repost'>('foto');
+  // 🔥 Update 4 Tab 🔥
+  const [activeTab, setActiveTab] = useState<'foto' | 'musik' | 'repost' | 'like'>('foto');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
 
@@ -46,18 +46,17 @@ function ProfileContent() {
 
     setProfile(profData);
     setNewBio(profData.bio || '');
-    updateStats(profData.id, profData.username, currentUserId);
+    updateStats(profData.id, currentUserId);
   };
 
-  const updateStats = async (targetId: string, targetUsername: string, currentUserId: string | null) => {
+  const updateStats = async (targetId: string, currentUserId: string | null) => {
     const { count: fers } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', targetId);
     const { count: fing } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', targetId);
     
     const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', targetId);
     let totalLikes = 0;
     if (myPosts && myPosts.length > 0) {
-        const postIds = myPosts.map(p => p.id);
-        const { count: lks } = await supabase.from('likes').select('*', { count: 'exact', head: true }).in('post_id', postIds);
+        const { count: lks } = await supabase.from('likes').select('*', { count: 'exact', head: true }).in('post_id', myPosts.map(p => p.id));
         totalLikes = lks || 0;
     }
     setStats({ followers: fers || 0, following: fing || 0, likes: totalLikes });
@@ -79,15 +78,9 @@ function ProfileContent() {
       } else if (type === 'musik') {
         const { data } = await supabase.from('songs').select('id, cover_url').eq('artist', profile.username).order('created_at', { ascending: false });
         setPosts(data ? data.map(s => ({ id: s.id, image_url: s.cover_url })) : []);
-      } else if (type === 'like') {
-        const { data: rels } = await supabase.from('likes').select('post_id').eq('user_id', profile.id);
-        if (rels && rels.length > 0) {
-           const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', rels.map(r => r.post_id)).eq('status', 'approved');
-           setPosts(pData || []);
-        }
-      } else if (type === 'repost') {
-        // 🔥 LOGIKA LOAD REPOST 🔥
-        const { data: rels } = await supabase.from('reposts').select('post_id').eq('user_id', profile.id);
+      } else if (type === 'repost' || type === 'like') {
+        const table = type === 'repost' ? 'reposts' : 'likes';
+        const { data: rels } = await supabase.from(table).select('post_id').eq('user_id', profile.id);
         if (rels && rels.length > 0) {
            const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', rels.map(r => r.post_id)).eq('status', 'approved');
            setPosts(pData || []);
@@ -115,16 +108,16 @@ function ProfileContent() {
         await supabase.from('profiles').update({ bio: newBio }).eq('id', myId);
         setProfile((prev: any) => ({ ...prev, bio: newBio }));
         setIsBioModalOpen(false);
-        showNotif("Bio berhasil diperbarui", "success");
+        showNotif("Bio diperbarui", "success");
     } catch (err) { showNotif("Gagal simpan bio", "error"); }
   };
 
-  if (!profile) return <div className="profile-page-container"><div style={{padding: '50px', textAlign: 'center'}}>Memuat profil...</div></div>;
+  if (!profile) return <div className="profile-page-container"></div>;
 
   const isMe = myId === profile.id;
 
   return (
-    <div className={`profile-page-container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+    <div className="profile-page-container">
       
       {/* HEADER */}
       <header className="profile-header">
@@ -177,7 +170,7 @@ function ProfileContent() {
              )}
           </div>
 
-          {/* 🔥 POSISI BIO SEKARANG DI BAWAH TOMBOL 🔥 */}
+          {/* 🔥 Bio Pindah Sini 🔥 */}
           <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
         </section>
 
@@ -189,7 +182,7 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* GRID POSTS */}
+      {/* SCROLLABLE GRID */}
       <div className="post-grid-container">
         <div className="post-grid">
            {isLoadingPosts ? (
@@ -202,63 +195,61 @@ function ProfileContent() {
            ) : (
               posts.map(post => (
                  <div key={post.id} className="grid-item" onClick={() => router.push(activeTab === 'musik' ? `/music?id=${post.id}` : `/post?id=${post.id}`)}>
-                    {post.image_url ? ( <img src={post.image_url} alt="post" /> ) : (
-                      <div className="grid-no-img"><span className="material-icons">article</span></div>
-                    )}
+                    {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
               ))
            )}
         </div>
       </div>
 
-      {/* 🔥 SIDEBAR BARU (STYLE TIKTOK) 🔥 */}
-      <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
-      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      {/* 🔥 SIDEBAR TIKTOK STYLE 🔥 */}
+      <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
           <div className="sidebar-search">
-            <span className="material-icons" style={{color: '#8a8b91', fontSize: '20px'}}>search</span>
-            <input type="text" placeholder="Cari" />
+             <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
+             <input type="text" placeholder="Cari" />
           </div>
         </div>
 
         <div className="menu-category-label">Aset</div>
         <div className="menu-item-tiktok" onClick={() => router.push('/saldo')}>
-          <div className="icon-wrapper"><span className="material-icons">account_balance_wallet</span></div>
-          <div className="menu-text">Saldo</div>
-          <div className="arrow-right">›</div>
+           <div className="icon-wrapper"><span className="material-icons">account_balance_wallet</span></div>
+           <div className="menu-text">Saldo</div>
+           <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok" onClick={() => router.push('/historycoin')}>
-          <div className="icon-wrapper"><span className="material-icons">history</span></div>
-          <div className="menu-text">Riwayat Transaksi</div>
-          <div className="arrow-right">›</div>
+           <div className="icon-wrapper"><span className="material-icons">history</span></div>
+           <div className="menu-text">Riwayat Transaksi</div>
+           <div className="arrow-right">›</div>
         </div>
-        
+
         <div className="menu-category-label">Misi & Hadiah</div>
         <div className="menu-item-tiktok" onClick={() => router.push('/dailycek')}>
-          <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">assignment</span></div>
-          <div className="menu-text">Pusat Misi</div>
-          <div className="arrow-right">›</div>
+           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">assignment_turned_in</span></div>
+           <div className="menu-text">Pusat Misi</div>
+           <div className="arrow-right">›</div>
         </div>
 
         <hr className="menu-divider" />
 
-        <div className="menu-category-label">Alat pribadi</div>
-        <div className="menu-item-tiktok" onClick={() => { setIsSidebarOpen(false); /* Panggil fungsi share QR lu di sini */ }}>
-          <div className="icon-wrapper"><span className="material-icons">qr_code_2</span></div>
-          <div className="menu-text">Kode QR Anda</div>
-          <div className="arrow-right">›</div>
+        <div className="menu-category-label">Alat Pribadi</div>
+        <div className="menu-item-tiktok" onClick={() => { setIsSidebarOpen(false); /* trigger QR share */ }}>
+           <div className="icon-wrapper"><span className="material-icons">qr_code_2</span></div>
+           <div className="menu-text">Kode QR Anda</div>
+           <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
-          <div className="icon-wrapper"><span className="material-icons">logout</span></div>
-          <div className="menu-text">Keluar</div>
+           <div className="icon-wrapper"><span className="material-icons">logout</span></div>
+           <div className="menu-text">Keluar</div>
         </div>
-      </div>
+      </aside>
 
-      {/* MODAL EDIT BIO */}
+      {/* MODAL BIO */}
       <div className={`custom-modal-overlay ${isBioModalOpen ? 'active' : ''}`} onClick={() => setIsBioModalOpen(false)}>
          <div className="custom-modal-content" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-header-text">Edit Bio</h3>
-            <textarea className="bio-textarea" rows={4} value={newBio} onChange={e => setNewBio(e.target.value)} placeholder="Ceritakan tentang dirimu..." maxLength={150}></textarea>
+            <h3 style={{textAlign: 'center', marginBottom: '15px'}}>Edit Bio</h3>
+            <textarea className="bio-textarea" rows={4} value={newBio} onChange={e => setNewBio(e.target.value)} maxLength={150}></textarea>
             <div style={{display: 'flex', gap: '10px'}}>
                <button className="btn-action btn-secondary" style={{flex: 1}} onClick={() => setIsBioModalOpen(false)}>Batal</button>
                <button className="btn-action btn-primary" style={{flex: 1}} onClick={handleSaveBio}>Simpan</button>
@@ -272,7 +263,7 @@ function ProfileContent() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div style={{padding: '50px', textAlign: 'center'}}>Memuat...</div>}>
+    <Suspense fallback={null}>
       <ProfileContent />
     </Suspense>
   );
