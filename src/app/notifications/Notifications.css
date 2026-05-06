@@ -1,14 +1,19 @@
 /* src/app/notifications/Notifications.css */
+
 .notif-page-container {
-  min-height: 100vh;
+  /* 🔥 FIX 1: Kunci tinggi halaman seukuran layar HP 🔥 */
+  height: 100vh;
+  height: 100dvh; 
+  display: flex;
+  flex-direction: column;
   background: var(--bg-main, #f0f2f5);
-  padding-bottom: 100px; 
   color: var(--text-main, #1c1e21);
+  overflow: hidden; /* Matikan scroll global body */
 }
 
 .notif-header {
-  position: sticky;
-  top: 0;
+  /* 🔥 FIX 2: Biarkan header diam dan gak ikut tertekan 🔥 */
+  flex-shrink: 0; 
   z-index: 100;
   background: var(--bg-main, #f0f2f5);
   padding: 16px 20px 10px;
@@ -16,7 +21,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Hapus border bottom karena sekarang ada banner iklan */
+  /* Tambahin bayangan tipis biar kepisah dari daftar scroll */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02); 
 }
 
 .notif-top-bar {
@@ -92,14 +98,22 @@ html.dark .ad-banner-container {
 }
 
 /* ==================================================
-   NOTIF LIST
+   NOTIF LIST (HANYA INI YANG BISA DI-SCROLL)
 ================================================== */
 .notif-list {
+  /* 🔥 FIX 3: Ambil sisa layar dan aktifkan scroll mandiri 🔥 */
+  flex: 1; 
+  overflow-y: auto; 
   padding: 12px 20px;
+  padding-bottom: 120px; /* Jarak aman buat Navbar Bawah lu */
   display: flex;
   flex-direction: column;
   gap: 12px;
+  -webkit-overflow-scrolling: touch; /* Smooth scroll ala iPhone */
 }
+
+/* Sembunyikan scrollbar biar estetik */
+.notif-list::-webkit-scrollbar { width: 0; }
 
 .notif-item {
   padding: 16px;
@@ -147,5 +161,6 @@ html.dark .ad-banner-container {
 .empty-notif {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 60px 20px; color: var(--text-muted); text-align: center;
+  margin-top: 30px;
 }
 .empty-notif .material-icons { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
