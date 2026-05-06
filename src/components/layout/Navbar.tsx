@@ -15,8 +15,8 @@ function NavbarContent() {
   
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   
-  // 🔥 FIX 1: State untuk dot notifikasi 🔥
-  const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
+  // 🔥 FIX 1: Ubah state jadi angka (count) bukan true/false lagi 🔥
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const lastScrollY = useRef(0);
@@ -65,18 +65,15 @@ function NavbarContent() {
         setUnreadChatCount(chatCount);
       }
 
-      // 🔥 2. Cek Notifikasi Belum Dibaca 🔥
+      // 🔥 2. Cek Notifikasi Belum Dibaca (Ambil jumlah angkanya) 🔥
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('is_read', false); 
 
-      // Kalau ada 1 aja notif belum dibaca, nyalakan titik merah
-      if (isMounted && notifCount !== null && notifCount > 0) {
-        setHasUnreadNotif(true);
-      } else if (isMounted) {
-        setHasUnreadNotif(false);
+      if (isMounted && notifCount !== null) {
+        setUnreadNotifCount(notifCount);
       }
 
       const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
@@ -93,33 +90,19 @@ function NavbarContent() {
              setUnreadChatCount(prev => Math.max(0, prev - 1));
           }
         })
-        // 🔥 Realtime kalau ada Notifikasi Baru Masuk 🔥
+        // 🔥 Realtime kalau ada Notifikasi Baru Masuk (Tambah Angka) 🔥
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
           if (payload.new.user_id === userId) {
-            setHasUnreadNotif(true);
+            setUnreadNotifCount(prev => prev + 1);
           }
         })
-        // 🔥 Realtime kalau Notifikasi Dibaca (dari halaman notif) 🔥
+        // 🔥 Realtime kalau Notifikasi Dibaca (Kurangi Angka) 🔥
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
-           // Fitur cek ulang kalau semua notif udah dibaca
-           if (payload.new.is_read === true && payload.new.user_id === userId) {
-             checkRemainingNotifs(userId);
+           if (payload.new.is_read === true && payload.old.is_read === false && payload.new.user_id === userId) {
+             setUnreadNotifCount(prev => Math.max(0, prev - 1));
            }
         })
         .subscribe();
-    };
-
-    // Helper untuk matiin dot kalau ternyata udah ke-read semua
-    const checkRemainingNotifs = async (userId: string) => {
-       const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_read', false); 
-       
-       if (isMounted && (count === 0 || count === null)) {
-         setHasUnreadNotif(false);
-       }
     };
 
     fetchBadges();
@@ -137,9 +120,9 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-lobby', icon: Mic2 }, // Arahkan ke Lobby Voice
-    // 🔥 FIX 2: Terapkan hasDot ke menu Notif 🔥
-    { name: 'Notif', path: '/notifications', icon: Bell, hasDot: hasUnreadNotif },
+    { name: 'Voice', path: '/voice-lobby', icon: Mic2 }, 
+    // 🔥 FIX 2: Ganti hasDot jadi badgeCount 🔥
+    { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
     { name: 'Profil', path: '/profile', icon: User },
   ];
 
@@ -253,7 +236,7 @@ function NavbarContent() {
                     }}
                   />
                   
-                  {/* Badge Angka untuk Chat */}
+                  {/* 🔥 FIX 3: Badge Angka (Berlaku otomatis buat Chat & Notif) 🔥 */}
                   {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                     <div style={{ 
                       position: 'absolute', top: isVoice ? '0px' : '-4px', right: isVoice ? '0px' : '-8px', 
@@ -267,17 +250,6 @@ function NavbarContent() {
                     }}>
                       {item.badgeCount > 99 ? '99+' : item.badgeCount}
                     </div>
-                  )}
-
-                  {/* 🔥 FIX 3: Badge Titik untuk Notif (Kalau ada) 🔥 */}
-                  {item.hasDot && !isActive && (
-                    <div style={{ 
-                      position: 'absolute', top: '0px', right: '2px', 
-                      width: '10px', height: '10px', 
-                      backgroundColor: '#ff4757', border: '2px solid #ffffff', 
-                      borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)',
-                      zIndex: 10
-                    }} />
                   )}
                 </div>
                 
