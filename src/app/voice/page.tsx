@@ -22,7 +22,7 @@ declare global {
     turunMic?: (index: number) => void;
     prosesTurunMic?: () => void;
     toggleSidebar?: () => void;
-    toggleMicSidebar?: (event?: Event) => void;
+    toggleMicSidebar?: (event?: any) => void; /* 🔥 INI UDAH JADI 'any' 🔥 */
     toggleGiftDrawer?: () => void;
     toggleKickBtn?: (el: HTMLElement, canKick: boolean) => void;
     sendGift?: (giftName: string, harga: number | string, giftId: number | string, jumlah?: number) => void;
