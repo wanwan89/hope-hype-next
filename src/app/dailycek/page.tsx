@@ -20,10 +20,10 @@ export default function PusatMisiPage() {
 
   const REWARDS = [50, 50, 100, 50, 50, 100, 300];
   const MISSIONS = {
-    listen: { target: 3, reward: 30, type: 'mission_listen' },
-    like: { target: 5, reward: 25, type: 'mission_like' },
-    comment: { target: 3, reward: 40, type: 'mission_comment' },
-    upload: { target: 1, reward: 100, type: 'mission_upload' },
+    listen: { target: 3, reward: 30, type: 'mission_listen', icon: 'headset', color: '#3b82f6' }, // Biru
+    like: { target: 5, reward: 25, type: 'mission_like', icon: 'favorite', color: '#ec4899' }, // Pink
+    comment: { target: 3, reward: 40, type: 'mission_comment', icon: 'chat', color: '#10b981' }, // Hijau
+    upload: { target: 1, reward: 100, type: 'mission_upload', icon: 'cloud_upload', color: '#8b5cf6' }, // Ungu
   };
 
   useEffect(() => {
@@ -217,20 +217,31 @@ export default function PusatMisiPage() {
 
             return (
               <div className="mission-item" key={key}>
-                <div className={`m-icon-box bg-${key === 'listen' ? 'blue' : key === 'like' ? 'pink' : key === 'comment' ? 'green' : 'purple'}`}>
-                   <span className="material-icons" style={{fontSize:'20px'}}>
-                      {key === 'listen' ? 'headset' : key === 'like' ? 'favorite' : key === 'comment' ? 'chat' : 'cloud_upload'}
+                {/* 🔥 FIX ICON & BACKGROUND COLOR DISINI 🔥 */}
+                <div className="m-icon-box" style={{ backgroundColor: m.color }}>
+                   <span className="material-icons" style={{ fontSize: '20px', color: 'white' }}>
+                      {m.icon}
                    </span>
                 </div>
+                
                 <div className="m-info">
                   <h4 className="m-title">{key.toUpperCase()} {m.target}X</h4>
                   <div className="m-reward"><div className="coin-dot" /> +{m.reward} Koin</div>
                   <div className="progress-bar"><div className="progress-fill" style={{width: `${(current/m.target)*100}%`}} /></div>
                   <span className="progress-text">{current}/{m.target}</span>
                 </div>
+                
                 <button 
                   className={`m-btn ${canClaim ? 'btn-klaim' : isDone ? 'btn-done' : ''}`}
-                  onClick={() => canClaim && secureUpdate({ mission_coins: profile.mission_coins + m.reward }, { type:'masuk', transaction_type: m.type, amount: m.reward, description:'Misi Harian' })}
+                  onClick={() => {
+                    if (isDone) return;
+                    if (canClaim) {
+                      secureUpdate({ mission_coins: profile.mission_coins + m.reward }, { type:'masuk', transaction_type: m.type, amount: m.reward, description:'Misi Harian' });
+                    } else {
+                      // Kalo belum beres misinya, arahin ke halaman home/yang sesuai
+                      router.push('/');
+                    }
+                  }}
                 >
                   {isDone ? 'Selesai' : canClaim ? 'Klaim' : 'Mulai'}
                 </button>
@@ -248,8 +259,8 @@ export default function PusatMisiPage() {
                 <div className="m-icon-box" style={{background:'#10b981'}}><span className="material-icons">install_mobile</span></div>
                 <div className="m-info">
                   <h4 className="m-title">Instal Aplikasi HopeHype</h4>
-                  <div className="m-reward">+300 Koin</div>
-                  <p style={{fontSize:'0.7rem', color:'gray'}}>Akses lebih cepat & ringan</p>
+                  <div className="m-reward"><div className="coin-dot" /> +300 Koin</div>
+                  <p style={{fontSize:'0.7rem', color:'gray', marginTop:'4px'}}>Akses lebih cepat & ringan</p>
                 </div>
                 <button className="m-btn btn-klaim" onClick={handlePwaInstall}>Instal</button>
               </div>

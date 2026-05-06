@@ -17,13 +17,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
   const isNotifPage = pathname?.includes('/notifications');
+  // 🔥 TAMBAHKAN: Identifikasi halaman Pusat Misi (dailycek) 🔥
+  const isDailyCekPage = pathname?.includes('/dailycek');
   
-  // 🔥 Halaman yang harus menempel mentok ke atas (Profile, Notif, Voice)
-  const isFullscreenPage = isVoicePage || isDataPage || isNotifPage;
+  // 🔥 FIX: Tambahkan isDailyCekPage agar mentok ke atas (tanpa gap padding)
+  const isFullscreenPage = isVoicePage || isDataPage || isNotifPage || isDailyCekPage;
 
   // 2. Tentukan Visibilitas Komponen Global
-  // Sidebar Home WAJIB sembunyi di Voice dan Profile (biar gak bentrok)
-  const hideSidebar = isVoicePage || isDataPage; 
+  // Sidebar Home WAJIB sembunyi di Voice, Profile, dan Pusat Misi
+  const hideSidebar = isVoicePage || isDataPage || isDailyCekPage; 
   
   // Navbar sembunyi hanya di Voice Room
   const hideNavbar = isVoicePage;
@@ -75,8 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           )}
 
           {/* 🔥 FIX: Main Content 🔥
-              - Hapus 'key={pathname}' agar transisi antar tab (Karya/Musik) tidak reset/kedip.
-              - Gunakan class 'is-fullscreen' untuk Profile/Data agar nempel ke Header.
+              Gunakan class 'is-fullscreen' untuk Profile/Data/Notif/Misi agar nempel ke Header.
           */}
           <main className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
             {children}
