@@ -1,6 +1,7 @@
 'use client'; 
 
 import { usePathname } from 'next/navigation';
+import { useEffect } from 'react'; // 🔥 Import useEffect untuk cleanup
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -15,11 +16,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isHomePage = pathname === '/' || pathname === '';
   const isVoicePage = pathname?.includes('/voice');
   
-  // 🔥 FIX: HypeTalk sekarang dibolehkan muncul Sidebar & Navbar
-  // Kita cuma sembunyikan Sidebar di Voice Page aja biar gak berantakan
+  // Logika Sembunyi
   const hideSidebar = isVoicePage; 
   const hideNavbar = isVoicePage;
   const hideOverlays = isVoicePage;
+
+  // 🔥 FIX: Safety Reset pas pindah halaman (Sapu Jagat) 🔥
+  useEffect(() => {
+    // 1. Reset paksa style body biar gak ada overflow:hidden yang nyangkut
+    document.body.style.overflow = 'auto';
+    document.body.style.position = 'static';
+    document.body.style.height = 'auto';
+    
+    // 2. Hapus paksa elemen manual Voice Room kalau masih nempel di DOM
+    const voiceTrash = [
+      'room-gift-drawer', 
+      'room-drawer-overlay', 
+      'gift-anim-overlay', 
+      'vip-entrance-overlay',
+      'vip-anim-styles-clean'
+    ];
+    
+    voiceTrash.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+
+    console.log("Layout reset for path:", pathname);
+  }, [pathname]); // Akan jalan setiap kali lu pindah link/halaman
 
   return (
     <html lang="id">
@@ -42,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           )}
 
           <main 
-            key={pathname} // 🔥 Tambahin ini biar layout nge-reset pas pindah link
+            key={pathname} // 🔥 Penting: Memaksa React render ulang total konten saat pindah halaman
             style={{ 
               flex: 1, 
               width: '100%', 
@@ -56,7 +80,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
 
-
           {/* NAVBAR BAWAH: Muncul kecuali di Voice */}
           {!hideNavbar && <Navbar />}
           
@@ -65,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* MODAL & NOTIFIKASI */}
         <LoginPopup />
 
-        {/* 🔥 FIX: Overlays (Kado Home) muncul di mana-mana KECUALI di Voice 🔥 */}
+        {/* 🔥 FIX: Overlays (Kado Home) HANYA muncul di luar Voice 🔥 */}
         {!hideOverlays && <Overlays />}
 
       </body>

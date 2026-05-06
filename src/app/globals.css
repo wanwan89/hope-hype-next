@@ -8,25 +8,26 @@
   --text-main: #1c1e21;
   --bg-card: #ffffff;
   --border-card: #dddfe2;
-  --text-muted: #606770;
+  --text-muted: #64748b;
   --bg-modal: #ffffff;
-  --bg-input: #f0f2f5;
+  --bg-input: #f1f5f9;
   --icon-fill: #1c1e21;
   --bg-secondary: #e4e6eb; 
   --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
   --bg-story-seen: #dddfe2;
+  --vh: 1vh;
 }
 
 html.dark {
-  --bg-main: #121212;
-  --text-main: #e0e0e0;
-  --bg-card: #1e1e1e;
-  --border-card: #2c2c2c;
-  --text-muted: #888888;
+  --bg-main: #0a0a0a; /* Lebih dalem itemnya biar pro */
+  --text-main: #f8fafc;
+  --bg-card: #151515;
+  --border-card: rgba(255,255,255,0.06);
+  --text-muted: #94a3b8;
   --bg-modal: #111111;
-  --bg-input: #1d1d1d;
+  --bg-input: #1e1e1e;
   --icon-fill: #e0e0e0;
-  --bg-secondary: #242526;
+  --bg-secondary: #1e293b;
   --bg-story-seen: #2c2c2c;
 }
 
@@ -35,18 +36,70 @@ html.dark {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  -webkit-tap-highlight-color: transparent;
-  outline: none;
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
 }
 
-body { 
+body, html { 
+  width: 100%;
+  /* 🔥 FIX: Cegah scrolling aneh pas pindah halaman */
+  overflow-x: hidden;
+  height: 100%;
   font-family: 'Poppins', sans-serif; 
-  background: var(--bg-main); 
+  background-color: var(--bg-main); 
   color: var(--text-main); 
-  transition: background 0.3s ease, color 0.3s ease;
+  /* Transition halus tapi gak bikin lag */
+  transition: background-color 0.2s ease;
+  /* Support Safe Area buat HP Notch (iPhone/Android Baru) */
+  padding-top: env(safe-area-inset-top);
 }
 
-.menu-item-tiktok, .btn, .tab, button {
+/* Biar inputan & pesan bisa di-copy, tapi tombol nggak */
+input, textarea, [contenteditable="true"], .selectable { 
+  user-select: text !important; 
+}
+
+.menu-item-tiktok, .btn, .tab, button, .avatar, .card-btn {
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   user-select: none; 
+  cursor: pointer;
+}
+
+/* === NEXT.JS HYDRATION & TRANSITION FIX === */
+/* Biar gak muncul scrollbar ganda atau layout nendang */
+#__next {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Utilitas untuk scroller premium (sembunyiin scrollbar tapi tetep bisa scroll) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* === ANIMASI GLOBAL (OPSIONAL) === */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.page-fade {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* === FIX Z-INDEX LAYOUT === */
+/* Pastikan sidebar home gak ketutup sama elemen random */
+.sidebar-home {
+  z-index: 50;
+}
+
+/* Pastikan navbar bawah selalu di depan kecuali ada modal */
+.navbar-bottom {
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
 }
