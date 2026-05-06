@@ -114,14 +114,15 @@ export default function NotificationsPage() {
   };
 
   const handleNotifClick = async (notif: any) => {
-    // Tandai terbaca
+    // 1. Tandai terbaca di database & local state (BIAR BADGE ILANG)
     if (!notif.is_read) {
       setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
 
-    // Aksi berdasarkan tipe Notif
+    // 2. Eksekusi Aksi berdasarkan tipe Notif
     if (notif.type === "payment_pending" && notif.token) {
+      // BAGIAN MIDTRANS
       try {
         showNotif("Menyiapkan pembayaran...", "info");
         const isLoaded = await loadMidtransForce();
@@ -140,10 +141,13 @@ export default function NotificationsPage() {
         console.error("Midtrans Error:", err);
       }
     } else if (notif.post_id) {
-      router.push(`/post?id=${notif.post_id}`);
+      // 🔥 FIX: Arahkan ke Home (/) dengan tambahan hash (#) ID postingan 🔥
+      // Jadi nanti jadinya kayak gini: domain.com/#post-123
+      router.push(`/#post-${notif.post_id}`);
     }
   };
 
+  // --- HELPER UNTUK IKON & WARNA ---
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };

@@ -78,6 +78,27 @@ export default function Gallerypost() {
 
       setPosts(fetchedPosts);
       setTimeout(initAutoPlayObserver, 500);
+
+      // 🔥 FIX 1: JALANKAN LOGIKA DEEP LINKING (SCROLL KE HASH) 🔥
+      setTimeout(() => {
+        if (window.location.hash) {
+          const hashId = window.location.hash.substring(1); // ambil 'post-123'
+          const targetEl = document.getElementById(hashId);
+          if (targetEl) {
+            // Animasi dikit biar keliatan fokus
+            targetEl.style.transition = 'box-shadow 0.5s ease';
+            targetEl.style.boxShadow = '0 0 30px rgba(0, 162, 255, 0.8)';
+            
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Hilangkan animasi efek nyalanya setelah 2 detik
+            setTimeout(() => {
+              targetEl.style.boxShadow = '';
+            }, 2000);
+          }
+        }
+      }, 800); // Nunggu gambarnya kerender
+
     } catch (err) {
       console.error("Gallery Error:", err);
     } finally {
@@ -248,12 +269,12 @@ export default function Gallerypost() {
             const postIdStr = String(post.id);
 
             return (
-              <div key={post.id} className="card" style={!post.image_url ? { padding: '16px' } : {}}>
+              // 🔥 FIX 2: Tambahkan ID di pembungkus luarnya 🔥
+              <div key={post.id} id={`post-${post.id}`} className="card" style={!post.image_url ? { padding: '16px' } : {}}>
                 {post.image_url && post.image_url.trim() !== "" ? (
                   <>
                     <div className="slider">
                       <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}>{getMusicHtml(post)}</div>
-                      {/* --- FIX: TAMBAHIN onClick openBigImage --- */}
                       <img 
                         src={post.image_url} 
                         className="active" 
