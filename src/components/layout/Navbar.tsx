@@ -14,6 +14,8 @@ function NavbarContent() {
   const [isManualHidden, setIsManualHidden] = useState(false);
   
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  
+  // 🔥 FIX 1: State untuk dot notifikasi 🔥
   const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
   
   const [clickedItem, setClickedItem] = useState<string | null>(null);
@@ -51,6 +53,7 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
+      // 1. Cek Pesan Belum Dibaca (Hypetalk)
       const { count: chatCount } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
@@ -62,17 +65,23 @@ function NavbarContent() {
         setUnreadChatCount(chatCount);
       }
 
+      // 🔥 2. Cek Notifikasi Belum Dibaca 🔥
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('is_read', false); 
 
-      if (isMounted && notifCount && notifCount > 0) setHasUnreadNotif(true);
+      // Kalau ada 1 aja notif belum dibaca, nyalakan titik merah
+      if (isMounted && notifCount !== null && notifCount > 0) {
+        setHasUnreadNotif(true);
+      } else if (isMounted) {
+        setHasUnreadNotif(false);
+      }
 
-      // 🔥 FIX SUPABASE REALTIME: Unik per render 🔥
       const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
 
+      // 3. Realtime Supabase Listener untuk Chat & Notif
       badgeChannel = supabase.channel(uniqueChannelName)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
           if (payload.new.room_id.includes(userId) && payload.new.user_id !== userId) {
@@ -84,12 +93,33 @@ function NavbarContent() {
              setUnreadChatCount(prev => Math.max(0, prev - 1));
           }
         })
+        // 🔥 Realtime kalau ada Notifikasi Baru Masuk 🔥
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
           if (payload.new.user_id === userId) {
             setHasUnreadNotif(true);
           }
         })
+        // 🔥 Realtime kalau Notifikasi Dibaca (dari halaman notif) 🔥
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
+           // Fitur cek ulang kalau semua notif udah dibaca
+           if (payload.new.is_read === true && payload.new.user_id === userId) {
+             checkRemainingNotifs(userId);
+           }
+        })
         .subscribe();
+    };
+
+    // Helper untuk matiin dot kalau ternyata udah ke-read semua
+    const checkRemainingNotifs = async (userId: string) => {
+       const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_read', false); 
+       
+       if (isMounted && (count === 0 || count === null)) {
+         setHasUnreadNotif(false);
+       }
     };
 
     fetchBadges();
@@ -100,7 +130,6 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
-  // Navbar disembunyikan jika di dalam chat room atau voice room
   if (isChatRoom || isVoiceRoom) {
     return null;
   }
@@ -108,7 +137,8 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: Mic2 }, // Icon Mic keren
+    { name: 'Voice', path: '/voice-lobby', icon: Mic2 }, // Arahkan ke Lobby Voice
+    // 🔥 FIX 2: Terapkan hasDot ke menu Notif 🔥
     { name: 'Notif', path: '/notifications', icon: Bell, hasDot: hasUnreadNotif },
     { name: 'Profil', path: '/profile', icon: User },
   ];
@@ -176,14 +206,11 @@ function NavbarContent() {
                   setTimeout(() => setClickedItem(null), 300); 
 
                   const target = e.currentTarget;
-                  // 🔥 FIX 3: Tambahin try-catch buat ngakalin error releasePointerCapture di HP 🔥
                   try {
                     if (target.hasPointerCapture(e.pointerId)) {
                       target.releasePointerCapture(e.pointerId);
                     }
-                  } catch (err) {
-                    // Cuekin aja error-nya, aman!
-                  }
+                  } catch (err) {}
                 }}
                 style={{ 
                   display: 'flex', 
@@ -226,6 +253,7 @@ function NavbarContent() {
                     }}
                   />
                   
+                  {/* Badge Angka untuk Chat */}
                   {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                     <div style={{ 
                       position: 'absolute', top: isVoice ? '0px' : '-4px', right: isVoice ? '0px' : '-8px', 
@@ -241,8 +269,15 @@ function NavbarContent() {
                     </div>
                   )}
 
+                  {/* 🔥 FIX 3: Badge Titik untuk Notif (Kalau ada) 🔥 */}
                   {item.hasDot && !isActive && (
-                    <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff4757', border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)' }} />
+                    <div style={{ 
+                      position: 'absolute', top: '0px', right: '2px', 
+                      width: '10px', height: '10px', 
+                      backgroundColor: '#ff4757', border: '2px solid #ffffff', 
+                      borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)',
+                      zIndex: 10
+                    }} />
                   )}
                 </div>
                 
