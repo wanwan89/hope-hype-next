@@ -1,5 +1,13 @@
 'use client';
 
+// 👇 FIX: Kasih tau TypeScript fungsi apa aja yang nempel di window 👇
+declare global {
+  interface Window {
+    toggleGiftDrawer?: () => void;
+    kirimKomentar?: () => void;
+  }
+}
+
 export default function Footer() {
   return (
     <footer className="footer-controls">

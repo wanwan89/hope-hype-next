@@ -20,8 +20,7 @@ function NavbarContent() {
   const lastScrollY = useRef(0);
 
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
-  // 👇 INI YANG BIKIN HILANG DI VOICE 👇
-  const isVoiceRoom = pathname?.includes('/voice'); 
+  const isVoiceRoom = pathname?.includes('/voice-room'); 
 
   useEffect(() => {
     const handleScroll = () => {
@@ -52,7 +51,6 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
-      // Hitung JUMLAH pesan yang masuk ke kita dan statusnya BUKAN 'read'
       const { count: chatCount } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
@@ -64,7 +62,6 @@ function NavbarContent() {
         setUnreadChatCount(chatCount);
       }
 
-      // Hitung notif biasa
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -73,8 +70,10 @@ function NavbarContent() {
 
       if (isMounted && notifCount && notifCount > 0) setHasUnreadNotif(true);
 
-      // Realtime Listener: Kalo ada pesan baru masuk pas kita lagi di luar room
-      badgeChannel = supabase.channel('navbar-badges')
+      // 🔥 FIX SUPABASE REALTIME: Unik per render 🔥
+      const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
+
+      badgeChannel = supabase.channel(uniqueChannelName)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
           if (payload.new.room_id.includes(userId) && payload.new.user_id !== userId) {
             setUnreadChatCount(prev => prev + 1);
@@ -94,13 +93,14 @@ function NavbarContent() {
     };
 
     fetchBadges();
+    
     return () => {
       isMounted = false;
       if (badgeChannel) supabase.removeChannel(badgeChannel);
     };
   }, [pathname]); 
 
-  // 👇 INI YANG BIKIN HILANG DI VOICE 👇
+  // Navbar disembunyikan jika di dalam chat room atau voice room
   if (isChatRoom || isVoiceRoom) {
     return null;
   }
@@ -108,7 +108,7 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice', icon: Mic2 }, // Ganti ke /voice biar nyambung sama foldernya
+    { name: 'Voice', path: '/voice-room', icon: Mic2 }, // Icon Mic keren
     { name: 'Notif', path: '/notifications', icon: Bell, hasDot: hasUnreadNotif },
     { name: 'Profil', path: '/profile', icon: User },
   ];
@@ -158,10 +158,12 @@ function NavbarContent() {
           WebkitBackdropFilter: 'blur(15px)', border: '1px solid rgba(0, 0, 0, 0.05)',
           borderRadius: '25px', width: '100%', maxWidth: '400px', height: '65px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+          padding: '0 5px'
         }}>
           {navItems.map((item) => {
             const isActive = pathname === item.path;
+            const isVoice = item.name === 'Voice'; 
             const Icon = item.icon;
             const isClicked = clickedItem === item.name;
 
@@ -171,46 +173,69 @@ function NavbarContent() {
                 href={item.path}
                 onPointerDown={(e) => {
                   setClickedItem(item.name);
-                  setTimeout(() => setClickedItem(null), 200);
+                  setTimeout(() => setClickedItem(null), 300); 
 
                   const target = e.currentTarget;
-                  if (target.hasPointerCapture(e.pointerId)) {
-                    target.releasePointerCapture(e.pointerId);
+                  // 🔥 FIX 3: Tambahin try-catch buat ngakalin error releasePointerCapture di HP 🔥
+                  try {
+                    if (target.hasPointerCapture(e.pointerId)) {
+                      target.releasePointerCapture(e.pointerId);
+                    }
+                  } catch (err) {
+                    // Cuekin aja error-nya, aman!
                   }
                 }}
                 style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
                   alignItems: 'center', 
+                  justifyContent: 'center',
                   textDecoration: 'none', 
                   position: 'relative', 
                   padding: '10px',
-                  touchAction: 'manipulation' 
+                  touchAction: 'manipulation',
+                  width: '60px' 
                 }}
               >
                 <div style={{ 
                   position: 'relative',
-                  transform: isClicked ? 'scale(0.8)' : isActive ? 'scale(1.15)' : 'scale(1)',
-                  transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  ...(isVoice ? {
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #00a2ff, #bc13fe)', 
+                    boxShadow: isActive ? '0 0 20px rgba(188, 19, 254, 0.6)' : '0 8px 15px rgba(0, 162, 255, 0.3)',
+                    marginTop: '-35px', 
+                    border: '4px solid white', 
+                    transform: isClicked ? 'scale(0.7) rotate(-15deg)' : isActive ? 'scale(1.05) translateY(-5px)' : 'scale(1)',
+                    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+                  } : {
+                    transform: isClicked ? 'scale(0.8)' : isActive ? 'scale(1.15)' : 'scale(1)',
+                    transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                  })
                 }}>
                   <Icon 
-                    size={24} 
-                    color={isActive ? '#00a2ff' : '#666666'} 
-                    strokeWidth={isActive ? 2.5 : 2}
+                    size={isVoice ? 26 : 24} 
+                    color={isVoice ? '#ffffff' : (isActive ? '#00a2ff' : '#666666')} 
+                    strokeWidth={isActive || isVoice ? 2.5 : 2}
                     style={{ 
-                      filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none',
+                      filter: isActive && !isVoice ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none',
                     }}
                   />
                   
                   {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                     <div style={{ 
-                      position: 'absolute', top: '-4px', right: '-8px', 
+                      position: 'absolute', top: isVoice ? '0px' : '-4px', right: isVoice ? '0px' : '-8px', 
                       backgroundColor: '#ff4757', color: 'white', 
                       fontSize: '10px', fontWeight: 'bold', 
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '2px 5px', minWidth: '18px', height: '18px',
                       borderRadius: '10px', border: '2px solid #ffffff', 
-                      boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)' 
+                      boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)',
+                      zIndex: 10
                     }}>
                       {item.badgeCount > 99 ? '99+' : item.badgeCount}
                     </div>
@@ -221,18 +246,20 @@ function NavbarContent() {
                   )}
                 </div>
                 
-                <div style={{ 
-                  position: 'absolute', 
-                  bottom: '6px', 
-                  width: '5px', 
-                  height: '5px', 
-                  backgroundColor: '#00a2ff', 
-                  borderRadius: '50%', 
-                  boxShadow: '0 0 10px #00a2ff',
-                  transition: 'all 0.3s ease',
-                  opacity: isActive ? 1 : 0,
-                  transform: isActive ? 'scale(1)' : 'scale(0)'
-                }} />
+                {!isVoice && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    bottom: '2px', 
+                    width: '5px', 
+                    height: '5px', 
+                    backgroundColor: '#00a2ff', 
+                    borderRadius: '50%', 
+                    boxShadow: '0 0 10px #00a2ff',
+                    transition: 'all 0.3s ease',
+                    opacity: isActive ? 1 : 0,
+                    transform: isActive ? 'scale(1)' : 'scale(0)'
+                  }} />
+                )}
               </Link>
             );
           })}

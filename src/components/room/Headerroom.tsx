@@ -1,5 +1,13 @@
 'use client';
 
+// 👇 FIX: Kasih tau TypeScript fungsi apa aja yang nempel di window 👇
+declare global {
+  interface Window {
+    openTopGiftersModal?: () => void;
+    toggleSidebar?: () => void;
+  }
+}
+
 export default function Header() {
   return (
     <header className="main-header">

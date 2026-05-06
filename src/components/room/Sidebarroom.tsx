@@ -1,5 +1,15 @@
 'use client';
 
+// 👇 FIX: Daftarin semua fungsi sidebar yang nempel di window 👇
+declare global {
+  interface Window {
+    toggleSidebar?: () => void;
+    toggleMicSidebar?: (event?: any) => void;
+    openRoomSetting?: () => void;
+    keluarRoom?: () => void;
+  }
+}
+
 export default function Sidebar() {
   return (
     <>

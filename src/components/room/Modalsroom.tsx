@@ -1,5 +1,16 @@
 'use client';
 
+// 👇 FIX: Daftarin semua fungsi modal yang nempel di window 👇
+declare global {
+  interface Window {
+    closeRoomSetting?: () => void;
+    saveRoomSetting?: () => void;
+    closeConfirmModal?: () => void;
+    prosesTurunMic?: () => void;
+    closeTopGiftersModal?: () => void;
+  }
+}
+
 export default function Modals() {
   return (
     <>

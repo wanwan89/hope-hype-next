@@ -1,5 +1,13 @@
 'use client';
 
+// 👇 FIX: Kasih tau TypeScript fungsi apa aja yang nempel di window 👇
+declare global {
+  interface Window {
+    toggleGiftDrawer?: () => void;
+    sendGift?: (giftName: string, harga: number | string, giftId: number | string, jumlah?: number) => void;
+  }
+}
+
 export default function GiftDrawer() {
   return (
     <>
