@@ -1123,8 +1123,9 @@ export default function RoomPage() {
             const diffY = currentY - startY;
             giftDrawer.style.transform = '';
             giftDrawer.style.transition = 'transform 0.3s ease-out';
+            // 🔥 Ganti ke toggleRoomGiftDrawer 🔥
             if (diffY > 80 && giftDrawer.classList.contains('open')) {
-                toggleGiftDrawer();
+                toggleRoomGiftDrawer(); 
             }
             startY = 0; currentY = 0;
         });
