@@ -15,16 +15,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // 1. Identifikasi Halaman
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
+  // 🔥 TAMBAHKAN: Identifikasi halaman profil (data) 🔥
+  const isDataPage = pathname?.includes('/data');
   
-  // Identifikasi halaman yang harus mentok ke atas
-  const isFullscreenPage = isVoicePage || pathname?.includes('/data') || pathname?.includes('/notifications');
+  // Halaman yang harus mentok ke atas (tanpa gap padding)
+  const isFullscreenPage = isVoicePage || isDataPage || pathname?.includes('/notifications');
 
   // 2. Tentukan Siapa yang Harus Sembunyi
-  const hideSidebar = isVoicePage; 
+  // 🔥 FIX: Sidebar Home WAJIB sembunyi di Voice dan di halaman Profil (Data) 🔥
+  const hideSidebar = isVoicePage || isDataPage; 
   const hideNavbar = isVoicePage;
   const hideOverlays = isVoicePage;
 
-  // JURUS SEKAT TOTAL
+  // JURUS SEKAT TOTAL (Cleanup sisa-sisa Voice Room)
   useEffect(() => {
     if (!isVoicePage) {
       document.body.style.overflow = 'auto';
@@ -54,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
       >
         
+        {/* 🔥 Sidebar Home sekarang tidak akan bocor ke halaman Profil 🔥 */}
         {!hideSidebar && <Sidebar />}
         
         <div className="layout-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -64,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           )}
 
-          {/* 🔥 FIX: Hapus key={pathname} dan gunakan Class Name 🔥 */}
+          {/* Main content tanpa key={pathname} biar gak kedip/glitch */}
           <main className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
             {children}
           </main>

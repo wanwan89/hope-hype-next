@@ -26,16 +26,11 @@ function ProfileContent() {
   // 🔥 STATE EDIT PROFIL LENGKAP 🔥
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [editData, setEditData] = useState({
-    username: '',
-    bio: '',
-    avatar_url: ''
-  });
+  const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Daftar Avatar Preset sesuai file Astro lu
   const avatarPresets = [
     '/asets/png/avatar1.png',
     '/asets/png/avatar2.png',
@@ -110,56 +105,77 @@ function ProfileContent() {
     } catch (err) { console.error(err); } finally { setIsLoadingPosts(false); }
   };
 
-  // 🔥 LOGIKA UPLOAD & SIMPAN SETTINGS 🔥
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setEditData(prev => ({ ...prev, avatar_url: '' })); // Reset preset kalau upload file
+  const handleShareProfile = async () => {
+    const shareData = {
+      title: `Profil ${profile.username} - Hope Hype`,
+      text: `Cek karya keren ${profile.username} di Hope Hype!`,
+      url: window.location.href,
+    };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch (err) {}
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      showNotif("Link profil disalin!", "success");
     }
   };
 
+  // 🔥 LOGIKA SIMPAN PERUBAHAN 🔥
   const handleSaveSettings = async () => {
     if (!myId) return;
-    if (!editData.username) return showNotif("Username tidak boleh kosong", "warning");
+    if (!editData.username.trim()) return showNotif("Username wajib diisi", "warning");
 
     setIsSaving(true);
     try {
       let finalAvatarUrl = editData.avatar_url;
 
-      // Jika ada file yang diupload ke Cloudinary
       if (selectedFile) {
         showNotif("Mengunggah foto...", "info");
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("upload_preset", "post_hope"); 
-
-        const res = await fetch("https://api.cloudinary.com/v1_1/dhhmkb8kl/image/upload", {
-          method: "POST",
-          body: formData
-        });
-        
+        const res = await fetch("https://api.cloudinary.com/v1_1/dhhmkb8kl/image/upload", { method: "POST", body: formData });
         if (!res.ok) throw new Error("Gagal upload gambar");
-        const data = await res.json();
-        finalAvatarUrl = data.secure_url;
+        const resData = await res.json();
+        finalAvatarUrl = resData.secure_url;
       }
 
       const { error } = await supabase.from("profiles").update({
         username: editData.username,
         bio: editData.bio,
-        avatar_url: finalAvatarUrl || profile.avatar_url
+        avatar_url: finalAvatarUrl
       }).eq("id", myId);
 
       if (error) throw error;
 
-      showNotif("Profil berhasil diperbarui!", "success");
+      showNotif("Profil diperbarui!", "success");
       setIsEditModalOpen(false);
-      setTimeout(() => location.reload(), 1000);
+      setTimeout(() => location.reload(), 800);
     } catch (err: any) {
       showNotif(err.message, "error");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setEditData(prev => ({ ...prev, avatar_url: '' })); 
+    }
+  };
+
+  const toggleFollow = async () => {
+    if (!myId) return router.push('/login');
+    if (isFollowing) {
+        setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
+        setIsFollowing(false);
+        await supabase.from('followers').delete().match({ follower_id: myId, following_id: profile.id });
+    } else {
+        setStats(prev => ({ ...prev, followers: prev.followers + 1 }));
+        setIsFollowing(true);
+        await supabase.from('followers').insert([{ follower_id: myId, following_id: profile.id }]);
     }
   };
 
@@ -169,7 +185,6 @@ function ProfileContent() {
   };
 
   if (!profile) return <div className="profile-page-container"></div>;
-
   const isMe = myId === profile.id;
 
   return (
@@ -215,10 +230,10 @@ function ProfileContent() {
              {isMe ? (
                 <>
                    <button className="btn-action btn-secondary" onClick={() => setIsEditModalOpen(true)}>Edit Profil</button>
-                   <button className="btn-action btn-secondary">Bagikan</button>
+                   <button className="btn-action btn-secondary" onClick={handleShareProfile}>Bagikan</button>
                 </>
              ) : (
-                <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={() => {}}>
+                <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>
                    {isFollowing ? 'Mengikuti' : 'Ikuti'}
                 </button>
              )}
@@ -235,7 +250,6 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* GRID POSTS */}
       <div className="post-grid-container">
         <div className="post-grid">
            {isLoadingPosts ? (
@@ -247,7 +261,7 @@ function ProfileContent() {
               </div>
            ) : (
               posts.map(post => (
-                 <div key={post.id} className="grid-item">
+                 <div key={post.id} className="grid-item" onClick={() => router.push(activeTab === 'musik' ? `/music?id=${post.id}` : `/post?id=${post.id}`)}>
                     {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
               ))
@@ -258,8 +272,37 @@ function ProfileContent() {
       {/* SIDEBAR */}
       <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
-         {/* ... Sidebar Menu Sama Kayak Sebelumnya ... */}
-         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
+        <div className="sidebar-search-container">
+          <div className="sidebar-search">
+             <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
+             <input type="text" placeholder="Cari aset..." />
+          </div>
+        </div>
+        <div className="menu-category-label">Dompet & Aset</div>
+        <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}>
+           <div className="icon-wrapper"><span className="material-icons">account_balance_wallet</span></div>
+           <div className="menu-text">Saldo HypeCoin</div>
+           <div className="arrow-right">›</div>
+        </div>
+        <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}>
+           <div className="icon-wrapper"><span className="material-icons">history_edu</span></div>
+           <div className="menu-text">Riwayat Transaksi</div>
+           <div className="arrow-right">›</div>
+        </div>
+        <div className="menu-category-label">Misi & Hadiah</div>
+        <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}>
+           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">stars</span></div>
+           <div className="menu-text">Pusat Misi</div>
+           <div className="arrow-right">›</div>
+        </div>
+        <hr className="menu-divider" />
+        <div className="menu-category-label">Alat Pribadi</div>
+        <div className="menu-item-tiktok" onClick={handleShareProfile}>
+           <div className="icon-wrapper"><span className="material-icons">qr_code_2</span></div>
+           <div className="menu-text">Bagikan Profil</div>
+           <div className="arrow-right">›</div>
+        </div>
+        <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
            <div className="icon-wrapper"><span className="material-icons">logout</span></div>
            <div className="menu-text">Keluar Akun</div>
         </div>
@@ -267,10 +310,10 @@ function ProfileContent() {
 
       {/* 🔥 MODAL EDIT PROFIL LENGKAP 🔥 */}
       <div className={`custom-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
-         <div className="custom-modal-content edit-profile-modal" onClick={e => e.stopPropagation()}>
+         <div className="edit-profile-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-               <span className="close-btn" onClick={() => setIsEditModalOpen(false)}>×</span>
                <h3>Edit Profil</h3>
+               <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>
             </div>
 
             <div className="avatar-edit-section">
