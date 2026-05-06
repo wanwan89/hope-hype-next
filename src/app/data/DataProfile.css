@@ -69,7 +69,7 @@ html.dark .profile-page-container {
 .tab-item.active { color: var(--text-dark); }
 .tab-item.active::after { content: ""; position: absolute; bottom: 0; left: 20%; width: 60%; height: 2px; background: var(--text-dark); }
 
-/* --- GRID POSTS (Bisa di-scroll) --- */
+/* --- GRID POSTS (Scrollable Area) --- */
 .post-grid-container {
     flex: 1; 
     overflow-y: auto; 
@@ -81,8 +81,9 @@ html.dark .profile-page-container {
 .post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5px; }
 .grid-item { aspect-ratio: 1 / 1; background: var(--bg-secondary); overflow: hidden; }
 .grid-item img { width: 100%; height: 100%; object-fit: cover; }
+.grid-no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); color: var(--text-secondary); }
 
-/* --- 🔥 SIDEBAR TIKTOK STYLE (STRICT RIGHT SIDE) 🔥 --- */
+/* --- 🔥 SIDEBAR TIKTOK STYLE (FIXED TO RIGHT) 🔥 --- */
 .sidebar-overlay { 
     position: fixed; 
     inset: 0; 
@@ -100,28 +101,27 @@ html.dark .profile-page-container {
     position: fixed; 
     top: 0; 
     bottom: 0; 
-    /* 🔥 Kunci di Kanan 🔥 */
-    right: 0; 
-    left: auto; 
+    /* 🔥 KUNCI MATI DI KANAN 🔥 */
+    right: 0 !important; 
+    left: auto !important; 
     width: 280px; 
     max-width: 85%;
     background: var(--bg-main); 
     z-index: 9999; 
-    /* 🔥 Sembunyikan ke arah kanan 🔥 */
+    /* 🔥 SEMBUNYIKAN KE KANAN 100% 🔥 */
     transform: translateX(100%); 
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
     display: flex; 
     flex-direction: column; 
-    box-shadow: -10px 0 30px rgba(0,0,0,0.15);
+    box-shadow: -10px 0 30px rgba(0,0,0,0.2);
     border-left: 1px solid var(--border-color);
 }
 
-/* 🔥 Sidebar terbuka: Geser balik ke 0 🔥 */
+/* Saat class .open ada, balik ke posisi 0 (Kanan Layar) */
 .sidebar.open { 
-    transform: translateX(0); 
+    transform: translateX(0) !important; 
 }
 
-/* Content Sidebar */
 .sidebar-search-container { padding: 25px 16px 10px; }
 .sidebar-search { background: var(--bg-secondary); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
 .sidebar-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; color: var(--text-dark); }
@@ -137,7 +137,7 @@ html.dark .profile-page-container {
 .menu-item-tiktok.logout { color: #ff4757; margin-top: auto; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
 .menu-item-tiktok.logout .icon-wrapper, .menu-item-tiktok.logout .menu-text { color: #ff4757; }
 
-/* --- MODAL EDIT BIO --- */
+/* --- 🔥 FULL EDIT PROFILE MODAL STYLE 🔥 --- */
 .custom-modal-overlay { 
     position: fixed; 
     inset: 0; 
@@ -151,5 +151,108 @@ html.dark .profile-page-container {
     transition: 0.3s; 
 }
 .custom-modal-overlay.active { opacity: 1; pointer-events: auto; }
-.custom-modal-content { background: var(--bg-main); width: 85%; max-width: 340px; border-radius: 20px; padding: 25px; }
-.bio-textarea { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-dark); resize: none; margin-bottom: 20px; font-family: inherit; font-size: 14px; outline: none; }
+
+.edit-profile-modal {
+    background: var(--bg-main);
+    width: 90%;
+    max-width: 360px;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.avatar-edit-section {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.main-preview-label {
+    position: relative;
+    display: inline-block;
+    width: 90px;
+    height: 90px;
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.avatar-main-preview {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-blue);
+}
+
+.upload-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    opacity: 0;
+    transition: 0.3s;
+}
+
+.main-preview-label:hover .upload-overlay { opacity: 1; }
+
+.section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    text-align: left;
+    margin-bottom: 8px;
+}
+
+.avatar-presets {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.preset-img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: 0.2s;
+}
+
+.preset-img.selected { border-color: var(--primary-blue); transform: scale(1.1); }
+
+.input-group { margin-bottom: 15px; text-align: left; }
+.input-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 5px; }
+.input-group input, .input-group textarea {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px;
+    color: var(--text-dark);
+    font-family: inherit;
+    outline: none;
+}
+
+.save-btn-premium {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--primary-blue);
+    color: white;
+    font-weight: 800;
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+}
