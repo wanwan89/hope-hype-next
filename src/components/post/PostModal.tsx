@@ -7,26 +7,20 @@ import './PostModal.css';
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
-// --- 1. TAMBAHKAN INTERFACE PROPS ---
 interface PostModalProps {
   onClose: () => void;
 }
 
-// --- 2. TERIMA PROPS onClose ---
 export default function PostModal({ onClose }: PostModalProps) {
-  // FIX: Hapus state [isOpen, setIsOpen] karena dikontrol Parent (Overlays)
-  
   const [postType, setPostType] = useState<'image' | 'text'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
   
-  // Image State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Music State
   const [searchMusic, setSearchMusic] = useState('');
   const [musicResults, setMusicResults] = useState<any[]>([]);
   const [selectedMusic, setSelectedMusic] = useState<any>(null);
@@ -34,7 +28,9 @@ export default function PostModal({ onClose }: PostModalProps) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FIX: Hapus useEffect yang handleOpen via click ID karena sudah lewat CustomEvent di Overlays
+  // 🔥 Tambahan State untuk Audio Preview
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // iTunes Music Search Logic
   useEffect(() => {
@@ -56,6 +52,35 @@ export default function PostModal({ onClose }: PostModalProps) {
     }, 600);
     return () => clearTimeout(timer);
   }, [searchMusic]);
+
+  // 🔥 Fungsi Toggle Play/Pause Audio
+  const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Biar gak auto-select pas mau preview doang
+
+    if (playingUrl === url) {
+      audioRef.current?.pause();
+      setPlayingUrl(null);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      audioRef.current = new Audio(url);
+      audioRef.current.play();
+      setPlayingUrl(url);
+      
+      audioRef.current.onended = () => setPlayingUrl(null);
+    }
+  };
+
+  // 🔥 Cleanup audio pas modal ditutup
+  const handleClose = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    onClose();
+    document.body.style.overflow = "";
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,9 +148,7 @@ export default function PostModal({ onClose }: PostModalProps) {
         });
       }
 
-      // --- FIX: Panggil onClose() setelah berhasil ---
-      onClose();
-      document.body.style.overflow = "";
+      handleClose();
       window.location.reload();
     } catch (err: any) {
       alert(err.message);
@@ -134,14 +157,10 @@ export default function PostModal({ onClose }: PostModalProps) {
     }
   };
 
-  // FIX: Karena kontrol di parent, kita tidak perlu "if (!isOpen) return null" lagi di sini.
-  // Komponen ini hanya akan di-mount kalau isPostOpen di parent bernilai true.
-
   return (
     <div className={`post-modal active`}>
       <div className="post-modal-content">
-        {/* --- FIX: Gunakan onClose untuk menutup --- */}
-        <button type="button" className="post-close-btn" onClick={() => { onClose(); document.body.style.overflow = ""; }}>&times;</button>
+        <button type="button" className="post-close-btn" onClick={handleClose}>&times;</button>
 
         <h2 className="post-modal-title">Upload Post</h2>
         <p className="post-modal-subtitle">Karya kamu akan dikirim untuk direview dulu ya</p>
@@ -254,8 +273,22 @@ export default function PostModal({ onClose }: PostModalProps) {
                 <div className="music-list-scroll">
                   {isSearching && <p style={{textAlign:'center', fontSize:'12px', padding: '10px'}}>Mencari...</p>}
                   {musicResults.map((song, i) => (
-                    <div key={i} className="dest-content" style={{padding:'8px', marginBottom:0, cursor:'pointer'}} onClick={() => setSelectedMusic(song)}>
-                      <img src={song.artworkUrl100} style={{width:38, height:38, borderRadius:8, marginRight:12}} />
+                    <div key={i} className="dest-content" style={{padding:'8px', marginBottom:0, cursor:'pointer', alignItems: 'center'}} onClick={() => setSelectedMusic(song)}>
+                      <div style={{position: 'relative', width: 38, height: 38, marginRight: 12, flexShrink: 0}}>
+                        <img src={song.artworkUrl100} style={{width:'100%', height:'100%', borderRadius:8}} />
+                        {/* Tombol Play/Pause Overlay */}
+                        <div 
+                          onClick={(e) => togglePlayPreview(song.previewUrl, e)}
+                          style={{
+                            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', 
+                            borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}
+                        >
+                          <span className="material-icons" style={{color: '#fff', fontSize: '20px'}}>
+                            {playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}
+                          </span>
+                        </div>
+                      </div>
                       <div style={{flex:1, overflow:'hidden'}}>
                         <div style={{fontSize:13, fontWeight:700, whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden'}}>{song.trackName}</div>
                         <div style={{fontSize:11, color:'gray'}}>{song.artistName}</div>
@@ -265,12 +298,26 @@ export default function PostModal({ onClose }: PostModalProps) {
                 </div>
               </>
             ) : (
-              <div className="selected-music-badge">
-                <div className="music-info-mini">
-                  <span className="audio-tag">AUDIO</span>
-                  <div className="music-title-text">{selectedMusic.trackName} — {selectedMusic.artistName}</div>
+              <div className="selected-music-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="music-info-mini" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => togglePlayPreview(selectedMusic.previewUrl)}
+                    style={{ background: 'var(--primary-blue)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <span className="material-icons" style={{ color: '#fff', fontSize: '18px' }}>
+                      {playingUrl === selectedMusic.previewUrl ? 'pause' : 'play_arrow'}
+                    </span>
+                  </button>
+                  <div>
+                    <span className="audio-tag">AUDIO</span>
+                    <div className="music-title-text">{selectedMusic.trackName} — {selectedMusic.artistName}</div>
+                  </div>
                 </div>
-                <button type="button" className="remove-music-link" onClick={() => setSelectedMusic(null)}>HAPUS</button>
+                <button type="button" className="remove-music-link" onClick={() => { 
+                  if(playingUrl === selectedMusic.previewUrl) togglePlayPreview(selectedMusic.previewUrl);
+                  setSelectedMusic(null);
+                }}>HAPUS</button>
               </div>
             )}
           </div>

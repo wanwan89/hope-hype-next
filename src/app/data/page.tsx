@@ -23,7 +23,6 @@ function ProfileContent() {
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
 
-  // STATE MODALS & SIDEBAR
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '' });
@@ -126,7 +125,6 @@ function ProfileContent() {
     setIsSaving(true);
     try {
       let finalAvatarUrl = editData.avatar_url;
-
       if (selectedFile) {
         showNotif("Mengunggah foto...", "info");
         const formData = new FormData();
@@ -137,15 +135,12 @@ function ProfileContent() {
         const resData = await res.json();
         finalAvatarUrl = resData.secure_url;
       }
-
       const { error } = await supabase.from("profiles").update({
         username: editData.username,
         bio: editData.bio,
         avatar_url: finalAvatarUrl || profile.avatar_url
       }).eq("id", myId);
-
       if (error) throw error;
-
       showNotif("Profil berhasil diperbarui!", "success");
       setIsEditModalOpen(false);
       setTimeout(() => location.reload(), 800);
@@ -189,18 +184,14 @@ function ProfileContent() {
   return (
     <div className="profile-page-container">
       
-      {/* HEADER */}
       <header className="profile-header">
-        <button className="header-btn" onClick={() => router.back()}>
-           <span className="material-icons">arrow_back</span>
-        </button>
-        <h2>{profile.username}</h2>
+        {/* 🔥 Tombol kembali sudah dihapus 🔥 */}
+        <h2 style={{ marginLeft: '10px' }}>{profile.username}</h2>
         <button className="header-btn" onClick={() => setIsSidebarOpen(true)}>
            <span className="material-icons">menu</span>
         </button>
       </header>
 
-      {/* TOP SECTION */}
       <div className="profile-top-section">
         <section className="profile-info">
           <div className="avatar-container">
@@ -254,11 +245,17 @@ function ProfileContent() {
       <div className="post-grid-container">
         <div className="post-grid">
            {isLoadingPosts ? (
-              <div className="empty-state">Memuat...</div>
+              Array(9).fill(0).map((_, i) => (
+                <div key={i} className="skeleton-grid-item"></div>
+              ))
            ) : posts.length === 0 ? (
-              <div className="empty-state">
-                <span className="material-icons" style={{fontSize: '40px', opacity: 0.5}}>grid_on</span>
-                <p style={{margin: '10px 0 0'}}>Belum ada postingan</p>
+              <div className="no-posts-v2">
+                <div className="no-posts-icon-circle">
+                   <span className="material-icons">auto_awesome</span>
+                </div>
+                <h3>Belum ada karya</h3>
+                <p>Mulai bagikan inspirasi pertamamu ke dunia.</p>
+                {isMe && <button className="btn-action btn-primary" onClick={() => router.push('/')}>Buat Postingan</button>}
               </div>
            ) : (
               posts.map(post => (
@@ -270,9 +267,7 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* 🔥 SIDEBAR DENGAN UNIQUE CLASS & ICON BARU 🔥 */}
       <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
-      
       <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
           <div className="sidebar-search">
@@ -280,7 +275,6 @@ function ProfileContent() {
              <input type="text" placeholder="Cari..." />
           </div>
         </div>
-
         <div className="menu-category-label">Dompet & Aset</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}>
            <div className="icon-wrapper"><span className="material-icons">toll</span></div>
@@ -292,16 +286,13 @@ function ProfileContent() {
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
-
         <div className="menu-category-label">Misi & Hadiah</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}>
            <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div>
            <div className="menu-text">Pusat Misi</div>
            <div className="arrow-right">›</div>
         </div>
-
         <hr className="menu-divider" />
-
         <div className="menu-category-label">Alat Pribadi</div>
         <div className="menu-item-tiktok" onClick={handleShareProfile}>
            <div className="icon-wrapper"><span className="material-icons">ios_share</span></div>
@@ -314,14 +305,12 @@ function ProfileContent() {
         </div>
       </aside>
 
-      {/* MODAL EDIT PROFIL LENGKAP */}
       <div className={`custom-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
          <div className="edit-profile-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
                <h3>Edit Profil</h3>
                <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>
             </div>
-
             <div className="avatar-edit-section">
                <label className="main-preview-label">
                   <img src={previewUrl || '/asets/png/profile.webp'} className="avatar-main-preview" alt="Preview" />
@@ -330,7 +319,6 @@ function ProfileContent() {
                   </div>
                </label>
                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{display: 'none'}} />
-               
                <p className="section-label">Ganti Avatar:</p>
                <div className="avatar-presets">
                   {avatarPresets.map((src, i) => (
@@ -347,26 +335,14 @@ function ProfileContent() {
                   ))}
                </div>
             </div>
-
             <div className="input-group">
                <label>Username</label>
-               <input 
-                  type="text" 
-                  value={editData.username} 
-                  onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))}
-               />
+               <input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} />
             </div>
-
             <div className="input-group">
                <label>Bio</label>
-               <textarea 
-                  rows={3} 
-                  value={editData.bio} 
-                  onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))}
-                  maxLength={150}
-               />
+               <textarea rows={3} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} />
             </div>
-
             <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>
                {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
             </button>

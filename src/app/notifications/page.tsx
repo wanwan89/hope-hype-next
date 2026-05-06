@@ -19,9 +19,8 @@ export default function NotificationsPage() {
   // --- INIT DATA ---
   useEffect(() => {
     initUserAndNotifs();
-    startAutoSlide(); // Jalankan slider saat halaman dimuat
+    startAutoSlide();
 
-    // Cleanup interval saat pindah halaman biar gak memory leak
     return () => stopAutoSlide();
   }, []);
 
@@ -73,21 +72,19 @@ export default function NotificationsPage() {
     autoSlideTimer.current = setInterval(() => {
       if (sliderRef.current) {
         const slider = sliderRef.current;
-        // Cek jika sudah mentok di ujung kanan
         if (slider.scrollLeft + slider.clientWidth >= slider.scrollWidth - 5) {
-          slider.scrollLeft = 0; // Balik ke awal
+          slider.scrollLeft = 0;
         } else {
-          slider.scrollLeft += slider.clientWidth; // Geser 1 frame
+          slider.scrollLeft += slider.clientWidth;
         }
       }
-    }, 5000); // Ganti tiap 5 detik
+    }, 5000);
   };
 
   const stopAutoSlide = () => {
     if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
   };
 
-  // --- LOGIKA PWA INSTALL ---
   const handlePwaInstall = async () => {
     const promptEvent = (window as any).pwaPrompt;
     if (promptEvent) {
@@ -100,13 +97,12 @@ export default function NotificationsPage() {
     }
   };
 
-  // --- LOGIKA SUNTIK MIDTRANS ---
   const loadMidtransForce = () => {
     return new Promise((resolve) => {
       if ((window as any).snap) return resolve(true);
       const script = document.createElement("script");
-      script.src = "https://app.sandbox.midtrans.com/snap/snap.js"; // GANTI KE PRODUCTION KALO UDAH LIVE
-      script.setAttribute("data-client-key", "SB-Mid-client-0T6dD0H1HkQvBf8G"); // GANTI PAKE CLIENT KEY LU
+      script.src = "https://app.sandbox.midtrans.com/snap/snap.js"; 
+      script.setAttribute("data-client-key", "SB-Mid-client-0T6dD0H1HkQvBf8G"); 
       script.onload = () => resolve(true);
       script.onerror = () => resolve(false);
       document.head.appendChild(script);
@@ -114,19 +110,15 @@ export default function NotificationsPage() {
   };
 
   const handleNotifClick = async (notif: any) => {
-    // 1. Tandai terbaca di database & local state (BIAR BADGE ILANG)
     if (!notif.is_read) {
       setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
 
-    // 2. Eksekusi Aksi berdasarkan tipe Notif
     if (notif.type === "payment_pending" && notif.token) {
-      // BAGIAN MIDTRANS
       try {
         showNotif("Menyiapkan pembayaran...", "info");
         const isLoaded = await loadMidtransForce();
-        
         if (isLoaded && (window as any).snap) {
           (window as any).snap.pay(notif.token, {
             onSuccess: () => { showNotif("Pembayaran Sukses!", "success"); loadNotifications(currentUser.id); },
@@ -134,25 +126,19 @@ export default function NotificationsPage() {
             onError: () => { showNotif("Pembayaran gagal", "error"); },
             onClose: () => { showNotif("Popup ditutup", "info"); }
           });
-        } else {
-          showNotif("Sistem pembayaran gagal dimuat.", "error");
         }
-      } catch (err) {
-        console.error("Midtrans Error:", err);
-      }
+      } catch (err) { console.error(err); }
     } else if (notif.post_id) {
-      // 🔥 FIX: Arahkan ke Home (/) dengan tambahan hash (#) ID postingan 🔥
-      // Jadi nanti jadinya kayak gini: domain.com/#post-123
       router.push(`/#post-${notif.post_id}`);
     }
   };
 
-  // --- HELPER UNTUK IKON & WARNA ---
+  // --- HELPER UNTUK IKON & WARNA (TERMASUK REPOST) ---
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
       case 'comment': return { icon: 'chat_bubble', color: '#10b981' };
-      case 'repost': return { icon: 'repeat', color: '#1DA1F2' };
+      case 'repost': return { icon: 'repeat', color: '#1DA1F2' }; // Biru Twitter/Hype
       case 'gift': return { icon: 'card_giftcard', color: '#f59e0b' };
       case 'payment_pending': return { icon: 'credit_card', color: '#8b5cf6' };
       default: return { icon: 'notifications', color: '#3b82f6' };
@@ -169,49 +155,24 @@ export default function NotificationsPage() {
 
   return (
     <div className="notif-page-container">
-      {/* HEADER DENGAN IKLAN */}
       <header className="notif-header">
         
         <div className="notif-top-bar">
-          <button className="back-btn" onClick={() => router.back()}>
-            <span className="material-icons">arrow_back</span>
-          </button>
-          <h2>Notifikasi</h2>
+          {/* 🔥 Tombol kembali sudah dihapus 🔥 */}
+          <h2 style={{ marginLeft: '10px' }}>Notifikasi</h2>
         </div>
 
-        {/* SLIDER IKLAN */}
-        <div 
-          className="ad-banner-container"
-          onMouseEnter={stopAutoSlide}
-          onMouseLeave={startAutoSlide}
-          onTouchStart={stopAutoSlide}
-          onTouchEnd={startAutoSlide}
-        >
+        <div className="ad-banner-container" onMouseEnter={stopAutoSlide} onMouseLeave={startAutoSlide}>
           <div className="ad-slider" ref={sliderRef}>
-            <video autoPlay loop muted playsInline className="ad-slide">
-              <source src="/asets/gif/iklan1.webm" type="video/webm" />
-            </video>
-            <video autoPlay loop muted playsInline className="ad-slide">
-              <source src="/asets/gif/iklan2.webm" type="video/webm" />
-            </video>
-            <video autoPlay loop muted playsInline className="ad-slide">
-              <source src="/asets/gif/iklan3.webm" type="video/webm" />
-            </video>
-            {/* IKLAN KE-4 (INSTALL PWA) */}
-            <video 
-              autoPlay loop muted playsInline 
-              className="ad-slide" 
-              onClick={handlePwaInstall} 
-              style={{ cursor: 'pointer' }}
-            >
-              <source src="/asets/gif/iklan4.webm" type="video/webm" />
-            </video>
+            <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan1.webm" type="video/webm" /></video>
+            <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan2.webm" type="video/webm" /></video>
+            <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan3.webm" type="video/webm" /></video>
+            <video autoPlay loop muted playsInline className="ad-slide" onClick={handlePwaInstall} style={{ cursor: 'pointer' }}><source src="/asets/gif/iklan4.webm" type="video/webm" /></video>
           </div>
         </div>
 
       </header>
 
-      {/* DAFTAR NOTIFIKASI */}
       <main className="notif-list">
         {isLoading ? (
           <div className="empty-notif">
