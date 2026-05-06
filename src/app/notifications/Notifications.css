@@ -2,7 +2,7 @@
 .notif-page-container {
   min-height: 100vh;
   background: var(--bg-main, #f0f2f5);
-  padding-bottom: 100px; /* Jarak buat navbar bawah */
+  padding-bottom: 100px; 
   color: var(--text-main, #1c1e21);
 }
 
@@ -10,39 +10,95 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--bg-card, #ffffff);
-  padding: 16px 20px;
+  background: var(--bg-main, #f0f2f5);
+  padding: 16px 20px 10px;
   padding-top: calc(16px + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* Hapus border bottom karena sekarang ada banner iklan */
+}
+
+.notif-top-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  border-bottom: 1px solid var(--border-card, #dddfe2);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  width: 100%;
 }
 
-.notif-header h2 {
+.notif-top-bar h2 {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .back-btn {
-  background: none;
-  border: none;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-card, #dddfe2);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
   color: var(--text-main);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  padding: 4px;
-  margin-left: -4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
 }
 
+.back-btn:active {
+  transform: scale(0.9);
+}
+
+/* ==================================================
+   AD BANNER (IKLAN SLIDER)
+================================================== */
+.ad-banner-container { 
+  position: relative; 
+  width: 100%; 
+  height: 80px; 
+  border: 2px solid var(--border-card, #ccc); 
+  border-radius: 16px; 
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.1); 
+  background: #000; 
+  overflow: hidden; 
+}
+
+html.dark .ad-banner-container { 
+  border: 2px solid #333; 
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.5); 
+}
+
+.ad-slider { 
+  display: flex; 
+  width: 100%; 
+  height: 100%; 
+  overflow-x: auto; 
+  scroll-snap-type: x mandatory; 
+  scroll-behavior: smooth; 
+  -ms-overflow-style: none; 
+  scrollbar-width: none; 
+}
+
+.ad-slider::-webkit-scrollbar { display: none; }
+
+.ad-slider > video { 
+  flex: 0 0 100%; 
+  height: 100%; 
+  scroll-snap-align: center; 
+  display: block; 
+  object-fit: cover; 
+}
+
+/* ==================================================
+   NOTIF LIST
+================================================== */
 .notif-list {
-  padding: 12px 16px;
+  padding: 12px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .notif-item {
@@ -57,7 +113,7 @@
   transition: transform 0.2s, background 0.2s;
   cursor: pointer;
   border: 1px solid var(--border-card, transparent);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
 }
 
 .notif-item:active {
@@ -82,47 +138,14 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.notif-content {
-  flex: 1;
-}
-
-.notif-message {
-  font-size: 14px;
-  line-height: 1.4;
-  margin-bottom: 6px;
-}
-
-.notif-message b {
-  font-weight: 700;
-}
-
-.notif-date {
-  font-size: 11px;
-  color: var(--text-muted, #64748b);
-  font-weight: 500;
-}
-
-.unread-dot {
-  width: 10px;
-  height: 10px;
-  background: #1DA1F2;
-  border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
+.notif-content { flex: 1; }
+.notif-message { font-size: 14px; line-height: 1.4; margin-bottom: 6px; }
+.notif-message b { font-weight: 800; }
+.notif-date { font-size: 11px; color: var(--text-muted, #64748b); font-weight: 600; }
+.unread-dot { width: 10px; height: 10px; background: #1DA1F2; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
 
 .empty-notif {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--text-muted);
-  text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 20px; color: var(--text-muted); text-align: center;
 }
-
-.empty-notif .material-icons {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
+.empty-notif .material-icons { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }

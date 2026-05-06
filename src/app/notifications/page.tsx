@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { showNotif } from '@/lib/ui-utils'; // Pastikan lu punya fungsi toast ini
+import { showNotif } from '@/lib/ui-utils'; 
 import './Notifications.css';
 
 export default function NotificationsPage() {
@@ -12,8 +12,17 @@ export default function NotificationsPage() {
   const [notifs, setNotifs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- REFS UNTUK SLIDER ---
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const autoSlideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // --- INIT DATA ---
   useEffect(() => {
     initUserAndNotifs();
+    startAutoSlide(); // Jalankan slider saat halaman dimuat
+
+    // Cleanup interval saat pindah halaman biar gak memory leak
+    return () => stopAutoSlide();
   }, []);
 
   const initUserAndNotifs = async () => {
@@ -58,7 +67,40 @@ export default function NotificationsPage() {
       .subscribe();
   };
 
-  // 🔥 FUNGSI SUNTIK MIDTRANS 🔥
+  // --- LOGIKA SLIDER IKLAN ---
+  const startAutoSlide = () => {
+    if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+    autoSlideTimer.current = setInterval(() => {
+      if (sliderRef.current) {
+        const slider = sliderRef.current;
+        // Cek jika sudah mentok di ujung kanan
+        if (slider.scrollLeft + slider.clientWidth >= slider.scrollWidth - 5) {
+          slider.scrollLeft = 0; // Balik ke awal
+        } else {
+          slider.scrollLeft += slider.clientWidth; // Geser 1 frame
+        }
+      }
+    }, 5000); // Ganti tiap 5 detik
+  };
+
+  const stopAutoSlide = () => {
+    if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+  };
+
+  // --- LOGIKA PWA INSTALL ---
+  const handlePwaInstall = async () => {
+    const promptEvent = (window as any).pwaPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      const { outcome } = await promptEvent.userChoice;
+      if (outcome === 'accepted') console.log('User menginstal HopeHype!');
+      (window as any).pwaPrompt = null;
+    } else {
+      showNotif("PWA sudah terinstal atau browser tidak mendukung.", "info");
+    }
+  };
+
+  // --- LOGIKA SUNTIK MIDTRANS ---
   const loadMidtransForce = () => {
     return new Promise((resolve) => {
       if ((window as any).snap) return resolve(true);
@@ -72,13 +114,13 @@ export default function NotificationsPage() {
   };
 
   const handleNotifClick = async (notif: any) => {
-    // 1. Tandai terbaca di database & local state
+    // Tandai terbaca
     if (!notif.is_read) {
       setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
 
-    // 2. Eksekusi Aksi berdasarkan tipe Notif
+    // Aksi berdasarkan tipe Notif
     if (notif.type === "payment_pending" && notif.token) {
       try {
         showNotif("Menyiapkan pembayaran...", "info");
@@ -98,12 +140,10 @@ export default function NotificationsPage() {
         console.error("Midtrans Error:", err);
       }
     } else if (notif.post_id) {
-      // Navigasi ke postingan
       router.push(`/post?id=${notif.post_id}`);
     }
   };
 
-  // --- HELPER UNTUK IKON & WARNA ---
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
@@ -125,13 +165,49 @@ export default function NotificationsPage() {
 
   return (
     <div className="notif-page-container">
+      {/* HEADER DENGAN IKLAN */}
       <header className="notif-header">
-        <button className="back-btn" onClick={() => router.back()}>
-          <span className="material-icons">arrow_back</span>
-        </button>
-        <h2>Notifikasi</h2>
+        
+        <div className="notif-top-bar">
+          <button className="back-btn" onClick={() => router.back()}>
+            <span className="material-icons">arrow_back</span>
+          </button>
+          <h2>Notifikasi</h2>
+        </div>
+
+        {/* SLIDER IKLAN */}
+        <div 
+          className="ad-banner-container"
+          onMouseEnter={stopAutoSlide}
+          onMouseLeave={startAutoSlide}
+          onTouchStart={stopAutoSlide}
+          onTouchEnd={startAutoSlide}
+        >
+          <div className="ad-slider" ref={sliderRef}>
+            <video autoPlay loop muted playsInline className="ad-slide">
+              <source src="/asets/gif/iklan1.webm" type="video/webm" />
+            </video>
+            <video autoPlay loop muted playsInline className="ad-slide">
+              <source src="/asets/gif/iklan2.webm" type="video/webm" />
+            </video>
+            <video autoPlay loop muted playsInline className="ad-slide">
+              <source src="/asets/gif/iklan3.webm" type="video/webm" />
+            </video>
+            {/* IKLAN KE-4 (INSTALL PWA) */}
+            <video 
+              autoPlay loop muted playsInline 
+              className="ad-slide" 
+              onClick={handlePwaInstall} 
+              style={{ cursor: 'pointer' }}
+            >
+              <source src="/asets/gif/iklan4.webm" type="video/webm" />
+            </video>
+          </div>
+        </div>
+
       </header>
 
+      {/* DAFTAR NOTIFIKASI */}
       <main className="notif-list">
         {isLoading ? (
           <div className="empty-notif">
@@ -157,7 +233,6 @@ export default function NotificationsPage() {
                 </div>
                 
                 <div className="notif-content">
-                  {/* Gunakan dangerouslySetInnerHTML kalau notif.message lu bawa tag <b> dari database */}
                   <div className="notif-message" dangerouslySetInnerHTML={{ __html: notif.message }}></div>
                   <span className="notif-date">{formatDate(notif.created_at)}</span>
                 </div>
