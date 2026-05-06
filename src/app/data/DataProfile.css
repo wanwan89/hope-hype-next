@@ -13,7 +13,7 @@
     flex-direction: column;
     background: var(--bg-main);
     color: var(--text-dark);
-    overflow: hidden;
+    overflow: hidden; /* Matiin scroll body utama */
 }
 
 html.dark .profile-page-container {
@@ -24,88 +24,89 @@ html.dark .profile-page-container {
     --border-color: #2c2c2c; 
 }
 
+/* Header Sticky */
 .profile-header {
     flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    /* 🔥 Sesuaikan padding biar pas 🔥 */
     padding: 10px 20px; 
-    /* safe-area biar pas di iPhone berponi, kalo Android biasanya 0 */
-    padding-top: calc(8px + env(safe-area-inset-top)); 
+    padding-top: calc(12px + env(safe-area-inset-top)); 
     background: var(--bg-main);
     z-index: 100;
     border-bottom: 1px solid var(--border-color);
 }
 
 .profile-header h2 { margin: 0; font-size: 17px; font-weight: 800; }
-.header-btn { background: none; border: none; color: var(--text-dark); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px; }
+.header-btn { background: none; border: none; color: var(--text-dark); cursor: pointer; padding: 4px; display: flex; align-items: center; }
 
+/* Top Section (Info Profil & Tabs) */
 .profile-top-section { flex-shrink: 0; background: var(--bg-main); }
 .profile-info { padding: 15px 20px; text-align: center; }
-.avatar-container { margin: 0 auto 10px; width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-blue); padding: 3px; display: flex; align-items: center; justify-content: center; }
+.avatar-container { margin: 0 auto 10px; width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-blue); padding: 3px; display: flex; }
 .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-.profile-name { font-size: 19px; font-weight: 800; margin: 0 0 2px; display: flex; align-items: center; justify-content: center; gap: 4px; }
-.profile-username { font-size: 13px; color: var(--text-secondary); margin: 0 0 10px; }
-.profile-bio { font-size: 13.5px; line-height: 1.4; color: var(--text-dark); margin: 0 0 15px; padding: 0 20px; white-space: pre-wrap; }
+.profile-name { font-size: 19px; font-weight: 800; margin-bottom: 2px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.profile-username { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
 
+/* Stats & Actions */
 .profile-stats { display: flex; justify-content: center; gap: 25px; margin-bottom: 15px; }
 .stat-box { display: flex; flex-direction: column; align-items: center; }
 .stat-num { font-size: 16px; font-weight: 800; }
 .stat-label { font-size: 11px; color: var(--text-secondary); }
 
-.profile-actions { display: flex; justify-content: center; gap: 8px; margin-bottom: 5px; }
-.btn-action { padding: 7px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 700; border: none; cursor: pointer; }
+.profile-actions { display: flex; justify-content: center; gap: 8px; margin-bottom: 15px; }
+.btn-action { padding: 8px 22px; border-radius: 10px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; }
 .btn-primary { background: var(--primary-blue); color: white; }
 .btn-secondary { background: var(--bg-secondary); color: var(--text-dark); border: 1px solid var(--border-color); }
 
+/* 🔥 Bio di bawah tombol 🔥 */
+.profile-bio { font-size: 13.5px; line-height: 1.4; color: var(--text-dark); margin: 0; padding: 0 10px; white-space: pre-wrap; text-align: center; }
+
+/* Tabs 4 Menu */
 .profile-tabs { display: flex; border-bottom: 1px solid var(--border-color); background: var(--bg-main); }
 .tab-item { flex: 1; padding: 12px 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--text-secondary); cursor: pointer; position: relative; }
 .tab-item.active { color: var(--text-dark); }
-.tab-item.active::after { content: ""; position: absolute; bottom: 0; left: 25%; width: 50%; height: 2px; background: var(--text-dark); }
+.tab-item.active::after { content: ""; position: absolute; bottom: 0; left: 20%; width: 60%; height: 2px; background: var(--text-dark); }
 
+/* 🔥 Scrollable Grid 🔥 */
 .post-grid-container {
     flex: 1; 
     overflow-y: auto; 
     background: var(--bg-main);
-    padding-bottom: 100px; 
+    padding-bottom: 80px; 
     -webkit-overflow-scrolling: touch;
 }
 .post-grid-container::-webkit-scrollbar { display: none; }
 .post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5px; }
 .grid-item { aspect-ratio: 1 / 1; background: var(--bg-secondary); overflow: hidden; }
 .grid-item img { width: 100%; height: 100%; object-fit: cover; }
+.grid-no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); color: var(--text-secondary); }
 
-/* ==== SIDEBAR PROFILE ==== */
-.p-sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; opacity: 0; visibility: hidden; transition: 0.3s; }
-.p-sidebar-overlay.active { opacity: 1; visibility: visible; }
+/* ==== SIDEBAR TIKTOK STYLE ==== */
+.sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1999; opacity: 0; visibility: hidden; transition: 0.3s; }
+.sidebar-overlay.active { opacity: 1; visibility: visible; }
 
-.p-sidebar { 
-    position: fixed; top: 0; bottom: 0; right: 0; width: 280px; 
-    background: var(--bg-main); z-index: 201; transform: translateX(100%); 
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+.sidebar { 
+    position: fixed; top: 0; bottom: 0; right: -100%; width: 75%; max-width: 300px; 
+    background: var(--bg-main); z-index: 2000; 
+    transition: right 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); 
     display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.1);
 }
-.p-sidebar.open { transform: translateX(0); }
+.sidebar.open { right: 0; }
+.sidebar-search-container { padding: 20px 16px 10px; }
+.sidebar-search { background: var(--bg-secondary); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; }
+.sidebar-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; color: var(--text-dark); }
 
-.p-sidebar-header { padding: 40px 20px 20px; border-bottom: 1px solid var(--border-color); text-align: center; }
-.p-side-avatar { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px; border: 2px solid var(--primary-blue); }
+.menu-category-label { padding: 18px 16px 8px; font-size: 12px; font-weight: 600; color: #8a8b91; text-transform: uppercase; }
+.menu-item-tiktok { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; }
+.menu-item-tiktok:active { background: var(--bg-secondary); }
+.menu-item-tiktok .icon-wrapper { width: 28px; color: var(--text-dark); display: flex; align-items: center; }
+.menu-item-tiktok .menu-text { flex: 1; font-size: 15px; font-weight: 500; color: var(--text-dark); margin-left: 10px; }
+.menu-item-tiktok .arrow-right { color: #bdbebf; font-size: 18px; }
+.menu-divider { border: 0; border-top: 1px solid var(--border-color); margin: 10px 16px; }
 
-.p-sidebar-menu { display: flex; flex-direction: column; padding: 10px 0; }
-.p-menu-item { 
-    display: flex; align-items: center; gap: 12px; padding: 14px 20px; 
-    background: none; border: none; font-size: 15px; font-weight: 600; 
-    color: var(--text-dark); cursor: pointer; text-align: left; 
-}
-.p-menu-item:active { background: var(--bg-secondary); }
-.p-menu-item .material-icons { color: var(--text-secondary); font-size: 20px; }
-.p-menu-divider { height: 1px; background: var(--border-color); margin: 10px 20px; }
-.p-menu-item.logout { color: #ff4757; }
-.p-menu-item.logout .material-icons { color: #ff4757; }
-
-/* Modal */
+/* Modal Edit Bio */
 .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
 .custom-modal-overlay.active { opacity: 1; pointer-events: auto; }
-.custom-modal-content { background: var(--bg-main); width: 85%; max-width: 320px; border-radius: 16px; padding: 20px; transform: scale(0.9); transition: 0.3s; }
-.custom-modal-overlay.active .custom-modal-content { transform: scale(1); }
-.bio-textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-dark); resize: none; margin-bottom: 16px; outline: none; }
+.custom-modal-content { background: var(--bg-main); width: 85%; max-width: 320px; border-radius: 16px; padding: 20px; }
+.bio-textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-dark); resize: none; margin-bottom: 16px; font-family: inherit; }

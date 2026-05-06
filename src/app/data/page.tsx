@@ -18,22 +18,17 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'foto' | 'musik' | 'like'>('foto');
+  // 🔥 UPDATE: Tambah 'repost' ke tipe Tab 🔥
+  const [activeTab, setActiveTab] = useState<'foto' | 'musik' | 'like' | 'repost'>('foto');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
 
-  // Modals & Sidebar
   const [isBioModalOpen, setIsBioModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [newBio, setNewBio] = useState('');
 
-  useEffect(() => {
-    loadProfile();
-  }, [urlId, urlUser]);
-
-  useEffect(() => {
-    if (profile) loadPostsTab(activeTab);
-  }, [activeTab, profile]);
+  useEffect(() => { loadProfile(); }, [urlId, urlUser]);
+  useEffect(() => { if (profile) loadPostsTab(activeTab); }, [activeTab, profile]);
 
   const loadProfile = async () => {
     const { data: authData } = await supabase.auth.getUser();
@@ -65,7 +60,6 @@ function ProfileContent() {
         const { count: lks } = await supabase.from('likes').select('*', { count: 'exact', head: true }).in('post_id', postIds);
         totalLikes = lks || 0;
     }
-
     setStats({ followers: fers || 0, following: fing || 0, likes: totalLikes });
 
     if (currentUserId && currentUserId !== targetId) {
@@ -86,10 +80,16 @@ function ProfileContent() {
         const { data } = await supabase.from('songs').select('id, cover_url').eq('artist', profile.username).order('created_at', { ascending: false });
         setPosts(data ? data.map(s => ({ id: s.id, image_url: s.cover_url })) : []);
       } else if (type === 'like') {
-        const { data: likedRels } = await supabase.from('likes').select('post_id').eq('user_id', profile.id);
-        if (likedRels && likedRels.length > 0) {
-           const postIds = likedRels.map(r => r.post_id);
-           const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', postIds).eq('status', 'approved');
+        const { data: rels } = await supabase.from('likes').select('post_id').eq('user_id', profile.id);
+        if (rels && rels.length > 0) {
+           const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', rels.map(r => r.post_id)).eq('status', 'approved');
+           setPosts(pData || []);
+        }
+      } else if (type === 'repost') {
+        // 🔥 LOGIKA LOAD REPOST 🔥
+        const { data: rels } = await supabase.from('reposts').select('post_id').eq('user_id', profile.id);
+        if (rels && rels.length > 0) {
+           const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', rels.map(r => r.post_id)).eq('status', 'approved');
            setPosts(pData || []);
         }
       }
@@ -132,13 +132,12 @@ function ProfileContent() {
            <span className="material-icons">arrow_back</span>
         </button>
         <h2>{profile.username}</h2>
-        {/* 🔥 GANTI TITIK 3 JADI MENU SIDEBAR 🔥 */}
         <button className="header-btn" onClick={() => setIsSidebarOpen(true)}>
            <span className="material-icons">menu</span>
         </button>
       </header>
 
-      {/* TOP SECTION (FIXED/DIAM) */}
+      {/* TOP SECTION */}
       <div className="profile-top-section">
         <section className="profile-info">
           <div className="avatar-container">
@@ -149,7 +148,6 @@ function ProfileContent() {
              <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} />
           </h1>
           <p className="profile-username">@{profile.username.toLowerCase().replace(/\s/g, '')}</p>
-          <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
 
           <div className="profile-stats">
             <div className="stat-box">
@@ -178,16 +176,20 @@ function ProfileContent() {
                 </button>
              )}
           </div>
+
+          {/* 🔥 POSISI BIO SEKARANG DI BAWAH TOMBOL 🔥 */}
+          <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
         </section>
 
         <div className="profile-tabs">
            <div className={`tab-item ${activeTab === 'foto' ? 'active' : ''}`} onClick={() => setActiveTab('foto')}>Karya</div>
            <div className={`tab-item ${activeTab === 'musik' ? 'active' : ''}`} onClick={() => setActiveTab('musik')}>Musik</div>
-           <div className={`tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>Disukai</div>
+           <div className={`tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>Repost</div>
+           <div className={`tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>Suka</div>
         </div>
       </div>
 
-      {/* GRID POSTS (SCROLLABLE) */}
+      {/* GRID POSTS */}
       <div className="post-grid-container">
         <div className="post-grid">
            {isLoadingPosts ? (
@@ -200,12 +202,8 @@ function ProfileContent() {
            ) : (
               posts.map(post => (
                  <div key={post.id} className="grid-item" onClick={() => router.push(activeTab === 'musik' ? `/music?id=${post.id}` : `/post?id=${post.id}`)}>
-                    {post.image_url ? (
-                      <img src={post.image_url} alt="post" />
-                    ) : (
-                      <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-secondary)'}}>
-                         <span className="material-icons" style={{color:'#999'}}>article</span>
-                      </div>
+                    {post.image_url ? ( <img src={post.image_url} alt="post" /> ) : (
+                      <div className="grid-no-img"><span className="material-icons">article</span></div>
                     )}
                  </div>
               ))
@@ -213,20 +211,48 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* SIDEBAR OVERLAY & CONTENT */}
-      <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
-      <aside className={`p-sidebar ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="p-sidebar-header">
-           <img src={profile.avatar_url || '/asets/png/profile.webp'} className="p-side-avatar" alt="av" />
-           <h3>{profile.username}</h3>
+      {/* 🔥 SIDEBAR BARU (STYLE TIKTOK) 🔥 */}
+      <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-search-container">
+          <div className="sidebar-search">
+            <span className="material-icons" style={{color: '#8a8b91', fontSize: '20px'}}>search</span>
+            <input type="text" placeholder="Cari" />
+          </div>
         </div>
-        <div className="p-sidebar-menu">
-           <button className="p-menu-item" onClick={() => { setIsSidebarOpen(false); setIsBioModalOpen(true); }}><span className="material-icons">edit</span> Edit Profil</button>
-           <button className="p-menu-item"><span className="material-icons">settings</span> Pengaturan</button>
-           <div className="p-menu-divider" />
-           <button className="p-menu-item logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><span className="material-icons">logout</span> Keluar</button>
+
+        <div className="menu-category-label">Aset</div>
+        <div className="menu-item-tiktok" onClick={() => router.push('/saldo')}>
+          <div className="icon-wrapper"><span className="material-icons">account_balance_wallet</span></div>
+          <div className="menu-text">Saldo</div>
+          <div className="arrow-right">›</div>
         </div>
-      </aside>
+        <div className="menu-item-tiktok" onClick={() => router.push('/historycoin')}>
+          <div className="icon-wrapper"><span className="material-icons">history</span></div>
+          <div className="menu-text">Riwayat Transaksi</div>
+          <div className="arrow-right">›</div>
+        </div>
+        
+        <div className="menu-category-label">Misi & Hadiah</div>
+        <div className="menu-item-tiktok" onClick={() => router.push('/dailycek')}>
+          <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">assignment</span></div>
+          <div className="menu-text">Pusat Misi</div>
+          <div className="arrow-right">›</div>
+        </div>
+
+        <hr className="menu-divider" />
+
+        <div className="menu-category-label">Alat pribadi</div>
+        <div className="menu-item-tiktok" onClick={() => { setIsSidebarOpen(false); /* Panggil fungsi share QR lu di sini */ }}>
+          <div className="icon-wrapper"><span className="material-icons">qr_code_2</span></div>
+          <div className="menu-text">Kode QR Anda</div>
+          <div className="arrow-right">›</div>
+        </div>
+        <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
+          <div className="icon-wrapper"><span className="material-icons">logout</span></div>
+          <div className="menu-text">Keluar</div>
+        </div>
+      </div>
 
       {/* MODAL EDIT BIO */}
       <div className={`custom-modal-overlay ${isBioModalOpen ? 'active' : ''}`} onClick={() => setIsBioModalOpen(false)}>
