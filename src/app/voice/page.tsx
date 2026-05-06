@@ -15,7 +15,7 @@ import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
 
 import './Voice.css';
 
-re global {
+declare global {
   interface Window {
     __VOICE_ROOM_INIT__?: boolean;
     naikKeStage?: (index: number) => void;
