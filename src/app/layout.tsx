@@ -11,10 +11,15 @@ import Navbar from "@/components/layout/Navbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Deteksi Halaman lebih akurat
+  // 1. Deteksi Halaman
   const isHomePage = pathname === '/' || pathname === '';
   const isVoicePage = pathname?.includes('/voice');
-  const isChatPage = pathname?.includes('/hypetalk') || pathname?.includes('/chat') || isVoicePage;
+  
+  // 🔥 FIX: HypeTalk sekarang dibolehkan muncul Sidebar & Navbar
+  // Kita cuma sembunyikan Sidebar di Voice Page aja biar gak berantakan
+  const hideSidebar = isVoicePage; 
+  const hideNavbar = isVoicePage;
+  const hideOverlays = isVoicePage;
 
   return (
     <html lang="id">
@@ -24,12 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-black text-white antialiased" style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}>
         
-        {/* SIDEBAR: Muncul kecuali di Chat & Voice */}
-        {!isChatPage && <Sidebar />}
+        {/* SIDEBAR: Muncul di Home & HypeTalk, Hilang hanya di Voice */}
+        {!hideSidebar && <Sidebar />}
         
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           
-          {/* SEARCH WRAPPER: Pakai logika ini biar pasti nongol di Home */}
+          {/* SEARCH WRAPPER: Khusus di Home saja */}
           {isHomePage && (
             <div style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
               <SearchWrapper />
@@ -41,24 +46,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             width: '100%', 
             maxWidth: '600px',
             margin: '0 auto', 
-            // Kalau voice 0, kalau home 10, selain itu 20
+            // Atur padding biar gak nabrak Navbar/Sidebar
             paddingTop: isVoicePage ? '0' : (isHomePage ? '10px' : '20px'), 
-            paddingBottom: isVoicePage ? '0' : '120px',
+            paddingBottom: isVoicePage ? '0' : '100px', // Kasih ruang buat Navbar bawah
             position: 'relative'
           }}>
             {children}
           </main>
 
-          {/* NAVBAR: Hilangkan hanya di Voice */}
-          {!isVoicePage && <Navbar />}
+          {/* NAVBAR BAWAH: Muncul kecuali di Voice */}
+          {!hideNavbar && <Navbar />}
           
         </div>
 
         {/* MODAL & NOTIFIKASI */}
         <LoginPopup />
-        
-        {/* 🔥 FIX: Overlays (Kado Home) JANGAN dimunculkan kalau lagi di Voice Room 🔥 */}
-        {!isVoicePage && <Overlays />}
+
+        {/* 🔥 FIX: Overlays (Kado Home) muncul di mana-mana KECUALI di Voice 🔥 */}
+        {!hideOverlays && <Overlays />}
 
       </body>
     </html>
