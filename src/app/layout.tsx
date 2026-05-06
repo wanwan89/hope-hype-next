@@ -41,18 +41,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           )}
 
-          <main style={{ 
-            flex: 1, 
-            width: '100%', 
-            maxWidth: '600px',
-            margin: '0 auto', 
-            // Atur padding biar gak nabrak Navbar/Sidebar
-            paddingTop: isVoicePage ? '0' : (isHomePage ? '10px' : '20px'), 
-            paddingBottom: isVoicePage ? '0' : '100px', // Kasih ruang buat Navbar bawah
-            position: 'relative'
-          }}>
+          <main 
+            key={pathname} // 🔥 Tambahin ini biar layout nge-reset pas pindah link
+            style={{ 
+              flex: 1, 
+              width: '100%', 
+              maxWidth: '600px',
+              margin: '0 auto', 
+              paddingTop: isVoicePage ? '0' : (isHomePage ? '10px' : '20px'), 
+              paddingBottom: isVoicePage ? '0' : '100px',
+              position: 'relative'
+            }}
+          >
             {children}
           </main>
+
 
           {/* NAVBAR BAWAH: Muncul kecuali di Voice */}
           {!hideNavbar && <Navbar />}

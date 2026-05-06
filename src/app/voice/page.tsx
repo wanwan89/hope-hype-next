@@ -1177,21 +1177,35 @@ const overlay = document.getElementById('room-drawer-overlay'); // 🔥 Pakai ID
         }
     }, 500);
 
-    // 🔥 FUNGSI PEMBERSIH (Cleanup) 🔥
+    // 🔥 FUNGSI PEMBERSIH (Cleanup) - FIX BIAR HOME GAK ERROR 🔥
     return () => {
-        window.__VOICE_ROOM_INIT__ = false; // Buka gembok
+        window.__VOICE_ROOM_INIT__ = false; 
         if (room) {
-            room.disconnect(); // Matikan suara/mic
+            room.disconnect(); 
         }
-        sb.removeAllChannels(); // Putus koneksi chat/realtime
-        clearInterval(checkSDK); // Stop timer interval
+        sb.removeAllChannels(); 
+        clearInterval(checkSDK); 
         
-        // Hapus sisa-sisa tampilan yang mungkin nyangkut
-        const overlays = ['gift-anim-overlay', 'vip-entrance-overlay', 'vip-anim-styles-clean'];
-        overlays.forEach(id => document.getElementById(id)?.remove());
-    };
+        // 1. Hapus semua elemen dinamis termasuk ID yang baru kita buat
+        const overlays = [
+            'gift-anim-overlay', 
+            'vip-entrance-overlay', 
+            'vip-anim-styles-clean',
+            'room-gift-drawer',    // 👈 Tambahin ini
+            'room-drawer-overlay'  // 👈 Tambahin ini
+        ];
+        
+        overlays.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        });
 
-  }, []); // Penutup useEffect asli lu
+        // 2. Reset paksa style body (Biar sidebar home gak macet/putih)
+        document.body.style.overflow = 'auto';
+        document.body.style.position = 'static';
+        
+        console.log("✅ Voice Room Cleaned Up!");
+    };
 
   return (
     <>
