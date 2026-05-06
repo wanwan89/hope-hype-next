@@ -14,18 +14,20 @@ function NavbarContent() {
   const [isManualHidden, setIsManualHidden] = useState(false);
   
   const [unreadChatCount, setUnreadChatCount] = useState(0);
-  
-  // 🔥 FIX 1: State untuk dot notifikasi 🔥
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const lastScrollY = useRef(0);
 
-  // Periksa apakah sedang di dalam ruang chat atau voice room
+  // 🔥 IDENTIFIKASI HALAMAN YANG GAK BOLEH ADA NAVBAR 🔥
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
   const isVoiceRoom = pathname?.includes('/voice-room') && pathname !== '/voice-room'; 
+  const isDailyCekPage = pathname?.includes('/dailycek');
 
   useEffect(() => {
+    // Kalau di halaman dailycek/chat/voice, jangan pasang listener scroll Navbar
+    if (isDailyCekPage || isChatRoom || isVoiceRoom) return;
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
@@ -37,7 +39,7 @@ function NavbarContent() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [pathname, isDailyCekPage, isChatRoom, isVoiceRoom]);
 
   useEffect(() => {
     setIsVisible(true);
@@ -128,7 +130,8 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
-  if (isChatRoom || isVoiceRoom) {
+  // 🔥 FIX: JIKA DI HALAMAN INI, KEMBALIKAN NULL (HAPUS NAVBAR & TOMBOL HIDE) 🔥
+  if (isChatRoom || isVoiceRoom || isDailyCekPage) {
     return null;
   }
 
@@ -137,10 +140,8 @@ function NavbarContent() {
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
     { name: 'Voice', path: '/voice-room', icon: Mic2 }, 
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
-    // 🔥 FIX: Ganti '/profile' jadi '/data' sesuai nama folder lu 🔥
     { name: 'Profil', path: '/data', icon: User },
   ];
-
 
   const showNavbar = isVisible && !isManualHidden;
 
@@ -252,7 +253,6 @@ function NavbarContent() {
                     }}
                   />
                   
-                  {/* 🔥 FIX: Badge Angka Berlaku untuk Chat & Notif 🔥 */}
                   {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                     <div style={{ 
                       position: 'absolute', top: isVoice ? '0px' : '-4px', right: isVoice ? '0px' : '-8px', 

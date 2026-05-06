@@ -11,15 +11,12 @@
   
   background: var(--bg-main); 
   color: var(--text-main); 
-  min-height: 100vh; 
+  height: 100vh; /* WAJIB PAKE HEIGHT 100VH */
+  height: 100dvh;
   width: 100%;
-  
-  /* 🔥 FIX: Ganti 'hidden' jadi 'clip' biar sticky-nya hidup lagi! 🔥 */
-  overflow-x: clip; 
-  
+  overflow: hidden; /* Matiin scroll body */
   font-family: 'Poppins', sans-serif; 
 }
-
 
 /* --- DARK MODE --- */
 html.dark .mission-wrapper { 
@@ -37,23 +34,13 @@ html.dark .mission-wrapper {
   margin: 0 auto; 
   display: flex; 
   flex-direction: column; 
-  min-height: 100vh; 
+  height: 100%; /* Biar tinggi penuhin wrapper */
   background: var(--bg-main); 
-  padding-bottom: 40px;
 }
 
-/* --- 🔥 NEW: STICKY TOP WRAPPER 🔥 --- */
-.sticky-top-wrapper {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: var(--bg-main);
-  padding-bottom: 10px; /* Biar ada jarak pas di-scroll */
-  box-shadow: 0 4px 15px rgba(0,0,0,0.03); /* Bayangan soft buat pembatas scroll */
-}
-
-/* --- HEADER --- */
+/* --- 🔥 HEADER (FIXED TOP) 🔥 --- */
 .mission-header { 
+  flex-shrink: 0; /* Gak boleh mengecil */
   background: var(--bg-card); 
   display: flex; 
   justify-content: space-between; 
@@ -61,6 +48,7 @@ html.dark .mission-wrapper {
   padding: 10px 16px; 
   padding-top: calc(10px + env(safe-area-inset-top));
   border-bottom: 1px solid var(--border-color);
+  z-index: 10;
 }
 
 .back-btn {
@@ -90,7 +78,50 @@ html.dark .mission-wrapper {
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-/* --- KARTU UTAMA (EXCHANGE & STREAK) --- */
+/* --- 🔥 KARTU TUKAR KOIN (FIXED TOP) 🔥 --- */
+.exchange-card-wrapper {
+  flex-shrink: 0; /* Gak boleh mengecil */
+  background: var(--bg-main);
+  padding: 1rem 0.8rem 0;
+  z-index: 10;
+  position: relative;
+}
+
+/* Kasih bayangan lembut di bawah kartu tukar koin biar keliatan kepisah dari list */
+.exchange-card-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 0;
+  width: 100%;
+  height: 15px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.03), transparent);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.mission-card.exchange {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  margin: 0; 
+  border-radius: 16px; 
+  padding: 1.1rem; 
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.15);
+  border: none;
+  color: white;
+}
+
+/* --- 🔥 AREA SCROLL MISI 🔥 --- */
+.mission-scroll-area {
+  flex: 1; /* Penuhi sisa layar */
+  overflow-y: auto; /* Ini yang bikin bisa scroll! */
+  padding-bottom: 50px;
+  -webkit-overflow-scrolling: touch; /* Biar smooth di iOS */
+}
+
+/* Hilangin scrollbar biar rapi */
+.mission-scroll-area::-webkit-scrollbar { display: none; }
+
+/* --- KARTU MISI BIASA --- */
 .mission-card { 
   background: var(--bg-card); 
   margin: 1rem 0.8rem; 
@@ -100,12 +131,6 @@ html.dark .mission-wrapper {
   border: 1px solid var(--border-color);
 }
 
-/* Khusus kartu tukar koin (ada di dalem sticky wrapper) */
-.mission-card[style*="linear-gradient"] {
-  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.15);
-  border: none;
-  margin-bottom: 0; /* Biar nempel rapi di dalem sticky wrapper */
-}
 
 /* --- STREAK DAYS (Check-in) --- */
 .streak-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 2px; color: var(--text-main); }
@@ -248,16 +273,8 @@ html.dark .mission-wrapper {
 }
 .m-btn.btn-done:hover { background: rgba(16, 185, 129, 0.1); transform: none; }
 
-/* --- SECURITY OVERLAY --- */
 .security-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
   z-index: 99999; color: white; display: flex; flex-direction: column; 
   align-items: center; justify-content: center; text-align: center; padding: 30px;
-}
-/* 🔥 JURUS ANTI-BENTROK LAYOUT GLOBAL 🔥 */
-body:has(.mission-wrapper) .main-content,
-body:has(.mission-wrapper) .layout-wrapper {
-  overflow: visible !important;
-  transform: none !important;
-  contain: none !important;
 }
