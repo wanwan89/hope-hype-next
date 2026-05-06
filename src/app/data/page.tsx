@@ -18,7 +18,6 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   
-  // 🔥 UPDATE: 4 Tab Menu 🔥
   const [activeTab, setActiveTab] = useState<'foto' | 'musik' | 'repost' | 'like'>('foto');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
@@ -72,14 +71,14 @@ function ProfileContent() {
     setIsLoadingPosts(true);
     setPosts([]);
     try {
+      const table = type === 'repost' ? 'reposts' : type === 'like' ? 'likes' : null;
       if (type === 'foto') {
         const { data } = await supabase.from('posts').select('id, image_url').eq('creator_id', profile.id).eq('status', 'approved').order('created_at', { ascending: false });
         setPosts(data || []);
       } else if (type === 'musik') {
         const { data } = await supabase.from('songs').select('id, cover_url').eq('artist', profile.username).order('created_at', { ascending: false });
         setPosts(data ? data.map(s => ({ id: s.id, image_url: s.cover_url })) : []);
-      } else if (type === 'repost' || type === 'like') {
-        const table = type === 'repost' ? 'reposts' : 'likes';
+      } else if (table) {
         const { data: rels } = await supabase.from(table).select('post_id').eq('user_id', profile.id);
         if (rels && rels.length > 0) {
            const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', rels.map(r => r.post_id)).eq('status', 'approved');
@@ -87,6 +86,22 @@ function ProfileContent() {
         }
       }
     } catch (err) { console.error(err); } finally { setIsLoadingPosts(false); }
+  };
+
+  // 🔥 FITUR BARU: Handle Share Profil 🔥
+  const handleShareProfile = async () => {
+    const shareData = {
+      title: `Profil ${profile.username} - Hope Hype`,
+      text: `Cek karya keren ${profile.username} di Hope Hype!`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch (err) { console.log('Share canceled'); }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      showNotif("Link profil disalin ke clipboard!", "success");
+    }
   };
 
   const toggleFollow = async () => {
@@ -112,6 +127,12 @@ function ProfileContent() {
     } catch (err) { showNotif("Gagal simpan bio", "error"); }
   };
 
+  // Helper pindah halaman & tutup sidebar
+  const navTo = (path: string) => {
+    setIsSidebarOpen(false);
+    router.push(path);
+  };
+
   if (!profile) return <div className="profile-page-container"></div>;
 
   const isMe = myId === profile.id;
@@ -119,7 +140,6 @@ function ProfileContent() {
   return (
     <div className="profile-page-container">
       
-      {/* HEADER */}
       <header className="profile-header">
         <button className="header-btn" onClick={() => router.back()}>
            <span className="material-icons">arrow_back</span>
@@ -130,7 +150,6 @@ function ProfileContent() {
         </button>
       </header>
 
-      {/* TOP SECTION (STATIC) */}
       <div className="profile-top-section">
         <section className="profile-info">
           <div className="avatar-container">
@@ -161,7 +180,7 @@ function ProfileContent() {
              {isMe ? (
                 <>
                    <button className="btn-action btn-secondary" onClick={() => setIsBioModalOpen(true)}>Edit Profil</button>
-                   <button className="btn-action btn-secondary" onClick={() => {/* Share logic */}}>Bagikan</button>
+                   <button className="btn-action btn-secondary" onClick={handleShareProfile}>Bagikan</button>
                 </>
              ) : (
                 <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>
@@ -170,7 +189,6 @@ function ProfileContent() {
              )}
           </div>
 
-          {/* 🔥 POSISI BIO: SEKARANG DI BAWAH TOMBOL 🔥 */}
           <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
         </section>
 
@@ -182,7 +200,6 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* SCROLLABLE GRID */}
       <div className="post-grid-container">
         <div className="post-grid">
            {isLoadingPosts ? (
@@ -202,9 +219,8 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* 🔥 SIDEBAR & OVERLAY (STYLE TIKTOK & ANTI-BLUR) 🔥 */}
+      {/* SIDEBAR */}
       <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
-      
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
           <div className="sidebar-search">
@@ -214,19 +230,19 @@ function ProfileContent() {
         </div>
 
         <div className="menu-category-label">Dompet & Aset</div>
-        <div className="menu-item-tiktok" onClick={() => router.push('/saldo')}>
+        <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}>
            <div className="icon-wrapper"><span className="material-icons">account_balance_wallet</span></div>
            <div className="menu-text">Saldo HypeCoin</div>
            <div className="arrow-right">›</div>
         </div>
-        <div className="menu-item-tiktok" onClick={() => router.push('/historycoin')}>
+        <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}>
            <div className="icon-wrapper"><span className="material-icons">history_edu</span></div>
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
 
         <div className="menu-category-label">Misi & Hadiah</div>
-        <div className="menu-item-tiktok" onClick={() => router.push('/dailycek')}>
+        <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}>
            <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">stars</span></div>
            <div className="menu-text">Pusat Misi</div>
            <div className="arrow-right">›</div>
@@ -235,9 +251,9 @@ function ProfileContent() {
         <hr className="menu-divider" />
 
         <div className="menu-category-label">Alat Pribadi</div>
-        <div className="menu-item-tiktok" onClick={() => { setIsSidebarOpen(false); /* Trigger QR logic */ }}>
+        <div className="menu-item-tiktok" onClick={handleShareProfile}>
            <div className="icon-wrapper"><span className="material-icons">qr_code_2</span></div>
-           <div className="menu-text">Kode QR Anda</div>
+           <div className="menu-text">Bagikan Profil</div>
            <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
