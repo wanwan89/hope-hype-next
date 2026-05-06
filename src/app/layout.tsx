@@ -21,37 +21,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isVoicePage;
   const hideOverlays = isVoicePage;
 
-  // 🔥 JURUS SEKAT TOTAL (Isolation Protocol) 🔥
+  // 🔥 JURUS SEKAT TOTAL (Diperbaiki) 🔥
   useEffect(() => {
-    // A. Bersihkan Style Body dari sisa-sisa Voice Room
-    document.body.style.overflow = 'auto';
-    document.body.style.position = 'static';
-    document.body.style.height = 'auto';
-
-    // B. Body Class Switcher: Kasih tanda kalau ini halaman voice atau bukan
-    if (isVoicePage) {
-      document.body.classList.add('in-voice-room');
-      document.body.classList.remove('in-home-app');
-    } else {
-      document.body.classList.add('in-home-app');
-      document.body.classList.remove('in-voice-room');
+    // Sapu Jagat HANYA BOLEH jalan kalau kita KELUAR dari Voice Room (masuk ke Home/Chat)
+    if (!isVoicePage) {
+      // A. Bersihkan Style Body dari sisa-sisa Voice Room
+      document.body.style.overflow = 'auto';
+      document.body.style.position = 'static';
+      document.body.style.height = 'auto';
+      
+      // B. Trash Collector: Hapus elemen Voice Room biar gak bocor ke Home
+      const voiceTrash = [
+        'room-gift-drawer', 
+        'room-drawer-overlay', 
+        'gift-anim-overlay', 
+        'vip-entrance-overlay',
+        'vip-anim-styles-clean'
+      ];
+      
+      voiceTrash.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      });
     }
-    
-    // C. Trash Collector: Hapus elemen "Hantu" yang mungkin tertinggal
-    const voiceTrash = [
-      'room-gift-drawer', 
-      'room-drawer-overlay', 
-      'gift-anim-overlay', 
-      'vip-entrance-overlay',
-      'vip-anim-styles-clean'
-    ];
-    
-    voiceTrash.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.remove();
-    });
-
-  }, [pathname, isVoicePage]); // Re-run setiap ganti halaman
+  }, [pathname, isVoicePage]); 
 
   return (
     <html lang="id">
@@ -59,7 +52,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-black text-white antialiased">
+      {/* 🔥 FIX SIDEBAR MACET: Class langsung dipasang di body sejak awal render (No Delay!) 🔥 */}
+      <body 
+        className={`bg-black text-white antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
+        style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
+      >
         
         {/* SIDEBAR: Muncul kecuali di Voice */}
         {!hideSidebar && <Sidebar />}
@@ -73,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           )}
 
-          {/* MAIN CONTENT: key={pathname} buat reset total state halaman */}
+          {/* MAIN CONTENT */}
           <main 
             key={pathname} 
             className="main-content"
@@ -98,7 +95,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* MODAL GLOBAL */}
         <LoginPopup />
 
-        {/* OVERLAYS HOME: Wajib hancur di Voice */}
+        {/* OVERLAYS HOME: Hancur di Voice */}
         {!hideOverlays && <Overlays />}
 
       </body>
