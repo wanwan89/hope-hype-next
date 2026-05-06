@@ -112,8 +112,8 @@ export default function HypetalkPage() {
               avatar: p.avatar_url, 
               role: p.role, 
               preview: msgPreview,
-              lastMsgUserId: lastMsg.user_id, // Untuk ceklis
-              lastMsgStatus: lastMsg.status, // Untuk ceklis
+              lastMsgUserId: lastMsg.user_id,
+              lastMsgStatus: lastMsg.status, 
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
               sortTime: new Date(lastMsg.created_at).getTime(),
               unread: unreadMap.get(p.id) || 0 
@@ -271,30 +271,33 @@ export default function HypetalkPage() {
               </div>
               <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div className="tg-chat-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  
+                  {/* 🔥 FIX: Ubah var(--text-color) menjadi var(--tg-text) */}
+                  <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--tg-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {chat.name} <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} />
                   </h4>
-                  <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#3a7bd5' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
+                  
+                  {/* 🔥 FIX: Ubah var(--text-muted) menjadi var(--tg-text-muted) */}
+                  <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#1DA1F2' : 'var(--tg-text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
                     {chat.time}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div className="tg-preview-container" style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
                     
-                    {/* FIX: TAMBAHKAN CEKLIS TANDA BACA */}
                     {!typingStatus[chat.id] && chat.lastMsgUserId === currentUser?.id && chat.type === 'private' && (
-                      <span className="material-icons" style={{ fontSize: '15px', marginRight: '4px', color: chat.lastMsgStatus === 'read' ? '#3a7bd5' : 'var(--text-muted)' }}>
+                      <span className="material-icons" style={{ fontSize: '15px', marginRight: '4px', color: chat.lastMsgStatus === 'read' ? '#1DA1F2' : 'var(--tg-text-muted)' }}>
                         {chat.lastMsgStatus === 'read' ? 'done_all' : 'done'}
                       </span>
                     )}
 
-                    <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#3a7bd5' : 'var(--text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#1DA1F2' : 'var(--tg-text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {typingStatus[chat.id] ? 'sedang mengetik...' : chat.preview}
                     </p>
                   </div>
 
                   {chat.unread > 0 && (
-                    <div style={{ background: '#3a7bd5', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
+                    <div style={{ background: '#1DA1F2', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
                       {chat.unread}
                     </div>
                   )}
@@ -325,7 +328,7 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* MODAL DOI CARD DENGAN DESIGN PREMIUM (NO ICON SYSTEM JELEK) */}
+      {/* MODAL DOI CARD */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="custom-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
@@ -333,13 +336,17 @@ export default function HypetalkPage() {
             
             <div className="doi-profile-box" style={{ padding: '10px 0', textAlign: 'center' }}>
               <img src={foundDoi.avatar_url || "/asets/png/profile.webp"} alt="Doi" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #ff4757', boxShadow: '0 0 15px rgba(255, 71, 87, 0.3)', marginBottom: '12px' }} />
-              <h2 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 15px 0', color: 'var(--text-color)' }}>{foundDoi.username}, {foundDoi.umur || '??'}</h2>
+              
+              {/* 🔥 FIX: Ubah var(--text-color) menjadi var(--tg-text) */}
+              <h2 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 15px 0', color: 'var(--tg-text)' }}>{foundDoi.username}, {foundDoi.umur || '??'}</h2>
               
               <div className="doi-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
-                {foundDoi.pekerjaan && <span className="d-tag" style={{ background: '#eef2ff', color: '#4f46e5', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>work</span> {foundDoi.pekerjaan}</span>}
-                {foundDoi.hobi && <span className="d-tag" style={{ background: '#fef2f2', color: '#dc2626', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>palette</span> {foundDoi.hobi}</span>}
-                {foundDoi.zodiak && <span className="d-tag" style={{ background: '#fff7ed', color: '#d97706', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>auto_awesome</span> {foundDoi.zodiak}</span>}
-                {!foundDoi.pekerjaan && !foundDoi.hobi && !foundDoi.zodiak && <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Belum mengisi bio lengkap</span>}
+                {foundDoi.pekerjaan && <span className="d-tag" style={{ background: 'var(--tg-bg-secondary)', color: 'var(--tg-primary)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>work</span> {foundDoi.pekerjaan}</span>}
+                {foundDoi.hobi && <span className="d-tag" style={{ background: 'var(--tg-bg-secondary)', color: '#dc2626', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>palette</span> {foundDoi.hobi}</span>}
+                {foundDoi.zodiak && <span className="d-tag" style={{ background: 'var(--tg-bg-secondary)', color: '#d97706', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>auto_awesome</span> {foundDoi.zodiak}</span>}
+                
+                {/* 🔥 FIX: Ubah var(--text-muted) menjadi var(--tg-text-muted) */}
+                {!foundDoi.pekerjaan && !foundDoi.hobi && !foundDoi.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Belum mengisi bio lengkap</span>}
               </div>
             </div>
 

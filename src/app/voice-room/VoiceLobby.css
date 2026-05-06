@@ -1,9 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 /* =========================================
-   1. CORE RESET (THE "NO GAP" KEY)
+   1. ISOLASI VARIABEL KE DALAM CONTAINER
+   (Jangan pakai :root atau html/body di sini)
    ========================================= */
-:root {
+.voice-lobby-container {
   --bg-app: #f6f9ff;
   --bg-card: #ffffff;      
   --primary: #0070f3;
@@ -12,43 +13,22 @@
   --text-dark: #0f172a;    
   --text-muted: #64748b;   
   --accent-coin: #f59e0b;
-  --glass: #ffffff; /* Pakai solid biar gak ada distorsi warna di status bar */
+  --glass: #ffffff; 
   --border-glass: rgba(0, 112, 243, 0.1);
-}
 
-/* FIX: Pastikan background html/body menutup safe area */
-html, body {
-  margin: 0 !important;
-  padding: 0 !important;
-  background-color: var(--bg-app); /* Biar kalau di-scroll mentok gak keliatan putih */
-  overflow-x: hidden;
-  height: 100%;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  /* Set font HANYA untuk di dalam lobby ini */
   font-family: 'Plus Jakarta Sans', sans-serif;
-  -webkit-tap-highlight-color: transparent;
-}
 
-/* =========================================
-   2. CONTAINER (SPACING FOR FIXED HEADER)
-   ========================================= */
-.voice-lobby-container {
   padding-bottom: 140px; 
   max-width: 480px; 
   margin: 0 auto;
   min-height: 100vh;
   background-color: var(--bg-app);
   position: relative;
-  
-  /* FIX: Beri ruang di atas agar konten tidak tertutup Header Fixed */
   padding-top: 75px; 
 }
 
-/* Tambahan padding top khusus untuk HP ber-notch agar tidak tabrakan */
+/* Tambahan padding top khusus untuk HP ber-notch */
 @supports (padding-top: env(safe-area-inset-top)) {
   .voice-lobby-container {
     padding-top: calc(75px + env(safe-area-inset-top));
@@ -56,40 +36,35 @@ html, body {
 }
 
 /* =========================================
-   3. HEADER PINNED (FIXED 100% STUCK)
+   2. HEADER PINNED
    ========================================= */
-.lobby-header {
-  /* KUNCI MATI DI LAYAR */
+.voice-lobby-container .lobby-header {
   position: fixed;
   top: 0;
   left: 50%;
-  transform: translateX(-50%); /* Agar tetap di tengah pada desktop/layar lebar */
+  transform: translateX(-50%); 
   width: 100%;
-  max-width: 480px; /* Samakan dengan kontainer lo */
+  max-width: 480px; 
   height: 65px;
-  
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 16px;
   background: var(--glass);
-  z-index: 99999; /* Sangat tinggi agar tidak tertutup apapun */
-  
+  z-index: 1000; /* Gak usah 99999 biar gak nutupin modal global */
   border-bottom: 1px solid var(--border-glass);
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-
-  /* FIX: Pastikan warna background header juga mengisi Safe Area HP */
   padding-top: env(safe-area-inset-top, 0px);
   height: calc(65px + env(safe-area-inset-top, 0px));
 }
 
-.header-profile {
+.voice-lobby-container .header-profile {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.header-profile img {
+.voice-lobby-container .header-profile img {
   width: 38px;
   height: 38px;
   border-radius: 10px;
@@ -97,14 +72,14 @@ html, body {
   border: 1.5px solid var(--primary-light);
 }
 
-.header-info h3 { 
+.voice-lobby-container .header-info h3 { 
   margin: 0; 
   font-size: 14px; 
   font-weight: 700; 
   color: var(--text-dark);
 }
 
-.coin-badge {
+.voice-lobby-container .coin-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -117,9 +92,9 @@ html, body {
 }
 
 /* =========================================
-   4. HERO BANNER (UI TETAP)
+   3. HERO BANNER
    ========================================= */
-.hero-banner {
+.voice-lobby-container .hero-banner {
   margin: 12px 16px;
   padding: 18px;
   background: var(--primary-gradient);
@@ -130,7 +105,7 @@ html, body {
   overflow: hidden;
 }
 
-.hero-banner::after {
+.voice-lobby-container .hero-banner::after {
   content: "mic";
   font-family: "Material Icons";
   position: absolute;
@@ -141,20 +116,20 @@ html, body {
   transform: rotate(-10deg);
 }
 
-.hero-banner h2 { 
+.voice-lobby-container .hero-banner h2 { 
   margin: 0 0 5px; 
   font-size: 17px; 
   font-weight: 800; 
 }
 
-.hero-banner p { 
+.voice-lobby-container .hero-banner p { 
   margin: 0 0 14px; 
   font-size: 12px; 
   opacity: 0.9; 
   line-height: 1.4;
 }
 
-.btn-start-singing {
+.voice-lobby-container .btn-start-singing {
   background: white;
   color: var(--primary);
   border: none;
@@ -169,18 +144,18 @@ html, body {
 }
 
 /* =========================================
-   5. MINI TABS & ROOM LIST
+   4. MINI TABS & ROOM LIST
    ========================================= */
-.tabs-container {
+.voice-lobby-container .tabs-container {
   display: flex;
   gap: 8px;
   padding: 4px 16px;
   overflow-x: auto;
   scrollbar-width: none;
 }
-.tabs-container::-webkit-scrollbar { display: none; }
+.voice-lobby-container .tabs-container::-webkit-scrollbar { display: none; }
 
-.tab-item {
+.voice-lobby-container .tab-item {
   padding: 7px 16px;
   border-radius: 10px;
   font-size: 12px;
@@ -192,19 +167,19 @@ html, body {
   border: 1px solid transparent;
 }
 
-.tab-item.active {
+.voice-lobby-container .tab-item.active {
   background: var(--primary);
   color: white;
 }
 
-.room-list {
+.voice-lobby-container .room-list {
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.room-card {
+.voice-lobby-container .room-card {
   display: flex;
   align-items: center;
   padding: 12px;
@@ -216,7 +191,7 @@ html, body {
   border: 1px solid rgba(0,0,0,0.02);
 }
 
-.room-thumb {
+.voice-lobby-container .room-thumb {
   width: 42px;
   height: 42px;
   border-radius: 12px;
@@ -229,11 +204,11 @@ html, body {
   font-size: 18px;
 }
 
-.room-info { flex: 1; min-width: 0; }
-.room-info h4 { font-size: 14px; font-weight: 700; color: var(--text-dark); margin-bottom: 2px; }
-.room-info p { font-size: 11px; color: var(--text-muted); }
+.voice-lobby-container .room-info { flex: 1; min-width: 0; }
+.voice-lobby-container .room-info h4 { font-size: 14px; font-weight: 700; color: var(--text-dark); margin-bottom: 2px; }
+.voice-lobby-container .room-info p { font-size: 11px; color: var(--text-muted); }
 
-.online-pill {
+.voice-lobby-container .online-pill {
   background: #f0fdf4;
   color: #16a34a;
   padding: 4px 10px;
@@ -246,9 +221,10 @@ html, body {
 }
 
 /* =========================================
-   6. MODALS & ROOM CREATION FORM
+   5. MODALS & ROOM CREATION FORM
    ========================================= */
-.modal-overlay {
+/* Tambahkan prefix lobby- biar modalnya aman gak nyampur sama modal halaman lain */
+.lobby-modal-overlay {
   position: fixed; inset: 0;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
@@ -256,14 +232,15 @@ html, body {
   z-index: 100000;
 }
 
-.modal-content {
-  background: var(--bg-card);
+.lobby-modal-content {
+  background: var(--bg-card, #fff);
   border-radius: 24px;
   padding: 24px;
   width: 85%;
   max-width: 320px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   animation: modalPopUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 @keyframes modalPopUp {
@@ -271,54 +248,54 @@ html, body {
   100% { transform: scale(1); opacity: 1; }
 }
 
-.modal-header {
+.lobby-modal-header {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 20px;
 }
 
-.modal-header h3 {
-  font-size: 18px; font-weight: 800; color: var(--text-dark); margin: 0;
+.lobby-modal-header h3 {
+  font-size: 18px; font-weight: 800; color: #0f172a; margin: 0;
 }
 
-.close-modal-btn {
-  background: var(--bg-app); border: none; width: 32px; height: 32px;
-  border-radius: 50%; color: var(--text-muted); display: flex;
+.lobby-close-modal-btn {
+  background: #f6f9ff; border: none; width: 32px; height: 32px;
+  border-radius: 50%; color: #64748b; display: flex;
   align-items: center; justify-content: center; cursor: pointer;
 }
 
-.modal-body label {
-  display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;
+.lobby-modal-body label {
+  display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px;
 }
 
-.modal-body input {
+.lobby-modal-body input {
   width: 100%; padding: 14px 16px;
   border-radius: 12px; border: 1px solid rgba(0,0,0,0.1);
-  background: var(--bg-app); font-size: 14px; font-weight: 600; color: var(--text-dark);
+  background: #f6f9ff; font-size: 14px; font-weight: 600; color: #0f172a;
   margin-bottom: 20px; outline: none; transition: all 0.2s ease;
 }
 
-.modal-body input:focus {
-  border-color: var(--primary); background: white;
-  box-shadow: 0 0 0 4px var(--primary-light);
+.lobby-modal-body input:focus {
+  border-color: #0070f3; background: white;
+  box-shadow: 0 0 0 4px #e6f2ff;
 }
 
-.modal-actions {
+.lobby-modal-actions {
   display: flex; gap: 12px;
 }
 
-.modal-actions button {
+.lobby-modal-actions button {
   flex: 1; padding: 14px; border: none; border-radius: 12px;
   font-weight: 700; font-size: 14px; cursor: pointer;
   transition: transform 0.2s ease;
 }
 
-.modal-actions button:active { transform: scale(0.95); }
+.lobby-modal-actions button:active { transform: scale(0.95); }
 
-.btn-cancel {
-  background: var(--bg-app); color: var(--text-muted);
+.lobby-btn-cancel {
+  background: #f6f9ff; color: #64748b;
 }
 
-.btn-confirm { 
-  background: var(--primary-gradient); color: white; 
+.lobby-btn-confirm { 
+  background: linear-gradient(135deg, #0070f3 0%, #00a2ff 100%); color: white; 
   box-shadow: 0 4px 15px rgba(0, 112, 243, 0.3);
 }

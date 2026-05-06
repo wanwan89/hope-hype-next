@@ -201,9 +201,12 @@ export default function VoiceLobbyPage() {
       <main className="room-list">
         {isLoadingRooms ? (
           [1,2,3].map(i => (
-            <div key={i} className="skeleton-card">
-              <div className="skeleton skeleton-thumb"></div>
-              <div style={{flex: 1}}><div className="skeleton" style={{height:'15px', width:'60%', marginBottom:'8px'}}></div><div className="skeleton" style={{height:'10px', width:'80%'}}></div></div>
+            <div key={i} className="skeleton-card" style={{display: 'flex', gap: '12px', padding: '12px', background: 'var(--bg-card)', borderRadius: '18px', marginBottom: '10px'}}>
+              <div className="skeleton" style={{width: '42px', height: '42px', borderRadius: '12px', background: '#e2e8f0'}}></div>
+              <div style={{flex: 1}}>
+                <div className="skeleton" style={{height:'15px', width:'60%', marginBottom:'8px', background: '#e2e8f0', borderRadius: '4px'}}></div>
+                <div className="skeleton" style={{height:'10px', width:'80%', background: '#e2e8f0', borderRadius: '4px'}}></div>
+              </div>
             </div>
           ))
         ) : rooms.length === 0 ? (
@@ -235,15 +238,18 @@ export default function VoiceLobbyPage() {
         )}
       </main>
 
-      {/* MODAL BIKIN ROOM (SUDAH DI-FIX SESUAI CSS) */}
+      {/* 🔥 MODAL BIKIN ROOM (SUDAH DI-FIX SESUAI CSS LOBBY) 🔥 */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+        <div className="lobby-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="lobby-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="lobby-modal-header">
                <h3>Siapin Panggung Lo</h3>
+               <button className="lobby-close-modal-btn" onClick={() => setIsModalOpen(false)}>
+                 <span className="material-icons">close</span>
+               </button>
             </div>
             
-            <div className="modal-body">
+            <div className="lobby-modal-body">
               <label>Nama Panggung</label>
               <input 
                 type="text" 
@@ -257,8 +263,8 @@ export default function VoiceLobbyPage() {
               <select 
                 style={{
                   width: '100%', padding: '14px 16px', borderRadius: '12px',
-                  border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-app)',
-                  fontSize: '14px', fontWeight: '600', color: 'var(--text-dark)',
+                  border: '1px solid rgba(0,0,0,0.1)', background: '#f6f9ff',
+                  fontSize: '14px', fontWeight: '600', color: '#0f172a',
                   marginBottom: '24px', outline: 'none'
                 }}
                 value={newRoomForm.category} 
@@ -270,9 +276,9 @@ export default function VoiceLobbyPage() {
               </select>
             </div>
 
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
-              <button className="btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
+            <div className="lobby-modal-actions">
+              <button className="lobby-btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
+              <button className="lobby-btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
                 {isCreating ? 'Membangun...' : 'Buat Sekarang'}
               </button>
             </div>
