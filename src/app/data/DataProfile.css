@@ -29,8 +29,10 @@ html.dark .profile-page-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 20px;
-    padding-top: calc(12px + env(safe-area-inset-top));
+    /* 🔥 Sesuaikan padding biar pas 🔥 */
+    padding: 10px 20px; 
+    /* safe-area biar pas di iPhone berponi, kalo Android biasanya 0 */
+    padding-top: calc(8px + env(safe-area-inset-top)); 
     background: var(--bg-main);
     z-index: 100;
     border-bottom: 1px solid var(--border-color);
