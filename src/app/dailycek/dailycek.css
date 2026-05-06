@@ -1,27 +1,32 @@
 /* src/app/dailycek/dailycek.css */
+
 .mission-wrapper { 
-  --bg-main: #f4f6f9; 
+  --bg-main: #f8fafc; /* Lebih soft dari sebelumnya */
   --bg-card: #ffffff; 
   --text-main: #0f172a; 
   --text-muted: #64748b; 
-  --border-color: #e2e8f0; 
+  --border-color: #f1f5f9; /* Border lebih subtle */
   --primary: #f59e0b; 
   --primary-hover: #d97706; 
+  
   background: var(--bg-main); 
   color: var(--text-main); 
   min-height: 100vh; 
   width: 100%;
   overflow-x: hidden;
+  font-family: 'Poppins', sans-serif; /* Pastikan pake Poppins biar rapi */
 }
 
+/* --- DARK MODE --- */
 html.dark .mission-wrapper { 
-  --bg-main: #0f172a; 
-  --bg-card: #1e293b; 
+  --bg-main: #0a0a0a; 
+  --bg-card: #141414; 
   --text-main: #f8fafc; 
   --text-muted: #94a3b8; 
-  --border-color: #334155; 
+  --border-color: #262626; 
 }
 
+/* --- CONTAINER & HEADER --- */
 .mission-container { 
   width: 100%; 
   max-width: 600px; 
@@ -40,65 +45,199 @@ html.dark .mission-wrapper {
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
-  padding: 1rem; 
+  padding: 12px 20px; 
+  padding-top: calc(12px + env(safe-area-inset-top));
   z-index: 50; 
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+  border-bottom: 1px solid var(--border-color);
 }
 
-.header-title { font-size: 1.1rem; font-weight: 800; flex: 1; text-align: center; }
+.back-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.header-title { 
+  font-size: 1.15rem; 
+  font-weight: 800; 
+  flex: 1; 
+  text-align: center; 
+  margin: 0;
+}
+
 .header-coin { 
   display: flex; align-items: center; gap: 6px; font-weight: 800; 
-  font-size: 0.9rem; background: rgba(245,158,11,0.1); 
-  padding: 6px 12px; border-radius: 99px;
+  font-size: 0.95rem; background: rgba(245, 158, 11, 0.12); 
+  padding: 6px 14px; border-radius: 99px;
+  color: var(--primary);
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-.mission-card { background: var(--bg-card); margin: 1rem; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
-.streak-days-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+/* --- KARTU UTAMA (EXCHANGE & STREAK) --- */
+.mission-card { 
+  background: var(--bg-card); 
+  margin: 1.25rem 1rem; 
+  border-radius: 20px; /* Lebih melengkung */
+  padding: 1.5rem; 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03); 
+  border: 1px solid var(--border-color);
+}
+
+/* Khusus kartu gelap (Tukar Koin) biar shadow-nya beda */
+.mission-card[style*="linear-gradient"] {
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.2);
+  border: none;
+}
+
+/* --- STREAK DAYS (Check-in) --- */
+.streak-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 4px; color: var(--text-main); }
+.streak-desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+
+.streak-days-container { 
+  display: flex; gap: 10px; overflow-x: auto; 
+  padding-bottom: 15px; scrollbar-width: none; 
+}
 .streak-days-container::-webkit-scrollbar { display: none; } 
 
 .day-card { 
-  flex: 0 0 65px; background: var(--bg-main); border: 2px solid transparent; 
-  border-radius: 15px; display: flex; flex-direction: column; 
-  align-items: center; padding: 12px 5px; transition: 0.3s; 
+  flex: 0 0 72px; /* Lebih lebar biar lega */
+  background: var(--bg-main); 
+  border: 1.5px solid var(--border-color); 
+  border-radius: 16px; 
+  display: flex; flex-direction: column; 
+  align-items: center; padding: 14px 5px; 
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+  position: relative;
 }
-.day-card.active { border-color: var(--primary); background: rgba(245, 158, 11, 0.05); transform: scale(1.05); }
-.day-card.done { border-color: #10b981; opacity: 0.6; }
-.day-card.done::after { content: '✓'; position: absolute; top: -5px; right: -5px; background: #10b981; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; }
 
+.day-card.active { 
+  border-color: var(--primary); 
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.02)); 
+  transform: translateY(-4px); /* Efek melayang */
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.2);
+}
+
+.day-card.done { 
+  border-color: #10b981; 
+  background: rgba(16, 185, 129, 0.05);
+  opacity: 0.8; 
+}
+
+/* Ikon centang hijau buat yang udah selesai */
+.day-card.done::after { 
+  content: '✓'; 
+  position: absolute; top: -6px; right: -6px; 
+  background: #10b981; color: white; 
+  border-radius: 50%; width: 22px; height: 22px; 
+  font-size: 12px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; 
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+}
+
+.day-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+.day-reward { font-size: 0.9rem; font-weight: 800; color: var(--text-main); }
+
+/* --- TOMBOL UTAMA --- */
 .claim-main-btn { 
-  width: 100%; margin-top: 1rem; background: var(--primary); color: #fff; 
-  border: none; padding: 1rem; border-radius: 12px; font-size: 1rem; 
+  width: 100%; margin-top: 0.5rem; 
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover)); 
+  color: #fff; border: none; padding: 1rem; 
+  border-radius: 16px; font-size: 1.05rem; 
   font-weight: 800; cursor: pointer; transition: 0.3s; 
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
 }
-.claim-main-btn:disabled { background: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
+.claim-main-btn:disabled { 
+  background: var(--bg-main); 
+  color: var(--text-muted); 
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+  cursor: not-allowed; 
+}
 
-.mission-list { background: var(--bg-card); margin: 0 1rem; border-radius: 1.25rem; overflow: hidden; }
-.mission-item { display: flex; align-items: center; padding: 1.25rem; border-bottom: 1px solid var(--border-color); }
+/* --- LIST MISI --- */
+.section-title { 
+  font-size: 1.05rem; font-weight: 800; 
+  margin: 1.5rem 1.25rem 0.75rem; 
+  color: var(--text-main); 
+}
+
+.mission-list { 
+  background: var(--bg-card); 
+  margin: 0 1rem 1.5rem; 
+  border-radius: 20px; 
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02); 
+  overflow: hidden; 
+}
+
+.mission-item { 
+  display: flex; align-items: center; 
+  padding: 1.25rem; 
+  border-bottom: 1px solid var(--border-color); 
+}
 .mission-item:last-child { border-bottom: none; }
 
 .m-icon-box { 
-  width: 44px; height: 44px; border-radius: 12px; 
+  width: 48px; height: 48px; /* Diperbesar sedikit */
+  border-radius: 14px; 
   display: flex; align-items: center; justify-content: center; 
   color: white; flex-shrink: 0; 
 }
 
 .m-info { flex: 1; margin: 0 15px; min-width: 0; }
-.m-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
-.m-reward { font-size: 0.8rem; color: var(--primary); font-weight: 800; display: flex; align-items: center; gap: 5px; margin-bottom: 8px; }
-.progress-bar { width: 100%; height: 6px; background: var(--bg-main); border-radius: 10px; overflow: hidden; }
-.progress-fill { height: 100%; background: #10b981; transition: width 0.5s ease-out; }
-
-.m-btn { 
-  background: var(--bg-main); border: 1px solid var(--border-color); 
-  color: var(--text-main); padding: 8px 18px; border-radius: 99px; 
-  font-size: 0.85rem; font-weight: 700; cursor: pointer; 
+.m-title { font-size: 0.95rem; font-weight: 800; margin-bottom: 4px; color: var(--text-main); }
+.m-reward { 
+  font-size: 0.85rem; color: var(--primary); 
+  font-weight: 800; display: flex; align-items: center; 
+  gap: 6px; margin-bottom: 8px; 
 }
-.m-btn.btn-klaim { background: var(--primary); color: white; border: none; }
-.m-btn.btn-done { color: #10b981; border-color: #10b981; cursor: default; }
 
-.section-title { font-size: 1rem; font-weight: 800; margin: 1.5rem 1rem 0.75rem; color: var(--text-main); }
+.coin-dot { width: 8px; height: 8px; background: var(--primary); border-radius: 50%; }
 
-/* Security Overlay */
+/* --- PROGRESS BAR --- */
+.progress-bar { 
+  width: 100%; height: 8px; /* Sedikit lebih tebal */
+  background: var(--bg-main); 
+  border-radius: 10px; overflow: hidden; 
+  margin-bottom: 4px;
+}
+.progress-fill { height: 100%; background: #10b981; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.progress-text { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; }
+
+/* --- TOMBOL MISI KECIL --- */
+.m-btn { 
+  background: var(--bg-main); 
+  border: 1px solid var(--border-color); 
+  color: var(--text-main); 
+  padding: 10px 20px; 
+  border-radius: 12px; /* Gaya tombol modern (gak full bulet) */
+  font-size: 0.85rem; font-weight: 800; 
+  cursor: pointer; transition: 0.2s;
+}
+.m-btn:hover { background: var(--border-color); }
+
+.m-btn.btn-klaim { 
+  background: var(--primary); 
+  color: white; border: none; 
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+.m-btn.btn-klaim:hover { transform: scale(1.05); }
+
+.m-btn.btn-done { 
+  color: #10b981; 
+  background: rgba(16, 185, 129, 0.1);
+  border-color: transparent; 
+  cursor: default; 
+}
+.m-btn.btn-done:hover { background: rgba(16, 185, 129, 0.1); transform: none; }
+
+/* --- SECURITY OVERLAY --- */
 .security-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
   z-index: 99999; color: white; display: flex; flex-direction: column; 
