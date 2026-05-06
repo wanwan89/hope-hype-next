@@ -711,15 +711,20 @@ export default function RoomPage() {
         }
     }
 
-    function toggleGiftDrawer() {
+    function toggleGiftDrawer(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation(); // ✋ STOP! Biar klik gak tembus ke profil orang di belakang
+        }
         const drawer = document.getElementById('gift-drawer');
         const overlay = document.getElementById('drawer-overlay');
+        
         if(drawer) drawer.classList.toggle('open');
         if(overlay) overlay.classList.toggle('show');
         
         if (drawer && drawer.classList.contains('open')) {
             updateGiftTargets();
-            updateLevelProgressUI(); 
+            if (typeof updateLevelProgressUI === "function") updateLevelProgressUI(); 
         }
     }
 
