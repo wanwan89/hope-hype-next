@@ -278,7 +278,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 @keyframes scaleUpModal { 0% { transform: scale(0.8) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
 
 /* ==================================================
-   SIDEBAR MENU (KEMBALI JADI SIDEBAR FULL DI KANAN)
+   SIDEBAR MENU (FIX: NEMPEL KANAN & GAK KEBABLASAN)
 ================================================== */
 .sidebar-overlay { 
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); 
@@ -291,15 +291,16 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 .sidebar {
     position: fixed; 
     top: 0; 
-    right: 0; /* 🔥 NEMPEL KANAN FULL 🔥 */
+    right: 0; /* 🔥 KUNCI MATI DI KANAN 🔥 */
     width: 260px; 
     max-width: 75vw; 
-    height: 100%; /* 🔥 FULL TINGGI LAYAR 🔥 */
+    height: 100%; /* Laci full dari atas ke bawah */
     background: var(--panel-bg); 
     z-index: 2000;
     padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom)) 20px;
     display: flex; flex-direction: column; 
     
+    /* 🔥 Siku di Kanan (Nempel HP), Melengkung di Kiri 🔥 */
     border-top-left-radius: 28px; 
     border-bottom-left-radius: 28px;
     border-top-right-radius: 0;
@@ -308,15 +309,20 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
     border-left: 1px solid var(--border); 
     box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15); 
     
+    /* 🔥 NGUMPETNYA DI LUAR KANAN LAYAR 🔥 */
     transform: translateX(100%); 
     visibility: hidden;
     transition: transform 0.3s ease-out, visibility 0.3s ease-out; 
     will-change: transform, visibility;
 }
 
-.sidebar.active { transform: translateX(0); visibility: visible; }
+/* 🔥 INI REM CAKRAMNYA BIAR GAK KEBABLASAN: HARUS 0 🔥 */
+.sidebar.active { 
+    transform: translateX(0); 
+    visibility: visible; 
+}
 
-/* Kasih jarak atas biar menu gak nabrak ujung atas HP karena headernya dihapus */
+/* Biar menunya gak nabrak atas (karena headernya dihapus) */
 .sidebar-menu { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .sidebar-menu a { display: flex; align-items: center; gap: 14px; color: var(--text-main); text-decoration: none; padding: 12px 14px; border-radius: 16px; font-size: 14.5px; font-weight: 600; transition: all 0.2s ease; }
 .menu-icon-box { width: 38px; height: 38px; background: var(--empty-slot); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-main); }
@@ -324,7 +330,7 @@ h1, h2, h3, .room-title { letter-spacing: -0.02em; }
 .sidebar-menu a:active { background-color: var(--empty-slot); transform: scale(0.96); }
 .menu-divider { height: 1px; background: var(--border); margin: 10px 0; }
 
-/* 🔥 Bikin tombol logout turun mentok ke bawah 🔥 */
+/* 🔥 Bikin tombol Logout otomatis mentok ke dasar laci 🔥 */
 .sidebar-menu a.logout-item { color: #ef4444; margin-top: auto; }
 .logout-box { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 .sidebar-menu a.logout-item:active { background: rgba(239, 68, 68, 0.08); }
