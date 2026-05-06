@@ -711,22 +711,30 @@ export default function RoomPage() {
         }
     }
 
-    function toggleGiftDrawer(e) {
+    // 🔥 FIX: Pakai 'function' (f kecil) dan ganti nama biar gak bentrok 🔥
+    function toggleRoomGiftDrawer(e) {
         if (e) {
             e.preventDefault();
-            e.stopPropagation(); // ✋ STOP! Biar klik gak tembus ke profil orang di belakang
+            e.stopPropagation(); // Biar klik gak nembus ke belakang
         }
+        
         const drawer = document.getElementById('gift-drawer');
         const overlay = document.getElementById('drawer-overlay');
         
-        if(drawer) drawer.classList.toggle('open');
-        if(overlay) overlay.classList.toggle('show');
+        if (drawer) drawer.classList.toggle('open');
+        if (overlay) overlay.classList.toggle('show');
         
+        // Cek kalau laci lagi kebuka, baru update data target & progress
         if (drawer && drawer.classList.contains('open')) {
             updateGiftTargets();
-            if (typeof updateLevelProgressUI === "function") updateLevelProgressUI(); 
+            if (typeof updateLevelProgressUI === "function") {
+                updateLevelProgressUI();
+            }
         }
     }
+
+    // 🔥 WAJIB: Daftarkan ke window dengan nama baru 🔥
+    window.toggleRoomGiftDrawer = toggleRoomGiftDrawer;
 
     async function updateGiftTargets() {
         const targetContainer = document.getElementById('gift-targets');

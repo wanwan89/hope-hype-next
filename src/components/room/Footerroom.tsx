@@ -1,8 +1,9 @@
 'use client';
 
+// 👇 FIX: Pakai nama fungsi yang unik (toggleRoomGiftDrawer) biar gak bentrok sama Home
 declare global {
   interface Window {
-    toggleGiftDrawer?: (e?: any) => void;
+    toggleRoomGiftDrawer?: (e?: any) => void;
     kirimKomentar?: () => void;
     mintaNaik?: () => void;
   }
@@ -12,21 +13,33 @@ export default function Footer() {
   
   const bagikanRoom = async (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    const shareData = { title: 'Voice Room', text: 'Gabung panggung suara yuk!', url: window.location.href };
+    e.stopPropagation(); // 🛡️ Cegah klik nembus ke profil di belakang
+
+    const shareData = { 
+      title: 'Voice Room', 
+      text: 'Gabung panggung suara yuk!', 
+      url: window.location.href 
+    };
+
     try {
-      if (navigator.share) { await navigator.share(shareData); } 
-      else { await navigator.clipboard.writeText(window.location.href); alert('Link disalin!'); }
-    } catch (err) { console.log('Canceled'); }
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link disalin!'); 
+      }
+    } catch (err) {
+      console.log('Share canceled');
+    }
   };
 
   return (
     <footer className="footer-dock" onClick={(e) => e.stopPropagation()}>
       
-      {/* 1. GIFT */}
+      {/* 1. GIFT - Manggil toggleRoomGiftDrawer */}
       <button 
         type="button"
-        onClick={(e) => window.toggleGiftDrawer && window.toggleGiftDrawer(e)}
+        onClick={(e) => window.toggleRoomGiftDrawer && window.toggleRoomGiftDrawer(e)}
         className="dock-btn gift-btn"
       >
         <span className="material-icons">redeem</span>
@@ -41,7 +54,7 @@ export default function Footer() {
           autoComplete="off" 
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              e.preventDefault();
+              e.preventDefault(); // Cegah default enter
               if (window.kirimKomentar) window.kirimKomentar();
             }
           }} 
@@ -78,8 +91,7 @@ export default function Footer() {
           background: var(--panel-bg);
           border-top: 1px solid var(--border);
           display: flex; gap: 10px; align-items: center;
-          z-index: 9999; /* 🛡️ Tameng Z-Index super tinggi */
-          pointer-events: auto; /* Pastikan bisa diklik tapi gak nembus */
+          z-index: 9999; /* 🛡️ Tameng depan biar gak ketindih chat */
         }
 
         .dock-btn {
@@ -103,6 +115,11 @@ export default function Footer() {
         #chat-input {
           width: 100%; background: transparent; border: none;
           color: var(--text-main); font-size: 14px; font-weight: 500; outline: none;
+        }
+
+        #chat-input::placeholder {
+          color: var(--text-muted);
+          opacity: 0.7;
         }
       `}</style>
     </footer>
