@@ -56,9 +56,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* MODAL & NOTIFIKASI */}
         <LoginPopup />
-        <Overlays />
+        
+        {/* 🔥 FIX: Overlays (Kado Home) JANGAN dimunculkan kalau lagi di Voice Room 🔥 */}
+        {!isVoicePage && <Overlays />}
+
       </body>
     </html>
   );
 }
-
