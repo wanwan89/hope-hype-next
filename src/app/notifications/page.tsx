@@ -16,12 +16,21 @@ export default function NotificationsPage() {
   const sliderRef = useRef<HTMLDivElement>(null);
   const autoSlideTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // --- 🔥 FIX: REF UNTUK REALTIME CHANNEL 🔥 ---
+  const channelRef = useRef<any>(null);
+
   // --- INIT DATA ---
   useEffect(() => {
     initUserAndNotifs();
     startAutoSlide();
 
-    return () => stopAutoSlide();
+    return () => {
+      stopAutoSlide();
+      // 🔥 FIX: Hapus channel saat komponen mati biar gak memory leak / error 🔥
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
   }, []);
 
   const initUserAndNotifs = async () => {
@@ -53,17 +62,32 @@ export default function NotificationsPage() {
     }
   };
 
+  // --- 🔥 FIX: URUTAN ON() SEBELUM SUBSCRIBE() 🔥 ---
   const setupRealtime = (userId: string) => {
-    supabase
-      .channel('public:notifications')
+    // Pastikan gak ada channel ganda dengan nama yang sama
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+
+    const channel = supabase
+      .channel(`notif-realtime-${userId}`) // Gunakan nama unik biar gak bentrok
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications', 
+          filter: `user_id=eq.${userId}` 
+        },
         (payload) => {
           setNotifs(prev => [payload.new, ...prev]);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime notification subscribed!');
+        }
+      });
+
+    channelRef.current = channel;
   };
 
   // --- LOGIKA SLIDER IKLAN ---
@@ -138,7 +162,7 @@ export default function NotificationsPage() {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
       case 'comment': return { icon: 'chat_bubble', color: '#10b981' };
-      case 'repost': return { icon: 'repeat', color: '#1DA1F2' }; // Biru Twitter/Hype
+      case 'repost': return { icon: 'repeat', color: '#1DA1F2' }; 
       case 'gift': return { icon: 'card_giftcard', color: '#f59e0b' };
       case 'payment_pending': return { icon: 'credit_card', color: '#8b5cf6' };
       default: return { icon: 'notifications', color: '#3b82f6' };
@@ -158,7 +182,6 @@ export default function NotificationsPage() {
       <header className="notif-header">
         
         <div className="notif-top-bar">
-          {/* 🔥 Tombol kembali sudah dihapus 🔥 */}
           <h2 style={{ marginLeft: '10px' }}>Notifikasi</h2>
         </div>
 

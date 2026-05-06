@@ -1,11 +1,52 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import Cropper from 'react-easy-crop'; 
+import { getCroppedImg, showNotif } from '@/lib/ui-utils'; // 🔥 Import helper lu di sini
 import './PostModal.css';
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
+
+// --- 🔥 HELPER UNTUK PROSES CROP GAMBAR 🔥 ---
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.setAttribute('crossOrigin', 'anonymous');
+    image.src = url;
+  });
+
+const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) throw new Error("No 2d context");
+
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob!);
+    }, 'image/jpeg');
+  });
+};
 
 interface PostModalProps {
   onClose: () => void;
@@ -17,18 +58,24 @@ export default function PostModal({ onClose }: PostModalProps) {
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
   
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // State File & Preview
+  const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 🔥 State Khusus Cropping
+  const [imageForCrop, setImageForCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
+  // State Musik
   const [searchMusic, setSearchMusic] = useState('');
   const [musicResults, setMusicResults] = useState<any[]>([]);
   const [selectedMusic, setSelectedMusic] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 🔥 Tambahan State untuk Audio Preview
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -53,26 +100,50 @@ export default function PostModal({ onClose }: PostModalProps) {
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
-  // 🔥 Fungsi Toggle Play/Pause Audio
-  const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation(); // Biar gak auto-select pas mau preview doang
+  // Handle Pilih File Pertama Kali
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageForCrop(reader.result as string); // Tampilkan UI editor crop dulu
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
+  // Callback pas user geser/zoom foto
+  const onCropComplete = useCallback((_croppedArea: any, pixels: any) => {
+    setCroppedAreaPixels(pixels);
+  }, []);
+
+  // Simpan hasil potong
+  const handleSaveCrop = async () => {
+    if (!imageForCrop || !croppedAreaPixels) return;
+    try {
+      const croppedBlob = await getCroppedImg(imageForCrop, croppedAreaPixels);
+      setSelectedFile(croppedBlob);
+      setPreviewUrl(URL.createObjectURL(croppedBlob));
+      setImageForCrop(null); // Tutup editor crop, balik ke form modal
+    } catch (e) {
+      console.error("Error Cropping:", e);
+    }
+  };
+
+  const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (playingUrl === url) {
       audioRef.current?.pause();
       setPlayingUrl(null);
     } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
+      if (audioRef.current) audioRef.current.pause();
       audioRef.current = new Audio(url);
       audioRef.current.play();
       setPlayingUrl(url);
-      
       audioRef.current.onended = () => setPlayingUrl(null);
     }
   };
 
-  // 🔥 Cleanup audio pas modal ditutup
   const handleClose = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -82,17 +153,7 @@ export default function PostModal({ onClose }: PostModalProps) {
     document.body.style.overflow = "";
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onload = (ev) => setPreviewUrl(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadToCloudinary = async (file: File) => {
+  const uploadToCloudinary = async (file: File | Blob) => {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
@@ -160,13 +221,48 @@ export default function PostModal({ onClose }: PostModalProps) {
   return (
     <div className={`post-modal active`}>
       <div className="post-modal-content">
+        
+        {/* 🔥 UI EDITOR CROP (Muncul hanya saat pilih foto) 🔥 */}
+        {imageForCrop && (
+          <div className="crop-overlay-wrapper">
+            <div className="crop-container-box">
+              <Cropper
+                image={imageForCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={1 / 1} // Paksa 1:1 biar feed rapi
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div className="crop-footer-controls">
+              <div className="zoom-slider">
+                <span className="material-icons">remove</span>
+                <input 
+                  type="range" 
+                  value={zoom} 
+                  min={1} 
+                  max={3} 
+                  step={0.1} 
+                  onChange={(e) => setZoom(Number(e.target.value))} 
+                />
+                <span className="material-icons">add</span>
+              </div>
+              <div className="crop-action-btns">
+                <button type="button" className="crop-cancel" onClick={() => setImageForCrop(null)}>Batal</button>
+                <button type="button" className="crop-confirm" onClick={handleSaveCrop}>Gunakan Foto Ini</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <button type="button" className="post-close-btn" onClick={handleClose}>&times;</button>
 
         <h2 className="post-modal-title">Upload Post</h2>
         <p className="post-modal-subtitle">Karya kamu akan dikirim untuk direview dulu ya</p>
 
         <form onSubmit={handleSubmit} className="post-form">
-          
           <div className="destination-container">
             <p className="section-label">Kirim Ke:</p>
             <div className="dest-toggle-group">
@@ -212,7 +308,7 @@ export default function PostModal({ onClose }: PostModalProps) {
                   <small>JPG, PNG, WEBP • Max 5MB</small>
                 </div>
               ) : (
-                <img src={previewUrl} className="post-preview-image" alt="Preview" />
+                <img src={previewUrl} className="post-preview-image" alt="Preview" style={{ objectFit: 'cover' }} />
               )}
             </div>
           )}
@@ -230,33 +326,14 @@ export default function PostModal({ onClose }: PostModalProps) {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               style={{
-                width: '100%',
-                padding: '12px 15px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                backgroundColor: '#fff',
-                fontSize: '15px',
-                color: '#333',
-                cursor: 'pointer',
-                outline: 'none',
-                fontWeight: '500'
+                width: '100%', padding: '12px 15px', border: '1px solid #ccc', borderRadius: '8px', appearance: 'none', WebkitAppearance: 'none', backgroundColor: '#fff', fontSize: '15px', color: '#333', cursor: 'pointer', outline: 'none', fontWeight: '500'
               }}
             >
               {["Karya", "Prestasi", "Photography", "Mountain", "Thread"].map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-            <i style={{ 
-              position: 'absolute', 
-              right: '15px', 
-              top: '50%', 
-              transform: 'translateY(-50%)', 
-              pointerEvents: 'none', 
-              color: '#888',
-              fontSize: '12px'
-            }}>▼</i>
+            <i style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#888', fontSize: '12px' }}>▼</i>
           </div>
 
           <div className="music-picker-section" style={{ marginTop: '20px' }}>
@@ -276,17 +353,8 @@ export default function PostModal({ onClose }: PostModalProps) {
                     <div key={i} className="dest-content" style={{padding:'8px', marginBottom:0, cursor:'pointer', alignItems: 'center'}} onClick={() => setSelectedMusic(song)}>
                       <div style={{position: 'relative', width: 38, height: 38, marginRight: 12, flexShrink: 0}}>
                         <img src={song.artworkUrl100} style={{width:'100%', height:'100%', borderRadius:8}} />
-                        {/* Tombol Play/Pause Overlay */}
-                        <div 
-                          onClick={(e) => togglePlayPreview(song.previewUrl, e)}
-                          style={{
-                            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', 
-                            borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}
-                        >
-                          <span className="material-icons" style={{color: '#fff', fontSize: '20px'}}>
-                            {playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}
-                          </span>
+                        <div onClick={(e) => togglePlayPreview(song.previewUrl, e)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span className="material-icons" style={{color: '#fff', fontSize: '20px'}}>{playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}</span>
                         </div>
                       </div>
                       <div style={{flex:1, overflow:'hidden'}}>
@@ -300,24 +368,15 @@ export default function PostModal({ onClose }: PostModalProps) {
             ) : (
               <div className="selected-music-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div className="music-info-mini" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <button 
-                    type="button" 
-                    onClick={() => togglePlayPreview(selectedMusic.previewUrl)}
-                    style={{ background: 'var(--primary-blue)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <span className="material-icons" style={{ color: '#fff', fontSize: '18px' }}>
-                      {playingUrl === selectedMusic.previewUrl ? 'pause' : 'play_arrow'}
-                    </span>
+                  <button type="button" onClick={() => togglePlayPreview(selectedMusic.previewUrl)} style={{ background: 'var(--primary-blue)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <span className="material-icons" style={{ color: '#fff', fontSize: '18px' }}>{playingUrl === selectedMusic.previewUrl ? 'pause' : 'play_arrow'}</span>
                   </button>
                   <div>
                     <span className="audio-tag">AUDIO</span>
                     <div className="music-title-text">{selectedMusic.trackName} — {selectedMusic.artistName}</div>
                   </div>
                 </div>
-                <button type="button" className="remove-music-link" onClick={() => { 
-                  if(playingUrl === selectedMusic.previewUrl) togglePlayPreview(selectedMusic.previewUrl);
-                  setSelectedMusic(null);
-                }}>HAPUS</button>
+                <button type="button" className="remove-music-link" onClick={() => { if(playingUrl === selectedMusic.previewUrl) togglePlayPreview(selectedMusic.previewUrl); setSelectedMusic(null); }}>HAPUS</button>
               </div>
             )}
           </div>
