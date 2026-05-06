@@ -54,9 +54,44 @@ export default function Modals() {
         </div>
       </div>
 
-      {/* 3. MODAL LEADERBOARD (SULTAN) */}
-      <div id="top-gifters-modal" className="modal-overlay" style={{ zIndex: 10006 }}>
+      {/* 3. MODAL LEADERBOARD (SULTAN) - 🔥 DIUBAH JADI SLIDE UP 🔥 */}
+      
+      {/* CSS Khusus buat maksa modal ini jadi Laci dari bawah */}
+      <style dangerouslySetInnerHTML={{__html: `
+        #top-gifters-modal {
+          align-items: flex-end !important; /* Paksa turun ke dasar layar */
+        }
+        #top-gifters-modal[style*="display: flex"] .modal-leaderboard {
+          width: 100%;
+          max-width: 500px; 
+          margin: 0 auto;
+          border-radius: 32px 32px 0 0; /* Melengkung di atas doang */
+          padding-bottom: calc(24px + env(safe-area-inset-bottom));
+          transform: translateY(100%);
+          /* Animasi naik dari bawah */
+          animation: slideUpSheet 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards !important; 
+        }
+        @keyframes slideUpSheet {
+          to { transform: translateY(0); }
+        }
+        .sheet-handle {
+          width: 48px; height: 5px; background: #334155; border-radius: 10px; margin: -10px auto 20px auto;
+        }
+      `}} />
+
+      {/* Tambahin event onClick ke overlay biar user bisa tap di luar buat nutup */}
+      <div 
+        id="top-gifters-modal" 
+        className="modal-overlay" 
+        style={{ zIndex: 10006 }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && window.closeTopGiftersModal) {
+            window.closeTopGiftersModal();
+          }
+        }}
+      >
         <div className="modal-box modal-leaderboard">
+          <div className="sheet-handle"></div>
           <div className="modal-header">
             <h3 className="gold-title">🏆 THE SULTAN</h3>
             <button className="close-modal" onClick={() => window.closeTopGiftersModal && window.closeTopGiftersModal()}>
