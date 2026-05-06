@@ -168,7 +168,6 @@ export default function VoiceLobbyPage() {
           <div className="header-info">
             <h3>{currentUser?.username || 'Hi, Bree!'}</h3>
             <div className="coin-badge">
-              {/* FIX: Ikon Koin Dihapus, Hanya Sisa Angka Saja */}
               {currentUser ? (currentUser.coins || 0).toLocaleString() : 0}
             </div>
           </div>
@@ -236,26 +235,44 @@ export default function VoiceLobbyPage() {
         )}
       </main>
 
-      {/* MODAL BIKIN ROOM */}
+      {/* MODAL BIKIN ROOM (SUDAH DI-FIX SESUAI CSS) */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Siapin Panggung Lo</h3>
-            <div className="form-group">
-              <label>Nama Panggung</label>
-              <input type="text" placeholder="Cth: Nongkrong Santai" maxLength={25} value={newRoomForm.name} onChange={e => setNewRoomForm({...newRoomForm, name: e.target.value})} />
+            <div className="modal-header">
+               <h3>Siapin Panggung Lo</h3>
             </div>
-            <div className="form-group">
+            
+            <div className="modal-body">
+              <label>Nama Panggung</label>
+              <input 
+                type="text" 
+                placeholder="Cth: Nongkrong Santai" 
+                maxLength={25} 
+                value={newRoomForm.name} 
+                onChange={e => setNewRoomForm({...newRoomForm, name: e.target.value})} 
+              />
+              
               <label>Kategori</label>
-              <select value={newRoomForm.category} onChange={e => setNewRoomForm({...newRoomForm, category: e.target.value})}>
+              <select 
+                style={{
+                  width: '100%', padding: '14px 16px', borderRadius: '12px',
+                  border: '1px solid rgba(0,0,0,0.1)', background: 'var(--bg-app)',
+                  fontSize: '14px', fontWeight: '600', color: 'var(--text-dark)',
+                  marginBottom: '24px', outline: 'none'
+                }}
+                value={newRoomForm.category} 
+                onChange={e => setNewRoomForm({...newRoomForm, category: e.target.value})}
+              >
                 <option value="Nyanyi">Nyanyi</option>
                 <option value="Ngobrol">Ngobrol</option>
                 <option value="Mabar">Mabar</option>
               </select>
             </div>
+
             <div className="modal-actions">
-              <button className="modal-btn btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
-              <button className="modal-btn btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
+              <button className="btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
+              <button className="btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
                 {isCreating ? 'Membangun...' : 'Buat Sekarang'}
               </button>
             </div>
