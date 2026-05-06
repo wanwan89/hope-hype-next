@@ -9,8 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^5.2.0",
     "@supabase/supabase-js": "^2.48.1",
-    "canvas-confetti": "^1.9.3",
+    "canvas-confetti": "^1.9.4",
     "livekit-client": "^2.18.9",
     "lucide-react": "^0.474.0",
     "next": "16.2.4",
