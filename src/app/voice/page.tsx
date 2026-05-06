@@ -741,7 +741,8 @@ export default function RoomPage() {
             return targetContainer.innerHTML = "<span style='font-size:12px; color:#888; padding: 10px;'>Cuma ada kamu disi</span>";
         }
 
-        slots.forEach((slot, index) => {
+        // 🔥 FIX: Tambahin ': any' di parameter slot biar TypeScript gak sok tau 🔥
+        slots.forEach((slot: any, index: number) => {
             const isSelected = selectedTargetId === slot.profile_id;
             const div = document.createElement('div'); 
             
@@ -750,20 +751,27 @@ export default function RoomPage() {
             
             div.onclick = () => { 
                 selectedTargetId = slot.profile_id; 
-                selectedTargetName = slot.profiles.username; 
+                
+                // Cek aman: Kalo Supabase ngasih array, ambil [0]. Kalo bukan, ambil langsung.
+                const namaTarget = Array.isArray(slot.profiles) ? slot.profiles[0]?.username : slot.profiles?.username;
+                selectedTargetName = namaTarget || "User"; 
+                
                 updateGiftTargets(); 
             };
 
+            const pAvatar = Array.isArray(slot.profiles) ? slot.profiles[0]?.avatar_url : slot.profiles?.avatar_url;
+            const pName = Array.isArray(slot.profiles) ? slot.profiles[0]?.username : slot.profiles?.username;
+
             div.innerHTML = `
-                <img src="${slot.profiles.avatar_url || 'asets/png/profile.png'}" class="target-avatar">
-                <span class="target-name">${slot.profiles.username}</span>
+                <img src="${pAvatar || 'asets/png/profile.png'}" class="target-avatar">
+                <span class="target-name">${pName || 'User'}</span>
             `;
             
             targetContainer.appendChild(div);
 
             if (!selectedTargetId && index === 0) { 
                 selectedTargetId = slot.profile_id; 
-                selectedTargetName = slot.profiles.username; 
+                selectedTargetName = pName || 'User'; 
                 div.classList.add('selected'); 
             }
         });
