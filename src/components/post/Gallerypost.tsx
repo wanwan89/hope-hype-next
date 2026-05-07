@@ -3,9 +3,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
+// 🔥 FIX 1: Import i18n hook
+import { useTranslation } from 'react-i18next';
 import './Gallery.css';
 
 export default function Gallerypost() {
+  // 🔥 FIX 2: Inisialisasi Translate & i18n untuk tanggal
+  const { t, i18n } = useTranslation();
+  
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -14,9 +19,7 @@ export default function Gallerypost() {
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   
-  // 🔥 FIX 1: Tambah 'saves' ke dalam state counts 🔥
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
-  
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -56,7 +59,6 @@ export default function Gallerypost() {
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
         
-        // 🔥 FIX 2: Ikut hitung data dari tabel bookmarks 🔥
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from("likes").select("post_id").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -87,6 +89,7 @@ export default function Gallerypost() {
       setPosts(fetchedPosts);
       setTimeout(initAutoPlayObserver, 500);
 
+      // Handle direct hash navigation
       setTimeout(() => {
         if (window.location.hash) {
           const hashId = window.location.hash.substring(1);
@@ -94,26 +97,17 @@ export default function Gallerypost() {
           if (targetEl) {
             targetEl.style.transition = 'box-shadow 0.5s ease';
             targetEl.style.boxShadow = '0 0 30px rgba(0, 162, 255, 0.8)';
-            
             targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            setTimeout(() => {
-              targetEl.style.boxShadow = '';
-            }, 2000);
+            setTimeout(() => { targetEl.style.boxShadow = ''; }, 2000);
           }
         }
       }, 800);
 
-    } catch (err) {
-      console.error("Gallery Error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsLoading(false); }
   };
 
   const handleLike = async (postId: string, creatorId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
-    
     const isLiked = myLikedPosts.has(postId);
     const numericPostId = parseInt(postId);
     
@@ -137,14 +131,11 @@ export default function Gallerypost() {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
           await supabase.from("notifications").insert({
             user_id: creatorId, actor_id: currentUser.id, post_id: numericPostId, type: "like",
-            message: `<b>${prof?.username}</b> menyukai karyamu.`
+            message: t('notif_commented', { username: prof?.username }) // Reusing similar logic
           });
         }
       }
-    } catch (err) {
-      console.error("Like Error:", err);
-      showNotif("Gagal menyimpan like", "error");
-    }
+    } catch (err) { showNotif(t('like_save_error'), "error"); }
   };
 
   const handleRepost = async (postId: string) => {
@@ -171,14 +162,9 @@ export default function Gallerypost() {
     }));
 
     try {
-      if (isReposted) {
-        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
-      } else {
-        await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
-      }
-    } catch (err) {
-      console.error("Repost Error:", err);
-    }
+      if (isReposted) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      else await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
+    } catch (err) { console.error(err); }
   };
 
   const handleSave = async (postId: string) => {
@@ -192,21 +178,15 @@ export default function Gallerypost() {
       return newSet;
     });
 
-    // 🔥 FIX 3: Tambah logic buat nambah/kurang jumlah angka save (realtime UI) 🔥
     setCounts(prev => ({
       ...prev,
       [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) }
     }));
 
     try {
-      if (isSaved) {
-        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
-      } else {
-        await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
-      }
-    } catch (err) {
-      console.error("Save Error:", err);
-    }
+      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
+    } catch (err) { console.error(err); }
   };
 
   const initAutoPlayObserver = () => {
@@ -227,10 +207,7 @@ export default function Gallerypost() {
           audio.currentTime = 0;
           audio.volume = 1.0;
           audio.muted = !userHasInteracted;
-          audio.play().catch(() => {
-            audio.muted = true;
-            audio.play().catch(() => {});
-          });
+          audio.play().catch(() => {});
         } else {
           audio.pause();
         }
@@ -249,9 +226,9 @@ export default function Gallerypost() {
     const finalAudio = cleanAudio.startsWith("http") ? cleanAudio : `/songs/${cleanAudio}`;
     
     return (
-      <div className="music-marquee-container" style={{ background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '20px', padding: '5px 15px', zIndex: 10, maxWidth: '150px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', pointerEvents: 'none', marginBottom: '10px' }}>
-        <div className="marquee-text" style={{ fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-block', animation: 'marquee-play 8s linear infinite', letterSpacing: '0.3px' }}>
-          {post.title || 'Untitled'} — {post.artist || 'Unknown Artist'}
+      <div className="music-marquee-container">
+        <div className="marquee-text">
+          {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
         </div>
         <audio className="post-audio-element" loop preload="metadata" playsInline style={{ display: 'none' }}>
           <source src={finalAudio} type="audio/mpeg" />
@@ -262,26 +239,15 @@ export default function Gallerypost() {
 
   const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
-      {/* 🔥 FIX 4: Tombol Simpan dengan Angka & Perubahan Warna Biru 🔥 */}
-      <button 
-        className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
-        onClick={() => handleSave(postIdStr)}
-        style={{ color: mySavedPosts.has(postIdStr) ? "#1DA1F2" : "inherit" }}
-      >
+      <button className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} onClick={() => handleSave(postIdStr)} style={{ color: mySavedPosts.has(postIdStr) ? "#1DA1F2" : "inherit" }}>
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor">
-          {mySavedPosts.has(postIdStr) ? (
-            <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-          ) : (
-            <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />
-          )}
+          {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
         </svg>
         <span className="save-count">{counts[postIdStr]?.saves || 0}</span>
       </button>
       
       <button className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} onClick={() => handleRepost(postIdStr)}>
-        <svg viewBox="0 0 24 24" className="icon" fill="currentColor">
-          <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
-        </svg>
+        <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/></svg>
         <span className="repost-count">{counts[postIdStr]?.reposts || 0}</span>
       </button>
 
@@ -302,16 +268,19 @@ export default function Gallerypost() {
       <div className="gallery" id="mainGallery">
         {isLoading ? (
           <div className="gallery-skeleton-wrapper">
-            <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer"></div></div>
-            <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer"></div></div>
+            <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer" /></div>
+            <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer" /></div>
           </div>
         ) : posts.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>Tidak ada postingan.</p>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>{t('no_posts_found')}</p>
         ) : (
           posts.map(post => {
             const badge = getUserBadge(post.profiles?.role);
             const avatarUrl = post.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + post.profiles?.username;
-            const formattedDate = new Date(post.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+            
+            // 🔥 FIX 3: Dynamic Date Locale 🔥
+            const formattedDate = new Date(post.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short" });
+            
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
 
@@ -321,13 +290,7 @@ export default function Gallerypost() {
                   <>
                     <div className="slider">
                       <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}>{getMusicHtml(post)}</div>
-                      <img 
-                        src={post.image_url} 
-                        className="active" 
-                        loading="lazy" 
-                        alt="Post" 
-                        onClick={() => (window as any).openBigImage && (window as any).openBigImage(post.image_url)}
-                      />
+                      <img src={post.image_url} className="active" loading="lazy" alt="Post" onClick={() => (window as any).openBigImage?.(post.image_url)} />
                       <div className="watermark-overlay"><img src="/asets/svg/watermark.svg" alt="watermark" /></div>
                     </div>
                     
@@ -336,14 +299,14 @@ export default function Gallerypost() {
                         <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
                           {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                         </h2>
-                        <button className="options-btn" onClick={() => (window as any).openPostOptions && (window as any).openPostOptions(post.id, isOwner, post.creator_id)}>
+                        <button className="options-btn" onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}>
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
                       </div>
                       <p className="post-bio">{post.bio?.trim()}</p>
-                      <div className="post-date-wrapper">Diunggah {formattedDate}</div>
+                      <div className="post-date-wrapper">{t('uploaded_on')} {formattedDate}</div>
                       <div className="actions">
-                        <a href={`/data?id=${post.creator_id}`} className="primary">Detail</a>
+                        <a href={`/data?id=${post.creator_id}`} className="primary">{t('view_detail')}</a>
                         {renderEngagementButtons(post, postIdStr)}
                       </div>
                     </div>
@@ -360,14 +323,14 @@ export default function Gallerypost() {
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
                         </div>
                       </div>
-                      <button onClick={() => (window as any).openPostOptions && (window as any).openPostOptions(post.id, isOwner, post.creator_id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <button onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
                     </div>
                     <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px' }}>{post.bio?.trim()}</div>
                     {post.audio_src && <div style={{ marginTop: '10px' }}>{getMusicHtml(post)}</div>}
                     <div className="actions" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px', paddingTop: '12px' }}>
-                      <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>Lihat Profil</a>
+                      <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_profile_link')}</a>
                       {renderEngagementButtons(post, postIdStr)}
                     </div>
                   </>

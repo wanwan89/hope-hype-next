@@ -3,18 +3,21 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
+// 🔥 FIX 1: Import i18n hook
+import { useTranslation } from 'react-i18next';
 import './SearchWrapper.css';
 
 export default function SearchWrapperpost() {
   const router = useRouter();
   const pathname = usePathname(); 
+  // 🔥 FIX 2: Inisialisasi translate
+  const { t } = useTranslation();
 
   const [mounted, setMounted] = useState(false); 
   const [stories, setStories] = useState<any[]>([]);
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [isStoriesVisible, setIsStoriesVisible] = useState(true);
   
-  // 🔥 Trik IG: State buat nandain story mana yang lagi di-animasiin
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
 
   // --- CEK HALAMAN YANG HEADERNYA HARUS ILANG ---
@@ -65,16 +68,12 @@ export default function SearchWrapperpost() {
     }
   };
 
-  // 🔥 FIX: Handler Klik Story ala IG (Ada Animasi Bouncy) 🔥
   const handleStoryClick = (sId: string) => {
-    // 1. Mulai animasi mengecil
     setAnimatingStoryId(sId);
     setClickedStoryId(sId); 
     
-    // 2. Kasih jeda 200ms biar animasi keliatan, baru pindah halaman
     setTimeout(() => {
       router.push(`/story/${sId}`);
-      // (Opsional) Reset animasi setelah pindah
       setTimeout(() => setAnimatingStoryId(null), 100);
     }, 200);
   };
@@ -128,7 +127,8 @@ export default function SearchWrapperpost() {
         <div className="brutal-input-container" style={{ flex: 1 }}>
           <input
             type="text"
-            placeholder="Cari kreator..."
+            // 🔥 FIX 3: Placeholder i18n
+            placeholder={t('search_placeholder')}
             className="brutal-input"
             style={{
               width: '100%', height: '40px', padding: '8px 18px',
@@ -195,7 +195,6 @@ export default function SearchWrapperpost() {
                 alignItems: 'center', 
                 gap: '8px', 
                 cursor: 'pointer',
-                // 🔥 ANIMASI IG: Mengecil pas diklik, lalu balik lagi (Bouncy)
                 transform: animatingStoryId === story.id ? 'scale(0.85)' : 'scale(1)',
                 opacity: animatingStoryId === story.id ? 0.7 : 1,
                 transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' 

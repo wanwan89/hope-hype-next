@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
+// 🔥 FIX 1: Import i18n
+import { useTranslation } from 'react-i18next';
 import './GiftSheet.css';
 
 const GIFT_DATA = [
@@ -14,6 +16,9 @@ const GIFT_DATA = [
 ];
 
 export default function GiftSheetpost() {
+  // 🔥 FIX 2: Inisialisasi Translate
+  const { t } = useTranslation();
+
   const [isActive, setIsActive] = useState(false);
   const [userCoins, setUserCoins] = useState(0);
   const [selectedGift, setSelectedGift] = useState<any>(null);
@@ -22,7 +27,6 @@ export default function GiftSheetpost() {
   const [targetPost, setTargetPost] = useState({ id: '', creatorId: '', creatorName: '' });
 
   useEffect(() => {
-    // Listener aslinya buat di gallery (sebelum dipindah)
     const handleGiftOpen = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const btn = target.closest(".gift-btn") as HTMLElement;
@@ -32,14 +36,14 @@ export default function GiftSheetpost() {
         if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
         
         if (session.user.id === btn.dataset.creator) {
-          if ((window as any).showNotif) (window as any).showNotif("Tidak bisa memberi ke diri sendiri", "warning");
+          if ((window as any).showNotif) (window as any).showNotif(t('gift_self_error'), "warning");
           return;
         }
 
         setTargetPost({
           id: btn.dataset.post || '',
           creatorId: btn.dataset.creator || '',
-          creatorName: btn.dataset.name || ''
+          creatorName: btn.dataset.name || t('creator_label')
         });
 
         const { data: prof } = await supabase.from("profiles").select("coins").eq("id", session.user.id).single();
@@ -51,9 +55,8 @@ export default function GiftSheetpost() {
 
     document.body.addEventListener("click", handleGiftOpen);
     return () => document.body.removeEventListener("click", handleGiftOpen);
-  }, []);
+  }, [t]);
 
-  // 🔥 LISTENER BARU (DARI COMMENT MODAL) 🔥
   useEffect(() => {
     const handleOpenFromComment = async (e: any) => {
       const { creatorId, postId } = e.detail;
@@ -62,14 +65,14 @@ export default function GiftSheetpost() {
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       
       if (session.user.id === creatorId) {
-        if ((window as any).showNotif) (window as any).showNotif("Tidak bisa memberi ke diri sendiri", "warning");
+        if ((window as any).showNotif) (window as any).showNotif(t('gift_self_error'), "warning");
         return;
       }
 
       setTargetPost({
         id: postId,
         creatorId: creatorId,
-        creatorName: 'Kreator' // Bisa dibikin fetch kalau butuh namanya persis
+        creatorName: t('creator_label')
       });
 
       const { data: prof } = await supabase.from("profiles").select("coins").eq("id", session.user.id).single();
@@ -80,7 +83,7 @@ export default function GiftSheetpost() {
 
     window.addEventListener("openGift", handleOpenFromComment);
     return () => window.removeEventListener("openGift", handleOpenFromComment);
-  }, []);
+  }, [t]);
 
   const closeSheet = () => {
     setIsActive(false);
@@ -92,7 +95,7 @@ export default function GiftSheetpost() {
     if (!selectedGift || isSending) return;
     
     if (selectedGift.amount > userCoins) {
-      if ((window as any).showNotif) (window as any).showNotif("Koin kamu gak cukup. Top up dulu.", "error");
+      if ((window as any).showNotif) (window as any).showNotif(t('insufficient_coins'), "error");
       return;
     }
 
@@ -110,7 +113,7 @@ export default function GiftSheetpost() {
       });
       if (rpcErr) throw rpcErr;
 
-      // 2. Insert Transactions & History (Parallel agar cepat)
+      // 2. Insert Transactions & History (Diterjemahkan deskripsinya)
       await Promise.all([
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
@@ -119,22 +122,34 @@ export default function GiftSheetpost() {
           amount: selectedGift.amount 
         }),
         supabase.from("coin_history").insert([
-          { user_id: session.user.id, type: "keluar", transaction_type: "keluar", amount: selectedGift.amount, description: `Kirim gift ke ${targetPost.creatorName}` },
-          { user_id: targetPost.creatorId, type: "masuk", transaction_type: "masuk", amount: selectedGift.amount, description: `Terima gift dari seseorang` }
+          { 
+            user_id: session.user.id, 
+            type: "keluar", 
+            transaction_type: "keluar", 
+            amount: selectedGift.amount, 
+            description: t('history_send_desc', { name: targetPost.creatorName }) 
+          },
+          { 
+            user_id: targetPost.creatorId, 
+            type: "masuk", 
+            transaction_type: "masuk", 
+            amount: selectedGift.amount, 
+            description: t('history_receive_desc') 
+          }
         ])
       ]);
 
-      // 3. Notifikasi standar gift
+      // 3. Notifikasi (i18n)
       const { data: sProf } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
       await supabase.from("notifications").insert({ 
         user_id: targetPost.creatorId, 
         actor_id: session.user.id, 
         post_id: parseInt(targetPost.id), 
         type: "gift", 
-        message: `<b>${sProf?.username}</b> mengirim ${selectedGift.amount} koin ke karyamu.` 
+        message: t('gift_notif_msg', { username: sProf?.username, amount: selectedGift.amount }) 
       });
 
-      // 🔥 4. TRIGGER INSERT KOMENTAR GIFT 🔥
+      // 4. TRIGGER INSERT KOMENTAR GIFT
       window.dispatchEvent(new CustomEvent('insertGiftComment', {
         detail: {
           postId: targetPost.id,
@@ -149,7 +164,7 @@ export default function GiftSheetpost() {
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
       
       if ((window as any).showBigImage) (window as any).showBigImage(selectedGift.img);
-      if ((window as any).showNotif) (window as any).showNotif("Berhasil nyawer kreator!", "success");
+      if ((window as any).showNotif) (window as any).showNotif(t('gift_sent_success'), "success");
 
       closeSheet();
     } catch (err: any) {
@@ -167,7 +182,7 @@ export default function GiftSheetpost() {
         <div className="sheet-handle" />
 
         <div className="gift-header">
-          <span>Kirim hadiah untuk mendukung kreator</span>
+          <span>{t('gift_sheet_header')}</span>
           <span className="gift-close-x" onClick={closeSheet}>&times;</span>
         </div>
 
@@ -200,7 +215,7 @@ export default function GiftSheetpost() {
             disabled={!selectedGift || isSending}
             onClick={handleSendGift}
           >
-            {isSending ? "Mengirim..." : selectedGift ? `Kirim (${selectedGift.amount} Koin)` : "Kirim"}
+            {isSending ? t('sending') : selectedGift ? t('btn_send_amount', { amount: selectedGift.amount }) : t('btn_send')}
           </button>
         </div>
       </div>

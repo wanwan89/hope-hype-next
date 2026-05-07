@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop'; 
-import { getCroppedImg, showNotif } from '@/lib/ui-utils'; // 🔥 Fungsi diambil dari sini
+import { getCroppedImg, showNotif } from '@/lib/ui-utils';
+// 🔥 FIX 1: Import i18n hook
+import { useTranslation } from 'react-i18next';
 import './PostModal.css';
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
@@ -14,23 +16,23 @@ interface PostModalProps {
 }
 
 export default function PostModal({ onClose }: PostModalProps) {
+  // 🔥 FIX 2: Inisialisasi translate hook
+  const { t } = useTranslation();
+
   const [postType, setPostType] = useState<'image' | 'text'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
   
-  // State File & Preview
   const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🔥 State Khusus Cropping
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
-  // State Musik
   const [searchMusic, setSearchMusic] = useState('');
   const [musicResults, setMusicResults] = useState<any[]>([]);
   const [selectedMusic, setSelectedMusic] = useState<any>(null);
@@ -40,7 +42,6 @@ export default function PostModal({ onClose }: PostModalProps) {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // iTunes Music Search Logic
   useEffect(() => {
     if (!searchMusic.trim()) {
       setMusicResults([]);
@@ -61,32 +62,28 @@ export default function PostModal({ onClose }: PostModalProps) {
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
-  // Handle Pilih File Pertama Kali
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        setImageForCrop(reader.result as string); // Tampilkan UI editor crop dulu
+        setImageForCrop(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Callback pas user geser/zoom foto
   const onCropComplete = useCallback((_croppedArea: any, pixels: any) => {
     setCroppedAreaPixels(pixels);
   }, []);
 
-  // Simpan hasil potong
   const handleSaveCrop = async () => {
     if (!imageForCrop || !croppedAreaPixels) return;
     try {
-      // Memanggil helper dari ui-utils
       const croppedBlob = await getCroppedImg(imageForCrop, croppedAreaPixels);
       setSelectedFile(croppedBlob);
       setPreviewUrl(URL.createObjectURL(croppedBlob));
-      setImageForCrop(null); // Tutup editor crop, balik ke form modal
+      setImageForCrop(null);
     } catch (e) {
       console.error("Error Cropping:", e);
     }
@@ -98,9 +95,7 @@ export default function PostModal({ onClose }: PostModalProps) {
       audioRef.current?.pause();
       setPlayingUrl(null);
     } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
+      if (audioRef.current) audioRef.current.pause();
       audioRef.current = new Audio(url);
       audioRef.current.play();
       setPlayingUrl(url);
@@ -130,8 +125,9 @@ export default function PostModal({ onClose }: PostModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // 🔥 FIX i18n Alert
     if (!selectedFile && !caption.trim()) {
-      alert("Isi konten atau pilih foto dulu!");
+      alert(t('alert_empty_post'));
       return;
     }
 
@@ -186,7 +182,7 @@ export default function PostModal({ onClose }: PostModalProps) {
     <div className={`post-modal active`}>
       <div className="post-modal-content">
         
-        {/* 🔥 UI EDITOR CROP (Muncul hanya saat pilih foto) 🔥 */}
+        {/* UI EDITOR CROP */}
         {imageForCrop && (
           <div className="crop-overlay-wrapper">
             <div className="crop-container-box">
@@ -194,8 +190,7 @@ export default function PostModal({ onClose }: PostModalProps) {
                 image={imageForCrop}
                 crop={crop}
                 zoom={zoom}
-aspect={3 / 4}
-
+                aspect={3 / 4}
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
                 onZoomChange={setZoom}
@@ -215,8 +210,9 @@ aspect={3 / 4}
                 <span className="material-icons">add</span>
               </div>
               <div className="crop-action-btns">
-                <button type="button" className="crop-cancel" onClick={() => setImageForCrop(null)}>Batal</button>
-                <button type="button" className="crop-confirm" onClick={handleSaveCrop}>Gunakan Foto Ini</button>
+                {/* 🔥 FIX i18n Crop Buttons */}
+                <button type="button" className="crop-cancel" onClick={() => setImageForCrop(null)}>{t('crop_cancel')}</button>
+                <button type="button" className="crop-confirm" onClick={handleSaveCrop}>{t('crop_confirm')}</button>
               </div>
             </div>
           </div>
@@ -224,33 +220,36 @@ aspect={3 / 4}
 
         <button type="button" className="post-close-btn" onClick={handleClose}>&times;</button>
 
-        <h2 className="post-modal-title">Upload Post</h2>
-        <p className="post-modal-subtitle">Karya kamu akan dikirim untuk direview dulu ya</p>
+        <h2 className="post-modal-title">{t('post_modal_title')}</h2>
+        <p className="post-modal-subtitle">{t('post_modal_subtitle')}</p>
 
         <form onSubmit={handleSubmit} className="post-form">
           <div className="destination-container">
-            <p className="section-label">Kirim Ke:</p>
+            <p className="section-label">{t('send_to')}</p>
             <div className="dest-toggle-group">
-              {['feed', 'story'].map((dest) => (
-                <label key={dest} className="dest-option">
+              {[
+                { id: 'feed', title: t('feed_title'), desc: t('feed_desc') },
+                { id: 'story', title: t('story_title'), desc: t('story_desc') }
+              ].map((dest) => (
+                <label key={dest.id} className="dest-option">
                   <input 
                     type="radio" 
                     name="postDestination" 
-                    value={dest} 
-                    checked={destination === dest} 
-                    onChange={() => setDestination(dest as any)} 
+                    value={dest.id} 
+                    checked={destination === dest.id} 
+                    onChange={() => setDestination(dest.id as any)} 
                   />
                   <div className="dest-content">
                     <div className="dest-icon-box">
-                      {dest === 'feed' ? (
+                      {dest.id === 'feed' ? (
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                       ) : (
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                       )}
                     </div>
                     <div className="dest-text">
-                      <span className="dest-title">{dest === 'feed' ? 'Post Utama' : 'Cerita'}</span>
-                      <span className="dest-desc">{dest === 'feed' ? 'Masuk ke feed & profil' : 'Hilang dalam 24 jam'}</span>
+                      <span className="dest-title">{dest.title}</span>
+                      <span className="dest-desc">{dest.desc}</span>
                     </div>
                     <div className="dest-check"></div>
                   </div>
@@ -260,8 +259,8 @@ aspect={3 / 4}
           </div>
 
           <div className="post-type-toggle">
-            <button type="button" className={`type-btn ${postType === 'image' ? 'active' : ''}`} onClick={() => setPostType('image')}>Foto</button>
-            <button type="button" className={`type-btn ${postType === 'text' ? 'active' : ''}`} onClick={() => setPostType('text')}>Teks Saja</button>
+            <button type="button" className={`type-btn ${postType === 'image' ? 'active' : ''}`} onClick={() => setPostType('image')}>{t('type_photo')}</button>
+            <button type="button" className={`type-btn ${postType === 'text' ? 'active' : ''}`} onClick={() => setPostType('text')}>{t('type_text')}</button>
           </div>
 
           {postType === 'image' && (
@@ -269,8 +268,8 @@ aspect={3 / 4}
               <input type="file" ref={fileInputRef} accept="image/*" hidden onChange={handleFileChange} />
               {!previewUrl ? (
                 <div className="post-upload-placeholder">
-                  <span className="post-upload-text">Pilih foto karya</span>
-                  <small>JPG, PNG, WEBP • Max 5MB</small>
+                  <span className="post-upload-text">{t('choose_photo')}</span>
+                  <small>{t('upload_limit')}</small>
                 </div>
               ) : (
                 <img src={previewUrl} className="post-preview-image" alt="Preview" style={{ objectFit: 'cover' }} />
@@ -280,7 +279,7 @@ aspect={3 / 4}
 
           <textarea 
             className="post-textarea" 
-            placeholder={postType === 'image' ? "Tulis caption menarik..." : "Tulis apa yang kamu pikirkan..."} 
+            placeholder={postType === 'image' ? t('placeholder_caption') : t('placeholder_thought')} 
             maxLength={300}
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
@@ -290,30 +289,37 @@ aspect={3 / 4}
             <select 
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              className="post-select-custom"
               style={{
                 width: '100%', padding: '12px 15px', border: '1px solid #ccc', borderRadius: '8px', appearance: 'none', WebkitAppearance: 'none', backgroundColor: '#fff', fontSize: '15px', color: '#333', cursor: 'pointer', outline: 'none', fontWeight: '500'
               }}
             >
-              {["Karya", "Prestasi", "Photography", "Mountain", "Thread"].map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
+              {[
+                { val: "Karya", label: t('cat_karya') },
+                { val: "Prestasi", label: t('cat_prestasi') },
+                { val: "Photography", label: t('cat_photo') },
+                { val: "Mountain", label: t('cat_mountain') },
+                { val: "Thread", label: t('cat_thread') }
+              ].map(opt => (
+                <option key={opt.val} value={opt.val}>{opt.label}</option>
               ))}
             </select>
             <i style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#888', fontSize: '12px' }}>▼</i>
           </div>
 
           <div className="music-picker-section" style={{ marginTop: '20px' }}>
-            <div className="section-label-bold">Pilih Musik (Opsional)</div>
+            <div className="section-label-bold">{t('select_music_optional')}</div>
             {!selectedMusic ? (
               <>
                 <input 
                   type="text" 
-                  placeholder="Cari musik..." 
+                  placeholder={t('search_music')} 
                   className="music-search-input"
                   value={searchMusic}
                   onChange={(e) => setSearchMusic(e.target.value)}
                 />
                 <div className="music-list-scroll">
-                  {isSearching && <p style={{textAlign:'center', fontSize:'12px', padding: '10px'}}>Mencari...</p>}
+                  {isSearching && <p style={{textAlign:'center', fontSize:'12px', padding: '10px'}}>{t('searching')}</p>}
                   {musicResults.map((song, i) => (
                     <div key={i} className="dest-content" style={{padding:'8px', marginBottom:0, cursor:'pointer', alignItems: 'center'}} onClick={() => setSelectedMusic(song)}>
                       <div style={{position: 'relative', width: 38, height: 38, marginRight: 12, flexShrink: 0}}>
@@ -341,13 +347,13 @@ aspect={3 / 4}
                     <div className="music-title-text">{selectedMusic.trackName} — {selectedMusic.artistName}</div>
                   </div>
                 </div>
-                <button type="button" className="remove-music-link" onClick={() => { if(playingUrl === selectedMusic.previewUrl) togglePlayPreview(selectedMusic.previewUrl); setSelectedMusic(null); }}>HAPUS</button>
+                <button type="button" className="remove-music-link" onClick={() => { if(playingUrl === selectedMusic.previewUrl) togglePlayPreview(selectedMusic.previewUrl); setSelectedMusic(null); }}>{t('remove_music')}</button>
               </div>
             )}
           </div>
 
           <button type="submit" className="post-submit-btn" disabled={isSubmitting} style={{ marginTop: '20px' }}>
-            {isSubmitting ? "Mengunggah..." : "Kirim ke Review"}
+            {isSubmitting ? t('btn_uploading') : t('btn_submit_post')}
           </button>
         </form>
       </div>

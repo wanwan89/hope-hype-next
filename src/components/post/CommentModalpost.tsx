@@ -3,9 +3,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
+// 🔥 FIX 1: Import i18n
+import { useTranslation } from 'react-i18next';
 import './CommentModal.css';
 
 export default function CommentModalpost() {
+  // 🔥 FIX 2: Inisialisasi Translate
+  const { t } = useTranslation();
+
   const [isActive, setIsActive] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +25,6 @@ export default function CommentModalpost() {
 
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
 
-  // 🔥 Gunakan useRef biar ID post saat ini ga nyangkut (stale closure)
   const currentPostIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -34,10 +38,7 @@ export default function CommentModalpost() {
       
       if (btn) {
         const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!requireLogin(session?.user)) {
-          return;
-        }
+        if (!requireLogin(session?.user)) return;
 
         const postId = btn.dataset.post || null;
         const creatorId = btn.dataset.creator || null;
@@ -47,9 +48,7 @@ export default function CommentModalpost() {
         setIsActive(true);
         document.body.style.overflow = "hidden";
         
-        if (postId) {
-          loadComments(postId);
-        }
+        if (postId) loadComments(postId);
       }
     };
 
@@ -57,7 +56,6 @@ export default function CommentModalpost() {
     return () => document.body.removeEventListener("click", handleBodyClick);
   }, []);
 
-  // 🔥 LISTENER BARU: Menerima data Gift dari Komponen Luar 🔥
   useEffect(() => {
     const handleInsertGift = async (e: any) => {
       const { postId, giftName, giftImg, creatorId } = e.detail;
@@ -67,7 +65,6 @@ export default function CommentModalpost() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // Format spesial biar dibaca sebagai gambar gift
         const content = `GIFT||${giftName}||${giftImg}`;
 
         await supabase.from("comments").insert({
@@ -78,7 +75,6 @@ export default function CommentModalpost() {
           reply_to_username: null
         });
 
-        // Kirim Notifikasi kalau yang ngirim bukan yang punya post
         if (creatorId !== session.user.id && creatorId) {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
           await supabase.from("notifications").insert({
@@ -86,28 +82,23 @@ export default function CommentModalpost() {
             actor_id: session.user.id,
             post_id: parseInt(postId),
             type: "gift",
-            message: `<b>${prof?.username}</b> memberimu ${giftName}.`
+            // 🔥 FIX i18n notif
+            message: t('notif_gave_gift', { username: prof?.username, giftName: giftName })
           });
         }
 
-        // 🔥 FIX UTAMA: Refresh komentar secara instan tanpa masuk state updater! 🔥
-        if (currentPostIdRef.current === String(postId)) {
-          loadComments(String(postId));
-        }
+        if (currentPostIdRef.current === String(postId)) loadComments(String(postId));
 
-        // Update badge jumlah komentar otomatis
         const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", postId);
         const countBadge = document.querySelector(`.comment-toggle[data-post="${postId}"] .comment-count`);
         if (countBadge) countBadge.textContent = String(count || 0);
 
-      } catch (err) {
-        console.error("Gagal simpan gift ke komentar:", err);
-      }
+      } catch (err) { console.error(err); }
     };
 
     window.addEventListener("insertGiftComment", handleInsertGift);
     return () => window.removeEventListener("insertGiftComment", handleInsertGift);
-  }, []);
+  }, [t]);
 
   const loadComments = async (postId: string) => {
     setIsLoading(true);
@@ -136,7 +127,6 @@ export default function CommentModalpost() {
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim() && !isSubmitting) {
       e.preventDefault();
-      
       if (!currentPostId) return;
 
       setIsSubmitting(true);
@@ -149,7 +139,6 @@ export default function CommentModalpost() {
         if (!session) return;
 
         const pid = parseInt(currentPostId);
-
         await supabase.from("comments").insert({
           post_id: pid,
           user_id: session.user.id,
@@ -165,13 +154,9 @@ export default function CommentModalpost() {
             actor_id: session.user.id,
             post_id: pid,
             type: "comment",
-            message: `<b>${prof?.username}</b> mengomentari karyamu.`
+            message: t('notif_commented', { username: prof?.username })
           });
         }
-
-        const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", currentPostId);
-        const countBadge = document.querySelector(`.comment-toggle[data-post="${currentPostId}"] .comment-count`);
-        if (countBadge) countBadge.textContent = String(count || 0);
 
         setReplyToId(null);
         setReplyToUsername(null);
@@ -179,7 +164,7 @@ export default function CommentModalpost() {
         await loadComments(currentPostId);
 
       } catch (err) {
-        showNotif("Gagal mengirim komentar", "error"); 
+        showNotif(t('comment_error'), "error"); 
       } finally {
         setIsSubmitting(false);
       }
@@ -190,7 +175,6 @@ export default function CommentModalpost() {
     const isPostOwner = comment.user_id === currentCreatorId;
     const p = comment.profiles;
     const avatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
-    const badgeHtml = getUserBadge(p?.role || 'user');
 
     let isGift = false;
     let giftName = "";
@@ -206,18 +190,13 @@ export default function CommentModalpost() {
     const content = (
       <>
         <div className="comment-left">
-          <img 
-            className="comment-avatar" 
-            src={avatar} 
-            onClick={() => window.location.href = `/profile?id=${p?.id}`} 
-            alt="Avatar" 
-          />
+          <img className="comment-avatar" src={avatar} onClick={() => window.location.href = `/profile?id=${p?.id}`} alt="Avatar" />
         </div>
         <div className="comment-right">
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/profile?id=${p?.id}`}>
               {p?.username} 
-              <span dangerouslySetInnerHTML={{ __html: badgeHtml }} style={{ display: 'inline-flex', alignItems: 'center' }} />
+              <span dangerouslySetInnerHTML={{ __html: getUserBadge(p?.role || 'user') }} style={{ display: 'inline-flex', alignItems: 'center' }} />
               {isPostOwner && <span className="creator-tag">CREATOR</span>}
             </span>
           </div>
@@ -226,8 +205,9 @@ export default function CommentModalpost() {
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)', marginTop: '4px' }}>
-                 <span style={{ color: '#f59e0b', fontSize: '13px', fontWeight: 600 }}>Memberi {giftName}</span>
+              <div className="gift-comment-bubble">
+                 {/* 🔥 FIX i18n Gift Text */}
+                 <span style={{ color: '#f59e0b', fontSize: '13px', fontWeight: 600 }}>{t('gave_gift', { giftName })}</span>
                  {giftImg && <img src={giftImg} alt={giftName} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />}
               </div>
             ) : (
@@ -237,14 +217,11 @@ export default function CommentModalpost() {
 
           <div className="comment-actions">
             {!isGift && (
-              <span 
-                className="reply-btn" 
-                onClick={() => {
+              <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
-                }}
-              >
-                Balas
+              }}>
+                {t('reply')}
               </span>
             )}
           </div>
@@ -257,27 +234,31 @@ export default function CommentModalpost() {
 
   const parents = comments.filter(c => !c.parent_id);
 
+  // 🔥 FIX Dynamic Placeholder
+  const getPlaceholder = () => {
+    if (isSubmitting) return t('sending');
+    if (replyToUsername) return t('replying_to', { username: replyToUsername });
+    return t('write_comment');
+  };
+
   return (
     <div id="commentModal" className={isActive ? "active" : ""}>
       <div className="comment-box">
         <div className="comment-header">
-          Komentar
+          {t('comments_title')}
           <button className="comment-close" onClick={closeModal}>&times;</button>
         </div>
         
         <div className="comment-list" id="commentListContainer">
           {isLoading ? (
-            <div className="loading-text">Memuat komentar...</div>
+            <div className="loading-text">{t('loading_comments')}</div>
           ) : comments.length === 0 ? (
-            <div className="empty-text">Belum ada komentar. Jadilah yang pertama!</div>
+            <div className="empty-text">{t('empty_comments')}</div>
           ) : (
             parents.map(p => {
               const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
               const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
-              const remainingChilds = firstCreatorReply 
-                ? allChilds.filter(c => c.id !== firstCreatorReply.id)
-                : allChilds;
-
+              const remainingChilds = firstCreatorReply ? allChilds.filter(c => c.id !== firstCreatorReply.id) : allChilds;
               const isExpanded = expandedReplies[p.id];
 
               return (
@@ -298,13 +279,10 @@ export default function CommentModalpost() {
 
                   {remainingChilds.length > 0 && (
                     <div className="replies-container" style={{ marginTop: firstCreatorReply ? '0' : '8px' }}>
-                      <div 
-                        className="view-replies-btn"
-                        onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
-                        style={{ marginLeft: '45px', marginBottom: isExpanded ? '8px' : '0' }}
-                      >
+                      <div className="view-replies-btn" onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))} style={{ marginLeft: '45px' }}>
                         <span className="btn-line" style={{ left: '-20px', width: '15px' }}></span>
-                        {isExpanded ? 'Sembunyikan' : `Lihat ${remainingChilds.length} balasan lainnya`}
+                        {/* 🔥 FIX i18n Balasan Lainya */}
+                        {isExpanded ? t('hide_replies') : t('show_replies_count', { count: remainingChilds.length })}
                       </div>
 
                       {isExpanded && (
@@ -331,19 +309,14 @@ export default function CommentModalpost() {
             <input 
               type="text" 
               className="comment-input" 
-              placeholder={isSubmitting ? "Mengirim..." : replyToUsername ? `Membalas @${replyToUsername}...` : "Tulis komentar..."} 
+              placeholder={getPlaceholder()} 
               autoComplete="off"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isSubmitting}
-              style={{ width: '100%', boxSizing: 'border-box', paddingRight: '44px' }} 
             />
-            <button 
-              className="modal-gift-btn" 
-              onClick={handleGiftClick} 
-              style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', display: 'flex', padding: 0 }}
-            >
+            <button className="modal-gift-btn" onClick={handleGiftClick}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
             </button>
           </div>
