@@ -283,7 +283,6 @@ html.dark .mission-wrapper {
   cursor: default; 
 }
 .m-btn.btn-done:hover { background: rgba(16, 185, 129, 0.1); transform: none; }
-
 .security-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
   z-index: 99999; color: white; display: flex; flex-direction: column; 
