@@ -1,15 +1,21 @@
 /* src/components/auth/LoginPopup.css */
 .popup-overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
-  display: none; justify-content: center; align-items: center; z-index: 1000001;
-  backdrop-filter: blur(5px);
+  position: fixed; inset: 0; 
+  background: rgba(0, 0, 0, 0.6);
+  display: none; justify-content: center; align-items: center; 
+  z-index: 1000001;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .popup-overlay.active { display: flex; animation: popupFade 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
 .popup-content {
-  background: var(--bg-modal); width: 90%; max-width: 360px;
-  padding: 30px 25px; border-radius: 20px; position: relative;
-  box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+  background: var(--bg-card); /* 🔥 FIX: Ikut tema global */
+  width: 90%; max-width: 360px;
+  padding: 30px 25px; border-radius: 24px; position: relative;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+  transition: background-color 0.3s ease;
 }
 
 @keyframes popupFade {
@@ -18,27 +24,27 @@
 }
 
 .close-login {
-  position: absolute; top: 15px; right: 15px; width: 30px; height: 30px;
+  position: absolute; top: 15px; right: 15px; width: 32px; height: 32px;
   border-radius: 50%; font-size: 20px; cursor: pointer; border: none;
-  background: var(--bg-input); color: var(--text-main);
+  background: var(--bg-secondary); color: var(--text-main);
   display: flex; align-items: center; justify-content: center; transition: 0.2s;
 }
-.close-login:hover { background: #ff4757; color: white; }
+.close-login:active { transform: scale(0.85); background: #ff4757; color: white; }
 
 .form { display: flex; flex-direction: column; width: 100%; }
 
 .flex-column > label {
-  color: var(--text-main); font-weight: 700; font-size: 13px; margin-bottom: 5px; display: block;
+  color: var(--text-main); font-weight: 700; font-size: 13px; margin-bottom: 6px; display: block;
 }
 
 .inputForm {
-  border: 1.5px solid var(--border-card); border-radius: 12px; height: 50px;
+  border: 1.5px solid var(--border-color); border-radius: 14px; height: 52px;
   display: flex; align-items: center; padding-left: 15px; transition: 0.2s ease-in-out;
-  background: var(--bg-input);
+  background: var(--input-bg);
 }
-.inputForm:focus-within { border-color: #2d79f3; box-shadow: 0 0 0 3px rgba(45, 121, 243, 0.15); }
+.inputForm:focus-within { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.15); }
 
-.inputForm svg { fill: var(--text-muted); flex-shrink: 0; }
+.inputForm svg { fill: var(--text-sub); flex-shrink: 0; }
 
 .input {
   margin-left: 10px; border: none; width: 100%; height: 100%; background: transparent;
@@ -46,13 +52,20 @@
 }
 
 .button-submit {
-  margin-top: 25px; background-color: #2d79f3; border: none; color: white;
-  font-size: 15px; font-weight: 700; border-radius: 12px; height: 50px;
-  width: 100%; cursor: pointer; transition: 0.2s ease;
+  margin-top: 25px; 
+  background-color: var(--accent-blue); 
+  border: none; color: white;
+  font-size: 15px; font-weight: 800; border-radius: 14px; height: 52px;
+  width: 100%; cursor: pointer; transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(29, 161, 242, 0.3);
 }
-.button-submit:hover { background-color: #1f63cf; transform: translateY(-2px); }
-.button-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+.button-submit:active { transform: scale(0.96); opacity: 0.9; }
+.button-submit:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
-/* FIX: Hapus kata :global karena Next.js Turbopack gak kenal kalau bukan di file .module.css */
-html.dark .button-submit { background-color: white; color: black; }
-html.dark .button-submit:hover { background-color: #e0e0e0; }
+/* 🔥 FIX: Selector sinkron dengan logic Settings & Layout global 🔥 */
+[data-theme='dark'] .button-submit { 
+  background-color: #ffffff; 
+  color: #000000; 
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+}
+[data-theme='dark'] .button-submit:active { background-color: #e0e0e0; }

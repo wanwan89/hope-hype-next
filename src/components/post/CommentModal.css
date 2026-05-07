@@ -2,11 +2,13 @@
 
 /* --- OVERLAY MODAL --- */
 #commentModal {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  position: fixed; inset: 0; 
+  background: rgba(0,0,0,0.6); /* Sedikit lebih pekat biar fokus */
   display: flex; align-items: flex-end; justify-content: center;
   z-index: 99999; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity 0.3s ease, visibility 0.3s ease;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 #commentModal.active {
   opacity: 1; visibility: visible; pointer-events: auto;
@@ -14,34 +16,41 @@
 
 /* --- KOTAK KOMENTAR (SLIDE UP) --- */
 .comment-box {
-  width: 100%; max-width: 500px; height: 78vh;
-  background: var(--bg-modal); border-radius: 24px 24px 0 0;
+  width: 100%; max-width: 500px; height: 80vh; /* 🔥 Sedikit lebih tinggi biar lega */
+  background: var(--bg-card); /* 🔥 FIX: Ikut tema global */
+  border-radius: 28px 28px 0 0;
   overflow: hidden; display: flex; flex-direction: column;
-  transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 -15px 40px rgba(0,0,0,0.3);
+  transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 -15px 40px rgba(0,0,0,0.2);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
 }
 #commentModal.active .comment-box { transform: translateY(0); }
 
 .comment-box::before {
-  content: ""; width: 40px; height: 5px; background: var(--border-card);
+  content: ""; width: 40px; height: 5px; 
+  background: var(--border-color);
   border-radius: 10px; margin: 12px auto 8px; display: block;
 }
 
 /* --- HEADER --- */
 .comment-header {
   color: var(--text-main); text-align: center; font-weight: 800;
-  padding: 5px 16px 15px; border-bottom: 1px solid var(--border-card); position: relative;
+  padding: 5px 16px 15px; border-bottom: 1px solid var(--border-color); position: relative;
+  font-size: 15px;
 }
 .comment-close {
-  position: absolute; right: 15px; top: 0; background: var(--bg-input);
-  border: none; color: var(--text-main); width: 30px; height: 30px; border-radius: 50%;
+  position: absolute; right: 15px; top: -5px; 
+  background: var(--bg-secondary);
+  border: none; color: var(--text-main); width: 32px; height: 32px; border-radius: 50%;
   font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
 }
-.comment-close:hover { background: #ff4757; color: white; }
+.comment-close:active { transform: scale(0.85); }
 
 /* --- LIST KOMENTAR --- */
 .comment-list {
   flex: 1; overflow-y: auto; padding: 15px 20px;
+  background: var(--bg-card);
 }
 
 /* --- THREAD & ITEM STYLE --- */
@@ -61,96 +70,92 @@
 
 .comment-left { flex-shrink: 0; position: relative; z-index: 5; }
 .comment-avatar { 
-  width: 36px; height: 36px; border-radius: 50%; object-fit: cover; 
+  width: 38px; height: 38px; border-radius: 50%; object-fit: cover; 
   cursor: pointer; background: var(--bg-secondary); 
-  border: 1px solid var(--border-card); 
+  border: 1.5px solid var(--border-color); 
 }
 
 /* Style khusus balasan */
-.comment-item.reply .comment-avatar { width: 26px; height: 26px; }
+.comment-item.reply .comment-avatar { width: 28px; height: 28px; }
 
 .comment-right { flex: 1; min-width: 0; }
 .comment-topline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
-.comment-username { color: var(--text-main); font-weight: 700; font-size: 13px; cursor: pointer; }
-.comment-text { color: var(--text-main); font-size: 14px; line-height: 1.45; word-break: break-word; }
-.reply-tag { color: #1DA1F2; font-weight: 700; margin-right: 4px; }
-.creator-tag { background: #1DA1F2; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px; font-weight: 800; }
+.comment-username { color: var(--text-main); font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.comment-text { color: var(--text-main); font-size: 14px; line-height: 1.5; word-break: break-word; }
+.reply-tag { color: var(--accent-blue); font-weight: 700; margin-right: 4px; }
+.creator-tag { background: var(--accent-blue); color: white; padding: 2px 6px; border-radius: 6px; font-size: 9px; margin-left: 4px; font-weight: 800; letter-spacing: 0.5px; }
 
-.comment-actions { margin-top: 6px; }
-.reply-btn { color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+.comment-actions { margin-top: 6px; display: flex; gap: 15px; }
+.reply-btn { color: var(--text-sub); font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+.reply-btn:active { color: var(--accent-blue); }
 
 /* --- SISTEM GARIS (THREAD LINES) --- */
 
-/* Container Balasan */
 .replies-container {
-  margin-left: 18px; /* Geser agar garis vertikal pas di bawah avatar induk */
+  margin-left: 19px; 
   position: relative;
 }
 
-/* Tombol Lihat Balasan Ala TikTok */
 .view-replies-btn {
   display: flex; align-items: center; gap: 12px;
   margin-left: 32px; margin-top: 5px; margin-bottom: 10px;
-  color: var(--text-muted); font-size: 12px; font-weight: 700; 
+  color: var(--text-sub); font-size: 12px; font-weight: 700; 
   cursor: pointer; user-select: none;
 }
 .btn-line {
-  width: 24px; height: 1.5px; background: var(--border-card);
+  width: 24px; height: 1.5px; background: var(--border-color);
   display: inline-block;
 }
-.view-replies-btn:hover { color: #1DA1F2; }
-.view-replies-btn:hover .btn-line { background: #1DA1F2; }
+.view-replies-btn:active { color: var(--accent-blue); }
 
-/* Garis Vertikal Utama */
 .reply-group {
   position: relative;
-  margin-left: 18px;
+  margin-left: 19px;
   padding-top: 5px;
 }
 
 .thread-line {
   position: absolute;
   left: 0;
-  top: -15px; /* Sambung ke atas */
-  bottom: 22px; /* Berhenti di balasan terakhir */
+  top: -15px; 
+  bottom: 22px; 
   width: 2px;
-  background: var(--border-card); /* Pakai warna border biar nyatu */
+  background: var(--border-color); /* 🔥 FIX: Warna garis ikut tema */
   border-radius: 1px;
   z-index: 1;
 }
 
-/* Item Balasan */
 .comment-item.reply {
   position: relative;
-  padding-left: 20px; /* Ruang untuk garis lengkung */
+  padding-left: 20px; 
   margin-top: 15px;
 }
 
-/* Garis Tikungan ke Avatar Balasan */
 .reply-curve {
   position: absolute;
   left: 0;
-  top: 14px; /* Pas di tengah-tengah tinggi avatar balasan */
+  top: 14px; 
   width: 15px;
   height: 2px;
-  background: var(--border-card);
+  background: var(--border-color); /* 🔥 FIX: Warna tikungan ikut tema */
   z-index: 1;
 }
 
 /* --- INPUT AREA BAWAH --- */
 .comment-input-wrap {
-  display: flex; align-items: center; padding: 15px;
-  border-top: 1px solid var(--border-card); background: var(--bg-modal);
+  display: flex; align-items: center; padding: 15px 20px;
+  border-top: 1px solid var(--border-color); 
+  background: var(--bg-card); /* 🔥 FIX: Ikut tema */
   padding-bottom: calc(15px + env(safe-area-inset-bottom));
 }
 .comment-input {
-  flex: 1; border: 1px solid var(--border-card); outline: none;
+  flex: 1; border: 1px solid var(--border-color); outline: none;
   background: var(--bg-input); color: var(--text-main); padding: 12px 18px;
-  border-radius: 25px; font-size: 14px; transition: 0.2s; font-family: inherit;
+  border-radius: 24px; font-size: 14px; transition: all 0.3s ease; font-family: inherit;
 }
-.comment-input:focus { border-color: #1DA1F2; box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.15); }
+.comment-input:focus { border-color: var(--accent-blue); background: var(--bg-card); }
 
 /* --- UTILS --- */
 .loading-text, .empty-text {
-  text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px;
+  text-align: center; padding: 40px 20px; color: var(--text-sub); font-size: 13px;
 }

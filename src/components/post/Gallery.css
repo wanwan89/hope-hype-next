@@ -1,45 +1,46 @@
 /* src/components/post/Gallery.css */
 
 .gallery { 
-  /* 🔥 FIX LAYOUT: Disamakan dengan max-width layout utama (480px) 🔥 */
+  /* 🔥 FIX LAYOUT: Sinkron dengan max-width layout utama 🔥 */
   width: 100%;
   max-width: 480px; 
   margin: 0 auto; 
-  /* 🔥 FIX PADDING: Ditambah Safe Area biar postingan paling bawah gak ketutupan Navbar 🔥 */
-  padding: 10px 20px calc(110px + env(safe-area-inset-bottom)); 
+  /* 🔥 FIX PADDING: Memastikan postingan terakhir lega dari Navbar 🔥 */
+  padding: 10px 16px calc(110px + env(safe-area-inset-bottom)); 
   box-sizing: border-box;
+  background-color: transparent;
 }
 
 .card { 
   background: var(--bg-card); 
-  border-radius: 16px; 
-  margin-bottom: 25px; 
+  border-radius: 20px; /* 🔥 Sedikit lebih bulat biar premium */
+  margin-bottom: 24px; 
   overflow: hidden; 
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, box-shadow 0.3s ease;
-  /* 🔥 Anti highlight kotak biru pas di-tap di HP 🔥 */
+  transition: transform 0.2s ease, box-shadow 0.3s ease, background-color 0.3s ease;
   -webkit-tap-highlight-color: transparent; 
 }
 
-/* 🔥 Efek hover dipisah buat Desktop aja biar di HP gak nyangkut 🔥 */
+/* 🔥 Efek hover dipisah buat Desktop 🔥 */
 @media (hover: hover) {
   .card:hover { 
-    transform: translateY(-3px); 
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    transform: translateY(-2px); 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   }
 }
 
 .slider {
   position: relative; 
   width: 100%; 
-  background: #252525;
+  background: #000; /* 🔥 Slider tetep gelap biar foto stand out */
   display: flex; 
   align-items: center; 
   justify-content: center; 
   overflow: hidden;
+  min-height: 300px;
 }
 
 .slider img.active { 
@@ -47,23 +48,27 @@
   height: auto; 
   display: block; 
   object-fit: cover; 
-  cursor: zoom-in; 
 }
 
 .watermark-overlay {
-  position: absolute; top: 5px; left: 5px; width: 90px; height: auto;
-  opacity: 0.8; pointer-events: none; z-index: 10;
-  filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.4));
+  position: absolute; top: 10px; left: 10px; width: 80px; height: auto;
+  opacity: 0.7; pointer-events: none; z-index: 10;
+  filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
 }
-.watermark-overlay img { width: 100%; height: auto; display: block; }
 
-.overlay { padding: 15px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.overlay { padding: 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 
-.name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; color: var(--text-main); white-space: nowrap; margin: 0; cursor: pointer; }
-.verified { display: inline-flex; flex-shrink: 0; }
+.name { 
+  font-size: 15px; font-weight: 700; display: flex; align-items: center; 
+  gap: 6px; color: var(--text-main); margin: 0; cursor: pointer; 
+}
 
-.post-bio { font-size: 14px; color: var(--text-muted); margin: 0; line-height: 1.4; width: 100%; word-break: break-word;}
-.post-date-wrapper { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.post-bio { 
+  font-size: 14px; color: var(--text-main); margin: 0; 
+  line-height: 1.5; width: 100%; word-break: break-word;
+}
+
+.post-date-wrapper { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; font-weight: 500; }
 
 .actions { 
   display: flex; 
@@ -72,95 +77,72 @@
   margin-top: 12px; 
   width: 100%; 
 }
-.engagement-group { 
-  display: flex; 
-  gap: 15px; 
-  align-items: center; 
-}
+
+.engagement-group { display: flex; gap: 18px; align-items: center; }
 
 .primary { 
-  padding: 7px 14px; border: none; border-radius: 8px; 
-  background: #0095f6; color: #fff; font-size: 13px; font-weight: 600;
+  padding: 8px 16px; border: none; border-radius: 10px; 
+  background: var(--accent-blue); color: #fff; font-size: 12px; font-weight: 700;
   text-decoration: none; cursor: pointer; transition: 0.2s;
 }
-.primary:active { transform: scale(0.95); background: #0b84e3; }
+.primary:active { transform: scale(0.95); opacity: 0.9; }
 
-/* FIX: Perbaikan tombol icon agar tidak muncul kotak saat diklik */
 .icon-btn, .options-btn {
   background: transparent !important; 
   border: none !important; 
   color: var(--text-main);
-  display: flex; 
-  align-items: center; 
-  gap: 6px;
-  cursor: pointer; 
-  font-size: 14px; 
-  transition: 0.2s; 
-  padding: 0; 
-  font-family: 'Poppins', sans-serif;
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; transition: 0.2s; padding: 0; 
   outline: none !important; 
-  box-shadow: none !important;
   -webkit-tap-highlight-color: transparent; 
 }
 
-.options-btn { padding: 5px !important; border-radius: 50%; }
+.options-btn { color: var(--text-sub); }
 
-.icon { width: 22px; height: 22px; fill: var(--icon-fill); transition: transform 0.2s, fill 0.3s; }
+.icon { 
+  width: 24px; height: 24px; 
+  fill: var(--text-main); /* 🔥 Mengikuti warna teks tema */
+  transition: transform 0.2s, fill 0.3s; 
+}
+
 .icon-btn.liked .icon { fill: #ff2e63; }
-.icon-btn.reposted .icon { stroke: #1DA1F2; fill: #1DA1F2; } 
-.icon-btn.reposted .repost-count { color: #1DA1F2; font-weight: bold; }
+.icon-btn.reposted .icon { fill: #10b981; } 
+.icon-btn.reposted .repost-count { color: #10b981; font-weight: 800; }
 
-.like-count, .comment-count, .repost-count { font-size: 13px; color: var(--text-main); }
+.like-count, .comment-count, .repost-count { font-size: 13px; color: var(--text-main); font-weight: 600; }
 
-/* Animasi hover tombol khusus desktop */
-@media (hover: hover) {
-  .icon-btn:hover, .options-btn:hover { 
-    transform: scale(1.1); 
-    opacity: 0.8; 
-  }
-}
-
-.icon-btn:active .icon, .options-btn:active { 
-  transform: scale(0.8); 
-}
-
-@keyframes marquee-play { 0% { transform: translateX(100%); } 100% { transform: translateX(-150%); } }
-.marquee-text { display: inline-block; white-space: nowrap; will-change: transform; }
-
+.icon-btn:active .icon { transform: scale(0.8); }
 
 /* ========================================================= */
-/* 🔥 FIX: SKELETON KELAS ISOLASI (ANTI BENTROK) 🔥          */
+/* 🔥 FIX: SKELETON THEME-AWARE 🔥                          */
 /* ========================================================= */
-
-.gallery-skeleton-wrapper { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
-  gap: 20px; 
-  width: 100%; 
-}
 
 .gallery-skeleton-card { 
   background: var(--bg-card); 
   border-radius: 20px; 
-  height: 400px; 
+  height: 450px; 
   position: relative; 
   overflow: hidden; 
-  border: 1px solid var(--border-card); 
+  border: 1px solid var(--border-color); 
+  margin-bottom: 24px;
 }
 
 .gallery-skeleton-shimmer { 
   position: absolute; 
   top: 0; right: 0; bottom: 0; left: 0; 
   transform: translateX(-100%); 
-  background-image: linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.05) 20%, rgba(255, 255, 255, 0.1) 60%, transparent); 
+  /* 🔥 FIX: Gradasi shimmer yang transparan biar masuk di semua tema */
+  background-image: linear-gradient(
+    90deg, 
+    transparent 0, 
+    rgba(128, 128, 128, 0.05) 20%, 
+    rgba(128, 128, 128, 0.1) 60%, 
+    transparent
+  ); 
   animation: gallery-shimmer 1.5s infinite; 
 }
 
-/* 🔥 Ganti nama keyframes biar gak ketimpa shimmer punya profil/hypetalk */
-@keyframes gallery-shimmer { 
-  100% { transform: translateX(100%); } 
-}
-
+@keyframes gallery-shimmer { 100% { transform: translateX(100%); } }
 
 /* ANIMASI TOMBOL REPOST (SPIN POP) */
 @keyframes repostSpin {

@@ -15,14 +15,14 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Identifikasi Halaman Lama
+  // 1. Identifikasi Halaman
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
   const isNotifPage = pathname?.includes('/notifications');
   const isDailyCekPage = pathname?.includes('/dailycek');
   
-  // 🔥 FIX 1: Identifikasi Halaman Baru
+  // 🔥 FIX: Identifikasi Halaman Baru lu
   const isSettingsPage = pathname?.includes('/settings');
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
@@ -30,15 +30,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // Halaman bergaya Aplikasi (Full Screen & Kunci Scroll Body)
   const isStandaloneApp = isVoicePage || isDailyCekPage;
   
-  // 🔥 FIX 2: Masukin halaman baru ke mode Fullscreen biar gak numpuk
+  // 🔥 FIX: Masukin semua halaman baru ke kategori Fullscreen
   const isFullscreenPage = isStandaloneApp || isDataPage || isNotifPage || isSettingsPage || isVipPage || isContactPage;
 
-  // Sembunyiin sidebar & navbar di halaman pengaturan/kontak/vip
+  // 🔥 FIX: Sembunyiin sidebar & navbar di halaman baru biar ga numpuk
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage;
 
-  // 2. 🔥 EKSEKUSI SEBELUM PAINT: Mencegah layout tabrakan pas pindah halaman 🔥
+  // 2. 🔥 EKSEKUSI SEBELUM PAINT 🔥
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
@@ -64,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.width = 'auto';
       body.style.overscrollBehaviorY = 'auto';
       
+      // Bersihin sampah sisa room voice kalau pindah halaman
       const voiceTrash = [
         'room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 
         'vip-entrance-overlay', 'vip-anim-styles-clean'
@@ -81,10 +82,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [pathname, isStandaloneApp]); 
 
-  // 🔥 FIX 3: Cabut hardcode "#ffffff" biar tema Gelap/Terang bisa jalan mulus!
   return (
     <html lang="id" style={{ overflowX: 'hidden' }}>
       <head>
+        {/* 🔥 FIX: SCRIPT ANTI-KEDIP MODE GELAP 🔥 */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              try {
+                const theme = localStorage.getItem('theme');
+                if (theme === 'dark') {
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                  document.documentElement.setAttribute('data-theme', 'light');
+                }
+              } catch (e) {}
+            })()
+          `
+        }} />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
@@ -105,7 +120,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             minHeight: '100dvh',
             width: '100%',
             overflow: isStandaloneApp ? 'hidden' : 'visible',
-            position: 'relative'
+            position: 'relative',
+            // 🔥 Cabut hardcode background putih biar mode gelap jalan!
           }}
         >
           
@@ -118,13 +134,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main 
             className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}
             style={{ 
-              flex: '1 1 auto', // 🔥 JURUS MELAR MAKSIMAL
+              flex: '1 1 auto', 
               display: isStandaloneApp ? 'flex' : 'block',
               flexDirection: 'column',
               overflow: isStandaloneApp ? 'hidden' : 'visible',
               height: isStandaloneApp ? '100%' : 'auto',
               width: '100%',
-              marginBottom: isStandaloneApp ? '0' : '-1px', // 🔥 LEM SUPER
+              marginBottom: isStandaloneApp ? '0' : '-1px', 
             }}
           >
             {children}
@@ -132,7 +148,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           
         </div>
 
-        {/* 🔥 FIX: NAVBAR UDAH DIHANDLE SAMA hideNavbar 🔥 */}
         {!hideNavbar && <Navbar />}
 
         <LoginPopup />

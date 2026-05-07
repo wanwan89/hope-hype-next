@@ -1,30 +1,33 @@
 /* src/app/saldo/Saldo.css */
 
 .saldo-wrapper {
-  --bg-main: #ffffff;
-  --text-main: #1c1e21;
-  --text-muted: #64748b;
-  --primary-blue: #0070f3;
-  --primary-gradient: linear-gradient(135deg, #0070f3 0%, #00a2ff 100%);
-  --border-color: #f1f5f9;
+  /* DEFAULT: MODE TERANG */
+  --bg-main: #f3f4f6;
+  --bg-card: #ffffff;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --primary-blue: #1DA1F2;
+  --primary-gradient: linear-gradient(135deg, #1DA1F2 0%, #00a2ff 100%);
+  --border-color: #e5e7eb;
   --success: #10b981;
 
   width: 100%;
-  height: 100%;
-  min-height: 100dvh;
+  min-height: 100dvh; /* 🔥 FIX: Sikat abis gap hitam bawah */
   display: flex;
   flex-direction: column;
   background: var(--bg-main);
+  transition: background 0.3s ease, color 0.3s ease;
   /* Safe area buat Navbar bawah */
   padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
 }
 
-/* Dark mode fallback (optional) */
-html.dark .saldo-wrapper {
+/* 🔥 FIX: Selector sinkron dengan logic Settings & Layout 🔥 */
+[data-theme='dark'] .saldo-wrapper {
   --bg-main: #0a0a0a;
+  --bg-card: #151515;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
-  --border-color: #262626;
+  --border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* === HEADER === */
@@ -32,7 +35,7 @@ html.dark .saldo-wrapper {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--bg-main);
+  background: var(--bg-card); /* Pakai bg-card biar header solid */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -49,11 +52,11 @@ html.dark .saldo-wrapper {
 }
 
 .saldo-btn-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: var(--border-color);
-  border: none;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,10 +74,10 @@ html.dark .saldo-wrapper {
 
 .saldo-card {
   background: var(--primary-gradient);
-  border-radius: 20px;
+  border-radius: 24px;
   padding: 24px;
   color: white;
-  box-shadow: 0 10px 30px rgba(0, 112, 243, 0.25);
+  box-shadow: 0 10px 30px rgba(29, 161, 242, 0.25);
   position: relative;
   overflow: hidden;
 }
@@ -86,7 +89,7 @@ html.dark .saldo-wrapper {
   right: -20px;
   bottom: -30px;
   font-size: 140px;
-  opacity: 0.1;
+  opacity: 0.12;
   transform: rotate(-15deg);
 }
 
@@ -103,18 +106,19 @@ html.dark .saldo-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   letter-spacing: -1px;
 }
 
 .saldo-amount-idr {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   background: rgba(255, 255, 255, 0.2);
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 20px;
   display: inline-block;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* === ACTION MENU === */
@@ -126,22 +130,22 @@ html.dark .saldo-wrapper {
 
 .saldo-action-btn {
   flex: 1;
-  background: var(--bg-main);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
-  padding: 14px 10px;
-  border-radius: 16px;
+  padding: 16px 10px;
+  border-radius: 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
   -webkit-tap-highlight-color: transparent;
 }
 .saldo-action-btn:active {
   transform: scale(0.95);
-  background: var(--border-color);
+  background: var(--bg-main);
 }
 .saldo-action-btn .material-icons {
   font-size: 24px;
@@ -153,12 +157,12 @@ html.dark .saldo-wrapper {
   color: var(--text-main);
 }
 
-/* === ASSETS GRID & SERVICES === */
+/* === ASSETS LIST === */
 .saldo-section-title {
   font-size: 15px;
   font-weight: 800;
   color: var(--text-main);
-  margin: 10px 20px 12px;
+  margin: 10px 20px 14px;
 }
 
 .saldo-assets-list {
@@ -173,9 +177,10 @@ html.dark .saldo-wrapper {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background: var(--bg-main);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
 
 .saldo-asset-info {
@@ -185,13 +190,13 @@ html.dark .saldo-wrapper {
 }
 
 .saldo-asset-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff6ed;
+  background: var(--bg-main);
 }
 
 .saldo-asset-text h4 {
@@ -214,8 +219,7 @@ html.dark .saldo-wrapper {
 }
 
 .saldo-skeleton {
-  background: linear-gradient(90deg, var(--border-color) 25%, #f8fafc 50%, var(--border-color) 75%);
+  background: linear-gradient(90deg, var(--bg-main) 25%, var(--border-color) 50%, var(--bg-main) 75%);
   background-size: 200% 100%;
   animation: saldo-shimmer 1.5s infinite linear;
-  border-radius: 8px;
 }

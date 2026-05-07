@@ -4,22 +4,21 @@
    1. ISOLASI VARIABEL KE DALAM CONTAINER
    ========================================= */
 .voice-lobby-container {
+  /* DEFAULT: MODE TERANG */
   --bg-app: #f6f9ff;
   --bg-card: #ffffff;      
-  --primary: #0070f3;
-  --primary-gradient: linear-gradient(135deg, #0070f3 0%, #00a2ff 100%);
+  --primary: #1DA1F2;
+  --primary-gradient: linear-gradient(135deg, #1DA1F2 0%, #00a2ff 100%);
   --primary-light: #e6f2ff; 
   --text-dark: #0f172a;    
   --text-muted: #64748b;   
   --accent-coin: #f59e0b;
   --glass: #ffffff; 
-  --border-glass: rgba(0, 112, 243, 0.1);
+  --border-glass: rgba(29, 161, 242, 0.1);
 
   font-family: 'Plus Jakarta Sans', sans-serif;
-
-  /* 🔥 STRUKTUR AMAN: Ngikut layout.tsx 🔥 */
   width: 100%;
-  height: 100%; 
+  height: 100dvh; /* 🔥 FIX: Dynamic Viewport sikat gap bawah */
   max-width: 480px; 
   margin: 0 auto;
   background-color: var(--bg-app);
@@ -28,6 +27,18 @@
   flex-direction: column;
   overflow-y: auto; 
   -webkit-overflow-scrolling: touch;
+  transition: background-color 0.3s ease;
+}
+
+/* 🔥 FIX: Selector sinkron dengan logic Settings & Layout global 🔥 */
+[data-theme='dark'] .voice-lobby-container {
+  --bg-app: #0a0a0a;
+  --bg-card: #151515;
+  --text-dark: #f8fafc;
+  --text-muted: #94a3b8;
+  --glass: #151515;
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --primary-light: rgba(29, 161, 242, 0.1);
 }
 
 /* =========================================
@@ -50,11 +61,9 @@
   height: calc(65px + env(safe-area-inset-top, 0px));
 }
 
-.voice-lobby-container .header-profile { display: flex; align-items: center; gap: 10px; }
 .voice-lobby-container .header-profile img { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1.5px solid var(--primary-light); }
 .voice-lobby-container .header-info h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text-dark); }
-.voice-lobby-container .coin-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--accent-coin); background: var(--primary-light); padding: 4px 12px; border-radius: 10px; transition: transform 0.2s ease; }
-.voice-lobby-container .coin-badge:active { transform: scale(0.95); }
+.voice-lobby-container .coin-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--accent-coin); background: var(--primary-light); padding: 4px 12px; border-radius: 10px; }
 
 /* =========================================
    3. HERO BANNER
@@ -65,28 +74,25 @@
   background: var(--primary-gradient);
   border-radius: 18px;
   color: white;
-  box-shadow: 0 8px 20px -4px rgba(0, 112, 243, 0.3);
+  box-shadow: 0 8px 20px -4px rgba(29, 161, 242, 0.3);
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
 }
 
 .voice-lobby-container .hero-banner::after {
-  content: "mic"; font-family: "Material Icons"; position: absolute; right: -5px; bottom: -10px; font-size: 80px; opacity: 0.1; transform: rotate(-10deg);
+  content: "mic"; font-family: "Material Icons"; position: absolute; right: -5px; bottom: -10px; font-size: 80px; opacity: 0.15; transform: rotate(-10deg);
 }
 
 .voice-lobby-container .hero-banner h2 { margin: 0 0 5px; font-size: 17px; font-weight: 800; }
-.voice-lobby-container .hero-banner p { margin: 0 0 14px; font-size: 12px; opacity: 0.9; line-height: 1.4; }
-.voice-lobby-container .btn-start-singing { background: white; color: var(--primary); border: none; padding: 8px 18px; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: transform 0.2s; }
-.voice-lobby-container .btn-start-singing:active { transform: scale(0.95); }
+.voice-lobby-container .btn-start-singing { background: white; color: var(--primary); border: none; padding: 8px 18px; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
 
 /* =========================================
-   4. MINI TABS & ROOM LIST VOICE LOBBY
+   4. MINI TABS & ROOM LIST
    ========================================= */
 .voice-lobby-container .tabs-container { display: flex; gap: 8px; padding: 4px 16px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
-.voice-lobby-container .tabs-container::-webkit-scrollbar { display: none; }
-.voice-lobby-container .voice-tab-item { padding: 7px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; color: var(--text-muted); background: white; cursor: pointer; white-space: nowrap; border: 1px solid transparent; transition: all 0.2s ease; }
-.voice-lobby-container .voice-tab-item.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0, 112, 243, 0.2); }
+.voice-lobby-container .voice-tab-item { padding: 7px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; color: var(--text-muted); background: var(--bg-card); cursor: pointer; white-space: nowrap; transition: all 0.2s ease; border: 1px solid var(--border-glass); }
+.voice-lobby-container .voice-tab-item.active { background: var(--primary); color: white; border-color: transparent; }
 
 .voice-lobby-container .room-list {
   padding: 12px 16px;
@@ -96,118 +102,62 @@
   padding-bottom: calc(140px + env(safe-area-inset-bottom)); 
 }
 
-.voice-lobby-container .room-card { display: flex; align-items: center; padding: 12px; background: var(--bg-card); border-radius: 18px; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); cursor: pointer; border: 1px solid rgba(0,0,0,0.02); transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.voice-lobby-container .room-card:active { transform: scale(0.98); box-shadow: 0 1px 4px rgba(0,0,0,0.02); }
-.voice-lobby-container .room-thumb { width: 42px; height: 42px; border-radius: 12px; background: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
-.voice-lobby-container .room-info { flex: 1; min-width: 0; }
+.voice-lobby-container .room-card { display: flex; align-items: center; padding: 12px; background: var(--bg-card); border-radius: 18px; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid var(--border-glass); }
+.voice-lobby-container .room-thumb { width: 42px; height: 42px; border-radius: 12px; background: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .voice-lobby-container .room-info h4 { font-size: 14px; font-weight: 700; color: var(--text-dark); margin-bottom: 2px; }
-.voice-lobby-container .room-info p { font-size: 11px; color: var(--text-muted); }
-.voice-lobby-container .online-pill { background: #f0fdf4; color: #16a34a; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; }
 
 /* =========================================
-   5. 🔥 MODAL ROOM CREATION (CLASS EKSKLUSIF) 🔥
+   5. 🔥 MODAL ROOM CREATION 🔥
    ========================================= */
 .voice-modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
-  z-index: 10002; /* Sejajar sama layer modal global */
-  opacity: 0; visibility: hidden; pointer-events: none; transition: 0.3s;
+  z-index: 10002;
+  opacity: 0; visibility: hidden; transition: 0.3s;
 }
-
-.voice-modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
+.voice-modal-overlay.active { opacity: 1; visibility: visible; }
 
 .voice-modal-content {
-  background: var(--bg-card, #fff);
+  background: var(--bg-card); /* 🔥 FIX: Ikut tema */
   border-radius: 24px;
   padding: 24px;
-  width: 85%;
-  max-width: 320px;
+  width: 85%; max-width: 320px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  animation: voiceModalPopUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: 1px solid var(--border-glass);
 }
-
-@keyframes voiceModalPopUp {
-  0% { transform: scale(0.8); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.voice-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.voice-modal-header h3 { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
-.voice-close-modal-btn { background: #f6f9ff; border: none; width: 32px; height: 32px; border-radius: 50%; color: #64748b; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-
-.voice-modal-body label { display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px; }
-.voice-modal-body input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: #f6f9ff; font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 20px; outline: none; transition: all 0.2s ease; box-sizing: border-box; }
-.voice-modal-body input:focus { border-color: #0070f3; background: white; box-shadow: 0 0 0 4px #e6f2ff; }
-
-.voice-modal-actions { display: flex; gap: 12px; }
-.voice-modal-actions button { flex: 1; padding: 14px; border: none; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: transform 0.2s ease; }
-.voice-modal-actions button:active { transform: scale(0.95); }
-
-.voice-btn-cancel { background: #f6f9ff; color: #64748b; }
-.voice-btn-confirm { background: linear-gradient(135deg, #0070f3 0%, #00a2ff 100%); color: white; box-shadow: 0 4px 15px rgba(0, 112, 243, 0.3); }
+.voice-modal-header h3 { font-size: 18px; font-weight: 800; color: var(--text-dark); }
+.voice-modal-body input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border-glass); background: var(--bg-app); font-size: 14px; color: var(--text-dark); outline: none; box-sizing: border-box; }
 
 /* =========================================
-   6. 🔥 BOTTOM SHEET KOIN (CLASS EKSKLUSIF) 🔥
+   6. 🔥 BOTTOM SHEET KOIN 🔥
    ========================================= */
 .voice-bottom-sheet { 
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
   display: flex; flex-direction: column; justify-content: flex-end; 
-  z-index: 10003; opacity: 0; pointer-events: none; transition: opacity 0.3s;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  z-index: 10003; opacity: 0; pointer-events: none; transition: 0.3s;
 }
-
 .voice-bottom-sheet.active { opacity: 1; pointer-events: auto; }
 
-.voice-sheet-overlay { 
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-  background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); 
-}
-
 .voice-sheet-content { 
-  position: relative; background: #ffffff; width: 100%; 
+  position: relative; background: var(--bg-card); width: 100%; 
   padding: 18px 16px 30px; border-top-left-radius: 24px; 
   border-top-right-radius: 24px; transform: translateY(100%); 
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
-  box-sizing: border-box; 
   max-width: 480px; margin: 0 auto;
-  box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+  border: 1px solid var(--border-glass);
   padding-bottom: max(30px, calc(30px + env(safe-area-inset-bottom)));
 }
-
 .voice-bottom-sheet.active .voice-sheet-content { transform: translateY(0); }
-.voice-sheet-content h3 { color: var(--text-dark); font-size: 16px; font-weight: 800; margin-bottom: 16px; text-align: center; }
 
-/* Komponen dalam sheet tetep dirantai ke .voice-lobby-container biar stylingnya aman */
-.voice-lobby-container .drag-handle { width: 40px; height: 5px; border-radius: 999px; background: #cbd5e1; margin: 0 auto 16px; }
-.voice-lobby-container .coin-product-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; margin-bottom: 12px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s ease; cursor: pointer; }
-.voice-lobby-container .coin-product-card:active { transform: translateY(2px) scale(0.98); border-color: var(--primary); background: #f0fdfa; }
-.voice-lobby-container .coin-product-card .product-info-wrapper { display: flex; align-items: center; gap: 14px; flex: 1; }
-.voice-lobby-container .coin-product-card .product-icon { width: 42px; height: 42px; border-radius: 12px; background: #fff6ed; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.voice-lobby-container .coin-product-card .product-text { display: flex; flex-direction: column; gap: 2px; }
+.voice-lobby-container .coin-product-card { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; margin-bottom: 12px; border-radius: 16px; background: var(--bg-app); border: 1px solid var(--border-glass); }
 .voice-lobby-container .coin-product-card .p-name { color: var(--text-dark); font-size: 14px; font-weight: 800; }
-.voice-lobby-container .coin-product-card .p-price { color: var(--text-muted); font-size: 12px; font-weight: 600; }
-
-.voice-lobby-container .buy-coin-btn { min-width: 68px; height: 32px; padding: 0 14px; border: none; border-radius: 999px; background: var(--accent-coin); color: white; font-size: 12px; font-weight: 800; cursor: pointer; flex-shrink: 0; }
-.voice-lobby-container .buy-coin-btn:hover { opacity: 0.9; }
-.voice-lobby-container .buy-coin-btn:disabled { opacity: 0.5; pointer-events: none; }
-
-.voice-lobby-container .custom-topup { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px dashed #e2e8f0; }
-.voice-lobby-container .custom-topup h4 { color: var(--text-dark); font-size: 14px; font-weight: 800; margin: 0; }
-.voice-lobby-container .custom-topup input { padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: var(--text-dark); font-size: 14px; outline: none; font-weight: 600; }
-.voice-lobby-container .custom-topup input:focus { border-color: var(--primary); background: white; }
-
-.voice-lobby-container #buy-custom-coin-btn { height: 38px; padding: 0 20px; border: none; border-radius: 12px; background: var(--text-dark); color: white; font-size: 13px; font-weight: 800; cursor: pointer; align-self: flex-start; transition: opacity 0.2s; }
-.voice-lobby-container #buy-custom-coin-btn:disabled { opacity: 0.5; pointer-events: none; }
+.voice-lobby-container .custom-topup { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--border-glass); }
+.voice-lobby-container .custom-topup input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-glass); background: var(--bg-app); color: var(--text-dark); outline: none; }
 
 /* =========================================
-   7. 🔥 ANIMASI LOADING TOMBOL BELI 🔥
+   7. ANIMASI LOADING
    ========================================= */
 @keyframes spin-loader { to { transform: rotate(360deg); } }
-.voice-lobby-container .buy-coin-btn { transition: transform 0.1s ease, opacity 0.2s ease; }
-.voice-lobby-container .buy-coin-btn:active, .voice-lobby-container #buy-custom-coin-btn:active { transform: scale(0.85); }
-.voice-lobby-container .btn-loading { position: relative; color: transparent !important; pointer-events: none; }
-.voice-lobby-container .btn-loading::after { content: ''; position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; margin-top: -7px; margin-left: -7px; border: 2px solid rgba(0, 0, 0, 0.2); border-top-color: #1a1a1a; border-radius: 50%; animation: spin-loader 0.6s linear infinite; }
-.voice-lobby-container #buy-custom-coin-btn.btn-loading::after { border: 2px solid rgba(255, 255, 255, 0.3); border-top-color: #ffffff; }
+.voice-lobby-container .btn-loading::after { content: ''; position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; margin-top: -7px; margin-left: -7px; border: 2px solid rgba(0, 0, 0, 0.1); border-top-color: var(--text-dark); border-radius: 50%; animation: spin-loader 0.6s linear infinite; }
