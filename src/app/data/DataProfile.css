@@ -68,11 +68,11 @@ html.dark .profile-page-container {
 
 .profile-bio { font-size: 13px; line-height: 1.4; color: var(--text-dark); margin: 0; padding: 0 20px; white-space: pre-wrap; text-align: center; margin-bottom: 15px; }
 
-/* --- TABS --- */
+/* --- TABS PROFIL --- */
 .profile-tabs { display: flex; background: var(--bg-main); }
-.tab-item { flex: 1; padding: 12px 0; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; position: relative; }
-.tab-item.active { color: var(--text-dark); }
-.tab-item.active::after { content: ""; position: absolute; bottom: 0; left: 20%; width: 60%; height: 2px; background: var(--text-dark); }
+.profile-tab-item { flex: 1; padding: 12px 0; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; position: relative; }
+.profile-tab-item.active { color: var(--text-dark); }
+.profile-tab-item.active::after { content: ""; position: absolute; bottom: 0; left: 20%; width: 60%; height: 2px; background: var(--text-dark); }
 
 /* --- GRID POSTS (Scrollable Area) --- */
 .post-grid-container {

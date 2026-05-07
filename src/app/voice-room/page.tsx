@@ -292,7 +292,7 @@ export default function VoiceLobbyPage() {
         {KATEGORI_LIST.map(kategori => (
           <span 
             key={kategori}
-            className={`tab-item ${activeCategory === kategori ? 'active' : ''}`}
+            className={`voice-tab-item ${activeCategory === kategori ? 'active' : ''}`}
             onClick={() => setActiveCategory(kategori)}
           >
             {kategori}
