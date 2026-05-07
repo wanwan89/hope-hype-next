@@ -20,7 +20,7 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'foto' | 'musik' | 'repost' | 'like'>('foto');
+  const [activeTab, setActiveTab] = useState<'post' | 'simpan' | 'repost' | 'like'>('post');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
 
@@ -31,6 +31,12 @@ function ProfileContent() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 🔥 STATE BARU UNTUK FOLLOW MODAL 🔥
+  const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
+  const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
+  const [followList, setFollowList] = useState<any[]>([]);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
   const avatarPresets = [
     '/asets/png/avatar1.png',
@@ -103,14 +109,13 @@ function ProfileContent() {
     }
   };
 
-  // 🔥 FIX LOGIKA TAB: Mencegah data nyangkut dan memvalidasi relasi tabel 🔥
   const loadPostsTab = async (type: string) => {
     if (!profile) return;
     setIsLoadingPosts(true);
-    setPosts([]); // Reset state setiap ganti tab
+    setPosts([]); 
 
     try {
-      if (type === 'foto') {
+      if (type === 'post') {
         const { data } = await supabase
           .from('posts')
           .select('id, image_url')
@@ -119,21 +124,24 @@ function ProfileContent() {
           .order('created_at', { ascending: false });
         setPosts(data || []);
       } 
-      
-      else if (type === 'musik') {
-        // Filter musik berdasarkan user_id (atau username sebagai artist)
-        const { data } = await supabase
-          .from('songs')
-          .select('id, cover_url')
-          .eq('artist', profile.username) 
-          .order('created_at', { ascending: false });
-        setPosts(data ? data.map(s => ({ id: s.id, image_url: s.cover_url })) : []);
+      else if (type === 'simpan') {
+        const { data: saves } = await supabase
+          .from('bookmarks') 
+          .select('post_id')
+          .eq('user_id', profile.id);
+
+        if (saves && saves.length > 0) {
+          const postIds = saves.map(s => s.post_id);
+          const { data: pData } = await supabase
+            .from('posts')
+            .select('id, image_url')
+            .in('id', postIds)
+            .eq('status', 'approved');
+          setPosts(pData || []);
+        }
       } 
-      
       else if (type === 'repost' || type === 'like') {
         const tableName = type === 'repost' ? 'reposts' : 'likes';
-        
-        // 1. Ambil list ID postingan dari tabel relasi
         const { data: rels } = await supabase
           .from(tableName)
           .select('post_id')
@@ -141,16 +149,12 @@ function ProfileContent() {
 
         if (rels && rels.length > 0) {
           const postIds = rels.map(r => r.post_id);
-          // 2. Ambil data postingan aslinya
           const { data: pData } = await supabase
             .from('posts')
             .select('id, image_url')
             .in('id', postIds)
             .eq('status', 'approved');
-          
           setPosts(pData || []);
-        } else {
-          setPosts([]); // Pastikan kosong kalau gak ada relasi
         }
       }
     } catch (err) { 
@@ -158,6 +162,42 @@ function ProfileContent() {
       setPosts([]);
     } finally { 
       setIsLoadingPosts(false); 
+    }
+  };
+
+  // 🔥 FUNGSI BUKA MODAL FOLLOW 🔥
+  const handleOpenFollowModal = async (type: 'followers' | 'following') => {
+    setFollowModalType(type);
+    setIsFollowModalOpen(true);
+    setIsFollowLoading(true);
+    setFollowList([]);
+
+    if (!profile) return;
+
+    try {
+      // Logic: Kalau cari pengikut, ambil 'follower_id' dimana 'following_id' adalah saya
+      // Kalau cari mengikuti, ambil 'following_id' dimana 'follower_id' adalah saya
+      const targetCol = type === 'followers' ? 'follower_id' : 'following_id';
+      const matchCol = type === 'followers' ? 'following_id' : 'follower_id';
+
+      const { data, error } = await supabase
+        .from('followers')
+        .select(`
+          profiles:${targetCol} (
+            id,
+            username,
+            avatar_url,
+            role
+          )
+        `)
+        .eq(matchCol, profile.id);
+
+      if (error) throw error;
+      setFollowList(data?.map((item: any) => item.profiles) || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsFollowLoading(false);
     }
   };
 
@@ -267,11 +307,12 @@ function ProfileContent() {
                <span className="stat-num">{stats.likes}</span>
                <span className="stat-label">Suka</span>
             </div>
-            <div className="stat-box">
+            {/* 🔥 CLICKABLE STATS 🔥 */}
+            <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}>
                <span className="stat-num">{stats.followers}</span>
                <span className="stat-label">Pengikut</span>
             </div>
-            <div className="stat-box">
+            <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}>
                <span className="stat-num">{stats.following}</span>
                <span className="stat-label">Mengikuti</span>
             </div>
@@ -294,8 +335,8 @@ function ProfileContent() {
         </section>
 
         <div className="profile-tabs">
-           <div className={`profile-tab-item ${activeTab === 'foto' ? 'active' : ''}`} onClick={() => setActiveTab('foto')}>Karya</div>
-           <div className={`profile-tab-item ${activeTab === 'musik' ? 'active' : ''}`} onClick={() => setActiveTab('musik')}>Musik</div>
+           <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>Post</div>
+           <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>Simpan</div>
            <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>Repost</div>
            <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>Suka</div>
         </div>
@@ -312,13 +353,13 @@ function ProfileContent() {
                 <div className="no-posts-icon-circle">
                    <span className="material-icons">auto_awesome</span>
                 </div>
-                <h3>Belum ada karya</h3>
+                <h3>Belum ada postingan</h3>
                 <p>Mulai bagikan inspirasi pertamamu ke dunia.</p>
                 {isMe && <button className="btn-action btn-primary" onClick={() => router.push('/')}>Buat Postingan</button>}
               </div>
            ) : (
               posts.map(post => (
-                 <div key={post.id} className="grid-item" onClick={() => router.push(activeTab === 'musik' ? `/music?id=${post.id}` : `/post?id=${post.id}`)}>
+                 <div key={post.id} className="grid-item" onClick={() => router.push(`/post?id=${post.id}`)}>
                     {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
               ))
@@ -347,7 +388,6 @@ function ProfileContent() {
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
-        {/* 🔥 FIX ICON: Diamond lebih premium 🔥 */}
         <div className="menu-item-tiktok" onClick={() => navTo('/vip')}>
            <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div>
            <div className="menu-text">Langganan VIP</div>
@@ -369,7 +409,6 @@ function ProfileContent() {
            <div className="menu-text">Pengaturan</div>
            <div className="arrow-right">›</div>
         </div>
-        {/* 🔥 MENU BARU: Contact Us 🔥 */}
         <div className="menu-item-tiktok" onClick={() => navTo('/contact')}>
            <div className="icon-wrapper"><span className="material-icons">support_agent</span></div>
            <div className="menu-text">Hubungi Kami</div>
@@ -383,6 +422,45 @@ function ProfileContent() {
         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>
            <div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div>
            <div className="menu-text">Keluar Akun</div>
+        </div>
+      </aside>
+
+      {/* 🔥 MODAL FOLLOW (SLIDE UP) 🔥 */}
+      <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
+      <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
+        <div className="follow-sheet-header">
+           <div className="drag-handle"></div>
+           <h3>{followModalType === 'followers' ? 'Pengikut' : 'Mengikuti'}</h3>
+           <span className="material-icons close-icon" onClick={() => setIsFollowModalOpen(false)}>close</span>
+        </div>
+        
+        <div className="follow-sheet-body">
+           {isFollowLoading ? (
+              Array(5).fill(0).map((_, i) => (
+                <div key={i} className="follow-item-skeleton">
+                   <div className="skeleton-avatar"></div>
+                   <div className="skeleton-text"></div>
+                </div>
+              ))
+           ) : followList.length === 0 ? (
+              <div className="follow-empty">
+                 <p>Belum ada daftar untuk ditampilkan.</p>
+              </div>
+           ) : (
+              followList.map(user => (
+                 <div key={user.id} className="follow-item" onClick={() => { setIsFollowModalOpen(false); router.push(`/data?id=${user.id}`); }}>
+                    <img src={user.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
+                    <div className="follow-item-info">
+                       <span className="follow-username">
+                          {user.username} 
+                          <span dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) }} />
+                       </span>
+                       <span className="follow-handle">@{user.username.toLowerCase().replace(/\s/g, '')}</span>
+                    </div>
+                    <span className="material-icons" style={{color: '#8a8b91'}}>chevron_right</span>
+                 </div>
+              ))
+           )}
         </div>
       </aside>
 
