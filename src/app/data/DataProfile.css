@@ -8,11 +8,12 @@
     --text-secondary: #65676b; 
     --border-color: #e4e6eb; 
 
-    /* 🔥 FIX STRUKTUR: Paksa 100dvh karena halaman ini bukan Standalone di layout.tsx 🔥 */
+    /* 🔥 FIX: Balikin ke 100% dan relative agar patuh pada Layout Utama 🔥 */
     width: 100%;
-    max-width: 480px; /* Jaga biar simetris di desktop/tablet */
+    max-width: 480px; 
     margin: 0 auto;
-    height: 100dvh; 
+    height: 100%; 
+    min-height: 100%;
     display: flex;
     flex-direction: column;
     background: var(--bg-main);
@@ -94,7 +95,7 @@ html.dark .profile-page-container {
     background: rgba(0,0,0,0.4); 
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
-    z-index: 99990; /* 🔥 Di atas navbar bawah 🔥 */
+    z-index: 10000; /* 🔥 Turunin Z-index agar setara antar halaman 🔥 */
     opacity: 0; visibility: hidden; transition: 0.3s; 
 }
 .p-sidebar-overlay.active { opacity: 1; visibility: visible; }
@@ -108,7 +109,7 @@ html.dark .profile-page-container {
     width: 280px; 
     max-width: 85%;
     background: var(--bg-main); 
-    z-index: 99991; /* 🔥 Di atas overlay 🔥 */
+    z-index: 10001; /* 🔥 Di atas overlay 🔥 */
     transform: translateX(100%); 
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
     display: flex; 
@@ -167,11 +168,11 @@ html.dark .profile-page-container {
 .menu-item-tiktok.logout .icon-wrapper, 
 .menu-item-tiktok.logout .menu-text { color: #ff4757; }
 
-/* --- 🔥 MODAL EDIT PROFIL (Z-INDEX DEWA LEVEL 2) 🔥 --- */
+/* --- 🔥 MODAL EDIT PROFIL (Z-INDEX DISEJAJARKAN DENGAN HYPETALK) 🔥 --- */
 .custom-modal-overlay { 
     position: fixed; inset: 0; 
     background: rgba(0,0,0,0.6); 
-    z-index: 99995; /* 🔥 Lebih tinggi dari navbar & sidebar 🔥 */
+    z-index: 10002; /* 🔥 Disamakan tingkatannya dengan Modal Hypetalk 🔥 */
     display: flex; align-items: center; justify-content: center; 
     opacity: 0; pointer-events: none; transition: 0.3s; 
 }
