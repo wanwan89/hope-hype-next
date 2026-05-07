@@ -13,6 +13,9 @@ export default function SearchWrapperpost() {
   const [stories, setStories] = useState<any[]>([]);
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [isStoriesVisible, setIsStoriesVisible] = useState(true);
+  
+  // 🔥 Trik IG: State buat nandain story mana yang lagi di-animasiin
+  const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
 
   // --- CEK HALAMAN YANG HEADERNYA HARUS ILANG ---
   const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/');
@@ -62,10 +65,18 @@ export default function SearchWrapperpost() {
     }
   };
 
-  // 🔥 FIX: Handler Klik Story (Update State + Navigasi) 🔥
+  // 🔥 FIX: Handler Klik Story ala IG (Ada Animasi Bouncy) 🔥
   const handleStoryClick = (sId: string) => {
+    // 1. Mulai animasi mengecil
+    setAnimatingStoryId(sId);
     setClickedStoryId(sId); 
-    router.push(`/story/${sId}`);
+    
+    // 2. Kasih jeda 200ms biar animasi keliatan, baru pindah halaman
+    setTimeout(() => {
+      router.push(`/story/${sId}`);
+      // (Opsional) Reset animasi setelah pindah
+      setTimeout(() => setAnimatingStoryId(null), 100);
+    }, 200);
   };
 
   if (!mounted || isHidden) return null;
@@ -87,7 +98,7 @@ export default function SearchWrapperpost() {
       <div 
         className="search-wrapper glass-effect" 
         style={{ 
-          backgroundColor: 'var(--glass-bg)', // 🔥 FIX: Ikut tema
+          backgroundColor: 'var(--glass-bg)',
           backdropFilter: 'blur(15px)',
           WebkitBackdropFilter: 'blur(15px)',
           padding: '12px 18px',
@@ -108,7 +119,6 @@ export default function SearchWrapperpost() {
             width: '24px', flexShrink: 0, outline: 'none'
           }}
         >
-          {/* 🔥 FIX: Garis ikut warna teks tema */}
           {[1,2,3].map(i => (
             <span key={i} style={{ display: 'block', width: '100%', height: '2px', backgroundColor: 'var(--text-main)', borderRadius: '2px' }}></span>
           ))}
@@ -123,7 +133,7 @@ export default function SearchWrapperpost() {
             style={{
               width: '100%', height: '40px', padding: '8px 18px',
               borderRadius: '20px', border: '1px solid var(--border-color)',
-              backgroundColor: 'var(--bg-secondary)', // 🔥 FIX: Ikut tema
+              backgroundColor: 'var(--bg-secondary)', 
               color: 'var(--text-main)', outline: 'none', fontSize: '14px'
             }}
             onChange={(e) => {
@@ -143,7 +153,7 @@ export default function SearchWrapperpost() {
             window.dispatchEvent(new CustomEvent('openPostModal'));
           }}
           style={{ 
-            background: 'var(--text-main)', // 🔥 FIX: Hitam di Light, Putih di Dark
+            background: 'var(--text-main)', 
             color: 'var(--bg-card)', 
             width: '40px', height: '40px', borderRadius: '50%', 
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -166,7 +176,7 @@ export default function SearchWrapperpost() {
             opacity: isStoriesVisible ? 1 : 0,
             padding: isStoriesVisible ? '10px 15px 15px 15px' : '0',
             overflow: 'hidden',
-            backgroundColor: 'var(--bg-main)', // 🔥 FIX: Ikut tema
+            backgroundColor: 'var(--bg-main)', 
             display: 'flex', gap: '15px', overflowX: 'auto',
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
             pointerEvents: isStoriesVisible ? 'auto' : 'none',
@@ -177,13 +187,23 @@ export default function SearchWrapperpost() {
             <div 
               key={story.id} 
               className="story-item" 
-              onClick={() => handleStoryClick(story.id)} // 🔥 FIX: Jalankan handler
-              style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+              onClick={() => handleStoryClick(story.id)} 
+              style={{ 
+                flexShrink: 0, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: 'pointer',
+                // 🔥 ANIMASI IG: Mengecil pas diklik, lalu balik lagi (Bouncy)
+                transform: animatingStoryId === story.id ? 'scale(0.85)' : 'scale(1)',
+                opacity: animatingStoryId === story.id ? 0.7 : 1,
+                transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' 
+              }}
             >
               <div 
                 style={{
                   width: '66px', height: '66px', borderRadius: '50%', padding: '2.5px',
-                  // 🔥 FIX: Lingkaran jadi abu-abu (seen) sesuai tema
                   background: clickedStoryId === story.id 
                     ? 'var(--border-color)' 
                     : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',

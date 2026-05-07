@@ -15,28 +15,30 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Identifikasi Halaman Lama
+  // 1. Identifikasi Halaman
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
   const isNotifPage = pathname?.includes('/notifications');
   const isDailyCekPage = pathname?.includes('/dailycek');
   
-  // 🔥 FIX 1: Identifikasi Halaman Baru
   const isSettingsPage = pathname?.includes('/settings');
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
   
-  // Halaman bergaya Aplikasi (Full Screen & Kunci Scroll Body)
-  const isStandaloneApp = isVoicePage || isDailyCekPage;
+  // 🔥 FIX 1: Tambah isStoryPage biar Story bener-bener Fullscreen
+  const isStoryPage = pathname?.includes('/story');
   
-  // 🔥 FIX 2: Masukin halaman baru ke mode Fullscreen biar gak numpuk
+  // Halaman bergaya Aplikasi (Full Screen & Kunci Scroll Body)
+  const isStandaloneApp = isVoicePage || isDailyCekPage || isStoryPage;
+  
+  // Masukin halaman baru ke mode Fullscreen biar gak numpuk
   const isFullscreenPage = isStandaloneApp || isDataPage || isNotifPage || isSettingsPage || isVipPage || isContactPage;
 
-  // Sembunyiin sidebar & navbar di halaman pengaturan/kontak/vip
+  // Sembunyiin sidebar & navbar di halaman tertentu
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
-  const hideOverlays = isVoicePage;
+  const hideOverlays = isVoicePage || isStoryPage;
 
   // 2. 🔥 EKSEKUSI SEBELUM PAINT: Mencegah layout tabrakan pas pindah halaman 🔥
   useIsomorphicLayoutEffect(() => {
@@ -81,14 +83,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [pathname, isStandaloneApp]); 
 
-  // 🔥 FIX 3: Cabut hardcode "#ffffff" biar tema Gelap/Terang bisa jalan mulus!
   return (
     <html lang="id" style={{ overflowX: 'hidden' }}>
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+        
+        {/* 🔥 FIX 2: INTEGRASI PWA & NATIVE APP EXPERIENCE 🔥 */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1f3cff" />
+        {/* 🔥 FIX 3: Path icon disamain sama public/asets/png/book.png 🔥 */}
+        <link rel="apple-touch-icon" href="/asets/png/book.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Hope Hype" />
+        {/* Kunci zoom biar persis aplikasi native */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
       </head>
+      
       <body 
         className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
@@ -118,13 +130,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main 
             className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}
             style={{ 
-              flex: '1 1 auto', // 🔥 JURUS MELAR MAKSIMAL
+              flex: '1 1 auto', 
               display: isStandaloneApp ? 'flex' : 'block',
               flexDirection: 'column',
               overflow: isStandaloneApp ? 'hidden' : 'visible',
               height: isStandaloneApp ? '100%' : 'auto',
               width: '100%',
-              marginBottom: isStandaloneApp ? '0' : '-1px', // 🔥 LEM SUPER
+              marginBottom: isStandaloneApp ? '0' : '-1px', 
             }}
           >
             {children}
@@ -132,7 +144,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           
         </div>
 
-        {/* 🔥 FIX: NAVBAR UDAH DIHANDLE SAMA hideNavbar 🔥 */}
         {!hideNavbar && <Navbar />}
 
         <LoginPopup />
