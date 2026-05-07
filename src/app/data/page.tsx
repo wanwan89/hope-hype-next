@@ -26,7 +26,10 @@ function ProfileContent() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [editData, setEditData] =({ username: '', bio: '', avatar_url: '' });
+
+  // 🔥 FIX: Tambahkan 'useState' yang tadi ketinggalan 🔥
+  const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '' });
+  
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -290,7 +293,7 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR PANEL */}
       <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
       <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
@@ -311,7 +314,6 @@ function ProfileContent() {
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
-        {/* 🔥 MENU BARU: Langganan VIP 🔥 */}
         <div className="menu-item-tiktok" onClick={() => navTo('/vip')}>
            <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">workspace_premium</span></div>
            <div className="menu-text">Langganan VIP</div>
@@ -328,7 +330,6 @@ function ProfileContent() {
         <hr className="menu-divider" />
         
         <div className="menu-category-label">Alat Pribadi</div>
-        {/* 🔥 MENU BARU: Pengaturan 🔥 */}
         <div className="menu-item-tiktok" onClick={() => navTo('/settings')}>
            <div className="icon-wrapper"><span className="material-icons">settings</span></div>
            <div className="menu-text">Pengaturan</div>
