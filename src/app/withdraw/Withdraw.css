@@ -1,0 +1,112 @@
+/* src/app/saldo/withdraw/Withdraw.css */
+
+.wd-page-wrapper {
+  --accent-blue: #007bff;
+  --bg-main: #ffffff;
+  --text-main: #1c1e21;
+  --text-muted: #64748b;
+  --border: #f1f5f9;
+
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  padding-top: calc(20px + env(safe-area-inset-top));
+  box-sizing: border-box;
+}
+
+.wd-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.wd-header h2 {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.wd-form-group { 
+  margin-bottom: 24px; 
+}
+
+.wd-form-group label { 
+  display: block; 
+  font-size: 11px; 
+  color: var(--text-muted); 
+  text-transform: uppercase; 
+  letter-spacing: 1px; 
+  margin-bottom: 8px; 
+  font-weight: 700; 
+}
+
+.wd-form-group input, 
+.wd-form-group select { 
+  width: 100%; 
+  padding: 12px 0; 
+  border: none; 
+  border-bottom: 2px solid var(--border); 
+  font-size: 18px; 
+  font-weight: 600; 
+  background: transparent; 
+  color: var(--text-main); 
+  border-radius: 0; 
+  transition: 0.3s; 
+  outline: none;
+}
+
+.wd-form-group input:focus { 
+  border-bottom-color: var(--accent-blue); 
+}
+
+.wd-estimation { 
+  font-size: 13px; 
+  color: var(--accent-blue); 
+  font-weight: 700; 
+  margin-top: 8px; 
+  letter-spacing: 0.5px; 
+}
+
+.wd-submit-btn { 
+  width: 100%; 
+  background: var(--accent-blue); 
+  color: #fff; 
+  border: none; 
+  padding: 20px; 
+  border-radius: 16px; 
+  font-weight: 800; 
+  font-size: 14px; 
+  text-transform: uppercase; 
+  letter-spacing: 1px; 
+  cursor: pointer; 
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2); 
+  transition: all 0.2s; 
+  margin-top: auto; 
+  margin-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+.wd-submit-btn:active { transform: scale(0.96); }
+.wd-submit-btn:disabled { 
+  background: #e2e8f0; 
+  cursor: not-allowed; 
+  color: #94a3b8; 
+  box-shadow: none; 
+}
+
+.wd-back-btn {
+  background: var(--border);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
