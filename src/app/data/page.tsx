@@ -26,8 +26,6 @@ function ProfileContent() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  // 🔥 UPDATE: Tambah field 'website' di state edit
   const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '', website: '' });
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -80,7 +78,7 @@ function ProfileContent() {
         username: profData.username || '',
         bio: profData.bio || '',
         avatar_url: profData.avatar_url || '',
-        website: profData.website || '' // 🔥 Ambil data website
+        website: profData.website || ''
       });
       setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
       updateStats(profData.id, currentUserId);
@@ -120,7 +118,8 @@ function ProfileContent() {
       else if (type === 'simpan') {
         const { data: saves } = await supabase.from('bookmarks').select('post_id').eq('user_id', profile.id);
         if (saves && saves.length > 0) {
-          const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', saves.map((s: any) => s.post_id)).eq('status', 'approved');
+          const postIds = saves.map((s: any) => s.post_id);
+          const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', postIds).eq('status', 'approved');
           setPosts(pData || []);
         }
       } 
@@ -133,7 +132,12 @@ function ProfileContent() {
           setPosts(pData || []);
         }
       }
-    } catch (err) { console.error(err); } finally { setIsLoadingPosts(false); }
+    } catch (err) { 
+      console.error(err);
+      setPosts([]);
+    } finally { 
+      setIsLoadingPosts(false); 
+    }
   };
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
@@ -146,14 +150,31 @@ function ProfileContent() {
     try {
       const targetCol = type === 'followers' ? 'follower_id' : 'following_id';
       const matchCol = type === 'followers' ? 'following_id' : 'follower_id';
-      const { data: idList } = await supabase.from('followers').select(targetCol).eq(matchCol, profile.id);
+
+      // 1. Ambil list ID
+      const { data: idList, error: idError } = await supabase
+        .from('followers')
+        .select(targetCol)
+        .eq(matchCol, profile.id);
+
+      if (idError) throw idError;
 
       if (idList && idList.length > 0) {
         const userIds = idList.map((item: any) => item[targetCol]);
-        const { data: profilesData } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', userIds);
+        // 2. Tarik info profil lengkap
+        const { data: profilesData, error: profError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url, role')
+          .in('id', userIds);
+
+        if (profError) throw profError;
         setFollowList(profilesData || []);
       }
-    } catch (err) { console.error(err); } finally { setIsFollowLoading(false); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsFollowLoading(false);
+    }
   };
 
   const handleShareProfile = async () => {
@@ -175,7 +196,6 @@ function ProfileContent() {
         const resData = await res.json();
         finalAvatarUrl = resData.secure_url;
       }
-      // 🔥 UPDATE: Simpan field 'website' ke Supabase
       await supabase.from("profiles").update({ 
         username: editData.username, 
         bio: editData.bio, 
@@ -227,19 +247,9 @@ function ProfileContent() {
           <p className="profile-username">@{profile.username.toLowerCase().replace(/\s/g, '')}</p>
 
           <div className="profile-stats">
-            {/* 🔥 UPDATE URUTAN: Pengikut, Mengikuti, Suka */}
-            <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}>
-               <span className="stat-num">{stats.followers}</span>
-               <span className="stat-label">Pengikut</span>
-            </div>
-            <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}>
-               <span className="stat-num">{stats.following}</span>
-               <span className="stat-label">Mengikuti</span>
-            </div>
-            <div className="stat-box">
-               <span className="stat-num">{stats.likes}</span>
-               <span className="stat-label">Suka</span>
-            </div>
+            <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.followers}</span><span className="stat-label">Pengikut</span></div>
+            <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.following}</span><span className="stat-label">Mengikuti</span></div>
+            <div className="stat-box"><span className="stat-num">{stats.likes}</span><span className="stat-label">Suka</span></div>
           </div>
 
           <div className="profile-actions">
@@ -254,13 +264,13 @@ function ProfileContent() {
           </div>
           <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
           
-          {/* 🔥 FITUR TAUTAN: Tampil di bawah Bio */}
+          {/* 🔥 FIX LINK MINIMALIS (11px & Muted Color) */}
           {profile.website && (
             <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} 
                target="_blank" rel="noopener noreferrer" 
-               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '13px', color: 'var(--primary-blue)', fontWeight: '600', marginTop: '8px', textDecoration: 'none' }}>
-               <span className="material-icons" style={{ fontSize: '16px' }}>link</span>
-               {profile.website.replace(/^https?:\/\//, '')}
+               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px', color: '#64748b', fontWeight: '500', marginTop: '6px', textDecoration: 'none', opacity: 0.8 }}>
+               <span className="material-icons" style={{ fontSize: '14px' }}>link</span>
+               {profile.website.replace(/^https?:\/\//, '').split('/')[0]}
             </a>
           )}
         </section>
@@ -277,9 +287,16 @@ function ProfileContent() {
         <div className="post-grid">
            {isLoadingPosts ? (
               Array(9).fill(0).map((_, i) => <div key={i} className="skeleton-grid-item"></div>)
+           ) : posts.length === 0 ? (
+              <div className="no-posts-v2">
+                <div className="no-posts-icon-circle"><span className="material-icons">auto_awesome</span></div>
+                <h3>Belum ada postingan</h3>
+                {isMe && <button className="btn-action btn-primary" onClick={() => router.push('/')}>Buat Postingan</button>}
+              </div>
            ) : (
               posts.map(post => (
-                 <div key={post.id} className="grid-item" onClick={() => router.push(`/post?id=${post.id}`)}>
+                 // 🔥 FIX KLIK POST: Navigasi Langsung ke Post Detail
+                 <div key={post.id} className="grid-item" style={{ cursor: 'pointer' }} onClick={() => router.push(`/post?id=${post.id}`)}>
                     {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
               ))
@@ -326,7 +343,6 @@ function ProfileContent() {
         </div>
       </aside>
 
-      {/* MODAL EDIT */}
       {isMounted && (
         <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
            <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
@@ -344,10 +360,7 @@ function ProfileContent() {
               </div>
               <div className="input-group"><label>Username</label><input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} /></div>
               <div className="input-group"><label>Bio</label><textarea rows={2} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} /></div>
-              
-              {/* 🔥 INPUT BARU: Tautan/Website */}
               <div className="input-group"><label>Tautan / Link</label><input type="text" placeholder="google.com atau instagram.com/user" value={editData.website} onChange={e => setEditData(prev => ({ ...prev, website: e.target.value }))} /></div>
-              
               <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
            </div>
         </div>
