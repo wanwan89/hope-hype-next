@@ -179,7 +179,31 @@ const resources = {
       "pay_failed": "Pembayaran gagal",
       "pay_closed": "Transaksi dibatalkan",
       "session_expired": "Sesi habis, login lagi ya",
-      "room_closed_notif": "Room tutup!"
+      "room_closed_notif": "Room tutup!",
+
+      // --- CHAT ROOM (NEW) ---
+      "msg_deleted": "Pesan ini telah dihapus",
+      "media_label": "Media",
+      "typing_status": "{{username}} mengetik...",
+      "online_status": "{{count}} Online",
+      "connecting_chat": "Menyambungkan obrolan...",
+      "encryption_notice": "Pesan dan panggilan dienkripsi secara end-to-end. Tidak ada orang di luar chat ini yang dapat membaca atau mendengarkannya.",
+      "search_sticker": "Cari stiker...",
+      "write_message": "Tulis pesan...",
+      "slide_cancel": "Geser batal",
+      "delete_msg_title": "Hapus pesan ini?",
+      "btn_delete": "Hapus",
+      "group_info": "Info Grup",
+      "group_id": "ID Grup: ",
+      "group_share": "Bagikan ID ini ke temanmu agar mereka bisa mencarinya di menu Pencarian Chat dan bergabung ke dalam grup.",
+      "btn_copy_id": "Salin ID Grup",
+      "copied_success": "ID Grup berhasil disalin!",
+      "vn_canceled": "VN Dibatalkan",
+      "mic_error": "Gagal akses Mic",
+      "call_error": "Koneksi Panggilan Gagal",
+      "call_ended": "Panggilan berakhir",
+      "btn_answer": "Jawab",
+      "btn_decline": "Tutup"
     }
   },
   en: {
@@ -346,7 +370,31 @@ const resources = {
       "pay_failed": "Payment failed",
       "pay_closed": "Transaction closed",
       "session_expired": "Session expired",
-      "room_closed_notif": "Room closed!"
+      "room_closed_notif": "Room closed!",
+
+      // --- CHAT ROOM (NEW) ---
+      "msg_deleted": "This message was deleted",
+      "media_label": "Media",
+      "typing_status": "{{username}} is typing...",
+      "online_status": "{{count}} Online",
+      "connecting_chat": "Connecting to chat...",
+      "encryption_notice": "Messages and calls are end-to-end encrypted. No one outside of this chat can read or listen to them.",
+      "search_sticker": "Search stickers...",
+      "write_message": "Write a message...",
+      "slide_cancel": "Slide to cancel",
+      "delete_msg_title": "Delete this message?",
+      "btn_delete": "Delete",
+      "group_info": "Group Info",
+      "group_id": "Group ID: ",
+      "group_share": "Share this ID with your friends so they can search for it in the Chat Search menu and join the group.",
+      "btn_copy_id": "Copy Group ID",
+      "copied_success": "Group ID copied successfully!",
+      "vn_canceled": "Voice Note Canceled",
+      "mic_error": "Failed to access Mic",
+      "call_error": "Call Connection Failed",
+      "call_ended": "Call ended",
+      "btn_answer": "Answer",
+      "btn_decline": "Decline"
     }
   },
   zh: {
@@ -513,7 +561,31 @@ const resources = {
       "pay_failed": "支付失败",
       "pay_closed": "交易取消",
       "session_expired": "会话过期",
-      "room_closed_notif": "房间已关闭！"
+      "room_closed_notif": "房间已关闭！",
+
+      // --- CHAT ROOM (NEW) ---
+      "msg_deleted": "此消息已删除",
+      "media_label": "媒体",
+      "typing_status": "{{username}} 正在输入...",
+      "online_status": "{{count}} 人在线",
+      "connecting_chat": "正在连接聊天...",
+      "encryption_notice": "消息和通话是端到端加密的。此聊天之外的任何人无法读取或监听。",
+      "search_sticker": "搜索贴纸...",
+      "write_message": "写信息...",
+      "slide_cancel": "滑动取消",
+      "delete_msg_title": "删除此消息？",
+      "btn_delete": "删除",
+      "group_info": "群组信息",
+      "group_id": "群组 ID: ",
+      "group_share": "与朋友分享此 ID，以便他们可以在聊天搜索菜单中搜索并加入该群组。",
+      "btn_copy_id": "复制群组 ID",
+      "copied_success": "群组 ID 复制成功！",
+      "vn_canceled": "语音已取消",
+      "mic_error": "麦克风访问失败",
+      "call_error": "通话连接失败",
+      "call_ended": "通话结束",
+      "btn_answer": "接听",
+      "btn_decline": "拒绝"
     }
   },
   ko: {
@@ -680,7 +752,31 @@ const resources = {
       "pay_failed": "결제 실패",
       "pay_closed": "거래 취소",
       "session_expired": "세션 만료",
-      "room_closed_notif": "방이 닫혔습니다!"
+      "room_closed_notif": "방이 닫혔습니다!",
+
+      // --- CHAT ROOM (NEW) ---
+      "msg_deleted": "삭제된 메시지입니다",
+      "media_label": "미디어",
+      "typing_status": "{{username}}님이 입력 중...",
+      "online_status": "{{count}}명 온라인",
+      "connecting_chat": "채팅 연결 중...",
+      "encryption_notice": "메시지와 통화는 종단간 암호화됩니다. 이 채팅 외부의 누구도 읽거나 들을 수 없습니다.",
+      "search_sticker": "스티커 검색...",
+      "write_message": "메시지 입력...",
+      "slide_cancel": "밀어서 취소",
+      "delete_msg_title": "이 메시지를 삭제하시겠습니까?",
+      "btn_delete": "삭제",
+      "group_info": "그룹 정보",
+      "group_id": "그룹 ID: ",
+      "group_share": "이 ID를 친구들과 공유하여 채팅 검색 메뉴에서 검색하고 그룹에 참여할 수 있도록 하세요.",
+      "btn_copy_id": "그룹 ID 복사",
+      "copied_success": "그룹 ID가 복사되었습니다!",
+      "vn_canceled": "음성 메시지 취소됨",
+      "mic_error": "마이크 접근 실패",
+      "call_error": "통화 연결 실패",
+      "call_ended": "통화 종료",
+      "btn_answer": "응답",
+      "btn_decline": "거절"
     }
   }
 };

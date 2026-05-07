@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react'; // 🔥 FIX: Hapus useRef yang ga kepake
+import { useRouter } from 'next/navigation'; // 🔥 FIX: Hapus usePathname yang ga kepake
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import './Hypetalk.css';
 
 export default function HypetalkPage() {
   const router = useRouter();
-  const pathname = usePathname();
   
   // --- STATES ---
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -35,11 +34,13 @@ export default function HypetalkPage() {
     initUser();
   }, []);
 
+  // 🔥 FIX: Modal & Sidebar nutup aman pas unmount 🔥
   useEffect(() => {
-    setIsSidebarOpen(false);
-    // 🔥 Pastikan Modal Tertutup Saat Pindah Halaman 🔥
-    setActiveModal(null); 
-  }, [pathname]);
+    return () => {
+      setIsSidebarOpen(false);
+      setActiveModal(null);
+    };
+  }, []);
 
   const initUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -334,8 +335,6 @@ export default function HypetalkPage() {
           <button className="menu-item btn-cari-doi" onClick={handleCariDoi}><span className="material-icons">favorite</span> Cari Doi Sekarang <span className="limit-badge">{sisaLimitDoi}/10</span></button>
         </div>
       </aside>
-
-      {/* 🔥 FIX: SEMUA MODAL CLASS DIGANTI JADI tg-modal-* 🔥 */}
       
       {/* MODAL DOI CARD */}
       {activeModal === 'doi-card' && foundDoi && (
