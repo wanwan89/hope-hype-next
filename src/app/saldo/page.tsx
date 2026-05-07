@@ -11,6 +11,8 @@ export default function SaldoPage() {
   
   const [coins, setCoins] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // 🔥 STATE BARU: Untuk kontrol sembunyi saldo
+  const [showBalance, setShowBalance] = useState(true);
 
   // Rate konversi: 1 Koin = Rp 70
   const IDR_RATE = 70;
@@ -48,18 +50,19 @@ export default function SaldoPage() {
   };
 
   const handleWithdraw = () => {
-    router.push('/saldo/withdraw'); 
+    router.push('/withdraw'); 
   };
 
-  // 🔥 Fungsi Riwayat Penarikan (Withdraw)
   const handleWithdrawHistory = () => {
     router.push('/historycoin');
   };
 
-  // 🔥 Fungsi Riwayat Mutasi Koin (Buku Tabungan)
   const handleCoinHistory = () => {
     router.push('/saldo/history');
   };
+
+  // 🔥 FUNGSI TOGGLE MATA
+  const toggleBalance = () => setShowBalance(!showBalance);
 
   return (
     <div className="saldo-wrapper">
@@ -77,14 +80,25 @@ export default function SaldoPage() {
       {/* BALANCE SECTION */}
       <section className="saldo-balance-section">
         <div className="saldo-card">
-          <div className="saldo-label">Total Koin HopeHype</div>
+          {/* 🔥 MODIFIKASI LABEL: Tambah Tombol Mata 🔥 */}
+          <div className="saldo-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            Total Koin HopeHype
+            <span 
+              className="material-icons" 
+              onClick={toggleBalance} 
+              style={{ fontSize: '18px', cursor: 'pointer', opacity: 0.8 }}
+            >
+              {showBalance ? 'visibility' : 'visibility_off'}
+            </span>
+          </div>
           
           <div className="saldo-amount-coin">
             <span className="material-icons" style={{ color: '#f59e0b', fontSize: '32px' }}>toll</span>
             {isLoading ? (
               <div className="saldo-skeleton" style={{ width: '120px', height: '36px' }}></div>
             ) : (
-              (coins || 0).toLocaleString('id-ID')
+              // 🔥 LOGIKA SEMBUNYIKAN SALDO
+              showBalance ? (coins || 0).toLocaleString('id-ID') : '••••••'
             )}
           </div>
           
@@ -92,13 +106,14 @@ export default function SaldoPage() {
             {isLoading ? (
               <div className="saldo-skeleton" style={{ width: '80px', height: '14px' }}></div>
             ) : (
-              `Setara Rp ${((coins || 0) * IDR_RATE).toLocaleString('id-ID')}`
+              // 🔥 LOGIKA SEMBUNYIKAN ESTIMASI IDR
+              `Setara Rp ${showBalance ? ((coins || 0) * IDR_RATE).toLocaleString('id-ID') : '••••••'}`
             )}
           </div>
         </div>
       </section>
 
-      {/* ACTION MENU - TOPUP DIHAPUS 🔥 */}
+      {/* ACTION MENU */}
       <div className="saldo-menu-row">
         <button className="saldo-action-btn" onClick={handleWithdraw}>
           <span className="material-icons">account_balance_wallet</span>
@@ -125,7 +140,12 @@ export default function SaldoPage() {
             </div>
           </div>
           <div className="saldo-asset-value">
-            {isLoading ? <div className="saldo-skeleton" style={{ width: '40px', height: '20px' }}></div> : (coins || 0).toLocaleString('id-ID')}
+            {isLoading ? (
+              <div className="saldo-skeleton" style={{ width: '40px', height: '20px' }}></div>
+            ) : (
+              // 🔥 KONSISTEN: Sembunyikan juga di daftar aset
+              showBalance ? (coins || 0).toLocaleString('id-ID') : '••••'
+            )}
           </div>
         </div>
 
