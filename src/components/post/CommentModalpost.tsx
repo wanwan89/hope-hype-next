@@ -202,34 +202,9 @@ export default function CommentModalpost() {
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
-              /* 🔥 FIX: Bagian Gift UI di rapihin Bree! */
-              <div style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '10px', 
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%)', 
-                padding: '8px 14px', 
-                borderRadius: '16px', 
-                border: '1px solid rgba(245, 158, 11, 0.3)', 
-                marginTop: '6px',
-                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)',
-                maxWidth: '100%'
-              }}>
-                 <span style={{ color: '#f59e0b', fontSize: '13px', fontWeight: 700, letterSpacing: '0.2px' }}>
-                   {t('gave_gift', { giftName })}
-                 </span>
-                 {giftImg && (
-                   <img 
-                    src={giftImg} 
-                    alt={giftName} 
-                    style={{ 
-                      width: '32px', 
-                      height: '32px', 
-                      objectFit: 'contain',
-                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-                    }} 
-                   />
-                 )}
+              <div className="gift-comment-bubble">
+                 <span>{t('gave_gift', { giftName })}</span>
+                 {giftImg && <img src={giftImg} alt={giftName} />}
               </div>
             ) : (
               comment.content
@@ -286,10 +261,10 @@ export default function CommentModalpost() {
                   {renderComment(p, false)}
 
                   {firstCreatorReply && (
-                    <div className="replies-container" style={{ marginTop: '0' }}>
-                      <div className="reply-group" style={{ paddingTop: '8px' }}>
+                    <div className="replies-container">
+                      <div className="reply-group">
                         <div className="thread-line" style={{ height: 'calc(100% - 10px)', top: '10px' }}></div>
-                        <div className="comment-item reply" style={{ marginTop: 0 }}>
+                        <div className="comment-item reply">
                           <span className="reply-curve" style={{ top: '15px' }}></span>
                           {renderComment(firstCreatorReply, true)}
                         </div>
@@ -298,9 +273,9 @@ export default function CommentModalpost() {
                   )}
 
                   {remainingChilds.length > 0 && (
-                    <div className="replies-container" style={{ marginTop: firstCreatorReply ? '0' : '8px' }}>
-                      <div className="view-replies-btn" onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))} style={{ marginLeft: '45px' }}>
-                        <span className="btn-line" style={{ left: '-20px', width: '15px' }}></span>
+                    <div className="replies-container">
+                      <div className="view-replies-btn" onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}>
+                        <span className="btn-line"></span>
                         {isExpanded ? t('hide_replies') : t('show_replies_count', { count: remainingChilds.length })}
                       </div>
 
@@ -324,7 +299,8 @@ export default function CommentModalpost() {
         </div>
 
         <div className="comment-input-wrap">
-          <div style={{ position: 'relative', width: '100%' }}>
+          {/* 🔥 FIX: Waduh Utama Tombol Gift & Input 🔥 */}
+          <div className="input-container">
             <input 
               type="text" 
               className="comment-input" 
@@ -336,7 +312,7 @@ export default function CommentModalpost() {
               disabled={isSubmitting}
             />
             <button className="modal-gift-btn" onClick={handleGiftClick}>
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
             </button>
           </div>
         </div>

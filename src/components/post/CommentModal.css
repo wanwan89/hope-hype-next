@@ -6,7 +6,7 @@
   display: flex; align-items: flex-end; justify-content: center;
   z-index: 99999; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity 0.3s ease, visibility 0.3s ease;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 #commentModal.active {
   opacity: 1; visibility: visible; pointer-events: auto;
@@ -43,9 +43,9 @@
 /* --- LIST KOMENTAR --- */
 .comment-list {
   flex: 1; overflow-y: auto; padding: 15px 18px;
-  scrollbar-width: none; /* Hide scrollbar Firefox */
+  scrollbar-width: none; 
 }
-.comment-list::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome/Safari */
+.comment-list::-webkit-scrollbar { display: none; }
 
 /* --- THREAD & ITEM STYLE --- */
 .comment-thread { 
@@ -64,14 +64,13 @@
 
 .comment-left { flex-shrink: 0; position: relative; z-index: 5; }
 .comment-avatar { 
-  width: 38px; height: 36px; border-radius: 50%; object-fit: cover; 
+  width: 38px; height: 38px; border-radius: 50%; object-fit: cover; 
   cursor: pointer; background: var(--bg-secondary); 
   border: 1.5px solid var(--border-card); 
   transition: transform 0.2s;
 }
 .comment-avatar:active { transform: scale(0.9); }
 
-/* Style khusus balasan */
 .comment-item.reply .comment-avatar { width: 28px; height: 28px; }
 
 .comment-right { flex: 1; min-width: 0; padding-top: 2px; }
@@ -93,7 +92,7 @@
   border: 1px solid rgba(245, 158, 11, 0.35);
   margin-top: 8px;
   box-shadow: 0 4px 15px rgba(245, 158, 11, 0.15);
-  max-width: 90%;
+  max-width: 95%;
   animation: giftPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -106,14 +105,12 @@
   color: #f59e0b;
   font-size: 13px;
   font-weight: 800;
-  text-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 
 .gift-comment-bubble img {
-  width: 32px;
-  height: 32px;
+  width: 30px; height: 30px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.25));
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 .comment-actions { margin-top: 8px; }
@@ -145,10 +142,10 @@
 
 .thread-line {
   position: absolute;
-  left: 0; top: -20px; bottom: 25px;
+  left: 0; top: -18px; bottom: 20px;
   width: 1.5px;
   background: var(--border-card);
-  opacity: 0.6;
+  opacity: 0.5;
   z-index: 1;
 }
 
@@ -163,27 +160,75 @@
   left: 0; top: 14px;
   width: 16px; height: 1.5px;
   background: var(--border-card);
-  opacity: 0.6;
+  opacity: 0.5;
   z-index: 1;
 }
 
-/* --- INPUT AREA BAWAH --- */
+/* --- 🔥 FIX AREA INPUT BAWAH (RAPI PREMIUM) --- */
 .comment-input-wrap {
-  display: flex; align-items: center; padding: 15px 20px;
-  border-top: 1px solid var(--border-card); background: var(--bg-modal);
-  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-card);
+  background: var(--bg-modal);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
+
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
 .comment-input {
-  flex: 1; border: 1.5px solid var(--border-card); outline: none;
-  background: var(--bg-input); color: var(--text-main); padding: 12px 18px;
-  border-radius: 25px; font-size: 14px; transition: 0.3s; font-family: inherit;
+  width: 100%;
+  border: 1.5px solid var(--border-card);
+  outline: none;
+  background: var(--bg-input);
+  color: var(--text-main);
+  padding: 10px 50px 10px 16px; /* 50px kanan biar teks ga tabrakan ama icon kado */
+  border-radius: 25px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  font-family: inherit;
 }
-.comment-input:focus { border-color: #1DA1F2; background: var(--bg-modal); }
+
+.comment-input:focus {
+  border-color: #1DA1F2;
+  background: var(--bg-modal);
+  box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.1);
+}
 
 .modal-gift-btn {
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: absolute;
+  right: 6px; /* Pas di dalem bar input */
+  background: none;
+  border: none;
+  color: #f59e0b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  transition: background 0.2s, transform 0.2s;
+  padding: 0;
 }
-.modal-gift-btn:active { transform: translateY(-50%) scale(0.85) !important; }
+
+.modal-gift-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.modal-gift-btn:active {
+  transform: scale(0.85);
+}
+
+.modal-gift-btn svg {
+  width: 22px;
+  height: 22px;
+}
 
 /* --- UTILS --- */
 .loading-text, .empty-text {
