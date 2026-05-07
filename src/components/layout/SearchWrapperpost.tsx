@@ -14,8 +14,8 @@ export default function SearchWrapperpost() {
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [isStoriesVisible, setIsStoriesVisible] = useState(true);
 
-  // --- CEK HALAMAN CHAT ---
-  const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat');
+  // --- CEK HALAMAN YANG HEADERNYA HARUS ILANG ---
+  const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/');
 
   useEffect(() => {
     setMounted(true);
@@ -25,13 +25,12 @@ export default function SearchWrapperpost() {
     if (mounted && !isHidden) fetchStories();
   }, [mounted, isHidden]);
 
-  // --- LOGIKA STORY: CUMA MUNCUL DI PALING ATAS (Y=0) ---
+  // --- LOGIKA SCROLL STORY ---
   useEffect(() => {
     if (!mounted || isHidden) return; 
 
     const handleScroll = () => {
-      // Story muncul hanya jika posisi scroll benar-benar di atas
-      if (window.scrollY <= 5) {
+      if (window.scrollY <= 10) {
         setIsStoriesVisible(true);
       } else {
         setIsStoriesVisible(false);
@@ -63,6 +62,12 @@ export default function SearchWrapperpost() {
     }
   };
 
+  // 🔥 FIX: Handler Klik Story (Update State + Navigasi) 🔥
+  const handleStoryClick = (sId: string) => {
+    setClickedStoryId(sId); 
+    router.push(`/story/${sId}`);
+  };
+
   if (!mounted || isHidden) return null;
 
   return (
@@ -80,41 +85,33 @@ export default function SearchWrapperpost() {
       
       {/* SEARCH BAR AREA */}
       <div 
-        className="search-wrapper" 
+        className="search-wrapper glass-effect" 
         style={{ 
-          backgroundColor: 'rgba(255,255,255,0.96)', 
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          backgroundColor: 'var(--glass-bg)', // 🔥 FIX: Ikut tema
+          backdropFilter: 'blur(15px)',
+          WebkitBackdropFilter: 'blur(15px)',
           padding: '12px 18px',
           display: 'flex',
           alignItems: 'center',
           gap: '15px',
-          borderBottom: isStoriesVisible ? 'none' : '1px solid rgba(0,0,0,0.05)'
+          borderBottom: isStoriesVisible ? 'none' : '1px solid var(--border-color)'
         }}
       >
-        {/* TOMBOL SIDEBAR (HAMBURGER) */}
+        {/* TOMBOL SIDEBAR */}
         <button 
           id="mobileMenuBtn"
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('openSidebar'))}
           style={{ 
-            background: 'transparent', 
-            border: 'none', 
-            cursor: 'pointer',
-            padding: '5px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            gap: '5px',
-            width: '24px',
-            height: '24px',
-            flexShrink: 0,
-            outline: 'none'
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: '5px', display: 'flex', flexDirection: 'column', gap: '5px',
+            width: '24px', flexShrink: 0, outline: 'none'
           }}
         >
-          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#1a1a1a', borderRadius: '2px' }}></span>
-          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#1a1a1a', borderRadius: '2px' }}></span>
-          <span style={{ display: 'block', width: '100%', height: '2px', backgroundColor: '#1a1a1a', borderRadius: '2px' }}></span>
+          {/* 🔥 FIX: Garis ikut warna teks tema */}
+          {[1,2,3].map(i => (
+            <span key={i} style={{ display: 'block', width: '100%', height: '2px', backgroundColor: 'var(--text-main)', borderRadius: '2px' }}></span>
+          ))}
         </button>
 
         {/* INPUT PENCARIAN */}
@@ -124,15 +121,10 @@ export default function SearchWrapperpost() {
             placeholder="Cari kreator..."
             className="brutal-input"
             style={{
-              width: '100%',
-              height: '38px',
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: 'none',
-              backgroundColor: '#f0f2f5',
-              color: '#1a1a1a',
-              outline: 'none',
-              fontSize: '14px'
+              width: '100%', height: '40px', padding: '8px 18px',
+              borderRadius: '20px', border: '1px solid var(--border-color)',
+              backgroundColor: 'var(--bg-secondary)', // 🔥 FIX: Ikut tema
+              color: 'var(--text-main)', outline: 'none', fontSize: '14px'
             }}
             onChange={(e) => {
               const val = e.target.value.toLowerCase();
@@ -143,37 +135,25 @@ export default function SearchWrapperpost() {
           />
         </div>
 
-        {/* TOMBOL ADD POST (FIXED) */}
+        {/* TOMBOL ADD POST */}
         <button 
           type="button"
-          id="addPostBtn"
           onClick={(e) => {
             e.stopPropagation();
             window.dispatchEvent(new CustomEvent('openPostModal'));
           }}
           style={{ 
-            background: '#1a1a1a', 
-            border: 'none', 
-            color: '#fff', 
-            width: '38px', 
-            height: '38px', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            cursor: 'pointer',
-            flexShrink: 0,
-            zIndex: 16000,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            transition: 'transform 0.1s ease',
-            outline: 'none'
+            background: 'var(--text-main)', // 🔥 FIX: Hitam di Light, Putih di Dark
+            color: 'var(--bg-card)', 
+            width: '40px', height: '40px', borderRadius: '50%', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', flexShrink: 0, boxShadow: 'var(--shadow)',
+            transition: 'transform 0.1s ease', outline: 'none'
           }}
           onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
           onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
-          onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <span className="material-icons" style={{ fontSize: '22px', pointerEvents: 'none' }}>add</span>
+          <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
         </button>
       </div>
 
@@ -182,43 +162,41 @@ export default function SearchWrapperpost() {
         <div 
           className="stories-container"
           style={{
-            maxHeight: isStoriesVisible ? '120px' : '0px',
+            maxHeight: isStoriesVisible ? '125px' : '0px',
             opacity: isStoriesVisible ? 1 : 0,
-            padding: isStoriesVisible ? '8px 15px 15px 15px' : '0',
+            padding: isStoriesVisible ? '10px 15px 15px 15px' : '0',
             overflow: 'hidden',
-            backgroundColor: 'transparent',
-            display: 'flex',
-            gap: '15px',
-            overflowX: 'auto',
+            backgroundColor: 'var(--bg-main)', // 🔥 FIX: Ikut tema
+            display: 'flex', gap: '15px', overflowX: 'auto',
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            pointerEvents: isStoriesVisible ? 'auto' : 'none'
+            pointerEvents: isStoriesVisible ? 'auto' : 'none',
+            borderBottom: isStoriesVisible ? '1px solid var(--border-color)' : 'none'
           }}
         >
           {stories.map((story) => (
             <div 
               key={story.id} 
               className="story-item" 
-              onClick={() => router.push(`/story/${story.id}`)} 
-              style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+              onClick={() => handleStoryClick(story.id)} // 🔥 FIX: Jalankan handler
+              style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
             >
               <div 
-                className={`story-circle ${clickedStoryId === story.id ? 'seen' : 'unseen'}`}
                 style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  padding: '2.5px',
-                  background: clickedStoryId === story.id ? '#e4e6eb' : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
-                  transition: 'all 0.2s ease'
+                  width: '66px', height: '66px', borderRadius: '50%', padding: '2.5px',
+                  // 🔥 FIX: Lingkaran jadi abu-abu (seen) sesuai tema
+                  background: clickedStoryId === story.id 
+                    ? 'var(--border-color)' 
+                    : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
+                  transition: 'all 0.3s ease'
                 }}
               >
                 <img 
                   src={story.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${story.profiles?.username}`} 
                   alt="avatar"
-                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff' }}
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid var(--bg-main)' }}
                 />
               </div>
-              <span style={{ fontSize: '11px', color: '#1a1a1a', fontWeight: '500', maxWidth: '65px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: '600', maxWidth: '65px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {story.profiles?.username}
               </span>
             </div>
