@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import './Story.css';
 
-// Interface biar TypeScript seneng
+// Interface biar TypeScript gak rewel
 interface Story {
   id: string;
   creator_id: string;
@@ -25,7 +25,6 @@ export default function StoryViewerPage() {
   const params = useParams();
   const router = useRouter();
   
-  // 🔥 FIX 1: TypeScript safe params access
   const storyId = params?.id as string;
 
   const [allUserStories, setAllUserStories] = useState<Story[]>([]);
@@ -33,11 +32,15 @@ export default function StoryViewerPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // 🔥 FIX: State buat nangkap blokir audio dari browser
+  const [audioError, setAudioError] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const STORY_DURATION = 7000;
 
+  // Initial Load
   useEffect(() => {
     if (storyId) {
       initMultiStory();
@@ -47,6 +50,7 @@ export default function StoryViewerPage() {
     };
   }, [storyId]);
 
+  // Logic pindah story: Handle like, audio, dan timer tiap ganti index
   useEffect(() => {
     if (allUserStories.length > 0) {
       const currentStory = allUserStories[currentIndex];
@@ -85,15 +89,28 @@ export default function StoryViewerPage() {
     setLoading(false);
   }
 
+  // 🔥 FIX: Logic Audio Play yang aman dari blokir Browser
   const handleAudio = (story: Story) => {
     if (audioRef.current) {
       if (story.audio_src) {
         audioRef.current.src = story.audio_src;
         audioRef.current.load();
-        audioRef.current.play().catch(() => console.log("Audio play blocked"));
+        
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setAudioError(false); // Sukses play
+            })
+            .catch((err) => {
+              console.warn("Autoplay diblokir browser:", err);
+              setAudioError(true); // Gagal play, tampilkan tombol unmute
+            });
+        }
       } else {
         audioRef.current.pause();
         audioRef.current.src = "";
+        setAudioError(false);
       }
     }
   };
@@ -131,7 +148,7 @@ export default function StoryViewerPage() {
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!currentUserId) return;
+    if (!currentUserId) return alert("Login dulu bro!");
     
     const sId = allUserStories[currentIndex].id;
     const newLikeStatus = !isLiked;
@@ -151,11 +168,39 @@ export default function StoryViewerPage() {
 
   return (
     <div className="story-full-viewer">
+      
+      {/* 🔥 FIX: Tombol Darurat Putar Musik (Muncul kalau diblokir Browser) */}
+      {audioError && currentStory.audio_src && (
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (audioRef.current) {
+              audioRef.current.play();
+              setAudioError(false);
+            }
+          }}
+          style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            zIndex: 10050, background: 'rgba(0,0,0,0.65)', color: 'white', border: '1px solid rgba(255,255,255,0.3)',
+            padding: '12px 24px', borderRadius: '30px', display: 'flex', alignItems: 'center', gap: '8px',
+            fontWeight: 800, fontSize: '14px', cursor: 'pointer', backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.3)', transition: 'transform 0.2s ease'
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(0.95)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
+        >
+          <span className="material-icons" style={{ fontSize: '20px' }}>volume_off</span> 
+          Ketuk untuk Putar Musik
+        </button>
+      )}
+
+      {/* Area Tap buat Skip/Back */}
       <div className="tap-area">
         <div className="tap-left" onClick={prevStory}></div>
         <div className="tap-right" onClick={nextStory}></div>
       </div>
 
+      {/* Progress Bars (Gaya IG) */}
       <div className="story-progress-container">
         {allUserStories.map((_, idx) => (
           <div key={idx} className="bar-wrap">
@@ -170,6 +215,7 @@ export default function StoryViewerPage() {
         ))}
       </div>
 
+      {/* Info User (Top) */}
       <div className="story-top-info">
         <div className="story-user">
           <img 
@@ -187,7 +233,6 @@ export default function StoryViewerPage() {
             {currentStory.audio_src && (
               <div className="music-tag">
                 <span className="material-icons" style={{ fontSize: '12px', color: 'white' }}>music_note</span>
-                {/* 🔥 FIX 2: Ganti marquee ke CSS scroll modern */}
                 <div className="music-scroll-container">
                     <div className="music-scroll-text">
                         {currentStory.title || 'Musik Hype'} — {currentStory.artist || 'Unknown'}
@@ -200,6 +245,7 @@ export default function StoryViewerPage() {
         <button className="close-story" onClick={() => router.back()}>✕</button>
       </div>
 
+      {/* Konten Utama (Gambar atau Teks) */}
       <div className="story-display">
         {currentStory.image_url ? (
           <img src={currentStory.image_url} className="s-img" alt="Story content" />
@@ -208,6 +254,7 @@ export default function StoryViewerPage() {
         )}
       </div>
 
+      {/* Caption & Like (Bottom) */}
       <div className="story-bottom-info">
         <div className="footer-layout">
           <div className="caption-container">
@@ -223,7 +270,8 @@ export default function StoryViewerPage() {
         </div>
       </div>
 
-      <audio ref={audioRef} preload="auto" />
+      {/* 🔥 FIX: Tambah playsInline biar audio jalan mulus di Mobile (iOS/Android) */}
+      <audio ref={audioRef} preload="auto" playsInline crossOrigin="anonymous" />
     </div>
   );
 }
