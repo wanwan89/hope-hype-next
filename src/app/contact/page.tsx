@@ -31,7 +31,6 @@ export default function ContactPage() {
 
     try {
       // 🔥 GANTI "YOUR_FORMSPREE_ID" DENGAN ID DARI FORMSPREE.IO 🔥
-      // Cara dapetnya: Daftar di formspree.io -> Bikin form baru -> Copy ID yang ada di URL
       const response = await fetch("https://formspree.io/f/YOUR_FORMSPREE_ID", {
         method: "POST",
         headers: {
@@ -119,7 +118,7 @@ export default function ContactPage() {
               <label>Detail Pesan</label>
               <textarea 
                 name="message" 
-                rows={5} 
+                rows={4} 
                 placeholder="Jelaskan keluhan atau saran kamu secara detail..." 
                 value={formData.message} 
                 onChange={handleChange} 
@@ -130,7 +129,7 @@ export default function ContactPage() {
             <button type="submit" className="btn-submit" disabled={isSubmitting}>
               {isSubmitting ? 'Mengirim...' : (
                 <>
-                  <span className="material-icons">send</span> Kirim Pesan
+                  <span className="material-icons" style={{fontSize: '18px'}}>send</span> Kirim Pesan
                 </>
               )}
             </button>
@@ -156,12 +155,12 @@ export default function ContactPage() {
             </a>
 
             <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer" className="social-btn wa">
-              <span className="material-icons" style={{fontSize: '20px'}}>whatsapp</span>
+              <span className="material-icons" style={{fontSize: '18px'}}>whatsapp</span>
               WhatsApp
             </a>
 
             <a href="mailto:emailkamu@gmail.com" className="social-btn email">
-              <span className="material-icons" style={{fontSize: '20px'}}>mail</span>
+              <span className="material-icons" style={{fontSize: '18px'}}>mail</span>
               Email
             </a>
           </div>

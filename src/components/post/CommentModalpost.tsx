@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
 import './CommentModal.css';
@@ -19,6 +19,13 @@ export default function CommentModalpost() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
+
+  // 🔥 Gunakan useRef biar ID post saat ini ga nyangkut (stale closure)
+  const currentPostIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    currentPostIdRef.current = currentPostId;
+  }, [currentPostId]);
 
   useEffect(() => {
     const handleBodyClick = async (e: MouseEvent) => {
@@ -48,6 +55,58 @@ export default function CommentModalpost() {
 
     document.body.addEventListener("click", handleBodyClick);
     return () => document.body.removeEventListener("click", handleBodyClick);
+  }, []);
+
+  // 🔥 LISTENER BARU: Menerima data Gift dari Komponen Luar 🔥
+  useEffect(() => {
+    const handleInsertGift = async (e: any) => {
+      const { postId, giftName, giftImg, creatorId } = e.detail;
+      if (!postId) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Format spesial biar dibaca sebagai gambar gift
+        const content = `GIFT||${giftName}||${giftImg}`;
+
+        await supabase.from("comments").insert({
+          post_id: parseInt(postId),
+          user_id: session.user.id,
+          content: content,
+          parent_id: null,
+          reply_to_username: null
+        });
+
+        // Kirim Notifikasi kalau yang ngirim bukan yang punya post
+        if (creatorId !== session.user.id && creatorId) {
+          const { data: prof } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
+          await supabase.from("notifications").insert({
+            user_id: creatorId,
+            actor_id: session.user.id,
+            post_id: parseInt(postId),
+            type: "gift",
+            message: `<b>${prof?.username}</b> memberimu ${giftName}.`
+          });
+        }
+
+        // 🔥 FIX UTAMA: Refresh komentar secara instan tanpa masuk state updater! 🔥
+        if (currentPostIdRef.current === String(postId)) {
+          loadComments(String(postId));
+        }
+
+        // Update badge jumlah komentar otomatis
+        const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", postId);
+        const countBadge = document.querySelector(`.comment-toggle[data-post="${postId}"] .comment-count`);
+        if (countBadge) countBadge.textContent = String(count || 0);
+
+      } catch (err) {
+        console.error("Gagal simpan gift ke komentar:", err);
+      }
+    };
+
+    window.addEventListener("insertGiftComment", handleInsertGift);
+    return () => window.removeEventListener("insertGiftComment", handleInsertGift);
   }, []);
 
   const loadComments = async (postId: string) => {
@@ -214,11 +273,7 @@ export default function CommentModalpost() {
           ) : (
             parents.map(p => {
               const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
-              
-              // 🔥 FIX LOGIC: Cari balasan pertama dari Creator 🔥
               const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
-              
-              // Sisa balasan yang akan di-hide (dikurangi balasan pertama creator jika ada)
               const remainingChilds = firstCreatorReply 
                 ? allChilds.filter(c => c.id !== firstCreatorReply.id)
                 : allChilds;
@@ -227,10 +282,8 @@ export default function CommentModalpost() {
 
               return (
                 <div className="comment-thread" key={p.id}>
-                  {/* Komentar Utama */}
                   {renderComment(p, false)}
 
-                  {/* 🔥 Render Balasan Pertama Kreator (Selalu Muncul) 🔥 */}
                   {firstCreatorReply && (
                     <div className="replies-container" style={{ marginTop: '0' }}>
                       <div className="reply-group" style={{ paddingTop: '8px' }}>
@@ -243,7 +296,6 @@ export default function CommentModalpost() {
                     </div>
                   )}
 
-                  {/* Wrapper Sisa Balasan dengan Garis & Tombol Toggle */}
                   {remainingChilds.length > 0 && (
                     <div className="replies-container" style={{ marginTop: firstCreatorReply ? '0' : '8px' }}>
                       <div 
@@ -257,12 +309,9 @@ export default function CommentModalpost() {
 
                       {isExpanded && (
                         <div className="reply-group">
-                          {/* Garis Vertikal Utama untuk Sisa Balasan */}
                           <div className="thread-line"></div>
-                          
                           {remainingChilds.map(c => (
                             <div className="comment-item reply" key={c.id}>
-                              {/* Garis tikungan ke avatar balasan */}
                               <span className="reply-curve"></span>
                               {renderComment(c, true)}
                             </div>

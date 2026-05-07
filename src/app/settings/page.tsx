@@ -8,15 +8,22 @@ import './Settings.css';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // 🔥 FIX: Set default isDarkMode jadi false (Terang duluan)
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Cek Tema dari LocalStorage
+    // 1. Cek Tema dari LocalStorage, default ke Light Mode
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
+    
+    // Kalau user pernah milih gelap, baru jadiin gelap
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      // Default / belum milih = Terang
       setIsDarkMode(false);
       document.documentElement.setAttribute('data-theme', 'light');
     }
@@ -37,10 +44,16 @@ export default function SettingsPage() {
   const toggleTheme = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
-    const themeStr = newMode ? 'dark' : 'light';
-    localStorage.setItem('theme', themeStr);
-    document.documentElement.setAttribute('data-theme', themeStr);
-    showNotif(`Mode ${themeStr} aktif`, "info");
+    
+    if (newMode) {
+      localStorage.setItem('theme', 'dark');
+      document.documentElement.removeAttribute('data-theme');
+      showNotif("Mode gelap aktif", "info");
+    } else {
+      localStorage.setItem('theme', 'light');
+      document.documentElement.setAttribute('data-theme', 'light');
+      showNotif("Mode terang aktif", "info");
+    }
   };
 
   if (loading) return <div className="settings-page"></div>;
@@ -151,7 +164,7 @@ export default function SettingsPage() {
 
         <div style={{textAlign: 'center', color: 'var(--text-sub)', fontSize: '10px', marginTop: '20px'}}>
           HopeHype Version 2.0.1 (Stable)<br/>
-          &copy; 2024 HopeHype Creative
+          &copy; 2026 HopeHype Creative
         </div>
       </main>
     </div>
