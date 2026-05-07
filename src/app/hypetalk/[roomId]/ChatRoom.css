@@ -168,7 +168,6 @@ html.dark .input-group-wrapper { box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
 html.dark #action-btn { box-shadow: 0 4px 10px rgba(58, 123, 213, 0.4); }
 #action-btn.is-recording { background-color: #ff4757 !important; transform: scale(1.1); }
 #action-btn:active { transform: scale(0.9); box-shadow: 0 2px 0 rgba(42, 92, 184, 0.8), 0 3px 6px rgba(0,0,0,0.2); }
-
 /* =========================================
    7. KOMPONEN LAINNYA & MODAL
    ========================================= */
