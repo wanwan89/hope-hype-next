@@ -4,23 +4,22 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
-// 🔥 FIX 1: Import useTheme dari next-themes 🔥
 import { useTheme } from 'next-themes'; 
+// 🔥 FIX 1: Import i18n
+import { useTranslation } from 'react-i18next';
 import './Settings.css';
 
 export default function SettingsPage() {
   const router = useRouter();
-  
-  // 🔥 FIX 2: Panggil global theme state 🔥
+  const { t } = useTranslation(); // 🔥 FIX 2: Inisialisasi Translate
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false); // Buat mencegah hydration error
   
+  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true); // Tandai komponen udah siap
+    setMounted(true);
     fetchAccountData();
   }, []);
 
@@ -28,126 +27,136 @@ export default function SettingsPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       setUser(session.user);
-      const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-      setProfile(data);
     }
     setLoading(false);
   };
 
-  // 🔥 FIX 3: Fungsi toggle nyambung ke next-themes 🔥
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
-    showNotif(`Mode ${newTheme === 'dark' ? 'gelap' : 'terang'} aktif`, "info");
+    // showNotif pake i18n juga biar keren
+    showNotif(newTheme === 'dark' ? "Mode gelap aktif" : "Mode terang aktif", "info");
   };
 
-  // Render kosong dulu sampai mounted buat cegah kedip putih (Hydration mismatch)
-  if (!mounted || loading) return <div className="settings-page"></div>;
+  // Cegah Hydration Mismatch
+  if (!mounted || loading) return <div className="st-page-wrapper"></div>;
 
   const isDarkMode = theme === 'dark';
 
   return (
-    <div className="settings-page">
-      <header className="settings-header">
-        <span className="material-icons" onClick={() => router.back()} style={{cursor: 'pointer'}}>arrow_back</span>
-        <h2>Pengaturan</h2>
+    <div className="st-page-wrapper">
+      {/* --- HEADER --- */}
+      <header className="st-header">
+        <button className="st-back-btn" onClick={() => router.back()}>
+          <span className="material-icons">arrow_back</span>
+        </button>
+        <h2>{t('settings')}</h2>
       </header>
 
-      <main className="settings-content">
+      <main className="st-container">
         
         {/* --- GRUP 1: TAMPILAN --- */}
-        <div className="settings-group">
-          <div className="group-title">Tampilan</div>
-          <div className="settings-card">
-            <div className="settings-item" onClick={toggleTheme}>
-              <div className="item-left">
-                <span className="material-icons">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
-                <div className="item-info">
-                  <span className="item-label">Mode Gelap</span>
-                  <span className="item-sub">Kurangi silau pada mata</span>
+        <div className="st-section">
+          <div className="st-section-title">{t('appearance')}</div>
+          <div className="st-card">
+            
+            <div className="st-item" onClick={toggleTheme}>
+              <div className="st-item-left">
+                <div className="st-icon-box">
+                   <span className="material-icons">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
+                </div>
+                <div className="st-info">
+                  <span className="st-label">{t('dark_mode')}</span>
+                  <span className="st-hint">{t('dark_mode_desc')}</span>
                 </div>
               </div>
-              <label className="switch" onClick={(e) => e.stopPropagation()}>
+              <label className="st-switch" onClick={(e) => e.stopPropagation()}>
                 <input type="checkbox" checked={isDarkMode} onChange={toggleTheme} />
-                <span className="slider"></span>
+                <span className="st-slider"></span>
               </label>
             </div>
             
-            <div className="settings-item" onClick={() => router.push('/settings/language')}>
-              <div className="item-left">
-                <span className="material-icons">language</span>
-                <div className="item-info">
-                  <span className="item-label">Bahasa</span>
-                  <span className="item-sub">Bahasa Indonesia</span>
+            <div className="st-item" onClick={() => router.push('/settings/language')}>
+              <div className="st-item-left">
+                <div className="st-icon-box">
+                  <span className="material-icons">language</span>
+                </div>
+                <div className="st-info">
+                  <span className="st-label">{t('language')}</span>
+                  <span className="st-hint">{t('lang_desc')}</span>
                 </div>
               </div>
-              <span className="material-icons" style={{fontSize:'18px'}}>chevron_right</span>
+              <span className="material-icons st-arrow">chevron_right</span>
             </div>
+
           </div>
         </div>
 
         {/* --- GRUP 2: AKUN --- */}
-        <div className="settings-group">
-          <div className="group-title">Akun & Keamanan</div>
-          <div className="settings-card">
-            <div className="settings-item" onClick={() => router.push('/settings/info')}>
-              <div className="item-left">
-                <span className="material-icons">info</span>
-                <div className="item-info">
-                  <span className="item-label">Informasi Pribadi</span>
-                  <span className="item-sub">{user?.email}</span>
+        <div className="st-section">
+          <div className="st-section-title">{t('account_security')}</div>
+          <div className="st-card">
+            
+            <div className="st-item" onClick={() => router.push('/settings/info')}>
+              <div className="st-item-left">
+                <div className="st-icon-box">
+                  <span className="material-icons">info</span>
+                </div>
+                <div className="st-info">
+                  <span className="st-label">{t('personal_info')}</span>
+                  <span className="st-hint">{user?.email}</span>
                 </div>
               </div>
-              <span className="material-icons" style={{fontSize:'18px'}}>chevron_right</span>
+              <span className="material-icons st-arrow">chevron_right</span>
             </div>
 
-            <div className="settings-item">
-              <div className="item-left">
-                <span className="material-icons">verified_user</span>
-                <div className="item-info">
-                  <span className="item-label">Kesehatan Akun</span>
-                  <span className="item-sub">Status keamanan akun kamu</span>
+            <div className="st-item">
+              <div className="st-item-left">
+                <div className="st-icon-box">
+                  <span className="material-icons">verified_user</span>
+                </div>
+                <div className="st-info">
+                  <span className="st-label">Kesehatan Akun</span>
+                  <span className="st-hint">Status keamanan aktif</span>
                 </div>
               </div>
-              <span className="health-badge health-good">SANGAT BAIK</span>
+              <span className="st-badge st-badge-success">Sangat Baik</span>
             </div>
 
-            <div className="settings-item" onClick={() => router.push('/settings/password')}>
-              <div className="item-left">
-                <span className="material-icons">lock</span>
-                <div className="item-info">
-                  <span className="item-label">Kata Sandi</span>
-                  <span className="item-sub">Ubah kata sandi akun</span>
-                </div>
-              </div>
-              <span className="material-icons" style={{fontSize:'18px'}}>chevron_right</span>
-            </div>
           </div>
         </div>
 
         {/* --- GRUP 3: LAINNYA --- */}
-        <div className="settings-group">
-          <div className="group-title">Lainnya</div>
-          <div className="settings-card">
-            <div className="settings-item" onClick={() => router.push('/contact')}>
-              <div className="item-left">
-                <span className="material-icons">help_outline</span>
-                <div className="item-info">
-                  <span className="item-label">Pusat Bantuan</span>
+        <div className="st-section">
+          <div className="st-section-title">Lainnya</div>
+          <div className="st-card">
+            
+            <div className="st-item" onClick={() => router.push('/contact')}>
+              <div className="st-item-left">
+                <div className="st-icon-box">
+                  <span className="material-icons">help_outline</span>
+                </div>
+                <div className="st-info">
+                  <span className="st-label">{t('contact_us')}</span>
                 </div>
               </div>
+              <span className="material-icons st-arrow">chevron_right</span>
             </div>
-            <div className="settings-item" onClick={async () => {
+
+            <div className="st-item" onClick={async () => {
               await supabase.auth.signOut();
               router.push('/login');
             }}>
-              <div className="item-left">
-                <span className="material-icons" style={{color: '#ef4444'}}>logout</span>
-                <div className="item-info">
-                  <span className="item-label" style={{color: '#ef4444'}}>Keluar Akun</span>
+              <div className="st-item-left">
+                <div className="st-icon-box" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
+                  <span className="material-icons" style={{ color: '#ef4444' }}>logout</span>
+                </div>
+                <div className="st-info">
+                  <span className="st-label" style={{ color: '#ef4444' }}>{t('logout')}</span>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
 
