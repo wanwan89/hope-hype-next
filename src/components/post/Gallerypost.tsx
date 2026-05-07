@@ -85,19 +85,17 @@ export default function Gallerypost() {
           const hashId = window.location.hash.substring(1); // ambil 'post-123'
           const targetEl = document.getElementById(hashId);
           if (targetEl) {
-            // Animasi dikit biar keliatan fokus
             targetEl.style.transition = 'box-shadow 0.5s ease';
             targetEl.style.boxShadow = '0 0 30px rgba(0, 162, 255, 0.8)';
             
             targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
-            // Hilangkan animasi efek nyalanya setelah 2 detik
             setTimeout(() => {
               targetEl.style.boxShadow = '';
             }, 2000);
           }
         }
-      }, 800); // Nunggu gambarnya kerender
+      }, 800);
 
     } catch (err) {
       console.error("Gallery Error:", err);
@@ -254,9 +252,10 @@ export default function Gallerypost() {
     <section>
       <div className="gallery" id="mainGallery">
         {isLoading ? (
-          <div className="skeleton-wrapper">
-            <div className="skeleton-card"><div className="skeleton-shimmer"></div></div>
-            <div className="skeleton-card"><div className="skeleton-shimmer"></div></div>
+          // 🔥 FIX: NAMA CLASS SKELETON DIGANTI JADI gallery-skeleton-* 🔥
+          <div className="gallery-skeleton-wrapper">
+            <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer"></div></div>
+            <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer"></div></div>
           </div>
         ) : posts.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>Tidak ada postingan.</p>
@@ -269,7 +268,6 @@ export default function Gallerypost() {
             const postIdStr = String(post.id);
 
             return (
-              // 🔥 FIX 2: Tambahkan ID di pembungkus luarnya 🔥
               <div key={post.id} id={`post-${post.id}`} className="card" style={!post.image_url ? { padding: '16px' } : {}}>
                 {post.image_url && post.image_url.trim() !== "" ? (
                   <>

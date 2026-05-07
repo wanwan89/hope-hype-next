@@ -1,9 +1,13 @@
 /* src/components/post/Gallery.css */
 
 .gallery { 
-  max-width: 420px; 
-  margin: auto; 
-  padding: 10px 20px 80px; 
+  /* 🔥 FIX LAYOUT: Disamakan dengan max-width layout utama (480px) 🔥 */
+  width: 100%;
+  max-width: 480px; 
+  margin: 0 auto; 
+  /* 🔥 FIX PADDING: Ditambah Safe Area biar postingan paling bawah gak ketutupan Navbar 🔥 */
+  padding: 10px 20px calc(110px + env(safe-area-inset-bottom)); 
+  box-sizing: border-box;
 }
 
 .card { 
@@ -15,15 +19,36 @@
   border: 1px solid var(--border-card);
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, background 0.3s ease, border 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  /* 🔥 Anti highlight kotak biru pas di-tap di HP 🔥 */
+  -webkit-tap-highlight-color: transparent; 
 }
-.card:hover { transform: translateY(-3px); }
+
+/* 🔥 Efek hover dipisah buat Desktop aja biar di HP gak nyangkut 🔥 */
+@media (hover: hover) {
+  .card:hover { 
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  }
+}
 
 .slider {
-  position: relative; width: 100%; background: #252525;
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  position: relative; 
+  width: 100%; 
+  background: #252525;
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  overflow: hidden;
 }
-.slider img.active { width: 100%; height: auto; display: block; object-fit: cover; cursor: zoom-in; }
+
+.slider img.active { 
+  width: 100%; 
+  height: auto; 
+  display: block; 
+  object-fit: cover; 
+  cursor: zoom-in; 
+}
 
 .watermark-overlay {
   position: absolute; top: 5px; left: 5px; width: 90px; height: auto;
@@ -58,7 +83,7 @@
   background: #0095f6; color: #fff; font-size: 13px; font-weight: 600;
   text-decoration: none; cursor: pointer; transition: 0.2s;
 }
-.primary:hover { background: #0b84e3; }
+.primary:active { transform: scale(0.95); background: #0b84e3; }
 
 /* FIX: Perbaikan tombol icon agar tidak muncul kotak saat diklik */
 .icon-btn, .options-btn {
@@ -73,16 +98,12 @@
   transition: 0.2s; 
   padding: 0; 
   font-family: 'Poppins', sans-serif;
-  outline: none !important; /* Hapus kotak garis biru/hitam */
+  outline: none !important; 
   box-shadow: none !important;
-  -webkit-tap-highlight-color: transparent; /* Hapus highlight di HP */
+  -webkit-tap-highlight-color: transparent; 
 }
 
-/* FIX KHUSUS: Titik tiga biar areanya enak diklik tapi tetep clean */
-.options-btn {
-  padding: 5px !important;
-  border-radius: 50%;
-}
+.options-btn { padding: 5px !important; border-radius: 50%; }
 
 .icon { width: 22px; height: 22px; fill: var(--icon-fill); transition: transform 0.2s, fill 0.3s; }
 .icon-btn.liked .icon { fill: #ff2e63; }
@@ -91,10 +112,12 @@
 
 .like-count, .comment-count, .repost-count { font-size: 13px; color: var(--text-main); }
 
-/* Animasi hover dikit biar user tau itu tombol */
-.icon-btn:hover, .options-btn:hover { 
-  transform: scale(1.1); 
-  opacity: 0.8; 
+/* Animasi hover tombol khusus desktop */
+@media (hover: hover) {
+  .icon-btn:hover, .options-btn:hover { 
+    transform: scale(1.1); 
+    opacity: 0.8; 
+  }
 }
 
 .icon-btn:active .icon, .options-btn:active { 
@@ -104,10 +127,40 @@
 @keyframes marquee-play { 0% { transform: translateX(100%); } 100% { transform: translateX(-150%); } }
 .marquee-text { display: inline-block; white-space: nowrap; will-change: transform; }
 
-.skeleton-wrapper { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%; }
-.skeleton-card { background: var(--bg-card); border-radius: 20px; height: 400px; position: relative; overflow: hidden; border: 1px solid var(--border-card); }
-.skeleton-shimmer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; transform: translateX(-100%); background-image: linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.05) 20%, rgba(255, 255, 255, 0.1) 60%, transparent); animation: shimmer 1.5s infinite; }
-@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* ========================================================= */
+/* 🔥 FIX: SKELETON KELAS ISOLASI (ANTI BENTROK) 🔥          */
+/* ========================================================= */
+
+.gallery-skeleton-wrapper { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+  gap: 20px; 
+  width: 100%; 
+}
+
+.gallery-skeleton-card { 
+  background: var(--bg-card); 
+  border-radius: 20px; 
+  height: 400px; 
+  position: relative; 
+  overflow: hidden; 
+  border: 1px solid var(--border-card); 
+}
+
+.gallery-skeleton-shimmer { 
+  position: absolute; 
+  top: 0; right: 0; bottom: 0; left: 0; 
+  transform: translateX(-100%); 
+  background-image: linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.05) 20%, rgba(255, 255, 255, 0.1) 60%, transparent); 
+  animation: gallery-shimmer 1.5s infinite; 
+}
+
+/* 🔥 Ganti nama keyframes biar gak ketimpa shimmer punya profil/hypetalk */
+@keyframes gallery-shimmer { 
+  100% { transform: translateX(100%); } 
+}
+
 
 /* ANIMASI TOMBOL REPOST (SPIN POP) */
 @keyframes repostSpin {

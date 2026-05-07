@@ -1,9 +1,13 @@
 /* src/app/notifications/Notifications.css */
 
 .notif-page-container {
-  /* 🔥 FIX 1: Kunci tinggi halaman seukuran layar HP 🔥 */
-  height: 100vh;
-  height: 100dvh; 
+  /* 🔥 FIX STRUKTUR: Dibuat konsisten dengan layout utama (max 480px, nempel dari ujung ke ujung) 🔥 */
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-main, #f0f2f5);
@@ -12,7 +16,6 @@
 }
 
 .notif-header {
-  /* 🔥 FIX 2: Biarkan header diam dan gak ikut tertekan 🔥 */
   flex-shrink: 0; 
   z-index: 100;
   background: var(--bg-main, #f0f2f5);
@@ -21,7 +24,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Tambahin bayangan tipis biar kepisah dari daftar scroll */
   box-shadow: 0 4px 15px rgba(0,0,0,0.02); 
 }
 
@@ -38,7 +40,8 @@
   font-weight: 800;
 }
 
-.back-btn {
+/* 🔥 FIX: .back-btn diganti jadi .notif-back-btn 🔥 */
+.notif-back-btn {
   background: var(--bg-card, #ffffff);
   border: 1px solid var(--border-card, #dddfe2);
   border-radius: 50%;
@@ -51,16 +54,17 @@
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
   transition: transform 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.back-btn:active {
+.notif-back-btn:active {
   transform: scale(0.9);
 }
 
 /* ==================================================
-   AD BANNER (IKLAN SLIDER)
+   AD BANNER (IKLAN SLIDER) - CLASS ISOLASI
 ================================================== */
-.ad-banner-container { 
+.notif-ad-banner-container { 
   position: relative; 
   width: 100%; 
   height: 80px; 
@@ -71,12 +75,12 @@
   overflow: hidden; 
 }
 
-html.dark .ad-banner-container { 
+html.dark .notif-ad-banner-container { 
   border: 2px solid #333; 
   box-shadow: 4px 4px 0px rgba(0,0,0,0.5); 
 }
 
-.ad-slider { 
+.notif-ad-slider { 
   display: flex; 
   width: 100%; 
   height: 100%; 
@@ -87,9 +91,9 @@ html.dark .ad-banner-container {
   scrollbar-width: none; 
 }
 
-.ad-slider::-webkit-scrollbar { display: none; }
+.notif-ad-slider::-webkit-scrollbar { display: none; }
 
-.ad-slider > video { 
+.notif-ad-slider > video { 
   flex: 0 0 100%; 
   height: 100%; 
   scroll-snap-align: center; 
@@ -101,18 +105,17 @@ html.dark .ad-banner-container {
    NOTIF LIST (HANYA INI YANG BISA DI-SCROLL)
 ================================================== */
 .notif-list {
-  /* 🔥 FIX 3: Ambil sisa layar dan aktifkan scroll mandiri 🔥 */
   flex: 1; 
   overflow-y: auto; 
   padding: 12px 20px;
-  padding-bottom: 120px; /* Jarak aman buat Navbar Bawah lu */
+  /* 🔥 FIX: Padding aman diselarasin buat area Navbar bawah 🔥 */
+  padding-bottom: calc(110px + env(safe-area-inset-bottom)); 
   display: flex;
   flex-direction: column;
   gap: 12px;
-  -webkit-overflow-scrolling: touch; /* Smooth scroll ala iPhone */
+  -webkit-overflow-scrolling: touch; 
 }
 
-/* Sembunyikan scrollbar biar estetik */
 .notif-list::-webkit-scrollbar { width: 0; }
 
 .notif-item {
@@ -128,6 +131,7 @@ html.dark .ad-banner-container {
   cursor: pointer;
   border: 1px solid var(--border-card, transparent);
   box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .notif-item:active {
@@ -156,38 +160,44 @@ html.dark .ad-banner-container {
 .notif-message { font-size: 14px; line-height: 1.4; margin-bottom: 6px; }
 .notif-message b { font-weight: 800; }
 .notif-date { font-size: 11px; color: var(--text-muted, #64748b); font-weight: 600; }
-.unread-dot { width: 10px; height: 10px; background: #1DA1F2; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
 
-.empty-notif {
+/* 🔥 FIX: .unread-dot diganti .notif-unread-dot 🔥 */
+.notif-unread-dot { width: 10px; height: 10px; background: #1DA1F2; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+
+/* 🔥 FIX: .empty-notif diganti .notif-empty-state 🔥 */
+.notif-empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 60px 20px; color: var(--text-muted); text-align: center;
   margin-top: 30px;
 }
-.empty-notif .material-icons { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-/* --- SKELETON ANIMATION --- */
-.skeleton-shimmer {
+.notif-empty-state .material-icons { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+
+/* ==================================================
+   SKELETON ANIMATION (ANTI BENTROK)
+================================================== */
+.notif-skeleton-shimmer {
   background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-color) 50%, var(--bg-secondary) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
+  animation: notif-shimmer 1.5s infinite linear;
   border-radius: 8px;
 }
 
-@keyframes shimmer {
+@keyframes notif-shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
-.skeleton-notif {
+.notif-skeleton-item {
   border-bottom: 1px solid var(--border-color);
   pointer-events: none;
 }
 
-.skeleton-notif .notif-item-icon {
+.notif-skeleton-item .notif-item-icon {
   background: var(--bg-secondary);
   border-radius: 50%;
 }
 
-.skeleton-line {
+.notif-skeleton-line {
   background: var(--bg-secondary);
   border-radius: 4px;
 }

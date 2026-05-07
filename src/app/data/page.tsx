@@ -335,10 +335,10 @@ function ProfileContent() {
         </div>
       </aside>
 
-      {/* MODAL EDIT PROFIL */}
+      {/* 🔥 FIX: GANTI CLASS MODAL PROFIL JADI .prof-modal-* 🔥 */}
       {isMounted && (
-        <div className={`custom-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
-           <div className="edit-profile-modal" onClick={e => e.stopPropagation()}>
+        <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
+           <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                  <h3>Edit Profil</h3>
                  <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>

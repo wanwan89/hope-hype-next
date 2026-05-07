@@ -341,18 +341,18 @@ export default function VoiceLobbyPage() {
         )}
       </main>
 
-      {/* MODAL BIKIN ROOM */}
+      {/* 🔥 FIX: MODAL BIKIN ROOM PAKE CLASS EKSKLUSIF 🔥 */}
       {isModalOpen && (
-        <div className="lobby-modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="lobby-modal-content" onClick={e => e.stopPropagation()}>
-            <div className="lobby-modal-header">
+        <div className="voice-modal-overlay active" onClick={() => setIsModalOpen(false)}>
+          <div className="voice-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="voice-modal-header">
                <h3>Siapin Panggung Lo</h3>
-               <button className="lobby-close-modal-btn" onClick={() => setIsModalOpen(false)}>
+               <button className="voice-close-modal-btn" onClick={() => setIsModalOpen(false)}>
                  <span className="material-icons">close</span>
                </button>
             </div>
             
-            <div className="lobby-modal-body">
+            <div className="voice-modal-body">
               <label>Nama Panggung</label>
               <input 
                 type="text" 
@@ -379,9 +379,9 @@ export default function VoiceLobbyPage() {
               </select>
             </div>
 
-            <div className="lobby-modal-actions">
-              <button className="lobby-btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
-              <button className="lobby-btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
+            <div className="voice-modal-actions">
+              <button className="voice-btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
+              <button className="voice-btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
                 {isCreating ? 'Membangun...' : 'Buat Sekarang'}
               </button>
             </div>
@@ -389,10 +389,10 @@ export default function VoiceLobbyPage() {
         </div>
       )}
 
-      {/* 🔥 MODAL TOP UP KOIN (BOTTOM SHEET) 🔥 */}
-      <div className={`bottom-sheet ${isCoinSheetOpen ? 'active' : ''}`}>
-        <div className="sheet-overlay" onClick={() => setIsCoinSheetOpen(false)}></div>
-        <div className="sheet-content">
+      {/* 🔥 FIX: MODAL TOP UP KOIN PAKE CLASS EKSKLUSIF 🔥 */}
+      <div className={`voice-bottom-sheet ${isCoinSheetOpen ? 'active' : ''}`}>
+        <div className="voice-sheet-overlay" onClick={() => setIsCoinSheetOpen(false)}></div>
+        <div className="voice-sheet-content">
           <div className="drag-handle"></div>
           <h3>Top Up Koin Hope</h3>
           

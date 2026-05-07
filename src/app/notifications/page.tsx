@@ -16,7 +16,7 @@ export default function NotificationsPage() {
   const sliderRef = useRef<HTMLDivElement>(null);
   const autoSlideTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // --- 🔥 FIX: REF UNTUK REALTIME CHANNEL 🔥 ---
+  // --- 🔥 REF UNTUK REALTIME CHANNEL 🔥 ---
   const channelRef = useRef<any>(null);
 
   // --- INIT DATA ---
@@ -26,7 +26,7 @@ export default function NotificationsPage() {
 
     return () => {
       stopAutoSlide();
-      // 🔥 FIX: Hapus channel saat komponen mati biar gak memory leak / error 🔥
+      // 🔥 Hapus channel saat komponen mati biar gak memory leak / error 🔥
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
       }
@@ -62,13 +62,12 @@ export default function NotificationsPage() {
     }
   };
 
-  // --- 🔥 FIX: URUTAN ON() SEBELUM SUBSCRIBE() 🔥 ---
+  // --- 🔥 URUTAN ON() SEBELUM SUBSCRIBE() 🔥 ---
   const setupRealtime = (userId: string) => {
-    // Pastikan gak ada channel ganda dengan nama yang sama
     if (channelRef.current) supabase.removeChannel(channelRef.current);
 
     const channel = supabase
-      .channel(`notif-realtime-${userId}`) // Gunakan nama unik biar gak bentrok
+      .channel(`notif-realtime-${userId}`) 
       .on(
         'postgres_changes',
         { 
@@ -157,7 +156,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // --- HELPER UNTUK IKON & WARNA (TERMASUK REPOST) ---
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
@@ -185,8 +183,9 @@ export default function NotificationsPage() {
           <h2 style={{ marginLeft: '10px' }}>Notifikasi</h2>
         </div>
 
-        <div className="ad-banner-container" onMouseEnter={stopAutoSlide} onMouseLeave={startAutoSlide}>
-          <div className="ad-slider" ref={sliderRef}>
+        {/* 🔥 FIX: GANTI CLASS IKLAN JADI notif-* 🔥 */}
+        <div className="notif-ad-banner-container" onMouseEnter={stopAutoSlide} onMouseLeave={startAutoSlide}>
+          <div className="notif-ad-slider" ref={sliderRef}>
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan1.webm" type="video/webm" /></video>
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan2.webm" type="video/webm" /></video>
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan3.webm" type="video/webm" /></video>
@@ -198,18 +197,19 @@ export default function NotificationsPage() {
 
       <main className="notif-list">
         {isLoading ? (
-          // 🔥 GANTI MEMUAT DENGAN SKELETON 🔥
+          // 🔥 FIX: GANTI CLASS SKELETON JADI notif-* 🔥
           Array(6).fill(0).map((_, i) => (
-            <div key={i} className="notif-item skeleton-notif">
-              <div className="notif-item-icon skeleton-shimmer"></div>
+            <div key={i} className="notif-item notif-skeleton-item">
+              <div className="notif-item-icon notif-skeleton-shimmer"></div>
               <div className="notif-content">
-                <div className="skeleton-line skeleton-shimmer" style={{ width: '80%', height: '14px', marginBottom: '8px' }}></div>
-                <div className="skeleton-line skeleton-shimmer" style={{ width: '40%', height: '10px' }}></div>
+                <div className="notif-skeleton-line notif-skeleton-shimmer" style={{ width: '80%', height: '14px', marginBottom: '8px' }}></div>
+                <div className="notif-skeleton-line notif-skeleton-shimmer" style={{ width: '40%', height: '10px' }}></div>
               </div>
             </div>
           ))
         ) : notifs.length === 0 ? (
-          <div className="empty-notif">
+          // 🔥 FIX: GANTI CLASS EMPTY STATE JADI notif-empty-state 🔥
+          <div className="notif-empty-state">
             <span className="material-icons">notifications_none</span>
             <p>Belum ada notifikasi nih.</p>
           </div>
@@ -231,7 +231,8 @@ export default function NotificationsPage() {
                   <span className="notif-date">{formatDate(notif.created_at)}</span>
                 </div>
 
-                {!notif.is_read && <div className="unread-dot"></div>}
+                {/* 🔥 FIX: GANTI CLASS UNREAD DOT JADI notif-unread-dot 🔥 */}
+                {!notif.is_read && <div className="notif-unread-dot"></div>}
               </div>
             );
           })

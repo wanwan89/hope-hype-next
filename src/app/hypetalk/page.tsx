@@ -37,6 +37,8 @@ export default function HypetalkPage() {
 
   useEffect(() => {
     setIsSidebarOpen(false);
+    // 🔥 Pastikan Modal Tertutup Saat Pindah Halaman 🔥
+    setActiveModal(null); 
   }, [pathname]);
 
   const initUser = async () => {
@@ -262,7 +264,6 @@ export default function HypetalkPage() {
 
       <main className="tg-chat-list">
         {isLoading ? (
-          // 🔥 GANTI MEMUAT DENGAN SKELETON CHAT 🔥
           Array(8).fill(0).map((_, i) => (
             <div key={i} className="tg-chat-item skeleton-chat">
               <div className="tg-avatar skeleton-shimmer"></div>
@@ -334,10 +335,12 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
+      {/* 🔥 FIX: SEMUA MODAL CLASS DIGANTI JADI tg-modal-* 🔥 */}
+      
       {/* MODAL DOI CARD */}
       {activeModal === 'doi-card' && foundDoi && (
-        <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
-          <div className="custom-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
+        <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
+          <div className="tg-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header"><h3>Kecocokan Ditemukan!</h3><button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button></div>
             <div className="doi-profile-box" style={{ padding: '10px 0', textAlign: 'center' }}>
               <img src={foundDoi.avatar_url || "/asets/png/profile.webp"} alt="Doi" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #ff4757', boxShadow: '0 0 15px rgba(255, 71, 87, 0.3)', marginBottom: '12px' }} />
@@ -356,8 +359,8 @@ export default function HypetalkPage() {
 
       {/* MODAL SEARCH ID */}
       {activeModal === 'search' && (
-        <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
-          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
+          <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header"><h3>Mulai Chat Baru</h3><button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button></div>
             <div className="input-group">
               <span className="material-icons">tag</span>
@@ -370,8 +373,8 @@ export default function HypetalkPage() {
 
       {/* MODAL BUAT GRUP */}
       {activeModal === 'group' && (
-        <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
-          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
+          <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header"><h3>Buat Grup Baru</h3><button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button></div>
             <div className="input-group">
               <span className="material-icons">groups</span>
@@ -384,8 +387,8 @@ export default function HypetalkPage() {
 
       {/* MODAL BIO */}
       {activeModal === 'bio' && (
-        <div className="custom-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
-          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
+          <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header"><h3>Edit Biodata</h3><button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button></div>
             <div className="form-grid">
               <div className="input-group"><input type="number" placeholder="Umur" value={bioForm.umur} onChange={e => setBioForm({...bioForm, umur: e.target.value})} /></div>
