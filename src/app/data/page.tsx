@@ -82,9 +82,7 @@ function ProfileContent() {
       });
       setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
       updateStats(profData.id, currentUserId);
-    } catch (err) {
-      console.error("Load Profile Error:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const updateStats = async (targetId: string, currentUserId: string | null) => {
@@ -132,12 +130,7 @@ function ProfileContent() {
           setPosts(pData || []);
         }
       }
-    } catch (err) { 
-      console.error(err);
-      setPosts([]);
-    } finally { 
-      setIsLoadingPosts(false); 
-    }
+    } catch (err) { console.error(err); setPosts([]); } finally { setIsLoadingPosts(false); }
   };
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
@@ -150,31 +143,14 @@ function ProfileContent() {
     try {
       const targetCol = type === 'followers' ? 'follower_id' : 'following_id';
       const matchCol = type === 'followers' ? 'following_id' : 'follower_id';
-
-      // 1. Ambil list ID
-      const { data: idList, error: idError } = await supabase
-        .from('followers')
-        .select(targetCol)
-        .eq(matchCol, profile.id);
-
-      if (idError) throw idError;
+      const { data: idList } = await supabase.from('followers').select(targetCol).eq(matchCol, profile.id);
 
       if (idList && idList.length > 0) {
         const userIds = idList.map((item: any) => item[targetCol]);
-        // 2. Tarik info profil lengkap
-        const { data: profilesData, error: profError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url, role')
-          .in('id', userIds);
-
-        if (profError) throw profError;
+        const { data: profilesData } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', userIds);
         setFollowList(profilesData || []);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsFollowLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsFollowLoading(false); }
   };
 
   const handleShareProfile = async () => {
@@ -197,12 +173,8 @@ function ProfileContent() {
         finalAvatarUrl = resData.secure_url;
       }
       await supabase.from("profiles").update({ 
-        username: editData.username, 
-        bio: editData.bio, 
-        avatar_url: finalAvatarUrl || profile.avatar_url,
-        website: editData.website 
+        username: editData.username, bio: editData.bio, avatar_url: finalAvatarUrl || profile.avatar_url, website: editData.website 
       }).eq("id", myId);
-      
       showNotif("Profil diperbarui!", "success");
       setIsEditModalOpen(false);
       setTimeout(() => location.reload(), 800);
@@ -247,6 +219,7 @@ function ProfileContent() {
           <p className="profile-username">@{profile.username.toLowerCase().replace(/\s/g, '')}</p>
 
           <div className="profile-stats">
+            {/* 🔥 URUTAN: Pengikut, Mengikuti, Suka */}
             <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.followers}</span><span className="stat-label">Pengikut</span></div>
             <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.following}</span><span className="stat-label">Mengikuti</span></div>
             <div className="stat-box"><span className="stat-num">{stats.likes}</span><span className="stat-label">Suka</span></div>
@@ -264,12 +237,12 @@ function ProfileContent() {
           </div>
           <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
           
-          {/* 🔥 FIX LINK MINIMALIS (11px & Muted Color) */}
+          {/* 🔥 LINK MINIMALIS (10px & Grey) */}
           {profile.website && (
             <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} 
                target="_blank" rel="noopener noreferrer" 
-               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px', color: '#64748b', fontWeight: '500', marginTop: '6px', textDecoration: 'none', opacity: 0.8 }}>
-               <span className="material-icons" style={{ fontSize: '14px' }}>link</span>
+               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '10px', color: '#8e8e8e', fontWeight: '500', marginTop: '4px', textDecoration: 'none' }}>
+               <span className="material-icons" style={{ fontSize: '12px' }}>link</span>
                {profile.website.replace(/^https?:\/\//, '').split('/')[0]}
             </a>
           )}
@@ -295,7 +268,7 @@ function ProfileContent() {
               </div>
            ) : (
               posts.map(post => (
-                 // 🔥 FIX KLIK POST: Navigasi Langsung ke Post Detail
+                 // 🔥 FIX NAVIGASI: Pake /post sesuai nama folder di screenshot lu
                  <div key={post.id} className="grid-item" style={{ cursor: 'pointer' }} onClick={() => router.push(`/post?id=${post.id}`)}>
                     {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
@@ -311,6 +284,12 @@ function ProfileContent() {
         <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">Saldo HypeCoin</div><div className="arrow-right">›</div></div>
         <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">Riwayat Transaksi</div><div className="arrow-right">›</div></div>
         <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">Langganan VIP</div><div className="arrow-right">›</div></div>
+        
+        {/* 🔥 BALIKIN MENU DAILY CEK */}
+        <div className="menu-category-label">Misi & Hadiah</div>
+        <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">Pusat Misi</div><div className="arrow-right">›</div></div>
+        
+        <hr className="menu-divider" />
         <div className="menu-category-label">Alat Pribadi</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">Pengaturan</div><div className="arrow-right">›</div></div>
         <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">Hubungi Kami</div><div className="arrow-right">›</div></div>
@@ -360,7 +339,7 @@ function ProfileContent() {
               </div>
               <div className="input-group"><label>Username</label><input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} /></div>
               <div className="input-group"><label>Bio</label><textarea rows={2} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} /></div>
-              <div className="input-group"><label>Tautan / Link</label><input type="text" placeholder="google.com atau instagram.com/user" value={editData.website} onChange={e => setEditData(prev => ({ ...prev, website: e.target.value }))} /></div>
+              <div className="input-group"><label>Tautan / Link</label><input type="text" placeholder="google.com" value={editData.website} onChange={e => setEditData(prev => ({ ...prev, website: e.target.value }))} /></div>
               <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
            </div>
         </div>
