@@ -1,5 +1,54 @@
 /* src/components/chat/ChatArea.css */
-/* --- SISA CSS YANG BUKAN PUNYA BUBBLE MASUK SINI --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* =========================================
+   🔥 SUNTIKAN WARNA UTAMA (WAJIB ADA) 🔥
+   ========================================= */
+:root {
+  /* LIGHT MODE */
+  --bg-main: #efeae2; 
+  --bg-panel: #ffffff;
+  --bg-sidebar: #ffffff;
+  --text-color: #111827;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --username-color: #111827;
+  --chat-self-bg: #dcf8c6; 
+  --primary-blue: #1DA1F2;
+  --glass-bg: rgba(255, 255, 255, 0.95); /* Lebih pekat */
+  
+  /* 🔥 FIX: HEADER & INPUT SOLID PUTIH 🔥 */
+  --header-bg: #ffffff;
+  --header-text: #111827;
+}
+
+[data-theme='dark'], html.dark {
+  /* DARK MODE */
+  --bg-main: #0b141a; 
+  --bg-panel: #202c33;
+  --bg-sidebar: #111b21;
+  --text-color: #e9edef;
+  --text-muted: #8696a0;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --username-color: #e9edef;
+  --chat-self-bg: #005c4b; 
+  --primary-blue: #1DA1F2;
+  --glass-bg: rgba(32, 44, 51, 0.95); /* Lebih pekat */
+  
+  /* 🔥 FIX: HEADER & INPUT SOLID GELAP (Sesuai mode) 🔥 */
+  --header-bg: #202c33;
+  --header-text: #e9edef;
+}
+
+*, *::before, *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   LAYOUT & SISA CSS LU
+   ========================================= */
 .telegram-chat {
   display: flex; flex-direction: column; background-color: var(--bg-main); z-index: 1000;
   overflow: hidden; position: fixed !important; top: 0; left: 0; right: 0; bottom: 0;
@@ -9,11 +58,16 @@
   overscroll-behavior: none; 
 }
 
+/* 🔥 FIX HEADER MELAYANG 🔥 */
 .chat-header {
   position: relative; display: flex; align-items: center; justify-content: space-between;
   padding: 0 15px; padding-top: env(safe-area-inset-top); 
-  background: var(--header-bg); color: var(--header-text); 
-  height: calc(65px + env(safe-area-inset-top)); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); flex-shrink: 0; 
+  background: var(--header-bg) !important; /* Paksa Solid */
+  color: var(--header-text); 
+  height: calc(65px + env(safe-area-inset-top)); 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); 
+  flex-shrink: 0; 
+  z-index: 10002; /* Paling atas */
 }
 .header-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .menu-btn { cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: none; color: inherit;}
@@ -54,39 +108,57 @@
 .typing-bubble span:nth-child(3) { animation-delay: 0.4s; }
 .loading-chat-hint { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 10px; }
 
-/* CHAT INPUT LAYER */
+/* =========================================
+   🔥 CHAT INPUT LAYER (MELAYANG AMAN) 🔥
+   ========================================= */
+.chat-input-container { 
+  position: fixed !important; 
+  bottom: 0 !important; 
+  left: 0 !important; 
+  right: 0 !important; 
+  z-index: 10000 !important; /* Paling atas nutup bubble */
+  display: flex !important; 
+  flex-direction: column !important; 
+  background: var(--header-bg) !important; /* 🔥 Paksa Solid Putih/Gelap */
+  padding: 8px 12px !important; 
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important; 
+  height: auto !important; 
+  pointer-events: auto !important; 
+  box-shadow: 0 -4px 15px rgba(0,0,0,0.05) !important; /* Kasih bayangan ke atas */
+}
+
 .input-row { display: flex; width: 100%; align-items: flex-end; gap: 8px; position: relative; z-index: 100; }
+
 .input-group-wrapper {
   flex: 1 1 auto; min-width: 0; display: flex; align-items: center;
-  background: var(--glass-bg) !important; 
-  backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+  background: var(--bg-panel) !important; 
   position: relative; min-height: 48px;
   box-sizing: border-box; border: 1px solid var(--border-color);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+  border-radius: 24px;
   max-width: calc(100vw - 70px); 
 }
-[data-theme='dark'] .input-group-wrapper, html.dark .input-group-wrapper { box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
 
 #chat-input {
   flex: 1; min-width: 0; border: none; outline: none; background: transparent !important;
   resize: none; font-family: 'Inter', sans-serif;
-  color: var(--text-color); overflow-y: auto;
+  color: var(--text-color); overflow-y: auto; padding: 12px 14px;
 }
 #chat-input::placeholder { color: var(--text-muted); opacity: 0.8; }
 
+/* 🔥 FIX TOMBOL KIRIM BIRU SOLID 🔥 */
 #action-btn { 
   width: 48px; height: 48px; min-width: 48px; border-radius: 50%; border: none; 
   display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
   cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-  background-color: var(--primary-blue) !important; color: white;
-  box-shadow: 0 4px 10px rgba(58, 123, 213, 0.3); 
+  background-color: var(--primary-blue) !important; /* Paksa biru */
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(29, 161, 242, 0.3) !important; 
 }
-[data-theme='dark'] #action-btn, html.dark #action-btn { box-shadow: 0 4px 10px rgba(58, 123, 213, 0.4); }
-#action-btn.is-recording { background-color: #ff4757 !important; transform: scale(1.1); }
-#action-btn:active { transform: scale(0.9); box-shadow: 0 2px 0 rgba(42, 92, 184, 0.8), 0 3px 6px rgba(0,0,0,0.2); }
+#action-btn.is-recording { background-color: #ff4757 !important; transform: scale(1.1); box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3) !important; }
+#action-btn:active { transform: scale(0.9); }
 
 /* OTHER UI ELEMENTS */
-.reaction-menu { position: absolute; background: var(--glass-bg); padding: 8px 12px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: none; gap: 12px; z-index: 10006; border: 1px solid var(--border-color); transform: translateX(-50%); animation: reactionPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); pointer-events: auto; }
+.reaction-menu { position: absolute; background: var(--bg-panel); padding: 8px 12px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: none; gap: 12px; z-index: 10006; border: 1px solid var(--border-color); transform: translateX(-50%); animation: reactionPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; }
 .reaction-emoji { cursor: pointer; font-size: 24px; transition: transform 0.2s; user-select: none; }
 .reaction-emoji:active { transform: scale(1.4) translateY(-5px); }
 .message-reactions { position: absolute; bottom: -10px; left: 10px; display: flex; gap: 2px; background: var(--bg-panel); padding: 1px 4px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); z-index: 5; border: 1px solid var(--border-color); animation: badgePop 0.3s ease-out; font-size: 11px;}
@@ -120,7 +192,6 @@
 @keyframes slideUpFadeWA { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
 @keyframes shimmerMove { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-/* 🔥 ANIMASI BARU KHUSUS REPLY BOX ALA WHATSAPP 🔥 */
 @keyframes replyPopOut {
   0% {
     opacity: 0;
@@ -141,12 +212,8 @@
 }
 
 /* =========================================
-   STIKER & REPLY BOX CONTAINER
+   REPLY BOX & STICKER MENU
    ========================================= */
-.chat-input-container { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; display: flex !important; flex-direction: column !important; background: transparent !important; padding: 8px 12px !important; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important; height: auto !important; pointer-events: none !important; }
-.chat-input-container > * { pointer-events: auto !important; }
-
-/* 🔥 FIX REPLY BOX STYLE 🔥 */
 #reply-preview-box { 
   order: 1 !important; 
   position: relative !important; 
@@ -158,8 +225,8 @@
   margin: 0 0 8px 0 !important; 
   box-sizing: border-box !important; 
   z-index: 10001 !important; 
-  overflow: hidden !important; /* Mencegah teks tumpah saat animasi kebuka */
-  transform-origin: bottom center !important; /* Tumbuh dari bawah (input) ke atas */
+  overflow: hidden !important; 
+  transform-origin: bottom center !important; 
 }
 
 #reply-preview-box[style*="display: block"], 
@@ -172,7 +239,7 @@
   border-radius: 12px !important; 
   padding: 10px 14px !important; 
   box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important; 
-  animation: replyPopOut 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15) forwards !important; /* Panggil animasi WhatsApp */
+  animation: replyPopOut 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15) forwards !important; 
 }
 
 #sticker-menu, .sticker-container { position: absolute !important; bottom: 100% !important; left: 0 !important; right: 0 !important; width: auto !important; margin: 0 12px 8px 12px !important; z-index: 10010 !important; box-sizing: border-box !important; top: auto !important; }
@@ -181,4 +248,4 @@
 .chat-input-container #sticker-list img { width: 100% !important; max-width: 100% !important; height: auto !important; aspect-ratio: 1 / 1 !important; object-fit: cover !important; margin: 0 !important; padding: 0 !important; border-radius: 8px !important; background: rgba(128, 128, 128, 0.1) !important; display: block !important; cursor: pointer !important; }
 .chat-input-container #sticker-list img:active { transform: scale(0.9) !important; }
 .sticker-search-wrapper { display: flex !important; width: 100% !important; margin-bottom: 10px !important; gap: 8px !important; }
-.sticker-search-wrapper input { flex: 1 !important; }
+.sticker-search-wrapper input { flex: 1 !important; background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-color); padding: 8px 12px; border-radius: 12px; outline: none; }
