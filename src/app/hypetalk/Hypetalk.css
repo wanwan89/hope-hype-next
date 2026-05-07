@@ -276,3 +276,37 @@ html.dark .limit-badge { background: rgba(239,68,68,0.15); }
 .anim-calling-text { animation: text-blink 1.5s infinite ease-in-out; color: #10b981 !important; font-weight: bold; letter-spacing: 2px; }
 @keyframes radar-pulse-call { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7), 0 0 0 0 rgba(16, 185, 129, 0.4); transform: scale(0.95); } 50% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0), 0 0 0 30px rgba(16, 185, 129, 0.2); transform: scale(1); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), 0 0 0 45px rgba(16, 185, 129, 0); transform: scale(0.95); } }
 @keyframes text-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+/* --- SKELETON CHAT STYLING --- */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--tg-bg-secondary) 25%, var(--tg-border) 50%, var(--tg-bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-chat {
+  pointer-events: none;
+  border-bottom: 1px solid var(--tg-border);
+}
+
+.skeleton-chat .tg-avatar {
+  background: var(--tg-bg-secondary);
+  border-radius: 50%;
+}
+
+.skeleton-line {
+  background: var(--tg-bg-secondary);
+  border-radius: 4px;
+}
+
+/* Biar rapi pas loading */
+.tg-chat-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

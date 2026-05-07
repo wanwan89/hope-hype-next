@@ -198,10 +198,16 @@ export default function NotificationsPage() {
 
       <main className="notif-list">
         {isLoading ? (
-          <div className="empty-notif">
-            <span className="material-icons" style={{ animation: 'spin 1s linear infinite' }}>autorenew</span>
-            <p>Memuat notifikasi...</p>
-          </div>
+          // 🔥 GANTI MEMUAT DENGAN SKELETON 🔥
+          Array(6).fill(0).map((_, i) => (
+            <div key={i} className="notif-item skeleton-notif">
+              <div className="notif-item-icon skeleton-shimmer"></div>
+              <div className="notif-content">
+                <div className="skeleton-line skeleton-shimmer" style={{ width: '80%', height: '14px', marginBottom: '8px' }}></div>
+                <div className="skeleton-line skeleton-shimmer" style={{ width: '40%', height: '10px' }}></div>
+              </div>
+            </div>
+          ))
         ) : notifs.length === 0 ? (
           <div className="empty-notif">
             <span className="material-icons">notifications_none</span>

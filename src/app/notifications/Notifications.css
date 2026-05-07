@@ -164,3 +164,30 @@ html.dark .ad-banner-container {
   margin-top: 30px;
 }
 .empty-notif .material-icons { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+/* --- SKELETON ANIMATION --- */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-color) 50%, var(--bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-notif {
+  border-bottom: 1px solid var(--border-color);
+  pointer-events: none;
+}
+
+.skeleton-notif .notif-item-icon {
+  background: var(--bg-secondary);
+  border-radius: 50%;
+}
+
+.skeleton-line {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
