@@ -3,12 +3,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
-// 🔥 FIX 1: Import i18n
 import { useTranslation } from 'react-i18next';
 import './CommentModal.css';
 
 export default function CommentModalpost() {
-  // 🔥 FIX 2: Inisialisasi Translate
   const { t } = useTranslation();
 
   const [isActive, setIsActive] = useState(false);
@@ -82,7 +80,6 @@ export default function CommentModalpost() {
             actor_id: session.user.id,
             post_id: parseInt(postId),
             type: "gift",
-            // 🔥 FIX i18n notif
             message: t('notif_gave_gift', { username: prof?.username, giftName: giftName })
           });
         }
@@ -205,10 +202,34 @@ export default function CommentModalpost() {
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
-              <div className="gift-comment-bubble">
-                 {/* 🔥 FIX i18n Gift Text */}
-                 <span style={{ color: '#f59e0b', fontSize: '13px', fontWeight: 600 }}>{t('gave_gift', { giftName })}</span>
-                 {giftImg && <img src={giftImg} alt={giftName} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />}
+              /* 🔥 FIX: Bagian Gift UI di rapihin Bree! */
+              <div style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '10px', 
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%)', 
+                padding: '8px 14px', 
+                borderRadius: '16px', 
+                border: '1px solid rgba(245, 158, 11, 0.3)', 
+                marginTop: '6px',
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)',
+                maxWidth: '100%'
+              }}>
+                 <span style={{ color: '#f59e0b', fontSize: '13px', fontWeight: 700, letterSpacing: '0.2px' }}>
+                   {t('gave_gift', { giftName })}
+                 </span>
+                 {giftImg && (
+                   <img 
+                    src={giftImg} 
+                    alt={giftName} 
+                    style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                    }} 
+                   />
+                 )}
               </div>
             ) : (
               comment.content
@@ -234,7 +255,6 @@ export default function CommentModalpost() {
 
   const parents = comments.filter(c => !c.parent_id);
 
-  // 🔥 FIX Dynamic Placeholder
   const getPlaceholder = () => {
     if (isSubmitting) return t('sending');
     if (replyToUsername) return t('replying_to', { username: replyToUsername });
@@ -281,7 +301,6 @@ export default function CommentModalpost() {
                     <div className="replies-container" style={{ marginTop: firstCreatorReply ? '0' : '8px' }}>
                       <div className="view-replies-btn" onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))} style={{ marginLeft: '45px' }}>
                         <span className="btn-line" style={{ left: '-20px', width: '15px' }}></span>
-                        {/* 🔥 FIX i18n Balasan Lainya */}
                         {isExpanded ? t('hide_replies') : t('show_replies_count', { count: remainingChilds.length })}
                       </div>
 

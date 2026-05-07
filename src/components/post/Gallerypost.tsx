@@ -3,12 +3,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
-// 🔥 FIX 1: Import i18n hook
 import { useTranslation } from 'react-i18next';
 import './Gallery.css';
 
 export default function Gallerypost() {
-  // 🔥 FIX 2: Inisialisasi Translate & i18n untuk tanggal
   const { t, i18n } = useTranslation();
   
   const [posts, setPosts] = useState<any[]>([]);
@@ -58,7 +56,6 @@ export default function Gallerypost() {
 
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
-        
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from("likes").select("post_id").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -89,20 +86,6 @@ export default function Gallerypost() {
       setPosts(fetchedPosts);
       setTimeout(initAutoPlayObserver, 500);
 
-      // Handle direct hash navigation
-      setTimeout(() => {
-        if (window.location.hash) {
-          const hashId = window.location.hash.substring(1);
-          const targetEl = document.getElementById(hashId);
-          if (targetEl) {
-            targetEl.style.transition = 'box-shadow 0.5s ease';
-            targetEl.style.boxShadow = '0 0 30px rgba(0, 162, 255, 0.8)';
-            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => { targetEl.style.boxShadow = ''; }, 2000);
-          }
-        }
-      }, 800);
-
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
   };
 
@@ -131,7 +114,7 @@ export default function Gallerypost() {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
           await supabase.from("notifications").insert({
             user_id: creatorId, actor_id: currentUser.id, post_id: numericPostId, type: "like",
-            message: t('notif_commented', { username: prof?.username }) // Reusing similar logic
+            message: t('notif_commented', { username: prof?.username }) 
           });
         }
       }
@@ -217,6 +200,7 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
+  // 🔥 FIX: Balikin Style Awal (Glassmorphism & Marquee)
   const getMusicHtml = (post: any) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
@@ -226,8 +210,8 @@ export default function Gallerypost() {
     const finalAudio = cleanAudio.startsWith("http") ? cleanAudio : `/songs/${cleanAudio}`;
     
     return (
-      <div className="music-marquee-container">
-        <div className="marquee-text">
+      <div className="music-marquee-container" style={{ background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '20px', padding: '5px 15px', zIndex: 10, maxWidth: '150px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', pointerEvents: 'none', marginBottom: '10px' }}>
+        <div className="marquee-text" style={{ fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-block', animation: 'marquee-play 8s linear infinite', letterSpacing: '0.3px' }}>
           {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
         </div>
         <audio className="post-audio-element" loop preload="metadata" playsInline style={{ display: 'none' }}>
@@ -277,10 +261,7 @@ export default function Gallerypost() {
           posts.map(post => {
             const badge = getUserBadge(post.profiles?.role);
             const avatarUrl = post.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + post.profiles?.username;
-            
-            // 🔥 FIX 3: Dynamic Date Locale 🔥
             const formattedDate = new Date(post.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short" });
-            
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
 
