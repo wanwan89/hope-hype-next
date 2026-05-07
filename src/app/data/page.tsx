@@ -14,9 +14,7 @@ function ProfileContent() {
   const urlId = searchParams?.get('id');
   const urlUser = searchParams?.get('user') || searchParams?.get('username');
 
-  // 🔥 JURUS ANTI-KEDIP: State untuk mastiin komponen udah siap 🔥
   const [isMounted, setIsMounted] = useState(false);
-  
   const [myId, setMyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
@@ -28,7 +26,7 @@ function ProfileContent() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '' });
+  const [editData, setEditData] =({ username: '', bio: '', avatar_url: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,14 +38,13 @@ function ProfileContent() {
     '/asets/png/avatar4.png'
   ];
 
-  // 🔥 1. Mastiin komponen mounted & reset state modal 🔥
   useEffect(() => {
     setIsMounted(true);
-    setIsEditModalOpen(false); // Paksa tutup modal tiap masuk
+    setIsEditModalOpen(false);
     setIsSidebarOpen(false);
 
     return () => {
-      setIsEditModalOpen(false); // Cleanup pas ditinggalin
+      setIsEditModalOpen(false);
       setIsSidebarOpen(false);
     };
   }, []);
@@ -202,11 +199,8 @@ function ProfileContent() {
     router.push(path);
   };
 
-  // 🔥 Guard untuk loading awal biar gak flash 🔥
   if (!isMounted || !profile) return (
-    <div className="profile-page-container" style={{ backgroundColor: '#ffffff' }}>
-      {/* Loading State Minimalis biar gak kaget */}
-    </div>
+    <div className="profile-page-container" style={{ backgroundColor: '#ffffff' }}></div>
   );
 
   const isMe = myId === profile.id;
@@ -305,25 +299,41 @@ function ProfileContent() {
              <input type="text" placeholder="Cari..." />
           </div>
         </div>
+
         <div className="menu-category-label">Dompet & Aset</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}>
            <div className="icon-wrapper"><span className="material-icons">toll</span></div>
            <div className="menu-text">Saldo HypeCoin</div>
            <div className="arrow-right">›</div>
         </div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}>
+        <div className="menu-item-tiktok" onClick={() => navTo('/saldo/history')}>
            <div className="icon-wrapper"><span className="material-icons">receipt_long</span></div>
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
+        {/* 🔥 MENU BARU: Langganan VIP 🔥 */}
+        <div className="menu-item-tiktok" onClick={() => navTo('/vip')}>
+           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">workspace_premium</span></div>
+           <div className="menu-text">Langganan VIP</div>
+           <div className="arrow-right">›</div>
+        </div>
+
         <div className="menu-category-label">Misi & Hadiah</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}>
            <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div>
            <div className="menu-text">Pusat Misi</div>
            <div className="arrow-right">›</div>
         </div>
+
         <hr className="menu-divider" />
+        
         <div className="menu-category-label">Alat Pribadi</div>
+        {/* 🔥 MENU BARU: Pengaturan 🔥 */}
+        <div className="menu-item-tiktok" onClick={() => navTo('/settings')}>
+           <div className="icon-wrapper"><span className="material-icons">settings</span></div>
+           <div className="menu-text">Pengaturan</div>
+           <div className="arrow-right">›</div>
+        </div>
         <div className="menu-item-tiktok" onClick={handleShareProfile}>
            <div className="icon-wrapper"><span className="material-icons">ios_share</span></div>
            <div className="menu-text">Bagikan Profil</div>
@@ -335,7 +345,7 @@ function ProfileContent() {
         </div>
       </aside>
 
-      {/* 🔥 FIX: GANTI CLASS MODAL PROFIL JADI .prof-modal-* 🔥 */}
+      {/* MODAL EDIT PROFIL */}
       {isMounted && (
         <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
            <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
