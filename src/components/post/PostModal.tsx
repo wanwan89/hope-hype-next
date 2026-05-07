@@ -194,7 +194,8 @@ export default function PostModal({ onClose }: PostModalProps) {
                 image={imageForCrop}
                 crop={crop}
                 zoom={zoom}
-                aspect={1 / 1} // Paksa 1:1 biar feed rapi
+aspect={3 / 4}
+
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
                 onZoomChange={setZoom}
