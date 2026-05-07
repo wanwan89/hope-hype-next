@@ -107,7 +107,10 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         <div className="system-text">{displayMessage}</div>
       ) : (
         <>
-          <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
+          {/* 🔥 FIX: Avatar HANYA muncul kalau BUKAN Private Chat (Misal: Grup) 🔥 */}
+          {!isPrivateChat && (
+            <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
+          )}
           
           <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
             

@@ -6,7 +6,7 @@
    ========================================= */
 :root {
   /* LIGHT MODE */
-  --bg-main: #efeae2; 
+  --bg-main: #ffffff; /* 🔥 FIX: Background utama jadi putih bersih 🔥 */
   --bg-panel: #ffffff;
   --bg-sidebar: #ffffff;
   --text-color: #111827;
@@ -15,16 +15,15 @@
   --username-color: #111827;
   --chat-self-bg: #dcf8c6; 
   --primary-blue: #1DA1F2;
-  --glass-bg: rgba(255, 255, 255, 0.95); /* Lebih pekat */
-  
-  /* 🔥 FIX: HEADER & INPUT SOLID PUTIH 🔥 */
+  --glass-bg: rgba(255, 255, 255, 0.95); 
   --header-bg: #ffffff;
   --header-text: #111827;
+  --input-box-bg: #ffffff;
 }
 
 [data-theme='dark'], html.dark {
   /* DARK MODE */
-  --bg-main: #0b141a; 
+  --bg-main: #0b141a; /* Tetap gelap elegan di Dark Mode */
   --bg-panel: #202c33;
   --bg-sidebar: #111b21;
   --text-color: #e9edef;
@@ -33,11 +32,10 @@
   --username-color: #e9edef;
   --chat-self-bg: #005c4b; 
   --primary-blue: #1DA1F2;
-  --glass-bg: rgba(32, 44, 51, 0.95); /* Lebih pekat */
-  
-  /* 🔥 FIX: HEADER & INPUT SOLID GELAP (Sesuai mode) 🔥 */
+  --glass-bg: rgba(32, 44, 51, 0.95); 
   --header-bg: #202c33;
   --header-text: #e9edef;
+  --input-box-bg: #2a3942;
 }
 
 *, *::before, *::after {
@@ -58,16 +56,16 @@
   overscroll-behavior: none; 
 }
 
-/* 🔥 FIX HEADER MELAYANG 🔥 */
+/* 🔥 HEADER MELAYANG 🔥 */
 .chat-header {
   position: relative; display: flex; align-items: center; justify-content: space-between;
   padding: 0 15px; padding-top: env(safe-area-inset-top); 
-  background: var(--header-bg) !important; /* Paksa Solid */
+  background: var(--header-bg) !important; 
   color: var(--header-text); 
   height: calc(65px + env(safe-area-inset-top)); 
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); 
   flex-shrink: 0; 
-  z-index: 10002; /* Paling atas */
+  z-index: 10002; 
 }
 .header-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .menu-btn { cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: none; color: inherit;}
@@ -109,33 +107,36 @@
 .loading-chat-hint { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 10px; }
 
 /* =========================================
-   🔥 CHAT INPUT LAYER (MELAYANG AMAN) 🔥
+   🔥 CHAT INPUT LAYER (TRANSPARAN) 🔥
    ========================================= */
 .chat-input-container { 
   position: fixed !important; 
   bottom: 0 !important; 
   left: 0 !important; 
   right: 0 !important; 
-  z-index: 10000 !important; /* Paling atas nutup bubble */
+  z-index: 10000 !important; 
   display: flex !important; 
   flex-direction: column !important; 
-  background: var(--header-bg) !important; /* 🔥 Paksa Solid Putih/Gelap */
+  background: transparent !important; /* CONTAINER LUAR TRANSPARAN */
   padding: 8px 12px !important; 
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important; 
   height: auto !important; 
-  pointer-events: auto !important; 
-  box-shadow: 0 -4px 15px rgba(0,0,0,0.05) !important; /* Kasih bayangan ke atas */
+  pointer-events: none !important; 
+  box-shadow: none !important; 
 }
+.chat-input-container > * { pointer-events: auto !important; }
 
 .input-row { display: flex; width: 100%; align-items: flex-end; gap: 8px; position: relative; z-index: 100; }
 
+/* 🔥 KAPSUL INPUT SOLID PUTIH/GELAP 🔥 */
 .input-group-wrapper {
   flex: 1 1 auto; min-width: 0; display: flex; align-items: center;
-  background: var(--bg-panel) !important; 
+  background: var(--input-box-bg) !important; 
   position: relative; min-height: 48px;
   box-sizing: border-box; border: 1px solid var(--border-color);
   border-radius: 24px;
   max-width: calc(100vw - 70px); 
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
 }
 
 #chat-input {
@@ -145,12 +146,12 @@
 }
 #chat-input::placeholder { color: var(--text-muted); opacity: 0.8; }
 
-/* 🔥 FIX TOMBOL KIRIM BIRU SOLID 🔥 */
+/* 🔥 TOMBOL KIRIM BIRU SOLID 🔥 */
 #action-btn { 
   width: 48px; height: 48px; min-width: 48px; border-radius: 50%; border: none; 
   display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
   cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-  background-color: var(--primary-blue) !important; /* Paksa biru */
+  background-color: var(--primary-blue) !important; 
   color: #ffffff !important;
   box-shadow: 0 4px 10px rgba(29, 161, 242, 0.3) !important; 
 }
@@ -234,7 +235,7 @@
   display: flex !important; 
   align-items: center !important; 
   justify-content: space-between !important; 
-  background: var(--bg-panel) !important; 
+  background: var(--input-box-bg) !important; 
   border-left: 4px solid var(--primary-blue) !important; 
   border-radius: 12px !important; 
   padding: 10px 14px !important; 
