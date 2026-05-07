@@ -2,147 +2,136 @@
 @tailwind components;
 @tailwind utilities;
 
-/* === 1. JANTUNG TEMA (LIGHT & DARK) === */
+/* === CSS VARIABLES LIGHT & DARK MODE === */
 :root {
-  /* Mode Terang (Default) */
-  --bg-main: #f3f4f6;
+  --bg-main: #f0f2f5;
+  --text-main: #1c1e21;
   --bg-card: #ffffff;
-  --bg-input: #ffffff;
-  --bg-secondary: #e5e7eb;
-  --text-main: #111827;
-  --text-sub: #6b7280;
-  --border-color: #e5e7eb;
-  --accent-blue: #1DA1F2;
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --border-card: #dddfe2;
+  --text-muted: #64748b;
+  --bg-modal: #ffffff;
+  --bg-input: #f1f5f9;
+  --icon-fill: #1c1e21;
+  --bg-secondary: #e4e6eb; 
+  --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
+  --bg-story-seen: #dddfe2;
 }
 
-/* 🔥 FIX: Selector ini harus sama dengan yang di layout.tsx setAttribute('data-theme') */
-[data-theme='dark'] {
+html.dark {
   --bg-main: #0a0a0a; 
-  --bg-card: #151515;
-  --bg-input: #1e1e1e;
-  --bg-secondary: #1e293b;
   --text-main: #f8fafc;
-  --text-sub: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --accent-blue: #1DA1F2;
-  --glass-bg: rgba(21, 21, 21, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --bg-card: #151515;
+  --border-card: rgba(255,255,255,0.06);
+  --text-muted: #94a3b8;
+  --bg-modal: #111111;
+  --bg-input: #1e1e1e;
+  --icon-fill: #e0e0e0;
+  --bg-secondary: #1e293b;
+  --bg-story-seen: #2c2c2c;
 }
 
-/* === 2. RESET GLOBAL & ANTI-GLITCH HP === */
+/* === RESET GLOBAL & ANTI-BLACK-LINE === */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent !important;
+  /* 🔥 FIX: Cegah user gak sengaja nge-hold dan munculin popup copy text di UI HP 🔥 */
   -webkit-touch-callout: none;
   outline: none !important;
 }
 
 html {
-  background-color: var(--bg-main);
+  /* 🔥 FIX: Biar kalau layar goyang, warnanya tetep sesuai tema */
+  background-color: var(--bg-main) !important;
   height: 100%;
   scroll-behavior: smooth;
 }
 
 body { 
   width: 100%;
-  min-height: 100dvh; /* Dynamic Viewport buat sikat gap hitam bawah */
+  min-height: 100%;
+  /* 🔥 FIX: Sikat abis efek mental/bounce di HP yang bikin garis hitam muncul */
   overscroll-behavior-y: none;
   overflow-x: hidden;
   font-family: 'Poppins', sans-serif; 
   background-color: var(--bg-main); 
   color: var(--text-main); 
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.2s ease;
+  /* 🔥 FIX: padding-top dihapus dari sini biar gak Double Poni sama Header komponen lu 🔥 */
 }
 
-/* === 3. KOMPONEN UI PREMIUM (MAINKAN VARIABELNYA) === */
-
-/* Semua Card otomatis ikut tema */
-.card, .contact-card, .product-card, .settings-card {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow);
-  border-radius: 20px;
-  transition: all 0.3s ease;
+/* Biar inputan & pesan bisa di-copy, tapi tombol nggak */
+input, textarea, [contenteditable="true"], .selectable { 
+  user-select: text !important; 
+  -webkit-touch-callout: default; /* Kembalikan fungsi copy paste untuk input */
 }
 
-/* Efek Glassmorphism buat Header/Navbar */
-.glass-effect {
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border-bottom: 1px solid var(--glass-border);
+.menu-item-tiktok, .btn, .tab, button, .avatar, .card-btn {
+  user-select: none; 
+  cursor: pointer;
 }
 
-/* Input Styles */
-input, textarea, select {
-  background-color: var(--bg-input) !important;
-  color: var(--text-main) !important;
-  border: 1px solid var(--border-color) !important;
-  border-radius: 12px;
-  padding: 12px 16px;
-}
-
-input:focus {
-  border-color: var(--accent-blue) !important;
-  box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.1);
-}
-
-/* === 4. LAYOUT UTILITIES === */
-
+/* === LAYOUT WRAPPER UTILITIES === */
 .layout-wrapper {
   width: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
 }
 
-.main-content {
-  flex: 1;
-  width: 100%;
-  max-width: 480px; /* Lebar HP Standard */
-  margin: 0 auto;
-  position: relative;
-  /* Jarak buat Navbar bawah + Support Notch Bawah HP */
-  padding-bottom: calc(90px + env(safe-area-inset-bottom));
-}
-
-/* Fullscreen Page (Profil, Notif, Settings, VIP) */
-.main-content.is-fullscreen {
-  max-width: 100%;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Fix Khusus Standalone App (Voice/Misi) */
+/* Khusus halaman Standalone (Voice/Misi) biar gak ada celah */
 .fixed-layout {
   height: 100dvh !important;
   overflow: hidden !important;
+  position: relative;
 }
 
-/* === 5. SCROLLER & ANIMATION === */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* === MAIN CONTENT SCALING === */
+.main-content {
+  flex: 1;
+  width: 100%;
+  /* 🔥 FIX: Disamakan jadi 480px biar gak tiba-tiba melar pas ganti rute 🔥 */
+  max-width: 480px; 
+  margin: 0 auto;
+  position: relative;
+  /* Jarak buat Navbar bawah standar */
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  transition: padding 0.2s ease-out;
+}
 
+/* Mode Fullscreen (Profil, Notif, Voice, Misi) */
+.main-content.is-fullscreen {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  max-width: 100%;
+}
+
+/* Utilitas untuk scroller premium (sembunyiin scrollbar tapi tetep bisa scroll) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* === Z-INDEX LAYOUT === */
+.sidebar-home {
+  z-index: 50;
+}
+
+.navbar-bottom {
+  z-index: 100;
+  /* Support HP ber-layar panjang (Home Indicator) */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* FIX: Mencegah elemen random muncul pas transisi */
 .page-fade {
-  animation: fadeIn 0.4s ease-out;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Badge & Icons */
-.material-icons {
-  vertical-align: middle;
-  color: var(--text-sub);
-}
-
-.active .material-icons {
-  color: var(--accent-blue);
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
