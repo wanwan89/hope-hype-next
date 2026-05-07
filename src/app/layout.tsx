@@ -1,5 +1,5 @@
 'use client'; 
-
+import '@/lib/i18n'; // 🔥 Cukup tambahin baris ini aja
 import { usePathname } from 'next/navigation';
 import { useEffect, useLayoutEffect } from 'react'; 
 import "./globals.css";

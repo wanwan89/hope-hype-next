@@ -4,24 +4,23 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
+// 🔥 FIX 1: Import useTheme dari next-themes 🔥
+import { useTheme } from 'next-themes'; 
 import './Settings.css';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // 🔥 FIX 2: Panggil global theme state 🔥
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false); // Buat mencegah hydration error
+  
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setIsDarkMode(true);
-      document.documentElement.removeAttribute('data-theme');
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
+    setMounted(true); // Tandai komponen udah siap
     fetchAccountData();
   }, []);
 
@@ -35,22 +34,17 @@ export default function SettingsPage() {
     setLoading(false);
   };
 
+  // 🔥 FIX 3: Fungsi toggle nyambung ke next-themes 🔥
   const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    
-    if (newMode) {
-      localStorage.setItem('theme', 'dark');
-      document.documentElement.removeAttribute('data-theme');
-      showNotif("Mode gelap aktif", "info");
-    } else {
-      localStorage.setItem('theme', 'light');
-      document.documentElement.setAttribute('data-theme', 'light');
-      showNotif("Mode terang aktif", "info");
-    }
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    showNotif(`Mode ${newTheme === 'dark' ? 'gelap' : 'terang'} aktif`, "info");
   };
 
-  if (loading) return <div className="settings-page"></div>;
+  // Render kosong dulu sampai mounted buat cegah kedip putih (Hydration mismatch)
+  if (!mounted || loading) return <div className="settings-page"></div>;
+
+  const isDarkMode = theme === 'dark';
 
   return (
     <div className="settings-page">
@@ -79,7 +73,6 @@ export default function SettingsPage() {
               </label>
             </div>
             
-            {/* 🔥 UPDATE: Link ke halaman ganti bahasa 🔥 */}
             <div className="settings-item" onClick={() => router.push('/settings/language')}>
               <div className="item-left">
                 <span className="material-icons">language</span>
@@ -119,7 +112,6 @@ export default function SettingsPage() {
               <span className="health-badge health-good">SANGAT BAIK</span>
             </div>
 
-            {/* 🔥 UPDATE: Link ke halaman ganti sandi 🔥 */}
             <div className="settings-item" onClick={() => router.push('/settings/password')}>
               <div className="item-left">
                 <span className="material-icons">lock</span>
