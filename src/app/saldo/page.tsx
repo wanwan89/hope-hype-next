@@ -47,10 +47,6 @@ export default function SaldoPage() {
     }
   };
 
-  const handleTopUp = () => {
-    router.push('/voice'); 
-  };
-
   const handleWithdraw = () => {
     router.push('/saldo/withdraw'); 
   };
@@ -73,7 +69,6 @@ export default function SaldoPage() {
           <span className="material-icons">arrow_back</span>
         </button>
         <h2>Saldo & Aset</h2>
-        {/* 🔥 ICON ATAS: Ke Riwayat Mutasi Koin 🔥 */}
         <button className="saldo-btn-icon" onClick={handleCoinHistory}>
           <span className="material-icons">receipt_long</span>
         </button>
@@ -103,17 +98,12 @@ export default function SaldoPage() {
         </div>
       </section>
 
-      {/* ACTION MENU */}
+      {/* ACTION MENU - TOPUP DIHAPUS 🔥 */}
       <div className="saldo-menu-row">
-        <button className="saldo-action-btn" onClick={handleTopUp}>
-          <span className="material-icons">add_card</span>
-          <span>Top Up</span>
-        </button>
         <button className="saldo-action-btn" onClick={handleWithdraw}>
           <span className="material-icons">account_balance_wallet</span>
           <span>Tarik Tunai</span>
         </button>
-        {/* 🔥 TOMBOL TENGAH: Ke Riwayat Penarikan (WD) 🔥 */}
         <button className="saldo-action-btn" onClick={handleWithdrawHistory}>
           <span className="material-icons">history</span>
           <span>Riwayat WD</span>
@@ -124,7 +114,6 @@ export default function SaldoPage() {
       <h3 className="saldo-section-title">Aset Lainnya</h3>
       <div className="saldo-assets-list">
         
-        {/* 🔥 Klik item koin juga bisa lari ke riwayat koin 🔥 */}
         <div className="saldo-asset-item" onClick={handleCoinHistory} style={{ cursor: 'pointer' }}>
           <div className="saldo-asset-info">
             <div className="saldo-asset-icon">
