@@ -10,7 +10,6 @@
   color: white; 
   font-family: 'Poppins', sans-serif; 
   overflow: hidden;
-  /* Mencegah scroll mental di browser mobile */
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -20,7 +19,7 @@
   position: absolute; 
   inset: 0; 
   display: flex; 
-  z-index: 10005; /* Di bawah tombol interaktif */
+  z-index: 10005; 
 }
 .tap-left { width: 30%; height: 100%; cursor: pointer; }
 .tap-right { width: 70%; height: 100%; cursor: pointer; }
@@ -29,7 +28,6 @@
 .story-progress-container { 
   position: absolute; 
   top: 0; left: 0; right: 0;
-  /* Tambahin safe area top biar nggak nabrak notch */
   padding: calc(10px + env(safe-area-inset-top)) 10px 5px; 
   display: flex; 
   gap: 5px; 
@@ -84,7 +82,6 @@
   border-radius: 50%; 
   border: 1.5px solid #fff; 
   object-fit: cover; 
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
 
 .user-meta { display: flex; flex-direction: column; gap: 2px; }
@@ -99,7 +96,6 @@
 .story-time { 
   font-size: 12px; 
   opacity: 0.8; 
-  font-weight: 500;
 }
 
 .close-story { 
@@ -108,7 +104,7 @@
   color: white; 
   font-size: 28px; 
   cursor: pointer; 
-  z-index: 10030; /* Paling atas biar gampang diklik */
+  z-index: 10030;
   width: 36px;
   height: 36px;
   display: flex;
@@ -116,11 +112,9 @@
   justify-content: center;
   border-radius: 50%;
   backdrop-filter: blur(5px);
-  transition: transform 0.2s;
 }
-.close-story:active { transform: scale(0.9); }
 
-/* --- MUSIC TAG (MODERN) --- */
+/* --- MUSIC TAG --- */
 .music-tag {
   background: rgba(255, 255, 255, 0.15); 
   padding: 4px 12px;
@@ -168,7 +162,7 @@
 .s-img { 
   width: 100%; 
   height: 100%; 
-  object-fit: contain; /* Gambar utuh, gak kepotong */
+  object-fit: contain; 
 }
 
 .s-text { 
@@ -181,10 +175,8 @@
   display: flex; 
   align-items: center; 
   justify-content: center;
-  /* Gradasi background buat story teks */
   background: linear-gradient(135deg, #1e1e1e 0%, #000000 100%);
   line-height: 1.4;
-  letter-spacing: -0.5px;
 }
 
 /* --- BOTTOM INFO --- */
@@ -220,7 +212,7 @@
 .story-actions-right {
   display: flex;
   align-items: center;
-  z-index: 10040; /* Pastikan di atas tap-area */
+  z-index: 10040;
 }
 
 .story-like-btn {
@@ -236,4 +228,15 @@
   fill: none; 
   stroke: #fff; 
   stroke-width: 2.2; 
-  transition: transform
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.3s; 
+}
+
+.heart-svg.liked { 
+  fill: #ff2d55; 
+  stroke: #ff2d55; 
+  transform: scale(1.2); 
+}
+
+.heart-svg:active { 
+  transform: scale(0.9); 
+}
