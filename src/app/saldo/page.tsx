@@ -62,7 +62,7 @@ export default function SaldoPage() {
 
 
   const handleHistory = () => {
-    router.push('/historycoin');
+    router.push('/saldo/history');
   };
 
   return (
