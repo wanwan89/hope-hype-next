@@ -1,7 +1,9 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { showNotif, getUserBadge } from '@/lib/ui-utils'; // 🔥 FIX: Pastikan getUserBadge ke-import
+import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 import * as LiveKit from 'livekit-client';
 import { useTranslation } from 'react-i18next';
 import MessageBubble, { getStatusIcon } from './MessageBubble';
@@ -20,7 +22,6 @@ export default function ChatArea() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [myProfile, setMyProfile] = useState<any>(null);
   
-  // 🔥 FIX 1: State headerInfo ditambah avatar dan role buat nangkep profil lawan
   const [headerInfo, setHeaderInfo] = useState({ title: 'HopeTalk Globe', sub: '', avatar: '', role: 'user' });
   const [targetId, setTargetId] = useState<string | null>(null);
 
@@ -36,12 +37,19 @@ export default function ChatArea() {
   const [stickers, setStickers] = useState<any[]>([]);
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
   const [deleteMenu, setDeleteMenu] = useState<any>(null);
+  
+  // 🔥 FIX 1: Management Grup & Hak Akses 🔥
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
+  const [groupModalTab, setGroupModalTab] = useState<'invite' | 'settings'>('invite');
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [isOwner, setIsOwner] = useState(false); // Penanda Owner
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
 
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
-  const [audioLevel, setAudioLevel] = useState(0); // 🔥 State untuk level suara visualizer
+  const [audioLevel, setAudioLevel] = useState(0); 
   const vnTouchStartX = useRef(0);
   const vnIsCanceled = useRef(false);
 
@@ -60,13 +68,12 @@ export default function ChatArea() {
     callTimer: useRef<any>(null),
     recordTimer: useRef<any>(null),
     typingTimer: useRef<any>(null),
-    audioCtx: useRef<AudioContext | null>(null) // 🔥 Ref untuk AudioContext visualizer
+    audioCtx: useRef<AudioContext | null>(null)
   };
 
   useEffect(() => {
     initApp();
     return () => cleanup();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromId, groupId]);
 
   const initApp = async () => {
@@ -87,27 +94,64 @@ export default function ChatArea() {
     let currentRoom = 'room-1';
     if (groupId) {
       currentRoom = `group_${groupId}`;
-      setHeaderInfo({ title: groupName || "Grup", sub: "Grup", avatar: '', role: 'user' });
+      const { data: gData } = await supabase.from('groups').select('*').eq('id', groupId).single();
+      if (gData) {
+        setHeaderInfo({ title: gData.name, sub: "Grup", avatar: gData.avatar_url, role: 'user' });
+        setNewGroupName(gData.name);
+        setIsOwner(gData.created_by === session.user.id); // Cek apakah lu yang bikin grup
+      }
+      fetchGroupMembers();
     } else if (fromId) {
       const ids = [session.user.id, fromId].sort();
       currentRoom = `pv_${ids[0]}_${ids[1]}`;
       setTargetId(fromId);
-      
-      // 🔥 FIX 2: Tarik data avatar_url dan role dari database
       const { data: pTarget } = await supabase.from('profiles').select('username, short_id, avatar_url, role').eq('id', fromId).single();
       if (pTarget) {
-        setHeaderInfo({ 
-          title: pTarget.username, 
-          sub: `#${pTarget.short_id}`, 
-          avatar: pTarget.avatar_url, 
-          role: pTarget.role 
-        });
+        setHeaderInfo({ title: pTarget.username, sub: `#${pTarget.short_id}`, avatar: pTarget.avatar_url, role: pTarget.role });
       }
     }
     setRoomId(currentRoom);
-
     await fetchMessages(currentRoom);
     setupRealtime(currentRoom, session.user, prof);
+  };
+
+  const fetchGroupMembers = async () => {
+    if (!groupId) return;
+    const { data } = await supabase.from('group_members').select('*, profiles:user_id(*)').eq('group_id', groupId);
+    if (data) setGroupMembers(data);
+  };
+
+  const updateGroupInfo = async (field: 'name' | 'avatar_url', value: string) => {
+    if (!groupId || !isOwner) return;
+    setIsUpdatingGroup(true);
+    const { error } = await supabase.from('groups').update({ [field]: value }).eq('id', groupId);
+    if (!error) {
+      setHeaderInfo(prev => ({ ...prev, [field === 'name' ? 'title' : 'avatar']: value }));
+      showNotif("Grup diperbarui!", "success");
+    }
+    setIsUpdatingGroup(false);
+  };
+
+  const kickMember = async (targetUserId: string) => {
+    if (!groupId || !isOwner) return;
+    const { error } = await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', targetUserId);
+    if (!error) {
+      setGroupMembers(prev => prev.filter(m => m.user_id !== targetUserId));
+      showNotif("Member dikeluarkan!", "success");
+    }
+  };
+
+  const handleGroupPhotoUpload = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file || !isOwner) return;
+    setIsUpdatingGroup(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", "hopehype_preset");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
+    const d = await res.json();
+    if (d.secure_url) updateGroupInfo('avatar_url', d.secure_url);
+    else setIsUpdatingGroup(false);
   };
 
   const cleanup = () => {
@@ -135,16 +179,12 @@ export default function ChatArea() {
           const newMsg = payload.new as any;
           if (newMsg.is_system && newMsg.message.includes("📞 Memanggil") && newMsg.user_id !== user.id) handleIncomingCall(newMsg);
           if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) endCall(true);
-          
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, role').eq('id', newMsg.user_id).single();
           newMsg.profiles = p || undefined;
-          
           setMessages(prev => [...prev, newMsg]);
           if (newMsg.user_id !== user.id) {
             refs.audio.current?.receive.play().catch(()=>{});
-            if (newMsg.status !== 'read') {
-              await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
-            }
+            if (newMsg.status !== 'read') await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
           }
           scrollToBottom();
         } else if (payload.eventType === 'UPDATE') {
@@ -166,13 +206,11 @@ export default function ChatArea() {
   const sendMessage = async (text?: string, sticker?: string, audio?: string) => {
     const content = text || inputValue;
     if (!content && !sticker && !audio) return;
-
     refs.audio.current?.send.play().catch(()=>{});
     const { error } = await supabase.from('messages').insert([{
       room_id: roomId, user_id: currentUser.id, message: audio ? "🎤 Voice Note" : (sticker ? "🖼 Stiker" : content),
       sticker_url: sticker || null, audio_url: audio || null, reply_to: replyTo?.id || null, status: 'sent'
     }]);
-
     if (!error) { setInputValue(''); setReplyTo(null); setIsStickerOpen(false); }
     if (targetId && !sticker && !audio) {
       supabase.functions.invoke('send-chat-notif', { body: { record: { sender_id: currentUser.id, receiver_id: targetId, content } } });
@@ -186,7 +224,6 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FUNGSI VISUALIZER UNTUK GELOMBANG SUARA REKAMAN 🔥
   const startVisualizer = (stream: MediaStream) => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     refs.audioCtx.current = audioContext;
@@ -194,15 +231,13 @@ export default function ChatArea() {
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(analyser);
     analyser.fftSize = 64; 
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
     const update = () => {
       if (!isRecordingRef.current) return;
       analyser.getByteFrequencyData(dataArray);
       let sum = 0;
-      for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-      setAudioLevel(sum / bufferLength); 
+      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+      setAudioLevel(sum / dataArray.length); 
       requestAnimationFrame(update);
     };
     update();
@@ -211,10 +246,9 @@ export default function ChatArea() {
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      startVisualizer(stream); // 🔥 Panggil visualizer
+      startVisualizer(stream);
       refs.mediaRecorder.current = new MediaRecorder(stream);
       refs.audioChunks.current = [];
-      
       refs.mediaRecorder.current.ondataavailable = (e) => refs.audioChunks.current.push(e.data);
       refs.mediaRecorder.current.onstop = async () => {
         if (refs.audioChunks.current.length === 0) return;
@@ -224,10 +258,8 @@ export default function ChatArea() {
         const d = await res.json();
         if (d.secure_url) sendMessage(undefined, undefined, d.secure_url);
       };
-
       refs.mediaRecorder.current.start();
-      setIsRecording(true); 
-      isRecordingRef.current = true;
+      setIsRecording(true); isRecordingRef.current = true;
       setRecordTime(0);
       refs.recordTimer.current = setInterval(() => setRecordTime(p => p + 1), 1000);
       if (navigator.vibrate) navigator.vibrate(50);
@@ -236,20 +268,16 @@ export default function ChatArea() {
 
   const stopVN = (cancel = false) => {
     if (!isRecordingRef.current) return;
-    setIsRecording(false); 
-    isRecordingRef.current = false;
-    setAudioLevel(0); // 🔥 Reset level
-    if (refs.audioCtx.current) {
-        refs.audioCtx.current.close();
-        refs.audioCtx.current = null;
-    }
+    setIsRecording(false); isRecordingRef.current = false;
+    setAudioLevel(0);
+    if (refs.audioCtx.current) { refs.audioCtx.current.close(); refs.audioCtx.current = null; }
     clearInterval(refs.recordTimer.current);
     if (cancel) { refs.mediaRecorder.current!.onstop = null; showNotif(t('vn_canceled'), "info"); }
     refs.mediaRecorder.current?.stop();
     refs.audioChunks.current = [];
   };
 
-  const handleMicTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+  const handleMicTouchStart = (e: any) => {
     if (!inputValue.trim()) {
       vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       vnIsCanceled.current = false;
@@ -257,20 +285,10 @@ export default function ChatArea() {
     }
   };
 
-  const handleMicTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+  const handleMicTouchMove = (e: any) => {
     if (isRecordingRef.current && !vnIsCanceled.current) {
       const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
-      const diff = vnTouchStartX.current - clientX;
-      if (diff > 80) {
-        vnIsCanceled.current = true;
-        stopVN(true); 
-      }
-    }
-  };
-
-  const handleMicTouchEnd = () => {
-    if (isRecordingRef.current && !vnIsCanceled.current) {
-      stopVN(false); 
+      if (vnTouchStartX.current - clientX > 80) { vnIsCanceled.current = true; stopVN(true); }
     }
   };
 
@@ -279,14 +297,11 @@ export default function ChatArea() {
     const { data: pTarget } = await supabase.from('profiles').select('avatar_url').eq('id', targetId).single();
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
-    
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
-    
     refs.callTimer.current = setTimeout(async () => {
       endCall(true);
       await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
     }, 30000);
-
     connectLiveKit(roomId);
   };
 
@@ -299,33 +314,20 @@ export default function ChatArea() {
   const connectLiveKit = async (rName: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('get-livekit-token', { body: { username: myProfile?.username, identity: currentUser.id, roomName: rName } });
-      if (error || !data) throw new Error("Gagal ambil token: " + error?.message);
-      
+      if (error || !data) throw new Error("Gagal ambil token");
       refs.lkRoom.current = new LiveKit.Room();
       await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
       await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
-
       if (refs.lkRoom.current.remoteParticipants.size > 0) {
-         setCallStatus('connected');
-         clearTimeout(refs.callTimer.current);
+         setCallStatus('connected'); clearTimeout(refs.callTimer.current);
          refs.callTimer.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
       }
-
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, () => {
-        setCallStatus('connected');
-        clearTimeout(refs.callTimer.current);
+        setCallStatus('connected'); clearTimeout(refs.callTimer.current);
         refs.callTimer.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
       });
-
-      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (t) => {
-        if (t.kind === "audio") { document.body.appendChild(t.attach()); }
-      });
-
-    } catch (e: any) { 
-      console.error(e);
-      showNotif(t('call_error'), "error");
-      endCall(); 
-    }
+      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (t) => { if (t.kind === "audio") document.body.appendChild(t.attach()); });
+    } catch (e: any) { showNotif(t('call_error'), "error"); endCall(); }
   };
 
   const endCall = (silent = false) => {
@@ -341,15 +343,15 @@ export default function ChatArea() {
   };
 
   return (
-    <div className="telegram-chat">
+    <div className="telegram-chat hype-chat-scope">
       {callStatus !== 'idle' && (
         <div className="call-overlay">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
           <h2>{callData.partnerName}</h2>
           <p>{callStatus === 'connected' ? `${Math.floor(callData.seconds/60)}:${String(callData.seconds%60).padStart(2,'0')}` : callStatus.toUpperCase()}</p>
           <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
-            {callStatus === 'incoming' && <button onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }} className="btn-answer" style={{background:'#2ecc71', padding:'12px 30px', borderRadius:20, border:'none', color:'white'}}>{t('btn_answer')}</button>}
-            <button onClick={() => endCall()} className="btn-decline" style={{background:'#ff4757', padding:'12px 30px', borderRadius:20, border:'none', color:'white'}}>{t('btn_decline')}</button>
+            {callStatus === 'incoming' && <button onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }} className="btn-answer" style={{background:'#2ecc71', padding:'12px 30px', borderRadius:20, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_answer')}</button>}
+            <button onClick={() => endCall()} className="btn-decline" style={{background:'#ff4757', padding:'12px 30px', borderRadius:20, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_decline')}</button>
           </div>
         </div>
       )}
@@ -357,21 +359,15 @@ export default function ChatArea() {
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
-          
-          {targetId && (
-            <img 
-              src={headerInfo.avatar || '/asets/png/profile.webp'} 
-              alt="avatar" 
-              style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} 
-            />
-          )}
-
+          <img 
+            src={headerInfo.avatar || (groupId ? '/asets/png/group_placeholder.png' : '/asets/png/profile.webp')} 
+            alt="avatar" 
+            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} 
+          />
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
-              {targetId && headerInfo.role && (
-                <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />
-              )}
+              {targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
             <div className="status-container">{typingUser ? <span className="status-typing">{t('typing_status', { username: typingUser.username })}</span> : <span className="status-online">{t('online_status', { count: onlineCount })}</span>}</div>
           </div>
@@ -379,25 +375,32 @@ export default function ChatArea() {
         
         <div className="header-right">
           {targetId ? (
-            <button className="btn-call" onClick={startCall}>
-              <span className="material-icons">call</span>
-            </button>
+            <button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button>
           ) : groupId ? (
-            <button className="btn-call" onClick={() => setIsGroupSettingsOpen(true)}>
-              <span className="material-icons">info</span>
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }}
+                style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
+              >
+                INVITE
+              </button>
+              {/* 🔥 Tombol Setting Cuma Muncul Buat Bos (Owner) 🔥 */}
+              {isOwner && (
+                <button 
+                  onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }}
+                  style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
+                >
+                  SETTINGS
+                </button>
+              )}
+            </div>
           ) : null}
         </div>
       </header>
 
       <main className="chat-messages">
         {isLoading ? (
-          <div className="chat-loading-screen">
-            <div className="skeleton-msg left"><div className="skeleton-avatar"></div><div className="skeleton-bubble"><div className="skeleton-line w1"></div><div className="skeleton-line w2"></div><div className="skeleton-line w3"></div></div></div>
-            <div className="skeleton-msg right"><div className="skeleton-bubble me"><div className="skeleton-line w4"></div><div className="skeleton-line w5"></div></div></div>
-            <div className="skeleton-msg left"><div className="skeleton-avatar"></div><div className="skeleton-bubble typing-bubble"><span></span><span></span><span></span></div></div>
-            <div className="loading-chat-hint">{t('connecting_chat')}</div>
-          </div>
+          <div className="chat-loading-screen"><div className="loading-chat-hint">{t('connecting_chat')}</div></div>
         ) : (
           <>
             <div className="encryption-notice">
@@ -405,27 +408,21 @@ export default function ChatArea() {
               <span>{t('encryption_notice')}</span>
             </div>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} msg={msg} isMe={msg.user_id === currentUser?.id} 
-                onReply={setReplyTo} 
-                onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })}
-                onDelete={(id:any) => setDeleteMenu(id)}
-              />
+              <MessageBubble key={msg.id} msg={msg} isMe={msg.user_id === currentUser?.id} onReply={setReplyTo} onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} onDelete={(id:any) => setDeleteMenu(id)} />
             ))}
           </>
         )}
-
-        {typingUser && !targetId && ( /* Di private chat ga usah nampilin bubble typing karena udah ada di header */
+        {typingUser && (
           <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
-            <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{width: '30px', height:'30px', borderRadius:'50%', margin:'0 8px 2px'}} />
+            {!targetId && <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{width: '30px', height:'30px', borderRadius:'50%', margin:'0 8px 2px'}} />}
             <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="username" style={{ marginBottom: '4px', fontSize:'12.5px', color:'var(--primary-blue)', fontWeight:700 }}>{typingUser.username}</div>
+              {!targetId && <div className="username" style={{ marginBottom: '4px', fontSize:'12.5px', color:'var(--primary-blue)', fontWeight:700 }}>{typingUser.username}</div>}
               <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 4px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                 <div className="typing-bubble" style={{ padding: 0 }}><span></span><span></span><span></span></div>
               </div>
             </div>
           </div>
         )}
-
         <div ref={refs.scroll} />
       </main>
 
@@ -436,10 +433,8 @@ export default function ChatArea() {
             <div id="sticker-list">{stickers.map((s, idx) => <img key={idx} src={s.images.fixed_width_small.url} alt="sticker" onClick={() => sendMessage(undefined, s.images.fixed_width.url)} />)}</div>
           </div>
         )}
-
         <div className="input-row">
           <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo ? '16px' : '24px' }}>
-            
             {replyTo && (
               <div id="reply-preview-box" style={{ display: 'flex', alignItems: 'center', width: '100%', background: 'rgba(0,0,0,0.04)', borderRadius: '12px 12px 4px 4px', margin: '0 0 6px 0', borderLeft: '4px solid var(--primary-blue)', padding: '8px 12px' }}>
                 <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -449,128 +444,94 @@ export default function ChatArea() {
                 <div className="close-reply-btn" onClick={() => setReplyTo(null)} style={{fontSize: '24px', paddingLeft: '12px', cursor: 'pointer', color: '#94a3b8', lineHeight: 1}}>&times;</div>
               </div>
             )}
-
             <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
               {isRecording ? (
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, animation: 'fadeIn 0.2s ease', padding: '8px 6px' }}>
-                  <span className="online-dot" style={{ background: '#ff4757', boxShadow: '0 0 5px #ff4757' }}></span>
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 6px' }}>
+                  <span className="online-dot" style={{ background: '#ff4757' }}></span>
                   <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
-                  
-                  {/* 🔥 WAVEFORM DINAMIS: BAR JOGET MENGIKUTI SUARA 🔥 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flex: 1, height: '24px', marginLeft: '10px' }}>
                     {[...Array(15)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        style={{ 
-                          width: '3px', 
-                          background: '#ff4757', 
-                          borderRadius: '2px',
-                          height: `${Math.max(4, (audioLevel * (Math.random() * 0.8 + 0.2)) / 2)}px`,
-                          transition: 'height 0.05s ease'
-                        }} 
-                      />
+                      <div key={i} style={{ width: '3px', background: '#ff4757', borderRadius: '2px', height: `${Math.max(4, (audioLevel * (Math.random() * 0.8 + 0.2)) / 2)}px`, transition: 'height 0.05s ease' }} />
                     ))}
                   </div>
-
-                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span className="material-icons" style={{fontSize: '16px'}}>chevron_left</span> {t('slide_cancel')}
-                  </span>
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)' }}><span className="material-icons" style={{fontSize: '16px'}}>chevron_left</span> {t('slide_cancel')}</span>
                 </div>
               ) : (
                 <>
-                  <button id="sticker-btn" style={{ border: 'none', background: 'transparent', outline: 'none', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 1.5 8.5 1.5zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
-                    </svg>
-                  </button>
+                  <button id="sticker-btn" style={{ border: 'none', background: 'transparent', padding: '6px', cursor: 'pointer', color: '#64748b' }} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 1.5 8.5 1.5zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg></button>
                   <textarea id="chat-input" placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ paddingTop: '10px', paddingBottom: '10px', minHeight: '40px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px', lineHeight: '20px' }} />
                 </>
               )}
             </div>
           </div>
-          
-          <button id="action-btn" className={inputValue.trim() ? 'mode-typing' : (isRecording ? 'is-recording' : '')}
-            onMouseDown={handleMicTouchStart} onMouseMove={handleMicTouchMove} onMouseUp={handleMicTouchEnd}
-            onTouchStart={handleMicTouchStart} onTouchMove={handleMicTouchMove} onTouchEnd={handleMicTouchEnd}
-            onClick={() => inputValue.trim() && sendMessage()}
-          >
-            <span className="material-icons">{inputValue.trim() ? 'send' : 'mic'}</span>
-          </button>
+          <button id="action-btn" className={inputValue.trim() ? 'mode-typing' : (isRecording ? 'is-recording' : '')} onMouseDown={handleMicTouchStart} onMouseMove={handleMicTouchMove} onMouseUp={() => stopVN(false)} onTouchStart={handleMicTouchStart} onTouchMove={handleMicTouchMove} onTouchEnd={() => stopVN(false)} onClick={() => inputValue.trim() && sendMessage()}><span className="material-icons">{inputValue.trim() ? 'send' : 'mic'}</span></button>
         </div>
       </footer>
 
-      {reactionMenu && (
-        <>
-          <div style={{position:'fixed', inset:0, zIndex:10005}} onClick={()=>setReactionMenu(null)}></div>
-          <div className="reaction-menu" style={{ display: 'flex', position: 'fixed', left: Math.min(reactionMenu.x, window.innerWidth - 200), top: Math.min(reactionMenu.y - 60, window.innerHeight - 100) }}>
-            {['❤️', '😂', '😮', '🔥', '👍'].map(emoji => (
-              <span key={emoji} className="reaction-emoji" onClick={async () => {
-                if (!currentUser) return;
-                const msg = messages.find(m => m.id === reactionMenu.id);
-                if (!msg) return;
-
-                let newReactions = { ...(msg.reactions || {}) };
-                if (newReactions[currentUser.id] === emoji) delete newReactions[currentUser.id];
-                else newReactions[currentUser.id] = emoji;
-
-                await supabase.from('messages').update({ reactions: newReactions }).eq('id', reactionMenu.id);
-                setReactionMenu(null);
-              }}>{emoji}</span>
-            ))}
-          </div>
-        </>
-      )}
-
-      {deleteMenu && (
-        <div className="delete-overlay" style={{display:'flex'}}>
-          <div className="delete-menu">
-            <p>{t('delete_msg_title')}</p>
-            <div className="delete-menu-btns">
-              <button className="btn-cancel" onClick={()=>setDeleteMenu(null)}>{t('btn_cancel')}</button>
-              <button id="confirm-delete" onClick={async () => {
-                await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', sticker_url: null, audio_url: null }).eq('id', deleteMenu);
-                setDeleteMenu(null);
-              }}>{t('btn_delete')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {isGroupSettingsOpen && groupId && (
         <div className="custom-modal-overlay" style={{ display: 'flex', zIndex: 100000 }} onClick={() => setIsGroupSettingsOpen(false)}>
-          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px', width: '90%', maxWidth: '320px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-color)' }}>{t('group_info')}</h3>
-              <button className="close-modal-btn" style={{ background: 'none', border: 'none', color: '#ff4757', cursor: 'pointer' }} onClick={() => setIsGroupSettingsOpen(false)}>
-                <span className="material-icons">close</span>
-              </button>
-            </div>
+          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px', width: '90%', maxWidth: '350px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
             
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-blue), #00d2ff)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', boxShadow: '0 4px 10px rgba(58,123,213,0.3)' }}>
-                <span className="material-icons" style={{fontSize: '35px'}}>groups</span>
-              </div>
-              <h3 style={{ margin: '0 0 5px', color: 'var(--text-color)', fontSize: '20px' }}>{headerInfo.title}</h3>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '13px' }}>
-                {t('group_id')} <strong style={{ color: 'var(--primary-blue)', letterSpacing: '1px' }}>{groupId}</strong>
-              </p>
-            </div>
+            {groupModalTab === 'invite' ? (
+              <>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0 }}>Invite Member</h3>
+                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
+                </div>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--primary-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}><span className="material-icons" style={{fontSize: '30px'}}>share</span></div>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Bagikan Kode Grup ini ke teman lu:</p>
+                  <code style={{ background: 'var(--bg-main)', padding: '10px', borderRadius: '8px', display: 'block', margin: '10px 0', fontWeight: 'bold', color: 'var(--primary-blue)', fontSize: '16px' }}>{groupId}</code>
+                </div>
+                <button className="action-btn" style={{ width: '100%', padding: '12px', background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '14px', fontWeight: 'bold' }} onClick={() => { navigator.clipboard.writeText(groupId); showNotif("ID Copied!", "success"); }}>COPY ID</button>
+              </>
+            ) : (
+              <>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0 }}>Settings Grup</h3>
+                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
+                </div>
 
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '20px' }}>
-              {t('group_share')}
-            </p>
+                <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                  <label style={{ cursor: isOwner ? 'pointer' : 'default', position: 'relative', display: 'inline-block' }}>
+                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-blue)' }} />
+                    {isOwner && (
+                      <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', borderRadius: '50%', padding: '4px', color: 'white' }}><span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span></div>
+                    )}
+                    <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner} />
+                  </label>
+                </div>
 
-            <button className="action-btn" style={{ width: '100%', padding: '12px', background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => {
-              navigator.clipboard.writeText(groupId as string);
-              showNotif(t('copied_success'), "success");
-              setIsGroupSettingsOpen(false);
-            }}>
-              {t('btn_copy_id')}
-            </button>
+                <div style={{ marginBottom: '15px' }}>
+                  <input 
+                    type="text" 
+                    value={newGroupName} 
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onBlur={() => newGroupName !== headerInfo.title && updateGroupInfo('name', newGroupName)}
+                    disabled={!isOwner}
+                    style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', textAlign: 'center', fontWeight: 'bold' }}
+                  />
+                </div>
+
+                <div style={{ maxHeight: '150px', overflowY: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>MEMBER ({groupMembers.length})</p>
+                  {groupMembers.map(m => (
+                    <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                        <span style={{ fontSize: '13px' }}>{m.profiles?.username}</span>
+                      </div>
+                      {isOwner && m.user_id !== currentUser.id && (
+                        <button onClick={() => kickMember(m.user_id)} style={{ background: 'none', border: 'none', color: '#ff4757', padding: '4px' }}><span className="material-icons" style={{fontSize: '18px'}}>person_remove</span></button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
-
     </div>
   );
 }

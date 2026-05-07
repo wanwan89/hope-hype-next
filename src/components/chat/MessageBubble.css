@@ -1,7 +1,7 @@
 /* src/components/chat/MessageBubble.css */
 
-/* 1. WRAPPER UTAMA (BUNGKUS TRANSPARAN) */
-.chat-message { 
+/* 🔥 WRAPPER SCOPE: Agar tidak nabrak halaman lain 🔥 */
+.hype-chat-scope .chat-message { 
   display: flex; 
   width: 100%; 
   margin-bottom: 8px; 
@@ -17,18 +17,18 @@
 }
 
 /* 2. ARAH PESAN */
-.chat-message.self { 
+.hype-chat-scope .chat-message.self { 
   flex-direction: row; 
   justify-content: flex-end; 
 }
 
-.chat-message.other { 
+.hype-chat-scope .chat-message.other { 
   flex-direction: row; 
   justify-content: flex-start; 
 }
 
 /* 3. AVATAR STYLING */
-.chat-message .avatar { 
+.hype-chat-scope .chat-message .avatar { 
   width: 30px; 
   height: 30px; 
   border-radius: 50%; 
@@ -40,14 +40,14 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-/* Sembunyikan avatar & nama untuk pesan SENDIRI */
-.chat-message.self .avatar,
-.chat-message.self .username {
+/* Sembunyikan profil sendiri ala WA */
+.hype-chat-scope .chat-message.self .avatar,
+.hype-chat-scope .chat-message.self .username {
   display: none !important;
 }
 
 /* 4. BUBBLE CHAT (.content) */
-.chat-message .content { 
+.hype-chat-scope .chat-message .content { 
   display: flex; 
   flex-direction: column; 
   max-width: 80%; 
@@ -57,43 +57,43 @@
   position: relative;
 }
 
-/* 5. WARNA & BENTUK EKOR BUBBLE */
-.chat-message.self .content { 
+/* 5. WARNA BUBBLE */
+.hype-chat-scope .chat-message.self .content { 
   background: var(--chat-self-bg, #dcf8c6); 
   color: var(--text-color); 
   border-radius: 16px 16px 4px 16px; 
 }
 
-/* 🔥 FIX: Warna Bubble Lawan dibuat Abu-abu Muda agar tidak bentrok dengan Background Putih 🔥 */
-.chat-message.other .content { 
-  background: #f0f2f5; /* Light Gray elegan */
+/* Warna Bubble Lawan (Light Gray agar tidak bentrok background putih) */
+.hype-chat-scope .chat-message.other .content { 
+  background: #f0f2f5; 
   color: var(--text-color); 
   border-radius: 16px 16px 16px 4px; 
 }
 
-/* Tetap gunakan warna gelap untuk Dark Mode agar tidak silau */
-[data-theme='dark'] .chat-message.other .content,
-html.dark .chat-message.other .content {
+/* Dark Mode Adaptation */
+[data-theme='dark'] .hype-chat-scope .chat-message.other .content,
+html.dark .hype-chat-scope .chat-message.other .content {
   background: #202c33; 
 }
 
 /* 6. TEXT & INFO FORMATTING */
-.chat-message .username { font-weight: 700; font-size: 12.5px; color: var(--primary-blue); margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
-.chat-message .text { font-size: 14.5px; line-height: 1.4; color: inherit; word-break: break-word; }
+.hype-chat-scope .chat-message .username { font-weight: 700; font-size: 12.5px; color: var(--primary-blue); margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
+.hype-chat-scope .chat-message .text { font-size: 14.5px; line-height: 1.4; color: inherit; word-break: break-word; }
 
-.chat-message .message-info { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; align-self: flex-end; }
-.chat-message .timestamp { font-size: 10px; color: var(--text-muted); opacity: 0.9; line-height: 1; }
-.text.deleted { font-style: italic; color: var(--text-muted) !important; opacity: 0.8; }
+.hype-chat-scope .chat-message .message-info { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; align-self: flex-end; }
+.hype-chat-scope .chat-message .timestamp { font-size: 10px; color: var(--text-muted); opacity: 0.9; line-height: 1; }
+.hype-chat-scope .text.deleted { font-style: italic; color: var(--text-muted) !important; opacity: 0.8; }
 
-/* 7. PESAN SISTEM (Memanggil boy..., Panggilan tak terjawab) */
-.chat-message.system {
+/* 7. PESAN SISTEM (Memanggil, Panggilan berakhir, dll) */
+.hype-chat-scope .chat-message.system {
   justify-content: center !important;
   align-items: center !important;
   margin: 16px 0 !important; 
   width: 100% !important;
 }
 
-.system-text { 
+.hype-chat-scope .system-text { 
   background: rgba(0, 0, 0, 0.08) !important; 
   color: var(--text-color) !important; 
   font-size: 11.5px !important; 
@@ -108,59 +108,40 @@ html.dark .chat-message.other .content {
   -webkit-backdrop-filter: blur(4px);
 }
 
-[data-theme='dark'] .system-text, 
-html.dark .system-text { 
+[data-theme='dark'] .hype-chat-scope .system-text, 
+html.dark .hype-chat-scope .system-text { 
   background: rgba(255, 255, 255, 0.1) !important; 
   color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: none !important;
 }
 
 /* 8. REPLY BOX DALAM CHAT */
-.reply-preview-in-chat { cursor: pointer; background: rgba(0,0,0,0.04); border-left: 3px solid var(--primary-blue); padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-theme='dark'] .reply-preview-in-chat, html.dark .reply-preview-in-chat { background: rgba(255,255,255,0.05); }
+.hype-chat-scope .reply-preview-in-chat { cursor: pointer; background: rgba(0,0,0,0.04); border-left: 3px solid var(--primary-blue); padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-theme='dark'] .hype-chat-scope .reply-preview-in-chat, html.dark .hype-chat-scope .reply-preview-in-chat { background: rgba(255,255,255,0.05); }
 
 /* 9. VN PLAYER (VOICE NOTE) */
-.vn-custom-player { display: flex; align-items: center; gap: 12px; padding: 4px 0; min-width: 190px; }
-.vn-play-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue) !important; border: none; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; box-shadow: 0 2px 5px rgba(29, 161, 242, 0.3); }
-.vn-play-btn svg { fill: #ffffff !important; }
-.vn-play-btn:active { transform: scale(0.9); }
-.vn-waveform { display: flex; align-items: center; gap: 3px; height: 20px; flex-grow: 1; }
-.vn-waveform .bar { width: 3px; height: 12px; background: rgba(0, 0, 0, 0.35); border-radius: 2px; display: inline-block; }
-[data-theme='dark'] .vn-waveform .bar, html.dark .vn-waveform .bar { background: rgba(255,255,255,0.45); }
-.vn-waveform .bar:nth-child(odd) { height: 18px; }
-.vn-waveform .bar:nth-child(3n) { height: 8px; }
-.vn-time { font-size: 10px; font-weight: 600; color: var(--text-muted); white-space: nowrap; margin-left: 5px; }
-.playing .bar { animation: waveAnim 0.6s infinite alternate; background: var(--primary-blue); }
+.hype-chat-scope .vn-custom-player { display: flex; align-items: center; gap: 12px; padding: 4px 0; min-width: 190px; }
+.hype-chat-scope .vn-play-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue) !important; border: none; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; box-shadow: 0 2px 5px rgba(29, 161, 242, 0.3); }
+.hype-chat-scope .vn-play-btn svg { fill: #ffffff !important; }
+.hype-chat-scope .vn-play-btn:active { transform: scale(0.9); }
+.hype-chat-scope .vn-waveform { display: flex; align-items: center; gap: 3px; height: 20px; flex-grow: 1; }
+.hype-chat-scope .vn-waveform .bar { width: 3px; height: 12px; background: rgba(0, 0, 0, 0.35); border-radius: 2px; display: inline-block; }
+[data-theme='dark'] .hype-chat-scope .vn-waveform .bar, html.dark .hype-chat-scope .vn-waveform .bar { background: rgba(255,255,255,0.45); }
+.hype-chat-scope .vn-waveform .bar:nth-child(odd) { height: 18px; }
+.hype-chat-scope .vn-waveform .bar:nth-child(3n) { height: 8px; }
+.hype-chat-scope .vn-time { font-size: 10px; font-weight: 600; color: var(--text-muted); white-space: nowrap; margin-left: 5px; }
 
-/* 🔥 TYPING BUBBLE ANIMATION 🔥 */
-.typing-bubble {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 14px;
-}
-
-.typing-bubble .dot {
-  width: 6px;
-  height: 6px;
-  background: var(--text-muted);
-  border-radius: 50%;
-  opacity: 0.4;
-  animation: typingBounce 1.4s infinite;
-}
-
-.typing-bubble .dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-bubble .dot:nth-child(3) { animation-delay: 0.4s; }
+/* 10. TYPING BUBBLE & ANIMATIONS */
+.hype-chat-scope .typing-bubble { display: flex; align-items: center; gap: 4px; height: 14px; }
+.hype-chat-scope .typing-bubble .dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; opacity: 0.4; animation: typingBounce 1.4s infinite; }
+.hype-chat-scope .typing-bubble .dot:nth-child(2) { animation-delay: 0.2s; }
+.hype-chat-scope .typing-bubble .dot:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typingBounce {
   0%, 100% { transform: translateY(0); opacity: 0.4; }
   50% { transform: translateY(-4px); opacity: 1; }
 }
 
-.typing-indicator-wrap {
-  animation: fadeInIndicator 0.3s ease;
-}
-
+.hype-chat-scope .typing-indicator-wrap { animation: fadeInIndicator 0.3s ease; }
 @keyframes fadeInIndicator {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }

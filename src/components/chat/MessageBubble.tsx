@@ -25,11 +25,11 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const isDeleted = msg.message === "Pesan ini telah dihapus";
   const isPrivateChat = msg.room_id?.startsWith('pv_');
 
-  // 🔥 State untuk menghandle data reply secara dinamis
+  // 🔥 State handle data reply hasil realtime
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
 
   useEffect(() => {
-    // 🔥 FIX LOGIC: Hanya fetch jika ada ID reply tapi data objek reply-nya kosong
+    // Sync ulang kalo ada ID reply tapi data objeknya belum ada (biasanya di pesan baru via realtime)
     if (msg.reply_to && !msg.reply_to_msg && !liveReply) {
       const fetchReplyData = async () => {
         try {
@@ -47,16 +47,13 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
             });
           }
         } catch (err) {
-          console.error("Gagal fetch reply:", err);
+          console.error("Fetch reply error:", err);
         }
       };
       fetchReplyData();
-    } 
-    // Jika props berubah (misal pas scrolling/render ulang), sync ulang
-    else if (msg.reply_to_msg) {
+    } else if (msg.reply_to_msg) {
       setLiveReply(msg.reply_to_msg);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [msg.reply_to, msg.reply_to_msg]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -128,80 +125,82 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const displayMessage = isDeleted ? t('msg_deleted') : msg.message;
 
   return (
-    <div 
-      ref={bubbleRef}
-      id={`msg-${msg.id}`}
-      className={`chat-message ${isMe ? 'self' : 'other'} ${msg.is_system ? 'system' : ''}`}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {msg.is_system ? (
-        <div className="system-text">{displayMessage}</div>
-      ) : (
-        <>
-          {/* Avatar muncul jika bukan Private Chat (Grup/Global) */}
-          {!isPrivateChat && (
-            <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
-          )}
-          
-          <div className="content">
-            
-            {/* Username & Badge muncul jika bukan Private Chat */}
+    <div className="hype-chat-scope"> {/* 🔥 WRAPPER SCOPE 🔥 */}
+      <div 
+        ref={bubbleRef}
+        id={`msg-${msg.id}`}
+        className={`chat-message ${isMe ? 'self' : 'other'} ${msg.is_system ? 'system' : ''}`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {msg.is_system ? (
+          <div className="system-text">{displayMessage}</div>
+        ) : (
+          <>
+            {/* Avatar muncul hanya jika BUKAN Private Chat */}
             {!isPrivateChat && (
-              <div className="username">
-                {msg.profiles?.username} 
-                <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
-              </div>
+              <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
             )}
             
-            {/* 🔥 LIVE REPLY BOX 🔥 */}
-            {liveReply && (
-              <div 
-                className="reply-preview-in-chat" 
-                onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}
-              >
-                <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
-              </div>
-            )}
-
-            {msg.sticker_url ? (
-              <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '150px' }} />
-            ) : msg.audio_url ? (
-              <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`}>
-                <button onClick={toggleVN} className="vn-play-btn">
-                  {isPlaying ? (
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
-                  )}
-                </button>
-                <div className="vn-waveform">
-                  {[...Array(12)].map((_, i) => <span key={i} className="bar"></span>)}
+            <div className="content">
+              
+              {/* Username & Badge muncul hanya jika BUKAN Private Chat */}
+              {!isPrivateChat && (
+                <div className="username">
+                  {msg.profiles?.username} 
+                  <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
                 </div>
-                <span className="vn-time">VN</span>
-              </div>
-            ) : (
-              <div className={`text ${isDeleted ? "deleted" : ""}`}>
-                {displayMessage}
-              </div>
-            )}
+              )}
+              
+              {/* LIVE REPLY BOX */}
+              {liveReply && (
+                <div 
+                  className="reply-preview-in-chat" 
+                  onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}
+                >
+                  <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
+                </div>
+              )}
 
-            {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-              <div className="message-reactions">
-                {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
+              {msg.sticker_url ? (
+                <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '150px' }} />
+              ) : msg.audio_url ? (
+                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`}>
+                  <button onClick={toggleVN} className="vn-play-btn">
+                    {isPlaying ? (
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
+                    )}
+                  </button>
+                  <div className="vn-waveform">
+                    {[...Array(12)].map((_, i) => <span key={i} className="bar"></span>)}
+                  </div>
+                  <span className="vn-time">VN</span>
+                </div>
+              ) : (
+                <div className={`text ${isDeleted ? "deleted" : ""}`}>
+                  {displayMessage}
+                </div>
+              )}
+
+              {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                <div className="message-reactions">
+                  {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
+                </div>
+              )}
+              
+              <div className="message-info">
+                <span className="timestamp">
+                  {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                </span>
+                {isMe && getStatusIcon(msg.status || 'sent')}
               </div>
-            )}
-            
-            <div className="message-info">
-              <span className="timestamp">
-                {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-              </span>
-              {isMe && getStatusIcon(msg.status || 'sent')}
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
