@@ -41,6 +41,7 @@ export default function ChatArea() {
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0); // 🔥 State untuk level suara visualizer
   const vnTouchStartX = useRef(0);
   const vnIsCanceled = useRef(false);
 
@@ -58,7 +59,8 @@ export default function ChatArea() {
     lkRoom: useRef<LiveKit.Room | null>(null),
     callTimer: useRef<any>(null),
     recordTimer: useRef<any>(null),
-    typingTimer: useRef<any>(null)
+    typingTimer: useRef<any>(null),
+    audioCtx: useRef<AudioContext | null>(null) // 🔥 Ref untuk AudioContext visualizer
   };
 
   useEffect(() => {
@@ -113,6 +115,7 @@ export default function ChatArea() {
     if (refs.presenceChannel.current) supabase.removeChannel(refs.presenceChannel.current);
     if (refs.globalChannel.current) supabase.removeChannel(refs.globalChannel.current);
     if (refs.lkRoom.current) refs.lkRoom.current.disconnect();
+    if (refs.audioCtx.current) refs.audioCtx.current.close();
     clearInterval(refs.callTimer.current);
     clearInterval(refs.recordTimer.current);
   };
@@ -183,9 +186,32 @@ export default function ChatArea() {
     }
   };
 
+  // 🔥 FUNGSI VISUALIZER UNTUK GELOMBANG SUARA REKAMAN 🔥
+  const startVisualizer = (stream: MediaStream) => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    refs.audioCtx.current = audioContext;
+    const analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    analyser.fftSize = 64; 
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const update = () => {
+      if (!isRecordingRef.current) return;
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+      setAudioLevel(sum / bufferLength); 
+      requestAnimationFrame(update);
+    };
+    update();
+  };
+
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      startVisualizer(stream); // 🔥 Panggil visualizer
       refs.mediaRecorder.current = new MediaRecorder(stream);
       refs.audioChunks.current = [];
       
@@ -212,6 +238,11 @@ export default function ChatArea() {
     if (!isRecordingRef.current) return;
     setIsRecording(false); 
     isRecordingRef.current = false;
+    setAudioLevel(0); // 🔥 Reset level
+    if (refs.audioCtx.current) {
+        refs.audioCtx.current.close();
+        refs.audioCtx.current = null;
+    }
     clearInterval(refs.recordTimer.current);
     if (cancel) { refs.mediaRecorder.current!.onstop = null; showNotif(t('vn_canceled'), "info"); }
     refs.mediaRecorder.current?.stop();
@@ -327,7 +358,6 @@ export default function ChatArea() {
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
           
-          {/* 🔥 FIX 3: Tampilkan Avatar di Header KHUSUS Chat Private 🔥 */}
           {targetId && (
             <img 
               src={headerInfo.avatar || '/asets/png/profile.webp'} 
@@ -339,7 +369,6 @@ export default function ChatArea() {
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
-              {/* 🔥 FIX 4: Tampilkan Badge di Header KHUSUS Chat Private 🔥 */}
               {targetId && headerInfo.role && (
                 <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />
               )}
@@ -426,6 +455,23 @@ export default function ChatArea() {
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, animation: 'fadeIn 0.2s ease', padding: '8px 6px' }}>
                   <span className="online-dot" style={{ background: '#ff4757', boxShadow: '0 0 5px #ff4757' }}></span>
                   <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
+                  
+                  {/* 🔥 WAVEFORM DINAMIS: BAR JOGET MENGIKUTI SUARA 🔥 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flex: 1, height: '24px', marginLeft: '10px' }}>
+                    {[...Array(15)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        style={{ 
+                          width: '3px', 
+                          background: '#ff4757', 
+                          borderRadius: '2px',
+                          height: `${Math.max(4, (audioLevel * (Math.random() * 0.8 + 0.2)) / 2)}px`,
+                          transition: 'height 0.05s ease'
+                        }} 
+                      />
+                    ))}
+                  </div>
+
                   <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span className="material-icons" style={{fontSize: '16px'}}>chevron_left</span> {t('slide_cancel')}
                   </span>
