@@ -1,5 +1,50 @@
 /* src/components/chat/ChatArea.css */
-/* --- SISA CSS YANG BUKAN PUNYA BUBBLE MASUK SINI --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* =========================================
+   🔥 SUNTIKAN WARNA UTAMA (WAJIB ADA) 🔥
+   ========================================= */
+:root {
+  /* LIGHT MODE (Ala WhatsApp Terang) */
+  --bg-main: #efeae2; 
+  --bg-panel: #ffffff;
+  --bg-sidebar: #ffffff;
+  --text-color: #111827;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --username-color: #111827;
+  --chat-self-bg: #dcf8c6; 
+  --primary-blue: #1DA1F2;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --header-bg: #ffffff;
+  --header-text: #111827;
+}
+
+[data-theme='dark'], html.dark {
+  /* DARK MODE (Ala WhatsApp Gelap) */
+  --bg-main: #0b141a; 
+  --bg-panel: #202c33;
+  --bg-sidebar: #111b21;
+  --text-color: #e9edef;
+  --text-muted: #8696a0;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --username-color: #e9edef;
+  --chat-self-bg: #005c4b; 
+  --primary-blue: #1DA1F2;
+  --glass-bg: rgba(32, 44, 51, 0.85);
+  --header-bg: #202c33;
+  --header-text: #e9edef;
+}
+
+*, *::before, *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   LAYOUT & SISA CSS LU
+   ========================================= */
 .telegram-chat {
   display: flex; flex-direction: column; background-color: var(--bg-main); z-index: 1000;
   overflow: hidden; position: fixed !important; top: 0; left: 0; right: 0; bottom: 0;

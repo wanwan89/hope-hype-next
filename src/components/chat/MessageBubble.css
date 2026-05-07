@@ -1,24 +1,94 @@
 /* src/components/chat/MessageBubble.css */
-.chat-message { display: flex; max-width: 75%; padding: 6px 10px; border-radius: 16px; font-size: 14px; word-wrap: break-word; align-items: flex-end; position: relative; transition: transform 0.2s ease; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
-.chat-message.self { background: var(--chat-self-bg); color: var(--text-color); align-self: flex-end; border-bottom-right-radius: 2px; flex-direction: row-reverse; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
-.chat-message.other { background: var(--bg-panel); color: var(--text-color); align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
-.chat-message.system { align-self: center; max-width: 90%; background: none; box-shadow: none; justify-content: center; padding: 0;}
-.chat-message .avatar { width: 35px; height: 35px; border-radius: 50%; margin: 0 8px; flex-shrink: 0; object-fit: cover; object-position: center; background: #eee; }
-.chat-message .content { position: relative; display: flex; flex-direction: column; padding-bottom: 5px; }
-.chat-message .username { font-weight: 700; font-size: 12px; color: var(--username-color); margin-bottom: 2px; }
-.chat-message .text { font-size: 14px; }
-.chat-message .timestamp { font-size: 10px; color: var(--text-muted); align-self: flex-end; margin-top: 2px; }
+
+/* 1. WRAPPER UTAMA DIBIKIN TRANSPARAN */
+.chat-message { 
+  display: flex; 
+  width: 100%; 
+  margin-bottom: 10px; 
+  align-items: flex-end; /* Bikin avatar rata bawah sama bubble chat */
+  background: transparent !important; /* Hapus warna di bungkus utama */
+  box-shadow: none !important; 
+  padding: 0;
+  position: relative;
+  transition: transform 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+
+/* 2. ARAH PESAN */
+.chat-message.self { justify-content: flex-end; flex-direction: row-reverse; }
+.chat-message.other { justify-content: flex-start; flex-direction: row; }
+
+/* 3. AVATAR AMAN DI LUAR BUBBLE */
+.chat-message .avatar { 
+  width: 32px; 
+  height: 32px; 
+  border-radius: 50%; 
+  margin: 0 8px; 
+  object-fit: cover; 
+  flex-shrink: 0;
+  background: var(--bg-panel);
+}
+
+/* 4. INI BUBBLE CHAT YANG ASLI (.content) */
+.chat-message .content { 
+  display: flex; 
+  flex-direction: column; 
+  max-width: 75%; 
+  padding: 8px 12px; 
+  border-radius: 16px; 
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); 
+  position: relative;
+}
+
+/* 5. SUNTIK WARNA KE BUBBLE */
+.chat-message.self .content { 
+  background: var(--chat-self-bg, #dcf8c6); 
+  color: var(--text-color); 
+  border-bottom-right-radius: 4px; /* Ekor kecil ala WhatsApp */
+}
+
+.chat-message.other .content { 
+  background: var(--bg-panel, #ffffff); 
+  color: var(--text-color); 
+  border-bottom-left-radius: 4px; /* Ekor kecil ala WhatsApp */
+}
+
+/* TEXT & INFO FORMATTING */
+.chat-message .username { font-weight: 700; font-size: 13px; color: var(--username-color); margin-bottom: 4px; }
+.chat-message .text { font-size: 14.5px; line-height: 1.4; }
+.chat-message .timestamp { font-size: 10px; color: var(--text-muted); }
 .text.deleted { font-style: italic; color: #aaa !important; }
 
-.system-text { background: rgba(0, 0, 0, 0.06); color: var(--text-color); font-size: 11px; padding: 5px 14px; border-radius: 20px; font-weight: 500; border: 1px solid rgba(0,0,0,0.03); text-align: center; }
-[data-theme='dark'] .system-text, html.dark .system-text { background: rgba(255, 255, 255, 0.08); border-color: rgba(255,255,255,0.05); color: #ccc;}
+/* PESAN SISTEM (Tengah layar, misal: Panggilan, Info Enkripsi) */
+.chat-message.system {
+  justify-content: center;
+}
+.chat-message.system .content { 
+  background: rgba(0, 0, 0, 0.06); 
+  color: var(--text-color); 
+  font-size: 12px; 
+  padding: 6px 14px; 
+  border-radius: 20px; 
+  box-shadow: none; 
+  align-self: center; 
+  text-align: center; 
+  margin: 0 auto; 
+}
 
-.reply-preview-in-chat { cursor: pointer; background: rgba(0,0,0,0.05); border-left: 3px solid var(--primary-blue); padding: 5px 8px; border-radius: 4px; margin-bottom: 5px; font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-theme='dark'] .chat-message.system .content, html.dark .chat-message.system .content { 
+  background: rgba(255, 255, 255, 0.08); 
+  color: #ccc; 
+}
+
+/* REPLY BOX DALAM CHAT */
+.reply-preview-in-chat { cursor: pointer; background: rgba(0,0,0,0.05); border-left: 3px solid var(--primary-blue); padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-theme='dark'] .reply-preview-in-chat, html.dark .reply-preview-in-chat { background: rgba(255,255,255,0.05); }
 
-.vn-custom-player { display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, 0.05); padding: 8px 12px; border-radius: 20px; min-width: 190px; margin: 5px 0; box-sizing: border-box; }
-[data-theme='dark'] .vn-custom-player, html.dark .vn-custom-player { background: rgba(255,255,255,0.08); }
-.vn-play-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue); border: none; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; }
+/* VN PLAYER (VOICE NOTE) */
+.vn-custom-player { display: flex; align-items: center; gap: 10px; padding: 4px 0; min-width: 190px; }
+.vn-play-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue); border: none; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 .vn-play-btn:active { transform: scale(0.9); }
 .vn-waveform { display: flex; align-items: center; gap: 3px; height: 20px; flex-grow: 1; }
 .vn-waveform .bar { width: 3px; height: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 2px; display: inline-block; }
