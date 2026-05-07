@@ -57,7 +57,7 @@ export default function SaldoPage() {
 
     const handleWithdraw = () => {
     // 🔥 FIX: Arahkan ke route withdraw yang udah kita buat
-    router.push('/saldo/withdraw'); 
+    router.push('/withdraw'); 
   };
 
 
