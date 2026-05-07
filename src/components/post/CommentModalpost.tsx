@@ -213,28 +213,56 @@ export default function CommentModalpost() {
             <div className="empty-text">Belum ada komentar. Jadilah yang pertama!</div>
           ) : (
             parents.map(p => {
-              const childs = comments.filter(r => String(r.parent_id) === String(p.id));
+              const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
+              
+              // 🔥 FIX LOGIC: Cari balasan pertama dari Creator 🔥
+              const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
+              
+              // Sisa balasan yang akan di-hide (dikurangi balasan pertama creator jika ada)
+              const remainingChilds = firstCreatorReply 
+                ? allChilds.filter(c => c.id !== firstCreatorReply.id)
+                : allChilds;
+
               const isExpanded = expandedReplies[p.id];
 
               return (
                 <div className="comment-thread" key={p.id}>
+                  {/* Komentar Utama */}
                   {renderComment(p, false)}
 
-                  {childs.length > 0 && (
-                    <div className="replies-container">
+                  {/* 🔥 Render Balasan Pertama Kreator (Selalu Muncul) 🔥 */}
+                  {firstCreatorReply && (
+                    <div className="replies-container" style={{ marginTop: '0' }}>
+                      <div className="reply-group" style={{ paddingTop: '8px' }}>
+                        <div className="thread-line" style={{ height: 'calc(100% - 10px)', top: '10px' }}></div>
+                        <div className="comment-item reply" style={{ marginTop: 0 }}>
+                          <span className="reply-curve" style={{ top: '15px' }}></span>
+                          {renderComment(firstCreatorReply, true)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wrapper Sisa Balasan dengan Garis & Tombol Toggle */}
+                  {remainingChilds.length > 0 && (
+                    <div className="replies-container" style={{ marginTop: firstCreatorReply ? '0' : '8px' }}>
                       <div 
                         className="view-replies-btn"
                         onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                        style={{ marginLeft: '45px', marginBottom: isExpanded ? '8px' : '0' }}
                       >
-                        <span className="btn-line"></span>
-                        {isExpanded ? 'Sembunyikan' : `Lihat ${childs.length} balasan`}
+                        <span className="btn-line" style={{ left: '-20px', width: '15px' }}></span>
+                        {isExpanded ? 'Sembunyikan' : `Lihat ${remainingChilds.length} balasan lainnya`}
                       </div>
 
                       {isExpanded && (
                         <div className="reply-group">
+                          {/* Garis Vertikal Utama untuk Sisa Balasan */}
                           <div className="thread-line"></div>
-                          {childs.map(c => (
+                          
+                          {remainingChilds.map(c => (
                             <div className="comment-item reply" key={c.id}>
+                              {/* Garis tikungan ke avatar balasan */}
                               <span className="reply-curve"></span>
                               {renderComment(c, true)}
                             </div>
@@ -249,7 +277,6 @@ export default function CommentModalpost() {
           )}
         </div>
 
-        {/* 🔥 FIX: Struktur Input Diperbaiki Agar Icon Rapi di Dalam 🔥 */}
         <div className="comment-input-wrap">
           <div style={{ position: 'relative', width: '100%' }}>
             <input 
