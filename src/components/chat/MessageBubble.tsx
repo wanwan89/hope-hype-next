@@ -1,9 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase'; // 🔥 FIX: Import supabase untuk realtime reply
 import { getUserBadge } from '@/lib/ui-utils';
-import { useTranslation } from 'react-i18next'; // 🔥 i18n Added
+import { useTranslation } from 'react-i18next'; 
 import './MessageBubble.css';
 
-// --- HELPER: ICON STATUS WHATSAPP ---
 export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{fontSize: '10px', opacity: 0.6}}>🕒</span>;
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
@@ -22,9 +22,34 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const lastTap = useRef(0);
 
   const isDeleted = msg.message === "Pesan ini telah dihapus";
-  
-  // 🔥 CEK TIPE ROOM: Kalau depannya 'pv_', berarti chat private
   const isPrivateChat = msg.room_id?.startsWith('pv_');
+
+  // 🔥 FIX BUG REPLY: State untuk nyimpen data reply dari Realtime 🔥
+  const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg);
+
+  useEffect(() => {
+    // Kalau ada ID balasan TAPI teksnya kosong (karena delay dari realtime), kita fetch mandiri!
+    if (msg.reply_to && !msg.reply_to_msg && !liveReply) {
+      const fetchReply = async () => {
+        const { data } = await supabase
+          .from('messages')
+          .select('id, message, profiles(username)')
+          .eq('id', msg.reply_to)
+          .single();
+        
+        if (data) {
+          setLiveReply({
+            id: data.id,
+            username: data.profiles?.username,
+            message: data.message
+          });
+        }
+      };
+      fetchReply();
+    } else if (msg.reply_to_msg) {
+      setLiveReply(msg.reply_to_msg);
+    }
+  }, [msg.reply_to, msg.reply_to_msg]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -107,14 +132,14 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         <div className="system-text">{displayMessage}</div>
       ) : (
         <>
-          {/* 🔥 FIX: Avatar HANYA muncul kalau BUKAN Private Chat (Misal: Grup) 🔥 */}
+          {/* Avatar HANYA muncul kalau BUKAN Private Chat */}
           {!isPrivateChat && (
             <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
           )}
           
           <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
             
-            {/* 🔥 Logika Tampil Username & Badge: Hilang kalau Private Chat 🔥 */}
+            {/* Username & Badge HANYA muncul kalau BUKAN Private Chat */}
             {!isPrivateChat && (
               <div className="username" style={{ marginBottom: '4px' }}>
                 {msg.profiles?.username} 
@@ -122,9 +147,10 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               </div>
             )}
             
-            {msg.reply_to_msg && (
-              <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${msg.reply_to_msg.id}`)?.scrollIntoView({behavior: 'smooth'})} style={{ marginBottom: '6px', opacity: 0.9 }}>
-                <b>{msg.reply_to_msg.username}</b>: {msg.reply_to_msg.message || t('media_label')}
+            {/* 🔥 FIX: Menggunakan liveReply hasil fetch Realtime 🔥 */}
+            {liveReply && (
+              <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})} style={{ marginBottom: '6px', opacity: 0.9 }}>
+                <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
               </div>
             )}
 
