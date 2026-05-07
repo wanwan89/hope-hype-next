@@ -14,6 +14,9 @@ function ProfileContent() {
   const urlId = searchParams?.get('id');
   const urlUser = searchParams?.get('user') || searchParams?.get('username');
 
+  // 🔥 JURUS ANTI-KEDIP: State untuk mastiin komponen udah siap 🔥
+  const [isMounted, setIsMounted] = useState(false);
+  
   const [myId, setMyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
@@ -37,31 +40,52 @@ function ProfileContent() {
     '/asets/png/avatar4.png'
   ];
 
-  useEffect(() => { loadProfile(); }, [urlId, urlUser]);
-  useEffect(() => { if (profile) loadPostsTab(activeTab); }, [activeTab, profile]);
+  // 🔥 1. Mastiin komponen mounted & reset state modal 🔥
+  useEffect(() => {
+    setIsMounted(true);
+    setIsEditModalOpen(false); // Paksa tutup modal tiap masuk
+    setIsSidebarOpen(false);
+
+    return () => {
+      setIsEditModalOpen(false); // Cleanup pas ditinggalin
+      setIsSidebarOpen(false);
+    };
+  }, []);
+
+  useEffect(() => { 
+    if (isMounted) loadProfile(); 
+  }, [urlId, urlUser, isMounted]);
+
+  useEffect(() => { 
+    if (profile && isMounted) loadPostsTab(activeTab); 
+  }, [activeTab, profile, isMounted]);
 
   const loadProfile = async () => {
-    const { data: authData } = await supabase.auth.getUser();
-    const currentUserId = authData?.user?.id || null;
-    setMyId(currentUserId);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUserId = authData?.user?.id || null;
+      setMyId(currentUserId);
 
-    let query = supabase.from('profiles').select('*');
-    if (urlId) query = query.eq('id', urlId);
-    else if (urlUser) query = query.eq('username', urlUser);
-    else if (currentUserId) query = query.eq('id', currentUserId);
-    else { router.push('/login'); return; }
+      let query = supabase.from('profiles').select('*');
+      if (urlId) query = query.eq('id', urlId);
+      else if (urlUser) query = query.eq('username', urlUser);
+      else if (currentUserId) query = query.eq('id', currentUserId);
+      else { router.push('/login'); return; }
 
-    const { data: profData, error } = await query.single();
-    if (error || !profData) return;
+      const { data: profData, error } = await query.single();
+      if (error || !profData) return;
 
-    setProfile(profData);
-    setEditData({
-      username: profData.username || '',
-      bio: profData.bio || '',
-      avatar_url: profData.avatar_url || ''
-    });
-    setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
-    updateStats(profData.id, currentUserId);
+      setProfile(profData);
+      setEditData({
+        username: profData.username || '',
+        bio: profData.bio || '',
+        avatar_url: profData.avatar_url || ''
+      });
+      setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
+      updateStats(profData.id, currentUserId);
+    } catch (err) {
+      console.error("Load Profile Error:", err);
+    }
   };
 
   const updateStats = async (targetId: string, currentUserId: string | null) => {
@@ -178,14 +202,19 @@ function ProfileContent() {
     router.push(path);
   };
 
-  if (!profile) return <div className="profile-page-container"></div>;
+  // 🔥 Guard untuk loading awal biar gak flash 🔥
+  if (!isMounted || !profile) return (
+    <div className="profile-page-container" style={{ backgroundColor: '#ffffff' }}>
+      {/* Loading State Minimalis biar gak kaget */}
+    </div>
+  );
+
   const isMe = myId === profile.id;
 
   return (
     <div className="profile-page-container">
       
       <header className="profile-header">
-        {/* 🔥 Tombol kembali sudah dihapus 🔥 */}
         <h2 style={{ marginLeft: '10px' }}>{profile.username}</h2>
         <button className="header-btn" onClick={() => setIsSidebarOpen(true)}>
            <span className="material-icons">menu</span>
@@ -267,6 +296,7 @@ function ProfileContent() {
         </div>
       </div>
 
+      {/* SIDEBAR */}
       <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
       <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
@@ -305,49 +335,52 @@ function ProfileContent() {
         </div>
       </aside>
 
-      <div className={`custom-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
-         <div className="edit-profile-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-               <h3>Edit Profil</h3>
-               <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>
-            </div>
-            <div className="avatar-edit-section">
-               <label className="main-preview-label">
-                  <img src={previewUrl || '/asets/png/profile.webp'} className="avatar-main-preview" alt="Preview" />
-                  <div className="upload-overlay" onClick={() => fileInputRef.current?.click()}>
-                     <span className="material-icons">camera_alt</span>
-                  </div>
-               </label>
-               <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{display: 'none'}} />
-               <p className="section-label">Ganti Avatar:</p>
-               <div className="avatar-presets">
-                  {avatarPresets.map((src, i) => (
-                     <img 
-                        key={i} 
-                        src={src} 
-                        className={`preset-img ${previewUrl === src ? 'selected' : ''}`} 
-                        onClick={() => {
-                           setEditData(prev => ({ ...prev, avatar_url: src }));
-                           setPreviewUrl(src);
-                           setSelectedFile(null);
-                        }}
-                     />
-                  ))}
-               </div>
-            </div>
-            <div className="input-group">
-               <label>Username</label>
-               <input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} />
-            </div>
-            <div className="input-group">
-               <label>Bio</label>
-               <textarea rows={3} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} />
-            </div>
-            <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>
-               {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
-            </button>
-         </div>
-      </div>
+      {/* MODAL EDIT PROFIL */}
+      {isMounted && (
+        <div className={`custom-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
+           <div className="edit-profile-modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                 <h3>Edit Profil</h3>
+                 <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>
+              </div>
+              <div className="avatar-edit-section">
+                 <label className="main-preview-label">
+                    <img src={previewUrl || '/asets/png/profile.webp'} className="avatar-main-preview" alt="Preview" />
+                    <div className="upload-overlay" onClick={() => fileInputRef.current?.click()}>
+                       <span className="material-icons">camera_alt</span>
+                    </div>
+                 </label>
+                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{display: 'none'}} />
+                 <p className="section-label">Ganti Avatar:</p>
+                 <div className="avatar-presets">
+                    {avatarPresets.map((src, i) => (
+                       <img 
+                          key={i} 
+                          src={src} 
+                          className={`preset-img ${previewUrl === src ? 'selected' : ''}`} 
+                          onClick={() => {
+                             setEditData(prev => ({ ...prev, avatar_url: src }));
+                             setPreviewUrl(src);
+                             setSelectedFile(null);
+                          }}
+                       />
+                    ))}
+                 </div>
+              </div>
+              <div className="input-group">
+                 <label>Username</label>
+                 <input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} />
+              </div>
+              <div className="input-group">
+                 <label>Bio</label>
+                 <textarea rows={3} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} />
+              </div>
+              <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>
+                 {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+           </div>
+        </div>
+      )}
 
     </div>
   );
