@@ -8,26 +8,20 @@ import './Settings.css';
 
 export default function SettingsPage() {
   const router = useRouter();
-  // 🔥 FIX: Set default isDarkMode jadi false (Terang duluan)
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Cek Tema dari LocalStorage, default ke Light Mode
     const savedTheme = localStorage.getItem('theme');
-    
-    // Kalau user pernah milih gelap, baru jadiin gelap
     if (savedTheme === 'dark') {
       setIsDarkMode(true);
       document.documentElement.removeAttribute('data-theme');
     } else {
-      // Default / belum milih = Terang
       setIsDarkMode(false);
       document.documentElement.setAttribute('data-theme', 'light');
     }
-
     fetchAccountData();
   }, []);
 
@@ -84,7 +78,9 @@ export default function SettingsPage() {
                 <span className="slider"></span>
               </label>
             </div>
-            <div className="settings-item">
+            
+            {/* 🔥 UPDATE: Link ke halaman ganti bahasa 🔥 */}
+            <div className="settings-item" onClick={() => router.push('/settings/language')}>
               <div className="item-left">
                 <span className="material-icons">language</span>
                 <div className="item-info">
@@ -123,12 +119,13 @@ export default function SettingsPage() {
               <span className="health-badge health-good">SANGAT BAIK</span>
             </div>
 
-            <div className="settings-item">
+            {/* 🔥 UPDATE: Link ke halaman ganti sandi 🔥 */}
+            <div className="settings-item" onClick={() => router.push('/settings/password')}>
               <div className="item-left">
                 <span className="material-icons">lock</span>
                 <div className="item-info">
                   <span className="item-label">Kata Sandi</span>
-                  <span className="item-sub">Terakhir diubah: 2 bulan lalu</span>
+                  <span className="item-sub">Ubah kata sandi akun</span>
                 </div>
               </div>
               <span className="material-icons" style={{fontSize:'18px'}}>chevron_right</span>
@@ -148,24 +145,20 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-            <div className="settings-item" onClick={() => {
-              supabase.auth.signOut();
+            <div className="settings-item" onClick={async () => {
+              await supabase.auth.signOut();
               router.push('/login');
             }}>
               <div className="item-left">
-                <span className="material-icons" style={{color: '#ff4d4d'}}>logout</span>
+                <span className="material-icons" style={{color: '#ef4444'}}>logout</span>
                 <div className="item-info">
-                  <span className="item-label" style={{color: '#ff4d4d'}}>Keluar Akun</span>
+                  <span className="item-label" style={{color: '#ef4444'}}>Keluar Akun</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div style={{textAlign: 'center', color: 'var(--text-sub)', fontSize: '10px', marginTop: '20px'}}>
-          HopeHype Version 2.0.1 (Stable)<br/>
-          &copy; 2026 HopeHype Creative
-        </div>
       </main>
     </div>
   );

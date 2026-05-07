@@ -19,13 +19,21 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const lastScrollY = useRef(0);
 
-  // 🔥 IDENTIFIKASI HALAMAN YANG GAK BOLEH ADA NAVBAR 🔥
+  // 🔥 FIX: IDENTIFIKASI SEMUA HALAMAN YANG GAK BOLEH ADA NAVBAR 🔥
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
   const isVoiceRoom = pathname?.includes('/voice-room') && pathname !== '/voice-room'; 
   const isDailyCekPage = pathname?.includes('/dailycek');
+  
+  // Halaman baru yang disembunyikan Navbarnya:
+  const isSettingsPage = pathname?.includes('/settings');
+  const isVipPage = pathname?.includes('/vip');
+  const isContactPage = pathname?.includes('/contact');
+
+  // Gabungin ke satu variabel biar gampang
+  const isHiddenPage = isChatRoom || isVoiceRoom || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
 
   useEffect(() => {
-    if (isDailyCekPage || isChatRoom || isVoiceRoom) return;
+    if (isHiddenPage) return;
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -38,7 +46,7 @@ function NavbarContent() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [pathname, isDailyCekPage, isChatRoom, isVoiceRoom]);
+  }, [pathname, isHiddenPage]);
 
   useEffect(() => {
     setIsVisible(true);
@@ -125,8 +133,8 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
-  // 🔥 HAPUS NAVBAR TOTAL DI HALAMAN FULLSCREEN 🔥
-  if (isChatRoom || isVoiceRoom || isDailyCekPage) {
+  // 🔥 FIX: RETURN NULL TOTAL DI HALAMAN FULLSCREEN 🔥
+  if (isHiddenPage) {
     return null;
   }
 

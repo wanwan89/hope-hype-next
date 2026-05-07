@@ -15,19 +15,27 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Identifikasi Halaman
+  // 1. Identifikasi Halaman Lama
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
   const isNotifPage = pathname?.includes('/notifications');
   const isDailyCekPage = pathname?.includes('/dailycek');
   
+  // 🔥 FIX 1: Identifikasi Halaman Baru
+  const isSettingsPage = pathname?.includes('/settings');
+  const isVipPage = pathname?.includes('/vip');
+  const isContactPage = pathname?.includes('/contact');
+  
   // Halaman bergaya Aplikasi (Full Screen & Kunci Scroll Body)
   const isStandaloneApp = isVoicePage || isDailyCekPage;
-  const isFullscreenPage = isStandaloneApp || isDataPage || isNotifPage;
+  
+  // 🔥 FIX 2: Masukin halaman baru ke mode Fullscreen biar gak numpuk
+  const isFullscreenPage = isStandaloneApp || isDataPage || isNotifPage || isSettingsPage || isVipPage || isContactPage;
 
-  const hideSidebar = isStandaloneApp || isDataPage; 
-  const hideNavbar = isStandaloneApp;
+  // Sembunyiin sidebar & navbar di halaman pengaturan/kontak/vip
+  const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
+  const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage;
 
   // 2. 🔥 EKSEKUSI SEBELUM PAINT: Mencegah layout tabrakan pas pindah halaman 🔥
@@ -35,12 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const root = document.documentElement;
     const body = document.body;
 
-    const primaryBg = '#ffffff'; 
-
     if (isStandaloneApp) {
       root.style.height = '100dvh';
       root.style.overflow = 'hidden';
-      root.style.backgroundColor = primaryBg; 
       
       body.style.height = '100dvh';
       body.style.overflow = 'hidden';
@@ -48,18 +53,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.width = '100%';
       body.style.top = '0';
       body.style.left = '0';
-      body.style.backgroundColor = primaryBg;
       body.style.overscrollBehaviorY = 'none'; 
     } else {
       root.style.height = 'auto';
       root.style.overflow = 'visible';
-      root.style.backgroundColor = primaryBg;
       
       body.style.overflow = 'auto';
       body.style.height = 'auto';
       body.style.position = 'static';
       body.style.width = 'auto';
-      body.style.backgroundColor = primaryBg;
       body.style.overscrollBehaviorY = 'auto';
       
       const voiceTrash = [
@@ -79,16 +81,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [pathname, isStandaloneApp]); 
 
+  // 🔥 FIX 3: Cabut hardcode "#ffffff" biar tema Gelap/Terang bisa jalan mulus!
   return (
-    <html lang="id" style={{ overflowX: 'hidden', backgroundColor: '#ffffff' }}>
+    <html lang="id" style={{ overflowX: 'hidden' }}>
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
-        <meta name="theme-color" content="#ffffff" />
       </head>
       <body 
-        className={`bg-white text-slate-900 antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
+        className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
       >
         
@@ -103,8 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             minHeight: '100dvh',
             width: '100%',
             overflow: isStandaloneApp ? 'hidden' : 'visible',
-            position: 'relative',
-            backgroundColor: '#ffffff' // 🔥 PAKSA PUTIH BIAR GA ADA ITEM BOCOR
+            position: 'relative'
           }}
         >
           
@@ -117,23 +118,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main 
             className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}
             style={{ 
-              flex: '1 1 auto', // 🔥 JURUS MELAR MAKSIMAL: Pastikan narik sampe bawah
+              flex: '1 1 auto', // 🔥 JURUS MELAR MAKSIMAL
               display: isStandaloneApp ? 'flex' : 'block',
               flexDirection: 'column',
               overflow: isStandaloneApp ? 'hidden' : 'visible',
               height: isStandaloneApp ? '100%' : 'auto',
               width: '100%',
-              backgroundColor: '#ffffff', // 🔥 PAKSA PUTIH JUGA
               marginBottom: isStandaloneApp ? '0' : '-1px', // 🔥 LEM SUPER
             }}
           >
             {children}
           </main>
           
-          {/* DI SINI TADINYA ADA NAVBAR, SEKARANG UDAH GUE HAPUS */}
         </div>
 
-        {/* 🔥 FIX: NAVBAR PINDAH KE SINI (DI LUAR WRAPPER) 🔥 */}
+        {/* 🔥 FIX: NAVBAR UDAH DIHANDLE SAMA hideNavbar 🔥 */}
         {!hideNavbar && <Navbar />}
 
         <LoginPopup />
