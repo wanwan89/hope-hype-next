@@ -17,35 +17,26 @@
 
   font-family: 'Plus Jakarta Sans', sans-serif;
 
-  padding-bottom: 140px; 
+  /* 🔥 FIX STRUKTUR: Hapus min-height 100vh & padding-top manual 🔥 */
+  width: 100%;
+  height: 100%; 
   max-width: 480px; 
   margin: 0 auto;
-  min-height: 100vh;
   background-color: var(--bg-app);
   position: relative;
-  
-  /* 🔥 FIX: Padding top dikasih jarak biar nggak nabrak Header Sticky 🔥 */
-  padding-top: 75px; 
-}
-
-/* Tambahan padding top khusus untuk HP ber-notch */
-@supports (padding-top: env(safe-area-inset-top)) {
-  .voice-lobby-container {
-    padding-top: calc(75px + env(safe-area-inset-top));
-  }
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto; /* Biar scrollnya di dalam kontainer ini aja */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* =========================================
-   2. HEADER PINNED
+   2. HEADER (Diganti jadi Sticky biar gak lompat)
    ========================================= */
 .voice-lobby-container .lobby-header {
-  position: fixed;
+  position: sticky; /* 🔥 Aman dari tabrakan layout 🔥 */
   top: 0;
-  left: 50%;
-  transform: translateX(-50%); 
   width: 100%;
-  max-width: 480px; 
-  height: 65px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -54,6 +45,9 @@
   z-index: 1000; 
   border-bottom: 1px solid var(--border-glass);
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  flex-shrink: 0; /* Mencegah header menciut */
+  
+  /* Safe Area untuk HP Notch (Poni) */
   padding-top: env(safe-area-inset-top, 0px);
   height: calc(65px + env(safe-area-inset-top, 0px));
 }
@@ -108,6 +102,7 @@
   box-shadow: 0 8px 20px -4px rgba(0, 112, 243, 0.3);
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .voice-lobby-container .hero-banner::after {
@@ -162,6 +157,7 @@
   padding: 4px 16px;
   overflow-x: auto;
   scrollbar-width: none;
+  flex-shrink: 0;
 }
 .voice-lobby-container .tabs-container::-webkit-scrollbar { display: none; }
 
@@ -189,6 +185,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* 🔥 FIX: Padding bawah dipindah ke sini biar scrollnya nyaman 🔥 */
+  padding-bottom: calc(140px + env(safe-area-inset-bottom)); 
 }
 
 .voice-lobby-container .room-card {
@@ -344,6 +342,8 @@
   box-sizing: border-box; 
   max-width: 480px; margin: 0 auto;
   box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+  /* 🔥 FIX: Tambah safe area biar gak mentok tombol navigasi HP 🔥 */
+  padding-bottom: max(30px, calc(30px + env(safe-area-inset-bottom)));
 }
 
 .voice-lobby-container .bottom-sheet.active .sheet-content { 
@@ -432,6 +432,7 @@
 }
 
 .voice-lobby-container #buy-custom-coin-btn:disabled { opacity: 0.5; pointer-events: none; }
+
 /* =========================================
    7. 🔥 ANIMASI LOADING TOMBOL BELI 🔥
    ========================================= */
@@ -439,7 +440,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* Efek Bouncy/Pop pas diklik */
 .voice-lobby-container .buy-coin-btn {
   transition: transform 0.1s ease, opacity 0.2s ease;
 }
@@ -449,10 +449,9 @@
   transform: scale(0.85);
 }
 
-/* Class Loading Spinner */
 .voice-lobby-container .btn-loading {
   position: relative;
-  color: transparent !important; /* Sembunyikan teks "Beli" */
+  color: transparent !important; 
   pointer-events: none;
 }
 
@@ -466,12 +465,11 @@
   margin-top: -7px;
   margin-left: -7px;
   border: 2px solid rgba(0, 0, 0, 0.2);
-  border-top-color: #1a1a1a; /* Spinner warna gelap untuk tombol kuning */
+  border-top-color: #1a1a1a; 
   border-radius: 50%;
   animation: spin-loader 0.6s linear infinite;
 }
 
-/* Khusus Custom Top Up (Spinner warna putih karena tombolnya gelap) */
 .voice-lobby-container #buy-custom-coin-btn.btn-loading::after {
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;

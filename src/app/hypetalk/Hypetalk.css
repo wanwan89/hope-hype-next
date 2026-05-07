@@ -14,22 +14,17 @@
   --tg-primary: #1DA1F2;
   --tg-hover: #f9fafb;
 
-  position: fixed; 
-  top: 0; 
-  bottom: 0; 
-  left: 50%; 
-  transform: translateX(-50%); 
+  /* 🔥 FIX BENTROK LAYOUT: Hapus fixed & 100dvh, ganti pake relative & 100% 🔥 */
+  position: relative; 
+  margin: 0 auto; /* Supaya tetep di tengah secara otomatis */
   width: 100%; 
   max-width: 480px; 
+  height: 100%; /* Mengisi penuh tinggi main container dari layout.tsx */
   display: flex; 
   flex-direction: column; 
   background: var(--tg-bg); 
   box-shadow: 0 0 20px rgba(0,0,0,0.05); 
   transition: background 0.3s ease; 
-  padding-bottom: env(safe-area-inset-bottom); 
-  
-  /* 🔥 FIX: Hapus z-index: 10 dari sini biar anak-anaknya gak terjebak! 🔥 */
-  height: 100dvh;
   overflow: hidden; 
 }
 
@@ -58,7 +53,7 @@ html.dark .telegram-wrapper {
 }
 .tg-header-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
 .tg-header-left { display: flex; align-items: center; gap: 16px; }
-.tg-header-left h2 { font-size: 20px; font-weight: 700; color: var(--tg-text); transition: color 0.3s ease; }
+.tg-header-left h2 { font-size: 20px; font-weight: 700; color: var(--tg-text); transition: color 0.3s ease; margin: 0; }
 .icon-btn { background: none; border: none; color: var(--tg-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: all 0.2s ease; }
 .icon-btn:active { background: transparent; transform: scale(0.95); }
 
@@ -74,10 +69,11 @@ html.dark .telegram-wrapper {
 .tg-chat-list { 
   flex: 1; 
   overflow-y: auto; 
-  padding-bottom: 100px; 
+  /* 🔥 FIX: Padding bawah ditambah Safe Area biar list ga ketutup bar iPhone 🔥 */
+  padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
   -webkit-overflow-scrolling: touch; 
 }
-.tg-chat-list::-webkit-scrollbar { width: 0; } 
+.tg-chat-list::-webkit-scrollbar { width: 0; display: none; } 
 
 .tg-chat-item { display: flex; align-items: center; gap: 14px; padding: 10px 16px; cursor: pointer; user-select: none; transition: background 0.2s; position: relative; animation: fadeIn 0.3s ease forwards; }
 .tg-chat-item:active { background: var(--tg-hover); }
@@ -87,7 +83,7 @@ html.dark .telegram-wrapper {
 .tg-chat-info { flex: 1; min-width: 0; border-bottom: 1px solid var(--tg-border); padding-bottom: 12px; padding-top: 2px; display: flex; flex-direction: column; justify-content: center; height: 100%; transition: border-color 0.3s ease; }
 .tg-chat-item:last-child .tg-chat-info { border-bottom: none; }
 .tg-chat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.tg-name { font-size: 16px; font-weight: 600; color: var(--tg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.tg-name { font-size: 16px; font-weight: 600; color: var(--tg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; margin: 0; }
 .tg-time { font-size: 12px; font-weight: 500; color: var(--tg-text-muted); flex-shrink: 0; }
 .tg-chat-item.unread .tg-time { color: var(--tg-primary); font-weight: 600; }
 .tg-chat-bottom { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -104,13 +100,13 @@ html.dark .telegram-wrapper {
 }
 .tg-fab:active { transform: scale(0.9); }
 
-/* 🔥 FIX 2: Ganti nama class & tambahkan opasitas biar gampang kontrol buka/tutup 🔥 */
+/* 🔥 Z-INDEX DEWA BUAT MODAL/SIDEBAR (Di Atas Navbar Global) 🔥 */
 .tg-sidebar-overlay { 
   position: fixed; 
   inset: 0; 
   background: rgba(0,0,0,0.6); 
   backdrop-filter: blur(4px); 
-  z-index: 99990; /* Dewa: Nutupin segalanya termasuk Navbar Bawah */
+  z-index: 99990; 
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -131,7 +127,7 @@ html.dark .telegram-wrapper {
   max-width: 320px; 
   background: var(--tg-bg); 
   transform: translateX(calc(-50% - 100vw)); 
-  z-index: 99991; /* Paling tinggi, di atas overlay */
+  z-index: 99991; 
   display: flex; 
   flex-direction: column; 
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1); 
@@ -146,8 +142,8 @@ html.dark .telegram-wrapper {
 .sidebar-header { padding: 40px 20px 20px; background: var(--tg-bg-secondary); border-bottom: 1px solid var(--tg-border); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .side-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tg-primary); }
 .sidebar-user-info { display: flex; flex-direction: column; gap: 2px; }
-.side-username { font-size: 18px; font-weight: 700; color: var(--tg-text); }
-.side-id { font-size: 13px; color: var(--tg-text-muted); cursor: pointer; transition: color 0.2s; }
+.side-username { font-size: 18px; font-weight: 700; color: var(--tg-text); margin: 0; }
+.side-id { font-size: 13px; color: var(--tg-text-muted); cursor: pointer; transition: color 0.2s; margin: 0; }
 .side-id:active { color: var(--tg-primary); }
 .btn-edit-bio { background: var(--tg-primary); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 5px; }
 
@@ -161,15 +157,15 @@ html.dark .telegram-wrapper {
 .limit-badge { background: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
 html.dark .limit-badge { background: rgba(239,68,68,0.15); }
 
-/* 🔥 FIX 3: Z-Index Dewa untuk semua Modal Hypetalk 🔥 */
+/* CUSTOM MODALS */
 .custom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 99990; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s ease; }
 .custom-modal-content { background: var(--tg-bg); width: 100%; max-width: 480px; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 24px; padding-bottom: max(24px, env(safe-area-inset-bottom) + 24px); animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; z-index: 99991; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.modal-header h3 { color: var(--tg-text); font-size: 18px; font-weight: 700; }
+.modal-header h3 { color: var(--tg-text); font-size: 18px; font-weight: 700; margin: 0; }
 .close-modal-btn { background: var(--tg-bg-secondary); border: none; color: var(--tg-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; }
 .modal-desc { font-size: 13px; color: var(--tg-text-muted); margin-bottom: 16px; }
 
-.input-group { display: flex; align-items: center; background: var(--tg-bg-secondary); border-radius: 12px; padding: 12px 16px; gap: 12px; border: 1px solid var(--tg-border); width: 100%; margin-bottom: 16px;}
+.input-group { display: flex; align-items: center; background: var(--tg-bg-secondary); border-radius: 12px; padding: 12px 16px; gap: 12px; border: 1px solid var(--tg-border); width: 100%; margin-bottom: 16px; box-sizing: border-box; }
 .input-group input, .input-group select { flex: 1; border: none; background: transparent; outline: none; font-size: 14px; color: var(--tg-text); width: 100%; }
 .input-group .material-icons { color: var(--tg-text-muted); font-size: 18px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
@@ -269,13 +265,14 @@ html.dark .limit-badge { background: rgba(239,68,68,0.15); }
 
 .loading-state { text-align: center; padding: 60px 20px; color: var(--tg-text-muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .loading-spinner { font-size: 32px; animation: spin 1s linear infinite; color: var(--tg-primary); }
-.loading-state p { font-size: 14px; font-weight: 500; }
+.loading-state p { font-size: 14px; font-weight: 500; margin: 0; }
 .text-center { text-align: center; }
 
 .anim-calling-avatar { animation: radar-pulse-call 1.5s infinite cubic-bezier(0.66, 0, 0, 1); border: 3px solid #10b981; border-radius: 50%; }
 .anim-calling-text { animation: text-blink 1.5s infinite ease-in-out; color: #10b981 !important; font-weight: bold; letter-spacing: 2px; }
 @keyframes radar-pulse-call { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7), 0 0 0 0 rgba(16, 185, 129, 0.4); transform: scale(0.95); } 50% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0), 0 0 0 30px rgba(16, 185, 129, 0.2); transform: scale(1); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), 0 0 0 45px rgba(16, 185, 129, 0); transform: scale(0.95); } }
 @keyframes text-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
 /* --- SKELETON CHAT STYLING --- */
 .skeleton-shimmer {
   background: linear-gradient(90deg, var(--tg-bg-secondary) 25%, var(--tg-border) 50%, var(--tg-bg-secondary) 75%);
@@ -304,7 +301,6 @@ html.dark .limit-badge { background: rgba(239,68,68,0.15); }
   border-radius: 4px;
 }
 
-/* Biar rapi pas loading */
 .tg-chat-top {
   display: flex;
   justify-content: space-between;
