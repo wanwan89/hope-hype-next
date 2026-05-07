@@ -3,21 +3,26 @@
   background-color: #f9fafb; 
   color: #111827; 
   padding-bottom: 80px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  overflow-x: hidden; /* 🔥 FIX: Kunci layar biar nggak bisa digeser ke samping */
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden; 
   width: 100%;
 }
 
+/* --- HEADER (STICKY FIXED) --- */
 .contact-header {
   display: flex;
   align-items: center;
   padding: 16px 20px;
-  background: #ffffff;
+  /* 🔥 FIX: Tambahin padding atas buat area poni/notch HP */
+  padding-top: calc(16px + env(safe-area-inset-top)); 
+  background: rgba(255, 255, 255, 0.95); /* Efek agak transparan dikit */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid #e5e7eb;
-  position: sticky;
+  position: sticky; /* 🔥 Kunci di atas */
   top: 0;
-  z-index: 50;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  z-index: 100; /* Z-index dinaikin biar ga ketimpa konten bawahnya */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* Tambah shadow tipis biar elegan */
 }
 
 .back-btn {
@@ -27,66 +32,74 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  margin-right: 15px;
+  padding: 6px;
+  margin-left: -6px; /* Geser dikit biar pas */
+  margin-right: 12px;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
+  border-radius: 50%;
 }
 
-.back-btn:hover { color: #111827; }
+.back-btn:hover { 
+  color: #111827; 
+  background: #f3f4f6; 
+}
+.back-btn:active { transform: scale(0.9); }
 
 .contact-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
+/* --- CONTENT AREA --- */
 .contact-content {
-  padding: 20px 16px; /* 🔥 FIX: Padding dikurangin dikit biar lega di HP sempit */
+  padding: 24px 16px; 
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
-  box-sizing: border-box; /* 🔥 FIX: Biar padding ga bikin bengkak */
+  box-sizing: border-box; 
 }
 
 .contact-desc {
-  font-size: 13px;
+  font-size: 14px; /* Digedein dikit biar gampang dibaca */
   color: #6b7280;
-  line-height: 1.5;
-  margin-bottom: 20px;
+  line-height: 1.6;
+  margin-bottom: 24px;
   text-align: center;
 }
 
-/* KARTU FORM & INFO */
+/* KARTU FORM & INFO (UPGRADED) */
 .contact-card {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
+  border-radius: 20px; /* Lengkungan lebih smooth */
+  padding: 24px;
+  border: 1px solid rgba(229, 231, 235, 0.5); /* Border dihalusin */
   margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.04); /* Shadow dibikin lebih "melayang" */
   width: 100%;
-  box-sizing: border-box; /* 🔥 FIX: Mengunci ukuran kartu ke layar */
+  box-sizing: border-box; 
 }
 
 .card-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: #111827;
 }
 
 .card-title .material-icons {
   color: #1DA1F2;
-  font-size: 20px;
+  font-size: 22px;
 }
 
-/* FORM STYLE */
+/* FORM STYLE (UPGRADED) */
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px; /* Jarak antar input dilonggarin */
   display: flex;
   flex-direction: column;
 }
@@ -94,22 +107,24 @@
 .form-group label {
   font-size: 12px;
   color: #4b5563;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   font-weight: 600;
+  text-transform: uppercase; /* Bikin label lebih profesional */
+  letter-spacing: 0.5px;
 }
 
 .form-group input, 
 .form-group select, 
 .form-group textarea {
   background: #f9fafb;
-  border: 1px solid #d1d5db;
+  border: 1.5px solid #e5e7eb; /* Border ditebelin dikit */
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px; /* Padding dalem digedein biar enak diketik */
   color: #111827;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
   font-family: inherit;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
   box-sizing: border-box;
 }
@@ -118,7 +133,7 @@
 .form-group select:focus, 
 .form-group textarea:focus {
   border-color: #1DA1F2;
-  box-shadow: 0 0 0 2px rgba(29, 161, 242, 0.1);
+  box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.1); /* Glow biru pas difokus */
   background: #ffffff;
 }
 
@@ -127,35 +142,51 @@
   color: #9ca3af;
 }
 
+/* FIX: Textarea biar ga bisa ditarik-tarik ukurannya */
+.form-group textarea {
+  resize: none; 
+}
+
 .btn-submit {
   background: #1DA1F2;
   color: #ffffff;
   border: none;
-  padding: 14px;
-  border-radius: 12px;
+  padding: 16px; /* Tombol digedein dikit */
+  border-radius: 14px;
   width: 100%;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efek bouncy pas dipencet */
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 15px;
   box-sizing: border-box;
+  box-shadow: 0 4px 15px rgba(29, 161, 242, 0.3);
 }
 
-.btn-submit:hover { background: #1a91da; }
-.btn-submit:active { transform: scale(0.98); }
-.btn-submit:disabled { opacity: 0.6; pointer-events: none; background: #9ca3af; }
+.btn-submit:hover { 
+  background: #1a91da; 
+  transform: translateY(-2px);
+}
+.btn-submit:active { 
+  transform: scale(0.96) translateY(0); 
+  box-shadow: 0 2px 5px rgba(29, 161, 242, 0.3);
+}
+.btn-submit:disabled { 
+  opacity: 0.6; 
+  pointer-events: none; 
+  background: #9ca3af; 
+  box-shadow: none;
+}
 
 /* SOCIAL MEDIA GRID */
 .social-grid {
   display: grid;
-  /* 🔥 FIX PALING PENTING: minmax(0, 1fr) MAKSA KOLOM JADI SAMA RATA 🔥 */
   grid-template-columns: repeat(2, minmax(0, 1fr)); 
-  gap: 10px;
+  gap: 12px; /* Gap digedein dikit */
   width: 100%;
 }
 
@@ -163,19 +194,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 12px 6px;
-  border-radius: 12px;
+  gap: 8px;
+  padding: 14px 8px;
+  border-radius: 14px; /* Ngikutin border radius tombol utama */
   text-decoration: none;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  transition: transform 0.2s;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   width: 100%;
   box-sizing: border-box;
-  white-space: nowrap; /* 🔥 FIX: Teks ga akan jatuh ke bawah */
+  white-space: nowrap; 
   overflow: hidden;
-  text-overflow: ellipsis; /* 🔥 FIX: Kalau kepanjangan jadi titik-titik (...) */
+  text-overflow: ellipsis; 
 }
 
 .social-btn:active { transform: scale(0.95); }
@@ -185,4 +216,4 @@
 .social-btn.wa { background: #25D366; }
 .social-btn.email { background: #ea4335; }
 
-.social-icon { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+.social-icon { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }

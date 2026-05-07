@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, Bell, MessageCircle, User, Mic2, ChevronDown, ChevronUp } from 'lucide-react';
+// 🔥 GANTI: Mic2 dihapus, AudioLines ditambah (ini ikon bar suara)
+import { Home, Bell, MessageCircle, User, AudioLines, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -19,17 +20,14 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const lastScrollY = useRef(0);
 
-  // 🔥 FIX: IDENTIFIKASI SEMUA HALAMAN YANG GAK BOLEH ADA NAVBAR 🔥
+  // --- CEK HALAMAN YANG NAVBARNYA HARUS ILANG ---
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
   const isVoiceRoom = pathname?.includes('/voice-room') && pathname !== '/voice-room'; 
   const isDailyCekPage = pathname?.includes('/dailycek');
-  
-  // Halaman baru yang disembunyikan Navbarnya:
   const isSettingsPage = pathname?.includes('/settings');
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
 
-  // Gabungin ke satu variabel biar gampang
   const isHiddenPage = isChatRoom || isVoiceRoom || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
 
   useEffect(() => {
@@ -63,7 +61,6 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
-      // 1. Cek Pesan Belum Dibaca (Hypetalk)
       const { count: chatCount } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
@@ -75,7 +72,6 @@ function NavbarContent() {
         setUnreadChatCount(chatCount);
       }
 
-      // 2. Cek Notifikasi Belum Dibaca
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -88,7 +84,6 @@ function NavbarContent() {
 
       const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
 
-      // 3. Realtime Supabase Listener untuk Chat & Notif
       badgeChannel = supabase.channel(uniqueChannelName)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
           if (payload.new.room_id.includes(userId) && payload.new.user_id !== userId) {
@@ -133,15 +128,15 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
-  // 🔥 FIX: RETURN NULL TOTAL DI HALAMAN FULLSCREEN 🔥
   if (isHiddenPage) {
     return null;
   }
 
+  // 🔥 FIX: Pakai AudioLines buat Voice 🔥
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: Mic2 }, 
+    { name: 'Voice', path: '/voice-room', icon: AudioLines }, 
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
     { name: 'Profil', path: '/data', icon: User },
   ];
@@ -150,7 +145,7 @@ function NavbarContent() {
 
   return (
     <>
-      {/* 🔥 FIX: Tombol Toggle Navbar dengan Safe Area 🔥 */}
+      {/* Tombol Toggle Navbar dengan Safe Area */}
       <button
         onClick={() => setIsManualHidden(!isManualHidden)}
         style={{
@@ -161,7 +156,7 @@ function NavbarContent() {
           width: '40px',
           height: '40px',
           borderRadius: '50%',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)', // Sedikit lebih solid biar ga nge-glitch
+          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
           border: '1px solid rgba(0,0,0,0.05)',
@@ -179,7 +174,7 @@ function NavbarContent() {
         {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
       </button>
 
-      {/* 🔥 FIX: Container Navbar Utama dengan Safe Area 🔥 */}
+      {/* Container Navbar Utama dengan Safe Area */}
       <div style={{
         position: 'fixed', 
         bottom: 'max(20px, env(safe-area-inset-bottom))', 
@@ -239,7 +234,7 @@ function NavbarContent() {
                   padding: '10px',
                   touchAction: 'manipulation',
                   width: '60px',
-                  WebkitTapHighlightColor: 'transparent' // 🔥 Anti blok biru pas diklik di HP
+                  WebkitTapHighlightColor: 'transparent' 
                 }}
               >
                 <div style={{ 
@@ -247,23 +242,40 @@ function NavbarContent() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  // 🔥 FIX: Upgrade Tampilan & Animasi Voice 🔥
                   ...(isVoice ? {
                     width: '56px',
                     height: '56px',
                     borderRadius: '50%',
                     background: 'linear-gradient(135deg, #00a2ff, #bc13fe)', 
-                    boxShadow: isActive ? '0 0 20px rgba(188, 19, 254, 0.6)' : '0 8px 15px rgba(0, 162, 255, 0.3)',
-                    marginTop: '-35px', 
                     border: '4px solid white', 
-                    transform: isClicked ? 'scale(0.7) rotate(-15deg)' : isActive ? 'scale(1.05) translateY(-5px)' : 'scale(1)',
-                    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+                    marginTop: '-35px', 
+                    // Base Shadow
+                    boxShadow: isActive ? '0 0 20px rgba(188, 19, 254, 0.6)' : '0 8px 15px rgba(0, 162, 255, 0.3)',
+                    
+                    // 🔥 Animasi Ditekan: Sedikit Melesap ke bawah + Mengecil (Native Feel) 🔥
+                    transform: isClicked 
+                      ? 'scale(0.85) translateY(10px)' // Pressed state (lebih "dalam")
+                      : isActive 
+                      ? 'scale(1.1) translateY(-8px)' // Elevated active state
+                      : 'scale(1)', 
+                      
+                    // Shadow berubah pas ditekan
+                    ...(isClicked ? {
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)' 
+                    } : {}),
+
+                    // Transisi lebih lambat dikit (0.5s) tapi kurva lebih "snap" ala iOS spring
+                    transition: 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)' 
                   } : {
+                    // Item Standar Pas Ditekan
                     transform: isClicked ? 'scale(0.8)' : isActive ? 'scale(1.15)' : 'scale(1)',
                     transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                   })
                 }}>
                   <Icon 
-                    size={isVoice ? 26 : 24} 
+                    // 🔥 FIX: Sedikit lebih besar ikonnya 🔥
+                    size={isVoice ? 28 : 24} 
                     color={isVoice ? '#ffffff' : (isActive ? '#00a2ff' : '#666666')} 
                     strokeWidth={isActive || isVoice ? 2.5 : 2}
                     style={{ 

@@ -2,22 +2,23 @@
 .header-sticky-wrapper {
   position: sticky;
   top: 0;
-  z-index: 15000; /* Naikkan biar di atas segalanya */
+  z-index: 15000; 
   background-color: var(--bg-main, #ffffff);
   width: 100%;
-  /* Hilangkan border-bottom jika mengganggu garis story */
   border-bottom: none; 
   transition: all 0.3s ease;
 }
 
+/* --- SEARCH AREA (TETAP DIAM) --- */
 .search-wrapper {
   padding: 12px 18px;
   display: flex;
   align-items: center; 
   gap: 15px; 
-  background: transparent;
+  background: var(--bg-main, #ffffff); /* Pastikan solid biar gak tembus */
   position: relative;
-  z-index: 15001; /* Pastikan area search di atas container story */
+  z-index: 15001; 
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
 }
 
 /* --- INPUT PENCARIAN --- */
@@ -46,7 +47,7 @@
   box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.1); 
 }
 
-/* --- TOMBOL TAMBAH (FIX KLIK) --- */
+/* --- TOMBOL TAMBAH --- */
 .add-post-btn {
   display: flex;
   align-items: center;
@@ -59,10 +60,9 @@
   color: var(--bg-main, #fff); 
   cursor: pointer;
   flex-shrink: 0;
-  /* FIX UTAMA: Kasih posisi dan z-index tinggi agar tidak tertutup */
   position: relative;
   z-index: 16000;
-  pointer-events: auto !important; /* Paksa agar bisa diklik */
+  pointer-events: auto !important; 
   transition: transform 0.1s ease;
 }
 
@@ -70,18 +70,19 @@
   transform: scale(0.9);
 }
 
-/* --- STORY SECTION (FIX AREA HITAM) --- */
+/* --- STORY SECTION (BISA DI-SCROLL) --- */
 .stories-container {
   display: flex;
   gap: 15px;
-  padding: 8px 15px 15px 15px;
-  overflow-x: auto;
+  padding: 12px 15px 15px 15px;
+  overflow-x: auto; /* 🔥 Ini yang bikin story bisa digeser ke samping */
   background: var(--bg-main, #ffffff);
   scrollbar-width: none; 
   -ms-overflow-style: none;
   position: relative;
-  z-index: 14000; /* Di bawah search bar */
+  z-index: 14000; 
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-overflow-scrolling: touch; /* Biar smooth di HP */
 }
 
 .stories-container::-webkit-scrollbar { display: none; }
@@ -107,7 +108,8 @@
 }
 
 .story-circle.unseen { 
-  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); 
+  /* Gradasi IG */
+  background: conic-gradient(from 45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888, #f09433); 
 }
 
 .story-circle.seen { 
@@ -120,16 +122,28 @@
   border-radius: 50%;
   object-fit: cover;
   background: #eee;
-  border: 2px solid var(--bg-main, #fff);
+  border: 2.5px solid var(--bg-main, #fff);
 }
 
-/* --- ANIMASI POP --- */
+/* --- 🔥 ANIMASI POP & SPIN ALA IG STORY 🔥 --- */
 .story-circle.clicked {
-  animation: storyPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  /* Putar gradient-nya */
+  animation: spinBorder 1s linear infinite !important;
 }
 
-@keyframes storyPop {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.9); opacity: 0.5; }
-  100% { transform: scale(1.1); opacity: 0; }
+/* Biar foto profil gak ikut muter/kebalik, kita putar ke arah sebaliknya! */
+.story-circle.clicked img {
+  animation: counterSpin 1s linear infinite !important;
+}
+
+/* Keyframes putar pembungkusnya ke kanan */
+@keyframes spinBorder {
+  0% { transform: scale(0.9) rotate(0deg); }
+  100% { transform: scale(0.9) rotate(360deg); }
+}
+
+/* Keyframes putar isinya (gambar) ke kiri */
+@keyframes counterSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
 }
