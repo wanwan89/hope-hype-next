@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 /* === CSS VARIABLES LIGHT & DARK MODE === */
+/* Mode Terang (Default) */
 :root {
   --bg-main: #f0f2f5;
   --text-main: #1c1e21;
@@ -17,7 +18,8 @@
   --bg-story-seen: #dddfe2;
 }
 
-html.dark {
+/* 🔥 FIX: Tambahkan [data-theme='dark'] biar sinkron 100% sama next-themes 🔥 */
+[data-theme='dark'], html.dark {
   --bg-main: #0a0a0a; 
   --text-main: #f8fafc;
   --bg-card: #151515;
@@ -36,13 +38,13 @@ html.dark {
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent !important;
-  /* 🔥 FIX: Cegah user gak sengaja nge-hold dan munculin popup copy text di UI HP 🔥 */
+  /* Cegah user gak sengaja nge-hold dan munculin popup copy text di UI HP */
   -webkit-touch-callout: none;
   outline: none !important;
 }
 
 html {
-  /* 🔥 FIX: Biar kalau layar goyang, warnanya tetep sesuai tema */
+  /* Biar kalau layar goyang, warnanya tetep sesuai tema */
   background-color: var(--bg-main) !important;
   height: 100%;
   scroll-behavior: smooth;
@@ -51,20 +53,19 @@ html {
 body { 
   width: 100%;
   min-height: 100%;
-  /* 🔥 FIX: Sikat abis efek mental/bounce di HP yang bikin garis hitam muncul */
+  /* Sikat abis efek mental/bounce di HP yang bikin garis hitam muncul */
   overscroll-behavior-y: none;
   overflow-x: hidden;
   font-family: 'Poppins', sans-serif; 
   background-color: var(--bg-main); 
   color: var(--text-main); 
-  transition: background-color 0.2s ease;
-  /* 🔥 FIX: padding-top dihapus dari sini biar gak Double Poni sama Header komponen lu 🔥 */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Biar inputan & pesan bisa di-copy, tapi tombol nggak */
 input, textarea, [contenteditable="true"], .selectable { 
   user-select: text !important; 
-  -webkit-touch-callout: default; /* Kembalikan fungsi copy paste untuk input */
+  -webkit-touch-callout: default; 
 }
 
 .menu-item-tiktok, .btn, .tab, button, .avatar, .card-btn {
@@ -90,7 +91,7 @@ input, textarea, [contenteditable="true"], .selectable {
 .main-content {
   flex: 1;
   width: 100%;
-  /* 🔥 FIX: Disamakan jadi 480px biar gak tiba-tiba melar pas ganti rute 🔥 */
+  /* Disamakan jadi 480px biar gak tiba-tiba melar pas ganti rute */
   max-width: 480px; 
   margin: 0 auto;
   position: relative;
@@ -126,7 +127,7 @@ input, textarea, [contenteditable="true"], .selectable {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* FIX: Mencegah elemen random muncul pas transisi */
+/* Mencegah elemen random muncul pas transisi */
 .page-fade {
   animation: fadeIn 0.3s ease-in-out;
 }
