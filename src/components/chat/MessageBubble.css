@@ -16,9 +16,16 @@
   touch-action: pan-y;
 }
 
-/* 2. ARAH PESAN */
-.chat-message.self { justify-content: flex-end; flex-direction: row-reverse; }
-.chat-message.other { justify-content: flex-start; flex-direction: row; }
+/* 2. ARAH PESAN (🔥 FIX POSISI MENTOK KANAN & KIRI 🔥) */
+.chat-message.self { 
+  flex-direction: row; /* Balikin ke row biasa */
+  justify-content: flex-end; /* Mentok KANAN */
+}
+
+.chat-message.other { 
+  flex-direction: row; 
+  justify-content: flex-start; /* Mentok KIRI */
+}
 
 /* 3. AVATAR STYLING */
 .chat-message .avatar { 
@@ -33,7 +40,7 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-/* 🔥 Sembunyikan avatar & nama untuk pesan SENDIRI biar lega ala WA 🔥 */
+/* Sembunyikan avatar & nama untuk pesan SENDIRI */
 .chat-message.self .avatar,
 .chat-message.self .username {
   display: none !important;
@@ -43,8 +50,8 @@
 .chat-message .content { 
   display: flex; 
   flex-direction: column; 
-  max-width: 80%; /* Sedikit dilebarin biar text panjang lebih enak dibaca */
-  min-width: auto !important; /* 🔥 TIMPA BUG LEBAR KAKU */
+  max-width: 80%; 
+  min-width: auto !important; 
   padding: 6px 12px 8px 12px; 
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); 
   position: relative;
