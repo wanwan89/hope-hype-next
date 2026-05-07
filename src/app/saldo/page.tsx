@@ -22,7 +22,6 @@ export default function SaldoPage() {
   const loadWalletData = async () => {
     setIsLoading(true);
     try {
-      // 1. Ambil User yang login
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
@@ -30,7 +29,6 @@ export default function SaldoPage() {
         return;
       }
 
-      // 2. Ambil data koin ASLI dari tabel profiles
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('coins')
@@ -39,7 +37,6 @@ export default function SaldoPage() {
 
       if (profileError) throw profileError;
 
-      // 3. Set State
       setCoins(profile.coins || 0);
 
     } catch (err: any) {
@@ -51,17 +48,20 @@ export default function SaldoPage() {
   };
 
   const handleTopUp = () => {
-    // Arahin ke menu top up (misal balik ke voice buat beli koin, atau halaman khusus)
     router.push('/voice'); 
   };
 
-    const handleWithdraw = () => {
-    // 🔥 FIX: Arahkan ke route withdraw yang udah kita buat
-    router.push('/withdraw'); 
+  const handleWithdraw = () => {
+    router.push('/saldo/withdraw'); 
   };
 
+  // 🔥 Fungsi Riwayat Penarikan (Withdraw)
+  const handleWithdrawHistory = () => {
+    router.push('/historycoin');
+  };
 
-  const handleHistory = () => {
+  // 🔥 Fungsi Riwayat Mutasi Koin (Buku Tabungan)
+  const handleCoinHistory = () => {
     router.push('/saldo/history');
   };
 
@@ -73,7 +73,8 @@ export default function SaldoPage() {
           <span className="material-icons">arrow_back</span>
         </button>
         <h2>Saldo & Aset</h2>
-        <button className="saldo-btn-icon" onClick={handleHistory}>
+        {/* 🔥 ICON ATAS: Ke Riwayat Mutasi Koin 🔥 */}
+        <button className="saldo-btn-icon" onClick={handleCoinHistory}>
           <span className="material-icons">receipt_long</span>
         </button>
       </header>
@@ -112,9 +113,10 @@ export default function SaldoPage() {
           <span className="material-icons">account_balance_wallet</span>
           <span>Tarik Tunai</span>
         </button>
-        <button className="saldo-action-btn" onClick={handleHistory}>
+        {/* 🔥 TOMBOL TENGAH: Ke Riwayat Penarikan (WD) 🔥 */}
+        <button className="saldo-action-btn" onClick={handleWithdrawHistory}>
           <span className="material-icons">history</span>
-          <span>Riwayat</span>
+          <span>Riwayat WD</span>
         </button>
       </div>
 
@@ -122,14 +124,15 @@ export default function SaldoPage() {
       <h3 className="saldo-section-title">Aset Lainnya</h3>
       <div className="saldo-assets-list">
         
-        <div className="saldo-asset-item">
+        {/* 🔥 Klik item koin juga bisa lari ke riwayat koin 🔥 */}
+        <div className="saldo-asset-item" onClick={handleCoinHistory} style={{ cursor: 'pointer' }}>
           <div className="saldo-asset-info">
             <div className="saldo-asset-icon">
               <span className="material-icons" style={{ color: '#f59e0b' }}>toll</span>
             </div>
             <div className="saldo-asset-text">
               <h4>Koin Hope</h4>
-              <p>Dapat dicairkan ke Rupiah</p>
+              <p>Klik untuk lihat riwayat mutasi</p>
             </div>
           </div>
           <div className="saldo-asset-value">
