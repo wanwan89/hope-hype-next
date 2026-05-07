@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { showNotif } from '@/lib/ui-utils';
+import { showNotif, getUserBadge } from '@/lib/ui-utils'; // 🔥 FIX: Pastikan getUserBadge ke-import
 import * as LiveKit from 'livekit-client';
-import { useTranslation } from 'react-i18next'; // 🔥 i18n Added
+import { useTranslation } from 'react-i18next';
 import MessageBubble, { getStatusIcon } from './MessageBubble';
 import './ChatArea.css';
 
 export default function ChatArea() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useTranslation(); // 🔥 i18n Init
+  const { t } = useTranslation(); 
   
   const fromId = searchParams?.get('from');
   const groupId = searchParams?.get('group');
@@ -19,7 +19,9 @@ export default function ChatArea() {
   const [roomId, setRoomId] = useState('room-1');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [myProfile, setMyProfile] = useState<any>(null);
-  const [headerInfo, setHeaderInfo] = useState({ title: 'HopeTalk Globe', sub: '' });
+  
+  // 🔥 FIX 1: State headerInfo ditambah avatar dan role buat nangkep profil lawan
+  const [headerInfo, setHeaderInfo] = useState({ title: 'HopeTalk Globe', sub: '', avatar: '', role: 'user' });
   const [targetId, setTargetId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -83,13 +85,22 @@ export default function ChatArea() {
     let currentRoom = 'room-1';
     if (groupId) {
       currentRoom = `group_${groupId}`;
-      setHeaderInfo({ title: groupName || "Grup", sub: "Grup" });
+      setHeaderInfo({ title: groupName || "Grup", sub: "Grup", avatar: '', role: 'user' });
     } else if (fromId) {
       const ids = [session.user.id, fromId].sort();
       currentRoom = `pv_${ids[0]}_${ids[1]}`;
       setTargetId(fromId);
-      const { data: pTarget } = await supabase.from('profiles').select('username, short_id').eq('id', fromId).single();
-      if (pTarget) setHeaderInfo({ title: pTarget.username, sub: `#${pTarget.short_id}` });
+      
+      // 🔥 FIX 2: Tarik data avatar_url dan role dari database
+      const { data: pTarget } = await supabase.from('profiles').select('username, short_id, avatar_url, role').eq('id', fromId).single();
+      if (pTarget) {
+        setHeaderInfo({ 
+          title: pTarget.username, 
+          sub: `#${pTarget.short_id}`, 
+          avatar: pTarget.avatar_url, 
+          role: pTarget.role 
+        });
+      }
     }
     setRoomId(currentRoom);
 
@@ -119,7 +130,6 @@ export default function ChatArea() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${room}` }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as any;
-          // Menggunakan `includes` pada teks DB ori agar logic lama tidak rusak, tapi render di UI ditranslate jika cocok.
           if (newMsg.is_system && newMsg.message.includes("📞 Memanggil") && newMsg.user_id !== user.id) handleIncomingCall(newMsg);
           if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) endCall(true);
           
@@ -239,7 +249,6 @@ export default function ChatArea() {
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
     
-    // Tetap insert db dalam text yang diandalkan backend, ntar render di ui yang disesuaikan
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
     
     refs.callTimer.current = setTimeout(async () => {
@@ -317,8 +326,24 @@ export default function ChatArea() {
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
+          
+          {/* 🔥 FIX 3: Tampilkan Avatar di Header KHUSUS Chat Private 🔥 */}
+          {targetId && (
+            <img 
+              src={headerInfo.avatar || '/asets/png/profile.webp'} 
+              alt="avatar" 
+              style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} 
+            />
+          )}
+
           <div className="header-info">
-            <h3>{headerInfo.title}</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {headerInfo.title}
+              {/* 🔥 FIX 4: Tampilkan Badge di Header KHUSUS Chat Private 🔥 */}
+              {targetId && headerInfo.role && (
+                <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />
+              )}
+            </h3>
             <div className="status-container">{typingUser ? <span className="status-typing">{t('typing_status', { username: typingUser.username })}</span> : <span className="status-online">{t('online_status', { count: onlineCount })}</span>}</div>
           </div>
         </div>
@@ -360,12 +385,12 @@ export default function ChatArea() {
           </>
         )}
 
-        {typingUser && (
+        {typingUser && !targetId && ( /* Di private chat ga usah nampilin bubble typing karena udah ada di header */
           <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
-            <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
+            <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{width: '30px', height:'30px', borderRadius:'50%', margin:'0 8px 2px'}} />
             <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="username" style={{ marginBottom: '4px' }}>{typingUser.username}</div>
-              <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 6px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+              <div className="username" style={{ marginBottom: '4px', fontSize:'12.5px', color:'var(--primary-blue)', fontWeight:700 }}>{typingUser.username}</div>
+              <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 4px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                 <div className="typing-bubble" style={{ padding: 0 }}><span></span><span></span><span></span></div>
               </div>
             </div>

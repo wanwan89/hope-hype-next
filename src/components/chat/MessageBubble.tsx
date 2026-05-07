@@ -13,7 +13,7 @@ export const getStatusIcon = (status: string) => {
 };
 
 export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete }: any) {
-  const { t } = useTranslation(); // 🔥 i18n Added
+  const { t } = useTranslation(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
@@ -22,6 +22,9 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const lastTap = useRef(0);
 
   const isDeleted = msg.message === "Pesan ini telah dihapus";
+  
+  // 🔥 CEK TIPE ROOM: Kalau depannya 'pv_', berarti chat private
+  const isPrivateChat = msg.room_id?.startsWith('pv_');
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -89,7 +92,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     }
   };
 
-  // 🔥 Render text yang di-translate kalo pesan dihapus
   const displayMessage = isDeleted ? t('msg_deleted') : msg.message;
 
   return (
@@ -107,15 +109,18 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         <>
           <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
           
-          <div className="content" style={{ display: 'flex', flexDirection: 'column', minWidth: '90px' }}>
-            <div className="username" style={{ marginBottom: '4px' }}>
-              {msg.profiles?.username} 
-              <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
-            </div>
+          <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
+            
+            {/* 🔥 Logika Tampil Username & Badge: Hilang kalau Private Chat 🔥 */}
+            {!isPrivateChat && (
+              <div className="username" style={{ marginBottom: '4px' }}>
+                {msg.profiles?.username} 
+                <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
+              </div>
+            )}
             
             {msg.reply_to_msg && (
               <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${msg.reply_to_msg.id}`)?.scrollIntoView({behavior: 'smooth'})} style={{ marginBottom: '6px', opacity: 0.9 }}>
-                {/* 🔥 i18n Teks Media */}
                 <b>{msg.reply_to_msg.username}</b>: {msg.reply_to_msg.message || t('media_label')}
               </div>
             )}
@@ -148,8 +153,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               </div>
             )}
             
-            <div className="message-info" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px', marginTop: '4px', alignSelf: 'flex-end' }}>
-              <span className="timestamp" style={{ fontSize: '10px', opacity: 0.6 }}>{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+            <div className="message-info">
+              <span className="timestamp">{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
               {isMe && getStatusIcon(msg.status || 'sent')}
             </div>
           </div>
