@@ -81,13 +81,14 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   clearTimeout(toastTimer);
   toast.className = "";
   
+  // 🔥 FIX: Tombol close sekarang bersih dari outline/border bawaan browser
   toast.innerHTML = `
     <div class="toast-icon-wrap ${type}"><div class="toast-icon">${getToastIcon(type)}</div></div>
     <div class="toast-content">
       <div class="toast-title">${title}</div>
       ${message ? `<div class="toast-subtitle">${message}</div>` : ""}
     </div>
-    <button class="toast-close" aria-label="Close">✕</button>
+    <button class="toast-close" aria-label="Close" style="background: transparent; border: none; outline: none; box-shadow: none; cursor: pointer; padding: 5px; -webkit-tap-highlight-color: transparent;">✕</button>
   `;
   
   toast.classList.add("toast-card", type);
@@ -169,7 +170,7 @@ export function createParticles(x: number, y: number) {
 export const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
   const image = new Image();
   image.src = imageSrc;
-  image.setAttribute('crossOrigin', 'anonymous'); // Biar gak error CORS kalo gambar dari URL luar
+  image.setAttribute('crossOrigin', 'anonymous'); 
   
   await new Promise((resolve, reject) => {
     image.onload = resolve;
@@ -205,6 +206,6 @@ export const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<B
         return;
       }
       resolve(blob);
-    }, 'image/jpeg', 0.95); // Kualitas 95% biar gak pecah
+    }, 'image/jpeg', 0.95); 
   });
 };
