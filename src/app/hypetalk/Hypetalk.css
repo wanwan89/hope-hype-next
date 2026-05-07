@@ -31,6 +31,8 @@
   overflow: hidden; 
 }
 
+/* 🔥 FIX: Tambahin [data-theme='dark'] biar sinkron sama next-themes 🔥 */
+[data-theme='dark'] .telegram-wrapper, 
 html.dark .telegram-wrapper {
   --tg-bg: #15171a;
   --tg-bg-secondary: #1f2226;
@@ -157,6 +159,8 @@ html.dark .telegram-wrapper {
 .btn-cari-doi .material-icons { color: var(--tg-primary) !important; }
 
 .limit-badge { background: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
+/* 🔥 FIX: Tambahin [data-theme='dark'] di sini juga 🔥 */
+[data-theme='dark'] .limit-badge,
 html.dark .limit-badge { background: rgba(239,68,68,0.15); }
 
 /* 🔥 FIX: GANTI NAMA CLASS JADI .tg-modal-* 🔥 */

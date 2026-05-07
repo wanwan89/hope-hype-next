@@ -42,6 +42,8 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* 🔥 FIX: Sinkronisasi next-themes 🔥 */
+[data-theme='dark'] .in-voice-room,
 html.dark .in-voice-room {
     --primary: #3b82f6;         
     --primary-soft: rgba(59, 130, 246, 0.2);
@@ -100,6 +102,7 @@ html.dark .in-voice-room {
     margin: 0 auto;
     background-color: var(--bg-base);
     overflow: hidden; 
+    overscroll-behavior: none; /* 🔥 FIX: Anti-Mantul Layar Utama 🔥 */
     z-index: 10;
 }
 .in-voice-room h1, 
@@ -159,6 +162,8 @@ html.dark .in-voice-room {
     display: flex; flex-direction: column; gap: 12px; 
     padding-bottom: 20px; 
     scrollbar-width: none; scroll-behavior: smooth; 
+    -webkit-overflow-scrolling: touch; /* 🔥 FIX: Scroll licin di iOS 🔥 */
+    overscroll-behavior: contain; /* 🔥 FIX: Mentok atas/bawah ga bocor narik background 🔥 */
 }
 .in-voice-room .chat-display::-webkit-scrollbar { display: none; }
 .in-voice-room .msg { background: var(--msg-bg); box-shadow: var(--msg-shadow); border: 1px solid var(--msg-border); border-radius: 18px 18px 18px 4px; padding: 10px 16px; max-width: 85%; font-size: 13.5px; line-height: 1.5; color: var(--text-main); align-self: flex-start; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: chatSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; transform-origin: bottom left; }
@@ -199,11 +204,11 @@ html.dark .in-voice-room {
 .in-voice-room #gift-anim-img { width: 320px !important; max-width: 85% !important; opacity: 0; transform: scale(0); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3)) drop-shadow(0 0 40px rgba(245, 158, 11, 0.6)) !important; animation: giftEpicPopUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important; }
 .in-voice-room #gift-combo-text { text-shadow: 0 4px 0 #d97706, 0 8px 10px rgba(0,0,0,0.4), 0 0 30px rgba(255, 215, 0, 0.9) !important; animation: comboPulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important; }
 
-.in-voice-room .drawer-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 10000; display: none; opacity: 0; transition: opacity 0.3s ease; will-change: opacity; pointer-events: none !important; }
+.in-voice-room .drawer-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 10000; display: none; opacity: 0; transition: opacity 0.3s ease; will-change: opacity; pointer-events: none !important; overscroll-behavior: none; /* 🔥 FIX: Anti-bocor */ }
 .in-voice-room .drawer-overlay.show { display: block; opacity: 1; pointer-events: auto !important; animation: fadeInOverlay 0.3s ease forwards; }
 
 .in-voice-room .gift-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-base); border-top-left-radius: 32px; border-top-right-radius: 32px; z-index: 10001; padding: 24px 20px; padding-top: 32px; padding-bottom: calc(30px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.08); border-top: 1px solid var(--border); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; touch-action: pan-y; }
-html.dark .in-voice-room .gift-drawer { box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4); }
+[data-theme='dark'] .in-voice-room .gift-drawer, html.dark .in-voice-room .gift-drawer { box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4); }
 .in-voice-room .gift-drawer.open { transform: translateY(0); }
 .in-voice-room .handle { width: 48px; height: 5px; background: var(--border); border-radius: 10px; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); }
 
@@ -231,7 +236,7 @@ html.dark .in-voice-room .gift-drawer { box-shadow: 0 -10px 40px rgba(0, 0, 0, 0
 /* ==================================================
    9. MODAL & LEADERBOARD
 ================================================== */
-.in-voice-room .modal-overlay { position: fixed; inset: 0; background: var(--modal-overlay); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 11000; display: none; align-items: center; justify-content: center; opacity: 0; pointer-events: none !important; }
+.in-voice-room .modal-overlay { position: fixed; inset: 0; background: var(--modal-overlay); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 11000; display: none; align-items: center; justify-content: center; opacity: 0; pointer-events: none !important; overscroll-behavior: none; /* 🔥 FIX: Anti-bocor */ }
 .in-voice-room .modal-overlay[style*="display: flex"], .in-voice-room .modal-overlay.show { display: flex; pointer-events: auto !important; animation: fadeInModal 0.3s ease-out forwards; }
 .in-voice-room .modal-box { background: var(--modal-bg); width: 88%; max-width: 380px; border-radius: 28px; padding: 26px 24px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); transform: scale(0.9) translateY(20px); transition: background-color 0.3s ease, border-color 0.3s ease; }
 .in-voice-room .modal-overlay[style*="display: flex"] .modal-box, .in-voice-room .modal-overlay.show .modal-box { animation: scaleUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
@@ -273,6 +278,7 @@ html.dark .in-voice-room .gift-drawer { box-shadow: 0 -10px 40px rgba(0, 0, 0, 0
     backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); 
     z-index: 12000; display: none; opacity: 0; 
     transition: opacity 0.3s ease; 
+    overscroll-behavior: none; /* 🔥 FIX: Anti-bocor */
 }
 .in-voice-room .sidebar-overlay.active { display: block; opacity: 1; pointer-events: auto !important; }
 

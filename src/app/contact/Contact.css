@@ -1,56 +1,88 @@
+/* src/app/contact/Contact.css (atau path file lu) */
+
 .contact-container {
+  /* 🔥 LIGHT MODE (Base Variables) 🔥 */
+  --ct-bg-main: #f9fafb;
+  --ct-bg-card: #ffffff;
+  --ct-text-main: #111827;
+  --ct-text-muted: #6b7280;
+  --ct-border: #e5e7eb;
+  --ct-input-bg: #f9fafb;
+  --ct-input-border: #e5e7eb;
+  --ct-primary: #1DA1F2;
+  --ct-glass: rgba(255, 255, 255, 0.95);
+  --ct-shadow: 0 8px 30px rgba(0,0,0,0.04);
+
   min-height: 100vh;
-  background-color: #f9fafb; 
-  color: #111827; 
+  min-height: 100dvh;
+  background-color: var(--ct-bg-main); 
+  color: var(--ct-text-main); 
   padding-bottom: 80px;
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden; 
   width: 100%;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior: none; /* 🔥 FIX: Anti layar mantul di HP 🔥 */
 }
 
-/* --- HEADER (STICKY FIXED) --- */
+/* 🔥 FIX: SINKRONISASI DARK MODE NEXT-THEMES 🔥 */
+[data-theme='dark'] .contact-container,
+html.dark .contact-container {
+  --ct-bg-main: #0a0a0a;
+  --ct-bg-card: #151515;
+  --ct-text-main: #f8fafc;
+  --ct-text-muted: #9ca3af;
+  --ct-border: rgba(255, 255, 255, 0.08);
+  --ct-input-bg: #1a1a1a;
+  --ct-input-border: rgba(255, 255, 255, 0.1);
+  --ct-glass: rgba(10, 10, 10, 0.85);
+  --ct-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+/* --- HEADER (STICKY FIXED + GLASSMORPHISM) --- */
 .contact-header {
   display: flex;
   align-items: center;
   padding: 16px 20px;
-  /* 🔥 FIX: Tambahin padding atas buat area poni/notch HP */
   padding-top: calc(16px + env(safe-area-inset-top)); 
-  background: rgba(255, 255, 255, 0.95); /* Efek agak transparan dikit */
+  background: var(--ct-glass); 
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid #e5e7eb;
-  position: sticky; /* 🔥 Kunci di atas */
+  border-bottom: 1px solid var(--ct-border);
+  position: sticky; 
   top: 0;
-  z-index: 100; /* Z-index dinaikin biar ga ketimpa konten bawahnya */
-  box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* Tambah shadow tipis biar elegan */
+  z-index: 100; 
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
 }
 
 .back-btn {
   background: none;
   border: none;
-  color: #374151;
+  color: var(--ct-text-main);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
-  margin-left: -6px; /* Geser dikit biar pas */
+  padding: 8px;
+  margin-left: -8px; 
   margin-right: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.back-btn:hover { 
-  color: #111827; 
-  background: #f3f4f6; 
+/* Hover diganti Active biar cocok di HP */
+.back-btn:active { 
+  background: var(--ct-input-bg); 
+  transform: scale(0.9); 
 }
-.back-btn:active { transform: scale(0.9); }
 
 .contact-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.3px;
+  color: var(--ct-text-main);
 }
 
 /* --- CONTENT AREA --- */
@@ -63,23 +95,24 @@
 }
 
 .contact-desc {
-  font-size: 14px; /* Digedein dikit biar gampang dibaca */
-  color: #6b7280;
+  font-size: 14px; 
+  color: var(--ct-text-muted);
   line-height: 1.6;
   margin-bottom: 24px;
   text-align: center;
 }
 
-/* KARTU FORM & INFO (UPGRADED) */
+/* KARTU FORM & INFO */
 .contact-card {
-  background: #ffffff;
-  border-radius: 20px; /* Lengkungan lebih smooth */
+  background: var(--ct-bg-card);
+  border-radius: 20px; 
   padding: 24px;
-  border: 1px solid rgba(229, 231, 235, 0.5); /* Border dihalusin */
+  border: 1px solid var(--ct-border); 
   margin-bottom: 24px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.04); /* Shadow dibikin lebih "melayang" */
+  box-shadow: var(--ct-shadow); 
   width: 100%;
   box-sizing: border-box; 
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .card-title {
@@ -89,38 +122,38 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #111827;
+  color: var(--ct-text-main);
 }
 
 .card-title .material-icons {
-  color: #1DA1F2;
+  color: var(--ct-primary);
   font-size: 22px;
 }
 
-/* FORM STYLE (UPGRADED) */
+/* FORM STYLE */
 .form-group {
-  margin-bottom: 20px; /* Jarak antar input dilonggarin */
+  margin-bottom: 20px; 
   display: flex;
   flex-direction: column;
 }
 
 .form-group label {
   font-size: 12px;
-  color: #4b5563;
+  color: var(--ct-text-muted);
   margin-bottom: 8px;
   font-weight: 600;
-  text-transform: uppercase; /* Bikin label lebih profesional */
+  text-transform: uppercase; 
   letter-spacing: 0.5px;
 }
 
 .form-group input, 
 .form-group select, 
 .form-group textarea {
-  background: #f9fafb;
-  border: 1.5px solid #e5e7eb; /* Border ditebelin dikit */
+  background: var(--ct-input-bg);
+  border: 1.5px solid var(--ct-input-border); 
   border-radius: 12px;
-  padding: 14px 16px; /* Padding dalem digedein biar enak diketik */
-  color: #111827;
+  padding: 14px 16px; 
+  color: var(--ct-text-main);
   font-size: 14px;
   outline: none;
   font-family: inherit;
@@ -132,32 +165,32 @@
 .form-group input:focus, 
 .form-group select:focus, 
 .form-group textarea:focus {
-  border-color: #1DA1F2;
-  box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.1); /* Glow biru pas difokus */
-  background: #ffffff;
+  border-color: var(--ct-primary);
+  box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.15); 
+  background: var(--ct-bg-card);
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: #9ca3af;
+  color: var(--ct-text-muted);
+  opacity: 0.7;
 }
 
-/* FIX: Textarea biar ga bisa ditarik-tarik ukurannya */
 .form-group textarea {
   resize: none; 
 }
 
 .btn-submit {
-  background: #1DA1F2;
+  background: var(--ct-primary);
   color: #ffffff;
   border: none;
-  padding: 16px; /* Tombol digedein dikit */
+  padding: 16px; 
   border-radius: 14px;
   width: 100%;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efek bouncy pas dipencet */
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
   display: flex;
   justify-content: center;
   align-items: center;
@@ -165,20 +198,18 @@
   margin-top: 15px;
   box-sizing: border-box;
   box-shadow: 0 4px 15px rgba(29, 161, 242, 0.3);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.btn-submit:hover { 
-  background: #1a91da; 
-  transform: translateY(-2px);
-}
+/* Hover diganti Active */
 .btn-submit:active { 
-  transform: scale(0.96) translateY(0); 
-  box-shadow: 0 2px 5px rgba(29, 161, 242, 0.3);
+  transform: scale(0.96); 
+  box-shadow: 0 2px 5px rgba(29, 161, 242, 0.2);
 }
 .btn-submit:disabled { 
   opacity: 0.6; 
   pointer-events: none; 
-  background: #9ca3af; 
+  background: var(--ct-text-muted); 
   box-shadow: none;
 }
 
@@ -186,7 +217,7 @@
 .social-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr)); 
-  gap: 12px; /* Gap digedein dikit */
+  gap: 12px; 
   width: 100%;
 }
 
@@ -196,7 +227,7 @@
   justify-content: center;
   gap: 8px;
   padding: 14px 8px;
-  border-radius: 14px; /* Ngikutin border radius tombol utama */
+  border-radius: 14px; 
   text-decoration: none;
   color: #ffffff;
   font-size: 13px;
@@ -207,10 +238,12 @@
   white-space: nowrap; 
   overflow: hidden;
   text-overflow: ellipsis; 
+  -webkit-tap-highlight-color: transparent;
 }
 
 .social-btn:active { transform: scale(0.95); }
 
+/* Warna brand social media tetep fixed */
 .social-btn.ig { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
 .social-btn.tw { background: #000000; }
 .social-btn.wa { background: #25D366; }

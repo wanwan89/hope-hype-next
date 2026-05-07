@@ -1,15 +1,17 @@
 /* src/app/historycoin/HistoryCoin.css */
 
 .history-wrapper {
+  /* 🔥 LIGHT MODE 🔥 */
   --bg-main: #ffffff;
   --text-main: #1c1e21;
   --text-muted: #64748b;
   --border-color: #f1f5f9;
   --bg-secondary: #f8fafc;
   --primary-blue: #007bff;
-  --success: #007bff; /* Disamakan dengan warna biru aksen lu di Astro */
+  --success: #007bff; /* Sesuai warna biru aksen Astro lu */
   --warning: #f08c00;
   --danger: #fa5252;
+  --glass-bg: rgba(255, 255, 255, 0.85);
 
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -22,18 +24,22 @@
   background: var(--bg-main);
   color: var(--text-main);
   overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior: none; /* 🔥 FIX: Anti mantul di HP 🔥 */
 }
 
-/* Dark mode support */
+/* 🔥 FIX: SINKRONISASI DARK MODE NEXT-THEMES 🔥 */
+[data-theme='dark'] .history-wrapper,
 html.dark .history-wrapper {
   --bg-main: #0a0a0a;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
-  --border-color: #262626;
+  --border-color: rgba(255, 255, 255, 0.08); /* Border digelapin biar rapi */
   --bg-secondary: #151515;
+  --glass-bg: rgba(10, 10, 10, 0.85);
 }
 
-/* === HEADER === */
+/* === HEADER (GLASSMORPHISM) === */
 .history-header {
   flex-shrink: 0;
   display: flex;
@@ -41,31 +47,38 @@ html.dark .history-wrapper {
   gap: 16px;
   padding: 16px 20px 12px;
   padding-top: calc(16px + env(safe-area-inset-top));
-  background: var(--bg-main);
+  background: var(--glass-bg); /* 🔥 Efek Kaca 🔥 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
   z-index: 10;
 }
 
 .history-back-btn {
-  background: var(--bg-main);
+  background: transparent; /* Biar lebih nyatu sama glass */
   border: 1px solid var(--border-color);
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-main);
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
-.history-back-btn:active { transform: scale(0.9); }
+.history-back-btn:active { 
+  transform: scale(0.9); 
+  background: var(--border-color);
+}
 
 .history-header h2 {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
   margin: 0;
+  letter-spacing: -0.3px;
 }
 
 /* === LIST AREA === */
@@ -78,7 +91,8 @@ html.dark .history-wrapper {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  -webkit-overflow-scrolling: touch;
+  -webkit-overflow-scrolling: touch; /* 🔥 Scroll licin di iPhone 🔥 */
+  overscroll-behavior: contain; /* 🔥 Mencegah bocor scroll 🔥 */
 }
 .history-list-container::-webkit-scrollbar { display: none; }
 
@@ -91,9 +105,11 @@ html.dark .history-wrapper {
   border-radius: 16px;
   border: 1px solid var(--border-color);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent; /* 🔥 Anti blok biru 🔥 */
 }
 .history-card:active {
   transform: scale(0.98);
+  background: var(--border-color);
 }
 
 .history-info-wrapper {
@@ -122,19 +138,19 @@ html.dark .history-wrapper {
 
 .history-text h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--text-main);
 }
 
 .history-text p {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   font-weight: 600;
 }
 
-/* 🔥 FIX: BADGE STATUS PENARIKAN (VERSI CAPSULE) 🔥 */
+/* 🔥 FIX: BADGE STATUS PENARIKAN (Lebih aman buat Dark Mode) 🔥 */
 .history-status {
   font-size: 10px;
   font-weight: 800;
@@ -147,16 +163,16 @@ html.dark .history-wrapper {
   letter-spacing: 0.5px;
 }
 
-/* Warna sesuai versi Astro lu */
-.history-status.status-pending { background: #fff9db; color: #f08c00; }
-.history-status.status-success { background: #e7f5ff; color: #007bff; }
-.history-status.status-rejected { background: #fff5f5; color: #fa5252; }
+/* Menggunakan RGBA agar warnanya masuk/aman baik di Light maupun Dark Mode */
+.history-status.status-pending { background: rgba(240, 140, 0, 0.1); color: var(--warning); }
+.history-status.status-success { background: rgba(0, 123, 255, 0.1); color: var(--success); }
+.history-status.status-rejected { background: rgba(250, 82, 82, 0.1); color: var(--danger); }
 
 .history-amount-wrapper {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 4px;
 }
 
 .history-amount {

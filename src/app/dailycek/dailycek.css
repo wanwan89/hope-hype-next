@@ -22,9 +22,12 @@
   overflow: hidden; 
   display: flex;
   flex-direction: column;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior: none; /* 🔥 FIX: Anti layar mantul 🔥 */
 }
 
-/* --- DARK MODE --- */
+/* --- 🔥 FIX: SINKRONISASI DARK MODE NEXT-THEMES 🔥 --- */
+[data-theme='dark'] .mission-wrapper,
 html.dark .mission-wrapper { 
   --bg-main: #0a0a0a; 
   --bg-card: #141414; 
@@ -65,8 +68,13 @@ html.dark .mission-wrapper {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
+  margin-left: -8px; /* Kompensasi padding biar posisinya pas */
+  border-radius: 50%;
+  transition: transform 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
+.back-btn:active { transform: scale(0.9); background: var(--border-color); }
 
 .header-title { 
   font-size: 1.05rem; 
@@ -120,6 +128,7 @@ html.dark .mission-wrapper {
   overflow-y: auto; 
   -webkit-overflow-scrolling: touch; /* Biar scroll smooth di iPhone */
   padding-bottom: 20px;
+  overscroll-behavior: contain; /* 🔥 FIX: Cegah bocor narik background 🔥 */
 }
 
 /* 🔥 JURUS ANTI-KEPOTONG: Kasih ruang kosong di paling bawah area scroll 🔥 */
@@ -150,6 +159,7 @@ html.dark .mission-wrapper {
 .streak-days-container { 
   display: flex; gap: 8px; overflow-x: auto; 
   padding-bottom: 10px; scrollbar-width: none; 
+  -webkit-overflow-scrolling: touch;
 }
 .streak-days-container::-webkit-scrollbar { display: none; } 
 
@@ -162,6 +172,7 @@ html.dark .mission-wrapper {
   align-items: center; padding: 10px 4px; 
   transition: all 0.2s ease; 
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .day-card.active { 
@@ -194,10 +205,15 @@ html.dark .mission-wrapper {
 .claim-main-btn { 
   width: 100%; margin-top: 0.5rem; 
   background: linear-gradient(135deg, var(--primary), var(--primary-hover)); 
-  color: #fff; border: none; padding: 12px; 
+  color: #fff; border: none; padding: 14px; 
   border-radius: 12px; font-size: 0.95rem; 
-  font-weight: 800; cursor: pointer; transition: 0.2s; 
+  font-weight: 800; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+  -webkit-tap-highlight-color: transparent;
+}
+.claim-main-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
 }
 .claim-main-btn:disabled { 
   background: var(--bg-main); 
@@ -205,6 +221,7 @@ html.dark .mission-wrapper {
   box-shadow: none;
   border: 1px solid var(--border-color);
   cursor: not-allowed; 
+  transform: none;
 }
 
 /* --- LIST MISI --- */
@@ -265,16 +282,21 @@ html.dark .mission-wrapper {
   padding: 8px 16px; 
   border-radius: 10px; 
   font-size: 0.8rem; font-weight: 800; 
-  cursor: pointer; transition: 0.2s;
+  cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  -webkit-tap-highlight-color: transparent;
 }
-.m-btn:hover { background: var(--border-color); }
+/* 🔥 FIX: Ganti Hover jadi Active untuk Mobile 🔥 */
+.m-btn:active { background: var(--border-color); transform: scale(0.95); }
 
 .m-btn.btn-klaim { 
   background: var(--primary); 
   color: white; border: none; 
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
 }
-.m-btn.btn-klaim:hover { transform: scale(1.02); }
+.m-btn.btn-klaim:active { 
+  transform: scale(0.92); 
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2); 
+}
 
 .m-btn.btn-done { 
   color: #10b981; 
@@ -282,7 +304,8 @@ html.dark .mission-wrapper {
   border-color: transparent; 
   cursor: default; 
 }
-.m-btn.btn-done:hover { background: rgba(16, 185, 129, 0.1); transform: none; }
+.m-btn.btn-done:active { background: rgba(16, 185, 129, 0.1); transform: none; }
+
 .security-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
   z-index: 99999; color: white; display: flex; flex-direction: column; 

@@ -21,6 +21,7 @@
   flex-direction: column;
   padding-bottom: calc(100px + env(safe-area-inset-bottom));
   transition: background-color 0.3s ease;
+  overscroll-behavior: none; /* 🔥 FIX: Anti layar mantul di HP 🔥 */
 }
 
 /* Dark Mode Support */
@@ -49,6 +50,8 @@ html.dark .coin-hist-wrapper {
   border-bottom: 1px solid var(--ch-border);
 }
 
+/* 🔥 FIX: Sinkronisasi Dark Mode Header ke next-themes 🔥 */
+[data-theme='dark'] .coin-hist-header,
 html.dark .coin-hist-header {
   background-color: rgba(10, 10, 10, 0.85);
 }
@@ -73,6 +76,7 @@ html.dark .coin-hist-header {
   color: var(--ch-text-main);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  -webkit-tap-highlight-color: transparent; /* 🔥 FIX: Anti blok biru pas diklik 🔥 */
 }
 
 .coin-hist-back-btn:active {
@@ -140,7 +144,7 @@ html.dark .coin-hist-header {
 .coin-hist-list {
   display: flex;
   flex-direction: column;
-  gap: 12px; /* Jarak antar item dilebarin dikit */
+  gap: 12px; 
 }
 
 .coin-hist-item {
@@ -153,6 +157,7 @@ html.dark .coin-hist-header {
   border-radius: 16px;
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.01);
+  -webkit-tap-highlight-color: transparent; /* 🔥 FIX: Anti blok biru pas diklik 🔥 */
 }
 
 .coin-hist-item:active { 
@@ -197,12 +202,12 @@ html.dark .coin-hist-header {
 
 .coin-hist-trx-amount.plus { 
   color: var(--ch-success); 
-  background-color: rgba(16, 185, 129, 0.1); /* Background ijo transparan */
+  background-color: rgba(16, 185, 129, 0.1); 
 }
 
 .coin-hist-trx-amount.minus { 
   color: var(--ch-danger); 
-  background-color: rgba(239, 68, 68, 0.1); /* Background merah transparan */
+  background-color: rgba(239, 68, 68, 0.1); 
 }
 
 /* --- SKELETON (LOADING HALUS) --- */
