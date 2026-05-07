@@ -3,50 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop'; 
-import { getCroppedImg, showNotif } from '@/lib/ui-utils'; // 🔥 Import helper lu di sini
+import { getCroppedImg, showNotif } from '@/lib/ui-utils'; // 🔥 Fungsi diambil dari sini
 import './PostModal.css';
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
-
-// --- 🔥 HELPER UNTUK PROSES CROP GAMBAR 🔥 ---
-const createImage = (url: string): Promise<HTMLImageElement> =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener('load', () => resolve(image));
-    image.addEventListener('error', (error) => reject(error));
-    image.setAttribute('crossOrigin', 'anonymous');
-    image.src = url;
-  });
-
-const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) throw new Error("No 2d context");
-
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  ctx.drawImage(
-    image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(blob!);
-    }, 'image/jpeg');
-  });
-};
 
 interface PostModalProps {
   onClose: () => void;
@@ -121,6 +82,7 @@ export default function PostModal({ onClose }: PostModalProps) {
   const handleSaveCrop = async () => {
     if (!imageForCrop || !croppedAreaPixels) return;
     try {
+      // Memanggil helper dari ui-utils
       const croppedBlob = await getCroppedImg(imageForCrop, croppedAreaPixels);
       setSelectedFile(croppedBlob);
       setPreviewUrl(URL.createObjectURL(croppedBlob));
@@ -136,7 +98,9 @@ export default function PostModal({ onClose }: PostModalProps) {
       audioRef.current?.pause();
       setPlayingUrl(null);
     } else {
-      if (audioRef.current) audioRef.current.pause();
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
       audioRef.current = new Audio(url);
       audioRef.current.play();
       setPlayingUrl(url);
