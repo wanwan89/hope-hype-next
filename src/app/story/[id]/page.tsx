@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import './Story.css';
 
-// Interface biar TypeScript gak rewel
+// Interface biar TypeScript seneng
 interface Story {
   id: string;
   creator_id: string;
@@ -25,7 +25,7 @@ export default function StoryViewerPage() {
   const params = useParams();
   const router = useRouter();
   
-  // 🔥 FIX 1: TypeScript safe params access (Cegah Error Vercel)
+  // 🔥 FIX 1: TypeScript safe params access
   const storyId = params?.id as string;
 
   const [allUserStories, setAllUserStories] = useState<Story[]>([]);
@@ -38,7 +38,6 @@ export default function StoryViewerPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const STORY_DURATION = 7000;
 
-  // Initial Load
   useEffect(() => {
     if (storyId) {
       initMultiStory();
@@ -48,7 +47,6 @@ export default function StoryViewerPage() {
     };
   }, [storyId]);
 
-  // Logic pindah story: Handle like, audio, dan timer tiap ganti index
   useEffect(() => {
     if (allUserStories.length > 0) {
       const currentStory = allUserStories[currentIndex];
@@ -62,7 +60,6 @@ export default function StoryViewerPage() {
     const { data: { session } } = await supabase.auth.getSession();
     setCurrentUserId(session?.user?.id || null);
 
-    // Cari tahu siapa pemilik story ini
     const { data: initStory } = await supabase
       .from('stories')
       .select('creator_id')
@@ -71,7 +68,6 @@ export default function StoryViewerPage() {
 
     if (!initStory) return router.back();
 
-    // Ambil SEMUA story user tersebut dalam 24 jam terakhir
     const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: stories, error } = await supabase
       .from('stories')
@@ -84,7 +80,6 @@ export default function StoryViewerPage() {
 
     setAllUserStories(stories as any);
     
-    // Set index ke story yang diklik user tadi
     const startIdx = stories.findIndex((s) => s.id === storyId);
     setCurrentIndex(startIdx === -1 ? 0 : startIdx);
     setLoading(false);
@@ -95,9 +90,7 @@ export default function StoryViewerPage() {
       if (story.audio_src) {
         audioRef.current.src = story.audio_src;
         audioRef.current.load();
-        audioRef.current.play().catch(() => {
-          console.log("Autoplay blocked - user must interact");
-        });
+        audioRef.current.play().catch(() => console.log("Audio play blocked"));
       } else {
         audioRef.current.pause();
         audioRef.current.src = "";
@@ -114,7 +107,7 @@ export default function StoryViewerPage() {
     if (currentIndex < allUserStories.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      router.back(); // Story habis, balik ke Home
+      router.back(); 
     }
   };
 
@@ -122,7 +115,7 @@ export default function StoryViewerPage() {
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
     } else {
-      setCurrentIndex(0); // Restart story pertama
+      setCurrentIndex(0); 
     }
   };
 
@@ -138,7 +131,7 @@ export default function StoryViewerPage() {
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!currentUserId) return alert("Login dulu bro!");
+    if (!currentUserId) return;
     
     const sId = allUserStories[currentIndex].id;
     const newLikeStatus = !isLiked;
@@ -158,13 +151,11 @@ export default function StoryViewerPage() {
 
   return (
     <div className="story-full-viewer">
-      {/* Area Tap buat Skip/Back */}
       <div className="tap-area">
         <div className="tap-left" onClick={prevStory}></div>
         <div className="tap-right" onClick={nextStory}></div>
       </div>
 
-      {/* Progress Bars (Gaya IG) */}
       <div className="story-progress-container">
         {allUserStories.map((_, idx) => (
           <div key={idx} className="bar-wrap">
@@ -179,7 +170,6 @@ export default function StoryViewerPage() {
         ))}
       </div>
 
-      {/* Info User (Top) */}
       <div className="story-top-info">
         <div className="story-user">
           <img 
@@ -197,9 +187,12 @@ export default function StoryViewerPage() {
             {currentStory.audio_src && (
               <div className="music-tag">
                 <span className="material-icons" style={{ fontSize: '12px', color: 'white' }}>music_note</span>
-                <marquee scrollamount="3" className="marquee-text">
-                  {currentStory.title || 'Musik Hype'} - {currentStory.artist || 'Unknown'}
-                </marquee>
+                {/* 🔥 FIX 2: Ganti marquee ke CSS scroll modern */}
+                <div className="music-scroll-container">
+                    <div className="music-scroll-text">
+                        {currentStory.title || 'Musik Hype'} — {currentStory.artist || 'Unknown'}
+                    </div>
+                </div>
               </div>
             )}
           </div>
@@ -207,7 +200,6 @@ export default function StoryViewerPage() {
         <button className="close-story" onClick={() => router.back()}>✕</button>
       </div>
 
-      {/* Konten Utama (Gambar atau Teks) */}
       <div className="story-display">
         {currentStory.image_url ? (
           <img src={currentStory.image_url} className="s-img" alt="Story content" />
@@ -216,7 +208,6 @@ export default function StoryViewerPage() {
         )}
       </div>
 
-      {/* Caption & Like (Bottom) */}
       <div className="story-bottom-info">
         <div className="footer-layout">
           <div className="caption-container">
