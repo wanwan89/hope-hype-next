@@ -3,7 +3,7 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development", // PWA mati pas ngoding biar enteng
+  disable: process.env.NODE_ENV === "development",
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
@@ -14,8 +14,8 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // 🔥 FIX: Ini yang bikin Vercel berhenti ngambek soal Turbopack vs Webpack
+  turbopack: {}, 
 };
 
-// Export-nya dibungkus sama PWA
 export default withPWA(nextConfig);
