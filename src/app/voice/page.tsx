@@ -37,7 +37,6 @@ declare global {
     closeConfirmModal?: () => void;
     openTopGiftersModal?: () => void;
     closeTopGiftersModal?: () => void;
-    // Helper animasi biar TS ga marah
     playGiftAnimation?: (giftId: number | string, forcedCombo?: number | null) => void;
   }
   var LivekitClient: any;
@@ -82,7 +81,7 @@ export default function RoomPage() {
     if (chatInput) {
         chatInput.addEventListener('focus', () => {
             const drawer = document.getElementById('room-gift-drawer');
-            // 🔥 FIX VERCEL: Pake Optional Chaining ?.()
+            // 🔥 FIX VERCEL 1: Optional Chaining
             if (drawer && drawer.classList.contains('open')) {
                 window.toggleRoomGiftDrawer?.(); 
             }
@@ -94,7 +93,7 @@ export default function RoomPage() {
         });
     }
 
-    // --- HELPER LOGICS (LEVEL, BADGE, STYLE) ---
+    // --- HELPER LOGICS ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -129,21 +128,15 @@ export default function RoomPage() {
         overlay.id = 'vip-entrance-overlay';
         overlay.className = 'vip-banner-clean';
         
-        let bgStyle = "", textHTML = "";
-        if (level === 4) { 
-            bgStyle = "background: rgba(14, 165, 233, 0.95); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(14, 165, 233, 0.4); backdrop-filter: blur(10px); position: fixed; top: 60%; left: 50%; z-index: 1000000; padding: 12px 28px; border-radius: 12px; color: #fff; width: max-content; transform: translate(-50%, -50%);";
-            textHTML = `<span>SULTAN</span> <b>${username}</b> <span>${t('entering_room')}</span>`;
-        } else { 
-            bgStyle = "background: rgba(225, 29, 72, 0.95); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(225, 29, 72, 0.4); backdrop-filter: blur(10px); position: fixed; top: 60%; left: 50%; z-index: 1000000; padding: 12px 28px; border-radius: 12px; color: #fff; width: max-content; transform: translate(-50%, -50%);";
-            textHTML = `<span>LEGEND</span> <b>${username}</b> <span>${t('entering_room')}</span>`;
-        }
-        overlay.setAttribute('style', bgStyle);
-        overlay.innerHTML = textHTML;
+        const bg = level === 4 ? "rgba(14, 165, 233, 0.95)" : "rgba(225, 29, 72, 0.95)";
+        overlay.setAttribute('style', `background: ${bg}; position: fixed; top: 60%; left: 50%; z-index: 1000000; padding: 12px 28px; border-radius: 12px; color: #fff; width: max-content; transform: translate(-50%, -50%); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.3); backdrop-filter: blur(10px); pointer-events: none;`);
+        
+        const label = level === 4 ? "SULTAN" : "LEGEND";
+        overlay.innerHTML = `<span>${label}</span> <b style="margin: 0 5px;">${username}</b> <span>${t('entering_room')}</span>`;
         document.body.appendChild(overlay);
         setTimeout(() => { if (overlay) overlay.remove(); }, 4000);
     }
 
-    // --- ANIMASI GIFT & COMBO ---
     function playGiftAnimation(giftId: number | string, forcedCombo: number | null = null) {
         const id = typeof giftId === 'string' ? parseInt(giftId) : (giftId || 1);
         const gifPath = `asets/gif/giftvid${id}.gif`; 
@@ -154,7 +147,7 @@ export default function RoomPage() {
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.id = 'gift-anim-overlay';
-            overlay.style.cssText = "position:fixed; inset:0; pointer-events:none; z-index:9999999; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.2);";
+            overlay.style.cssText = "position:fixed; inset:0; pointer-events:none; z-index:9999999; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); transition: opacity 0.3s;";
             document.body.appendChild(overlay);
         }
         overlay.style.display = 'flex';
@@ -170,20 +163,12 @@ export default function RoomPage() {
         giftAnimTimer = setTimeout(() => { if(overlay) overlay.style.display = 'none'; giftComboCount = 0; lastGiftId = null; }, 3000);
     }
 
-    // --- REALTIME PRESENCE & MESSAGES ---
     function listenRealtime() {
         if (!CURRENT_ROOM_ID || !MY_USER_ID) return;
         const roomChannel = sb.channel(`room_active_${CURRENT_ROOM_ID}`, { config: { presence: { key: MY_USER_ID } } });
 
         roomChannel
         .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, () => { fetchStage(); })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p: any) => { 
-            fetchStage(); 
-            if (p.new && p.new.id === MY_USER_ID) {
-                const coinDisplay = document.getElementById('user-coins');
-                if (coinDisplay) coinDisplay.innerText = (p.new.coins || 0).toLocaleString();
-            }
-        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'room_messages', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, (p: any) => {
             const chatBox = document.getElementById('chat-box');
             if (!chatBox) return;
@@ -227,7 +212,6 @@ export default function RoomPage() {
         });
     }
 
-    // --- LEVEL PROGRESS ---
     const LEVEL_THRESHOLDS: Record<number, number> = { 1: 0, 2: 1000, 3: 5000, 4: 20000, 5: 50000 };
     function checkLevelUp(totalGiftSent: number) {
         if (totalGiftSent >= LEVEL_THRESHOLDS[5]) return { level: 5, name: "LEGEND", color: "#FF0055" };
@@ -244,7 +228,7 @@ export default function RoomPage() {
         if (myLevel === 2) { prevTarget = 1000; currentTarget = 5000; currentName = "SUPPORTER"; }
         else if (myLevel === 3) { prevTarget = 5000; currentTarget = 20000; currentName = "PATRON"; }
         else if (myLevel === 4) { prevTarget = 20000; currentTarget = 50000; currentName = "SULTAN"; }
-        else if (myLevel >= 5) { container.innerHTML = `<div style="color: #FF0055; font-weight: bold;">LEVEL MAX (LEGEND)</div>`; return; }
+        else if (myLevel >= 5) { container.innerHTML = `<div style="color: #FF0055; font-weight: bold; text-align:center;">LEVEL MAX (LEGEND)</div>`; return; }
         
         const needed = currentTarget - myTotalGiftSent;
         const percent = Math.min(100, ((myTotalGiftSent - prevTarget) / (currentTarget - prevTarget)) * 100);
@@ -258,7 +242,6 @@ export default function RoomPage() {
             </div>`;
     }
 
-    // --- LOGIKA SAWIR / SEND GIFT ---
     async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah = 1) {
         if (!selectedTargetId) return alert(t('select_target'));
         if (selectedTargetId === MY_USER_ID) return alert(t('gift_self_alert'));
@@ -280,9 +263,7 @@ export default function RoomPage() {
             try {
                 const { data: newTotal, error } = await sb.rpc('transfer_gift', { sender_id: MY_USER_ID, receiver_id: selectedTargetId, amount: finalCoins });
                 if (error) throw error;
-
                 await sb.from('coin_history').insert([{ user_id: MY_USER_ID, transaction_type: 'send_gift', amount: -finalCoins, description: `Kirim ${giftName} x${finalCount} ke ${selectedTargetName}` }]);
-                
                 let lvlData = checkLevelUp(newTotal);
                 if (lvlData.level !== myLevel) {
                     await sb.from('profiles').update({ level: lvlData.level }).eq('id', MY_USER_ID);
@@ -295,7 +276,6 @@ export default function RoomPage() {
         }, 600);
     }
 
-    // --- LEADERBOARD ROOM ---
     async function getRoomLeaderboard() {
         const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
         if (!messages) return [];
@@ -320,14 +300,14 @@ export default function RoomPage() {
         if (!container) return;
         if (top.length === 0) { container.style.display = 'none'; return; }
         container.style.display = 'flex';
-        container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800;">🏆 ${t('top_rank')}</span>`;
+        container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 ${t('top_rank')}</span>`;
         top.slice(0, 3).forEach((u, i) => {
-            container.innerHTML += `<img src="${u.avatar_url || 'asets/png/profile.png'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i};">`;
+            container.innerHTML += `<img src="${u.avatar_url || 'asets/png/profile.png'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222;">`;
         });
-        container.onclick = window.openTopGiftersModal;
+        // 🔥 FIX VERCEL 2: Arrow Wrapper
+        container.onclick = () => window.openTopGiftersModal?.();
     }
 
-    // --- CORE APP INIT ---
     async function initApp() {
         const { data: { session } } = await sb.auth.getSession();
         if (!session) { window.location.href = '/lobby'; return; }
@@ -377,7 +357,7 @@ export default function RoomPage() {
         });
     }
 
-    // --- GLOBAL WINDOW ASSIGNMENTS (WITH SAFE CALLS) ---
+    // --- GLOBAL WINDOW ASSIGNMENTS ---
     window.sendGift = sendGift;
     window.naikKeStage = async (idx) => {
         await sb.from('room_slots').update({ profile_id: MY_USER_ID }).match({ room_id: CURRENT_ROOM_ID, slot_index: idx });
@@ -397,7 +377,6 @@ export default function RoomPage() {
         d?.classList.toggle('open'); o?.classList.toggle('show');
         if (d?.classList.contains('open')) {
             updateLevelProgressUI();
-            // Fetch targets
             sb.from('room_slots').select('profile_id, profiles(username, avatar_url)').eq('room_id', CURRENT_ROOM_ID).not('profile_id', 'is', null).neq('profile_id', MY_USER_ID)
             .then(({data}) => {
                 const tc = document.getElementById('gift-targets');
@@ -405,6 +384,7 @@ export default function RoomPage() {
                 if(!data?.length) { tc.innerHTML = `<span style="font-size:12px; color:#888;">${t('only_you_here')}</span>`; return; }
                 data.forEach((s:any, i) => {
                     const div = document.createElement('div'); div.className = `target-user ${selectedTargetId === s.profile_id ? 'selected' : ''}`;
+                    // 🔥 FIX VERCEL 3: Arrow Wrapper inside loop
                     div.onclick = () => { selectedTargetId = s.profile_id; selectedTargetName = s.profiles.username; window.toggleRoomGiftDrawer?.(); window.toggleRoomGiftDrawer?.(); };
                     div.innerHTML = `<img src="${s.profiles.avatar_url || 'asets/png/profile.png'}" class="target-avatar"><span>${s.profiles.username}</span>`;
                     tc.appendChild(div);
