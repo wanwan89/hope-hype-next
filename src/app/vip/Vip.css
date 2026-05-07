@@ -1,90 +1,211 @@
 .vip-page-container {
   min-height: 100vh;
-  background-color: #121212;
-  color: #fff;
+  background-color: #f9fafb; /* Light background */
+  color: #111827; /* Dark text */
   padding-bottom: 80px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .vip-header {
-  padding: 20px;
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  text-align: center;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   position: sticky;
   top: 0;
   z-index: 50;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
+
+.back-btn {
+  background: none;
+  border: none;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.back-btn:hover { color: #111827; }
 
 .vip-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: #111827;
 }
 
 .section-container {
-  padding: 20px;
+  padding: 24px 20px;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 15px;
-  color: #a1a1aa;
+.section-desc {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 24px;
+  line-height: 1.5;
 }
 
-/* KARTU PRODUK */
-.product-list { display: flex; flex-direction: column; gap: 12px; }
-.product-card { background: #252525; border: 1px solid #333; border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; }
-.product-info-wrapper { display: flex; align-items: center; gap: 15px; flex: 1; }
-.product-icon { font-size: 24px; display: flex; align-items: center; justify-content: center; min-width: 40px; }
-.product-text { display: flex; flex-direction: column; }
-.p-name { color: white; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-.p-price { color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px; }
-.buy-now-btn, .buy-coin-btn { background: #3a7bd5; color: white; border: none; padding: 8px 16px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; transition: transform 0.2s, opacity 0.2s; min-width: 70px; }
-.buy-coin-btn { background: #f7b500; color: #1a1a1a; }
-.buy-now-btn:active, .buy-coin-btn:active { transform: scale(0.95); opacity: 0.8; }
-.buy-now-btn:disabled, .buy-coin-btn:disabled { opacity: 0.5; pointer-events: none; }
-.crown-img { width: 30px; height: 30px; object-fit: contain; display: block; }
+/* KARTU PRODUK VIP */
+.product-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 16px; 
+}
 
-.gold-card { background: linear-gradient(145deg, #2a2200, #1a1500); border-color: #ffd700; }
+.product-card { 
+  background: #ffffff; 
+  border: 1px solid #e5e7eb; 
+  border-radius: 16px; 
+  padding: 18px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  transition: all 0.2s ease; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
 
-/* KOIN CARD KHUSUS */
-.coin-product-card { background: #242429; border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 14px; }
-.coin-product-card .product-icon { width: 38px; height: 38px; border-radius: 10px; background: #2d2d33; }
-.coin-product-card .crown-img { width: 22px; height: 22px; }
+.product-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
 
-/* IKLAN & CUSTOM KOIN */
-.topup-ad-container { margin: 20px 0; border-radius: 14px; overflow: hidden; }
-.topup-ad-img { width: 100%; height: auto; display: block; }
-.custom-topup { background: #242429; padding: 15px; border-radius: 14px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.04); }
-.custom-topup h4 { color: #fff; font-size: 14px; font-weight: 600; margin: 0; }
-.custom-topup input { padding: 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); background: #1a1a1a; color: #fff; font-size: 14px; outline: none; }
-.custom-topup input:focus { border-color: #f7b500; }
-#buy-custom-coin-btn { padding: 10px 16px; border: none; border-radius: 10px; background: #f7b500; color: #1a1a1a; font-size: 13px; font-weight: 700; cursor: pointer; align-self: flex-start; }
+.product-info-wrapper { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  flex: 1; 
+}
+
+.product-icon { 
+  font-size: 24px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  width: 48px;
+  height: 48px;
+  background: #f3f4f6;
+  border-radius: 12px;
+}
+
+.product-text { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px;
+}
+
+.p-name { 
+  color: #111827; 
+  font-weight: 700; 
+  font-size: 15px; 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+}
+
+.p-price { 
+  color: #059669; /* Green for price */
+  font-size: 13px; 
+  font-weight: 600; 
+}
+
+.buy-now-btn { 
+  background: #1DA1F2; /* Modern Blue */
+  color: white; 
+  border: none; 
+  padding: 10px 20px; 
+  border-radius: 99px; /* Pill shape */
+  font-weight: 700; 
+  font-size: 13px; 
+  cursor: pointer; 
+  transition: all 0.2s; 
+  min-width: 80px; 
+}
+
+.buy-now-btn:active { transform: scale(0.95); opacity: 0.9; }
+.buy-now-btn:disabled { opacity: 0.5; pointer-events: none; background: #9ca3af; }
+
+.crown-img { width: 28px; height: 28px; object-fit: contain; }
+
+/* KARTU GOLD KHUSUS */
+.gold-card { 
+  background: linear-gradient(145deg, #fffbeb, #ffffff); 
+  border-color: #fde68a; 
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.15);
+}
+.gold-card .product-icon { background: #fef3c7; }
 
 /* INFO ICON & MODAL */
-.info-icon { color: #9ca3af; cursor: pointer; transition: color 0.2s; flex-shrink: 0; }
-.info-icon:active { color: #4ade80; }
+.info-icon { 
+  color: #9ca3af; 
+  cursor: pointer; 
+  transition: color 0.2s; 
+  flex-shrink: 0; 
+}
+.info-icon:hover, .info-icon:active { color: #1DA1F2; }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 99999; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.modal-overlay { 
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); 
+  z-index: 99999; display: flex; align-items: center; justify-content: center; 
+  opacity: 0; pointer-events: none; transition: opacity 0.3s; 
+}
 .modal-overlay.active { opacity: 1; pointer-events: auto; }
-.info-modal-content { background: linear-gradient(145deg, #2a2d31, #1c1e22); padding: 30px 24px 24px; border-radius: 16px; width: 320px; max-width: 90%; position: relative; text-align: center; transform: translateY(20px); transition: transform 0.3s; border: 1px solid rgba(255,255,255,0.08); }
+
+.info-modal-content { 
+  background: #ffffff; 
+  padding: 30px 24px 24px; 
+  border-radius: 20px; 
+  width: 320px; max-width: 90%; 
+  position: relative; text-align: center; 
+  transform: translateY(20px); transition: transform 0.3s; 
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15); 
+}
 .modal-overlay.active .info-modal-content { transform: translateY(0); }
 
-.close-icon { position: absolute; top: 12px; right: 16px; font-size: 26px; color: #6b7280; cursor: pointer; line-height: 1; }
-.info-icon-showcase { width: 70px; height: 70px; margin: 0 auto 12px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+.close-icon { 
+  position: absolute; top: 16px; right: 20px; font-size: 26px; 
+  color: #6b7280; cursor: pointer; line-height: 1; 
+}
+
+.info-icon-showcase { 
+  width: 70px; height: 70px; margin: 0 auto 16px; 
+  background: #f3f4f6; border-radius: 50%; 
+  display: flex; align-items: center; justify-content: center; 
+}
 .info-icon-showcase img, .info-icon-showcase svg { width: 40px; height: 40px; }
-.premium-title { font-size: 20px; font-weight: 800; margin-bottom: 20px; background: linear-gradient(to right, #ffffff, #d1d5db); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-.premium-benefits-list { text-align: left; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
-.b-item { display: flex; align-items: flex-start; gap: 12px; background: rgba(0,0,0,0.2); padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03); }
-.b-icon { color: #fff; flex-shrink: 0; margin-top: 2px; }
-.b-text { color: #d1d5db; font-size: 13px; line-height: 1.4; }
-.b-text b { color: #fff; display: block; margin-bottom: 2px; }
-.b-highlight { background: linear-gradient(135deg, rgba(58, 123, 213, 0.15), rgba(58, 96, 115, 0.1)); border-color: rgba(58, 123, 213, 0.3); }
-.b-highlight.b-gold { background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1)); border-color: rgba(255, 215, 0, 0.3); }
-.b-highlight .b-text b { color: #4ade80; }
-.b-highlight.b-gold .b-text b { color: #ffd700; }
+.premium-title { 
+  font-size: 20px; font-weight: 800; margin-bottom: 24px; color: #111827; 
+}
 
-.premium-btn { background: linear-gradient(135deg, #4b90ff, #2b7af0); color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: 600; cursor: pointer; }
+.premium-benefits-list { 
+  text-align: left; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; 
+}
+
+.b-item { 
+  display: flex; align-items: flex-start; gap: 12px; 
+  background: #f9fafb; padding: 12px 14px; 
+  border-radius: 12px; border: 1px solid #f3f4f6; 
+}
+
+.b-icon { color: #4b5563; flex-shrink: 0; margin-top: 1px; }
+.b-text { color: #4b5563; font-size: 13px; line-height: 1.4; }
+.b-text b { color: #111827; display: block; margin-bottom: 3px; font-weight: 700; }
+
+.b-highlight { background: #eff6ff; border-color: #bfdbfe; }
+.b-highlight.b-gold { background: #fffbeb; border-color: #fde68a; }
+.b-highlight .b-icon { color: #2563eb; }
+.b-highlight.b-gold .b-icon { color: #d97706; }
+
+.premium-btn { 
+  background: #111827; color: white; border: none; padding: 14px; 
+  border-radius: 12px; width: 100%; font-weight: 600; font-size: 14px; 
+  cursor: pointer; transition: opacity 0.2s; 
+}
+.premium-btn:active { opacity: 0.8; }
