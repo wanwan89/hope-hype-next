@@ -7,15 +7,14 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  swcMinify: true,
+  // 🔥 FIX: swcMinify udah dihapus dari sini karena bukan properti PWA
   workboxOptions: {
     disableDevLogs: true,
   },
 });
 
 const nextConfig: NextConfig = {
-  // 🔥 FIX: Ini yang bikin Vercel berhenti ngambek soal Turbopack vs Webpack
-  turbopack: {}, 
+  turbopack: {}, // 🔥 Tetap biarin ini biar Turbopack gak ngambek
 };
 
 export default withPWA(nextConfig);
