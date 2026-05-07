@@ -14,12 +14,16 @@
   --tg-primary: #1DA1F2;
   --tg-hover: #f9fafb;
 
-  /* 🔥 FIX BENTROK LAYOUT: Hapus fixed & 100dvh, ganti pake relative & 100% 🔥 */
-  position: relative; 
-  margin: 0 auto; /* Supaya tetep di tengah secara otomatis */
+  /* 🔥 FIX STRUKTUR: Biar nempel dari ujung ke ujung 🔥 */
+  position: absolute; /* Ganti dari relative biar dia ngisi penuh induknya */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 auto; 
   width: 100%; 
   max-width: 480px; 
-  height: 100%; /* Mengisi penuh tinggi main container dari layout.tsx */
+  height: 100%; 
   display: flex; 
   flex-direction: column; 
   background: var(--tg-bg); 
@@ -69,8 +73,8 @@ html.dark .telegram-wrapper {
 .tg-chat-list { 
   flex: 1; 
   overflow-y: auto; 
-  /* 🔥 FIX: Padding bawah ditambah Safe Area biar list ga ketutup bar iPhone 🔥 */
-  padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
+  /* 🔥 FIX PADDING: Kita biarin 110px supaya chat terakhir nggak ketutupan Navbar Bawah 🔥 */
+  padding-bottom: 110px; 
   -webkit-overflow-scrolling: touch; 
 }
 .tg-chat-list::-webkit-scrollbar { width: 0; display: none; } 
@@ -92,8 +96,12 @@ html.dark .telegram-wrapper {
 .tg-unread-badge { background: var(--tg-primary); color: white; font-size: 11px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 6px; flex-shrink: 0; transition: all 0.3s ease; }
 .tg-unread-badge.bump { animation: badgeBounce 0.4s ease; }
 
+/* 🔥 FIX FAB (Tombol Biru Buat Chat): Nangkring di atas Navbar 🔥 */
 .tg-fab { 
-  position: absolute; bottom: max(30px, env(safe-area-inset-bottom) + 30px); right: 20px; 
+  position: absolute; 
+  /* Jaraknya dinaikin dikit biar gak numpuk sama Navbar 65px */
+  bottom: calc(95px + env(safe-area-inset-bottom)); 
+  right: 20px; 
   width: 56px; height: 56px; border-radius: 50%; background: var(--tg-primary); border: none; color: white; 
   box-shadow: 0 4px 14px rgba(29, 161, 242, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; 
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50; 
