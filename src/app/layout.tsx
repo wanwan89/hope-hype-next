@@ -32,10 +32,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const root = document.documentElement;
     const body = document.body;
 
+    // Warna dasar tema lu (Ganti ke #0a0a0a kalo lagi Dark Mode)
+    const themeColor = '#ffffff'; 
+
     if (isStandaloneApp) {
       // Paksa html & body setinggi layar HP murni (dvh)
       root.style.height = '100dvh';
       root.style.overflow = 'hidden';
+      root.style.backgroundColor = themeColor; // 🔥 Sikat garis hitam di level root
       
       body.style.height = '100dvh';
       body.style.overflow = 'hidden';
@@ -43,17 +47,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.width = '100%';
       body.style.top = '0';
       body.style.left = '0';
-      // Matikan efek tarik-tarikan layar (overscroll)
-      body.style.overscrollBehaviorY = 'none';
+      body.style.backgroundColor = themeColor;
+      body.style.overscrollBehaviorY = 'none'; // Kunci mental layar
     } else {
       // Reset total pas pindah ke halaman lain
       root.style.height = 'auto';
       root.style.overflow = 'visible';
+      root.style.backgroundColor = '';
       
       body.style.overflow = 'auto';
       body.style.height = 'auto';
       body.style.position = 'static';
       body.style.width = 'auto';
+      body.style.backgroundColor = '';
       body.style.overscrollBehaviorY = 'auto';
       
       const voiceTrash = [
@@ -64,7 +70,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       voiceTrash.forEach(id => document.getElementById(id)?.remove());
     }
 
-    // CLEANUP SAAT PINDAH HALAMAN
     return () => {
       root.style.height = 'auto';
       body.style.position = 'static';
@@ -74,29 +79,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, [pathname, isStandaloneApp]); 
 
   return (
-    <html lang="id">
+    <html lang="id" style={{ overflowX: 'hidden' }}>
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
+        {/* 🔥 Meta tag biar warna bar browser sinkron 🔥 */}
+        <meta name="theme-color" content="#ffffff" />
       </head>
       <body 
-        className={`bg-black text-white antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
+        // 🔥 Ganti bg-black jadi bg-white biar celah render gak keliatan item 🔥
+        className={`bg-white text-slate-900 antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
       >
         
         {!hideSidebar && <Sidebar />}
         
         <div 
-          className="layout-wrapper" 
+          className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}
           style={{ 
             display: 'flex', 
             flexDirection: 'column', 
-            // 🔥 Gunakan dvh agar tinggi wrapper presisi biarpun address bar muncul/hilang
             height: isStandaloneApp ? '100dvh' : 'auto',
             minHeight: '100dvh',
             width: '100%',
             overflow: isStandaloneApp ? 'hidden' : 'visible',
-            position: 'relative'
+            position: 'relative',
+            backgroundColor: 'inherit'
           }}
         >
           
@@ -113,7 +121,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               display: isStandaloneApp ? 'flex' : 'block',
               flexDirection: 'column',
               overflow: isStandaloneApp ? 'hidden' : 'visible',
-              height: isStandaloneApp ? '100%' : 'auto'
+              height: isStandaloneApp ? '100%' : 'auto',
+              width: '100%'
             }}
           >
             {children}
