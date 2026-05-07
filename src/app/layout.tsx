@@ -1,7 +1,7 @@
 'use client'; 
 
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react'; 
+import { useEffect, useLayoutEffect } from 'react'; 
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -9,10 +9,13 @@ import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar"; 
 
+// 🔥 JURUS RAHASIA: Pake LayoutEffect biar DOM keriset sebelum layar dirender (Anti Kedip/Glitch)
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Identifikasi Halaman (Logic asli lu tetap terjaga)
+  // 1. Identifikasi Halaman
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
@@ -27,12 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp;
   const hideOverlays = isVoicePage;
 
-  // 2. 🔥 JURUS PAMUNGKAS: ANTI GARIS HITAM, KEDIP MODAL, & CLEANUP 🔥
-  useEffect(() => {
+  // 2. 🔥 EKSEKUSI SEBELUM PAINT: Mencegah layout tabrakan pas pindah halaman 🔥
+  useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
 
-    // 🔥 FIX UTAMA: Warna dasar aplikasi lu. Ganti ke #ffffff biar garis hitam ilang.
     const primaryBg = '#ffffff'; 
 
     if (isStandaloneApp) {
@@ -48,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.top = '0';
       body.style.left = '0';
       body.style.backgroundColor = primaryBg;
-      body.style.overscrollBehaviorY = 'none'; // Kunci biar gak bisa ditarik nembus background
+      body.style.overscrollBehaviorY = 'none'; 
     } else {
       // Mode Web Normal: Reset semua gaya biar scroll lancar
       root.style.height = 'auto';
@@ -62,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.backgroundColor = primaryBg;
       body.style.overscrollBehaviorY = 'auto';
       
-      // Cleanup sampah Voice Room biar gak memory leak
+      // Cleanup sampah Voice Room
       const voiceTrash = [
         'room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 
         'vip-entrance-overlay', 'vip-anim-styles-clean'
@@ -70,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       voiceTrash.forEach(id => document.getElementById(id)?.remove());
     }
 
-    // 🔥 FIX KEDIP MODAL: Paksa scroll ke paling atas tiap ganti rute
+    // Paksa scroll ke paling atas tiap ganti rute
     window.scrollTo(0, 0);
 
     return () => {
@@ -86,12 +88,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
-        {/* 🔥 FIX VIEWPORT: Maksa konten isi seluruh layar aman HP 🔥 */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body 
-        // 🔥 Ganti bg-black jadi bg-white biar transisi render gak nampilin item 🔥
         className={`bg-white text-slate-900 antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
       >
@@ -108,7 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             width: '100%',
             overflow: isStandaloneApp ? 'hidden' : 'visible',
             position: 'relative',
-            backgroundColor: 'inherit' // Rantai warna dari body
+            backgroundColor: 'inherit' 
           }}
         >
           
