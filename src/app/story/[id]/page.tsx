@@ -5,12 +5,30 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import './Story.css';
 
+// Interface biar TypeScript gak rewel
+interface Story {
+  id: string;
+  creator_id: string;
+  image_url?: string;
+  content?: string;
+  audio_src?: string;
+  title?: string;
+  artist?: string;
+  created_at: string;
+  profiles: {
+    username: string;
+    avatar_url: string;
+  };
+}
+
 export default function StoryViewerPage() {
   const params = useParams();
   const router = useRouter();
-  const storyId = params.id;
+  
+  // 🔥 FIX 1: TypeScript safe params access (Cegah Error Vercel)
+  const storyId = params?.id as string;
 
-  const [allUserStories, setAllUserStories] = useState<any[]>([]);
+  const [allUserStories, setAllUserStories] = useState<Story[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(false);
@@ -20,19 +38,23 @@ export default function StoryViewerPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const STORY_DURATION = 7000;
 
+  // Initial Load
   useEffect(() => {
-    initMultiStory();
+    if (storyId) {
+      initMultiStory();
+    }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [storyId]);
 
-  // Handle pindah story otomatis
+  // Logic pindah story: Handle like, audio, dan timer tiap ganti index
   useEffect(() => {
     if (allUserStories.length > 0) {
-      checkIfLiked(allUserStories[currentIndex].id);
+      const currentStory = allUserStories[currentIndex];
+      checkIfLiked(currentStory.id);
+      handleAudio(currentStory);
       resetTimer();
-      handleAudio();
     }
   }, [currentIndex, allUserStories]);
 
@@ -40,32 +62,42 @@ export default function StoryViewerPage() {
     const { data: { session } } = await supabase.auth.getSession();
     setCurrentUserId(session?.user?.id || null);
 
-    const { data: initStory } = await supabase.from('stories').select('creator_id').eq('id', storyId).single();
+    // Cari tahu siapa pemilik story ini
+    const { data: initStory } = await supabase
+      .from('stories')
+      .select('creator_id')
+      .eq('id', storyId)
+      .single();
+
     if (!initStory) return router.back();
 
+    // Ambil SEMUA story user tersebut dalam 24 jam terakhir
     const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: stories } = await supabase
+    const { data: stories, error } = await supabase
       .from('stories')
       .select('*, profiles(username, avatar_url)')
       .eq('creator_id', initStory.creator_id)
       .gte('created_at', timeLimit)
       .order('created_at', { ascending: true });
 
-    if (stories && stories.length > 0) {
-      setAllUserStories(stories);
-      const startIdx = stories.findIndex((s: any) => s.id === storyId);
-      setCurrentIndex(startIdx === -1 ? 0 : startIdx);
-    }
+    if (error || !stories || stories.length === 0) return router.back();
+
+    setAllUserStories(stories as any);
+    
+    // Set index ke story yang diklik user tadi
+    const startIdx = stories.findIndex((s) => s.id === storyId);
+    setCurrentIndex(startIdx === -1 ? 0 : startIdx);
     setLoading(false);
   }
 
-  const handleAudio = () => {
-    const story = allUserStories[currentIndex];
+  const handleAudio = (story: Story) => {
     if (audioRef.current) {
       if (story.audio_src) {
         audioRef.current.src = story.audio_src;
         audioRef.current.load();
-        audioRef.current.play().catch(() => console.log("Audio autoplay blocked"));
+        audioRef.current.play().catch(() => {
+          console.log("Autoplay blocked - user must interact");
+        });
       } else {
         audioRef.current.pause();
         audioRef.current.src = "";
@@ -82,7 +114,7 @@ export default function StoryViewerPage() {
     if (currentIndex < allUserStories.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      router.back();
+      router.back(); // Story habis, balik ke Home
     }
   };
 
@@ -90,13 +122,17 @@ export default function StoryViewerPage() {
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
     } else {
-      setCurrentIndex(0);
+      setCurrentIndex(0); // Restart story pertama
     }
   };
 
   async function checkIfLiked(sId: string) {
     if (!currentUserId) return;
-    const { data } = await supabase.from('story_likes').select('id').match({ story_id: sId, user_id: currentUserId }).single();
+    const { data } = await supabase
+      .from('story_likes')
+      .select('id')
+      .match({ story_id: sId, user_id: currentUserId })
+      .single();
     setIsLiked(!!data);
   }
 
@@ -122,13 +158,13 @@ export default function StoryViewerPage() {
 
   return (
     <div className="story-full-viewer">
-      {/* Tap Areas */}
+      {/* Area Tap buat Skip/Back */}
       <div className="tap-area">
         <div className="tap-left" onClick={prevStory}></div>
         <div className="tap-right" onClick={nextStory}></div>
       </div>
 
-      {/* Progress Bars */}
+      {/* Progress Bars (Gaya IG) */}
       <div className="story-progress-container">
         {allUserStories.map((_, idx) => (
           <div key={idx} className="bar-wrap">
@@ -143,34 +179,35 @@ export default function StoryViewerPage() {
         ))}
       </div>
 
-      {/* Header Info */}
+      {/* Info User (Top) */}
       <div className="story-top-info">
         <div className="story-user">
           <img 
-            src={currentStory.profiles.avatar_url || `https://ui-avatars.com/api/?name=${currentStory.profiles.username}`} 
+            src={currentStory.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${currentStory.profiles?.username}`} 
             className="s-avatar" 
+            alt="profile"
           />
           <div className="user-meta">
             <div className="user-meta-top">
-              <span id="storyUser">{currentStory.profiles.username}</span>
+              <span id="storyUser">{currentStory.profiles?.username}</span>
               <span className="story-time">
                 {new Date(currentStory.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
             {currentStory.audio_src && (
               <div className="music-tag">
-                <span className="material-icons" style={{ fontSize: '12px' }}>music_note</span>
+                <span className="material-icons" style={{ fontSize: '12px', color: 'white' }}>music_note</span>
                 <marquee scrollamount="3" className="marquee-text">
-                  {currentStory.title || 'Untitled'} - {currentStory.artist || 'Unknown'}
+                  {currentStory.title || 'Musik Hype'} - {currentStory.artist || 'Unknown'}
                 </marquee>
               </div>
             )}
           </div>
         </div>
-        <button className="close-story" onClick={() => router.back()}>×</button>
+        <button className="close-story" onClick={() => router.back()}>✕</button>
       </div>
 
-      {/* Media Display */}
+      {/* Konten Utama (Gambar atau Teks) */}
       <div className="story-display">
         {currentStory.image_url ? (
           <img src={currentStory.image_url} className="s-img" alt="Story content" />
@@ -179,7 +216,7 @@ export default function StoryViewerPage() {
         )}
       </div>
 
-      {/* Footer Info */}
+      {/* Caption & Like (Bottom) */}
       <div className="story-bottom-info">
         <div className="footer-layout">
           <div className="caption-container">
