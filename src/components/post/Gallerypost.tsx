@@ -12,7 +12,6 @@ export default function Gallerypost() {
   
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
-  // 🔥 FIX 1: Tambah state untuk Simpan (Bookmarks) 🔥
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number }>>({});
   
@@ -72,7 +71,6 @@ export default function Gallerypost() {
         if (userObj) {
           const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
-          // 🔥 FIX 2: Ambil data simpanan dari db 🔥
           const { data: mySaves } = await supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           
           setMyLikedPosts(new Set(myLikes?.map(l => String(l.post_id))));
@@ -86,7 +84,7 @@ export default function Gallerypost() {
 
       setTimeout(() => {
         if (window.location.hash) {
-          const hashId = window.location.hash.substring(1); // ambil 'post-123'
+          const hashId = window.location.hash.substring(1);
           const targetEl = document.getElementById(hashId);
           if (targetEl) {
             targetEl.style.transition = 'box-shadow 0.5s ease';
@@ -178,7 +176,6 @@ export default function Gallerypost() {
     }
   };
 
-  // 🔥 FIX 3: Tambah logic Handle Save (Bookmark) 🔥
   const handleSave = async (postId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isSaved = mySavedPosts.has(postId);
@@ -193,10 +190,10 @@ export default function Gallerypost() {
     try {
       if (isSaved) {
         await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
-        showNotif("Dihapus dari simpanan", "info");
+        // Toast dihapus sesuai request
       } else {
         await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
-        showNotif("Berhasil disimpan!", "success");
+        // Toast dihapus sesuai request
       }
     } catch (err) {
       console.error("Save Error:", err);
@@ -256,17 +253,21 @@ export default function Gallerypost() {
 
   const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
-      {/* 🔥 FIX 4: Ganti tombol Gift jadi tombol Simpan 🔥 */}
+      {/* 🔥 FIX: Tombol Simpan berubah outline/filled & warna */}
       <button className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} onClick={() => handleSave(postIdStr)}>
-        <svg viewBox="0 0 24 24" className="icon" fill={mySavedPosts.has(postIdStr) ? "var(--primary-blue, #1DA1F2)" : "currentColor"}>
-          <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+        <svg viewBox="0 0 24 24" className="icon" fill={mySavedPosts.has(postIdStr) ? "#1DA1F2" : "currentColor"}>
+          {mySavedPosts.has(postIdStr) ? (
+            <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
+          ) : (
+            <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />
+          )}
         </svg>
       </button>
       
-      {/* 🔥 FIX 5: Icon repost diubah jadi lebih oke 🔥 */}
+      {/* 🔥 FIX: Icon repost diganti ke model standar modern */}
       <button className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} onClick={() => handleRepost(postIdStr)}>
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor">
-          <path d="M19.5,7.06c-0.29,0.29-0.29,0.77,0,1.06L21.44,10H6.5c-1.93,0-3.5,1.57-3.5,3.5v3c0,0.41,0.34,0.75,0.75,0.75s0.75-0.34,0.75-0.75v-3 c0-1.1,0.9-2,2-2h14.94l-1.94,1.88c-0.29,0.29-0.29,0.77,0,1.06c0.29,0.29,0.77,0.29,1.06,0l3.25-3.15c0.29-0.29,0.29-0.77,0-1.06 l-3.25-3.15C20.27,6.77,19.79,6.77,19.5,7.06z M23.25,6.5c-0.41,0-0.75,0.34-0.75,0.75v3c0,1.1-0.9,2-2,2H5.56l1.94-1.88 c0.29-0.29,0.29-0.77,0-1.06c-0.29-0.29-0.77-0.29-1.06,0L3.19,12.47c-0.29,0.29-0.29,0.77,0,1.06l3.25,3.15 c0.29,0.29,0.77,0.29,1.06,0c0.29-0.29,0.29-0.77,0-1.06L5.56,13.75H20.5c1.93,0,3.5-1.57,3.5-3.5v-3 C24,6.84,23.66,6.5,23.25,6.5z"/>
+          <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
         </svg>
         <span className="repost-count">{counts[postIdStr]?.reposts || 0}</span>
       </button>
@@ -287,7 +288,6 @@ export default function Gallerypost() {
     <section>
       <div className="gallery" id="mainGallery">
         {isLoading ? (
-          // 🔥 FIX: NAMA CLASS SKELETON DIGANTI JADI gallery-skeleton-* 🔥
           <div className="gallery-skeleton-wrapper">
             <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer"></div></div>
             <div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer"></div></div>

@@ -22,6 +22,7 @@ export default function GiftSheetpost() {
   const [targetPost, setTargetPost] = useState({ id: '', creatorId: '', creatorName: '' });
 
   useEffect(() => {
+    // Listener aslinya buat di gallery (sebelum dipindah)
     const handleGiftOpen = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const btn = target.closest(".gift-btn") as HTMLElement;
@@ -50,6 +51,35 @@ export default function GiftSheetpost() {
 
     document.body.addEventListener("click", handleGiftOpen);
     return () => document.body.removeEventListener("click", handleGiftOpen);
+  }, []);
+
+  // 🔥 LISTENER BARU (DARI COMMENT MODAL) 🔥
+  useEffect(() => {
+    const handleOpenFromComment = async (e: any) => {
+      const { creatorId, postId } = e.detail;
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
+      
+      if (session.user.id === creatorId) {
+        if ((window as any).showNotif) (window as any).showNotif("Tidak bisa memberi ke diri sendiri", "warning");
+        return;
+      }
+
+      setTargetPost({
+        id: postId,
+        creatorId: creatorId,
+        creatorName: 'Kreator' // Bisa dibikin fetch kalau butuh namanya persis
+      });
+
+      const { data: prof } = await supabase.from("profiles").select("coins").eq("id", session.user.id).single();
+      setUserCoins(prof?.coins || 0);
+      setIsActive(true);
+      document.body.style.overflow = "hidden";
+    };
+
+    window.addEventListener("openGift", handleOpenFromComment);
+    return () => window.removeEventListener("openGift", handleOpenFromComment);
   }, []);
 
   const closeSheet = () => {
@@ -94,7 +124,7 @@ export default function GiftSheetpost() {
         ])
       ]);
 
-      // 3. Notifikasi
+      // 3. Notifikasi standar gift
       const { data: sProf } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
       await supabase.from("notifications").insert({ 
         user_id: targetPost.creatorId, 
@@ -104,7 +134,17 @@ export default function GiftSheetpost() {
         message: `<b>${sProf?.username}</b> mengirim ${selectedGift.amount} koin ke karyamu.` 
       });
 
-      // 4. Success UI
+      // 🔥 4. TRIGGER INSERT KOMENTAR GIFT 🔥
+      window.dispatchEvent(new CustomEvent('insertGiftComment', {
+        detail: {
+          postId: targetPost.id,
+          giftName: selectedGift.name,
+          giftImg: selectedGift.img,
+          creatorId: targetPost.creatorId
+        }
+      }));
+
+      // 5. Success UI
       setUserCoins(prev => prev - selectedGift.amount);
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
       
