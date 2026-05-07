@@ -55,9 +55,11 @@ export default function SaldoPage() {
     router.push('/voice'); 
   };
 
-  const handleWithdraw = () => {
-    showNotif("Fitur penarikan sedang dalam pengembangan", "info");
+    const handleWithdraw = () => {
+    // 🔥 FIX: Arahkan ke route withdraw yang udah kita buat
+    router.push('/saldo/withdraw'); 
   };
+
 
   const handleHistory = () => {
     router.push('/historycoin');
