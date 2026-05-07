@@ -26,8 +26,6 @@ function ProfileContent() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // 🔥 FIX: Tambahkan 'useState' yang tadi ketinggalan 🔥
   const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '' });
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -45,7 +43,6 @@ function ProfileContent() {
     setIsMounted(true);
     setIsEditModalOpen(false);
     setIsSidebarOpen(false);
-
     return () => {
       setIsEditModalOpen(false);
       setIsSidebarOpen(false);
@@ -106,26 +103,62 @@ function ProfileContent() {
     }
   };
 
+  // 🔥 FIX LOGIKA TAB: Mencegah data nyangkut dan memvalidasi relasi tabel 🔥
   const loadPostsTab = async (type: string) => {
     if (!profile) return;
     setIsLoadingPosts(true);
-    setPosts([]);
+    setPosts([]); // Reset state setiap ganti tab
+
     try {
-      const table = type === 'repost' ? 'reposts' : type === 'like' ? 'likes' : null;
       if (type === 'foto') {
-        const { data } = await supabase.from('posts').select('id, image_url').eq('creator_id', profile.id).eq('status', 'approved').order('created_at', { ascending: false });
+        const { data } = await supabase
+          .from('posts')
+          .select('id, image_url')
+          .eq('creator_id', profile.id)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false });
         setPosts(data || []);
-      } else if (type === 'musik') {
-        const { data } = await supabase.from('songs').select('id, cover_url').eq('artist', profile.username).order('created_at', { ascending: false });
+      } 
+      
+      else if (type === 'musik') {
+        // Filter musik berdasarkan user_id (atau username sebagai artist)
+        const { data } = await supabase
+          .from('songs')
+          .select('id, cover_url')
+          .eq('artist', profile.username) 
+          .order('created_at', { ascending: false });
         setPosts(data ? data.map(s => ({ id: s.id, image_url: s.cover_url })) : []);
-      } else if (table) {
-        const { data: rels } = await supabase.from(table).select('post_id').eq('user_id', profile.id);
+      } 
+      
+      else if (type === 'repost' || type === 'like') {
+        const tableName = type === 'repost' ? 'reposts' : 'likes';
+        
+        // 1. Ambil list ID postingan dari tabel relasi
+        const { data: rels } = await supabase
+          .from(tableName)
+          .select('post_id')
+          .eq('user_id', profile.id);
+
         if (rels && rels.length > 0) {
-           const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', rels.map(r => r.post_id)).eq('status', 'approved');
-           setPosts(pData || []);
+          const postIds = rels.map(r => r.post_id);
+          // 2. Ambil data postingan aslinya
+          const { data: pData } = await supabase
+            .from('posts')
+            .select('id, image_url')
+            .in('id', postIds)
+            .eq('status', 'approved');
+          
+          setPosts(pData || []);
+        } else {
+          setPosts([]); // Pastikan kosong kalau gak ada relasi
         }
       }
-    } catch (err) { console.error(err); } finally { setIsLoadingPosts(false); }
+    } catch (err) { 
+      console.error("Tab Load Error:", err);
+      setPosts([]);
+    } finally { 
+      setIsLoadingPosts(false); 
+    }
   };
 
   const handleShareProfile = async () => {
@@ -314,8 +347,9 @@ function ProfileContent() {
            <div className="menu-text">Riwayat Transaksi</div>
            <div className="arrow-right">›</div>
         </div>
+        {/* 🔥 FIX ICON: Diamond lebih premium 🔥 */}
         <div className="menu-item-tiktok" onClick={() => navTo('/vip')}>
-           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">workspace_premium</span></div>
+           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div>
            <div className="menu-text">Langganan VIP</div>
            <div className="arrow-right">›</div>
         </div>
@@ -333,6 +367,12 @@ function ProfileContent() {
         <div className="menu-item-tiktok" onClick={() => navTo('/settings')}>
            <div className="icon-wrapper"><span className="material-icons">settings</span></div>
            <div className="menu-text">Pengaturan</div>
+           <div className="arrow-right">›</div>
+        </div>
+        {/* 🔥 MENU BARU: Contact Us 🔥 */}
+        <div className="menu-item-tiktok" onClick={() => navTo('/contact')}>
+           <div className="icon-wrapper"><span className="material-icons">support_agent</span></div>
+           <div className="menu-text">Hubungi Kami</div>
            <div className="arrow-right">›</div>
         </div>
         <div className="menu-item-tiktok" onClick={handleShareProfile}>
