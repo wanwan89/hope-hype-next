@@ -38,16 +38,12 @@ function ProfileContent() {
   const [isFollowLoading, setIsFollowLoading] = useState(false);
 
   const avatarPresets = [
-    '/asets/png/avatar1.png',
-    '/asets/png/avatar2.png',
-    '/asets/png/avatar3.png',
-    '/asets/png/avatar4.png'
+    '/asets/png/avatar1.png', '/asets/png/avatar2.png',
+    '/asets/png/avatar3.png', '/asets/png/avatar4.png'
   ];
 
   useEffect(() => {
     setIsMounted(true);
-    setIsEditModalOpen(false);
-    setIsSidebarOpen(false);
     return () => {
       setIsEditModalOpen(false);
       setIsSidebarOpen(false);
@@ -108,7 +104,7 @@ function ProfileContent() {
     }
   };
 
-  // 🔥 FIX LOGIKA TAB: Mendukung Like, Repost, dan Navigasi Post 🔥
+  // 🔥 FIX: Sinkronisasi Tab Like/Repost & Reset State 🔥
   const loadPostsTab = async (type: string) => {
     if (!profile) return;
     setIsLoadingPosts(true);
@@ -125,37 +121,26 @@ function ProfileContent() {
         setPosts(data || []);
       } 
       else if (type === 'simpan') {
-        const { data: saves } = await supabase
-          .from('bookmarks') 
-          .select('post_id')
-          .eq('user_id', profile.id);
-
+        const { data: saves } = await supabase.from('bookmarks').select('post_id').eq('user_id', profile.id);
         if (saves && saves.length > 0) {
-          const postIds = saves.map(s => s.post_id);
-          const { data: pData } = await supabase
-            .from('posts')
-            .select('id, image_url')
-            .in('id', postIds)
-            .eq('status', 'approved');
+          const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', saves.map((s: any) => s.post_id)).eq('status', 'approved');
           setPosts(pData || []);
-        } else { setPosts([]); }
+        }
       } 
       else if (type === 'repost' || type === 'like') {
         const tableName = type === 'repost' ? 'reposts' : 'likes';
-        const { data: rels } = await supabase
-          .from(tableName)
-          .select('post_id')
-          .eq('user_id', profile.id);
+        const { data: rels } = await supabase.from(tableName).select('post_id').eq('user_id', profile.id);
 
         if (rels && rels.length > 0) {
-          const postIds = rels.map(r => r.post_id);
+          // Cast (r: any) agar Vercel build tidak error
+          const postIds = rels.map((r: any) => r.post_id);
           const { data: pData } = await supabase
             .from('posts')
             .select('id, image_url')
             .in('id', postIds)
             .eq('status', 'approved');
           setPosts(pData || []);
-        } else { setPosts([]); }
+        }
       }
     } catch (err) { 
       console.error("Tab Load Error:", err);
@@ -165,7 +150,7 @@ function ProfileContent() {
     }
   };
 
-  // 🔥 FIX SLIDE UP: Menggunakan teknik 2 langkah biar data PASTI muncul 🔥
+  // 🔥 FIX: Jurus 2 Tahap (Anti-Kosong) + Fix Vercel Error (item: any) 🔥
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
     setFollowModalType(type);
     setIsFollowModalOpen(true);
@@ -178,7 +163,7 @@ function ProfileContent() {
       const targetCol = type === 'followers' ? 'follower_id' : 'following_id';
       const matchCol = type === 'followers' ? 'following_id' : 'follower_id';
 
-      // 1. Ambil list ID dari tabel followers
+      // 1. Ambil list ID
       const { data: idList, error: idError } = await supabase
         .from('followers')
         .select(targetCol)
@@ -187,8 +172,10 @@ function ProfileContent() {
       if (idError) throw idError;
 
       if (idList && idList.length > 0) {
-        const userIds = idList.map(item => item[targetCol]);
-        // 2. Tarik info profil berdasarkan list ID tadi
+        // Cast (item: any) untuk menghindari error indexing dinamis di Vercel
+        const userIds = idList.map((item: any) => item[targetCol]);
+        
+        // 2. Tarik info profil lengkap
         const { data: profilesData, error: profError } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, role')
@@ -205,23 +192,17 @@ function ProfileContent() {
   };
 
   const handleShareProfile = async () => {
-    const shareData = {
-      title: `Profil ${profile.username} - Hope Hype`,
-      text: `Cek karya keren ${profile.username} di Hope Hype!`,
-      url: window.location.href,
-    };
+    const url = window.location.href;
     if (navigator.share) {
-      try { await navigator.share(shareData); } catch (err) {}
+      try { await navigator.share({ title: `Profil ${profile.username}`, url }); } catch (err) {}
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(url);
       showNotif("Link disalin!", "success");
     }
   };
 
   const handleSaveSettings = async () => {
-    if (!myId) return;
-    if (!editData.username.trim()) return showNotif("Username kosong", "warning");
-
+    if (!myId || !editData.username.trim()) return showNotif("Username kosong", "warning");
     setIsSaving(true);
     try {
       let finalAvatarUrl = editData.avatar_url;
@@ -251,14 +232,13 @@ function ProfileContent() {
     if (file) {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
-      setEditData(prev => ({ ...prev, avatar_url: '' })); 
     }
   };
 
   const toggleFollow = async () => {
     if (!myId) return router.push('/login');
     if (isFollowing) {
-        setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
+        setStats(prev => ({ ...prev, followers: prev.followers - 1 }));
         setIsFollowing(false);
         await supabase.from('followers').delete().match({ follower_id: myId, following_id: profile.id });
     } else {
@@ -273,9 +253,7 @@ function ProfileContent() {
     router.push(path);
   };
 
-  if (!isMounted || !profile) return (
-    <div className="profile-page-container" style={{ backgroundColor: '#ffffff' }}></div>
-  );
+  if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: '#ffffff' }}></div>;
 
   const isMe = myId === profile.id;
 
@@ -293,25 +271,13 @@ function ProfileContent() {
           <div className="avatar-container">
              <img className="profile-avatar" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
           </div>
-          <h1 className="profile-name">
-             {profile.username}
-             <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} />
-          </h1>
+          <h1 className="profile-name">{profile.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} /></h1>
           <p className="profile-username">@{profile.username.toLowerCase().replace(/\s/g, '')}</p>
 
           <div className="profile-stats">
-            <div className="stat-box">
-               <span className="stat-num">{stats.likes}</span>
-               <span className="stat-label">Suka</span>
-            </div>
-            <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}>
-               <span className="stat-num">{stats.followers}</span>
-               <span className="stat-label">Pengikut</span>
-            </div>
-            <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}>
-               <span className="stat-num">{stats.following}</span>
-               <span className="stat-label">Mengikuti</span>
-            </div>
+            <div className="stat-box"><span className="stat-num">{stats.likes}</span><span className="stat-label">Suka</span></div>
+            <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.followers}</span><span className="stat-label">Pengikut</span></div>
+            <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.following}</span><span className="stat-label">Mengikuti</span></div>
           </div>
 
           <div className="profile-actions">
@@ -321,9 +287,7 @@ function ProfileContent() {
                    <button className="btn-action btn-secondary" onClick={handleShareProfile}>Bagikan</button>
                 </>
              ) : (
-                <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>
-                   {isFollowing ? 'Mengikuti' : 'Ikuti'}
-                </button>
+                <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? 'Mengikuti' : 'Ikuti'}</button>
              )}
           </div>
           <p className="profile-bio">{profile.bio || 'Belum ada bio.'}</p>
@@ -340,9 +304,7 @@ function ProfileContent() {
       <div className="post-grid-container">
         <div className="post-grid">
            {isLoadingPosts ? (
-              Array(9).fill(0).map((_, i) => (
-                <div key={i} className="skeleton-grid-item"></div>
-              ))
+              Array(9).fill(0).map((_, i) => <div key={i} className="skeleton-grid-item"></div>)
            ) : posts.length === 0 ? (
               <div className="no-posts-v2">
                 <div className="no-posts-icon-circle"><span className="material-icons">auto_awesome</span></div>
@@ -351,7 +313,7 @@ function ProfileContent() {
               </div>
            ) : (
               posts.map(post => (
-                 // 🔥 FIX NAVIGASI: Ke detail post saat diklik 🔥
+                 // 🔥 FIX: Langsung ke halaman post detail 🔥
                  <div key={post.id} className="grid-item" onClick={() => router.push(`/post?id=${post.id}`)}>
                     {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
@@ -360,12 +322,13 @@ function ProfileContent() {
         </div>
       </div>
 
+      {/* SIDEBAR */}
       <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
       <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder="Cari..." /></div></div>
         <div className="menu-category-label">Dompet & Aset</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">Saldo HypeCoin</div><div className="arrow-right">›</div></div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/saldo/history')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">Riwayat Transaksi</div><div className="arrow-right">›</div></div>
+        <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">Riwayat Transaksi</div><div className="arrow-right">›</div></div>
         <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">Langganan VIP</div><div className="arrow-right">›</div></div>
         <div className="menu-category-label">Misi & Hadiah</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">Pusat Misi</div><div className="arrow-right">›</div></div>
@@ -377,6 +340,7 @@ function ProfileContent() {
         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">Keluar Akun</div></div>
       </aside>
 
+      {/* MODAL FOLLOW */}
       <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
       <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
         <div className="follow-sheet-header">
@@ -388,7 +352,7 @@ function ProfileContent() {
            {isFollowLoading ? (
               Array(5).fill(0).map((_, i) => <div key={i} className="follow-item-skeleton"><div className="skeleton-avatar"></div><div className="skeleton-text"></div></div>)
            ) : followList.length === 0 ? (
-              <div className="follow-empty"><p>Belum ada daftar untuk ditampilkan.</p></div>
+              <div className="follow-empty"><p>Belum ada data.</p></div>
            ) : (
               followList.map(user => (
                  <div key={user.id} className="follow-item" onClick={() => { setIsFollowModalOpen(false); router.push(`/data?id=${user.id}`); }}>
@@ -404,14 +368,14 @@ function ProfileContent() {
         </div>
       </aside>
 
+      {/* MODAL EDIT */}
       {isMounted && (
         <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
            <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header"><h3>Edit Profil</h3><span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span></div>
               <div className="avatar-edit-section">
                  <label className="main-preview-label">
-                    <img src={previewUrl || '/asets/png/profile.webp'} className="avatar-main-preview" alt="Preview" />
-                    <div className="upload-overlay" onClick={() => fileInputRef.current?.click()}><span className="material-icons">camera_alt</span></div>
+                    <img src={previewUrl || '/asets/png/profile.webp'} className="avatar-main-preview" alt="Preview" /><div className="upload-overlay" onClick={() => fileInputRef.current?.click()}><span className="material-icons">camera_alt</span></div>
                  </label>
                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{display: 'none'}} />
                  <div className="avatar-presets">
@@ -430,6 +394,4 @@ function ProfileContent() {
   );
 }
 
-export default function ProfilePage() {
-  return <Suspense fallback={null}><ProfileContent /></Suspense>;
-}
+export default function ProfilePage() { return <Suspense fallback={null}><ProfileContent /></Suspense>; }
