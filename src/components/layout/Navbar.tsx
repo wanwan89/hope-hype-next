@@ -25,7 +25,6 @@ function NavbarContent() {
   const isDailyCekPage = pathname?.includes('/dailycek');
 
   useEffect(() => {
-    // Kalau di halaman dailycek/chat/voice, jangan pasang listener scroll Navbar
     if (isDailyCekPage || isChatRoom || isVoiceRoom) return;
 
     const handleScroll = () => {
@@ -93,15 +92,12 @@ function NavbarContent() {
              setUnreadChatCount(prev => Math.max(0, prev - 1));
           }
         })
-        // Realtime kalau ada Notifikasi Baru Masuk
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
           if (payload.new.user_id === userId) {
             setUnreadNotifCount(prev => prev + 1);
           }
         })
-        // Realtime kalau Notifikasi Dibaca (dari halaman notif)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
-           // Fitur cek ulang kalau semua notif udah dibaca
            if (payload.new.is_read === true && payload.new.user_id === userId) {
              checkRemainingNotifs(userId);
            }
@@ -109,7 +105,6 @@ function NavbarContent() {
         .subscribe();
     };
 
-    // Helper untuk update count notif
     const checkRemainingNotifs = async (userId: string) => {
        const { count } = await supabase
         .from('notifications')
@@ -130,7 +125,7 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
-  // 🔥 FIX: JIKA DI HALAMAN INI, KEMBALIKAN NULL (HAPUS NAVBAR & TOMBOL HIDE) 🔥
+  // 🔥 HAPUS NAVBAR TOTAL DI HALAMAN FULLSCREEN 🔥
   if (isChatRoom || isVoiceRoom || isDailyCekPage) {
     return null;
   }
@@ -147,23 +142,25 @@ function NavbarContent() {
 
   return (
     <>
+      {/* 🔥 FIX: Tombol Toggle Navbar dengan Safe Area 🔥 */}
       <button
         onClick={() => setIsManualHidden(!isManualHidden)}
         style={{
           position: 'fixed',
-          bottom: isManualHidden ? '20px' : '95px', 
+          bottom: isManualHidden ? 'max(20px, env(safe-area-inset-bottom))' : 'max(95px, calc(95px + env(safe-area-inset-bottom)))', 
           right: '20px',
           zIndex: 9001,
           width: '40px',
           height: '40px',
           borderRadius: '50%',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)', // Sedikit lebih solid biar ga nge-glitch
           backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0,0,0,0.1)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid rgba(0,0,0,0.05)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.15)',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
           cursor: 'pointer',
           color: '#333',
           transform: isVisible ? 'translateY(0)' : 'translateY(150px)',
@@ -174,21 +171,34 @@ function NavbarContent() {
         {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
       </button>
 
+      {/* 🔥 FIX: Container Navbar Utama dengan Safe Area 🔥 */}
       <div style={{
-        position: 'fixed', bottom: '20px', left: '0', right: '0',
-        zIndex: 9000, display: 'flex', justifyContent: 'center', padding: '0 20px',
-        willChange: 'transform, opacity',
-        transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease',
+        position: 'fixed', 
+        bottom: 'max(20px, env(safe-area-inset-bottom))', 
+        left: '0', 
+        right: '0',
+        zIndex: 9000, 
+        display: 'flex', 
+        justifyContent: 'center', 
+        padding: '0 20px',
+        transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease',
         transform: showNavbar ? 'translateY(0)' : 'translateY(150%)',
         opacity: showNavbar ? 1 : 0, 
         pointerEvents: showNavbar ? 'auto' : 'none'
       }}>
         <nav style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)', border: '1px solid rgba(0, 0, 0, 0.05)',
-          borderRadius: '25px', width: '100%', maxWidth: '400px', height: '65px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+          backdropFilter: 'blur(15px)',
+          WebkitBackdropFilter: 'blur(15px)', 
+          border: '1px solid rgba(0, 0, 0, 0.05)',
+          borderRadius: '25px', 
+          width: '100%', 
+          maxWidth: '400px', 
+          height: '65px',
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-around',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
           padding: '0 5px'
         }}>
           {navItems.map((item) => {
@@ -204,7 +214,6 @@ function NavbarContent() {
                 onPointerDown={(e) => {
                   setClickedItem(item.name);
                   setTimeout(() => setClickedItem(null), 300); 
-
                   const target = e.currentTarget;
                   try {
                     if (target.hasPointerCapture(e.pointerId)) {
@@ -221,7 +230,8 @@ function NavbarContent() {
                   position: 'relative', 
                   padding: '10px',
                   touchAction: 'manipulation',
-                  width: '60px' 
+                  width: '60px',
+                  WebkitTapHighlightColor: 'transparent' // 🔥 Anti blok biru pas diklik di HP
                 }}
               >
                 <div style={{ 

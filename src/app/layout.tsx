@@ -38,7 +38,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const primaryBg = '#ffffff'; 
 
     if (isStandaloneApp) {
-      // Mode Aplikasi: Kunci tinggi layar secara dinamis (dvh)
       root.style.height = '100dvh';
       root.style.overflow = 'hidden';
       root.style.backgroundColor = primaryBg; 
@@ -52,7 +51,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.backgroundColor = primaryBg;
       body.style.overscrollBehaviorY = 'none'; 
     } else {
-      // Mode Web Normal: Reset semua gaya biar scroll lancar
       root.style.height = 'auto';
       root.style.overflow = 'visible';
       root.style.backgroundColor = primaryBg;
@@ -64,7 +62,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.backgroundColor = primaryBg;
       body.style.overscrollBehaviorY = 'auto';
       
-      // Cleanup sampah Voice Room
       const voiceTrash = [
         'room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 
         'vip-entrance-overlay', 'vip-anim-styles-clean'
@@ -72,7 +69,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       voiceTrash.forEach(id => document.getElementById(id)?.remove());
     }
 
-    // Paksa scroll ke paling atas tiap ganti rute
     window.scrollTo(0, 0);
 
     return () => {
@@ -108,7 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             width: '100%',
             overflow: isStandaloneApp ? 'hidden' : 'visible',
             position: 'relative',
-            backgroundColor: 'inherit' 
+            backgroundColor: '#ffffff' // 🔥 PAKSA PUTIH BIAR GA ADA ITEM BOCOR
           }}
         >
           
@@ -121,21 +117,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main 
             className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}
             style={{ 
-              flex: 1, 
+              flex: '1 1 auto', // 🔥 JURUS MELAR MAKSIMAL: Pastikan narik sampe bawah
               display: isStandaloneApp ? 'flex' : 'block',
               flexDirection: 'column',
               overflow: isStandaloneApp ? 'hidden' : 'visible',
               height: isStandaloneApp ? '100%' : 'auto',
               width: '100%',
-              backgroundColor: 'inherit'
+              backgroundColor: '#ffffff', // 🔥 PAKSA PUTIH JUGA
+              marginBottom: isStandaloneApp ? '0' : '-1px', // 🔥 LEM SUPER
             }}
           >
             {children}
           </main>
-
-          {!hideNavbar && <Navbar />}
           
+          {/* DI SINI TADINYA ADA NAVBAR, SEKARANG UDAH GUE HAPUS */}
         </div>
+
+        {/* 🔥 FIX: NAVBAR PINDAH KE SINI (DI LUAR WRAPPER) 🔥 */}
+        {!hideNavbar && <Navbar />}
 
         <LoginPopup />
         {!hideOverlays && <Overlays />}
