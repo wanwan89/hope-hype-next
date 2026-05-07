@@ -50,56 +50,6 @@ export default function CommentModalpost() {
     return () => document.body.removeEventListener("click", handleBodyClick);
   }, []);
 
-  // 🔥 LISTENER BARU: Menerima data Gift dari Komponen Luar 🔥
-  useEffect(() => {
-    const handleInsertGift = async (e: any) => {
-      const { postId, giftName, giftImg, creatorId } = e.detail;
-      if (!postId) return;
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
-        // Format spesial biar dibaca sebagai gambar gift
-        const content = `GIFT||${giftName}||${giftImg}`;
-
-        await supabase.from("comments").insert({
-          post_id: parseInt(postId),
-          user_id: session.user.id,
-          content: content,
-          parent_id: null,
-          reply_to_username: null
-        });
-
-        // Kirim Notifikasi kalau yang ngirim bukan yang punya post
-        if (creatorId !== session.user.id && creatorId) {
-          const { data: prof } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
-          await supabase.from("notifications").insert({
-            user_id: creatorId,
-            actor_id: session.user.id,
-            post_id: parseInt(postId),
-            type: "gift",
-            message: `<b>${prof?.username}</b> memberimu ${giftName}.`
-          });
-        }
-
-        // Refresh komentar otomatis kalau modal lagi kebuka di post yang sama
-        setCurrentPostId((prevId) => {
-          if (prevId === String(postId)) {
-            loadComments(String(postId));
-          }
-          return prevId;
-        });
-
-      } catch (err) {
-        console.error("Gagal simpan gift ke komentar:", err);
-      }
-    };
-
-    window.addEventListener("insertGiftComment", handleInsertGift);
-    return () => window.removeEventListener("insertGiftComment", handleInsertGift);
-  }, []);
-
   const loadComments = async (postId: string) => {
     setIsLoading(true);
     const { data } = await supabase.from("comments")
@@ -183,7 +133,6 @@ export default function CommentModalpost() {
     const avatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
     const badgeHtml = getUserBadge(p?.role || 'user');
 
-    // 🔥 LOGIC RENDER GIFT UI 🔥
     let isGift = false;
     let giftName = "";
     let giftImg = "";
@@ -218,13 +167,11 @@ export default function CommentModalpost() {
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
-              // 🔥 TAMPILAN JIKA KOMENTAR ADALAH GIFT 🔥
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)', marginTop: '4px' }}>
                  <span style={{ color: '#f59e0b', fontSize: '13px', fontWeight: 600 }}>Memberi {giftName}</span>
                  {giftImg && <img src={giftImg} alt={giftName} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />}
               </div>
             ) : (
-              // TAMPILAN KOMENTAR TEKS BIASA
               comment.content
             )}
           </div>
@@ -302,25 +249,28 @@ export default function CommentModalpost() {
           )}
         </div>
 
-        <div className="comment-input-wrap" style={{ position: 'relative' }}>
-          <input 
-            type="text" 
-            className="comment-input" 
-            placeholder={isSubmitting ? "Mengirim..." : replyToUsername ? `Membalas @${replyToUsername}...` : "Tulis komentar..."} 
-            autoComplete="off"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isSubmitting}
-            style={{ paddingRight: '44px' }} 
-          />
-          <button 
-            className="modal-gift-btn" 
-            onClick={handleGiftClick} 
-            style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', display: 'flex', padding: 0 }}
-          >
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
-          </button>
+        {/* 🔥 FIX: Struktur Input Diperbaiki Agar Icon Rapi di Dalam 🔥 */}
+        <div className="comment-input-wrap">
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input 
+              type="text" 
+              className="comment-input" 
+              placeholder={isSubmitting ? "Mengirim..." : replyToUsername ? `Membalas @${replyToUsername}...` : "Tulis komentar..."} 
+              autoComplete="off"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isSubmitting}
+              style={{ width: '100%', boxSizing: 'border-box', paddingRight: '44px' }} 
+            />
+            <button 
+              className="modal-gift-btn" 
+              onClick={handleGiftClick} 
+              style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', display: 'flex', padding: 0 }}
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
