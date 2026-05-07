@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next'; 
@@ -8,8 +9,13 @@ import '../Settings.css';
 export default function LanguagePage() {
   const router = useRouter();
   const { t, i18n } = useTranslation(); 
+  const [mounted, setMounted] = useState(false);
 
-  // 🔥 FIX 1: Daftar bahasa disesuaiin sama i18n.ts (Hapus Melayu, Tambah China & Korea)
+  // Mencegah hydration error antara server & client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const languages = [
     { code: 'id', name: 'Bahasa Indonesia' },
     { code: 'en', name: 'English (US)' },
@@ -17,16 +23,18 @@ export default function LanguagePage() {
     { code: 'ko', name: '한국어 (Korean)' }
   ];
 
-  const handleSelect = (code: string) => {
-    // 🔥 FIX 2: Eksekusi ganti bahasa
-    i18n.changeLanguage(code); 
+  const handleSelect = async (code: string) => {
+    // 🔥 FIX 1: Ganti bahasa secara global
+    await i18n.changeLanguage(code); 
     
-    // Pesan notif juga bisa lu translate kalau mau: t('lang_changed_success')
-    showNotif("Language updated!", "success");
+    // 🔥 FIX 2: Notif otomatis ikut bahasa yang baru dipilih
+    showNotif(t('lang_updated'), "success");
     
-    // Kasih delay dikit biar user liat tanda ceklisnya pindah baru balik
+    // Balik ke halaman sebelumnya setelah user liat ceklisnya pindah
     setTimeout(() => router.back(), 500);
   };
+
+  if (!mounted) return <div className="settings-page"></div>;
 
   return (
     <div className="settings-page">
@@ -38,7 +46,7 @@ export default function LanguagePage() {
         >
           arrow_back
         </span>
-        {/* 🔥 FIX 3: Judul header pake translate 🔥 */}
+        {/* 🔥 FIX 3: Judul header ditarik dari i18n.ts */}
         <h2>{t('language')}</h2>
       </header>
 
@@ -54,7 +62,7 @@ export default function LanguagePage() {
                 <span className="item-label">{lang.name}</span>
               </div>
               
-              {/* 🔥 FIX 4: Logika ceklis yang lebih akurat 🔥 */}
+              {/* 🔥 FIX 4: Logika ceklis yang presisi */}
               {i18n.language.startsWith(lang.code) && (
                 <span className="material-icons" style={{ color: '#1DA1F2' }}>
                   check_circle
@@ -64,18 +72,17 @@ export default function LanguagePage() {
           ))}
         </div>
         
-        {/* Tips: Lu bisa nambahin key "lang_desc" di i18n.ts buat teks di bawah ini */}
+        {/* 🔥 FIX 5: Deskripsi ditarik dari i18n.ts (Bisa Bahasa China & Korea juga) */}
         <p style={{ 
           fontSize: '12px', 
-          color: 'var(--text-sub)', 
-          marginTop: '16px', 
+          color: 'var(--st-text-sub)', 
+          marginTop: '20px', 
           textAlign: 'center',
-          lineHeight: '1.5',
-          padding: '0 20px'
+          lineHeight: '1.6',
+          padding: '0 24px',
+          opacity: 0.8
         }}>
-          {i18n.language.startsWith('id') 
-            ? 'Memilih bahasa akan mengubah seluruh teks pada antarmuka aplikasi.' 
-            : 'Choosing a language will change all text on the application interface.'}
+          {t('lang_desc')}
         </p>
       </main>
     </div>
