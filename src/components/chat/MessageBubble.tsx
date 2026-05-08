@@ -26,8 +26,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
 
   const isDeleted = msg.message === "Pesan ini telah dihapus";
   
-  // 🔥 FIX 1: DETEKSI RUANG OBROLAN EKSPLISIT 🔥
-  // Kita pastikan Username & Avatar HANYA TAMPIL kalau beneran di Grup atau Global
+  // Deteksi Ruang Obrolan Eksplisit
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
@@ -61,6 +60,17 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
       setLiveReply(msg.reply_to_msg);
     }
   }, [msg.reply_to, msg.reply_to_msg, liveReply]);
+
+  // 🔥 FIX 1: Auto-Scroll ke Bawah Saat Render Selesai 🔥
+  useEffect(() => {
+    // Panggil scroll parent setelah delay singkat biar rendering HTML selesai
+    setTimeout(() => {
+        const chatContainer = document.querySelector('.chat-messages');
+        if(chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }, 150);
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -144,7 +154,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
           <div className="system-text">{displayMessage}</div>
         ) : (
           <>
-            {/* 🔥 Terapkan variabel showUserDetail untuk AVATAR 🔥 */}
             {showUserDetail && (
               <img 
                 className="avatar" 
@@ -154,8 +163,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
             )}
             
             <div className="content">
-              
-              {/* 🔥 Terapkan variabel showUserDetail untuk USERNAME 🔥 */}
               {showUserDetail && (
                 <div className="username">
                   {msg.profiles?.username || 'User'} 

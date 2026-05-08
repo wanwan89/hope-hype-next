@@ -51,7 +51,7 @@ export default function ChatArea() {
   // State VN & Batal
   const [isMicPressed, setIsMicPressed] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [cancelAnim, setCancelAnim] = useState(false); // 🔥 FIX 3: State untuk tulisan Batal VN 🔥
+  const [cancelAnim, setCancelAnim] = useState(false); 
   const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0); 
@@ -102,7 +102,6 @@ export default function ChatArea() {
       currentRoom = `group_${groupId}`;
       const { data: gData } = await supabase.from('groups').select('*').eq('id', groupId).single();
       if (gData) {
-        // 🔥 FIX 2: avatar_url DIGANTI JADI photo_url (Sesuai Tabel Database) 🔥
         setHeaderInfo({ title: gData.name, sub: "Grup", avatar: gData.photo_url, role: 'user' });
         setNewGroupName(gData.name);
         setIsOwner(gData.created_by === session.user.id);
@@ -154,7 +153,6 @@ export default function ChatArea() {
     setIsUpdatingGroup(false);
   };
 
-  // 🔥 FIX 2: Fungsi update diarahkan ke kolom yang benar di tabel 🔥
   const updateGroupInfo = async (field: 'name' | 'photo_url', value: string) => {
     if (!groupId || !isOwner) return;
     setIsUpdatingGroup(true);
@@ -169,7 +167,6 @@ export default function ChatArea() {
   const kickMember = async (targetUserId: string, targetName: string) => {
     if (!groupId || !isOwner) return;
     
-    // 🔥 FIX 4: Minta konfirmasi sebelum menendang member 🔥
     const confirmKick = window.confirm(`Apakah kamu yakin ingin mengeluarkan ${targetName} dari grup?`);
     if (!confirmKick) return;
 
@@ -180,7 +177,6 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FIX 2: Sinkronisasi Upload Foto ke kolom photo_url 🔥
   const handleGroupPhotoUpload = async (e: any) => {
     const file = e.target.files[0];
     if (!file || !isOwner) return;
@@ -337,8 +333,11 @@ export default function ChatArea() {
     
     if (cancel) { 
       refs.mediaRecorder.current!.onstop = null; 
-      // 🔥 FIX 3: Tampilkan tulisan Batal di Input Area selama 2 detik 🔥
       setCancelAnim(true);
+      
+      // 🔥 FIX 1: Kasih getaran singkat pas VN berhasil dibatalin 🔥
+      if (navigator.vibrate) navigator.vibrate(50); 
+      
       setTimeout(() => setCancelAnim(false), 2000);
     }
     
@@ -373,7 +372,6 @@ export default function ChatArea() {
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
     
-    // 🔥 FIX 5: Timeout dirubah menjadi 15 Detik 🔥
     refs.callTimer.current = setTimeout(async () => {
       endCall(true);
       await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
@@ -433,7 +431,6 @@ export default function ChatArea() {
     setMsgOptions(null);
   };
 
-  // 🔥 FIX 1: Dinamis Status Online 🔥
   let displayStatus = 'Offline';
   if (typingUser) {
     displayStatus = `${typingUser.username} sedang mengetik...`;
@@ -509,7 +506,6 @@ export default function ChatArea() {
               {headerInfo.title}
               {targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
-            {/* 🔥 FIX 1: Tampilkan teks displayStatus dinamis 🔥 */}
             <div className="status-container">
               <span className={typingUser ? "status-typing" : "status-online"}>{displayStatus}</span>
             </div>
@@ -588,7 +584,6 @@ export default function ChatArea() {
 
             <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
               
-              {/* 🔥 FIX 3: Indikator saat Batal Merekam VN 🔥 */}
               {cancelAnim ? (
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
                   <span className="material-icons" style={{ fontSize: '18px' }}>cancel</span>
@@ -631,7 +626,6 @@ export default function ChatArea() {
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
 
-                {/* 🔥 FIX 5: Info Grup di dalam tab Invite 🔥 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', padding: '15px', background: 'var(--bg-main)', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} alt="grup" />
                    <div>
