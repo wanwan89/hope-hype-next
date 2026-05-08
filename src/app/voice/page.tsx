@@ -37,6 +37,8 @@ declare global {
     openRoomSetting?: () => void;
     closeRoomSetting?: () => void;
     saveRoomSetting?: () => void;
+    // 🔥 FIX: Tambahkan semua fungsi modal ke interface window 🔥
+    openConfirmModal?: () => void; 
     closeConfirmModal?: () => void;
     openTopGiftersModal?: () => void;
     closeTopGiftersModal?: () => void;
@@ -46,7 +48,6 @@ declare global {
   var LivekitClient: any;
 }
 
-// 🔥 FUNGSI KONTEN UTAMA 🔥
 function VoiceRoomContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams(); 
@@ -75,7 +76,6 @@ function VoiceRoomContent() {
     setMounted(true);
     window.__VOICE_ROOM_INIT__ = true;
 
-    // FIX BUG: Ambil URL secara akurat
     const rawId = searchParams?.get('id');
     const rawName = searchParams?.get('name');
     const urlParams = new URLSearchParams(window.location.search);
@@ -89,9 +89,9 @@ function VoiceRoomContent() {
         }
     };
     updateTitle();
-    setTimeout(updateTitle, 500); // Pastikan terpanggil ulang
+    setTimeout(updateTitle, 500);
 
-    // --- HELPER LOGICS ---
+    // --- LOGIKA HELPER ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -114,10 +114,7 @@ function VoiceRoomContent() {
             let totals: Record<string, number> = {};
             messages?.forEach((m: any) => {
                 const match = m.text.match(/^(.+) mengirim .+ x(\d+) ke/);
-                if (match) {
-                    const user = match[1]; const count = parseInt(match[2]); const price = hargaKado[m.role] || 0;
-                    totals[user] = (totals[user] || 0) + (price * count);
-                }
+                if (match) { totals[match[1]] = (totals[match[1]] || 0) + (hargaKado[m.role] * parseInt(match[2])); }
             });
             const names = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 10);
             if (names.length === 0) return [];
@@ -238,19 +235,11 @@ function VoiceRoomContent() {
         container.onclick = () => window.openTopGiftersModal?.();
     }
 
-    // 🔥 FIX BUG 1: Fungsi Sync Owner UI 🔥
     function syncOwnerUI() {
         if (!IS_OWNER.current) return;
-        
         const trySync = () => {
             const menuSet = document.getElementById('menu-setting');
-            if (menuSet) {
-                menuSet.style.display = 'flex';
-                console.log("✅ Owner UI Synced!");
-            } else {
-                // Kalo belum ketemu, coba lagi 500ms kemudian
-                setTimeout(trySync, 500);
-            }
+            if (menuSet) { menuSet.style.display = 'flex'; } else { setTimeout(trySync, 500); }
         };
         trySync();
     }
@@ -263,10 +252,7 @@ function VoiceRoomContent() {
         const { data: roomData } = await sb.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
         
         if (p) { 
-            myUsername.current = p.username; 
-            myRole.current = p.role; 
-            myLevel.current = p.level || 1; 
-            myTotalGiftSent.current = p.total_gift_sent || 0; 
+            myUsername.current = p.username; myRole.current = p.role; myLevel.current = p.level || 1; myTotalGiftSent.current = p.total_gift_sent || 0; 
             if (document.getElementById('user-coins')) document.getElementById('user-coins')!.innerText = (p.coins || 0).toLocaleString(); 
         }
         
@@ -274,7 +260,7 @@ function VoiceRoomContent() {
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
             if (IS_OWNER.current) { 
                 await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
-                syncOwnerUI(); // 🔥 Panggil Sync UI pas init
+                syncOwnerUI();
             } else if (!roomData.is_active) { 
                 showNotif("Panggung sedang ditutup oleh Owner!", "error"); 
                 router.push('/hypetalk'); 
@@ -309,7 +295,6 @@ function VoiceRoomContent() {
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
                 const style = getLevelStyle(user.level);
-                // 🔥 FIX BUG 2: Kick UI Premium 🔥
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.${isMe ? 'turunMic' : 'toggleKickBtn'}(this, ${IS_OWNER.current && !isMe})">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
@@ -324,7 +309,7 @@ function VoiceRoomContent() {
         });
     }
 
-    // --- WINDOW ASSIGNMENTS ---
+    // 🔥 WINDOW ASSIGNMENTS 🔥
     window.toggleMicSidebar = async (e) => {
         e?.preventDefault();
         if (!roomRef.current?.localParticipant) return showNotif(t('mic_not_ready'), "warning");
@@ -416,20 +401,12 @@ function VoiceRoomContent() {
     window.toggleSidebar = () => { 
         document.getElementById('sidebar')?.classList.toggle('active'); 
         document.getElementById('sidebar-overlay')?.classList.toggle('active'); 
-        // 🔥 Re-check Owner UI setiap kali sidebar dibuka 🔥
         if (IS_OWNER.current) syncOwnerUI();
     };
     window.toggleRoomGiftDrawer = () => { document.getElementById('room-gift-drawer')?.classList.toggle('open'); document.getElementById('room-drawer-overlay')?.classList.toggle('show'); };
     window.openConfirmModal = () => { document.getElementById('confirm-modal')!.style.display = 'flex'; };
     window.closeConfirmModal = () => { document.getElementById('confirm-modal')!.style.display = 'none'; };
-    
-    window.toggleKickBtn = (el, canKick) => { 
-        if (!canKick) return; 
-        const w = el.querySelector('.kick-btn-premium-wrapper') as HTMLElement; 
-        document.querySelectorAll('.kick-btn-premium-wrapper').forEach((other: any) => { if (other !== w) other.style.display = 'none'; });
-        w.style.display = w.style.display === 'none' ? 'flex' : 'none'; 
-    };
-
+    window.toggleKickBtn = (el, canKick) => { if (!canKick) return; const w = el.querySelector('.kick-btn-premium-wrapper') as HTMLElement; document.querySelectorAll('.kick-btn-premium-wrapper').forEach((other: any) => { if (other !== w) other.style.display = 'none'; }); w.style.display = w.style.display === 'none' ? 'flex' : 'none'; };
     window.kickUser = async (id, name) => { if(confirm(`Kick ${name}?`)) { await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: id }); showNotif(`${name} di-kick!`, "success"); } };
 
     window.openTopGiftersModal = async () => {
