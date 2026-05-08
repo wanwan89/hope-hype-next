@@ -37,7 +37,6 @@ declare global {
     openRoomSetting?: () => void;
     closeRoomSetting?: () => void;
     saveRoomSetting?: () => void;
-    openConfirmModal?: () => void;
     closeConfirmModal?: () => void;
     openTopGiftersModal?: () => void;
     closeTopGiftersModal?: () => void;
@@ -47,6 +46,7 @@ declare global {
   var LivekitClient: any;
 }
 
+// 🔥 FUNGSI KONTEN UTAMA 🔥
 function VoiceRoomContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams(); 
@@ -57,6 +57,7 @@ function VoiceRoomContent() {
   
   const myTotalGiftSent = useRef(0);
   const myLevel = useRef(1);
+  const isMicOn = useRef(false);
   const giftComboCount = useRef(0);
   const lastGiftId = useRef<number | null>(null);
   const giftAnimTimer = useRef<NodeJS.Timeout | null>(null);
@@ -74,16 +75,21 @@ function VoiceRoomContent() {
     setMounted(true);
     window.__VOICE_ROOM_INIT__ = true;
 
-    const CURRENT_ROOM_ID = searchParams?.get('id') || new URLSearchParams(window.location.search).get('id'); 
-    const CURRENT_ROOM_NAME = searchParams?.get('name') || new URLSearchParams(window.location.search).get('name') || "Voice Room";
+    // FIX BUG: Ambil URL secara akurat
+    const rawId = searchParams?.get('id');
+    const rawName = searchParams?.get('name');
+    const urlParams = new URLSearchParams(window.location.search);
+    const CURRENT_ROOM_ID = rawId || urlParams.get('id'); 
+    const CURRENT_ROOM_NAME = rawName || urlParams.get('name') || "Voice Room";
 
     const updateTitle = () => {
         const titleEl = document.querySelector('.room-title') as HTMLElement;
-        if (titleEl && CURRENT_ROOM_NAME) {
+        if (titleEl && CURRENT_ROOM_NAME && CURRENT_ROOM_NAME !== "Voice Room") {
             titleEl.innerText = CURRENT_ROOM_NAME.toUpperCase();
         }
     };
     updateTitle();
+    setTimeout(updateTitle, 500); // Pastikan terpanggil ulang
 
     // --- HELPER LOGICS ---
     function getLevelStyle(level: string | number) {
@@ -101,13 +107,11 @@ function VoiceRoomContent() {
         return `<span style="font-size: 9px; font-weight: 800; background: ${style.color}; color: #000; padding: 2px 4px; border-radius: 3px; margin-left: 5px; vertical-align: middle;">${style.title}</span>`;
     }
 
-    // 🔥 FIX: Definisikan getRoomLeaderboard agar bisa diakses oleh Window Assignments 🔥
     async function getRoomLeaderboard() {
         try {
             const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
             const hargaKado: Record<string, number> = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000, '6': 5000, '7': 10000, '8': 25000, '9': 50000, '10': 100000 };
             let totals: Record<string, number> = {};
-            
             messages?.forEach((m: any) => {
                 const match = m.text.match(/^(.+) mengirim .+ x(\d+) ke/);
                 if (match) {
@@ -115,15 +119,11 @@ function VoiceRoomContent() {
                     totals[user] = (totals[user] || 0) + (price * count);
                 }
             });
-
-            const userNames = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 10);
-            if (userNames.length === 0) return [];
-
-            const { data: profs } = await sb.from('profiles').select('username, avatar_url, level, role').in('username', userNames);
+            const names = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 10);
+            if (names.length === 0) return [];
+            const { data: profs } = await sb.from('profiles').select('username, avatar_url, level, role').in('username', names);
             return (profs || []).map(p => ({ ...p, room_total: totals[p.username] })).sort((a, b) => b.room_total - a.room_total);
-        } catch (e) {
-            return [];
-        }
+        } catch (e) { return []; }
     }
 
     function playVIPEntrance(username: string, level: number) {
@@ -238,18 +238,50 @@ function VoiceRoomContent() {
         container.onclick = () => window.openTopGiftersModal?.();
     }
 
+    // 🔥 FIX BUG 1: Fungsi Sync Owner UI 🔥
+    function syncOwnerUI() {
+        if (!IS_OWNER.current) return;
+        
+        const trySync = () => {
+            const menuSet = document.getElementById('menu-setting');
+            if (menuSet) {
+                menuSet.style.display = 'flex';
+                console.log("✅ Owner UI Synced!");
+            } else {
+                // Kalo belum ketemu, coba lagi 500ms kemudian
+                setTimeout(trySync, 500);
+            }
+        };
+        trySync();
+    }
+
     async function initApp() {
         const { data: { session } } = await sb.auth.getSession();
         if (!session) { router.push('/hypetalk'); return; }
         MY_USER_ID.current = session.user.id;
         const { data: p } = await sb.from('profiles').select('*').eq('id', MY_USER_ID.current).single();
         const { data: roomData } = await sb.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
-        if (p) { myUsername.current = p.username; myRole.current = p.role; myLevel.current = p.level || 1; myTotalGiftSent.current = p.total_gift_sent || 0; if (document.getElementById('user-coins')) document.getElementById('user-coins')!.innerText = (p.coins || 0).toLocaleString(); }
+        
+        if (p) { 
+            myUsername.current = p.username; 
+            myRole.current = p.role; 
+            myLevel.current = p.level || 1; 
+            myTotalGiftSent.current = p.total_gift_sent || 0; 
+            if (document.getElementById('user-coins')) document.getElementById('user-coins')!.innerText = (p.coins || 0).toLocaleString(); 
+        }
+        
         if (roomData) {
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
-            if (IS_OWNER.current) { await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID); } 
-            else if (!roomData.is_active) { showNotif("Panggung sedang ditutup oleh Owner!", "error"); router.push('/hypetalk'); return; }
+            if (IS_OWNER.current) { 
+                await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
+                syncOwnerUI(); // 🔥 Panggil Sync UI pas init
+            } else if (!roomData.is_active) { 
+                showNotif("Panggung sedang ditutup oleh Owner!", "error"); 
+                router.push('/hypetalk'); 
+                return; 
+            }
         }
+
         if (typeof window.LivekitClient !== 'undefined') {
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-livekit-token`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}` }, body: JSON.stringify({ username: myUsername.current, identity: MY_USER_ID.current, roomName: CURRENT_ROOM_ID }) });
@@ -277,7 +309,14 @@ function VoiceRoomContent() {
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
                 const style = getLevelStyle(user.level);
-                item.innerHTML = `<div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.${isMe ? 'turunMic' : 'toggleKickBtn'}(this, ${IS_OWNER.current && !isMe})"><img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;"><div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.7); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid white; z-index: 10;"><span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span></div>${(IS_OWNER.current && !isMe) ? `<div class="kick-btn-wrapper" style="display:none;"><div class="kick-btn" onclick="event.stopPropagation(); window.kickUser('${slot.profile_id}', '${user.username}')"><span class="material-icons">close</span></div></div>` : ''}</div><span class="name-label" style="color:${style.color}">${user.username}${getLevelBadgeHTML(user.level)}${getUserBadge(user.role || '')}</span>`;
+                // 🔥 FIX BUG 2: Kick UI Premium 🔥
+                item.innerHTML = `
+                    <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.${isMe ? 'turunMic' : 'toggleKickBtn'}(this, ${IS_OWNER.current && !isMe})">
+                        <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
+                        <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.7); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid white; z-index: 10;"><span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span></div>
+                        ${(IS_OWNER.current && !isMe) ? `<div class="kick-btn-premium-wrapper" style="display:none;"><div class="kick-btn-premium" onclick="event.stopPropagation(); window.kickUser('${slot.profile_id}', '${user.username}')"><span class="material-icons">close</span></div></div>` : ''}
+                    </div>
+                    <span class="name-label" style="color:${style.color}">${user.username}${getLevelBadgeHTML(user.level)}${getUserBadge(user.role || '')}</span>`;
             } else {
                 item.innerHTML = `<div class="avatar" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:#444; font-size:30px;">add</span></div><span class="name-label">KOSONG</span>`;
             }
@@ -285,7 +324,7 @@ function VoiceRoomContent() {
         });
     }
 
-    // 🔥 WINDOW ASSIGNMENTS 🔥
+    // --- WINDOW ASSIGNMENTS ---
     window.toggleMicSidebar = async (e) => {
         e?.preventDefault();
         if (!roomRef.current?.localParticipant) return showNotif(t('mic_not_ready'), "warning");
@@ -308,8 +347,8 @@ function VoiceRoomContent() {
     };
 
     window.mintaNaik = () => {
-        if (IS_OWNER.current) return showNotif("Lu owner-nya Bree!", "info");
-        showNotif("Permintaan naik panggung terkirim...", "info");
+        if (IS_OWNER.current) return showNotif("Lu kan owner-nya Bree!", "info");
+        showNotif("Permintaan naik panggung dikirim ke Owner...", "info");
         channelRef.current.send({ type: 'broadcast', event: 'minta_naik', payload: { userId: MY_USER_ID.current, username: myUsername.current } });
     };
 
@@ -374,29 +413,24 @@ function VoiceRoomContent() {
     }
 
     window.sendGift = sendGift;
-    window.toggleSidebar = () => { document.getElementById('sidebar')?.classList.toggle('active'); document.getElementById('sidebar-overlay')?.classList.toggle('active'); };
-    window.toggleRoomGiftDrawer = () => { 
-        document.getElementById('room-gift-drawer')?.classList.toggle('open'); 
-        document.getElementById('room-drawer-overlay')?.classList.toggle('show'); 
-        if (document.getElementById('room-gift-drawer')?.classList.contains('open')) {
-            sb.from('room_slots').select('profile_id, profiles(username, avatar_url)').eq('room_id', CURRENT_ROOM_ID).not('profile_id', 'is', null).neq('profile_id', MY_USER_ID.current)
-            .then(({data}) => {
-                const tc = document.getElementById('gift-targets');
-                if(!tc) return; tc.innerHTML = "";
-                if(!data?.length) { tc.innerHTML = `<span style="font-size:12px; color:#888;">Cuma ada kamu di panggung</span>`; return; }
-                data.forEach((s:any) => {
-                    const div = document.createElement('div'); div.className = `target-user ${selectedTargetId.current === s.profile_id ? 'selected' : ''}`;
-                    div.onclick = () => { selectedTargetId.current = s.profile_id; selectedTargetName.current = s.profiles.username; window.toggleRoomGiftDrawer?.(); window.toggleRoomGiftDrawer?.(); };
-                    div.innerHTML = `<img src="${s.profiles.avatar_url || '/asets/png/profile.webp'}" class="target-avatar" style="object-fit:cover;"><span>${s.profiles.username}</span>`;
-                    tc.appendChild(div);
-                });
-            });
-        }
+    window.toggleSidebar = () => { 
+        document.getElementById('sidebar')?.classList.toggle('active'); 
+        document.getElementById('sidebar-overlay')?.classList.toggle('active'); 
+        // 🔥 Re-check Owner UI setiap kali sidebar dibuka 🔥
+        if (IS_OWNER.current) syncOwnerUI();
     };
+    window.toggleRoomGiftDrawer = () => { document.getElementById('room-gift-drawer')?.classList.toggle('open'); document.getElementById('room-drawer-overlay')?.classList.toggle('show'); };
     window.openConfirmModal = () => { document.getElementById('confirm-modal')!.style.display = 'flex'; };
     window.closeConfirmModal = () => { document.getElementById('confirm-modal')!.style.display = 'none'; };
-    window.toggleKickBtn = (el, canKick) => { if (!canKick) return; const w = el.querySelector('.kick-btn-wrapper') as HTMLElement; w.style.display = w.style.display === 'none' ? 'flex' : 'none'; };
-    window.kickUser = async (id, name) => { if(confirm(`Kick ${name}?`)) { await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', id); } };
+    
+    window.toggleKickBtn = (el, canKick) => { 
+        if (!canKick) return; 
+        const w = el.querySelector('.kick-btn-premium-wrapper') as HTMLElement; 
+        document.querySelectorAll('.kick-btn-premium-wrapper').forEach((other: any) => { if (other !== w) other.style.display = 'none'; });
+        w.style.display = w.style.display === 'none' ? 'flex' : 'none'; 
+    };
+
+    window.kickUser = async (id, name) => { if(confirm(`Kick ${name}?`)) { await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: id }); showNotif(`${name} di-kick!`, "success"); } };
 
     window.openTopGiftersModal = async () => {
         const m = document.getElementById('top-gifters-modal'); const l = document.getElementById('top-gifters-list');
@@ -430,6 +464,13 @@ function VoiceRoomContent() {
       <Sidebar /><Modals />
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
+
+      <style jsx global>{`
+        .kick-btn-premium-wrapper { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 20; animation: fadeIn 0.2s ease; }
+        .kick-btn-premium { width: 38px; height: 38px; background: rgba(239, 68, 68, 0.9); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5); cursor: pointer; animation: pulseRed 1.5s infinite; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulseRed { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+      `}</style>
     </div>
   );
 }
