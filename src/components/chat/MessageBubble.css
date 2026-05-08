@@ -14,17 +14,25 @@
 }
 
 /* ARAH PESAN */
-.hype-chat-scope .chat-message.self { justify-content: flex-end; padding-right: 4px; }
-.hype-chat-scope .chat-message.other { justify-content: flex-start; padding-left: 4px; }
+.hype-chat-scope .chat-message.self { 
+  justify-content: flex-end; 
+  padding-right: 4px; 
+  flex-direction: row; /* 🔥 FIX: Pastikan sejajar horizontal */
+}
+.hype-chat-scope .chat-message.other { 
+  justify-content: flex-start; 
+  padding-left: 4px; 
+  flex-direction: row; /* 🔥 FIX: Pastikan sejajar horizontal (Avatar di kiri, bubble di kanan) */
+}
 
 /* AVATAR STYLING */
 .hype-chat-scope .chat-message .avatar { 
   width: 32px; 
   height: 32px; 
   border-radius: 50%; 
-  margin: 0 8px 2px 8px;
+  margin: 0 8px 2px 0; /* 🔥 FIX: Margin disesuaikan biar gak terlalu jauh */
   object-fit: cover; 
-  flex-shrink: 0;
+  flex-shrink: 0; /* 🔥 FIX: Biar avatar gak penyok kalau teksnya panjang */
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
@@ -32,10 +40,11 @@
 .hype-chat-scope .chat-message .content { 
   display: flex; 
   flex-direction: column; 
-  max-width: 75%; 
+  max-width: 75%; /* 🔥 FIX: Max-width aman biar gak nabrak tepi layar */
   padding: 8px 12px; 
   position: relative;
   box-shadow: 0 1.5px 2px rgba(0,0,0,0.12);
+  min-width: 0; /* 🔥 FIX: Biar elemen di dalamnya (seperti nama/reply) bisa di-truncate (titik-titik) kalau kepanjangan */
 }
 
 .hype-chat-scope .chat-message.self .content { 
@@ -74,9 +83,31 @@ html.dark .hype-chat-scope .chat-message.other .content { background: #202c33 !i
 [data-theme='dark'] .hype-chat-scope .reply-preview-in-chat { background: rgba(255, 255, 255, 0.1); }
 
 /* TEXT & INFO */
-.hype-chat-scope .chat-message .username { font-weight: 700; font-size: 12px; color: #1da1f2; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
-.hype-chat-scope .chat-message .text { font-size: 14.5px; line-height: 1.45; word-break: break-word; }
-.hype-chat-scope .chat-message .message-info { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; }
+.hype-chat-scope .chat-message .username { 
+  font-weight: 700; 
+  font-size: 12px; 
+  color: #1da1f2; 
+  margin-bottom: 4px; 
+  display: flex; 
+  align-items: center; 
+  gap: 4px; 
+  /* 🔥 FIX: Handling nama panjang biar gak merusak bubble */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hype-chat-scope .chat-message .text { 
+  font-size: 14.5px; 
+  line-height: 1.45; 
+  word-break: break-word; /* 🔥 FIX: Mencegah link/teks panjang tembus dari bubble */
+}
+.hype-chat-scope .chat-message .message-info { 
+  display: flex; 
+  justify-content: flex-end; 
+  align-items: center; 
+  gap: 4px; 
+  margin-top: 4px; 
+}
 .hype-chat-scope .chat-message .timestamp { font-size: 10px; opacity: 0.6; font-weight: 500; }
 
 /* VN PLAYER STYLING */
@@ -85,6 +116,7 @@ html.dark .hype-chat-scope .chat-message.other .content { background: #202c33 !i
   display: flex; align-items: center; justify-content: center; 
   width: 36px; height: 36px; border-radius: 50%; 
   background: var(--primary-blue) !important; border: none; cursor: pointer; 
+  flex-shrink: 0;
 }
 .hype-chat-scope .vn-waveform { display: flex; align-items: center; gap: 3px; height: 18px; flex-grow: 1; }
 .hype-chat-scope .vn-waveform .bar { width: 2.5px; height: 10px; background: rgba(0, 0, 0, 0.2); border-radius: 1px; }

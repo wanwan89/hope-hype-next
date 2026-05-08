@@ -29,6 +29,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   // Deteksi Ruang Obrolan Eksplisit
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
+  
+  // 🔥 FIX: Tampilkan detail user buat chat orang lain di Grup / Global
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
 
   // State handle data reply hasil realtime
@@ -61,9 +63,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     }
   }, [msg.reply_to, msg.reply_to_msg, liveReply]);
 
-  // 🔥 FIX 1: Auto-Scroll ke Bawah Saat Render Selesai 🔥
+  // Auto-Scroll ke Bawah Saat Render Selesai
   useEffect(() => {
-    // Panggil scroll parent setelah delay singkat biar rendering HTML selesai
     setTimeout(() => {
         const chatContainer = document.querySelector('.chat-messages');
         if(chatContainer) {
@@ -149,24 +150,35 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        // 🔥 FIX: Layout flex row untuk menyandingkan avatar dan konten bubble
+        style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
       >
         {msg.is_system ? (
           <div className="system-text">{displayMessage}</div>
         ) : (
           <>
+            {/* 🔥 FIX: Menampilkan Avatar User (Hanya di Global/Group untuk user lain) */}
             {showUserDetail && (
               <img 
-                className="avatar" 
                 src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} 
                 alt="avatar" 
+                style={{
+                  width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', 
+                  flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)'
+                }}
               />
             )}
             
-            <div className="content">
+            <div className="content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+              
+              {/* 🔥 FIX: Menampilkan Username + Badge (Hanya di Global/Group untuk user lain) */}
               {showUserDetail && (
-                <div className="username">
+                <div style={{
+                  fontSize: '12px', fontWeight: 'bold', color: 'var(--primary-blue)', 
+                  marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px'
+                }}>
                   {msg.profiles?.username || 'User'} 
-                  <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
+                  <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
                 </div>
               )}
               
@@ -202,12 +214,14 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               )}
 
+              {/* REACTIONS */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                 <div className="message-reactions">
                   {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
                 </div>
               )}
               
+              {/* WAKTU & STATUS (CENTANG) */}
               <div className="message-info">
                 <span className="timestamp">
                   {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}

@@ -87,7 +87,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.height = 'auto';
       body.style.position = 'static';
       body.style.width = 'auto';
-      body.style.overscrollBehaviorY = 'none'; // Tetap none agar tidak bounce ke jurang
+      // 🔥 FIX: Ubah dari 'none' ke 'auto' agar halaman bisa PULL-TO-REFRESH (ditarik untuk refresh) 🔥
+      body.style.overscrollBehaviorY = 'auto'; 
       
       // Bersihkan sampah Voice jika keluar room
       const voiceTrash = [

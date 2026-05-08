@@ -71,6 +71,8 @@ export default function ChatArea() {
     audioChunks: useRef<Blob[]>([]),
     lkRoom: useRef<LiveKit.Room | null>(null),
     callTimer: useRef<any>(null),
+    callTimeout: useRef<any>(null), // 🔥 FIX: Pisahkan Timer agar tidak nabrak
+    callInterval: useRef<any>(null), // 🔥 FIX: Interval Timer terpisah
     recordTimer: useRef<any>(null),
     typingTimer: useRef<any>(null),
     audioCtx: useRef<AudioContext | null>(null)
@@ -206,6 +208,8 @@ export default function ChatArea() {
     if (refs.lkRoom.current) refs.lkRoom.current.disconnect();
     if (refs.audioCtx.current) refs.audioCtx.current.close();
     clearInterval(refs.callTimer.current);
+    clearTimeout(refs.callTimeout.current);
+    clearInterval(refs.callInterval.current);
     clearInterval(refs.recordTimer.current);
   };
 
@@ -305,7 +309,6 @@ export default function ChatArea() {
       refs.audioChunks.current = [];
       refs.mediaRecorder.current.ondataavailable = (e) => refs.audioChunks.current.push(e.data);
       refs.mediaRecorder.current.onstop = async () => {
-        // 🔥 FIX 1: JANGAN UPLOAD KALAU DIBATALKAN 🔥
         if (vnIsCanceled.current) {
           refs.audioChunks.current = [];
           return;
@@ -329,7 +332,6 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FIX 1: FUNGSI STOP VN YANG LEBIH TEGAS 🔥
   const stopVN = (isCanceledByUser = false) => {
     setIsMicPressed(false); 
     if (!isRecordingRef.current) return;
@@ -342,12 +344,12 @@ export default function ChatArea() {
     clearInterval(refs.recordTimer.current);
     
     if (isCanceledByUser || vnIsCanceled.current) { 
-      vnIsCanceled.current = true; // Pastikan statusnya terkirim ke onstop
+      vnIsCanceled.current = true; 
       setCancelAnim(true);
       if (navigator.vibrate) navigator.vibrate(50); 
       setTimeout(() => setCancelAnim(false), 2000);
     } else {
-      vnIsCanceled.current = false; // Kalau dilepas biasa, biarkan upload
+      vnIsCanceled.current = false; 
     }
     
     refs.mediaRecorder.current?.stop();
@@ -357,7 +359,7 @@ export default function ChatArea() {
     if (!inputValue.trim() && !editMessageId) {
       setIsMicPressed(true); 
       vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
-      vnIsCanceled.current = false; // Reset status batal di awal
+      vnIsCanceled.current = false; 
       startVN();
     }
   };
@@ -367,7 +369,6 @@ export default function ChatArea() {
       const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       const diff = vnTouchStartX.current - clientX;
       
-      // Jika digeser lebih dari 60px ke kiri, langsung batalin!
       if (diff > 60) { 
         vnIsCanceled.current = true;
         stopVN(true); 
@@ -375,6 +376,7 @@ export default function ChatArea() {
     }
   };
 
+  // 🔥 FIX CALL LOGIC: Memisahkan timeout dan membuat LiveKit lebih tangguh
   const startCall = async () => {
     if (!targetId) return;
     const { data: pTarget } = await supabase.from('profiles').select('avatar_url').eq('id', targetId).single();
@@ -382,9 +384,15 @@ export default function ChatArea() {
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
     
-    refs.callTimer.current = setTimeout(async () => {
-      endCall(true);
-      await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
+    clearTimeout(refs.callTimeout.current);
+    refs.callTimeout.current = setTimeout(async () => {
+      setCallStatus(prev => {
+        if(prev !== 'connected') {
+          endCall(true);
+          supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
+        }
+        return prev;
+      });
     }, 15000); 
     
     connectLiveKit(roomId);
@@ -402,23 +410,47 @@ export default function ChatArea() {
       if (error || !data) throw new Error("Gagal ambil token");
       refs.lkRoom.current = new LiveKit.Room();
       await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
-      await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
-      if (refs.lkRoom.current.remoteParticipants.size > 0) {
-         setCallStatus('connected'); clearTimeout(refs.callTimer.current);
-         refs.callTimer.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
+      
+      try {
+        await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
+      } catch (micErr) {
+        console.warn("Akses Mic gagal atau belum diizinkan.", micErr);
       }
-      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, () => {
-        setCallStatus('connected'); clearTimeout(refs.callTimer.current);
-        refs.callTimer.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
+
+      const handleCallConnected = () => {
+        setCallStatus('connected'); 
+        clearTimeout(refs.callTimeout.current);
+        clearInterval(refs.callInterval.current);
+        refs.callInterval.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
+      };
+
+      if (refs.lkRoom.current.remoteParticipants.size > 0) {
+         handleCallConnected();
+      }
+      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, handleCallConnected);
+      
+      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantDisconnected, () => {
+        if (!groupId) endCall(true); // Lawan memutus 1v1
       });
+      
+      refs.lkRoom.current.on(LiveKit.RoomEvent.Disconnected, () => {
+        endCall(true);
+      });
+
       refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (t) => { if (t.kind === "audio") document.body.appendChild(t.attach()); });
-    } catch (e: any) { showNotif(t('call_error'), "error"); endCall(); }
+    } catch (e: any) { 
+      showNotif(t('call_error'), "error"); 
+      endCall(); 
+    }
   };
 
   const endCall = (silent = false) => {
     if (refs.audio.current?.ring) { refs.audio.current.ring.pause(); refs.audio.current.ring.currentTime = 0; }
     refs.lkRoom.current?.disconnect();
-    setCallStatus('idle'); clearInterval(refs.callTimer.current);
+    setCallStatus('idle'); 
+    clearInterval(refs.callTimer.current);
+    clearTimeout(refs.callTimeout.current);
+    clearInterval(refs.callInterval.current);
     if (!silent) showNotif(t('call_ended'), "info");
   };
 
@@ -455,16 +487,50 @@ export default function ChatArea() {
   return (
     <div className="telegram-chat hype-chat-scope">
       
-      {/* UI CALL OVERLAY */}
-      {callStatus !== 'idle' && (
+      {/* Animasi Injeksi CSS Khusus Floating Toast */}
+      <style>{`
+        @keyframes pulseCall {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        }
+      `}</style>
+
+      {/* UI CALL FULL OVERLAY (HANYA SAAT CALLING / INCOMING) */}
+      {(callStatus === 'calling' || callStatus === 'incoming') && (
         <div className="call-overlay">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
           <h2>{callData.partnerName}</h2>
-          <p>{callStatus === 'connected' ? `${Math.floor(callData.seconds/60)}:${String(callData.seconds%60).padStart(2,'0')}` : callStatus.toUpperCase()}</p>
+          <p>{callStatus.toUpperCase()}</p>
           <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
             {callStatus === 'incoming' && <button onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }} className="btn-answer" style={{background:'#2ecc71', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_answer')}</button>}
             <button onClick={() => endCall()} className="btn-decline" style={{background:'#ff4757', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_decline')}</button>
           </div>
+        </div>
+      )}
+
+      {/* 🔥 FIX: UI FLOATING TOAST SAAT SUDAH TERSAMBUNG (BISA SAMBIL CHAT) 🔥 */}
+      {callStatus === 'connected' && (
+        <div style={{
+          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--bg-panel)', border: '1px solid var(--primary-blue)',
+          color: 'var(--text-main)', padding: '8px 16px', borderRadius: '30px',
+          display: 'flex', alignItems: 'center', gap: '12px',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 10000, width: 'max-content',
+        }}>
+          <div style={{width: 10, height: 10, background: '#2ecc71', borderRadius: '50%', animation: 'pulseCall 1.5s infinite'}}></div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{callData.partnerName}</span>
+             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+               {Math.floor(callData.seconds/60)}:{String(callData.seconds%60).padStart(2,'0')}
+             </span>
+          </div>
+          <button onClick={() => {
+            endCall();
+            supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan berakhir (${Math.floor(callData.seconds/60)}:${String(callData.seconds%60).padStart(2,'0')})`, is_system: true }]);
+          }} style={{ background: '#ff4757', border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: '10px' }}>
+            <span className="material-icons" style={{ color: '#fff', fontSize: '18px' }}>call_end</span>
+          </button>
         </div>
       )}
 
@@ -483,7 +549,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* 🔥 FIX 3: MENU OPSI PESAN BERSIH TANPA ICON 🔥 */}
+      {/* MENU OPSI PESAN BERSIH TANPA ICON */}
       {msgOptions && (
         <div className="custom-modal-overlay" onClick={() => setMsgOptions(null)}>
           <div className="custom-modal-content" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '24px 24px 0 0' }}>
@@ -617,7 +683,7 @@ export default function ChatArea() {
           <button id="action-btn" className={inputValue.trim() || editMessageId ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
                   onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} 
                   onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} 
-                  onTouchMove={handleMicTouchMove} /* 🔥 Dipindah ke wrapper tombol biar kebaca terus 🔥 */
+                  onTouchMove={handleMicTouchMove} 
                   onClick={() => (inputValue.trim() || editMessageId) && sendMessage()}>
             <span className="material-icons">{editMessageId ? 'check' : (inputValue.trim() ? 'send' : 'mic')}</span>
           </button>
