@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+// 🔥 FIX: Tambahkan Suspense dari react 🔥
+import { useEffect, useState, useRef, Suspense } from 'react';
 import Script from 'next/script';
 import { useSearchParams } from 'next/navigation'; 
 import { supabase as sb } from '@/lib/supabase'; 
@@ -44,13 +45,13 @@ declare global {
   var LivekitClient: any;
 }
 
-export default function RoomPage() {
+// 🔥 FIX: Kita ubah nama fungsi utama jadi VoiceRoomContent 🔥
+function VoiceRoomContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams(); 
   const [mounted, setMounted] = useState(false);
-  const roomRef = useRef<any>(null); // Pake ref biar statenya awet
+  const roomRef = useRef<any>(null);
   
-  // STATE BARU UNTUK LEVELING & COMBO
   const myTotalGiftSent = useRef(0);
   const myLevel = useRef(1);
   const isMicOn = useRef(false);
@@ -86,7 +87,6 @@ export default function RoomPage() {
     updateTitle();
     setTimeout(updateTitle, 300);
 
-    // --- HELPER LOGICS ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -105,7 +105,6 @@ export default function RoomPage() {
     function playVIPEntrance(username: string, level: number) {
         if (level < 4) return; 
 
-        // Inject animasi CSS jika belum ada
         if (!document.getElementById('vip-anim-styles-clean')) {
             const style = document.createElement('style');
             style.id = 'vip-anim-styles-clean';
@@ -188,7 +187,6 @@ export default function RoomPage() {
 
         roomChannel
         .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, () => { fetchStage(); })
-        // 🔥 UPDATE KOIN REALTIME 🔥
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p: any) => { 
             fetchStage(); 
             if (p.new && p.new.id === MY_USER_ID.current) {
@@ -291,7 +289,6 @@ export default function RoomPage() {
         let currentCoins = coinDisplay ? parseInt(coinDisplay.innerText.replace(/[,.]/g, '')) : 0;
         if (currentCoins < totalHarga) return showNotif(t('min_topup_warning'), "error");
 
-        // Kurangi koin di UI seketika
         currentCoins -= totalHarga;
         if (coinDisplay) coinDisplay.innerText = currentCoins.toLocaleString();
 
@@ -381,7 +378,7 @@ export default function RoomPage() {
             topUsers.forEach((user, index) => {
                 const marginKiri = index === 0 ? '0' : '-12px'; 
                 const zIndex = 3 - index; 
-                html += `<img src="${user.avatar_url || 'asets/png/profile.webp'}" title="${user.username} (Total: ${user.total_gift_sent} koin)" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid ${bingkaiWarna[index]}; margin-left: ${marginKiri}; z-index: ${zIndex}; position: relative; background: #222; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">`;
+                html += `<img src="${user.avatar_url || '/asets/png/profile.webp'}" title="${user.username} (Total: ${user.total_gift_sent} koin)" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid ${bingkaiWarna[index]}; margin-left: ${marginKiri}; z-index: ${zIndex}; position: relative; background: #222; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">`;
             });
             html += `</div>`;
             container.innerHTML = html;
@@ -470,9 +467,6 @@ export default function RoomPage() {
         });
     }
 
-    // ==========================================================
-    // 🔥 GLOBAL WINDOW ASSIGNMENTS 🔥
-    // ==========================================================
     window.sendGift = sendGift;
 
     window.kickUser = async (targetId, targetName) => {
@@ -676,7 +670,6 @@ export default function RoomPage() {
         if (m) m.style.display = 'none';
     };
 
-    // FITUR ANTI KETUTUP KEYBOARD DAN GESER LACI
     const fixMobileHeight = () => {
         let vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -724,4 +717,11 @@ export default function RoomPage() {
       <GiftDrawer /><GiftAnimOverlay />
     </div>
   );
+}
+export default function Page() {
+  return (
+    <Suspense fallback={<div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff'}}>Memuat panggung...</div>}>
+      <RoomPage />
+    </Suspense>
+  )
 }
