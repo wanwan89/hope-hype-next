@@ -111,7 +111,7 @@ function VoiceRoomContent() {
       setTimeout(() => heart.remove(), 1000);
     }
 
-    // 🔥 LOGIKA TAP HANYA DI CHAT BOX + PERSISTEN 🔥
+    // 🔥 LOGIKA TAP HANYA DI CHAT BOX + PERSISTENCE 🔥
     window.handleGlobalClick = async (e: any) => {
       const chatBoxArea = document.getElementById('chat-box');
       if (!chatBoxArea || !chatBoxArea.contains(e.target as Node)) return;
@@ -122,10 +122,9 @@ function VoiceRoomContent() {
 
       createTapAnimation(x, y);
       
-      // Update local state secara optimis
       setTotalTaps(prev => {
         const newTotal = prev + 1;
-        // Sync ke DB setiap kelipatan 5 tap biar ga berat ke server
+        // Simpan ke DB secara real-time (setiap 5 klik biar ga boros quota)
         if (newTotal % 5 === 0) {
           sb.from('rooms').update({ tap_count: newTotal }).eq('id', CURRENT_ROOM_ID).then();
         }
@@ -234,6 +233,19 @@ function VoiceRoomContent() {
         }, 3000);
     }
 
+    async function fetchTopGifters() {
+        const topData = await getRoomLeaderboard();
+        const container = document.getElementById('top-gifters-container');
+        if (!container) return;
+        if (topData.length === 0) { container.style.display = 'none'; return; }
+        container.style.display = 'flex';
+        container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 TOP</span>`;
+        topData.slice(0, 3).forEach((u, i) => {
+            container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
+        });
+        container.onclick = () => window.openTopGiftersModal?.();
+    }
+
     function listenRealtime() {
         if (!CURRENT_ROOM_ID || !MY_USER_ID.current) return;
         channelRef.current = sb.channel(`room_active_${CURRENT_ROOM_ID}`, { config: { presence: { key: MY_USER_ID.current } } });
@@ -327,7 +339,6 @@ function VoiceRoomContent() {
         const { data: { session } } = await sb.auth.getSession();
         if (!session) { router.push('/hypetalk'); return; }
         MY_USER_ID.current = session.user.id;
-        
         const { data: p } = await sb.from('profiles').select('*').eq('id', MY_USER_ID.current).single();
         const { data: roomData } = await sb.from('rooms').select('*').eq('id', CURRENT_ROOM_ID).maybeSingle();
         
@@ -337,7 +348,7 @@ function VoiceRoomContent() {
         }
         
         if (roomData) {
-            setTotalTaps(roomData.tap_count || 0); // 🔥 Load tap count dari DB
+            setTotalTaps(roomData.tap_count || 0); // 🔥 Load Tap dari DB
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
             if (IS_OWNER.current) { 
                 await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
@@ -398,23 +409,50 @@ function VoiceRoomContent() {
     }
 
     // ==========================================================
-    // 🔥 WINDOW ASSIGNMENTS 🔥
+    // 🔥 GLOBAL WINDOW ASSIGNMENTS 🔥
     // ==========================================================
     window.sendGift = sendGift;
+
+    window.kickUser = async (targetId, targetName) => {
+        if (!confirm(`Kick ${targetName}?`)) return;
+        await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: targetId });
+        await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `${targetName} dikeluarkan.` }]);
+    };
+
+    window.toggleKickBtn = (el, canKick) => {
+        if (!canKick) return;
+        const wrapper = el.querySelector('.kick-btn-wrapper') as HTMLElement;
+        document.querySelectorAll('.kick-btn-wrapper').forEach((w: any) => { if (w !== wrapper) w.style.display = 'none'; });
+        if(wrapper) wrapper.style.display = wrapper.style.display === 'none' ? 'flex' : 'none';
+    };
 
     window.naikKeStage = async (idx) => {
         if (!MY_USER_ID.current) return showNotif("Login dulu!", "warning");
         if (roomRef.current && roomRef.current.state === "connected") await roomRef.current.localParticipant.setMicrophoneEnabled(true);
+        
         const { data: checkSlot } = await sb.from('room_slots').select('profile_id').match({ room_id: CURRENT_ROOM_ID, slot_index: idx }).single();
-        if (checkSlot && checkSlot.profile_id !== null) { await roomRef.current?.localParticipant.setMicrophoneEnabled(false); return showNotif("Kursi sudah ada yang menempati!", "warning"); }
+        if (checkSlot && checkSlot.profile_id !== null) {
+            await roomRef.current?.localParticipant.setMicrophoneEnabled(false);
+            return showNotif("Kursi sudah ada yang menempati!", "warning");
+        }
+
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
         await sb.from('room_slots').update({ profile_id: MY_USER_ID.current }).match({ room_id: CURRENT_ROOM_ID, slot_index: idx });
         await sb.from('profiles').update({ mic_off: false }).eq('id', MY_USER_ID.current);
+
         isMicOn.current = true;
+        const micIcon = document.getElementById('mic-icon');
+        const micText = document.getElementById('mic-text');
+        if(micIcon) { micIcon.innerText = "mic"; micIcon.style.color = "#2ecc71"; }
+        if(micText) micText.innerText = t('mute_mic');
+
         fetchStage();
     };
 
-    window.turunMic = () => { document.getElementById('confirm-modal')!.style.display = 'flex'; };
+    window.turunMic = () => { 
+        const m = document.getElementById('confirm-modal'); 
+        if(m) m.style.display = 'flex'; 
+    };
 
     window.prosesTurunMic = async () => {
         const m = document.getElementById('confirm-modal');
@@ -422,17 +460,86 @@ function VoiceRoomContent() {
         if (roomRef.current?.localParticipant) await roomRef.current.localParticipant.setMicrophoneEnabled(false);
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
         await sb.from('profiles').update({ mic_off: true }).eq('id', MY_USER_ID.current);
+        
         isMicOn.current = false;
+        const micIcon = document.getElementById('mic-icon');
+        const micText = document.getElementById('mic-text');
+        if(micIcon) { micIcon.innerText = "mic_off"; micIcon.style.color = "#e74c3c"; }
+        if(micText) micText.innerText = t('unmute_mic');
         fetchStage();
+    };
+
+    window.toggleRoomGiftDrawer = () => {
+        const d = document.getElementById('room-gift-drawer');
+        const o = document.getElementById('room-drawer-overlay');
+        d?.classList.toggle('open'); o?.classList.toggle('show');
+        if (d?.classList.contains('open')) {
+            updateLevelProgressUI(); 
+            sb.from('room_slots').select('profile_id, profiles(username, avatar_url)').eq('room_id', CURRENT_ROOM_ID).not('profile_id', 'is', null).neq('profile_id', MY_USER_ID.current)
+            .then(({data}) => {
+                const tc = document.getElementById('gift-targets');
+                if(!tc) return; tc.innerHTML = "";
+                if(!data?.length) { 
+                    selectedTargetId.current = null; selectedTargetName.current = "";
+                    tc.innerHTML = `<span style="font-size:12px; color:#888;">${t('only_you_here')}</span>`; return; 
+                }
+                data.forEach((s:any, i) => {
+                    const isSelected = selectedTargetId.current === s.profile_id;
+                    const div = document.createElement('div'); div.className = `target-user ${isSelected ? 'selected' : ''}`;
+                    div.onclick = () => { selectedTargetId.current = s.profile_id; selectedTargetName.current = s.profiles.username; window.toggleRoomGiftDrawer?.(); window.toggleRoomGiftDrawer?.(); };
+                    div.innerHTML = `<img src="${s.profiles.avatar_url || '/asets/png/profile.webp'}" class="target-avatar" style="object-fit:cover;"><span>${s.profiles.username}</span>`;
+                    tc.appendChild(div);
+                    if(!selectedTargetId.current && i === 0) { selectedTargetId.current = s.profile_id; selectedTargetName.current = s.profiles.username; div.classList.add('selected'); }
+                });
+            });
+        }
+    };
+
+    window.toggleSidebar = () => { 
+        document.getElementById('sidebar')?.classList.toggle('active'); 
+        document.getElementById('sidebar-overlay')?.classList.toggle('active'); 
+        if (IS_OWNER.current) syncOwnerUI(); 
+    };
+
+    window.openTopGiftersModal = async () => {
+        const m = document.getElementById('top-gifters-modal'); const l = document.getElementById('top-gifters-list');
+        if(m && l) { 
+            m.style.display = 'flex'; l.innerHTML = `<div style="text-align:center; color:#fff; padding: 20px;">Menghitung koin panggung...</div>`;
+            const top = await getRoomLeaderboard(); l.innerHTML = "";
+            if (top.length === 0) { l.innerHTML = '<div style="text-align:center; color:#888;">Belum ada kado di panggung ini. Ayo kirim yang pertama!</div>'; return; }
+            top.forEach((u, i) => {
+                let rankHtml = '';
+                if (i === 0) rankHtml = `<div style="background: linear-gradient(135deg, #FFDF00, #D4AF37); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(255,215,0,0.5);">1</div>`;
+                else if (i === 1) rankHtml = `<div style="background: linear-gradient(135deg, #FFFFFF, #A9A9A9); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(192,192,192,0.3);">2</div>`;
+                else if (i === 2) rankHtml = `<div style="background: linear-gradient(135deg, #FFB37C, #C56F28); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(205,127,50,0.3);">3</div>`;
+                else rankHtml = `<div style="color: #94a3b8; font-weight: 900; font-size: 16px; width: 28px; text-align: center;">${i + 1}</div>`;
+                const bgGradient = i === 0 ? 'background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent); border-left: 4px solid #FFD700;' : i === 1 ? 'background: linear-gradient(90deg, rgba(192, 192, 192, 0.1), transparent); border-left: 4px solid #C0C0C0;' : i === 2 ? 'background: linear-gradient(90deg, rgba(205, 127, 50, 0.1), transparent); border-left: 4px solid #CD7F32;' : 'background: #2a3648; border-left: 4px solid transparent;';
+                
+                l.innerHTML += `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 6px; ${bgGradient} margin-bottom:8px;">
+                    <div style="width: 30px; display: flex; justify-content: center;">${rankHtml}</div>
+                    <img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div onclick="window.openUserProfile('${u.id || ''}')" style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; cursor: pointer;">
+                            ${u.username} ${getLevelBadgeHTML(u.level || 1)} ${getUserBadge(u.role || '')}
+                        </div>
+                        <div style="color: #FFD700; font-size: 12px; margin-top: 2px; font-weight: 600;">${(u.room_total || 0).toLocaleString()} koin</div>
+                    </div>
+                </div>`;
+            });
+        }
     };
 
     window.kirimKomentar = async () => {
         const inputEl = document.getElementById('chat-input') as HTMLInputElement;
         const text = inputEl?.value.trim();
         if (!text || !CURRENT_ROOM_ID || !MY_USER_ID.current) return;
+
         inputEl.value = ''; 
+        inputEl.focus(); 
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         try {
-            // 🔥 FIX: user_id disertakan agar terbaca oleh listener realtime 🔥
+            // 🔥 FIX: Tambahkan user_id agar komentar muncul & bisa diklik 🔥
             await sb.from('room_messages').insert([{ 
                 room_id: CURRENT_ROOM_ID, 
                 username: myUsername.current, 
@@ -444,9 +551,150 @@ function VoiceRoomContent() {
         } catch (e) { console.error(e); }
     };
 
+    window.mintaNaik = async () => {
+        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').order('slot_index', { ascending: true });
+        const slotKosong = allSlots?.find(s => !s.profile_id);
+        if (slotKosong) window.naikKeStage?.(slotKosong.slot_index); else showNotif("Panggung penuh!", "warning");
+    };
+
+    window.keluarRoom = async () => {
+        if (IS_OWNER.current && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
+            await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
+            await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
+            await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
+        } else {
+            await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
+        }
+        roomRef.current?.disconnect();
+        window.location.href = '/lobby'; 
+    };
+
+    window.toggleMicSidebar = async (e: any) => {
+        e?.preventDefault();
+        if (!roomRef.current) return showNotif(t('mic_not_ready'), "warning");
+
+        const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID.current).single();
+        if (!onStage) return showNotif(t('mic_stage_first'), "warning");
+
+        isMicOn.current = !isMicOn.current;
+        await roomRef.current.localParticipant.setMicrophoneEnabled(isMicOn.current);
+        await sb.from('profiles').update({ mic_off: !isMicOn.current }).eq('id', MY_USER_ID.current);
+
+        const icon = document.getElementById('mic-icon');
+        const text = document.getElementById('mic-text');
+        if (icon && text) {
+            icon.innerText = isMicOn.current ? 'mic' : 'mic_off';
+            text.innerText = isMicOn.current ? t('mute_mic') : t('unmute_mic');
+            icon.style.color = isMicOn.current ? 'inherit' : '#ef4444';
+        }
+        
+        window.toggleSidebar?.(); 
+        fetchStage();
+    };
+
+    window.openRoomSetting = () => {
+        const modal = document.getElementById('setting-modal');
+        if (modal) {
+            modal.classList.add('show');
+            const body = modal.querySelector('.modal-body');
+            if (body && !body.querySelector('.radar-settings')) {
+                const div = document.createElement('div');
+                div.className = 'radar-settings';
+                const label = document.createElement('label');
+                label.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
+                label.innerText = 'Warna Radar Mic';
+                div.appendChild(label);
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText = 'display:flex; gap:12px; margin-bottom:20px;';
+                const colors = [{ val: '#ef4444', bg: '#ef4444' }, { val: '#3b82f6', bg: '#3b82f6' }, { val: '#22c55e', bg: '#22c55e' }, { val: 'rgb', bg: 'linear-gradient(45deg, red, blue, green)' }];
+                colors.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.style.cssText = `background:${c.bg}; width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;`;
+                    btn.onclick = () => { if(window.updateRadarColor) window.updateRadarColor(c.val); };
+                    btnContainer.appendChild(btn);
+                });
+                div.appendChild(btnContainer);
+                const saveBtn = body.querySelector('.btn-save-setting');
+                if (saveBtn) body.insertBefore(div, saveBtn); else body.appendChild(div);
+            }
+        }
+        window.toggleSidebar?.(); 
+    };
+
+    window.updateRadarColor = (color: string) => {
+        const root = document.documentElement;
+        if (color === 'rgb') {
+            root.style.setProperty('--radar-color', 'linear-gradient(90deg, #ff0000, #00ff00, #0000ff)');
+            document.body.classList.add('radar-rgb');
+        } else {
+            root.style.setProperty('--radar-color', color);
+            document.body.classList.remove('radar-rgb');
+        }
+        showNotif("Warna radar diperbarui!", "success");
+    };
+    
+    window.closeRoomSetting = () => { document.getElementById('setting-modal')?.classList.remove('show'); };
+    
+    window.saveRoomSetting = async () => {
+        const newName = (document.getElementById('edit-room-name') as HTMLInputElement).value;
+        const sysMsg = (document.getElementById('system-message') as HTMLInputElement).value;
+        if (!newName) return showNotif(t('room_name_empty'), "warning");
+        try {
+            await sb.from('rooms').update({ name: newName }).eq('id', CURRENT_ROOM_ID);
+            if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
+            const url = new URL(window.location.href); url.searchParams.set('name', newName); window.history.pushState({}, '', url); 
+            const titleEl = document.querySelector('.room-title') as HTMLElement;
+            if(titleEl) titleEl.innerText = newName.toUpperCase();
+            window.closeRoomSetting?.();
+        } catch (e: any) { showNotif("Gagal simpan: " + e.message, "error"); }
+    };
+
+    window.closeConfirmModal = () => {
+        const m = document.getElementById('confirm-modal');
+        if (m) m.style.display = 'none';
+    };
+
+    window.closeTopGiftersModal = () => {
+        const m = document.getElementById('top-gifters-modal');
+        if (m) m.style.display = 'none';
+    };
+
+    const fixMobileHeight = () => {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    window.addEventListener('resize', fixMobileHeight);
+    window.addEventListener('orientationchange', fixMobileHeight);
+    fixMobileHeight();
+
+    const giftDrawerEl = document.getElementById('room-gift-drawer');
+    if (giftDrawerEl) {
+        let startY = 0; let currentY = 0;
+        giftDrawerEl.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+        giftDrawerEl.addEventListener('touchmove', (e) => {
+            currentY = e.touches[0].clientY;
+            const diffY = currentY - startY;
+            if (diffY > 0) { giftDrawerEl.style.transform = `translateY(${diffY}px)`; giftDrawerEl.style.transition = 'none'; }
+        }, { passive: true });
+        giftDrawerEl.addEventListener('touchend', () => {
+            const diffY = currentY - startY;
+            giftDrawerEl.style.transform = ''; giftDrawerEl.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+            if (diffY > 80 && giftDrawerEl.classList.contains('open')) window.toggleRoomGiftDrawer?.();
+            startY = 0; currentY = 0;
+        });
+    }
+
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
-    return () => { clearInterval(sdkInterval); roomRef.current?.disconnect(); };
-  }, [t, searchParams, totalTaps]);
+
+    return () => {
+        clearInterval(sdkInterval); 
+        roomRef.current?.disconnect();
+        window.removeEventListener('resize', fixMobileHeight);
+        window.removeEventListener('orientationchange', fixMobileHeight);
+        ['room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 'vip-entrance-overlay'].forEach(id => document.getElementById(id)?.remove());
+    };
+  }, [t, searchParams, totalTaps, router]);
 
   if (!mounted) return null;
 
@@ -455,7 +703,7 @@ function VoiceRoomContent() {
       <Script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" />
       <Script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.12/dist/livekit-client.umd.min.js" />
       
-      {/* 🔥 CONTAINER JUMLAH TAP-TAP 🔥 */}
+      {/* 🔥 JUMLAH TAP-TAP DI ATAS HEADER 🔥 */}
       <div className="tap-counter-top">
           <span className="material-icons">favorite</span>
           <b>{totalTaps.toLocaleString()}</b>
@@ -465,7 +713,7 @@ function VoiceRoomContent() {
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
 
-      {/* 🔥 PROFILE SLIDE UP 🔥 */}
+      {/* 🔥 PROFILE SLIDE UP (BOTTOM SHEET) 🔥 */}
       <div className={`user-profile-sheet-overlay ${isProfileOpen ? 'active' : ''}`} onClick={() => setIsProfileOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
@@ -487,6 +735,7 @@ function VoiceRoomContent() {
         </div>
       </div>
       
+      {/* CSS GLOBAL UNTUK RADAR MIC & TAP-TAP & PROFILE */}
       <style jsx global>{`
         :root { --radar-color: #3b82f6; }
         
@@ -506,7 +755,7 @@ function VoiceRoomContent() {
 
         @keyframes flyUpAnim {
           0% { transform: translateY(0) scale(1); opacity: 1; }
-          100% { transform: translateY(-250px) translateX(${Math.random() * 80 - 40}px) scale(1.5); opacity: 0; }
+          100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5); opacity: 0; }
         }
 
         .user-profile-sheet-overlay {
