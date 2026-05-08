@@ -41,7 +41,7 @@ declare global {
     openTopGiftersModal?: () => void;
     closeTopGiftersModal?: () => void;
     playGiftAnimation?: (giftId: number | string, forcedCombo?: number | null) => void;
-    accNaikPanggung?: (userId: string, username: string) => void; // 🔥 Fungsi ACC Baru
+    accNaikPanggung?: (userId: string, username: string) => void; 
   }
   var LivekitClient: any;
 }
@@ -56,7 +56,6 @@ function VoiceRoomContent() {
   
   const myTotalGiftSent = useRef(0);
   const myLevel = useRef(1);
-  const isMicOn = useRef(false);
   const giftComboCount = useRef(0);
   const lastGiftId = useRef<number | null>(null);
   const giftAnimTimer = useRef<NodeJS.Timeout | null>(null);
@@ -179,14 +178,12 @@ function VoiceRoomContent() {
             chatBox.appendChild(div); chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
             fetchTopGifters(); 
         })
-        // 🔥 FITUR ACC: Dengarkan Permintaan Naik dari User 🔥
         .on('broadcast', { event: 'minta_naik' }, (p: any) => {
             if (IS_OWNER.current) {
                 const acc = confirm(`${p.payload.username} ingin naik panggung. Izinkan?`);
                 if (acc) window.accNaikPanggung?.(p.payload.userId, p.payload.username);
             }
         })
-        // 🔥 FITUR ACC: Dengerin Balasan Owner 🔥
         .on('broadcast', { event: 'naik_diizinkan' }, async (p: any) => {
             if (p.payload.userId === MY_USER_ID.current) {
                 showNotif("Naik panggung diizinkan! Mencari kursi...", "success");
@@ -207,7 +204,6 @@ function VoiceRoomContent() {
     }
 
     async function fetchTopGifters() {
-        // 🔥 FIX 2: Filter Sultan Hanya di Room Ini 🔥
         const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
         const hargaKado: Record<string, number> = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000, '6': 5000, '7': 10000, '8': 25000, '9': 50000, '10': 100000 };
         let totals: Record<string, number> = {};
@@ -239,7 +235,6 @@ function VoiceRoomContent() {
         
         if (roomData) {
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
-            // 🔥 FIX 4: Proteksi Owner Presence 🔥
             if (IS_OWNER.current) { await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID); } 
             else if (!roomData.is_active) { showNotif("Panggung sedang ditutup oleh Owner!", "error"); router.push('/hypetalk'); return; }
         }
@@ -255,7 +250,6 @@ function VoiceRoomContent() {
                 });
                 await roomRef.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
                 await roomRef.current.localParticipant.setMicrophoneEnabled(false);
-                isMicOn.current = false;
             } catch (e) { console.error(e); }
         }
         fetchStage(); listenRealtime(); fetchTopGifters();
@@ -280,20 +274,18 @@ function VoiceRoomContent() {
         });
     }
 
-    // 🔥 GLOBAL WINDOW ASSIGNMENTS 🔥
+    // --- GLOBAL WINDOW ASSIGNMENTS ---
     window.toggleMicSidebar = async (e) => {
         e?.preventDefault();
         if (!roomRef.current?.localParticipant) return showNotif(t('mic_not_ready'), "warning");
         const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID.current).single();
         if (!onStage) return showNotif(t('mic_stage_first'), "warning");
 
-        // 🔥 FIX 1: Gunakan status asli LiveKit sebagai Source of Truth 🔥
         const nowEnabled = roomRef.current.localParticipant.isMicrophoneEnabled;
         const newStatus = !nowEnabled;
         
         await roomRef.current.localParticipant.setMicrophoneEnabled(newStatus);
         await sb.from('profiles').update({ mic_off: !newStatus }).eq('id', MY_USER_ID.current);
-        isMicOn.current = newStatus;
 
         const icon = document.getElementById('mic-icon');
         const text = document.getElementById('mic-text');
@@ -309,7 +301,6 @@ function VoiceRoomContent() {
     window.mintaNaik = () => {
         if (IS_OWNER.current) return showNotif("Lu kan owner-nya Bree!", "info");
         showNotif("Permintaan naik panggung dikirim ke Owner...", "info");
-        // 🔥 FIX 3: Broadcast ke Owner 🔥
         channelRef.current.send({ type: 'broadcast', event: 'minta_naik', payload: { userId: MY_USER_ID.current, username: myUsername.current } });
     };
 
@@ -320,14 +311,12 @@ function VoiceRoomContent() {
     window.naikKeStage = async (idx) => {
         if (!MY_USER_ID.current) return showNotif("Login dulu!", "warning");
         const { data: check } = await sb.from('room_slots').select('profile_id').match({ room_id: CURRENT_ROOM_ID, slot_index: idx }).single();
-        if (check?.profile_id) return showNotif("Kursi sudah terisi!", "warning");
+        if (check?.profile_id) return showNotif("Sudah terisi!", "warning");
         
         if (roomRef.current) await roomRef.current.localParticipant.setMicrophoneEnabled(true);
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
         await sb.from('room_slots').update({ profile_id: MY_USER_ID.current }).match({ room_id: CURRENT_ROOM_ID, slot_index: idx });
         await sb.from('profiles').update({ mic_off: false }).eq('id', MY_USER_ID.current);
-        
-        isMicOn.current = true;
         fetchStage();
     };
 
@@ -336,37 +325,34 @@ function VoiceRoomContent() {
         if (roomRef.current) await roomRef.current.localParticipant.setMicrophoneEnabled(false);
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
         await sb.from('profiles').update({ mic_off: true }).eq('id', MY_USER_ID.current);
-        isMicOn.current = false;
         fetchStage();
     };
 
     window.keluarRoom = async () => {
-        if (IS_OWNER.current) {
-            if (confirm("Tutup panggung? (Leaderboard akan direset)")) {
-                await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
-                await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
-                await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
-            }
+        if (IS_OWNER.current && confirm("Tutup panggung?")) {
+            await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
+            await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
+            await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
         } else {
             await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
         }
         roomRef.current?.disconnect(); router.push('/hypetalk');
     };
 
-    // LOGIKA LEVELING & HADIAH (Sesuai Voice.js lu)
+    // 🔥 FIX build error: parameter 'total' must have a type number 🔥
     const LEVEL_THRESHOLDS_VAL = { 1: 0, 2: 1000, 3: 5000, 4: 20000, 5: 50000 };
-    function checkLvl(total) {
+    function checkLvl(total: number) {
         if (total >= LEVEL_THRESHOLDS_VAL[5]) return { level: 5 };
         if (total >= LEVEL_THRESHOLDS_VAL[4]) return { level: 4 };
         if (total >= LEVEL_THRESHOLDS_VAL[3]) return { level: 3 };
-        if (total >= LEVEL_THRESHOLDS[2]) return { level: 2 };
+        if (total >= LEVEL_THRESHOLDS_VAL[2]) return { level: 2 };
         return { level: 1 };
     }
 
-    async function sendGift(giftName, harga, giftId, jumlah = 1) {
+    async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah: number = 1) {
         if (!selectedTargetId.current) return showNotif("Pilih target!", "warning");
         if (selectedTargetId.current === MY_USER_ID.current) return showNotif("Gak bisa nyawer diri sendiri Bree!", "warning");
-        const total = parseInt(harga) * jumlah;
+        const total = (typeof harga === 'string' ? parseInt(harga) : harga) * jumlah;
         const { data: bal } = await sb.from('profiles').select('coins').eq('id', MY_USER_ID.current).single();
         if ((bal?.coins || 0) < total) return showNotif("Koin lo kurang Bree!", "error");
         
@@ -394,13 +380,12 @@ function VoiceRoomContent() {
             .then(({data}) => {
                 const tc = document.getElementById('gift-targets');
                 if(!tc) return; tc.innerHTML = "";
-                if(!data?.length) { tc.innerHTML = `<span style="font-size:12px; color:#888;">${t('only_you_here')}</span>`; return; }
-                data.forEach((s:any, i) => {
+                if(!data?.length) { tc.innerHTML = `<span style="font-size:12px; color:#888;">Cuma ada kamu di panggung</span>`; return; }
+                data.forEach((s:any) => {
                     const div = document.createElement('div'); div.className = `target-user ${selectedTargetId.current === s.profile_id ? 'selected' : ''}`;
                     div.onclick = () => { selectedTargetId.current = s.profile_id; selectedTargetName.current = s.profiles.username; window.toggleRoomGiftDrawer?.(); window.toggleRoomGiftDrawer?.(); };
                     div.innerHTML = `<img src="${s.profiles.avatar_url || '/asets/png/profile.webp'}" class="target-avatar" style="object-fit:cover;"><span>${s.profiles.username}</span>`;
                     tc.appendChild(div);
-                    if(!selectedTargetId.current && i === 0) { selectedTargetId.current = s.profile_id; selectedTargetName.current = s.profiles.username; div.classList.add('selected'); }
                 });
             });
         }
@@ -408,8 +393,8 @@ function VoiceRoomContent() {
     window.openConfirmModal = () => { document.getElementById('confirm-modal')!.style.display = 'flex'; };
     window.closeConfirmModal = () => { document.getElementById('confirm-modal')!.style.display = 'none'; };
     window.toggleKickBtn = (el, canKick) => { if (!canKick) return; const w = el.querySelector('.kick-btn-wrapper') as HTMLElement; w.style.display = w.style.display === 'none' ? 'flex' : 'none'; };
-    
-    // MODAL LEADERBOARD (Sultan Room)
+    window.kickUser = async (id, name) => { if(confirm(`Kick ${name}?`)) { await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', id); } };
+
     window.openTopGiftersModal = async () => {
         const m = document.getElementById('top-gifters-modal'); const l = document.getElementById('top-gifters-list');
         if(m && l) { m.style.display = 'flex'; l.innerHTML = `<div style="text-align:center; color:#fff; padding: 20px;">Menghitung koin panggung...</div>`;
@@ -421,6 +406,13 @@ function VoiceRoomContent() {
         }
     };
     window.closeTopGiftersModal = () => { document.getElementById('top-gifters-modal')!.style.display = 'none'; };
+    window.kirimKomentar = async () => {
+        const input = document.getElementById('chat-input') as HTMLInputElement;
+        const text = input.value.trim();
+        if(!text) return;
+        await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: myUsername.current, text, role: myRole.current, level: myLevel.current }]);
+        input.value = "";
+    };
 
     const sdkInterval = setInterval(() => { if (window.LivekitClient) { clearInterval(sdkInterval); initApp(); } }, 500);
     return () => { clearInterval(sdkInterval); roomRef.current?.disconnect(); };
