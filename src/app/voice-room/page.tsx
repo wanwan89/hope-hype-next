@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils'; 
-// 🔥 FIX 1: Import i18n
 import { useTranslation } from 'react-i18next';
-import './VoiceLobby.css';
+import './VoiceLobby.css'; // Pastikan file CSS nya ter-import dengan benar
 
-// 🔥 FIX 2: Mapping Kategori (ID untuk database, Label untuk translasi UI)
 const KATEGORI_MAP = [
   { id: 'Populer', label: 'category_popular' },
   { id: 'Nyanyi', label: 'category_singing' },
@@ -18,7 +16,6 @@ const KATEGORI_MAP = [
 
 export default function VoiceLobbyPage() {
   const router = useRouter();
-  // 🔥 FIX 3: Inisialisasi translate hook
   const { t } = useTranslation();
 
   // --- STATES ---
@@ -225,9 +222,9 @@ export default function VoiceLobbyPage() {
 
       <main className="room-list">
         {isLoadingRooms ? (
-          [1,2,3].map(i => <div key={i} className="skeleton-card" />)
+          [1,2,3].map(i => <div key={i} className="skeleton-card" style={{height:'60px', borderRadius:'18px', background:'var(--vl-bg-card)', marginBottom:'10px'}} />)
         ) : rooms.length === 0 ? (
-          <div className="no-rooms-info">
+          <div className="no-rooms-info" style={{textAlign:'center', color:'var(--vl-text-muted)', marginTop:'40px'}}>
             {t('no_rooms')}
           </div>
         ) : (
@@ -240,7 +237,7 @@ export default function VoiceLobbyPage() {
               </div>
               <div className="room-status">
                 <div className="online-pill">
-                   <div className="dot-green" />
+                   <div className="dot-green" style={{width:'6px', height:'6px', borderRadius:'50%', background:'currentColor'}}></div>
                    {room.onlineCount} Online
                 </div>
               </div>
@@ -271,6 +268,7 @@ export default function VoiceLobbyPage() {
                 className="voice-select-custom"
                 value={newRoomForm.category} 
                 onChange={e => setNewRoomForm({...newRoomForm, category: e.target.value})}
+                style={{width: '100%', padding: '14px', borderRadius: '12px', background: 'var(--vl-bg-app)', color: 'var(--vl-text-dark)', border: '1px solid var(--vl-border-input)', marginBottom: '20px'}}
               >
                 <option value="Nyanyi">{t('category_singing')}</option>
                 <option value="Ngobrol">{t('category_chatting')}</option>
@@ -290,9 +288,11 @@ export default function VoiceLobbyPage() {
       {/* MODAL TOP UP KOIN */}
       <div className={`voice-bottom-sheet ${isCoinSheetOpen ? 'active' : ''}`}>
         <div className="voice-sheet-overlay" onClick={() => setIsCoinSheetOpen(false)}></div>
-        <div className="voice-sheet-content">
+        <div className="voice-sheet-content" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
           <div className="drag-handle"></div>
           <h3>{t('topup_title')}</h3>
+          
+          {/* Paket Standar */}
           {[100, 300, 700].map(amt => (
             <div key={amt} className="coin-product-card" onClick={() => handleBuyCoin(amt * 100, amt, `${amt} Koin`)}>
               <div className="product-info-wrapper">
@@ -307,6 +307,20 @@ export default function VoiceLobbyPage() {
               <button className={`buy-coin-btn ${loadingPackage === amt ? 'btn-loading' : ''}`} disabled={isProcessingPayment}>{t('buy')}</button>
             </div>
           ))}
+
+          {/* 🔥 FIX: GAMBAR PROMO TOP UP CUSTOM 🔥 */}
+          <div style={{
+            width: '100%', 
+            height: '90px', 
+            borderRadius: '16px', 
+            margin: '16px 0', 
+            backgroundImage: 'url("/asets/png/topup.webp")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+          }}></div>
+
+          {/* Top Up Custom */}
           <div className="custom-topup">
             <h4>{t('custom_topup_title')}</h4>
             <input 
@@ -314,16 +328,20 @@ export default function VoiceLobbyPage() {
               value={customCoinAmount} onChange={(e) => setCustomCoinAmount(e.target.value)}
             />
             {customCoinAmount && (
-              <span className="price-calc-label">{t('price_label')}: Rp {(parseInt(customCoinAmount) * 100).toLocaleString('id-ID')}</span>
+              <span style={{fontSize:'12px', color:'var(--vl-text-muted)', marginTop:'-5px', display:'block'}}>
+                {t('price_label')}: <b style={{color: 'var(--vl-primary)'}}>Rp {(parseInt(customCoinAmount) * 100).toLocaleString('id-ID')}</b>
+              </span>
             )}
             <button 
               id="buy-custom-coin-btn" 
               className={loadingPackage === parseInt(customCoinAmount) ? 'btn-loading' : ''} 
               onClick={handleCustomCoinBuy} disabled={isProcessingPayment}
+              style={{marginTop: '10px'}}
             >
               {t('buy_custom')}
             </button>
           </div>
+
         </div>
       </div>
     </div>
