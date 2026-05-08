@@ -83,7 +83,7 @@ export default function Overlayspost() {
       `;
 
       content.querySelector('#shareBtn')?.addEventListener('click', () => (window as any).sharePost(postId));
-      content.querySelector('#profileBtn')?.addEventListener('click', () => window.location.href = `/profile?id=${creatorId}`);
+      content.querySelector('#profileBtn')?.addEventListener('click', () => window.location.href = `/data?id=${creatorId}`); // 🔥 FIX dikit: arahin ke /data (bukan /profile) sesuai struktur lu
       content.querySelector('#deleteBtn')?.addEventListener('click', () => (window as any).confirmDeletePost(postId));
       content.querySelector('#reportBtn')?.addEventListener('click', () => {
         (window as any).showNotif('Karya telah dilaporkan.', 'info');
@@ -97,15 +97,24 @@ export default function Overlayspost() {
       document.getElementById('postOptionsSheet')?.classList.remove('active');
     };
 
+    // 🔥 FIX: HUBUNGKAN KE GLOBAL SHARE MODAL 🔥
     (window as any).sharePost = (postId: string) => {
       const url = window.location.origin + '/post?id=' + postId;
-      if (navigator.share) {
-        navigator.share({ title: 'Hope Hype', text: 'Cek karya ini!', url });
+      
+      // Tutup menu opsi sebelum buka modal share
+      (window as any).closePostOptions();
+
+      if ((window as any).openGlobalShare) {
+        (window as any).openGlobalShare(
+          url,
+          'Karya di HypeTalk',
+          'Cek karya keren ini di HypeTalk!'
+        );
       } else {
+        // Fallback kalo misal ada error load modal
         navigator.clipboard.writeText(url);
         (window as any).showNotif('Link disalin!', 'success');
       }
-      (window as any).closePostOptions();
     };
 
     (window as any).confirmDeletePost = async (postId: string) => {

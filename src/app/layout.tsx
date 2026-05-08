@@ -15,6 +15,9 @@ import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar"; 
 import { ThemeProvider } from '@/components/ThemeProvider';
 
+// 🔥 FIX: Import komponen Global Share Modal yang baru kita bikin 🔥
+import GlobalShareModal from '@/components/GlobalShareModal';
+
 // 🔥 JURUS RAHASIA: LayoutEffect biar ga glitch/kedip
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -102,6 +105,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* 🔥 FIX 2: Bungkus semua konten dengan I18nextProvider 🔥 */}
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
+            
+            {/* 🔥 SELIPIN GLOBAL SHARE MODAL DI SINI BREE 🔥 */}
+            {/* Supaya bisa dipanggil dari mana aja se-aplikasi */}
+            <GlobalShareModal />
             
             {!hideSidebar && <Sidebar />}
             

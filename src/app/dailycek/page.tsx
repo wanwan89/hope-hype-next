@@ -8,6 +8,13 @@ import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import confetti from 'canvas-confetti';
 import './dailycek.css';
 
+// 🔥 FIX: Daftarin fungsi global share ke window biar TypeScript ga error 🔥
+declare global {
+  interface Window {
+    openGlobalShare?: (url?: string, title?: string, text?: string) => void;
+  }
+}
+
 export default function PusatMisiPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -183,11 +190,15 @@ export default function PusatMisiPage() {
     }
   };
 
+  // 🔥 FIX 1: Hubungkan dengan Global Share Modal 🔥
   const handleShareLink = () => {
     const link = `${window.location.origin}/dailycek?ref=${profile?.invite_code}`;
-    if (navigator.share) {
-      navigator.share({ title: 'HopeHype', text: `Yuk gabung HopeHype dan masukin kode undanganku: ${profile?.invite_code}`, url: link }).catch(()=>{});
+    const textDesc = `Yuk gabung HypeTalk dan dapatkan hadiah koin! Masukkan kode undanganku: ${profile?.invite_code}`;
+    
+    if (window.openGlobalShare) {
+      window.openGlobalShare(link, 'Undang Teman HypeTalk', textDesc);
     } else {
+      // Fallback
       navigator.clipboard.writeText(link);
       showNotif("Link dan kode berhasil disalin!", "success");
     }
@@ -356,6 +367,8 @@ export default function PusatMisiPage() {
                 <div className="m-reward"><div className="coin-dot" /> +500 Koin / Teman</div>
                 <span className="progress-text">Kode: <b style={{color: 'var(--primary)', fontFamily: 'monospace', fontSize: '13px'}}>{profile?.invite_code || '...'}</b></span>
               </div>
+              
+              {/* Tombol yang bakal ngebuka UI Share Modal Premium */}
               <button className="m-btn" onClick={handleShareLink}>Bagikan</button>
             </div>
           </div>

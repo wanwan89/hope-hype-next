@@ -8,6 +8,13 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './DataProfile.css';
 
+// 🔥 FIX: Daftarin fungsi global share ke window biar TypeScript ga error 🔥
+declare global {
+  interface Window {
+    openGlobalShare?: (url?: string, title?: string, text?: string) => void;
+  }
+}
+
 function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -158,10 +165,22 @@ function ProfileContent() {
     } catch (err) { console.error(err); } finally { setIsFollowLoading(false); }
   };
 
-  const handleShareProfile = async () => {
+  // 🔥 FIX 3: Hubungkan tombol Share Profile dengan GlobalShareModal 🔥
+  const handleShareProfile = () => {
     const url = window.location.href;
-    if (navigator.share) { try { await navigator.share({ title: `Profil ${profile.username}`, url }); } catch (err) {} }
-    else { navigator.clipboard.writeText(url); showNotif(t('link_copied'), "success"); }
+    const title = `Profil ${profile?.username}`;
+    const text = t('share_profile_text', `Yuk mampir ke profil ${profile?.username} di HypeTalk!`);
+    
+    // Tutup sidebar kalau lagi kebuka
+    setIsSidebarOpen(false);
+
+    if (window.openGlobalShare) {
+      window.openGlobalShare(url, title, text);
+    } else {
+      // Fallback kalo komponen modal belum load
+      navigator.clipboard.writeText(url); 
+      showNotif(t('link_copied', 'Link disalin!'), "success");
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -233,6 +252,7 @@ function ProfileContent() {
              {isMe ? (
                 <>
                    <button className="btn-action btn-secondary" onClick={() => setIsEditModalOpen(true)}>{t('edit_profile')}</button>
+                   {/* Tombol share di bawah bio profil */}
                    <button className="btn-action btn-secondary" onClick={handleShareProfile}>{t('share')}</button>
                 </>
              ) : (
@@ -294,7 +314,10 @@ function ProfileContent() {
         <div className="menu-category-label">{t('personal_tools')}</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings')}</div><div className="arrow-right">›</div></div>
         <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us')}</div><div className="arrow-right">›</div></div>
+        
+        {/* Tombol share di dalam Sidebar juga auto pake Modal Premium */}
         <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile')}</div><div className="arrow-right">›</div></div>
+        
         <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout')}</div></div>
       </aside>
 
