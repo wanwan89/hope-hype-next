@@ -48,9 +48,10 @@ export default function ChatArea() {
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [inviteSearch, setInviteSearch] = useState(''); 
 
-  // 🔥 FIX 1: STATE INSTAN UNTUK ANIMASI VN 🔥
+  // State VN & Batal
   const [isMicPressed, setIsMicPressed] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [cancelAnim, setCancelAnim] = useState(false); // 🔥 FIX 3: State untuk tulisan Batal VN 🔥
   const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0); 
@@ -101,7 +102,8 @@ export default function ChatArea() {
       currentRoom = `group_${groupId}`;
       const { data: gData } = await supabase.from('groups').select('*').eq('id', groupId).single();
       if (gData) {
-        setHeaderInfo({ title: gData.name, sub: "Grup", avatar: gData.avatar_url, role: 'user' });
+        // 🔥 FIX 2: avatar_url DIGANTI JADI photo_url (Sesuai Tabel Database) 🔥
+        setHeaderInfo({ title: gData.name, sub: "Grup", avatar: gData.photo_url, role: 'user' });
         setNewGroupName(gData.name);
         setIsOwner(gData.created_by === session.user.id);
       }
@@ -152,7 +154,8 @@ export default function ChatArea() {
     setIsUpdatingGroup(false);
   };
 
-  const updateGroupInfo = async (field: 'name' | 'avatar_url', value: string) => {
+  // 🔥 FIX 2: Fungsi update diarahkan ke kolom yang benar di tabel 🔥
+  const updateGroupInfo = async (field: 'name' | 'photo_url', value: string) => {
     if (!groupId || !isOwner) return;
     setIsUpdatingGroup(true);
     const { error } = await supabase.from('groups').update({ [field]: value }).eq('id', groupId);
@@ -163,15 +166,21 @@ export default function ChatArea() {
     setIsUpdatingGroup(false);
   };
 
-  const kickMember = async (targetUserId: string) => {
+  const kickMember = async (targetUserId: string, targetName: string) => {
     if (!groupId || !isOwner) return;
+    
+    // 🔥 FIX 4: Minta konfirmasi sebelum menendang member 🔥
+    const confirmKick = window.confirm(`Apakah kamu yakin ingin mengeluarkan ${targetName} dari grup?`);
+    if (!confirmKick) return;
+
     const { error } = await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', targetUserId);
     if (!error) {
       setGroupMembers(prev => prev.filter(m => m.user_id !== targetUserId));
-      showNotif("Member dikeluarkan!", "success");
+      showNotif("Member berhasil dikeluarkan!", "success");
     }
   };
 
+  // 🔥 FIX 2: Sinkronisasi Upload Foto ke kolom photo_url 🔥
   const handleGroupPhotoUpload = async (e: any) => {
     const file = e.target.files[0];
     if (!file || !isOwner) return;
@@ -187,7 +196,7 @@ export default function ChatArea() {
     const d = await res.json();
     
     if (d.secure_url) {
-      updateGroupInfo('avatar_url', d.secure_url);
+      updateGroupInfo('photo_url', d.secure_url);
     } else {
       setIsUpdatingGroup(false);
       showNotif("Gagal upload foto", "error");
@@ -313,26 +322,33 @@ export default function ChatArea() {
       refs.recordTimer.current = setInterval(() => setRecordTime(p => p + 1), 1000);
       if (navigator.vibrate) navigator.vibrate(50);
     } catch (e) { 
-      setIsMicPressed(false); // Reset jika error
+      setIsMicPressed(false); 
       showNotif(t('mic_error'), "error"); 
     }
   };
 
   const stopVN = (cancel = false) => {
-    setIsMicPressed(false); // 🔥 FIX: Hilangkan state animasi merah saat dilepas 🔥
+    setIsMicPressed(false); 
     if (!isRecordingRef.current) return;
     setIsRecording(false); isRecordingRef.current = false;
     setAudioLevel(0);
     if (refs.audioCtx.current) { refs.audioCtx.current.close(); refs.audioCtx.current = null; }
     clearInterval(refs.recordTimer.current);
-    if (cancel) { refs.mediaRecorder.current!.onstop = null; showNotif(t('vn_canceled'), "info"); }
+    
+    if (cancel) { 
+      refs.mediaRecorder.current!.onstop = null; 
+      // 🔥 FIX 3: Tampilkan tulisan Batal di Input Area selama 2 detik 🔥
+      setCancelAnim(true);
+      setTimeout(() => setCancelAnim(false), 2000);
+    }
+    
     refs.mediaRecorder.current?.stop();
     refs.audioChunks.current = [];
   };
 
   const handleMicTouchStart = (e: any) => {
     if (!inputValue.trim() && !editMessageId) {
-      setIsMicPressed(true); // 🔥 FIX: Set animasi menyala detik itu juga 🔥
+      setIsMicPressed(true); 
       vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       vnIsCanceled.current = false;
       startVN();
@@ -343,7 +359,7 @@ export default function ChatArea() {
     if ((isRecordingRef.current || isMicPressed) && !vnIsCanceled.current) {
       const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       const diff = vnTouchStartX.current - clientX;
-      if (diff > 50) { 
+      if (diff > 50) { // Geser ke kiri 50px
         vnIsCanceled.current = true;
         stopVN(true); 
       }
@@ -357,6 +373,7 @@ export default function ChatArea() {
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
     
+    // 🔥 FIX 5: Timeout dirubah menjadi 15 Detik 🔥
     refs.callTimer.current = setTimeout(async () => {
       endCall(true);
       await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
@@ -415,6 +432,18 @@ export default function ChatArea() {
     await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', sticker_url: null, audio_url: null }).eq('id', id);
     setMsgOptions(null);
   };
+
+  // 🔥 FIX 1: Dinamis Status Online 🔥
+  let displayStatus = 'Offline';
+  if (typingUser) {
+    displayStatus = `${typingUser.username} sedang mengetik...`;
+  } else if (targetId) {
+    displayStatus = onlineCount >= 2 ? 'Sedang online' : 'Offline';
+  } else if (groupId) {
+    displayStatus = `${onlineCount} anggota sedang online`;
+  } else {
+    displayStatus = `${onlineCount} hopers sedang online`;
+  }
 
   return (
     <div className="telegram-chat hype-chat-scope">
@@ -480,7 +509,10 @@ export default function ChatArea() {
               {headerInfo.title}
               {targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
-            <div className="status-container">{typingUser ? <span className="status-typing">{t('typing_status', { username: typingUser.username })}</span> : <span className="status-online">{t('online_status', { count: onlineCount })}</span>}</div>
+            {/* 🔥 FIX 1: Tampilkan teks displayStatus dinamis 🔥 */}
+            <div className="status-container">
+              <span className={typingUser ? "status-typing" : "status-online"}>{displayStatus}</span>
+            </div>
           </div>
         </div>
         <div className="header-right">
@@ -524,30 +556,16 @@ export default function ChatArea() {
             ))}
           </>
         )}
-        {typingUser && (
-          <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
-            {!targetId && <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{width: '30px', height:'30px', borderRadius:'50%', margin:'0 8px 2px'}} />}
-            <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
-              {!targetId && <div className="username" style={{ marginBottom: '4px', fontSize:'12.5px', color:'var(--primary-blue)', fontWeight:700 }}>{typingUser.username}</div>}
-              <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 4px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
-                <div className="typing-bubble" style={{ padding: 0 }}><span></span><span></span><span></span></div>
-              </div>
-            </div>
-          </div>
-        )}
         <div ref={refs.scroll} />
       </main>
 
       <footer className="chat-input-container">
-        
-        {/* 🔥 FIX 2: BOX STICKER 3x3 🔥 */}
         {isStickerOpen && (
           <div id="sticker-menu">
             <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
             <div id="sticker-list">{stickers.map((s, idx) => <img key={idx} src={s.images.fixed_width_small.url} alt="sticker" onClick={() => sendMessage(undefined, s.images.fixed_width.url)} />)}</div>
           </div>
         )}
-
         <div className="input-row">
           <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId ? '16px' : '28px' }}>
             
@@ -569,7 +587,14 @@ export default function ChatArea() {
             )}
 
             <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
-              {isRecording ? (
+              
+              {/* 🔥 FIX 3: Indikator saat Batal Merekam VN 🔥 */}
+              {cancelAnim ? (
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
+                  <span className="material-icons" style={{ fontSize: '18px' }}>cancel</span>
+                  <div style={{ flex: 1, fontSize: '14px' }}>Voice Note dibatalkan</div>
+                </div>
+              ) : isRecording ? (
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}
                      onTouchMove={handleMicTouchMove}>
                   <span className="online-dot" style={{ background: '#ff4757' }}></span>
@@ -586,7 +611,6 @@ export default function ChatArea() {
             </div>
           </div>
           
-          {/* 🔥 FIX 1: STATE ISMICPRESSED DITERAPKAN DI CLASS 🔥 */}
           <button id="action-btn" className={inputValue.trim() || editMessageId ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
                   onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} 
                   onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} 
@@ -606,6 +630,16 @@ export default function ChatArea() {
                   <h3 style={{ margin: 0 }}>Tambah Member</h3>
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
+
+                {/* 🔥 FIX 5: Info Grup di dalam tab Invite 🔥 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', padding: '15px', background: 'var(--bg-main)', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
+                   <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} alt="grup" />
+                   <div>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-color)' }}>{headerInfo.title}</h4>
+                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>ID Grup: {groupId}</p>
+                   </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input type="text" placeholder="Username / ID..." value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }} />
                   <button onClick={handleAddMember} disabled={isUpdatingGroup} style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}>TAMBAH</button>
@@ -667,7 +701,11 @@ export default function ChatArea() {
                         <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} alt="u" />
                         <span>{m.profiles?.username}</span>
                       </div>
-                      {isOwner && m.user_id !== currentUser.id && <button onClick={() => kickMember(m.user_id)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">person_remove</span></button>}
+                      {isOwner && m.user_id !== currentUser.id && (
+                        <button onClick={() => kickMember(m.user_id, m.profiles?.username)} style={{ background: 'none', border: 'none', color: '#ff4757' }}>
+                           <span className="material-icons">person_remove</span>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

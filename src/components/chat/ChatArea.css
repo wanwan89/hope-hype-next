@@ -93,7 +93,7 @@ html.dark .hype-chat-scope {
 .hype-chat-scope .loading-chat-hint { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 10px; font-weight: 500; }
 
 /* =========================================
-   🔥 CALL OVERLAY (Pasti Muncul!) 🔥
+   🔥 CALL OVERLAY 🔥
    ========================================= */
 .hype-chat-scope .call-overlay {
   position: fixed !important; 
@@ -101,7 +101,7 @@ html.dark .hype-chat-scope {
   width: 100vw !important; height: 100dvh !important;
   background: rgba(11, 20, 26, 0.98) !important; 
   backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
-  z-index: 9999999 !important; /* Dewa Z-index */
+  z-index: 9999999 !important; 
   display: flex !important; flex-direction: column !important;
   align-items: center !important; justify-content: center !important;
   color: white !important; text-align: center !important;
@@ -179,21 +179,51 @@ html.dark .hype-chat-scope {
 }
 
 /* =========================================
-   🔥 FIX 3: ANIMASI TOMBOL MIC (INSTAN) 🔥
+   🔥 GAYA RECORDING PREMIUM (VN) 🔥
    ========================================= */
+.hype-chat-scope .online-dot {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background-color: #ff4757 !important;
+  box-shadow: 0 0 8px rgba(255, 71, 87, 0.6) !important;
+  animation: hype-record-blink 0.8s infinite alternate !important;
+}
+
+@keyframes hype-record-blink {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.3; transform: scale(0.7); }
+}
+
+.hype-chat-scope .slide-cancel-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 13px !important;
+  font-weight: 500;
+  opacity: 0.7;
+  animation: hype-slide-left-hint 1.5s infinite ease-in-out;
+}
+
+@keyframes hype-slide-left-hint {
+  0%, 100% { transform: translateX(0); opacity: 0.5; }
+  50% { transform: translateX(-6px); opacity: 1; }
+}
+
+/* ANIMASI TOMBOL MIC/KIRIM */
 .hype-chat-scope #action-btn { 
   width: 50px; height: 50px; min-width: 50px; border-radius: 50%; border: none; cursor: pointer; 
   background-color: var(--primary-blue) !important; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
   box-shadow: 0 4px 10px rgba(29, 161, 242, 0.3) !important; 
 }
-
+.hype-chat-scope #action-btn:active { transform: scale(0.85) !important; box-shadow: 0 2px 5px rgba(29, 161, 242, 0.4) !important; }
 .hype-chat-scope #action-btn.is-recording {
   background-color: #ff4757 !important; 
   transform: scale(1.15) !important; 
   animation: hype-pulse-record 1.5s infinite !important; 
 }
-
 @keyframes hype-pulse-record {
   0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.5); }
   70% { box-shadow: 0 0 0 15px rgba(255, 71, 87, 0); }
@@ -201,45 +231,19 @@ html.dark .hype-chat-scope {
 }
 
 /* =========================================
-   🔥 FIX 2: WADAH STICKER 3x3 🔥
+   🔥 WADAH STICKER 3x3 🔥
    ========================================= */
 .hype-chat-scope #sticker-menu { 
-  position: absolute !important; 
-  bottom: calc(100% + 10px) !important; 
-  left: 12px !important; right: 12px !important; 
-  z-index: 10010 !important; 
-  background: var(--bg-panel) !important; 
-  border: 1px solid var(--border-color) !important;
-  border-radius: 20px !important; 
-  padding: 15px !important; 
-  box-shadow: 0 10px 35px rgba(0,0,0,0.15) !important; 
+  position: absolute !important; bottom: calc(100% + 10px) !important; left: 12px !important; right: 12px !important; 
+  z-index: 10010 !important; background: var(--bg-panel) !important; border: 1px solid var(--border-color) !important;
+  border-radius: 20px !important; padding: 15px !important; box-shadow: 0 10px 35px rgba(0,0,0,0.15) !important; 
   animation: hype-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important; 
-  display: flex !important;
-  flex-direction: column !important; /* 🔥 WAJIB KOLOM 🔥 */
-  max-width: 350px !important;
-  margin: 0 auto !important;
+  display: flex !important; flex-direction: column !important; max-width: 350px !important; margin: 0 auto !important;
 }
-
 .hype-chat-scope .sticker-search-wrapper { margin-bottom: 15px !important; display: block !important; width: 100% !important; }
-.hype-chat-scope .sticker-search-wrapper input { 
-  width: 100% !important; box-sizing: border-box !important;
-  background: var(--bg-main) !important; border: 1px solid var(--border-color) !important; 
-  color: var(--text-color) !important; padding: 12px 14px !important; border-radius: 14px !important; outline: none !important; 
-}
-
-.hype-chat-scope #sticker-list { 
-  display: grid !important; 
-  grid-template-columns: repeat(3, 1fr) !important; /* 🔥 FIX: 3 KOLOM / 3x3 🔥 */
-  gap: 16px !important; 
-  max-height: 280px !important; 
-  overflow-y: auto !important; 
-  padding-right: 5px !important;
-}
-
-.hype-chat-scope #sticker-list img { 
-  width: 100% !important; aspect-ratio: 1 / 1 !important; object-fit: contain !important; 
-  border-radius: 8px !important; cursor: pointer !important; transition: transform 0.2s !important; 
-}
+.hype-chat-scope .sticker-search-wrapper input { width: 100% !important; box-sizing: border-box !important; background: var(--bg-main) !important; border: 1px solid var(--border-color) !important; color: var(--text-color) !important; padding: 12px 14px !important; border-radius: 14px !important; outline: none !important; }
+.hype-chat-scope #sticker-list { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 16px !important; max-height: 280px !important; overflow-y: auto !important; padding-right: 5px !important; }
+.hype-chat-scope #sticker-list img { width: 100% !important; aspect-ratio: 1 / 1 !important; object-fit: contain !important; border-radius: 8px !important; cursor: pointer !important; transition: transform 0.2s !important; }
 .hype-chat-scope #sticker-list img:active { transform: scale(0.9); }
 
 /* =========================================
@@ -247,11 +251,5 @@ html.dark .hype-chat-scope {
    ========================================= */
 .hype-chat-scope .vn-custom-player { display: flex; align-items: center; gap: 10px; min-width: 180px; }
 .hype-chat-scope .vn-play-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue) !important; border: none; color: white; display: flex; align-items: center; justify-content: center; }
-
-.hype-chat-scope #reply-preview-box[style*="display: flex"] { 
-  display: flex !important; background: var(--input-box-bg) !important; 
-  border-left: 4px solid var(--primary-blue) !important; border-radius: 14px; 
-  padding: 10px 14px; margin-bottom: 10px; animation: hype-pop 0.3s forwards; 
-}
-
+.hype-chat-scope #reply-preview-box[style*="display: flex"] { display: flex !important; background: var(--input-box-bg) !important; border-left: 4px solid var(--primary-blue) !important; border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; animation: hype-pop 0.3s forwards; }
 @keyframes hype-pop { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }

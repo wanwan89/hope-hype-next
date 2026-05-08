@@ -26,10 +26,13 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
 
   const isDeleted = msg.message === "Pesan ini telah dihapus";
   
-  // 🔥 Deteksi apakah ini chat pribadi atau bukan (Grup/Global)
-  const isPrivateChat = msg.room_id?.startsWith('pv_');
+  // 🔥 FIX 1: DETEKSI RUANG OBROLAN EKSPLISIT 🔥
+  // Kita pastikan Username & Avatar HANYA TAMPIL kalau beneran di Grup atau Global
+  const isGlobalChat = msg.room_id === 'room-1';
+  const isGroupChat = msg.room_id?.startsWith('group_');
+  const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
 
-  // 🔥 State handle data reply hasil realtime
+  // State handle data reply hasil realtime
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
 
   useEffect(() => {
@@ -128,7 +131,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const displayMessage = isDeleted ? t('msg_deleted') : msg.message;
 
   return (
-    <div className="hype-chat-scope"> {/* 🔥 WRAPPER SCOPE 🔥 */}
+    <div className="hype-chat-scope">
       <div 
         ref={bubbleRef}
         id={`msg-${msg.id}`}
@@ -141,8 +144,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
           <div className="system-text">{displayMessage}</div>
         ) : (
           <>
-            {/* 🔥 FOTO PROFIL: Muncul di Grup/Global untuk orang lain 🔥 */}
-            {!isPrivateChat && !isMe && (
+            {/* 🔥 Terapkan variabel showUserDetail untuk AVATAR 🔥 */}
+            {showUserDetail && (
               <img 
                 className="avatar" 
                 src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} 
@@ -152,8 +155,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
             
             <div className="content">
               
-              {/* 🔥 USERNAME: Muncul di Grup/Global untuk orang lain 🔥 */}
-              {!isPrivateChat && !isMe && (
+              {/* 🔥 Terapkan variabel showUserDetail untuk USERNAME 🔥 */}
+              {showUserDetail && (
                 <div className="username">
                   {msg.profiles?.username || 'User'} 
                   <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
