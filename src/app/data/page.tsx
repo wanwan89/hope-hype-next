@@ -177,7 +177,7 @@ function ProfileContent() {
   };
 
   const handleSaveSettings = async () => {
-    if (!myId || !editData.username.trim()) return showNotif(t('username_empty'), "warning");
+    if (!myId || !editData.username.trim()) return showNotif(t('username_empty', 'Username tidak boleh kosong'), "warning");
     setIsSaving(true);
     try {
       let finalAvatarUrl = editData.avatar_url;
@@ -192,7 +192,7 @@ function ProfileContent() {
       await supabase.from("profiles").update({ 
         username: editData.username, bio: editData.bio, avatar_url: finalAvatarUrl || profile.avatar_url, website: editData.website 
       }).eq("id", myId);
-      showNotif(t('profile_updated'), "success");
+      showNotif(t('profile_updated', 'Profil diperbarui!'), "success");
       setIsEditModalOpen(false);
       setTimeout(() => location.reload(), 800);
     } catch (err: any) { showNotif(err.message, "error"); } finally { setIsSaving(false); }
@@ -226,13 +226,13 @@ function ProfileContent() {
     <div className="profile-page-container">
       <header className="profile-header">
         <h2 style={{ marginLeft: '10px' }}>{profile.username}</h2>
-        {/* 🔥 FIX: Ganti Icon Header Kalau Profil Orang Lain 🔥 */}
         {isMe ? (
           <button className="header-btn" onClick={() => setIsSidebarOpen(true)}>
             <span className="material-icons">menu</span>
           </button>
         ) : (
-          <button className="header-btn" onClick={() => router.back()}>
+          /* 🔥 FIX: Tombol Back otomatis pulang ke profil lu sendiri tanpa loading 🔥 */
+          <button className="header-btn" onClick={() => router.push('/data')}>
             <span className="material-icons">arrow_back</span>
           </button>
         )}
@@ -245,22 +245,22 @@ function ProfileContent() {
           <p className="profile-username">@{profile.username.toLowerCase().replace(/\s/g, '')}</p>
 
           <div className="profile-stats">
-            <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.followers}</span><span className="stat-label">{t('followers')}</span></div>
-            <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.following}</span><span className="stat-label">{t('following')}</span></div>
-            <div className="stat-box"><span className="stat-num">{stats.likes}</span><span className="stat-label">{t('likes')}</span></div>
+            <div className="stat-box" onClick={() => handleOpenFollowModal('followers')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.followers}</span><span className="stat-label">{t('followers', 'Pengikut')}</span></div>
+            <div className="stat-box" onClick={() => handleOpenFollowModal('following')} style={{cursor: 'pointer'}}><span className="stat-num">{stats.following}</span><span className="stat-label">{t('following', 'Mengikuti')}</span></div>
+            <div className="stat-box"><span className="stat-num">{stats.likes}</span><span className="stat-label">{t('likes', 'Suka')}</span></div>
           </div>
 
           <div className="profile-actions">
              {isMe ? (
                 <>
-                   <button className="btn-action btn-secondary" onClick={() => setIsEditModalOpen(true)}>{t('edit_profile')}</button>
-                   <button className="btn-action btn-secondary" onClick={handleShareProfile}>{t('share')}</button>
+                   <button className="btn-action btn-secondary" onClick={() => setIsEditModalOpen(true)}>{t('edit_profile', 'Edit Profil')}</button>
+                   <button className="btn-action btn-secondary" onClick={handleShareProfile}>{t('share', 'Bagikan')}</button>
                 </>
              ) : (
-                <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? t('following_btn') : t('follow')}</button>
+                <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? t('following_btn', 'Mengikuti') : t('follow', 'Ikuti')}</button>
              )}
           </div>
-          <p className="profile-bio">{profile.bio || t('no_bio')}</p>
+          <p className="profile-bio">{profile.bio || t('no_bio', 'Belum ada bio')}</p>
           
           {profile.website && (
             <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} 
@@ -273,10 +273,10 @@ function ProfileContent() {
         </section>
 
         <div className="profile-tabs">
-           <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post')}</div>
-           <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved')}</div>
-           <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>{t('tab_repost')}</div>
-           <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like')}</div>
+           <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
+           <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved', 'Tersimpan')}</div>
+           <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>{t('tab_repost', 'Repost')}</div>
+           <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Disukai')}</div>
         </div>
       </div>
 
@@ -287,8 +287,8 @@ function ProfileContent() {
            ) : posts.length === 0 ? (
               <div className="no-posts-v2">
                 <div className="no-posts-icon-circle"><span className="material-icons">auto_awesome</span></div>
-                <h3>{t('no_posts')}</h3>
-                {isMe && <button className="btn-action btn-primary" onClick={() => router.push('/')}>{t('create_post')}</button>}
+                <h3>{t('no_posts', 'Belum ada postingan')}</h3>
+                {isMe && <button className="btn-action btn-primary" onClick={() => router.push('/')}>{t('create_post', 'Buat Postingan')}</button>}
               </div>
            ) : (
               posts.map(post => (
@@ -305,23 +305,23 @@ function ProfileContent() {
         <>
           <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
           <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
-            <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder')} /></div></div>
-            <div className="menu-category-label">{t('wallet_assets')}</div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance')}</div><div className="arrow-right">›</div></div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history')}</div><div className="arrow-right">›</div></div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">{t('vip_subscription')}</div><div className="arrow-right">›</div></div>
+            <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder', 'Cari...')} /></div></div>
+            <div className="menu-category-label">{t('wallet_assets', 'Aset Dompet')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance', 'Saldo Hypecoin')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history', 'Riwayat Transaksi')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">{t('vip_subscription', 'Langganan VIP')}</div><div className="arrow-right">›</div></div>
             
-            <div className="menu-category-label">{t('mission_rewards')}</div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">{t('mission_center')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-category-label">{t('mission_rewards', 'Misi & Hadiah')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">{t('mission_center', 'Pusat Misi')}</div><div className="arrow-right">›</div></div>
             
             <hr className="menu-divider" />
-            <div className="menu-category-label">{t('personal_tools')}</div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings')}</div><div className="arrow-right">›</div></div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-category-label">{t('personal_tools', 'Alat Pribadi')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings', 'Pengaturan')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us', 'Hubungi Kami')}</div><div className="arrow-right">›</div></div>
             
-            <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile', 'Bagikan Profil')}</div><div className="arrow-right">›</div></div>
             
-            <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout')}</div></div>
+            <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout', 'Keluar')}</div></div>
           </aside>
         </>
       )}
@@ -330,7 +330,7 @@ function ProfileContent() {
       <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
         <div className="follow-sheet-header">
            <div className="drag-handle"></div>
-           <h3>{followModalType === 'followers' ? t('followers') : t('following')}</h3>
+           <h3>{followModalType === 'followers' ? t('followers', 'Pengikut') : t('following', 'Mengikuti')}</h3>
            <span className="material-icons close-icon" onClick={() => setIsFollowModalOpen(false)}>close</span>
         </div>
         <div className="follow-sheet-body">
@@ -354,7 +354,11 @@ function ProfileContent() {
       {isMounted && isMe && (
         <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
            <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
-              <div className="modal-header"><h3>{t('edit_profile_modal')}</h3><span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span></div>
+              {/* 🔥 FIX: Tambahkan Default Text Fallback di sini biar ga muncul kata kunci uppercase 🔥 */}
+              <div className="modal-header">
+                <h3>{t('edit_profile_modal', 'Edit Profil')}</h3>
+                <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>
+              </div>
               <div className="avatar-edit-section">
                  <label className="main-preview-label">
                     <img src={previewUrl || '/asets/png/profile.webp'} className="avatar-main-preview" alt="Preview" /><div className="upload-overlay" onClick={() => fileInputRef.current?.click()}><span className="material-icons">camera_alt</span></div>
@@ -366,10 +370,21 @@ function ProfileContent() {
                     ))}
                  </div>
               </div>
-              <div className="input-group"><label>{t('username_label')}</label><input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} /></div>
-              <div className="input-group"><label>{t('bio_label')}</label><textarea rows={2} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} /></div>
-              <div className="input-group"><label>{t('link_label')}</label><input type="text" placeholder="google.com" value={editData.website} onChange={e => setEditData(prev => ({ ...prev, website: e.target.value }))} /></div>
-              <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>{isSaving ? t('saving') : t('save_changes')}</button>
+              <div className="input-group">
+                <label>{t('username_label', 'Username')}</label>
+                <input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} />
+              </div>
+              <div className="input-group">
+                <label>{t('bio_label', 'Bio')}</label>
+                <textarea rows={2} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} />
+              </div>
+              <div className="input-group">
+                <label>{t('link_label', 'Tautan / Website')}</label>
+                <input type="text" placeholder="google.com" value={editData.website} onChange={e => setEditData(prev => ({ ...prev, website: e.target.value }))} />
+              </div>
+              <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>
+                {isSaving ? t('saving', 'Menyimpan...') : t('save_changes', 'Simpan Perubahan')}
+              </button>
            </div>
         </div>
       )}

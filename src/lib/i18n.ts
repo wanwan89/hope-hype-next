@@ -52,6 +52,12 @@ const resources = {
       "no_posts": "Belum ada postingan",
       "create_post": "Buat Postingan",
 
+      // 🔥 FIX: Modal Edit Profil 🔥
+      "edit_profile_modal": "Edit Profil",
+      "username_label": "Username",
+      "bio_label": "Bio",
+      "link_label": "Tautan / Website",
+
       // --- Galeri / Feed ---
       "no_posts_found": "Tidak ada postingan.",
       "uploaded_on": "Diunggah",
@@ -269,6 +275,12 @@ const resources = {
       "no_posts": "No posts yet",
       "create_post": "Create Post",
 
+      // 🔥 FIX: Modal Edit Profil 🔥
+      "edit_profile_modal": "Edit Profile",
+      "username_label": "Username",
+      "bio_label": "Bio",
+      "link_label": "Link / Website",
+
       "no_posts_found": "No posts found.",
       "uploaded_on": "Uploaded",
       "view_detail": "Detail",
@@ -479,6 +491,12 @@ const resources = {
       "no_posts": "暂无帖子",
       "create_post": "发布帖子",
 
+      // 🔥 FIX: Modal Edit Profil 🔥
+      "edit_profile_modal": "编辑资料",
+      "username_label": "用户名",
+      "bio_label": "个人简介",
+      "link_label": "链接 / 网站",
+
       "no_posts_found": "未找到帖子。",
       "uploaded_on": "上传于",
       "view_detail": "详情",
@@ -688,6 +706,12 @@ const resources = {
       "tab_like": "좋아요",
       "no_posts": "게시물이 없습니다",
       "create_post": "게시물 작성",
+
+      // 🔥 FIX: Modal Edit Profil 🔥
+      "edit_profile_modal": "프로필 편집",
+      "username_label": "사용자 이름",
+      "bio_label": "소개",
+      "link_label": "링크 / 웹사이트",
 
       "no_posts_found": "게시물을 찾을 수 없습니다.",
       "uploaded_on": "업로드 날짜",
