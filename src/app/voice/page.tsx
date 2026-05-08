@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { supabase as sb } from '@/lib/supabase'; 
 import { useTranslation } from 'react-i18next';
+// 🔥 FIX 1: Import UI Utils (getUserBadge & showNotif) 🔥
+import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 
 import Sidebar from '@/components/room/Sidebarroom';
 import Modals from '@/components/room/Modalsroom';
@@ -14,7 +16,7 @@ import Footer from '@/components/room/Footerroom';
 import GiftDrawer from '@/components/room/GiftDrawerroom';
 import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
 
-import './Voice.css'; // Asumsi lu pake nama ini buat VoiceGlobals.css nya
+import './Voice.css'; 
 
 declare global {
   interface Window {
@@ -67,7 +69,7 @@ export default function RoomPage() {
 
     let myTotalGiftSent = 0; 
     let myLevel = 1;
-    let isMicOn = false; // 🔥 Ditambah untuk tracking status Mic
+    let isMicOn = false; 
 
     let giftComboCount = 0;
     let lastGiftId: number | null = null;
@@ -107,17 +109,6 @@ export default function RoomPage() {
         const style = getLevelStyle(level);
         if (!style.title) return ""; 
         return `<span style="font-size: 9px; font-weight: 800; background: ${style.color}; color: #000; padding: 2px 4px; border-radius: 3px; margin-left: 5px; vertical-align: middle;">${style.title}</span>`;
-    }
-
-    function getUserBadge(role: string) {
-      if (!role) return "";
-      let badge = "";
-      const r = role.toLowerCase();
-      if (r === "admin") badge += `<span class="admin-badge" style="background: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-left: 5px; font-weight: bold; height: 16px; display: inline-flex; align-items: center; vertical-align: middle;">DEV</span>`;
-      if (r === "verified") badge += `<span class="verified-badge" style="margin-left:5px; vertical-align:middle;"><svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
-      const crowBadges: Record<string, string> = { crown1: "asets/png/crown1.png", crown2: "asets/png/crown2.png", crown3: "asets/png/crown3.png" };
-      if (crowBadges[r]) badge += `<img src="${crowBadges[r]}" style="width:18px;height:18px;margin-left:5px;vertical-align:middle;object-fit:contain;display:inline-block;" alt="${r}">`;
-      return badge;
     }
 
     function playVIPEntrance(username: string, level: number) {
@@ -190,6 +181,7 @@ export default function RoomPage() {
                 div.className = isSystem ? 'msg system' : 'msg';
                 const style = getLevelStyle(p.new.level || 1);
                 const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
+                // 🔥 FIX 2: Panggil getUserBadge dari import 🔥
                 const roleBadge = getUserBadge(p.new.role || '');
                 const userLink = `<span onclick="window.location.href='/data?username=${encodeURIComponent(p.new.username)}'" style="color:${style.color}; font-weight:bold; cursor:pointer;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
                 div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `${userLink}<span>: ${p.new.text}</span>`;
@@ -243,13 +235,14 @@ export default function RoomPage() {
     }
 
     async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah = 1) {
-        if (!selectedTargetId) return alert(t('select_target'));
-        if (selectedTargetId === MY_USER_ID) return alert(t('gift_self_alert'));
+        // 🔥 FIX 3: Ganti alert jadi showNotif 🔥
+        if (!selectedTargetId) return showNotif(t('select_target'), "warning");
+        if (selectedTargetId === MY_USER_ID) return showNotif(t('gift_self_alert'), "warning");
         
         const totalHarga = (typeof harga === 'string' ? parseInt(harga) : harga) * jumlah; 
         const coinDisplay = document.getElementById('user-coins');
         let currentCoins = coinDisplay ? parseInt(coinDisplay.innerText.replace(/[,.]/g, '')) : 0;
-        if (currentCoins < totalHarga) return alert(t('min_topup_warning'));
+        if (currentCoins < totalHarga) return showNotif(t('min_topup_warning'), "error");
 
         playGiftAnimation(giftId);
         const comboKey = `${giftName}_${selectedTargetId}`;
@@ -272,7 +265,7 @@ export default function RoomPage() {
                 myTotalGiftSent = newTotal; myLevel = lvlData.level; updateLevelProgressUI();
                 const text = `${myUsername} mengirim ${giftName} x${finalCount} ke ${selectedTargetName}`;
                 await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM_GIFT", text, role: giftId.toString(), level: myLevel }]);
-            } catch (e) { alert(t('gift_fail')); }
+            } catch (e) { showNotif(t('gift_fail'), "error"); }
         }, 600);
     }
 
@@ -357,7 +350,7 @@ export default function RoomPage() {
     }
 
     // ==========================================================
-    // 🔥 GLOBAL WINDOW ASSIGNMENTS (DILENGKAPI FUNGSI YANG HILANG) 🔥
+    // 🔥 GLOBAL WINDOW ASSIGNMENTS 🔥
     // ==========================================================
     window.sendGift = sendGift;
 
@@ -423,7 +416,6 @@ export default function RoomPage() {
         }
     };
 
-    // 🔥 FIX: FUNGSI YANG SEBELUMNYA HILANG 🔥
     window.kirimKomentar = async () => {
         const inputEl = document.getElementById('chat-input') as HTMLInputElement;
         const text = inputEl?.value.trim();
@@ -444,31 +436,29 @@ export default function RoomPage() {
     };
 
     window.mintaNaik = () => {
-        alert("Pilih kursi KOSONG di panggung untuk naik!");
+        // 🔥 FIX 3: Ganti alert jadi showNotif 🔥
+        showNotif("Pilih kursi KOSONG di panggung untuk naik!", "info");
     };
 
     window.keluarRoom = async () => {
-        // Hapus dari panggung dulu kalau dia ada di atas panggung
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID).eq('room_id', CURRENT_ROOM_ID);
         room?.disconnect();
-        window.location.href = '/hypetalk'; // Balik ke halaman lobby
+        window.location.href = '/hypetalk'; 
     };
 
     window.toggleMicSidebar = async (e: any) => {
         e?.preventDefault();
-        if (!room) return alert(t('mic_not_ready'));
+        // 🔥 FIX 3: Ganti alert jadi showNotif 🔥
+        if (!room) return showNotif(t('mic_not_ready'), "warning");
 
-        // Pastikan user ada di panggung sebelum mainin mic
         const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID).single();
-        if (!onStage) return alert(t('mic_stage_first'));
+        if (!onStage) return showNotif(t('mic_stage_first'), "warning");
 
         isMicOn = !isMicOn;
         await room.localParticipant.setMicrophoneEnabled(isMicOn);
         
-        // Update status mic di database biar user lain tau
         await sb.from('profiles').update({ mic_off: !isMicOn }).eq('id', MY_USER_ID);
 
-        // Update UI tombol di Sidebar
         const icon = document.getElementById('mic-icon');
         const text = document.getElementById('mic-text');
         if (icon && text) {
@@ -477,12 +467,12 @@ export default function RoomPage() {
             icon.style.color = isMicOn ? 'inherit' : '#ef4444';
         }
         
-        window.toggleSidebar?.(); // Tutup sidebar setelah pencet
+        window.toggleSidebar?.(); 
     };
 
     window.openRoomSetting = () => {
         document.getElementById('setting-modal')?.classList.add('show');
-        window.toggleSidebar?.(); // Tutup sidebar pas buka modal
+        window.toggleSidebar?.(); 
     };
     
     window.closeRoomSetting = () => {
@@ -498,8 +488,6 @@ export default function RoomPage() {
         const m = document.getElementById('top-gifters-modal');
         if (m) m.style.display = 'none';
     };
-
-    // ==========================================================
 
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
 
