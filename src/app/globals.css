@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 /* === CSS VARIABLES LIGHT & DARK MODE === */
-/* Mode Terang (Default) */
 :root {
   --bg-main: #f0f2f5;
   --text-main: #1c1e21;
@@ -16,9 +15,11 @@
   --bg-secondary: #e4e6eb; 
   --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
   --bg-story-seen: #dddfe2;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --primary: #3b82f6;
+  --primary-soft: rgba(59, 130, 246, 0.1);
 }
 
-/* 🔥 FIX: Tambahkan [data-theme='dark'] biar sinkron 100% sama next-themes 🔥 */
 [data-theme='dark'], html.dark {
   --bg-main: #0a0a0a; 
   --text-main: #f8fafc;
@@ -30,27 +31,35 @@
   --icon-fill: #e0e0e0;
   --bg-secondary: #1e293b;
   --bg-story-seen: #2c2c2c;
+  --modal-overlay: rgba(0, 0, 0, 0.7);
 }
 
-/* === RESET GLOBAL & ANTI-BLACK-LINE === */
+/* === RESET GLOBAL & ANTI-BLUE HIGHLIGHT === */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  -webkit-tap-highlight-color: transparent !important;
-  -webkit-touch-callout: none;
-  outline: none !important;
-  /* 🔥 FIX 2: Paksa SEMUA elemen bertransisi warna merata (warna, border, bg). 
-      Jadi modal, card, & input nggak akan 'kaget' pas ganti mode 🔥 */
+  
+  /* 🔥 FIX 1: MATIKAN SEMUA EFEK BIRU (Tap & Selection) 🔥 */
+  -webkit-tap-highlight-color: transparent !important; /* Hapus biru pas tap di HP */
+  -webkit-tap-highlight-color: rgba(0,0,0,0) !important; /* Backup buat browser lama */
+  outline: none !important; /* Hapus garis kotak biru pas fokus/klik */
+  user-select: none; /* Cegah teks di UI ke-blok biru pas ditekan lama */
+  
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
-/* 🔥 FIX 1: Sinkronisasi HTML dan BODY 🔥 */
+/* Biar inputan & pesan tetep bisa di-copy/ketik, tapi gak ada outline birunya */
+input, textarea, [contenteditable="true"], .selectable { 
+  user-select: text !important; 
+  -webkit-touch-callout: default; 
+  outline: none !important;
+}
+
 html {
   background-color: var(--bg-main) !important;
   height: 100%;
   scroll-behavior: smooth;
-  /* HTML harus ikut transisi biar overscroll/pinggiran HP gak kedip */
 }
 
 body { 
@@ -61,20 +70,20 @@ body {
   font-family: 'Poppins', sans-serif; 
   background-color: var(--bg-main); 
   color: var(--text-main); 
+  /* Hapus highlight biru secara global */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
-/* Biar inputan & pesan bisa di-copy, tapi tombol nggak */
-input, textarea, [contenteditable="true"], .selectable { 
-  user-select: text !important; 
-  -webkit-touch-callout: default; 
-}
-
-.menu-item-tiktok, .btn, .tab, button, .avatar, .card-btn {
-  user-select: none; 
+/* Tombol dan link nggak boleh ada highlight biru sama sekali */
+a, button, select, .menu-item-tiktok, .card-btn {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
   cursor: pointer;
 }
 
-/* === LAYOUT WRAPPER UTILITIES === */
+/* === LAYOUT UTILITIES === */
 .layout-wrapper {
   width: 100%;
   display: flex;
@@ -87,7 +96,6 @@ input, textarea, [contenteditable="true"], .selectable {
   position: relative;
 }
 
-/* === MAIN CONTENT SCALING === */
 .main-content {
   flex: 1;
   width: 100%;
@@ -95,45 +103,23 @@ input, textarea, [contenteditable="true"], .selectable {
   margin: 0 auto;
   position: relative;
   padding-bottom: calc(100px + env(safe-area-inset-bottom));
-  transition: padding 0.2s ease-out;
 }
 
-.main-content.is-fullscreen {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  max-width: 100%;
-}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* === Z-INDEX LAYOUT === */
-.sidebar-home {
-  z-index: 50;
-}
-
+/* === Z-INDEX & OVERLAYS === */
 .navbar-bottom {
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* 🔥 FIX 3: Perlunakkan efek pindah halaman biar nggak nge-blink putih/hitam 🔥 */
+/* Animasi Transisi Halaman */
 .page-fade {
   animation: smoothFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes smoothFadeIn {
-  from { 
-    opacity: 0.4; /* Jangan mulai dari 0 biar nggak nge-blank */
-    transform: translateY(8px); /* Kasih efek naik dikit ala iOS */
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0);
-  }
+  from { opacity: 0.6; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }

@@ -1,6 +1,5 @@
 'use client'; 
 
-// 🔥 FIX 1: Import konfigurasi i18n paling atas
 import '@/lib/i18n'; 
 import i18n from '@/lib/i18n';
 import { I18nextProvider } from 'react-i18next';
@@ -14,17 +13,13 @@ import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar"; 
 import { ThemeProvider } from '@/components/ThemeProvider';
-
-// 🔥 FIX: Import komponen Global Share Modal yang baru kita bikin 🔥
 import GlobalShareModal from '@/components/GlobalShareModal';
 
-// 🔥 JURUS RAHASIA: LayoutEffect biar ga glitch/kedip
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // 1. Identifikasi Halaman
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
@@ -42,7 +37,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // 2. 🔥 EKSEKUSI SEBELUM PAINT 🔥
+  // --- 1. 🔥 SISTEM ANTI-DOWNLOAD FOTO 🔥 ---
+  useEffect(() => {
+    const preventSave = (e: MouseEvent | TouchEvent) => {
+      // Cek apakah yang ditekan adalah elemen gambar (IMG)
+      if ((e.target as HTMLElement).tagName === 'IMG') {
+        // Matikan menu klik kanan / menu tekan lama
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    // Matikan Klik Kanan / Long Press Konteks Menu
+    document.addEventListener('contextmenu', preventSave);
+    
+    // Matikan Drag & Drop (biar foto ga bisa ditarik ke tab baru)
+    const preventDrag = (e: DragEvent) => {
+      if ((e.target as HTMLElement).tagName === 'IMG') e.preventDefault();
+    };
+    document.addEventListener('dragstart', preventDrag);
+
+    return () => {
+      document.removeEventListener('contextmenu', preventSave);
+      document.removeEventListener('dragstart', preventDrag);
+    };
+  }, []);
+
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
@@ -84,7 +104,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, [pathname, isStandaloneApp]); 
 
   return (
-    // suppressHydrationWarning wajib biar ga error pas mode gelap/terang/bahasa berubah
     <html lang="id" style={{ overflowX: 'hidden' }} suppressHydrationWarning>
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
@@ -96,20 +115,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Hope Hype" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+        
+        {/* --- 2. 🔥 CSS INJECT KHUSUS ANTI-LONGPRESS IOS 🔥 --- */}
+        <style>{`
+          img {
+            -webkit-touch-callout: none !important; /* Matikan menu simpan gambar di iOS */
+            -webkit-user-select: none !important;
+            -khtml-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-user-drag: none !important; /* Matikan drag foto */
+          }
+        `}</style>
       </head>
       
       <body 
         className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
         style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
       >
-        {/* 🔥 FIX 2: Bungkus semua konten dengan I18nextProvider 🔥 */}
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
-            
-            {/* 🔥 SELIPIN GLOBAL SHARE MODAL DI SINI BREE 🔥 */}
-            {/* Supaya bisa dipanggil dari mana aja se-aplikasi */}
             <GlobalShareModal />
-            
             {!hideSidebar && <Sidebar />}
             
             <div 
@@ -124,7 +151,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 position: 'relative'
               }}
             >
-              
               {isHomePage && (
                 <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}>
                   <SearchWrapper />
@@ -145,14 +171,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               >
                 {children}
               </main>
-              
             </div>
 
             {!hideNavbar && <Navbar />}
-
             <LoginPopup />
             {!hideOverlays && <Overlays />}
-
           </ThemeProvider>
         </I18nextProvider>
       </body>

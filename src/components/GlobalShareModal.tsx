@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showNotif } from '@/lib/ui-utils';
+// 🔥 Pake Lucide biar iconnya konsisten sama yang lain
+import { Copy, X, Share2 } from 'lucide-react';
 import './GlobalShareModal.css';
 
-// Daftarin fungsi global biar bisa dipanggil dari mana aja
 declare global {
   interface Window {
     openGlobalShare?: (url?: string, title?: string, text?: string) => void;
@@ -15,14 +16,23 @@ declare global {
 export default function GlobalShareModal() {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [shareData, setShareData] = useState({ url: '', title: '', text: '' });
 
+  // Fungsi tutup dengan animasi halus
+  const closeModal = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
+    }, 300); // Sesuaikan dengan durasi transisi CSS
+  }, []);
+
   useEffect(() => {
-    // Fungsi ini nempel di window, jadi dari halaman manapun bisa manggil
     window.openGlobalShare = (
       url = window.location.href, 
       title = 'HypeTalk', 
-      text = 'Ayo gabung dan seru-seruan bareng di HypeTalk!'
+      text = t('share_profile_text', 'Ayo gabung dan seru-seruan bareng di HypeTalk!')
     ) => {
       setShareData({ url, title, text });
       setIsOpen(true);
@@ -31,9 +41,7 @@ export default function GlobalShareModal() {
     return () => {
       delete window.openGlobalShare;
     };
-  }, []);
-
-  const closeModal = () => setIsOpen(false);
+  }, [t]);
 
   const copyLink = async () => {
     try {
@@ -46,7 +54,7 @@ export default function GlobalShareModal() {
   };
 
   const shareToWhatsApp = () => {
-    const text = encodeURIComponent(`${shareData.text} Klik link ini: ${shareData.url}`);
+    const text = encodeURIComponent(`${shareData.text}\n\nLink: ${shareData.url}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
     closeModal();
   };
@@ -58,18 +66,38 @@ export default function GlobalShareModal() {
     closeModal();
   };
 
+  // Fitur Bonus: Panggil Native Share bawaan HP kalau ada
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareData.title,
+          text: shareData.text,
+          url: shareData.url,
+        });
+        closeModal();
+      } catch (err) {
+        console.log('User cancelled native share');
+      }
+    } else {
+      copyLink();
+    }
+  };
+
+  if (!isOpen) return null;
+
   return (
     <div 
-      className={`global-share-overlay ${isOpen ? 'show' : ''}`} 
+      className={`global-share-overlay ${!isClosing ? 'show' : ''}`} 
       onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
     >
-      <div className={`global-share-sheet ${isOpen ? 'slide-up' : ''}`}>
-        <div className="sheet-handle"></div>
+      <div className={`global-share-sheet ${!isClosing ? 'slide-up' : ''}`}>
+        <div className="sheet-handle" onClick={closeModal}></div>
         
         <div className="share-header">
-          <h3>{t('share_title', 'Ajak Teman Gabung')}</h3>
-          <button className="close-share" onClick={closeModal}>
-            <span className="material-icons">close</span>
+          <h3>{t('share_title', 'Bagikan')}</h3>
+          <button className="close-share" onClick={closeModal} aria-label="Close">
+            <X size={20} />
           </button>
         </div>
         
@@ -77,31 +105,34 @@ export default function GlobalShareModal() {
           <p className="share-desc">{shareData.text}</p>
           
           <div className="share-options-grid">
+            {/* Salin Tautan */}
             <button className="share-opt-btn copy-btn" onClick={copyLink}>
               <div className="share-icon-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                <Copy size={24} />
               </div>
-              <span>{t('copy_link', 'Salin Tautan')}</span>
+              <span>{t('copy', 'Salin')}</span>
             </button>
             
+            {/* WhatsApp */}
             <button className="share-opt-btn wa-btn" onClick={shareToWhatsApp}>
               <div className="share-icon-wrapper">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" />
               </div>
               <span>WhatsApp</span>
             </button>
             
-            <button className="share-opt-btn tg-btn" onClick={shareToTelegram}>
+            {/* Native / Lainnya */}
+            <button className="share-opt-btn native-btn" onClick={handleNativeShare}>
               <div className="share-icon-wrapper">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="TG" />
+                <Share2 size={24} />
               </div>
-              <span>Telegram</span>
+              <span>{t('cat_other', 'Lainnya')}</span>
             </button>
           </div>
           
           <div className="share-url-box">
             <input type="text" readOnly value={shareData.url} />
-            <button onClick={copyLink}>{t('copy', 'Copy')}</button>
+            <button onClick={copyLink}>{t('copy', 'Salin')}</button>
           </div>
         </div>
       </div>
