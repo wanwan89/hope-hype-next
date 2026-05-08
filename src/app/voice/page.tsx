@@ -99,6 +99,40 @@ function VoiceRoomContent() {
     };
     updateTitle();
     setTimeout(updateTitle, 500);
+     
+    // ==========================================
+    // 🔥 HELPER FUNCTIONS (DEFINED FIRST) 🔥
+    // ==========================================
+
+    // Tambahkan ini biar error line 355 hilang
+    function syncOwnerUI() {
+        if (!IS_OWNER.current) return;
+        const trySync = () => {
+            const menuSet = document.getElementById('menu-setting');
+            if (menuSet) { 
+                menuSet.style.display = 'flex'; 
+            } else { 
+                // Jika element belum render, coba lagi dikit lagi
+                setTimeout(trySync, 500); 
+            }
+        };
+        trySync();
+    }
+
+    // Pastikan fetchTopGifters juga ada di sini (biar ga error lagi)
+    async function fetchTopGifters() {
+      const topData = await getRoomLeaderboard();
+      const container = document.getElementById('top-gifters-container');
+      if (!container) return;
+      if (topData.length === 0) { container.style.display = 'none'; return; }
+      container.style.display = 'flex';
+      container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 TOP</span>`;
+      topData.slice(0, 3).forEach((u, i) => {
+          container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
+      });
+      container.onclick = () => window.openTopGiftersModal?.();
+    }
+
 
     // 🔥 LOGIKA ANIMASI TAP TAP (❤️ ONLY) 🔥
     function createTapAnimation(x: number, y: number) {
