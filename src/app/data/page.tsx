@@ -4,11 +4,9 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
-// 🔥 FIX 1: Import i18n hook
 import { useTranslation } from 'react-i18next';
 import './DataProfile.css';
 
-// 🔥 FIX: Daftarin fungsi global share ke window biar TypeScript ga error 🔥
 declare global {
   interface Window {
     openGlobalShare?: (url?: string, title?: string, text?: string) => void;
@@ -19,8 +17,6 @@ function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // 🔥 FIX 2: Inisialisasi fungsi translate
   const { t } = useTranslation();
 
   const urlId = searchParams?.get('id');
@@ -165,19 +161,16 @@ function ProfileContent() {
     } catch (err) { console.error(err); } finally { setIsFollowLoading(false); }
   };
 
-  // 🔥 FIX 3: Hubungkan tombol Share Profile dengan GlobalShareModal 🔥
   const handleShareProfile = () => {
     const url = window.location.href;
     const title = `Profil ${profile?.username}`;
     const text = t('share_profile_text', `Yuk mampir ke profil ${profile?.username} di HypeTalk!`);
     
-    // Tutup sidebar kalau lagi kebuka
     setIsSidebarOpen(false);
 
     if (window.openGlobalShare) {
       window.openGlobalShare(url, title, text);
     } else {
-      // Fallback kalo komponen modal belum load
       navigator.clipboard.writeText(url); 
       showNotif(t('link_copied', 'Link disalin!'), "success");
     }
@@ -233,7 +226,16 @@ function ProfileContent() {
     <div className="profile-page-container">
       <header className="profile-header">
         <h2 style={{ marginLeft: '10px' }}>{profile.username}</h2>
-        <button className="header-btn" onClick={() => setIsSidebarOpen(true)}><span className="material-icons">menu</span></button>
+        {/* 🔥 FIX: Ganti Icon Header Kalau Profil Orang Lain 🔥 */}
+        {isMe ? (
+          <button className="header-btn" onClick={() => setIsSidebarOpen(true)}>
+            <span className="material-icons">menu</span>
+          </button>
+        ) : (
+          <button className="header-btn" onClick={() => router.back()}>
+            <span className="material-icons">arrow_back</span>
+          </button>
+        )}
       </header>
 
       <div className="profile-top-section">
@@ -252,7 +254,6 @@ function ProfileContent() {
              {isMe ? (
                 <>
                    <button className="btn-action btn-secondary" onClick={() => setIsEditModalOpen(true)}>{t('edit_profile')}</button>
-                   {/* Tombol share di bawah bio profil */}
                    <button className="btn-action btn-secondary" onClick={handleShareProfile}>{t('share')}</button>
                 </>
              ) : (
@@ -299,27 +300,31 @@ function ProfileContent() {
         </div>
       </div>
 
-      <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
-      <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder')} /></div></div>
-        <div className="menu-category-label">{t('wallet_assets')}</div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance')}</div><div className="arrow-right">›</div></div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history')}</div><div className="arrow-right">›</div></div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">{t('vip_subscription')}</div><div className="arrow-right">›</div></div>
-        
-        <div className="menu-category-label">{t('mission_rewards')}</div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">{t('mission_center')}</div><div className="arrow-right">›</div></div>
-        
-        <hr className="menu-divider" />
-        <div className="menu-category-label">{t('personal_tools')}</div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings')}</div><div className="arrow-right">›</div></div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us')}</div><div className="arrow-right">›</div></div>
-        
-        {/* Tombol share di dalam Sidebar juga auto pake Modal Premium */}
-        <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile')}</div><div className="arrow-right">›</div></div>
-        
-        <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout')}</div></div>
-      </aside>
+      {/* Sidebar Setting hanya bisa diakses kalau isMe === true */}
+      {isMe && (
+        <>
+          <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+          <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
+            <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder')} /></div></div>
+            <div className="menu-category-label">{t('wallet_assets')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">{t('vip_subscription')}</div><div className="arrow-right">›</div></div>
+            
+            <div className="menu-category-label">{t('mission_rewards')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">{t('mission_center')}</div><div className="arrow-right">›</div></div>
+            
+            <hr className="menu-divider" />
+            <div className="menu-category-label">{t('personal_tools')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us')}</div><div className="arrow-right">›</div></div>
+            
+            <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile')}</div><div className="arrow-right">›</div></div>
+            
+            <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout')}</div></div>
+          </aside>
+        </>
+      )}
 
       <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
       <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
@@ -346,7 +351,7 @@ function ProfileContent() {
         </div>
       </aside>
 
-      {isMounted && (
+      {isMounted && isMe && (
         <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
            <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header"><h3>{t('edit_profile_modal')}</h3><span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span></div>
