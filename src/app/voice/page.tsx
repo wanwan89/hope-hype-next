@@ -100,11 +100,10 @@ function VoiceRoomContent() {
     updateTitle();
     setTimeout(updateTitle, 500);
 
-    // 🔥 LOGIKA ANIMASI TAP TAP 🔥
+    // 🔥 LOGIKA ANIMASI TAP TAP (❤️ ONLY) 🔥
     function createTapAnimation(x: number, y: number) {
       const heart = document.createElement('div');
-      const emojis = ['❤️', '💖', '✨', '🔥', '⭐'];
-      heart.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+      heart.innerHTML = '❤️';
       heart.className = 'tap-emoji-fly';
       heart.style.left = `${x}px`;
       heart.style.top = `${y}px`;
@@ -112,15 +111,26 @@ function VoiceRoomContent() {
       setTimeout(() => heart.remove(), 1000);
     }
 
-    window.handleGlobalClick = (e: any) => {
-      if (e.target.closest('button') || e.target.closest('.modal-content') || e.target.closest('.sidebar-room') || e.target.closest('.user-profile-sheet')) return;
+    // 🔥 LOGIKA TAP HANYA DI CHAT BOX + PERSISTEN 🔥
+    window.handleGlobalClick = async (e: any) => {
+      const chatBoxArea = document.getElementById('chat-box');
+      if (!chatBoxArea || !chatBoxArea.contains(e.target as Node)) return;
       
       const x = e.clientX || (e.touches && e.touches[0].clientX);
       const y = e.clientY || (e.touches && e.touches[0].clientY);
       if (!x || !y) return;
 
       createTapAnimation(x, y);
-      setTotalTaps(prev => prev + 1);
+      
+      // Update local state secara optimis
+      setTotalTaps(prev => {
+        const newTotal = prev + 1;
+        // Sync ke DB setiap kelipatan 5 tap biar ga berat ke server
+        if (newTotal % 5 === 0) {
+          sb.from('rooms').update({ tap_count: newTotal }).eq('id', CURRENT_ROOM_ID).then();
+        }
+        return newTotal;
+      });
 
       if (channelRef.current) {
         channelRef.current.send({
@@ -274,7 +284,7 @@ function VoiceRoomContent() {
                 const style = getLevelStyle(p.new.level || 1);
                 const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
                 const roleBadge = getUserBadge(p.new.role || '');
-                // 🔥 UPDATE: Click name to open profile slide-up 🔥
+                // 🔥 FIX: User Link to open slide up profile 🔥
                 const userLink = `<span onclick="window.openUserProfile('${p.new.user_id || ''}')" style="color:${style.color}; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
                 div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `${userLink}<span>: ${p.new.text}</span>`;
             }
@@ -313,128 +323,13 @@ function VoiceRoomContent() {
         });
     }
 
-    const LEVEL_THRESHOLDS: Record<number, number> = { 1: 0, 2: 1000, 3: 5000, 4: 20000, 5: 50000 };
-    function checkLevelUp(totalGiftSent: number) {
-        if (totalGiftSent >= LEVEL_THRESHOLDS[5]) return { level: 5, name: "LEGEND", color: "#FF0055" };
-        if (totalGiftSent >= LEVEL_THRESHOLDS[4]) return { level: 4, name: "SULTAN", color: "#00E5FF" };
-        if (totalGiftSent >= LEVEL_THRESHOLDS[3]) return { level: 3, name: "PATRON", color: "#BB86FC" };
-        if (totalGiftSent >= LEVEL_THRESHOLDS[2]) return { level: 2, name: "SUPPORTER", color: "#FFD700" };
-        return { level: 1, name: "NEWBIE", color: "#FFFFFF" };
-    }
-
-    function updateLevelProgressUI() {
-        const container = document.getElementById('level-progress-container');
-        if (!container) return; 
-        let prevTarget = 0, currentTarget = 0, currentName = "";
-        
-        if (myLevel.current === 1) { prevTarget = 0; currentTarget = 1000; currentName = "NEWBIE"; }
-        else if (myLevel.current === 2) { prevTarget = 1000; currentTarget = 5000; currentName = "SUPPORTER"; }
-        else if (myLevel.current === 3) { prevTarget = 5000; currentTarget = 20000; currentName = "PATRON"; }
-        else if (myLevel.current === 4) { prevTarget = 20000; currentTarget = 50000; currentName = "SULTAN"; }
-        else { container.innerHTML = `<div style="text-align:center; font-size: 13px; color: #FF0055; font-weight: bold; margin: 15px 0;">LEVEL MAX (LEGEND)</div>`; return; }
-        
-        let needed = currentTarget - myTotalGiftSent.current;
-        let percent = ((myTotalGiftSent.current - prevTarget) / (currentTarget - prevTarget)) * 100;
-        if (percent > 100) percent = 100;
-        
-        container.innerHTML = `<div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 6px; padding: 0 5px;"><span>LVL ${myLevel.current} (${currentName})</span><span>Butuh <b style="color:#f1c40f">${needed} koin</b> lagi</span></div><div style="width: 100%; height: 6px; background: #333; border-radius: 4px; overflow: hidden;"><div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #00ff88, #00d2ff); transition: width 0.5s ease-out;"></div></div>`;
-    }
-
-    async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah = 1) {
-        if (!selectedTargetId.current) return showNotif(t('select_target'), "warning");
-        if (selectedTargetId.current === MY_USER_ID.current) return showNotif(t('gift_self_alert'), "warning");
-        
-        const totalHarga = (typeof harga === 'string' ? parseInt(harga) : harga) * jumlah; 
-        const coinDisplay = document.getElementById('user-coins');
-        let currentCoins = coinDisplay ? parseInt(coinDisplay.innerText.replace(/[,.]/g, '')) : 0;
-        if (currentCoins < totalHarga) return showNotif(t('min_topup_warning'), "error");
-
-        currentCoins -= totalHarga;
-        if (coinDisplay) coinDisplay.innerText = currentCoins.toLocaleString();
-
-        playGiftAnimation(giftId);
-        
-        const comboKey = `${giftName}_${selectedTargetId.current}`;
-        if (!activeCombos.current[comboKey]) {
-            activeCombos.current[comboKey] = { targetId: selectedTargetId.current, targetName: selectedTargetName.current, count: 0, pendingCoins: 0, msgId: null, syncTimer: null };
-        }
-        
-        const combo = activeCombos.current[comboKey];
-        combo.count += jumlah; 
-        combo.pendingCoins += totalHarga;
-
-        if (combo.syncTimer) clearTimeout(combo.syncTimer);
-        
-        combo.syncTimer = setTimeout(async () => {
-            const coinsToDeduct = combo.pendingCoins;
-            const currentCount = combo.count;
-            const finalTargetId = combo.targetId;
-            const finalTargetName = combo.targetName;
-            const savedMsgId = combo.msgId;
-
-            delete activeCombos.current[comboKey];
-            
-            try {
-                const { data: newTotalGift, error } = await sb.rpc('transfer_gift', { sender_id: MY_USER_ID.current, receiver_id: finalTargetId, amount: coinsToDeduct });
-                if (error) {
-                    showNotif("Gagal transfer kado", "error");
-                    const koinBalik = parseInt(document.getElementById('user-coins')?.innerText.replace(/[,.]/g, '') || "0") + coinsToDeduct;
-                    if (coinDisplay) coinDisplay.innerText = koinBalik.toLocaleString();
-                    return;
-                }
-                
-                await sb.from('coin_history').insert([{ user_id: MY_USER_ID.current, transaction_type: 'send_gift', amount: -coinsToDeduct, description: `Kirim ${giftName} x${currentCount} ke ${finalTargetName}`, balance_after: currentCoins }]);
-                await sb.from('coin_history').insert([{ user_id: finalTargetId, transaction_type: 'receive_gift', amount: coinsToDeduct, description: `Terima ${giftName} x${currentCount} dari ${myUsername.current}`, balance_after: 0 }]);
-
-                let lvlData = checkLevelUp(newTotalGift);
-                if (lvlData.level !== myLevel.current) {
-                    await sb.from('profiles').update({ level: lvlData.level }).eq('id', MY_USER_ID.current);
-                    await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ SELAMAT! ${myUsername.current} naik ke Level ${lvlData.level}!`, role: "admin" }]);
-                }
-                
-                myTotalGiftSent.current = newTotalGift; 
-                myLevel.current = lvlData.level; 
-                updateLevelProgressUI();
-                
-                const teksFinal = `${myUsername.current} mengirim ${giftName} x${currentCount} ke ${finalTargetName}`;
-                if (savedMsgId) {
-                    await sb.from('room_messages').update({ text: teksFinal }).eq('id', savedMsgId);
-                } else {
-                    const { data } = await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM_GIFT", text: teksFinal, role: giftId.toString(), level: myLevel.current, user_id: MY_USER_ID.current }]).select();
-                    if (data && data.length > 0) activeCombos.current[comboKey] = { ...activeCombos.current[comboKey], msgId: data[0].id };
-                }
-            } catch (e) { showNotif(t('gift_fail'), "error"); }
-        }, 600);
-    }
-
-    async function fetchTopGifters() {
-        const topData = await getRoomLeaderboard();
-        const container = document.getElementById('top-gifters-container');
-        if (!container) return;
-        if (topData.length === 0) { container.style.display = 'none'; return; }
-        container.style.display = 'flex';
-        container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 TOP</span>`;
-        topData.slice(0, 3).forEach((u, i) => {
-            container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
-        });
-        container.onclick = () => window.openTopGiftersModal?.();
-    }
-
-    function syncOwnerUI() {
-        if (!IS_OWNER.current) return;
-        const trySync = () => {
-            const menuSet = document.getElementById('menu-setting');
-            if (menuSet) { menuSet.style.display = 'flex'; } else { setTimeout(trySync, 500); }
-        };
-        trySync();
-    }
-
     async function initApp() {
         const { data: { session } } = await sb.auth.getSession();
         if (!session) { router.push('/hypetalk'); return; }
         MY_USER_ID.current = session.user.id;
+        
         const { data: p } = await sb.from('profiles').select('*').eq('id', MY_USER_ID.current).single();
-        const { data: roomData } = await sb.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
+        const { data: roomData } = await sb.from('rooms').select('*').eq('id', CURRENT_ROOM_ID).maybeSingle();
         
         if (p) { 
             myUsername.current = p.username; myRole.current = p.role; myLevel.current = p.level || 1; myTotalGiftSent.current = p.total_gift_sent || 0; 
@@ -442,6 +337,7 @@ function VoiceRoomContent() {
         }
         
         if (roomData) {
+            setTotalTaps(roomData.tap_count || 0); // 🔥 Load tap count dari DB
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
             if (IS_OWNER.current) { 
                 await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
@@ -481,7 +377,7 @@ function VoiceRoomContent() {
             if (user) {
                 const style = getLevelStyle(user.level);
                 const roleBadgeHTML = getUserBadge(user.role || '');
-                // 🔥 UPDATE: Click avatar to open profile slide-up 🔥
+                // 🔥 Avatar click to open slide up profile 🔥
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
@@ -502,50 +398,23 @@ function VoiceRoomContent() {
     }
 
     // ==========================================================
-    // 🔥 GLOBAL WINDOW ASSIGNMENTS 🔥
+    // 🔥 WINDOW ASSIGNMENTS 🔥
     // ==========================================================
     window.sendGift = sendGift;
-
-    window.kickUser = async (targetId, targetName) => {
-        if (!confirm(`Kick ${targetName}?`)) return;
-        await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: targetId });
-        await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `${targetName} dikeluarkan.` }]);
-    };
-
-    window.toggleKickBtn = (el, canKick) => {
-        if (!canKick) return;
-        const wrapper = el.querySelector('.kick-btn-wrapper') as HTMLElement;
-        document.querySelectorAll('.kick-btn-wrapper').forEach((w: any) => { if (w !== wrapper) w.style.display = 'none'; });
-        if(wrapper) wrapper.style.display = wrapper.style.display === 'none' ? 'flex' : 'none';
-    };
 
     window.naikKeStage = async (idx) => {
         if (!MY_USER_ID.current) return showNotif("Login dulu!", "warning");
         if (roomRef.current && roomRef.current.state === "connected") await roomRef.current.localParticipant.setMicrophoneEnabled(true);
-        
         const { data: checkSlot } = await sb.from('room_slots').select('profile_id').match({ room_id: CURRENT_ROOM_ID, slot_index: idx }).single();
-        if (checkSlot && checkSlot.profile_id !== null) {
-            await roomRef.current?.localParticipant.setMicrophoneEnabled(false);
-            return showNotif("Kursi sudah ada yang menempati!", "warning");
-        }
-
+        if (checkSlot && checkSlot.profile_id !== null) { await roomRef.current?.localParticipant.setMicrophoneEnabled(false); return showNotif("Kursi sudah ada yang menempati!", "warning"); }
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
         await sb.from('room_slots').update({ profile_id: MY_USER_ID.current }).match({ room_id: CURRENT_ROOM_ID, slot_index: idx });
         await sb.from('profiles').update({ mic_off: false }).eq('id', MY_USER_ID.current);
-
         isMicOn.current = true;
-        const micIcon = document.getElementById('mic-icon');
-        const micText = document.getElementById('mic-text');
-        if(micIcon) { micIcon.innerText = "mic"; micIcon.style.color = "#2ecc71"; }
-        if(micText) micText.innerText = t('mute_mic');
-
         fetchStage();
     };
 
-    window.turunMic = () => { 
-        const m = document.getElementById('confirm-modal'); 
-        if(m) m.style.display = 'flex'; 
-    };
+    window.turunMic = () => { document.getElementById('confirm-modal')!.style.display = 'flex'; };
 
     window.prosesTurunMic = async () => {
         const m = document.getElementById('confirm-modal');
@@ -553,233 +422,31 @@ function VoiceRoomContent() {
         if (roomRef.current?.localParticipant) await roomRef.current.localParticipant.setMicrophoneEnabled(false);
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
         await sb.from('profiles').update({ mic_off: true }).eq('id', MY_USER_ID.current);
-        
         isMicOn.current = false;
-        const micIcon = document.getElementById('mic-icon');
-        const micText = document.getElementById('mic-text');
-        if(micIcon) { micIcon.innerText = "mic_off"; micIcon.style.color = "#e74c3c"; }
-        if(micText) micText.innerText = t('unmute_mic');
         fetchStage();
-    };
-
-    window.toggleRoomGiftDrawer = () => {
-        const d = document.getElementById('room-gift-drawer');
-        const o = document.getElementById('room-drawer-overlay');
-        d?.classList.toggle('open'); o?.classList.toggle('show');
-        if (d?.classList.contains('open')) {
-            updateLevelProgressUI(); 
-            sb.from('room_slots').select('profile_id, profiles(username, avatar_url)').eq('room_id', CURRENT_ROOM_ID).not('profile_id', 'is', null).neq('profile_id', MY_USER_ID.current)
-            .then(({data}) => {
-                const tc = document.getElementById('gift-targets');
-                if(!tc) return; tc.innerHTML = "";
-                if(!data?.length) { 
-                    selectedTargetId.current = null; selectedTargetName.current = "";
-                    tc.innerHTML = `<span style="font-size:12px; color:#888;">${t('only_you_here')}</span>`; return; 
-                }
-                data.forEach((s:any, i) => {
-                    const isSelected = selectedTargetId.current === s.profile_id;
-                    const div = document.createElement('div'); div.className = `target-user ${isSelected ? 'selected' : ''}`;
-                    div.onclick = () => { selectedTargetId.current = s.profile_id; selectedTargetName.current = s.profiles.username; window.toggleRoomGiftDrawer?.(); window.toggleRoomGiftDrawer?.(); };
-                    div.innerHTML = `<img src="${s.profiles.avatar_url || '/asets/png/profile.webp'}" class="target-avatar" style="object-fit:cover;"><span>${s.profiles.username}</span>`;
-                    tc.appendChild(div);
-                    if(!selectedTargetId.current && i === 0) { selectedTargetId.current = s.profile_id; selectedTargetName.current = s.profiles.username; div.classList.add('selected'); }
-                });
-            });
-        }
-    };
-
-    window.toggleSidebar = () => { 
-        document.getElementById('sidebar')?.classList.toggle('active'); 
-        document.getElementById('sidebar-overlay')?.classList.toggle('active'); 
-        if (IS_OWNER.current) syncOwnerUI(); 
-    };
-
-    window.openTopGiftersModal = async () => {
-        const m = document.getElementById('top-gifters-modal'); const l = document.getElementById('top-gifters-list');
-        if(m && l) { 
-            m.style.display = 'flex'; l.innerHTML = `<div style="text-align:center; color:#fff; padding: 20px;">Menghitung koin panggung...</div>`;
-            const top = await getRoomLeaderboard(); l.innerHTML = "";
-            if (top.length === 0) { l.innerHTML = '<div style="text-align:center; color:#888;">Belum ada kado di panggung ini. Ayo kirim yang pertama!</div>'; return; }
-            top.forEach((u, i) => {
-                let rankHtml = '';
-                if (i === 0) rankHtml = `<div style="background: linear-gradient(135deg, #FFDF00, #D4AF37); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(255,215,0,0.5);">1</div>`;
-                else if (i === 1) rankHtml = `<div style="background: linear-gradient(135deg, #FFFFFF, #A9A9A9); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(192,192,192,0.3);">2</div>`;
-                else if (i === 2) rankHtml = `<div style="background: linear-gradient(135deg, #FFB37C, #C56F28); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(205,127,50,0.3);">3</div>`;
-                else rankHtml = `<div style="color: #94a3b8; font-weight: 900; font-size: 16px; width: 28px; text-align: center;">${i + 1}</div>`;
-                const bgGradient = i === 0 ? 'background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent); border-left: 4px solid #FFD700;' : i === 1 ? 'background: linear-gradient(90deg, rgba(192, 192, 192, 0.1), transparent); border-left: 4px solid #C0C0C0;' : i === 2 ? 'background: linear-gradient(90deg, rgba(205, 127, 50, 0.1), transparent); border-left: 4px solid #CD7F32;' : 'background: #2a3648; border-left: 4px solid transparent;';
-                
-                l.innerHTML += `
-                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 6px; ${bgGradient} margin-bottom:8px;">
-                    <div style="width: 30px; display: flex; justify-content: center;">${rankHtml}</div>
-                    <img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555;">
-                    <div style="flex: 1; min-width: 0;">
-                        <div onclick="window.openUserProfile('${u.id || ''}')" style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; cursor: pointer;">
-                            ${u.username} ${getLevelBadgeHTML(u.level || 1)} ${getUserBadge(u.role || '')}
-                        </div>
-                        <div style="color: #FFD700; font-size: 12px; margin-top: 2px; font-weight: 600;">${(u.room_total || 0).toLocaleString()} koin</div>
-                    </div>
-                </div>`;
-            });
-        }
     };
 
     window.kirimKomentar = async () => {
         const inputEl = document.getElementById('chat-input') as HTMLInputElement;
         const text = inputEl?.value.trim();
         if (!text || !CURRENT_ROOM_ID || !MY_USER_ID.current) return;
-
         inputEl.value = ''; 
-        inputEl.focus(); 
-        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         try {
-            await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: myUsername.current, text: text, role: myRole.current, level: myLevel.current, user_id: MY_USER_ID.current }]);
+            // 🔥 FIX: user_id disertakan agar terbaca oleh listener realtime 🔥
+            await sb.from('room_messages').insert([{ 
+                room_id: CURRENT_ROOM_ID, 
+                username: myUsername.current, 
+                text: text, 
+                role: myRole.current, 
+                level: myLevel.current,
+                user_id: MY_USER_ID.current 
+            }]);
         } catch (e) { console.error(e); }
     };
 
-    window.mintaNaik = async () => {
-        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').order('slot_index', { ascending: true });
-        const slotKosong = allSlots?.find(s => !s.profile_id);
-        if (slotKosong) window.naikKeStage?.(slotKosong.slot_index); else showNotif("Panggung penuh!", "warning");
-    };
-
-    window.keluarRoom = async () => {
-        if (IS_OWNER.current && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
-            await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
-            await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
-            await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
-        } else {
-            await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
-        }
-        roomRef.current?.disconnect();
-        window.location.href = '/lobby'; 
-    };
-
-    window.toggleMicSidebar = async (e: any) => {
-        e?.preventDefault();
-        if (!roomRef.current) return showNotif(t('mic_not_ready'), "warning");
-
-        const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID.current).single();
-        if (!onStage) return showNotif(t('mic_stage_first'), "warning");
-
-        isMicOn.current = !isMicOn.current;
-        await roomRef.current.localParticipant.setMicrophoneEnabled(isMicOn.current);
-        await sb.from('profiles').update({ mic_off: !isMicOn.current }).eq('id', MY_USER_ID.current);
-
-        const icon = document.getElementById('mic-icon');
-        const text = document.getElementById('mic-text');
-        if (icon && text) {
-            icon.innerText = isMicOn.current ? 'mic' : 'mic_off';
-            text.innerText = isMicOn.current ? t('mute_mic') : t('unmute_mic');
-            icon.style.color = isMicOn.current ? 'inherit' : '#ef4444';
-        }
-        
-        window.toggleSidebar?.(); 
-        fetchStage();
-    };
-
-    window.openRoomSetting = () => {
-        const modal = document.getElementById('setting-modal');
-        if (modal) {
-            modal.classList.add('show');
-            const body = modal.querySelector('.modal-body');
-            if (body && !body.querySelector('.radar-settings')) {
-                const div = document.createElement('div');
-                div.className = 'radar-settings';
-                const label = document.createElement('label');
-                label.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
-                label.innerText = 'Warna Radar Mic';
-                div.appendChild(label);
-                const btnContainer = document.createElement('div');
-                btnContainer.style.cssText = 'display:flex; gap:12px; margin-bottom:20px;';
-                const colors = [{ val: '#ef4444', bg: '#ef4444' }, { val: '#3b82f6', bg: '#3b82f6' }, { val: '#22c55e', bg: '#22c55e' }, { val: 'rgb', bg: 'linear-gradient(45deg, red, blue, green)' }];
-                colors.forEach(c => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.style.cssText = `background:${c.bg}; width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;`;
-                    btn.onclick = () => { if(window.updateRadarColor) window.updateRadarColor(c.val); };
-                    btnContainer.appendChild(btn);
-                });
-                div.appendChild(btnContainer);
-                const saveBtn = body.querySelector('.btn-save-setting');
-                if (saveBtn) body.insertBefore(div, saveBtn); else body.appendChild(div);
-            }
-        }
-        window.toggleSidebar?.(); 
-    };
-
-    window.updateRadarColor = (color: string) => {
-        const root = document.documentElement;
-        if (color === 'rgb') {
-            root.style.setProperty('--radar-color', 'linear-gradient(90deg, #ff0000, #00ff00, #0000ff)');
-            document.body.classList.add('radar-rgb');
-        } else {
-            root.style.setProperty('--radar-color', color);
-            document.body.classList.remove('radar-rgb');
-        }
-        showNotif("Warna radar diperbarui!", "success");
-    };
-    
-    window.closeRoomSetting = () => { document.getElementById('setting-modal')?.classList.remove('show'); };
-    
-    window.saveRoomSetting = async () => {
-        const newName = (document.getElementById('edit-room-name') as HTMLInputElement).value;
-        const sysMsg = (document.getElementById('system-message') as HTMLInputElement).value;
-        if (!newName) return showNotif(t('room_name_empty'), "warning");
-        try {
-            await sb.from('rooms').update({ name: newName }).eq('id', CURRENT_ROOM_ID);
-            if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
-            const url = new URL(window.location.href); url.searchParams.set('name', newName); window.history.pushState({}, '', url); 
-            const titleEl = document.querySelector('.room-title') as HTMLElement;
-            if(titleEl) titleEl.innerText = newName.toUpperCase();
-            window.closeRoomSetting?.();
-        } catch (e: any) { showNotif("Gagal simpan: " + e.message, "error"); }
-    };
-
-    window.closeConfirmModal = () => {
-        const m = document.getElementById('confirm-modal');
-        if (m) m.style.display = 'none';
-    };
-
-    window.closeTopGiftersModal = () => {
-        const m = document.getElementById('top-gifters-modal');
-        if (m) m.style.display = 'none';
-    };
-
-    const fixMobileHeight = () => {
-        let vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-    window.addEventListener('resize', fixMobileHeight);
-    window.addEventListener('orientationchange', fixMobileHeight);
-    fixMobileHeight();
-
-    const giftDrawerEl = document.getElementById('room-gift-drawer');
-    if (giftDrawerEl) {
-        let startY = 0; let currentY = 0;
-        giftDrawerEl.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
-        giftDrawerEl.addEventListener('touchmove', (e) => {
-            currentY = e.touches[0].clientY;
-            const diffY = currentY - startY;
-            if (diffY > 0) { giftDrawerEl.style.transform = `translateY(${diffY}px)`; giftDrawerEl.style.transition = 'none'; }
-        }, { passive: true });
-        giftDrawerEl.addEventListener('touchend', () => {
-            const diffY = currentY - startY;
-            giftDrawerEl.style.transform = ''; giftDrawerEl.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
-            if (diffY > 80 && giftDrawerEl.classList.contains('open')) window.toggleRoomGiftDrawer?.();
-            startY = 0; currentY = 0;
-        });
-    }
-
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
-
-    return () => {
-        clearInterval(sdkInterval); 
-        roomRef.current?.disconnect();
-        window.removeEventListener('resize', fixMobileHeight);
-        window.removeEventListener('orientationchange', fixMobileHeight);
-        ['room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 'vip-entrance-overlay'].forEach(id => document.getElementById(id)?.remove());
-    };
-  }, [t, searchParams]);
+    return () => { clearInterval(sdkInterval); roomRef.current?.disconnect(); };
+  }, [t, searchParams, totalTaps]);
 
   if (!mounted) return null;
 
@@ -789,7 +456,7 @@ function VoiceRoomContent() {
       <Script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.12/dist/livekit-client.umd.min.js" />
       
       {/* 🔥 CONTAINER JUMLAH TAP-TAP 🔥 */}
-      <div className="tap-counter-box">
+      <div className="tap-counter-top">
           <span className="material-icons">favorite</span>
           <b>{totalTaps.toLocaleString()}</b>
       </div>
@@ -812,7 +479,7 @@ function VoiceRoomContent() {
                 </h3>
                 <div className="profile-sheet-level">LEVEL {selectedUser.level || 1}</div>
               </div>
-              <button className="btn-view-profile-full" onClick={() => router.push(`/data?username=${selectedUser.username}`)}>
+              <button className="btn-view-profile-full" onClick={() => router.push(`/data?id=${selectedUser.id}`)}>
                 Lihat Profil Lengkap
               </button>
             </div>
@@ -820,47 +487,28 @@ function VoiceRoomContent() {
         </div>
       </div>
       
-      {/* CSS GLOBAL UNTUK RADAR MIC & TAP-TAP & PROFILE */}
       <style jsx global>{`
         :root { --radar-color: #3b82f6; }
         
-        /* 🔥 TAP COUNTER BOX 🔥 */
-        .tap-counter-box {
-          position: fixed;
-          top: calc(env(safe-area-inset-top, 0px) + 12px);
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(10px);
-          padding: 4px 12px;
-          border-radius: 20px;
-          color: #fff;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          z-index: 2000;
-          font-size: 12px;
-          border: 1px solid rgba(255,255,255,0.1);
-          pointer-events: none;
+        .tap-counter-top {
+          position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+          background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
+          padding: 4px 12px; border-radius: 20px; color: #fff;
+          display: flex; align-items: center; gap: 6px; z-index: 3000;
+          font-size: 12px; border: 1px solid rgba(255,255,255,0.1); pointer-events: none;
         }
-        .tap-counter-box .material-icons { font-size: 14px; color: #ff4757; }
+        .tap-counter-top .material-icons { font-size: 14px; color: #ff4757; }
 
-        /* 🔥 EMOJI TERBANG 🔥 */
         .tap-emoji-fly {
-          position: fixed;
-          pointer-events: none;
-          z-index: 999999;
-          font-size: 28px;
-          user-select: none;
-          animation: flyUpAnim 1s ease-out forwards;
+          position: fixed; pointer-events: none; z-index: 999999;
+          font-size: 28px; animation: flyUpAnim 1s ease-out forwards;
         }
 
         @keyframes flyUpAnim {
-          0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
-          100% { transform: translateY(-250px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; }
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(-250px) translateX(${Math.random() * 80 - 40}px) scale(1.5); opacity: 0; }
         }
 
-        /* 🔥 PROFILE SHEET 🔥 */
         .user-profile-sheet-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10005;
           opacity: 0; visibility: hidden; transition: 0.3s;
