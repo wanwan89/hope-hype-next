@@ -6,7 +6,8 @@ import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; // 🔥 FIX: Tambah router untuk tombol Back
-import './PostModal.css';
+// 🔥 FIX: Import diubah ke Create.css sesuai yang baru lu bikin
+import './Create.css'; 
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";

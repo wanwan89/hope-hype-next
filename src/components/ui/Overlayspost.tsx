@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
  * IMPORT SEMUA MODAL SECARA GLOBAL
  * Pastikan nama file sesuai (Case Sensitive)
  */
-import PostModal from '@/components/post/PostModal'; 
+// 🔥 FIX: Hapus import PostModal karena sudah jadi halaman /create
 import CommentModal from '@/components/post/CommentModalpost';
 import GiftSheet from '@/components/post/GiftSheetpost';
 import './Overlays.css';
@@ -28,14 +28,13 @@ declare global {
 export default function Overlayspost() {
   const [bigImgSrc, setBigImgSrc] = useState<string | null>(null);
   
-  // State khusus untuk Modal Post (karena butuh props onClose)
-  const [isPostOpen, setIsPostOpen] = useState(false);
+  // 🔥 FIX: Hapus state isPostOpen karena sudah dipindah ke halaman /create
 
   useEffect(() => {
-    // --- 1. SENSOR SINYAL BUKA MODAL POST ---
+    // --- 1. SENSOR SINYAL BUKA MODAL POST (TIDAK DIPAKAI LAGI TAPI DIBIARKAN KOSONG DEMI KEAMANAN) ---
     const handleOpenPost = () => {
-      console.log("Sinyal Open Post diterima!");
-      setIsPostOpen(true);
+      console.log("Sinyal Open Post diterima! Arahkan ke /create lewat router di tempat lain.");
+      // Redirect sekarang dihandle di tombol Add (+), ini biar ga ada sisa listener yg nyangkut
     };
     window.addEventListener('openPostModal', handleOpenPost);
 
@@ -162,9 +161,7 @@ export default function Overlayspost() {
   return (
     <>
       {/* RENDER MODAL-MODAL UTAMA */}
-      {isPostOpen && (
-        <PostModal onClose={() => setIsPostOpen(false)} />
-      )}
+      {/* 🔥 FIX: Hapus render <PostModal /> karena sudah dipindah ke halaman /create */}
       
       {/* Comment & Gift dirender di sini agar listener internalnya jalan */}
       <CommentModal />
