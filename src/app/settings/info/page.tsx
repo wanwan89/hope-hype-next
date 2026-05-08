@@ -40,48 +40,80 @@ export default function PersonalInfoPage() {
   };
 
   return (
-    <div className="settings-page">
-      <header className="settings-header">
-        <span className="material-icons" onClick={() => router.back()} style={{cursor: 'pointer'}}>arrow_back</span>
+    <div className="st-page-wrapper">
+      <header className="st-header">
+        <button className="st-back-btn" onClick={() => router.back()}>
+          <span className="material-icons">arrow_back</span>
+        </button>
         <h2>Informasi Pribadi</h2>
       </header>
 
-      <main className="settings-content">
-        <div className="settings-group">
-          <div className="group-title">Email Saat Ini</div>
-          <div className="settings-card" style={{ padding: '16px' }}>
-            <div style={{ color: 'var(--text-sub)', fontSize: '14px' }}>{email || 'Memuat...'}</div>
+      <main className="st-container">
+        
+        {/* 🔥 FIX 1: Pake st-section dan st-section-title 🔥 */}
+        <div className="st-section">
+          <div className="st-section-title">Email Saat Ini</div>
+          <div className="st-card" style={{ padding: '16px 20px' }}>
+            <div style={{ color: 'var(--st-text-main)', fontSize: '14px', fontWeight: '500' }}>
+              {email || 'Memuat...'}
+            </div>
           </div>
         </div>
 
-        <div className="settings-group">
-          <div className="group-title">Ubah Email Baru</div>
-          <div className="settings-card" style={{ padding: '16px' }}>
+        {/* 🔥 FIX 2: Area Ubah Email 🔥 */}
+        <div className="st-section">
+          <div className="st-section-title">Ubah Email Baru</div>
+          <div className="st-card" style={{ padding: '20px' }}>
             <input 
               type="email" 
               placeholder="Masukkan email baru..." 
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               style={{
-                width: '100%', padding: '12px', borderRadius: '10px', 
-                border: '1px solid var(--border-settings)', background: 'var(--bg-settings)', 
-                color: 'var(--text-main)', outline: 'none', marginBottom: '16px', boxSizing: 'border-box'
+                width: '100%', 
+                padding: '14px 16px', 
+                borderRadius: '12px', 
+                border: '1px solid var(--st-border)', 
+                background: 'var(--st-bg-main)', /* Ambil dari variabel CSS baru */
+                color: 'var(--st-text-main)', 
+                outline: 'none', 
+                marginBottom: '16px', 
+                boxSizing: 'border-box',
+                fontFamily: 'inherit',
+                fontSize: '14px',
+                transition: 'border-color 0.2s'
               }}
             />
             <button 
               onClick={handleUpdateEmail}
               disabled={isLoading || !newEmail}
               style={{
-                width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
-                background: '#1DA1F2', color: '#fff', fontWeight: 'bold', cursor: 'pointer',
-                opacity: (isLoading || !newEmail) ? 0.6 : 1
+                width: '100%', 
+                padding: '14px', 
+                borderRadius: '12px', 
+                border: 'none',
+                background: 'var(--st-primary)', /* Warna biru utama dari var CSS */
+                color: '#fff', 
+                fontWeight: '600', 
+                cursor: 'pointer',
+                opacity: (isLoading || !newEmail) ? 0.6 : 1,
+                transition: '0.2s ease',
+                fontSize: '14px'
               }}
             >
               {isLoading ? 'Memproses...' : 'Kirim Link Konfirmasi'}
             </button>
           </div>
-          <p style={{fontSize: '11px', color: 'var(--text-sub)', marginTop: '10px'}}>
-            *Catatan: Supabase akan mengirimkan link verifikasi ke email lama dan email baru kamu demi keamanan.
+          
+          {/* 🔥 FIX 3: Teks Catatan dirapihin 🔥 */}
+          <p style={{
+            fontSize: '11px', 
+            color: 'var(--st-text-sub)', 
+            marginTop: '12px', 
+            lineHeight: '1.5',
+            padding: '0 8px'
+          }}>
+            *Catatan: kami akan mengirimkan link verifikasi ke email lama dan email baru kamu demi keamanan.
           </p>
         </div>
       </main>

@@ -32,56 +32,86 @@ export default function PasswordPage() {
   };
 
   return (
-    <div className="settings-page">
-      <header className="settings-header">
-        <span className="material-icons" onClick={() => router.back()} style={{cursor: 'pointer'}}>arrow_back</span>
+    <div className="st-page-wrapper">
+      <header className="st-header">
+        {/* 🔥 FIX 1: Pake tombol back yang konsisten 🔥 */}
+        <button className="st-back-btn" onClick={() => router.back()}>
+          <span className="material-icons">arrow_back</span>
+        </button>
         <h2>Ubah Kata Sandi</h2>
       </header>
 
-      <main className="settings-content">
-        <div className="settings-card" style={{ padding: '20px' }}>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-sub)', marginBottom: '8px', fontWeight: 'bold' }}>Kata Sandi Baru</label>
-            <input 
-              type="password" 
-              placeholder="Minimal 6 karakter" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: '100%', padding: '14px', borderRadius: '10px', 
-                border: '1px solid var(--border-settings)', background: 'var(--bg-settings)', 
-                color: 'var(--text-main)', outline: 'none', boxSizing: 'border-box'
-              }}
-            />
-          </div>
+      <main className="st-container">
+        {/* 🔥 FIX 2: Bungkus dengan st-section & st-card 🔥 */}
+        <div className="st-section">
+          <div className="st-card" style={{ padding: '20px' }}>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: 'var(--st-text-sub)', marginBottom: '8px', fontWeight: 'bold' }}>Kata Sandi Baru</label>
+              <input 
+                type="password" 
+                placeholder="Minimal 6 karakter" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  width: '100%', 
+                  padding: '14px 16px', 
+                  borderRadius: '12px', 
+                  border: '1px solid var(--st-border)', 
+                  background: 'var(--st-bg-main)', /* 🔥 FIX 3: Variabel background sesuai tema 🔥 */
+                  color: 'var(--st-text-main)', 
+                  outline: 'none', 
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                  fontSize: '14px',
+                  transition: 'border-color 0.2s'
+                }}
+              />
+            </div>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-sub)', marginBottom: '8px', fontWeight: 'bold' }}>Konfirmasi Kata Sandi Baru</label>
-            <input 
-              type="password" 
-              placeholder="Ulangi kata sandi baru" 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              style={{
-                width: '100%', padding: '14px', borderRadius: '10px', 
-                border: '1px solid var(--border-settings)', background: 'var(--bg-settings)', 
-                color: 'var(--text-main)', outline: 'none', boxSizing: 'border-box'
-              }}
-            />
-          </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: 'var(--st-text-sub)', marginBottom: '8px', fontWeight: 'bold' }}>Konfirmasi Kata Sandi Baru</label>
+              <input 
+                type="password" 
+                placeholder="Ulangi kata sandi baru" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                style={{
+                  width: '100%', 
+                  padding: '14px 16px', 
+                  borderRadius: '12px', 
+                  border: '1px solid var(--st-border)', 
+                  background: 'var(--st-bg-main)', 
+                  color: 'var(--st-text-main)', 
+                  outline: 'none', 
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                  fontSize: '14px',
+                  transition: 'border-color 0.2s'
+                }}
+              />
+            </div>
 
-          <button 
-            onClick={handleUpdatePassword}
-            disabled={isLoading || !password || !confirmPassword}
-            style={{
-              width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
-              background: '#1DA1F2', color: '#fff', fontWeight: 'bold', cursor: 'pointer',
-              opacity: (isLoading || !password || !confirmPassword) ? 0.6 : 1
-            }}
-          >
-            {isLoading ? 'Menyimpan...' : 'Simpan Kata Sandi'}
-          </button>
+            <button 
+              onClick={handleUpdatePassword}
+              disabled={isLoading || !password || !confirmPassword}
+              style={{
+                width: '100%', 
+                padding: '14px', 
+                borderRadius: '12px', 
+                border: 'none',
+                background: 'var(--st-primary)', /* 🔥 FIX 4: Warna tombol ditarik dari root CSS 🔥 */
+                color: '#fff', 
+                fontWeight: '600', 
+                cursor: 'pointer',
+                opacity: (isLoading || !password || !confirmPassword) ? 0.6 : 1,
+                transition: '0.2s ease',
+                fontSize: '14px'
+              }}
+            >
+              {isLoading ? 'Menyimpan...' : 'Simpan Kata Sandi'}
+            </button>
+          </div>
         </div>
       </main>
     </div>

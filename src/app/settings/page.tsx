@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
 import { useTheme } from 'next-themes'; 
-// 🔥 FIX 1: Import i18n
 import { useTranslation } from 'react-i18next';
 import './Settings.css';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { t } = useTranslation(); // 🔥 FIX 2: Inisialisasi Translate
+  const { t } = useTranslation(); 
   const { theme, setTheme } = useTheme();
   
   const [mounted, setMounted] = useState(false);
@@ -34,7 +33,6 @@ export default function SettingsPage() {
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
-    // showNotif pake i18n juga biar keren
     showNotif(newTheme === 'dark' ? "Mode gelap aktif" : "Mode terang aktif", "info");
   };
 
@@ -71,7 +69,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <label className="st-switch" onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" checked={isDarkMode} onChange={toggleTheme} />
+                <input type="checkbox" checked={isDarkMode} readOnly />
                 <span className="st-slider"></span>
               </label>
             </div>
@@ -104,7 +102,21 @@ export default function SettingsPage() {
                 </div>
                 <div className="st-info">
                   <span className="st-label">{t('personal_info')}</span>
-                  <span className="st-hint">{user?.email}</span>
+                  <span className="st-hint">{user?.email || 'Memuat...'}</span>
+                </div>
+              </div>
+              <span className="material-icons st-arrow">chevron_right</span>
+            </div>
+
+            {/* 🔥 FIX: MENU PASSWORD BARU DITAMBAHKAN DI SINI 🔥 */}
+            <div className="st-item" onClick={() => router.push('/settings/password')}>
+              <div className="st-item-left">
+                <div className="st-icon-box">
+                  <span className="material-icons">lock</span>
+                </div>
+                <div className="st-info">
+                  <span className="st-label">Kata Sandi</span>
+                  <span className="st-hint">Perbarui kata sandi akun</span>
                 </div>
               </div>
               <span className="material-icons st-arrow">chevron_right</span>

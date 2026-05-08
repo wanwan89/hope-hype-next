@@ -24,59 +24,57 @@ export default function LanguagePage() {
   ];
 
   const handleSelect = async (code: string) => {
-    // 🔥 FIX 1: Ganti bahasa secara global
+    // Ganti bahasa secara global
     await i18n.changeLanguage(code); 
     
-    // 🔥 FIX 2: Notif otomatis ikut bahasa yang baru dipilih
+    // Notif otomatis ikut bahasa yang baru dipilih
     showNotif(t('lang_updated'), "success");
     
     // Balik ke halaman sebelumnya setelah user liat ceklisnya pindah
     setTimeout(() => router.back(), 500);
   };
 
-  if (!mounted) return <div className="settings-page"></div>;
+  // Pake class st-page-wrapper biar loadingnya ga kedap-kedip putih
+  if (!mounted) return <div className="st-page-wrapper"></div>;
 
   return (
-    <div className="settings-page">
-      <header className="settings-header">
-        <span 
-          className="material-icons" 
-          onClick={() => router.back()} 
-          style={{ cursor: 'pointer' }}
-        >
-          arrow_back
-        </span>
-        {/* 🔥 FIX 3: Judul header ditarik dari i18n.ts */}
+    <div className="st-page-wrapper">
+      <header className="st-header">
+        <button className="st-back-btn" onClick={() => router.back()}>
+          <span className="material-icons">arrow_back</span>
+        </button>
         <h2>{t('language')}</h2>
       </header>
 
-      <main className="settings-content">
-        <div className="settings-card">
-          {languages.map((lang) => (
-            <div 
-              key={lang.code} 
-              className="settings-item" 
-              onClick={() => handleSelect(lang.code)}
-            >
-              <div className="item-left">
-                <span className="item-label">{lang.name}</span>
+      <main className="st-container">
+        <div className="st-section">
+          <div className="st-card">
+            {languages.map((lang) => (
+              <div 
+                key={lang.code} 
+                className="st-item" 
+                onClick={() => handleSelect(lang.code)}
+              >
+                <div className="st-item-left">
+                  <span className="st-label">{lang.name}</span>
+                </div>
+                
+                {/* Logika ceklis yang presisi */}
+                {i18n.language.startsWith(lang.code) && (
+                  <span className="material-icons" style={{ color: 'var(--st-primary)' }}>
+                    check_circle
+                  </span>
+                )}
               </div>
-              
-              {/* 🔥 FIX 4: Logika ceklis yang presisi */}
-              {i18n.language.startsWith(lang.code) && (
-                <span className="material-icons" style={{ color: '#1DA1F2' }}>
-                  check_circle
-                </span>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         
-        {/* 🔥 FIX 5: Deskripsi ditarik dari i18n.ts (Bisa Bahasa China & Korea juga) */}
+        {/* Deskripsi ditarik dari i18n.ts */}
         <p style={{ 
           fontSize: '12px', 
           color: 'var(--st-text-sub)', 
-          marginTop: '20px', 
+          marginTop: '10px', 
           textAlign: 'center',
           lineHeight: '1.6',
           padding: '0 24px',

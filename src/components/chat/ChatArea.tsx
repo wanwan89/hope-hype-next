@@ -74,6 +74,7 @@ export default function ChatArea() {
   useEffect(() => {
     initApp();
     return () => cleanup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromId, groupId]);
 
   const initApp = async () => {
@@ -125,7 +126,6 @@ export default function ChatArea() {
     if (!inviteSearch.trim() || !groupId) return;
     setIsUpdatingGroup(true);
     
-    // 🔥 FIX: Query Filter Supabase yang lebih stabil
     const { data: userData, error: userError } = await supabase
       .from('profiles')
       .select('id, username')
@@ -168,16 +168,28 @@ export default function ChatArea() {
     }
   };
 
+  // 🔥 FIX: HANDLE PREVIEW & UPLOAD FOTO 🔥
   const handleGroupPhotoUpload = async (e: any) => {
     const file = e.target.files[0];
     if (!file || !isOwner) return;
+    
+    // Tampilkan preview lokal sementara loading
+    const objectUrl = URL.createObjectURL(file);
+    setHeaderInfo(prev => ({ ...prev, avatar: objectUrl }));
+    
     setIsUpdatingGroup(true);
     const fd = new FormData();
     fd.append("file", file); fd.append("upload_preset", "hopehype_preset");
+    
     const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
     const d = await res.json();
-    if (d.secure_url) updateGroupInfo('avatar_url', d.secure_url);
-    else setIsUpdatingGroup(false);
+    
+    if (d.secure_url) {
+      updateGroupInfo('avatar_url', d.secure_url);
+    } else {
+      setIsUpdatingGroup(false);
+      showNotif("Gagal upload foto", "error");
+    }
   };
 
   const cleanup = () => {
@@ -371,7 +383,6 @@ export default function ChatArea() {
 
   return (
     <div className="telegram-chat hype-chat-scope">
-      {/* 🔥 FIX: CALL OVERLAY (POSISI PALING ATAS) 🔥 */}
       {callStatus !== 'idle' && (
         <div className="call-overlay">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
@@ -387,9 +398,11 @@ export default function ChatArea() {
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
+          
           {targetId && (
             <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} />
           )}
+
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
@@ -398,6 +411,7 @@ export default function ChatArea() {
             <div className="status-container">{typingUser ? <span className="status-typing">{t('typing_status', { username: typingUser.username })}</span> : <span className="status-online">{t('online_status', { count: onlineCount })}</span>}</div>
           </div>
         </div>
+        
         <div className="header-right">
           {targetId ? (
             <button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button>
@@ -412,7 +426,6 @@ export default function ChatArea() {
 
       <main className="chat-messages">
         {isLoading ? (
-          /* 🔥 FIX: SKELETON PEMBUNGKUS (AGAR SHIMMER MUNCUL) 🔥 */
           <div className="chat-loading-screen">
             {[...Array(5)].map((_, i) => (
               <div key={i} className={`skeleton-msg ${i % 2 === 0 ? 'left' : 'right'}`}>
@@ -432,6 +445,17 @@ export default function ChatArea() {
               <MessageBubble key={msg.id} msg={msg} isMe={msg.user_id === currentUser?.id} onReply={setReplyTo} onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} onDelete={(id:any) => setDeleteMenu(id)} />
             ))}
           </>
+        )}
+        {typingUser && (
+          <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
+            {!targetId && <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{width: '30px', height:'30px', borderRadius:'50%', margin:'0 8px 2px'}} />}
+            <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
+              {!targetId && <div className="username" style={{ marginBottom: '4px', fontSize:'12.5px', color:'var(--primary-blue)', fontWeight:700 }}>{typingUser.username}</div>}
+              <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 4px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                <div className="typing-bubble" style={{ padding: 0 }}><span></span><span></span><span></span></div>
+              </div>
+            </div>
+          </div>
         )}
         <div ref={refs.scroll} />
       </main>
@@ -474,7 +498,7 @@ export default function ChatArea() {
         </div>
       </footer>
 
-      {/* 🔥 FIX: MODAL BOTTOM SHEET 🔥 */}
+      {/* 🔥 FIX 4: MODAL GROUP SETTINGS (PREVIEW & TOMBOL SIMPAN) 🔥 */}
       {isGroupSettingsOpen && groupId && (
         <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -491,14 +515,57 @@ export default function ChatArea() {
               </>
             ) : (
               <>
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <label style={{ position: 'relative', display: 'inline-block' }}>
-                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '90px', height: '90px', borderRadius: '50%', border: '3px solid var(--primary-blue)' }} alt="g" />
-                    {isOwner && <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', borderRadius: '50%', padding: '6px', color: 'white' }}><span className="material-icons" style={{fontSize: '18px'}}>camera_alt</span></div>}
-                    <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner} />
-                  </label>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0 }}>Pengaturan Grup</h3>
+                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
-                <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} onBlur={() => newGroupName !== headerInfo.title && updateGroupInfo('name', newGroupName)} disabled={!isOwner} style={{ width: '100%', padding: '12px', borderRadius: '15px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', textAlign: 'center', fontWeight: 'bold' }} />
+
+                {/* AREA PREVIEW FOTO */}
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <label style={{ position: 'relative', display: 'inline-block', cursor: isOwner ? 'pointer' : 'default' }}>
+                    <img 
+                      src={headerInfo.avatar || '/asets/png/group_placeholder.png'} 
+                      style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary-blue)', opacity: isUpdatingGroup ? 0.5 : 1, transition: '0.3s' }} 
+                      alt="grup" 
+                    />
+                    
+                    {/* Tulisan Uploading pas nunggu */}
+                    {isUpdatingGroup && (
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-blue)', fontWeight: 'bold', fontSize: '11px', background: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}>
+                        UPLOADING
+                      </div>
+                    )}
+                    
+                    {isOwner && !isUpdatingGroup && (
+                      <div style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--primary-blue)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '3px solid var(--bg-panel)' }}>
+                        <span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span>
+                      </div>
+                    )}
+                    <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner || isUpdatingGroup} />
+                  </label>
+                  <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px'}}>{isOwner ? 'Klik foto untuk mengganti' : 'Foto Grup'}</p>
+                </div>
+
+                {/* TOMBOL SIMPAN NAMA */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+                  <input 
+                    type="text" 
+                    value={newGroupName} 
+                    onChange={(e) => setNewGroupName(e.target.value)} 
+                    disabled={!isOwner} 
+                    style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none', fontWeight: 'bold' }} 
+                  />
+                  {isOwner && (
+                    <button 
+                      onClick={() => updateGroupInfo('name', newGroupName)} 
+                      disabled={isUpdatingGroup || newGroupName === headerInfo.title} 
+                      style={{ background: newGroupName === headerInfo.title ? 'var(--border-color)' : 'var(--primary-blue)', color: newGroupName === headerInfo.title ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold', transition: '0.3s' }}
+                    >
+                      SIMPAN
+                    </button>
+                  )}
+                </div>
+
                 <div style={{ marginTop: '20px', maxHeight: '200px', overflowY: 'auto' }}>
                   <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>MEMBER ({groupMembers.length})</p>
                   {groupMembers.map(m => (
