@@ -28,7 +28,6 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   
-  // 🔥 STATUS BLOKIR 🔥
   const [blockStatus, setBlockStatus] = useState<'none' | 'blocked_by_me' | 'blocking_me'>('none');
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
 
@@ -68,8 +67,14 @@ function ProfileContent() {
   }, [urlId, urlUser, isMounted]);
 
   useEffect(() => { 
-    if (profile && isMounted && blockStatus === 'none') loadPostsTab(activeTab); 
-  }, [activeTab, profile, isMounted, blockStatus]);
+    if (profile && isMounted && blockStatus === 'none') {
+      if (profile.is_private && myId !== profile.id && !isFollowing) {
+        setPosts([]); 
+      } else {
+        loadPostsTab(activeTab); 
+      }
+    }
+  }, [activeTab, profile, isMounted, blockStatus, isFollowing]);
 
   const loadProfile = async () => {
     try {
@@ -86,7 +91,6 @@ function ProfileContent() {
       const { data: profData, error } = await query.single();
       if (error || !profData) return;
 
-      // 🔥 CEK STATUS BLOKIR 🔥
       if (currentUserId && currentUserId !== profData.id) {
         const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
         if (myBlock) setBlockStatus('blocked_by_me');
@@ -157,6 +161,17 @@ function ProfileContent() {
       }
     } catch (err) { console.error(err); setPosts([]); } finally { setIsLoadingPosts(false); }
   };
+
+  // 🔥 FIX 1: Fungsi Navigasi Hard Redirect ke /post 🔥
+  const handleOpenPost = (postId: string) => {
+    // Kombinasi ini maksa browser buat pindah halaman 100% tanpa nyangkut
+    try {
+      router.push(`/post?id=${postId}`); 
+    } catch (e) {
+      window.location.href = `/post?id=${postId}`;
+    }
+  };
+
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
     setFollowModalType(type);
@@ -232,16 +247,13 @@ function ProfileContent() {
     }
   };
 
-  // 🔥 FUNGSI BLOKIR & LAPORKAN 🔥
   const handleBlockUser = async () => {
     if (!myId || !profile) return;
     if (confirm(`Yakin ingin memblokir ${profile.username}?`)) {
       try {
         setIsActionSheetOpen(false);
-        // Hapus pertemanan bolak-balik
         await supabase.from('followers').delete().match({ follower_id: myId, following_id: profile.id });
         await supabase.from('followers').delete().match({ follower_id: profile.id, following_id: myId });
-        // Masukin ke tabel blokir
         await supabase.from('blocked_users').insert([{ blocker_id: myId, blocked_id: profile.id }]);
         
         showNotif('Pengguna berhasil diblokir.', 'success');
@@ -274,9 +286,9 @@ function ProfileContent() {
   // 🔥 TAMPILAN KALAU DIBLOKIR 🔥
   if (blockStatus === 'blocking_me') {
     return (
-      <div className="profile-page-container">
+      // 🔥 FIX 2: Layar digembok mati pake touchAction 'none' dan position fixed 🔥
+      <div className="profile-page-container" style={{ position: 'fixed', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
         <header className="profile-header">
-          {/* 🔥 FIX: Tombol Kembali Pakai router.back() 🔥 */}
           <button className="header-btn" onClick={() => router.back()}><span className="material-icons">arrow_back</span></button>
         </header>
         <div style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)'}}>
@@ -290,9 +302,9 @@ function ProfileContent() {
   // 🔥 TAMPILAN KALAU KITA NGEBLOK ORANGNYA 🔥
   if (blockStatus === 'blocked_by_me') {
     return (
-      <div className="profile-page-container">
+      // 🔥 FIX 2: Layar digembok mati pake touchAction 'none' dan position fixed 🔥
+      <div className="profile-page-container" style={{ position: 'fixed', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
         <header className="profile-header">
-          {/* 🔥 FIX: Tombol Kembali Pakai router.back() 🔥 */}
           <button className="header-btn" onClick={() => router.back()}><span className="material-icons">arrow_back</span></button>
           <h2>{profile.username}</h2>
           <div style={{width: '24px'}}></div>
@@ -310,13 +322,15 @@ function ProfileContent() {
   return (
     <div className="profile-page-container">
       <header className="profile-header">
-        <h2 style={{ marginLeft: '10px' }}>{profile.username}</h2>
+        <h2 style={{ marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          {profile.username}
+          {profile.is_private && <span className="material-icons" style={{fontSize: '14px', color: 'var(--text-secondary)'}}>lock</span>}
+        </h2>
         {isMe ? (
           <button className="header-btn" onClick={() => setIsSidebarOpen(true)}>
             <span className="material-icons">menu</span>
           </button>
         ) : (
-          /* 🔥 FIX: Tombol Kembali Pakai router.back() 🔥 */
           <button className="header-btn" onClick={() => router.back()}>
             <span className="material-icons">arrow_back</span>
           </button>
@@ -344,7 +358,6 @@ function ProfileContent() {
              ) : (
                 <>
                   <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? t('following_btn', 'Mengikuti') : t('follow', 'Ikuti')}</button>
-                  {/* 🔥 TOMBOL TINDAKAN (ACTION) 🔥 */}
                   <button className="btn-action btn-secondary" onClick={() => setIsActionSheetOpen(true)} style={{ padding: '8px 12px' }}>
                     <span className="material-icons" style={{ fontSize: '18px' }}>more_horiz</span>
                   </button>
@@ -363,18 +376,26 @@ function ProfileContent() {
           )}
         </section>
 
-        <div className="profile-tabs">
-           <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
-           <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved', 'Tersimpan')}</div>
-           <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>{t('tab_repost', 'Repost')}</div>
-           <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Disukai')}</div>
-        </div>
+        {(!profile.is_private || isMe || isFollowing) && (
+          <div className="profile-tabs">
+            <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
+            <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved', 'Tersimpan')}</div>
+            <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>{t('tab_repost', 'Repost')}</div>
+            <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Disukai')}</div>
+          </div>
+        )}
       </div>
 
       <div className="post-grid-container">
         <div className="post-grid">
            {isLoadingPosts ? (
               Array(9).fill(0).map((_, i) => <div key={i} className="skeleton-grid-item"></div>)
+           ) : profile.is_private && !isFollowing && !isMe ? (
+              <div className="no-posts-v2">
+                <div className="no-posts-icon-circle"><span className="material-icons">lock</span></div>
+                <h3>Akun Private</h3>
+                <p>Ikuti akun ini untuk melihat postingan dan karya mereka.</p>
+              </div>
            ) : posts.length === 0 ? (
               <div className="no-posts-v2">
                 <div className="no-posts-icon-circle"><span className="material-icons">auto_awesome</span></div>
@@ -383,7 +404,8 @@ function ProfileContent() {
               </div>
            ) : (
               posts.map(post => (
-                 <div key={post.id} className="grid-item" style={{ cursor: 'pointer' }} onClick={() => router.push(`/post?id=${post.id}`)}>
+                 // 🔥 FIX 1: Panggil fungsi handleOpenPost untuk navigasi paksa 🔥
+                 <div key={post.id} className="grid-item" style={{ cursor: 'pointer' }} onClick={() => handleOpenPost(post.id)}>
                     {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
               ))
@@ -391,45 +413,6 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* Modal Edit Profil */}
-      {isMounted && isMe && (
-        <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
-           <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>{t('edit_profile_modal', 'Edit Profil')}</h3>
-                <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>
-              </div>
-              <div className="avatar-edit-section">
-                 <label className="main-preview-label">
-                    <img src={previewUrl || '/asets/png/profile.webp'} className="avatar-main-preview" alt="Preview" /><div className="upload-overlay" onClick={() => fileInputRef.current?.click()}><span className="material-icons">camera_alt</span></div>
-                 </label>
-                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{display: 'none'}} />
-                 <div className="avatar-presets">
-                    {avatarPresets.map((src, i) => (
-                       <img key={i} src={src} className={`preset-img ${previewUrl === src ? 'selected' : ''}`} onClick={() => { setEditData(prev => ({ ...prev, avatar_url: src })); setPreviewUrl(src); setSelectedFile(null); }} />
-                    ))}
-                 </div>
-              </div>
-              <div className="input-group">
-                <label>{t('username_label', 'Username')}</label>
-                <input type="text" value={editData.username} onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))} />
-              </div>
-              <div className="input-group">
-                <label>{t('bio_label', 'Bio')}</label>
-                <textarea rows={2} value={editData.bio} onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))} maxLength={150} />
-              </div>
-              <div className="input-group">
-                <label>{t('link_label', 'Tautan / Website')}</label>
-                <input type="text" placeholder="google.com" value={editData.website} onChange={e => setEditData(prev => ({ ...prev, website: e.target.value }))} />
-              </div>
-              <button className="save-btn-premium" onClick={handleSaveSettings} disabled={isSaving}>
-                {isSaving ? t('saving', 'Menyimpan...') : t('save_changes', 'Simpan Perubahan')}
-              </button>
-           </div>
-        </div>
-      )}
-
-      {/* Sidebar Personal */}
       {isMe && (
         <>
           <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
@@ -455,7 +438,6 @@ function ProfileContent() {
         </>
       )}
 
-      {/* Sheet Follow/Following */}
       <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
       <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
         <div className="follow-sheet-header">
@@ -481,7 +463,6 @@ function ProfileContent() {
         </div>
       </aside>
 
-      {/* 🔥 SHEET TINDAKAN (REPORT & BLOCK) 🔥 */}
       <div className={`p-sidebar-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)} />
       <aside className={`p-follow-sheet ${isActionSheetOpen ? 'open' : ''}`} style={{ height: 'auto', paddingBottom: '30px' }}>
         <div className="follow-sheet-header">

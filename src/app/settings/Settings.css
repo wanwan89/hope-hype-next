@@ -21,6 +21,12 @@
   --st-glass: rgba(0, 0, 0, 0.8);
 }
 
+body {
+  /* 🔥 FIX 1: Kunci warna body mentok ngikutin tema, anti-jurang warna lain 🔥 */
+  background-color: var(--st-bg-main);
+  overscroll-behavior-y: none; /* Matikan efek mental/bounce pas di-scroll ke mentok bawah/atas */
+}
+
 .st-page-wrapper {
   min-height: 100vh;
   min-height: 100dvh;
@@ -29,8 +35,8 @@
   transition: background-color 0.3s ease;
   font-family: 'Poppins', sans-serif;
   overscroll-behavior: none;
-  /* Kasih ruang buat Navbar bawah kalau ada */
-  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  /* 🔥 FIX 2: Hapus padding-bottom raksasa 100px. Ubah jadi normal aja 🔥 */
+  padding-bottom: env(safe-area-inset-bottom, 20px); 
 }
 
 /* --- ST-HEADER (ISOLATED) --- */
@@ -70,7 +76,7 @@
 
 /* --- ST-CONTENT --- */
 .st-container {
-  padding: 20px 16px;
+  padding: 20px 16px 40px 16px; /* Kasih padding bawah dikit 40px biar agak napas */
   max-width: 500px;
   margin: 0 auto;
 }

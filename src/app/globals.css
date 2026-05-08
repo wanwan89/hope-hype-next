@@ -16,8 +16,10 @@
   --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
   --bg-story-seen: #dddfe2;
   --modal-overlay: rgba(0, 0, 0, 0.5);
-  --primary: #3b82f6;
-  --primary-soft: rgba(59, 130, 246, 0.1);
+  
+  /* Warna utama aplikasi diselaraskan */
+  --primary: #1f3cff;
+  --primary-soft: rgba(31, 60, 255, 0.1);
 }
 
 [data-theme='dark'], html.dark {
@@ -56,20 +58,23 @@ input, textarea, [contenteditable="true"], .selectable {
   outline: none !important;
 }
 
-html {
+html, body {
   background-color: var(--bg-main) !important;
   height: 100%;
+  min-height: 100%;
   scroll-behavior: smooth;
+  
+  /* 🔥 FIX 2: Kunci mentok! Gak bakal ada layar mental-mental lagi 🔥 */
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 body { 
   width: 100%;
-  min-height: 100%;
-  overscroll-behavior-y: none;
   overflow-x: hidden;
   font-family: 'Poppins', sans-serif; 
-  background-color: var(--bg-main); 
   color: var(--text-main); 
+  
   /* Hapus highlight biru secara global */
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -102,7 +107,14 @@ a, button, select, .menu-item-tiktok, .card-btn {
   max-width: 480px; 
   margin: 0 auto;
   position: relative;
-  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  /* 🔥 FIX 3: Hapus padding raksasa, ganti dengan jarak wajar aja 🔥 */
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* 🔥 TAMBAHAN KHUSUS BREE 🔥 */
+/* Gunakan class ini HANYA di halaman yang beneran ada menu nav di bawah (kayak Home) */
+.with-bottom-nav {
+  padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
 }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }

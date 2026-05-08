@@ -20,6 +20,7 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
@@ -29,29 +30,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
   const isStoryPage = pathname?.includes('/story');
+  const isPostPage = pathname?.includes('/post');
+
+  // App yang dikunci (Tidak bisa scroll body)
+  const isStandaloneApp = isVoicePage || isStoryPage || isDailyCekPage;
   
-  const isStandaloneApp = isVoicePage || isDailyCekPage || isStoryPage;
-  const isFullscreenPage = isStandaloneApp || isDataPage || isNotifPage || isSettingsPage || isVipPage || isContactPage;
+  // Halaman yang butuh Navbar Bawah (Agar konten tidak tertutup)
+  const hasNavbar = isHomePage || isNotifPage || isPostPage;
+
+  // Halaman Fullscreen (Tanpa Sidebar/Navbar)
+  const isFullscreenPage = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage;
 
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // --- 1. 🔥 SISTEM ANTI-DOWNLOAD FOTO 🔥 ---
+  // --- 1. 🔥 SISTEM ANTI-DOWNLOAD FOTO (UTUH) 🔥 ---
   useEffect(() => {
     const preventSave = (e: MouseEvent | TouchEvent) => {
-      // Cek apakah yang ditekan adalah elemen gambar (IMG)
       if ((e.target as HTMLElement).tagName === 'IMG') {
-        // Matikan menu klik kanan / menu tekan lama
         e.preventDefault();
         return false;
       }
     };
-
-    // Matikan Klik Kanan / Long Press Konteks Menu
     document.addEventListener('contextmenu', preventSave);
-    
-    // Matikan Drag & Drop (biar foto ga bisa ditarik ke tab baru)
     const preventDrag = (e: DragEvent) => {
       if ((e.target as HTMLElement).tagName === 'IMG') e.preventDefault();
     };
@@ -63,29 +65,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
+  // --- 2. 🔥 SISTEM LAYOUT FIX (ANTI-JURANG HITAM) 🔥 ---
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
 
     if (isStandaloneApp) {
+      // Lock layar untuk Voice/Story/DailyCek
       root.style.height = '100dvh';
       root.style.overflow = 'hidden';
       body.style.height = '100dvh';
       body.style.overflow = 'hidden';
       body.style.position = 'fixed'; 
       body.style.width = '100%';
-      body.style.top = '0';
-      body.style.left = '0';
       body.style.overscrollBehaviorY = 'none'; 
     } else {
+      // Bebaskan scroll untuk halaman biasa
       root.style.height = 'auto';
       root.style.overflow = 'visible';
       body.style.overflow = 'auto';
       body.style.height = 'auto';
       body.style.position = 'static';
       body.style.width = 'auto';
-      body.style.overscrollBehaviorY = 'auto';
+      body.style.overscrollBehaviorY = 'none'; // Tetap none agar tidak bounce ke jurang
       
+      // Bersihkan sampah Voice jika keluar room
       const voiceTrash = [
         'room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 
         'vip-entrance-overlay', 'vip-anim-styles-clean'
@@ -98,13 +102,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => {
       root.style.height = 'auto';
       body.style.position = 'static';
-      body.style.height = 'auto';
-      body.style.overflow = 'auto';
     };
   }, [pathname, isStandaloneApp]); 
 
   return (
-    <html lang="id" style={{ overflowX: 'hidden' }} suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning>
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
@@ -113,44 +115,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/asets/png/book.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Hope Hype" />
+        <meta name="apple-mobile-web-app-title" content="HypeTalk" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
         
-        {/* --- 2. 🔥 CSS INJECT KHUSUS ANTI-LONGPRESS IOS 🔥 --- */}
+        {/* --- 3. 🔥 ANTI-LONGPRESS IOS (UTUH) 🔥 --- */}
         <style>{`
           img {
-            -webkit-touch-callout: none !important; /* Matikan menu simpan gambar di iOS */
-            -webkit-user-select: none !important;
-            -khtml-user-select: none !important;
-            -moz-user-select: none !important;
-            -ms-user-select: none !important;
+            -webkit-touch-callout: none !important;
             user-select: none !important;
-            -webkit-user-drag: none !important; /* Matikan drag foto */
+            -webkit-user-drag: none !important;
           }
+          /* Fix Gap Warna Body agar tidak belang saat scroll */
+          body { background-color: var(--bg-main); }
         `}</style>
       </head>
       
-      <body 
-        className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}
-        style={{ margin: 0, padding: 0, fontFamily: "'Poppins', sans-serif" }}
-      >
+      <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
             <GlobalShareModal />
+            
+            {/* Sidebar Muncul jika tidak di-hide */}
             {!hideSidebar && <Sidebar />}
             
-            <div 
-              className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                height: isStandaloneApp ? '100dvh' : 'auto',
-                minHeight: '100dvh',
-                width: '100%',
-                overflow: isStandaloneApp ? 'hidden' : 'visible',
-                position: 'relative'
-              }}
-            >
+            <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
+              
               {isHomePage && (
                 <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}>
                   <SearchWrapper />
@@ -158,22 +147,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               )}
 
               <main 
-                className={`main-content ${isFullscreenPage ? 'is-fullscreen' : ''}`}
+                className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}
                 style={{ 
-                  flex: '1 1 auto', 
                   display: isStandaloneApp ? 'flex' : 'block',
-                  flexDirection: 'column',
-                  overflow: isStandaloneApp ? 'hidden' : 'visible',
-                  height: isStandaloneApp ? '100%' : 'auto',
-                  width: '100%',
-                  marginBottom: isStandaloneApp ? '0' : '-1px', 
+                  minHeight: isStandaloneApp ? '100%' : '100dvh'
                 }}
               >
                 {children}
               </main>
             </div>
 
+            {/* Navbar Muncul hanya jika diperlukan */}
             {!hideNavbar && <Navbar />}
+            
             <LoginPopup />
             {!hideOverlays && <Overlays />}
           </ThemeProvider>
