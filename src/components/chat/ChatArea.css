@@ -30,6 +30,12 @@ html.dark .hype-chat-scope {
   --input-box-bg: #2a3942;
 }
 
+.hype-chat-scope * {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
 /* =========================================
    LAYOUT UTAMA
    ========================================= */
@@ -40,13 +46,9 @@ html.dark .hype-chat-scope {
   touch-action: pan-x pan-y; color: var(--text-color); overscroll-behavior: none; 
 }
 
-/* FIX ICON TELPON (TANPA KOTAK) */
-.hype-chat-scope .btn-call {
-  background: transparent !important; border: none !important; outline: none !important;
-  padding: 8px !important; display: flex; align-items: center; justify-content: center;
-  color: var(--header-text); border-radius: 50%;
-}
-
+/* =========================================
+   🔥 HEADER MELAYANG (FIXED RAPI) 🔥
+   ========================================= */
 .hype-chat-scope .chat-header {
   position: relative; display: flex; align-items: center; justify-content: space-between;
   padding: 0 15px; padding-top: env(safe-area-inset-top); 
@@ -54,8 +56,25 @@ html.dark .hype-chat-scope {
   height: calc(65px + env(safe-area-inset-top)); 
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); flex-shrink: 0; z-index: 10002; 
 }
+.hype-chat-scope .header-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.hype-chat-scope .menu-btn { cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: none; color: inherit;}
+.hype-chat-scope .header-info { display: flex; flex-direction: column; justify-content: center; flex: 1; min-width: 0; }
+.hype-chat-scope .header-info h3 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--header-text); }
+.hype-chat-scope .status-container { font-size: 10px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hype-chat-scope .status-online { opacity: 0.85; color: var(--header-text); }
+.hype-chat-scope .status-typing { color: #e0eaff; font-weight: 600; font-style: italic; }
+.hype-chat-scope .header-right { display: flex; align-items: center; gap: 15px; flex-shrink: 0; margin-left: 10px; }
 
-/* 🔥 FIX SKELETON (FULL SCOPED & NO LEAK) 🔥 */
+/* FIX ICON TELPON (TANPA KOTAK) */
+.hype-chat-scope .btn-call {
+  background: transparent !important; border: none !important; outline: none !important;
+  padding: 8px !important; display: flex; align-items: center; justify-content: center;
+  color: var(--header-text); border-radius: 50%;
+}
+
+/* =========================================
+   🔥 SKELETON (FULL SCOPED & NO LEAK) 🔥
+   ========================================= */
 .hype-chat-scope .chat-loading-screen {
   display: flex; flex-direction: column; gap: 18px; padding: 20px;
   background: var(--bg-main); height: 100%; width: 100%;
@@ -67,30 +86,21 @@ html.dark .hype-chat-scope {
   width: 36px; height: 36px; border-radius: 50%; 
   background: var(--border-color); flex-shrink: 0; 
 }
-
 .hype-chat-scope .skeleton-bubble {
   height: 48px; min-width: 140px; border-radius: 18px; 
   background: var(--border-color); position: relative; overflow: hidden;
 }
-
-/* Nama Animasi Unik biar ga nabrak */
 .hype-chat-scope .skeleton-bubble::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
   animation: hype-shimmer 1.6s infinite;
 }
+@keyframes hype-shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.hype-chat-scope .loading-chat-hint { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 10px; font-weight: 500; }
 
-@keyframes hype-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.hype-chat-scope .loading-chat-hint {
-  text-align: center; font-size: 12px; color: var(--text-muted); 
-  margin-top: 10px; font-weight: 500;
-}
-
-/* FIX CALL OVERLAY */
+/* =========================================
+   🔥 CALL OVERLAY (GELAP MEWAH) 🔥
+   ========================================= */
 .hype-chat-scope .call-overlay {
   position: fixed !important; inset: 0 !important;
   background: rgba(11, 20, 26, 0.98) !important; 
@@ -100,7 +110,9 @@ html.dark .hype-chat-scope {
   color: white !important;
 }
 
-/* FIX SLIDE UP SETTING (BOTTOM SHEET) */
+/* =========================================
+   🔥 SLIDE UP SETTING (BOTTOM SHEET) 🔥
+   ========================================= */
 .hype-chat-scope .custom-modal-overlay {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(12px); z-index: 100005; 
@@ -116,27 +128,73 @@ html.dark .hype-chat-scope {
   content: ""; display: block; width: 42px; height: 5px; 
   background: var(--border-color); border-radius: 10px; margin: 0 auto 20px;
 }
-
 @keyframes hype-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-/* CHAT AREA MESSAGES */
+/* =========================================
+   🔥 FIX FOTO GRUP SETTING (TIDAK KECIL/HILANG) 🔥
+   ========================================= */
+.hype-chat-scope .custom-modal-content label {
+  display: inline-block !important; width: 90px !important; height: 90px !important;
+  position: relative !important; cursor: pointer; margin-bottom: 5px;
+}
+.hype-chat-scope .custom-modal-content label img {
+  width: 100% !important; height: 100% !important; border-radius: 50% !important;
+  object-fit: cover !important; border: 3px solid var(--primary-blue) !important;
+  background-color: var(--border-color) !important; /* Fallback kalau gambar error/loading */
+  display: block !important;
+}
+.hype-chat-scope .custom-modal-content label div {
+  position: absolute !important; bottom: -2px !important; right: -2px !important;
+  background: var(--primary-blue) !important; border-radius: 50% !important;
+  width: 32px !important; height: 32px !important; display: flex !important;
+  align-items: center !important; justify-content: center !important;
+  border: 3px solid var(--bg-panel) !important; /* Efek potongan bingkai premium */
+  padding: 0 !important; box-sizing: content-box !important;
+}
+
+/* =========================================
+   🔥 CHAT AREA MESSAGES 🔥
+   ========================================= */
 .hype-chat-scope .chat-messages {
   flex: 1 1 auto !important; padding: 12px; padding-bottom: 110px !important; 
   overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
-  background: var(--bg-main);
+  background: var(--bg-main); -webkit-overflow-scrolling: touch;
 }
-
 .hype-chat-scope .chat-message.self .content { background: var(--chat-self-bg) !important; border-radius: 18px 18px 4px 18px; }
 .hype-chat-scope .chat-message.other .content { background: var(--bg-panel) !important; border: 1px solid var(--border-color); border-radius: 18px 18px 18px 4px; }
 .hype-chat-scope .chat-message .content { display: flex; flex-direction: column; max-width: 78%; padding: 10px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 
-/* INPUT LAYER */
-.hype-chat-scope .chat-input-container { position: fixed !important; bottom: 0 !important; left: 0; right: 0; z-index: 10000; padding: 10px 14px; pointer-events: none; }
-.hype-chat-scope .chat-input-container > * { pointer-events: auto; }
-.hype-chat-scope .input-group-wrapper { flex: 1; background: var(--input-box-bg) !important; border: 1px solid var(--border-color); border-radius: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; align-items: center; min-height: 50px; }
-.hype-chat-scope #action-btn { width: 50px; height: 50px; border-radius: 50%; border: none; cursor: pointer; background-color: var(--primary-blue) !important; color: white; transition: 0.3s; }
+/* =========================================
+   🔥 CHAT INPUT LAYER (FIXED RAPI) 🔥
+   ========================================= */
+.hype-chat-scope .chat-input-container { 
+  position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; 
+  z-index: 10000 !important; display: flex !important; flex-direction: column !important; 
+  background: transparent !important; padding: 8px 12px !important; 
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important; pointer-events: none !important; 
+}
+.hype-chat-scope .chat-input-container > * { pointer-events: auto !important; }
+.hype-chat-scope .input-row { display: flex; width: 100%; align-items: flex-end; gap: 8px; position: relative; z-index: 100; }
+.hype-chat-scope .input-group-wrapper { 
+  flex: 1 1 auto; min-width: 0; background: var(--input-box-bg) !important; 
+  border: 1px solid var(--border-color); border-radius: 28px; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; align-items: center; min-height: 50px; 
+}
+.hype-chat-scope #chat-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent !important;
+  resize: none; font-family: 'Inter', sans-serif;
+  color: var(--text-color); overflow-y: auto; padding: 12px 14px;
+}
+.hype-chat-scope #chat-input::placeholder { color: var(--text-muted); opacity: 0.8; }
+.hype-chat-scope #action-btn { 
+  width: 50px; height: 50px; min-width: 50px; border-radius: 50%; border: none; cursor: pointer; 
+  background-color: var(--primary-blue) !important; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+}
+.hype-chat-scope #action-btn:active { transform: scale(0.9); }
 
-/* VN & REPLY */
+/* =========================================
+   🔥 VN & REPLY BOX 🔥
+   ========================================= */
 .hype-chat-scope .vn-custom-player { display: flex; align-items: center; gap: 10px; min-width: 180px; }
 .hype-chat-scope .vn-play-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue) !important; border: none; color: white; display: flex; align-items: center; justify-content: center; }
 .hype-chat-scope #reply-preview-box[style*="display: flex"] { display: flex !important; background: var(--input-box-bg) !important; border-left: 4px solid var(--primary-blue) !important; border-radius: 14px; padding: 12px; margin-bottom: 10px; animation: hype-pop 0.3s forwards; }
