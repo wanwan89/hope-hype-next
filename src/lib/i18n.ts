@@ -1178,8 +1178,6 @@ const resources = {
       "copy_link": "링크 복사",
       "copy": "복사",
       "copied": "복사됨!",
-      "share_room_text": "보이스 스테이지에 함께 참여해요!",
-      "type_comment": "댓글 입력..."
     }
   }
 };
