@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
+// 🔥 FIX 1: Import useSearchParams dari Next.js biar baca URL akurat 🔥
+import { useSearchParams } from 'next/navigation'; 
 import { supabase as sb } from '@/lib/supabase'; 
 import { useTranslation } from 'react-i18next';
-// 🔥 FIX 1: Import UI Utils (getUserBadge & showNotif) 🔥
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 
 import Sidebar from '@/components/room/Sidebarroom';
@@ -47,6 +48,7 @@ declare global {
 
 export default function RoomPage() {
   const { t } = useTranslation();
+  const searchParams = useSearchParams(); // Membaca URL Query Parameters dengan aman
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -56,9 +58,9 @@ export default function RoomPage() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
-    const urlParams = new URLSearchParams(window.location.search);
-    const CURRENT_ROOM_ID = urlParams.get('id'); 
-    const CURRENT_ROOM_NAME = urlParams.get('name') || "Voice Room";
+    // Ambil ID dan Nama secara akurat dari hook Next.js
+    const CURRENT_ROOM_ID = searchParams?.get('id') || new URLSearchParams(window.location.search).get('id'); 
+    const CURRENT_ROOM_NAME = searchParams?.get('name') || new URLSearchParams(window.location.search).get('name') || "Voice Room";
 
     let IS_OWNER = false; 
     let myRole = "user"; 
@@ -77,8 +79,17 @@ export default function RoomPage() {
     let room: any;
     let activeCombos: Record<string, any> = {}; 
 
-    const titleEl = document.querySelector('.room-title') as HTMLElement;
-    if (titleEl) titleEl.innerText = CURRENT_ROOM_NAME.toUpperCase();
+    // 🔥 FIX 1: Paksa Update Judul Room dengan Jeda Waktu 🔥
+    // Memastikan jika komponen Header render belakangan, judulnya tetep berubah
+    const updateTitle = () => {
+        const titleEl = document.querySelector('.room-title') as HTMLElement;
+        if (titleEl && CURRENT_ROOM_NAME) {
+            titleEl.innerText = CURRENT_ROOM_NAME.toUpperCase();
+        }
+    };
+    updateTitle();
+    setTimeout(updateTitle, 300);
+    setTimeout(updateTitle, 1000);
 
     const chatInput = document.getElementById('chat-input') as HTMLInputElement;
     if (chatInput) {
@@ -110,6 +121,8 @@ export default function RoomPage() {
         if (!style.title) return ""; 
         return `<span style="font-size: 9px; font-weight: 800; background: ${style.color}; color: #000; padding: 2px 4px; border-radius: 3px; margin-left: 5px; vertical-align: middle;">${style.title}</span>`;
     }
+
+    // 🔥 FIX: Fungsi getUserBadge lokal DIHAPUS. Kita pakai yang dari @/lib/ui-utils 🔥
 
     function playVIPEntrance(username: string, level: number) {
         if (level < 4) return; 
@@ -181,7 +194,6 @@ export default function RoomPage() {
                 div.className = isSystem ? 'msg system' : 'msg';
                 const style = getLevelStyle(p.new.level || 1);
                 const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
-                // 🔥 FIX 2: Panggil getUserBadge dari import 🔥
                 const roleBadge = getUserBadge(p.new.role || '');
                 const userLink = `<span onclick="window.location.href='/data?username=${encodeURIComponent(p.new.username)}'" style="color:${style.color}; font-weight:bold; cursor:pointer;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
                 div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `${userLink}<span>: ${p.new.text}</span>`;
@@ -235,7 +247,6 @@ export default function RoomPage() {
     }
 
     async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah = 1) {
-        // 🔥 FIX 3: Ganti alert jadi showNotif 🔥
         if (!selectedTargetId) return showNotif(t('select_target'), "warning");
         if (selectedTargetId === MY_USER_ID) return showNotif(t('gift_self_alert'), "warning");
         
@@ -295,7 +306,7 @@ export default function RoomPage() {
         container.style.display = 'flex';
         container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 ${t('top_rank')}</span>`;
         top.slice(0, 3).forEach((u, i) => {
-            container.innerHTML += `<img src="${u.avatar_url || 'asets/png/profile.png'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222;">`;
+            container.innerHTML += `<img src="${u.avatar_url || 'asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
         });
         container.onclick = () => window.openTopGiftersModal?.();
     }
@@ -337,11 +348,20 @@ export default function RoomPage() {
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
                 const style = getLevelStyle(user.level);
+                // 🔥 FIX 2: Kita panggil fungsi badge dan gabungin jadi sebaris di bawah nama 🔥
+                const roleBadgeHTML = getUserBadge(user.role || '');
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.${isMe ? 'turunMic' : 'toggleKickBtn'}(this, true)">
-                        <img src="${user.avatar_url || 'asets/png/profile.png'}">
+                        <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
                         <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'};"><span class="material-icons">mic_off</span></div>
-                    </div><span class="name-label" style="color:${style.color}">${user.username}${getLevelBadgeHTML(user.level)}</span>`;
+                    </div>
+                    <span class="name-label" style="color:${style.color}">
+                        <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
+                            ${user.username}
+                            ${getLevelBadgeHTML(user.level)}
+                            ${roleBadgeHTML}
+                        </div>
+                    </span>`;
             } else {
                 item.innerHTML = `<div class="avatar" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons">add</span></div><span class="name-label">${t('empty_slot')}</span>`;
             }
@@ -389,7 +409,7 @@ export default function RoomPage() {
                 data.forEach((s:any, i) => {
                     const div = document.createElement('div'); div.className = `target-user ${selectedTargetId === s.profile_id ? 'selected' : ''}`;
                     div.onclick = () => { selectedTargetId = s.profile_id; selectedTargetName = s.profiles.username; window.toggleRoomGiftDrawer?.(); window.toggleRoomGiftDrawer?.(); };
-                    div.innerHTML = `<img src="${s.profiles.avatar_url || 'asets/png/profile.png'}" class="target-avatar"><span>${s.profiles.username}</span>`;
+                    div.innerHTML = `<img src="${s.profiles.avatar_url || '/asets/png/profile.webp'}" class="target-avatar" style="object-fit:cover;"><span>${s.profiles.username}</span>`;
                     tc.appendChild(div);
                     if(!selectedTargetId && i === 0) { selectedTargetId = s.profile_id; selectedTargetName = s.profiles.username; div.classList.add('selected'); }
                 });
@@ -409,7 +429,7 @@ export default function RoomPage() {
             top.forEach((u, i) => {
                 l.innerHTML += `<div style="display:flex; align-items:center; gap:12px; padding:10px; background:#2a3648; border-radius:8px; margin-bottom:8px;">
                     <div style="font-weight:900; color:#FFD700; width:25px;">${i+1}</div>
-                    <img src="${u.avatar_url || 'asets/png/profile.png'}" style="width:40px; height:40px; border-radius:50%;">
+                    <img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
                     <div style="flex:1;"><div style="color:#fff; font-weight:bold;">${u.username}</div><div style="color:#FFD700; font-size:12px;">${u.room_total.toLocaleString()} koin</div></div>
                 </div>`;
             });
@@ -421,7 +441,7 @@ export default function RoomPage() {
         const text = inputEl?.value.trim();
         if (!text || !CURRENT_ROOM_ID || !MY_USER_ID) return;
 
-        inputEl.value = ''; // Kosongkan input
+        inputEl.value = ''; 
         try {
             await sb.from('room_messages').insert([{ 
                 room_id: CURRENT_ROOM_ID, 
@@ -436,7 +456,6 @@ export default function RoomPage() {
     };
 
     window.mintaNaik = () => {
-        // 🔥 FIX 3: Ganti alert jadi showNotif 🔥
         showNotif("Pilih kursi KOSONG di panggung untuk naik!", "info");
     };
 
@@ -448,7 +467,6 @@ export default function RoomPage() {
 
     window.toggleMicSidebar = async (e: any) => {
         e?.preventDefault();
-        // 🔥 FIX 3: Ganti alert jadi showNotif 🔥
         if (!room) return showNotif(t('mic_not_ready'), "warning");
 
         const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID).single();
@@ -495,7 +513,7 @@ export default function RoomPage() {
         clearInterval(sdkInterval); room?.disconnect();
         ['room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 'vip-entrance-overlay'].forEach(id => document.getElementById(id)?.remove());
     };
-  }, [t]);
+  }, [t, searchParams]);
 
   if (!mounted) return null;
 
