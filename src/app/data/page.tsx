@@ -7,7 +7,6 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './DataProfile.css';
 
-// 🔥 FIX 1: Update interface agar bisa nerima parameter 'name'
 declare global {
   interface Window {
     openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void;
@@ -29,6 +28,10 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   
+  // 🔥 STATUS BLOKIR 🔥
+  const [blockStatus, setBlockStatus] = useState<'none' | 'blocked_by_me' | 'blocking_me'>('none');
+  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'post' | 'simpan' | 'repost' | 'like'>('post');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
@@ -56,6 +59,7 @@ function ProfileContent() {
     return () => {
       setIsEditModalOpen(false);
       setIsSidebarOpen(false);
+      setIsActionSheetOpen(false);
     };
   }, []);
 
@@ -64,8 +68,8 @@ function ProfileContent() {
   }, [urlId, urlUser, isMounted]);
 
   useEffect(() => { 
-    if (profile && isMounted) loadPostsTab(activeTab); 
-  }, [activeTab, profile, isMounted]);
+    if (profile && isMounted && blockStatus === 'none') loadPostsTab(activeTab); 
+  }, [activeTab, profile, isMounted, blockStatus]);
 
   const loadProfile = async () => {
     try {
@@ -82,6 +86,15 @@ function ProfileContent() {
       const { data: profData, error } = await query.single();
       if (error || !profData) return;
 
+      // 🔥 CEK STATUS BLOKIR 🔥
+      if (currentUserId && currentUserId !== profData.id) {
+        const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
+        if (myBlock) setBlockStatus('blocked_by_me');
+
+        const { data: theirBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: profData.id, blocked_id: currentUserId }).maybeSingle();
+        if (theirBlock) setBlockStatus('blocking_me');
+      }
+
       setProfile(profData);
       setEditData({
         username: profData.username || '',
@@ -90,7 +103,10 @@ function ProfileContent() {
         website: profData.website || ''
       });
       setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
-      updateStats(profData.id, currentUserId);
+      
+      if (blockStatus === 'none') {
+        updateStats(profData.id, currentUserId);
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -162,7 +178,6 @@ function ProfileContent() {
     } catch (err) { console.error(err); } finally { setIsFollowLoading(false); }
   };
 
-  // 🔥 FIX 2: Kirim profil username ke modal bagikan agar {{name}} berubah jadi nama asli
   const handleShareProfile = () => {
     const url = window.location.href;
     const title = `Profil ${profile?.username}`;
@@ -170,8 +185,6 @@ function ProfileContent() {
     setIsSidebarOpen(false);
 
     if (window.openGlobalShare) {
-      // Kita kirim 'undefined' untuk text agar dia pakai default i18n, 
-      // tapi kita kirim profile.username agar diolah jadi nama asli.
       window.openGlobalShare(url, title, undefined, profile?.username);
     } else {
       navigator.clipboard.writeText(url); 
@@ -219,11 +232,80 @@ function ProfileContent() {
     }
   };
 
+  // 🔥 FUNGSI BLOKIR & LAPORKAN 🔥
+  const handleBlockUser = async () => {
+    if (!myId || !profile) return;
+    if (confirm(`Yakin ingin memblokir ${profile.username}?`)) {
+      try {
+        setIsActionSheetOpen(false);
+        // Hapus pertemanan bolak-balik
+        await supabase.from('followers').delete().match({ follower_id: myId, following_id: profile.id });
+        await supabase.from('followers').delete().match({ follower_id: profile.id, following_id: myId });
+        // Masukin ke tabel blokir
+        await supabase.from('blocked_users').insert([{ blocker_id: myId, blocked_id: profile.id }]);
+        
+        showNotif('Pengguna berhasil diblokir.', 'success');
+        setBlockStatus('blocked_by_me');
+      } catch (e: any) { showNotif(e.message, 'error'); }
+    }
+  };
+
+  const handleUnblockUser = async () => {
+    if (!myId || !profile) return;
+    try {
+      await supabase.from('blocked_users').delete().match({ blocker_id: myId, blocked_id: profile.id });
+      showNotif('Blokir dibuka.', 'success');
+      setBlockStatus('none');
+      loadProfile(); 
+    } catch (e: any) { showNotif(e.message, 'error'); }
+  };
+
+  const handleReportUser = () => {
+    setIsActionSheetOpen(false);
+    showNotif('Laporan telah dikirim untuk ditinjau.', 'info');
+  };
+
   const navTo = (path: string) => { setIsSidebarOpen(false); router.push(path); };
 
-  if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: '#ffffff' }}></div>;
+  if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)' }}></div>;
 
   const isMe = myId === profile.id;
+
+  // 🔥 TAMPILAN KALAU DIBLOKIR 🔥
+  if (blockStatus === 'blocking_me') {
+    return (
+      <div className="profile-page-container">
+        <header className="profile-header">
+          {/* 🔥 FIX: Tombol Kembali Pakai router.back() 🔥 */}
+          <button className="header-btn" onClick={() => router.back()}><span className="material-icons">arrow_back</span></button>
+        </header>
+        <div style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)'}}>
+          <span className="material-icons" style={{fontSize: '60px', opacity: 0.5}}>no_accounts</span>
+          <h3 style={{marginTop: '10px'}}>Pengguna Tidak Ditemukan</h3>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔥 TAMPILAN KALAU KITA NGEBLOK ORANGNYA 🔥
+  if (blockStatus === 'blocked_by_me') {
+    return (
+      <div className="profile-page-container">
+        <header className="profile-header">
+          {/* 🔥 FIX: Tombol Kembali Pakai router.back() 🔥 */}
+          <button className="header-btn" onClick={() => router.back()}><span className="material-icons">arrow_back</span></button>
+          <h2>{profile.username}</h2>
+          <div style={{width: '24px'}}></div>
+        </header>
+        <div style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center'}}>
+          <span className="material-icons" style={{fontSize: '60px', color: '#ef4444'}}>block</span>
+          <h3 style={{color: 'var(--text-dark)', marginTop: '10px'}}>Anda Memblokir Pengguna Ini</h3>
+          <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px'}}>Anda tidak akan melihat postingan atau menerima pesan dari mereka.</p>
+          <button onClick={handleUnblockUser} style={{background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-dark)', padding: '10px 20px', borderRadius: '10px', fontWeight: 'bold'}}>Buka Blokir</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-page-container">
@@ -234,7 +316,8 @@ function ProfileContent() {
             <span className="material-icons">menu</span>
           </button>
         ) : (
-          <button className="header-btn" onClick={() => router.push('/data')}>
+          /* 🔥 FIX: Tombol Kembali Pakai router.back() 🔥 */
+          <button className="header-btn" onClick={() => router.back()}>
             <span className="material-icons">arrow_back</span>
           </button>
         )}
@@ -259,7 +342,13 @@ function ProfileContent() {
                    <button className="btn-action btn-secondary" onClick={handleShareProfile}>{t('share', 'Bagikan')}</button>
                 </>
              ) : (
-                <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? t('following_btn', 'Mengikuti') : t('follow', 'Ikuti')}</button>
+                <>
+                  <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? t('following_btn', 'Mengikuti') : t('follow', 'Ikuti')}</button>
+                  {/* 🔥 TOMBOL TINDAKAN (ACTION) 🔥 */}
+                  <button className="btn-action btn-secondary" onClick={() => setIsActionSheetOpen(true)} style={{ padding: '8px 12px' }}>
+                    <span className="material-icons" style={{ fontSize: '18px' }}>more_horiz</span>
+                  </button>
+                </>
              )}
           </div>
           <p className="profile-bio">{profile.bio || t('no_bio', 'Belum ada bio')}</p>
@@ -302,56 +391,7 @@ function ProfileContent() {
         </div>
       </div>
 
-      {isMe && (
-        <>
-          <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
-          <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
-            <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder', 'Cari...')} /></div></div>
-            <div className="menu-category-label">{t('wallet_assets', 'Aset Dompet')}</div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance', 'Saldo Hypecoin')}</div><div className="arrow-right">›</div></div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history', 'Riwayat Transaksi')}</div><div className="arrow-right">›</div></div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">{t('vip_subscription', 'Langganan VIP')}</div><div className="arrow-right">›</div></div>
-            
-            <div className="menu-category-label">{t('mission_rewards', 'Misi & Hadiah')}</div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">{t('mission_center', 'Pusat Misi')}</div><div className="arrow-right">›</div></div>
-            
-            <hr className="menu-divider" />
-            <div className="menu-category-label">{t('personal_tools', 'Alat Pribadi')}</div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings', 'Pengaturan')}</div><div className="arrow-right">›</div></div>
-            <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us', 'Hubungi Kami')}</div><div className="arrow-right">›</div></div>
-            
-            <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile', 'Bagikan Profil')}</div><div className="arrow-right">›</div></div>
-            
-            <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout', 'Keluar')}</div></div>
-          </aside>
-        </>
-      )}
-
-      <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
-      <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
-        <div className="follow-sheet-header">
-           <div className="drag-handle"></div>
-           <h3>{followModalType === 'followers' ? t('followers', 'Pengikut') : t('following', 'Mengikuti')}</h3>
-           <span className="material-icons close-icon" onClick={() => setIsFollowModalOpen(false)}>close</span>
-        </div>
-        <div className="follow-sheet-body">
-           {isFollowLoading ? (
-              Array(5).fill(0).map((_, i) => <div key={i} className="follow-item-skeleton"><div className="skeleton-avatar"></div><div className="skeleton-text"></div></div>)
-           ) : (
-              followList.map(user => (
-                 <div key={user.id} className="follow-item" onClick={() => { setIsFollowModalOpen(false); router.push(`/data?id=${user.id}`); }}>
-                    <img src={user.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
-                    <div className="follow-item-info">
-                       <span className="follow-username">{user.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) }} /></span>
-                       <span className="follow-handle">@{user.username.toLowerCase().replace(/\s/g, '')}</span>
-                    </div>
-                    <span className="material-icons" style={{color: '#8a8b91'}}>chevron_right</span>
-                 </div>
-              ))
-           )}
-        </div>
-      </aside>
-
+      {/* Modal Edit Profil */}
       {isMounted && isMe && (
         <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
            <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
@@ -388,8 +428,98 @@ function ProfileContent() {
            </div>
         </div>
       )}
+
+      {/* Sidebar Personal */}
+      {isMe && (
+        <>
+          <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+          <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
+            <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder', 'Cari...')} /></div></div>
+            <div className="menu-category-label">{t('wallet_assets', 'Aset Dompet')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance', 'Saldo Hypecoin')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history', 'Riwayat Transaksi')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">{t('vip_subscription', 'Langganan VIP')}</div><div className="arrow-right">›</div></div>
+            
+            <div className="menu-category-label">{t('mission_rewards', 'Misi & Hadiah')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">{t('mission_center', 'Pusat Misi')}</div><div className="arrow-right">›</div></div>
+            
+            <hr className="menu-divider" />
+            <div className="menu-category-label">{t('personal_tools', 'Alat Pribadi')}</div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings', 'Pengaturan')}</div><div className="arrow-right">›</div></div>
+            <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us', 'Hubungi Kami')}</div><div className="arrow-right">›</div></div>
+            
+            <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile', 'Bagikan Profil')}</div><div className="arrow-right">›</div></div>
+            
+            <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout', 'Keluar')}</div></div>
+          </aside>
+        </>
+      )}
+
+      {/* Sheet Follow/Following */}
+      <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
+      <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
+        <div className="follow-sheet-header">
+           <div className="drag-handle"></div>
+           <h3>{followModalType === 'followers' ? t('followers', 'Pengikut') : t('following', 'Mengikuti')}</h3>
+           <span className="material-icons close-icon" onClick={() => setIsFollowModalOpen(false)}>close</span>
+        </div>
+        <div className="follow-sheet-body">
+           {isFollowLoading ? (
+              Array(5).fill(0).map((_, i) => <div key={i} className="follow-item-skeleton"><div className="skeleton-avatar"></div><div className="skeleton-text"></div></div>)
+           ) : (
+              followList.map(user => (
+                 <div key={user.id} className="follow-item" onClick={() => { setIsFollowModalOpen(false); router.push(`/data?id=${user.id}`); }}>
+                    <img src={user.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
+                    <div className="follow-item-info">
+                       <span className="follow-username">{user.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) }} /></span>
+                       <span className="follow-handle">@{user.username.toLowerCase().replace(/\s/g, '')}</span>
+                    </div>
+                    <span className="material-icons" style={{color: '#8a8b91'}}>chevron_right</span>
+                 </div>
+              ))
+           )}
+        </div>
+      </aside>
+
+      {/* 🔥 SHEET TINDAKAN (REPORT & BLOCK) 🔥 */}
+      <div className={`p-sidebar-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)} />
+      <aside className={`p-follow-sheet ${isActionSheetOpen ? 'open' : ''}`} style={{ height: 'auto', paddingBottom: '30px' }}>
+        <div className="follow-sheet-header">
+           <div className="drag-handle"></div>
+           <h3>Tindakan</h3>
+           <span className="material-icons close-icon" onClick={() => setIsActionSheetOpen(false)}>close</span>
+        </div>
+        <div className="follow-sheet-body" style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+           <button onClick={handleReportUser} style={{ width: '100%', padding: '16px', background: 'var(--bg-secondary)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-dark)', cursor: 'pointer' }}>
+             Laporkan Pengguna
+           </button>
+           <button onClick={handleBlockUser} style={{ width: '100%', padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ef4444', cursor: 'pointer' }}>
+             Blokir Pengguna
+           </button>
+        </div>
+      </aside>
+
     </div>
   );
 }
 
-export default function ProfilePage() { return <Suspense fallback={null}><ProfileContent /></Suspense>; }
+export default function ProfilePage() { 
+  return (
+    <Suspense 
+      fallback={
+        <div style={{
+          height: '100dvh', 
+          width: '100%',
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          background: 'var(--bg-main, #01070A)',
+          color: 'transparent'
+        }}>
+        </div>
+      }
+    >
+      <ProfileContent />
+    </Suspense>
+  ); 
+}

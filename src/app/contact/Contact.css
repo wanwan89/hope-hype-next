@@ -1,7 +1,7 @@
 /* src/app/contact/Contact.css */
 
 .contact-container {
-  /* --- Variables Tetap Sama --- */
+  /* --- Variables --- */
   --ct-bg-main: #f9fafb;
   --ct-bg-card: #ffffff;
   --ct-text-main: #111827;
@@ -13,18 +13,17 @@
   --ct-glass: rgba(255, 255, 255, 0.95);
   --ct-shadow: 0 8px 30px rgba(0,0,0,0.04);
 
-  height: 100dvh; /* Paksa tinggi layar penuh */
+  height: 100dvh; 
   width: 100%;
   background-color: var(--ct-bg-main); 
   color: var(--ct-text-main); 
   font-family: 'Poppins', sans-serif;
   
-  /* 🔥 FIX UTAMA: Area Scroll 🔥 */
   overflow-y: auto; 
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  -webkit-overflow-scrolling: touch; /* Biar scroll smooth di iPhone */
+  -webkit-overflow-scrolling: touch; 
 }
 
 /* SINKRONISASI DARK MODE */
@@ -41,20 +40,17 @@ html.dark .contact-container {
   --ct-shadow: 0 8px 30px rgba(0,0,0,0.2);
 }
 
-/* --- HEADER (FIXED DI ATAS) --- */
+/* --- HEADER --- */
 .contact-header {
   position: sticky; 
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 1000; /* Pastikan paling atas */
-  
+  z-index: 1000; 
   display: flex;
   align-items: center;
   padding: 16px 20px;
-  /* Sesuaikan notch HP */
   padding-top: calc(16px + env(safe-area-inset-top)); 
-  
   background: var(--ct-glass); 
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
@@ -62,17 +58,14 @@ html.dark .contact-container {
   box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
 }
 
-/* --- CONTENT AREA (BISA DI-SCROLL) --- */
 .contact-content {
-  flex: 1; /* Ambil sisa ruang */
-  padding: 24px 16px 120px 16px; /* Padding bawah lebih besar biar nggak mentok navbar */
+  flex: 1; 
+  padding: 24px 16px 120px 16px; 
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box; 
 }
-
-/* --- SISANYA TETAP SAMA (Fix Styling) --- */
 
 .back-btn {
   background: none;
@@ -181,10 +174,15 @@ html.dark .contact-container {
 
 .btn-submit:active { transform: scale(0.97); }
 
+/* =========================================
+   🔥 SOCIAL MEDIA GRID (FIXED) 🔥
+   ========================================= */
 .social-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); 
+  /* Gunakan minmax(0, 1fr) biar layout nggak maksa melar! */
+  grid-template-columns: repeat(2, minmax(0, 1fr)); 
   gap: 12px; 
+  width: 100%;
 }
 
 .social-btn {
@@ -192,13 +190,21 @@ html.dark .contact-container {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px;
+  /* Padding horizontal dikurangi sedikit biar muat di layar HP kecil */
+  padding: 14px 10px; 
   border-radius: 16px; 
   text-decoration: none;
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   -webkit-tap-highlight-color: transparent;
+  
+  /* Proteksi Anti-Jebol */
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .social-btn.ig { background: linear-gradient(45deg, #f09433, #bc1888); }

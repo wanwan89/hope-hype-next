@@ -1,0 +1,239 @@
+/* src/app/settings/blocked/Blocked.css */
+
+.bl-wrapper {
+  --bl-bg: #f9fafb;
+  --bl-card: #ffffff;
+  --bl-text-main: #111827;
+  --bl-text-muted: #6b7280;
+  --bl-border: #e5e7eb;
+  --bl-primary: #1DA1F2;
+  
+  height: 100dvh;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background-color: var(--bl-bg);
+  color: var(--bl-text-main);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  transition: background-color 0.3s ease;
+}
+
+/* SINKRONISASI DARK MODE */
+[data-theme='dark'] .bl-wrapper,
+html.dark .bl-wrapper {
+  --bl-bg: #01070A;
+  --bl-card: #0f172a;
+  --bl-text-main: #f8fafc;
+  --bl-text-muted: #94a3b8;
+  --bl-border: #334155;
+}
+
+/* HEADER */
+.bl-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  background: var(--bl-bg);
+  border-bottom: 1px solid var(--bl-border);
+}
+
+.bl-back-btn {
+  background: none;
+  border: none;
+  color: var(--bl-text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  margin-left: -8px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.bl-back-btn:active {
+  background: var(--bl-border);
+}
+
+.bl-header h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* CONTENT */
+.bl-content {
+  padding: 20px;
+  flex: 1;
+}
+
+.bl-desc {
+  font-size: 13px;
+  color: var(--bl-text-muted);
+  line-height: 1.5;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* LIST ITEM */
+.bl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bl-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: var(--bl-card);
+  border-radius: 16px;
+  border: 1px solid var(--bl-border);
+  gap: 14px;
+}
+
+.bl-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bl-border);
+  flex-shrink: 0;
+}
+
+.bl-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bl-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bl-text-main);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bl-username {
+  font-size: 12px;
+  color: var(--bl-text-muted);
+}
+
+.bl-unblock-btn {
+  background: var(--bl-bg);
+  border: 1px solid var(--bl-border);
+  color: var(--bl-text-main);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.bl-unblock-btn:active {
+  transform: scale(0.95);
+  background: var(--bl-border);
+}
+
+.bl-unblock-btn.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* EMPTY STATE */
+.bl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--bl-text-muted);
+}
+
+.bl-empty-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--bl-card);
+  border: 1px solid var(--bl-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.bl-empty-icon span {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.bl-empty h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--bl-text-main);
+  margin-bottom: 8px;
+}
+
+.bl-empty p {
+  font-size: 13px;
+  max-width: 250px;
+}
+
+/* SKELETON LOADING */
+@keyframes bl-pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.bl-item-skeleton {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: var(--bl-card);
+  border-radius: 16px;
+  border: 1px solid var(--bl-border);
+  gap: 14px;
+  animation: bl-pulse 1.5s infinite ease-in-out;
+}
+
+.bl-skel-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bl-border);
+}
+
+.bl-skel-text {
+  flex: 1;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--bl-border);
+  max-width: 120px;
+}
+
+.bl-skel-btn {
+  width: 80px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--bl-border);
+}
