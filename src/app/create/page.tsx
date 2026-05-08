@@ -5,8 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop'; 
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/navigation'; // 🔥 FIX: Tambah router untuk tombol Back
-// 🔥 FIX: Import diubah ke Create.css sesuai yang baru lu bikin
+import { useRouter } from 'next/navigation';
 import './Create.css'; 
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
@@ -14,7 +13,7 @@ const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
 export default function CreatePostPage() {
   const { t } = useTranslation();
-  const router = useRouter(); // Buat navigasi kembali
+  const router = useRouter(); 
 
   const [postType, setPostType] = useState<'image' | 'text'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
@@ -100,7 +99,6 @@ export default function CreatePostPage() {
     }
   };
 
-  // 🔥 FIX: Tombol X sekarang berfungsi untuk kembali ke halaman sebelumnya
   const handleClose = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -165,7 +163,6 @@ export default function CreatePostPage() {
         });
       }
 
-      // 🔥 FIX: Setelah berhasil, kembali ke home atau halaman sebelumnya
       handleClose();
     } catch (err: any) {
       alert(err.message);
@@ -175,21 +172,21 @@ export default function CreatePostPage() {
   };
 
   return (
-    // 🔥 FIX: Wrapper full-page modern dengan padding supaya tidak tenggelam
-    <div className="create-page-wrapper" style={{ minHeight: '100vh', background: '#0a0a0a', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
+    // 🔥 FIX: Menggunakan warna CSS Variables supaya ikut Dark/Light Mode
+    <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
-      {/* 🔥 Header Page Buatan Sendiri */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10, 10, 10, 0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <button type="button" onClick={handleClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+      {/* Header Page */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
+        <button type="button" onClick={handleClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
         </button>
-        <h2 style={{ color: '#fff', fontSize: '18px', fontWeight: 700, margin: 0 }}>Buat Postingan</h2>
-        <div style={{ width: 28 }}></div> {/* Spacer biar tengah */}
+        <h2 style={{ color: 'var(--text-main)', fontSize: '18px', fontWeight: 700, margin: 0 }}>Buat Postingan</h2>
+        <div style={{ width: 28 }}></div> 
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
         
-        {/* UI EDITOR CROP TETAP SAMA */}
+        {/* UI EDITOR CROP TETAP (Ini wajar gelap karena overlay crop emang bagusnya gelap) */}
         {imageForCrop && (
           <div className="crop-overlay-wrapper" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000' }}>
             <div className="crop-container-box" style={{ position: 'relative', width: '100%', height: 'calc(100vh - 120px)' }}>
@@ -227,13 +224,13 @@ export default function CreatePostPage() {
 
         <form onSubmit={handleSubmit} className="post-form">
           <div className="destination-container">
-            <p className="section-label" style={{ color: '#ccc', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{t('send_to')}</p>
+            <p className="section-label" style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{t('send_to')}</p>
             <div className="dest-toggle-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 { id: 'feed', title: t('feed_title'), desc: t('feed_desc') },
                 { id: 'story', title: t('story_title'), desc: t('story_desc') }
               ].map((dest) => (
-                <label key={dest.id} className="dest-option" style={{ display: 'flex', alignItems: 'center', background: '#111', padding: '15px', borderRadius: '12px', border: destination === dest.id ? '2px solid #1f3cff' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <label key={dest.id} className="dest-option" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '12px', border: destination === dest.id ? '2px solid #1f3cff' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
                   <input 
                     type="radio" 
                     name="postDestination" 
@@ -242,8 +239,8 @@ export default function CreatePostPage() {
                     onChange={() => setDestination(dest.id as any)} 
                     style={{ display: 'none' }}
                   />
-                  <div className="dest-content" style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '15px' }}>
-                    <div className="dest-icon-box" style={{ width: '40px', height: '40px', background: destination === dest.id ? '#1f3cff' : '#222', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                  <div className="dest-content" style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '15px', padding: 0, background: 'transparent', border: 'none' }}>
+                    <div className="dest-icon-box" style={{ width: '40px', height: '40px', background: destination === dest.id ? '#1f3cff' : 'var(--bg-card)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: destination === dest.id ? '#fff' : 'var(--text-muted)' }}>
                       {dest.id === 'feed' ? (
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                       ) : (
@@ -251,28 +248,28 @@ export default function CreatePostPage() {
                       )}
                     </div>
                     <div className="dest-text" style={{ flex: 1 }}>
-                      <div className="dest-title" style={{ color: '#fff', fontSize: '15px', fontWeight: 700 }}>{dest.title}</div>
-                      <div className="dest-desc" style={{ color: '#888', fontSize: '12px' }}>{dest.desc}</div>
+                      <div className="dest-title" style={{ color: 'var(--text-main)', fontSize: '15px', fontWeight: 700 }}>{dest.title}</div>
+                      <div className="dest-desc" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{dest.desc}</div>
                     </div>
-                    <div className="dest-check" style={{ width: '20px', height: '20px', borderRadius: '50%', border: destination === dest.id ? '6px solid #1f3cff' : '2px solid #555' }}></div>
+                    <div className="dest-check" style={{ width: '20px', height: '20px', borderRadius: '50%', border: destination === dest.id ? '6px solid #1f3cff' : '2px solid var(--border-card)' }}></div>
                   </div>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="post-type-toggle" style={{ display: 'flex', gap: '10px', marginTop: '20px', background: '#111', padding: '5px', borderRadius: '12px' }}>
-            <button type="button" className={`type-btn ${postType === 'image' ? 'active' : ''}`} onClick={() => setPostType('image')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: postType === 'image' ? '#333' : 'transparent', color: postType === 'image' ? '#fff' : '#888', fontWeight: 600, cursor: 'pointer' }}>{t('type_photo')}</button>
-            <button type="button" className={`type-btn ${postType === 'text' ? 'active' : ''}`} onClick={() => setPostType('text')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: postType === 'text' ? '#333' : 'transparent', color: postType === 'text' ? '#fff' : '#888', fontWeight: 600, cursor: 'pointer' }}>{t('type_text')}</button>
+          <div className="post-type-toggle" style={{ display: 'flex', gap: '10px', marginTop: '20px', background: 'var(--bg-secondary)', padding: '5px', borderRadius: '12px' }}>
+            <button type="button" className={`type-btn ${postType === 'image' ? 'active' : ''}`} onClick={() => setPostType('image')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: postType === 'image' ? 'var(--bg-input)' : 'transparent', color: postType === 'image' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}>{t('type_photo')}</button>
+            <button type="button" className={`type-btn ${postType === 'text' ? 'active' : ''}`} onClick={() => setPostType('text')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: postType === 'text' ? 'var(--bg-input)' : 'transparent', color: postType === 'text' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}>{t('type_text')}</button>
           </div>
 
           {postType === 'image' && (
-            <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ marginTop: '20px', width: '100%', height: '300px', background: '#111', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer', border: '2px dashed #333' }}>
+            <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ marginTop: '20px', width: '100%', height: '300px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer', border: '2px dashed var(--border-card)' }}>
               <input type="file" ref={fileInputRef} accept="image/*" hidden onChange={handleFileChange} />
               {!previewUrl ? (
-                <div className="post-upload-placeholder" style={{ textAlign: 'center', color: '#888' }}>
+                <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                   <span className="material-icons" style={{ fontSize: '40px', marginBottom: '10px', color: '#1f3cff' }}>add_photo_alternate</span>
-                  <div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>{t('choose_photo')}</div>
+                  <div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>{t('choose_photo')}</div>
                   <small style={{ fontSize: '12px' }}>{t('upload_limit')}</small>
                 </div>
               ) : (
@@ -287,7 +284,7 @@ export default function CreatePostPage() {
             maxLength={300}
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
-            style={{ width: '100%', minHeight: '120px', background: '#111', border: '1px solid #222', borderRadius: '16px', padding: '15px', color: '#fff', fontSize: '15px', marginTop: '20px', outline: 'none', resize: 'vertical' }}
+            style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', marginTop: '20px', outline: 'none', resize: 'vertical' }}
           />
 
           <div style={{ position: 'relative', marginTop: '20px' }}>
@@ -296,7 +293,7 @@ export default function CreatePostPage() {
               onChange={(e) => setCategory(e.target.value)}
               className="post-select-custom"
               style={{
-                width: '100%', padding: '15px', border: '1px solid #222', borderRadius: '12px', appearance: 'none', WebkitAppearance: 'none', backgroundColor: '#111', fontSize: '15px', color: '#fff', cursor: 'pointer', outline: 'none', fontWeight: '600'
+                width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', appearance: 'none', WebkitAppearance: 'none', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', outline: 'none', fontWeight: '600'
               }}
             >
               {[
@@ -309,28 +306,28 @@ export default function CreatePostPage() {
                 <option key={opt.val} value={opt.val}>{opt.label}</option>
               ))}
             </select>
-            <i style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#888', fontSize: '12px' }}>▼</i>
+            <i style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)', fontSize: '12px' }}>▼</i>
           </div>
 
-          <div className="music-picker-section" style={{ marginTop: '25px', background: '#111', padding: '15px', borderRadius: '16px' }}>
-            <div className="section-label-bold" style={{ color: '#fff', fontWeight: 700, marginBottom: '15px' }}>{t('select_music_optional')}</div>
+          <div className="music-picker-section" style={{ marginTop: '25px', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '16px' }}>
+            <div className="section-label-bold" style={{ color: 'var(--text-main)', fontWeight: 700, marginBottom: '15px' }}>{t('select_music_optional')}</div>
             {!selectedMusic ? (
               <>
                 <div style={{ position: 'relative' }}>
-                  <span className="material-icons" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#888', fontSize: '20px' }}>search</span>
+                  <span className="material-icons" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '20px' }}>search</span>
                   <input 
                     type="text" 
                     placeholder={t('search_music')} 
                     className="music-search-input"
                     value={searchMusic}
                     onChange={(e) => setSearchMusic(e.target.value)}
-                    style={{ width: '100%', padding: '12px 15px 12px 40px', borderRadius: '10px', border: 'none', background: '#222', color: '#fff', fontSize: '14px', outline: 'none' }}
+                    style={{ width: '100%', padding: '12px 15px 12px 40px', borderRadius: '10px', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
                   />
                 </div>
                 <div className="music-list-scroll" style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '15px' }}>
-                  {isSearching && <p style={{textAlign:'center', fontSize:'12px', padding: '10px', color: '#888'}}>{t('searching')}</p>}
+                  {isSearching && <p style={{textAlign:'center', fontSize:'12px', padding: '10px', color: 'var(--text-muted)'}}>{t('searching')}</p>}
                   {musicResults.map((song, i) => (
-                    <div key={i} className="dest-content" style={{display: 'flex', padding:'10px', borderRadius: '10px', cursor:'pointer', alignItems: 'center', transition: 'background 0.2s'}} onClick={() => setSelectedMusic(song)}>
+                    <div key={i} className="dest-content" style={{display: 'flex', padding:'10px', borderRadius: '10px', cursor:'pointer', alignItems: 'center', transition: 'background 0.2s', background: 'transparent', border: 'none'}} onClick={() => setSelectedMusic(song)}>
                       <div style={{position: 'relative', width: 45, height: 45, marginRight: 15, flexShrink: 0}}>
                         <img src={song.artworkUrl100} style={{width:'100%', height:'100%', borderRadius:10, objectFit: 'cover'}} />
                         <div onClick={(e) => togglePlayPreview(song.previewUrl, e)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -338,22 +335,22 @@ export default function CreatePostPage() {
                         </div>
                       </div>
                       <div style={{flex:1, overflow:'hidden'}}>
-                        <div style={{fontSize:14, fontWeight:700, color: '#fff', whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden'}}>{song.trackName}</div>
-                        <div style={{fontSize:12, color:'#888'}}>{song.artistName}</div>
+                        <div style={{fontSize:14, fontWeight:700, color: 'var(--text-main)', whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden'}}>{song.trackName}</div>
+                        <div style={{fontSize:12, color:'var(--text-muted)'}}>{song.artistName}</div>
                       </div>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="selected-music-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#222', padding: '12px', borderRadius: '12px' }}>
+              <div className="selected-music-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-input)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-card)' }}>
                 <div className="music-info-mini" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <button type="button" onClick={() => togglePlayPreview(selectedMusic.previewUrl)} style={{ background: '#1f3cff', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                     <span className="material-icons" style={{ color: '#fff', fontSize: '20px' }}>{playingUrl === selectedMusic.previewUrl ? 'pause' : 'play_arrow'}</span>
                   </button>
                   <div>
-                    <span className="audio-tag" style={{ fontSize: '10px', background: '#333', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>AUDIO</span>
-                    <div className="music-title-text" style={{ color: '#fff', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>{selectedMusic.trackName} — {selectedMusic.artistName}</div>
+                    <span className="audio-tag" style={{ fontSize: '10px', background: 'var(--bg-card)', color: 'var(--text-main)', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>AUDIO</span>
+                    <div className="music-title-text" style={{ color: 'var(--text-main)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>{selectedMusic.trackName} — {selectedMusic.artistName}</div>
                   </div>
                 </div>
                 <button type="button" className="remove-music-link" onClick={() => { if(playingUrl === selectedMusic.previewUrl) togglePlayPreview(selectedMusic.previewUrl); setSelectedMusic(null); }} style={{ background: 'transparent', border: 'none', color: '#ff4757', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>{t('remove_music')}</button>
@@ -361,7 +358,7 @@ export default function CreatePostPage() {
             )}
           </div>
 
-          <button type="submit" className="post-submit-btn" disabled={isSubmitting} style={{ marginTop: '30px', width: '100%', padding: '16px', background: isSubmitting ? '#555' : '#1f3cff', color: '#fff', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: 800, cursor: isSubmitting ? 'not-allowed' : 'pointer', boxShadow: isSubmitting ? 'none' : '0 8px 20px rgba(31, 60, 255, 0.3)' }}>
+          <button type="submit" className="post-submit-btn" disabled={isSubmitting} style={{ marginTop: '30px', width: '100%', padding: '16px', background: isSubmitting ? 'var(--bg-input)' : '#1f3cff', color: isSubmitting ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: 800, cursor: isSubmitting ? 'not-allowed' : 'pointer', boxShadow: isSubmitting ? 'none' : '0 8px 20px rgba(31, 60, 255, 0.3)' }}>
             {isSubmitting ? t('btn_uploading') : t('btn_submit_post')}
           </button>
         </form>
