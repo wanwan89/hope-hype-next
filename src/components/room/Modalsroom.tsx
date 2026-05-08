@@ -1,6 +1,10 @@
 'use client';
 
-// 👇 FIX: Daftarin semua fungsi modal yang nempel di window 👇
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import './Modalsroom.css'; // 🔥 FIX: CSS dipisah!
+
+// Daftarin semua fungsi modal yang nempel di window
 declare global {
   interface Window {
     closeRoomSetting?: () => void;
@@ -11,25 +15,27 @@ declare global {
   }
 }
 
-export default function Modals() {
+export default function Modalsroom() {
+  const { t } = useTranslation();
+
   return (
     <>
       {/* 1. MODAL SETTING ROOM */}
       <div id="setting-modal" className="modal-overlay">
         <div className="modal-box">
           <div className="modal-header">
-            <h3>⚙️ Room Settings</h3>
+            <h3>{t('room_settings', '⚙️ Room Settings')}</h3>
             <button className="close-modal" onClick={() => window.closeRoomSetting && window.closeRoomSetting()}>
               <span className="material-icons">close</span>
             </button>
           </div>
           <div className="modal-body">
-            <label>Nama Room Baru</label>
-            <input type="text" id="edit-room-name" placeholder="Contoh: Klasikan Galau..." />
-            <label>Pesan Sistem (Broadcast ke Chat)</label>
-            <textarea id="system-message" placeholder="Tulis pesan pengumuman..."></textarea>
+            <label>{t('new_room_name', 'Nama Room Baru')}</label>
+            <input type="text" id="edit-room-name" placeholder={t('room_name_placeholder', 'Contoh: Klasikan Galau...')} />
+            <label>{t('system_message_label', 'Pesan Sistem (Broadcast ke Chat)')}</label>
+            <textarea id="system-message" placeholder={t('system_message_placeholder', 'Tulis pesan pengumuman...')}></textarea>
             <button className="btn-save-setting" onClick={() => window.saveRoomSetting && window.saveRoomSetting()}>
-              SIMPAN PERUBAHAN
+              {t('save_changes', 'SIMPAN PERUBAHAN')}
             </button>
           </div>
         </div>
@@ -41,45 +47,20 @@ export default function Modals() {
           <div className="confirm-icon-wrapper">
             <span className="material-icons">mic_off</span>
           </div>
-          <h3>Turun Panggung?</h3>
-          <p>Yakin mau turun dari panggung sekarang? Mic kamu akan otomatis dimatikan.</p>
+          <h3>{t('leave_stage_title', 'Turun Panggung?')}</h3>
+          <p>{t('leave_stage_desc', 'Yakin mau turun dari panggung sekarang? Mic kamu akan otomatis dimatikan.')}</p>
           <div className="modal-actions">
             <button className="btn-cancel" onClick={() => window.closeConfirmModal && window.closeConfirmModal()}>
-              BATAL
+              {t('btn_cancel', 'BATAL')}
             </button>
             <button className="btn-danger" onClick={() => window.prosesTurunMic && window.prosesTurunMic()}>
-              YAKIN
+              {t('btn_confirm', 'YAKIN')}
             </button>
           </div>
         </div>
       </div>
 
-      {/* 3. MODAL LEADERBOARD (SULTAN) - 🔥 DIUBAH JADI SLIDE UP 🔥 */}
-      
-      {/* CSS Khusus buat maksa modal ini jadi Laci dari bawah */}
-      <style dangerouslySetInnerHTML={{__html: `
-        #top-gifters-modal {
-          align-items: flex-end !important; /* Paksa turun ke dasar layar */
-        }
-        #top-gifters-modal[style*="display: flex"] .modal-leaderboard {
-          width: 100%;
-          max-width: 500px; 
-          margin: 0 auto;
-          border-radius: 32px 32px 0 0; /* Melengkung di atas doang */
-          padding-bottom: calc(24px + env(safe-area-inset-bottom));
-          transform: translateY(100%);
-          /* Animasi naik dari bawah */
-          animation: slideUpSheet 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards !important; 
-        }
-        @keyframes slideUpSheet {
-          to { transform: translateY(0); }
-        }
-        .sheet-handle {
-          width: 48px; height: 5px; background: #334155; border-radius: 10px; margin: -10px auto 20px auto;
-        }
-      `}} />
-
-      {/* Tambahin event onClick ke overlay biar user bisa tap di luar buat nutup */}
+      {/* 3. MODAL LEADERBOARD (SULTAN) - 🔥 CSS-nya udah dipindah ke file terpisah 🔥 */}
       <div 
         id="top-gifters-modal" 
         className="modal-overlay" 
@@ -93,7 +74,7 @@ export default function Modals() {
         <div className="modal-box modal-leaderboard">
           <div className="sheet-handle"></div>
           <div className="modal-header">
-            <h3 className="gold-title">🏆 THE SULTAN</h3>
+            <h3 className="gold-title">{t('the_sultan', '🏆 THE SULTAN')}</h3>
             <button className="close-modal" onClick={() => window.closeTopGiftersModal && window.closeTopGiftersModal()}>
               <span className="material-icons">close</span>
             </button>

@@ -14,7 +14,7 @@ import Footer from '@/components/room/Footerroom';
 import GiftDrawer from '@/components/room/GiftDrawerroom';
 import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
 
-import './Voice.css';
+import './Voice.css'; // Asumsi lu pake nama ini buat VoiceGlobals.css nya
 
 declare global {
   interface Window {
@@ -67,6 +67,7 @@ export default function RoomPage() {
 
     let myTotalGiftSent = 0; 
     let myLevel = 1;
+    let isMicOn = false; // 🔥 Ditambah untuk tracking status Mic
 
     let giftComboCount = 0;
     let lastGiftId: number | null = null;
@@ -81,7 +82,6 @@ export default function RoomPage() {
     if (chatInput) {
         chatInput.addEventListener('focus', () => {
             const drawer = document.getElementById('room-gift-drawer');
-            // 🔥 FIX VERCEL 1: Optional Chaining
             if (drawer && drawer.classList.contains('open')) {
                 window.toggleRoomGiftDrawer?.(); 
             }
@@ -304,7 +304,6 @@ export default function RoomPage() {
         top.slice(0, 3).forEach((u, i) => {
             container.innerHTML += `<img src="${u.avatar_url || 'asets/png/profile.png'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222;">`;
         });
-        // 🔥 FIX VERCEL 2: Arrow Wrapper
         container.onclick = () => window.openTopGiftersModal?.();
     }
 
@@ -357,20 +356,32 @@ export default function RoomPage() {
         });
     }
 
-    // --- GLOBAL WINDOW ASSIGNMENTS ---
+    // ==========================================================
+    // 🔥 GLOBAL WINDOW ASSIGNMENTS (DILENGKAPI FUNGSI YANG HILANG) 🔥
+    // ==========================================================
     window.sendGift = sendGift;
+
     window.naikKeStage = async (idx) => {
         await sb.from('room_slots').update({ profile_id: MY_USER_ID }).match({ room_id: CURRENT_ROOM_ID, slot_index: idx });
         await room?.localParticipant.setMicrophoneEnabled(true);
+        isMicOn = true;
         fetchStage();
     };
-    window.turunMic = () => { const m = document.getElementById('confirm-modal'); if(m) m.style.display = 'flex'; };
+
+    window.turunMic = () => { 
+        const m = document.getElementById('confirm-modal'); 
+        if(m) m.style.display = 'flex'; 
+    };
+
     window.prosesTurunMic = async () => {
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID);
         await room?.localParticipant.setMicrophoneEnabled(false);
-        const m = document.getElementById('confirm-modal'); if(m) m.style.display = 'none';
+        isMicOn = false;
+        const m = document.getElementById('confirm-modal'); 
+        if(m) m.style.display = 'none';
         fetchStage();
     };
+
     window.toggleRoomGiftDrawer = () => {
         const d = document.getElementById('room-gift-drawer');
         const o = document.getElementById('room-drawer-overlay');
@@ -384,7 +395,6 @@ export default function RoomPage() {
                 if(!data?.length) { tc.innerHTML = `<span style="font-size:12px; color:#888;">${t('only_you_here')}</span>`; return; }
                 data.forEach((s:any, i) => {
                     const div = document.createElement('div'); div.className = `target-user ${selectedTargetId === s.profile_id ? 'selected' : ''}`;
-                    // 🔥 FIX VERCEL 3: Arrow Wrapper inside loop
                     div.onclick = () => { selectedTargetId = s.profile_id; selectedTargetName = s.profiles.username; window.toggleRoomGiftDrawer?.(); window.toggleRoomGiftDrawer?.(); };
                     div.innerHTML = `<img src="${s.profiles.avatar_url || 'asets/png/profile.png'}" class="target-avatar"><span>${s.profiles.username}</span>`;
                     tc.appendChild(div);
@@ -393,7 +403,12 @@ export default function RoomPage() {
             });
         }
     };
-    window.toggleSidebar = () => { document.getElementById('sidebar')?.classList.toggle('active'); document.getElementById('sidebar-overlay')?.classList.toggle('active'); };
+
+    window.toggleSidebar = () => { 
+        document.getElementById('sidebar')?.classList.toggle('active'); 
+        document.getElementById('sidebar-overlay')?.classList.toggle('active'); 
+    };
+
     window.openTopGiftersModal = async () => {
         const m = document.getElementById('top-gifters-modal'); const l = document.getElementById('top-gifters-list');
         if(m && l) { m.style.display = 'flex'; l.innerHTML = `<div style="color:#fff; padding:20px;">${t('loading_leaderboard')}</div>`;
@@ -408,6 +423,84 @@ export default function RoomPage() {
         }
     };
 
+    // 🔥 FIX: FUNGSI YANG SEBELUMNYA HILANG 🔥
+    window.kirimKomentar = async () => {
+        const inputEl = document.getElementById('chat-input') as HTMLInputElement;
+        const text = inputEl?.value.trim();
+        if (!text || !CURRENT_ROOM_ID || !MY_USER_ID) return;
+
+        inputEl.value = ''; // Kosongkan input
+        try {
+            await sb.from('room_messages').insert([{ 
+                room_id: CURRENT_ROOM_ID, 
+                username: myUsername, 
+                text: text, 
+                role: myRole, 
+                level: myLevel 
+            }]);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    window.mintaNaik = () => {
+        alert("Pilih kursi KOSONG di panggung untuk naik!");
+    };
+
+    window.keluarRoom = async () => {
+        // Hapus dari panggung dulu kalau dia ada di atas panggung
+        await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID).eq('room_id', CURRENT_ROOM_ID);
+        room?.disconnect();
+        window.location.href = '/hypetalk'; // Balik ke halaman lobby
+    };
+
+    window.toggleMicSidebar = async (e: any) => {
+        e?.preventDefault();
+        if (!room) return alert(t('mic_not_ready'));
+
+        // Pastikan user ada di panggung sebelum mainin mic
+        const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID).single();
+        if (!onStage) return alert(t('mic_stage_first'));
+
+        isMicOn = !isMicOn;
+        await room.localParticipant.setMicrophoneEnabled(isMicOn);
+        
+        // Update status mic di database biar user lain tau
+        await sb.from('profiles').update({ mic_off: !isMicOn }).eq('id', MY_USER_ID);
+
+        // Update UI tombol di Sidebar
+        const icon = document.getElementById('mic-icon');
+        const text = document.getElementById('mic-text');
+        if (icon && text) {
+            icon.innerText = isMicOn ? 'mic' : 'mic_off';
+            text.innerText = isMicOn ? t('mute_mic') : t('unmute_mic');
+            icon.style.color = isMicOn ? 'inherit' : '#ef4444';
+        }
+        
+        window.toggleSidebar?.(); // Tutup sidebar setelah pencet
+    };
+
+    window.openRoomSetting = () => {
+        document.getElementById('setting-modal')?.classList.add('show');
+        window.toggleSidebar?.(); // Tutup sidebar pas buka modal
+    };
+    
+    window.closeRoomSetting = () => {
+        document.getElementById('setting-modal')?.classList.remove('show');
+    };
+    
+    window.closeConfirmModal = () => {
+        const m = document.getElementById('confirm-modal');
+        if (m) m.style.display = 'none';
+    };
+
+    window.closeTopGiftersModal = () => {
+        const m = document.getElementById('top-gifters-modal');
+        if (m) m.style.display = 'none';
+    };
+
+    // ==========================================================
+
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
 
     return () => {
@@ -419,12 +512,12 @@ export default function RoomPage() {
   if (!mounted) return null;
 
   return (
-    <>
+    <div className="in-voice-room">
       <Script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" />
       <Script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.12/dist/livekit-client.umd.min.js" />
       <Sidebar /><Modals />
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
-    </>
+    </div>
   );
 }

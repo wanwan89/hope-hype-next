@@ -1,6 +1,10 @@
 'use client';
 
-// 👇 FIX: Samakan dengan nama unik yang kita buat di page.tsx
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import './GiftDrawerroom.css'; // 🔥 FIX: Import CSS khusus Gift Drawer
+
+// Samakan dengan nama unik yang kita buat di page.tsx
 declare global {
   interface Window {
     toggleRoomGiftDrawer?: (e?: any) => void;
@@ -8,7 +12,9 @@ declare global {
   }
 }
 
-export default function GiftDrawer() {
+export default function GiftDrawerroom() {
+  const { t } = useTranslation();
+
   return (
     <>
       {/* OVERLAY: Pakai ID unik 'room-drawer-overlay' */}
@@ -23,7 +29,8 @@ export default function GiftDrawer() {
         <div className="handle"></div> 
         
         <div className="drawer-header">
-          <span className="drawer-title">KIRIM HADIAH</span>
+          {/* 🔥 FIX: Support multi-bahasa 🔥 */}
+          <span className="drawer-title">{t('send_gift_title', 'KIRIM HADIAH')}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div className="coin-panel">
               <span id="user-coins">0</span>
@@ -31,17 +38,20 @@ export default function GiftDrawer() {
             <span 
               className="material-icons" 
               onClick={(e) => window.toggleRoomGiftDrawer && window.toggleRoomGiftDrawer(e)} 
-              style={{ color: '#94a3b8', fontSize: '26px', cursor: 'pointer' }}
+              style={{ color: '#94a3b8', fontSize: '26px', cursor: 'pointer', transition: 'transform 0.2s' }}
             >
               cancel
             </span>
           </div>
         </div>
 
+        {/* Container ini diisi dinamis dari page.tsx */}
         <div id="level-progress-container" style={{ margin: '15px 20px 5px 20px' }}></div>
         
         <div className="target-selection-container">
-          <span className="target-label">KIRIM KE:</span>
+          {/* 🔥 FIX: Support multi-bahasa 🔥 */}
+          <span className="target-label">{t('send_to_label', 'KIRIM KE:')}</span>
+          {/* Container avatar diisi dinamis dari page.tsx */}
           <div id="gift-targets" className="target-list"></div>
         </div>
 

@@ -1,21 +1,30 @@
 'use client';
 
-// 👇 FIX: Kasih tau TypeScript kalau window punya fungsi naikKeStage 👇
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import './Stageroom.css'; // 🔥 FIX: Import CSS khusus Stage Room
+
+// 👇 Kasih tau TypeScript kalau window punya fungsi naikKeStage 👇
 declare global {
   interface Window {
     naikKeStage?: (index: number) => void;
   }
 }
 
-export default function Stage() {
+export default function Stageroom() {
+  const { t } = useTranslation();
+
   return (
+    // Wadah id="stage-grid" ini bakal ditimpa/diisi otomatis 
+    // sama fungsi fetchStage() di file page.tsx lu.
+    // Yang ada di bawah ini cuma tampilan skeleton/default sebelum data ke-load.
     <section id="stage-grid" className="stage-container">
       <div className="speaker-item empty">
-        {/* Panggil window.naikKeStage karena fungsinya udah kita tempelin di window pada file page.tsx */}
         <div className="avatar" onClick={() => window.naikKeStage && window.naikKeStage(0)}>
           <span className="material-icons">add</span>
         </div>
-        <span className="name-label">KOSONG</span>
+        {/* 🔥 FIX: Support multi-bahasa 🔥 */}
+        <span className="name-label">{t('empty_slot', 'KOSONG')}</span>
       </div>
     </section>
   );

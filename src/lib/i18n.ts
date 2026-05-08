@@ -203,7 +203,26 @@ const resources = {
       "call_error": "Koneksi Panggilan Gagal",
       "call_ended": "Panggilan berakhir",
       "btn_answer": "Jawab",
-      "btn_decline": "Tutup"
+      "btn_decline": "Tutup",
+      
+      // --- TAMBAHAN MODULAR VOICE ROOM ---
+      "system_rule_msg": "Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu jawab dengan sopan, santai, dan tetap menghargai orang lain ya!",
+      "share_room_text": "Gabung panggung suara yuk!",
+      "type_comment": "Ketik komentar...",
+      "send_gift_title": "KIRIM HADIAH",
+      "send_to_label": "KIRIM KE:",
+      "people_in_room": "orang di room",
+      "room_settings": "⚙️ Room Settings",
+      "new_room_name": "Nama Room Baru",
+      "room_name_placeholder": "Contoh: Klasikan Galau...",
+      "system_message_label": "Pesan Sistem (Broadcast ke Chat)",
+      "system_message_placeholder": "Tulis pesan pengumuman...",
+      "leave_stage_title": "Turun Panggung?",
+      "leave_stage_desc": "Yakin mau turun dari panggung sekarang? Mic kamu akan otomatis dimatikan.",
+      "btn_confirm": "YAKIN",
+      "the_sultan": "🏆 THE SULTAN",
+      "turn_off_mic": "Matikan Mic",
+      "leave_room": "Keluar Ruangan"
     }
   },
   en: {
@@ -394,7 +413,26 @@ const resources = {
       "call_error": "Call Connection Failed",
       "call_ended": "Call ended",
       "btn_answer": "Answer",
-      "btn_decline": "Decline"
+      "btn_decline": "Decline",
+
+      // --- TAMBAHAN MODULAR VOICE ROOM ---
+      "system_rule_msg": "Do not use harsh words, insults, or bullying in any form. Always reply politely, casually, and respect others!",
+      "share_room_text": "Let's join the voice stage!",
+      "type_comment": "Type a comment...",
+      "send_gift_title": "SEND GIFT",
+      "send_to_label": "SEND TO:",
+      "people_in_room": "people in room",
+      "room_settings": "⚙️ Room Settings",
+      "new_room_name": "New Room Name",
+      "room_name_placeholder": "e.g., Chill Night...",
+      "system_message_label": "System Message (Broadcast to Chat)",
+      "system_message_placeholder": "Write an announcement...",
+      "leave_stage_title": "Leave Stage?",
+      "leave_stage_desc": "Are you sure you want to leave the stage now? Your mic will be muted automatically.",
+      "btn_confirm": "SURE",
+      "the_sultan": "🏆 THE SULTAN",
+      "turn_off_mic": "Turn Off Mic",
+      "leave_room": "Leave Room"
     }
   },
   zh: {
@@ -585,7 +623,26 @@ const resources = {
       "call_error": "通话连接失败",
       "call_ended": "通话结束",
       "btn_answer": "接听",
-      "btn_decline": "拒绝"
+      "btn_decline": "拒绝",
+
+      // --- TAMBAHAN MODULAR VOICE ROOM ---
+      "system_rule_msg": "请勿使用任何形式的粗言秽语、侮辱或欺凌。请始终礼貌、轻松地回复，并尊重他人！",
+      "share_room_text": "一起加入语音舞台吧！",
+      "type_comment": "输入评论...",
+      "send_gift_title": "发送礼物",
+      "send_to_label": "发送至：",
+      "people_in_room": "人在房间",
+      "room_settings": "⚙️ 房间设置",
+      "new_room_name": "新房间名称",
+      "room_name_placeholder": "例如：轻松之夜...",
+      "system_message_label": "系统消息（广播到聊天）",
+      "system_message_placeholder": "写个公告...",
+      "leave_stage_title": "下麦？",
+      "leave_stage_desc": "确定现在下麦吗？您的麦克风将自动静音。",
+      "btn_confirm": "确定",
+      "the_sultan": "🏆 大佬榜",
+      "turn_off_mic": "关麦",
+      "leave_room": "离开房间"
     }
   },
   ko: {
@@ -710,7 +767,7 @@ const resources = {
       "kick_confirm": "{{name}}님을 강퇴하시겠습니까?",
       "close_room_confirm": "무대를 닫고 기록을 삭제하시겠습니까?",
       "owner_only": "방장 전용!",
-      "room_name_empty": "이름은 비워둘 수 없습니다!",
+      "room_name_empty": "이름은 비워둘 수 무 없습니다!",
       "top_rank": "순위",
       "loading_leaderboard": "계산 중...",
       "empty_leaderboard": "선물이 없습니다.",
@@ -776,7 +833,26 @@ const resources = {
       "call_error": "통화 연결 실패",
       "call_ended": "통화 종료",
       "btn_answer": "응답",
-      "btn_decline": "거절"
+      "btn_decline": "거절",
+
+      // --- TAMBAHAN MODULAR VOICE ROOM ---
+      "system_rule_msg": "어떤 형태의 욕설, 모욕, 괴롭힘도 사용하지 마세요. 항상 예의 바르고 편안하게 대답하며 다른 사람을 존중해 주세요!",
+      "share_room_text": "보이스 스테이지에 함께 참여해요!",
+      "type_comment": "댓글 입력...",
+      "send_gift_title": "선물 보내기",
+      "send_to_label": "보낼 사람:",
+      "people_in_room": "명 접속 중",
+      "room_settings": "⚙️ 방 설정",
+      "new_room_name": "새 방 이름",
+      "room_name_placeholder": "예: 밤샘 수다방...",
+      "system_message_label": "시스템 메시지 (채팅 브로드캐스트)",
+      "system_message_placeholder": "공지사항 작성...",
+      "leave_stage_title": "무대에서 내려가시겠습니까?",
+      "leave_stage_desc": "지금 무대에서 내려가시겠습니까? 마이크가 자동으로 꺼집니다.",
+      "btn_confirm": "확인",
+      "the_sultan": "🏆 더 술탄",
+      "turn_off_mic": "마이크 끄기",
+      "leave_room": "방 나가기"
     }
   }
 };
