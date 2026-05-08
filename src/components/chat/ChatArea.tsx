@@ -71,8 +71,8 @@ export default function ChatArea() {
     audioChunks: useRef<Blob[]>([]),
     lkRoom: useRef<LiveKit.Room | null>(null),
     callTimer: useRef<any>(null),
-    callTimeout: useRef<any>(null), // 🔥 FIX: Pisahkan Timer agar tidak nabrak
-    callInterval: useRef<any>(null), // 🔥 FIX: Interval Timer terpisah
+    callTimeout: useRef<any>(null), 
+    callInterval: useRef<any>(null), 
     recordTimer: useRef<any>(null),
     typingTimer: useRef<any>(null),
     audioCtx: useRef<AudioContext | null>(null)
@@ -226,11 +226,20 @@ export default function ChatArea() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${room}` }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as any;
-          if (newMsg.is_system && newMsg.message.includes("📞 Memanggil") && newMsg.user_id !== user.id) handleIncomingCall(newMsg);
-          if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) endCall(true);
+          
+          // Deteksi panggilan masuk dari orang lain
+          if (newMsg.is_system && newMsg.message.includes("📞 Memanggil") && newMsg.user_id !== user.id) {
+             handleIncomingCall(newMsg);
+          }
+          // Deteksi panggilan ditutup
+          if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) {
+             endCall(true);
+          }
+          
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, role').eq('id', newMsg.user_id).single();
           newMsg.profiles = p || undefined;
           setMessages(prev => [...prev, newMsg]);
+          
           if (newMsg.user_id !== user.id) {
             refs.audio.current?.receive.play().catch(()=>{});
             if (newMsg.status !== 'read') await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
@@ -376,14 +385,20 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FIX CALL LOGIC: Memisahkan timeout dan membuat LiveKit lebih tangguh
+  // ======================================================
+  // 🔥 FIX CALL LOGIC: Koneksi LiveKit yang Stabil 🔥
+  // ======================================================
   const startCall = async () => {
     if (!targetId) return;
     const { data: pTarget } = await supabase.from('profiles').select('avatar_url').eq('id', targetId).single();
+    
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
+    
+    // Kirim notif ke chat bahwa kita memanggil
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
     
+    // Set batas tunggu diangkat (15 detik)
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
       setCallStatus(prev => {
@@ -395,28 +410,35 @@ export default function ChatArea() {
       });
     }, 15000); 
     
+    // Nyambungin room LiveKit
     connectLiveKit(roomId);
   };
 
   const handleIncomingCall = async (msg: any) => {
     const { data: p } = await supabase.from('profiles').select('username, avatar_url').eq('id', msg.user_id).single();
-    setCallStatus('incoming'); setCallData({ partnerName: p?.username, partnerAvatar: p?.avatar_url, room: msg.room_id, seconds: 0 });
+    setCallStatus('incoming'); 
+    setCallData({ partnerName: p?.username, partnerAvatar: p?.avatar_url, room: msg.room_id, seconds: 0 });
     refs.audio.current?.ring.play().catch(()=>{});
   };
 
   const connectLiveKit = async (rName: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('get-livekit-token', { body: { username: myProfile?.username, identity: currentUser.id, roomName: rName } });
+      const { data, error } = await supabase.functions.invoke('get-livekit-token', { 
+         body: { username: myProfile?.username, identity: currentUser.id, roomName: rName } 
+      });
       if (error || !data) throw new Error("Gagal ambil token");
-      refs.lkRoom.current = new LiveKit.Room();
-      await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
       
-      try {
-        await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
-      } catch (micErr) {
-        console.warn("Akses Mic gagal atau belum diizinkan.", micErr);
+      // Matikan room lama kalau ada
+      if (refs.lkRoom.current) {
+         refs.lkRoom.current.disconnect();
       }
 
+      refs.lkRoom.current = new LiveKit.Room({
+         adaptiveStream: true,
+         dynacast: true,
+      });
+
+      // 1. Tangkap Event Dulu Sebelum Konek
       const handleCallConnected = () => {
         setCallStatus('connected'); 
         clearTimeout(refs.callTimeout.current);
@@ -424,29 +446,50 @@ export default function ChatArea() {
         refs.callInterval.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
       };
 
-      if (refs.lkRoom.current.remoteParticipants.size > 0) {
-         handleCallConnected();
-      }
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, handleCallConnected);
       
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantDisconnected, () => {
-        if (!groupId) endCall(true); // Lawan memutus 1v1
+        if (!groupId) endCall(true); 
       });
       
       refs.lkRoom.current.on(LiveKit.RoomEvent.Disconnected, () => {
         endCall(true);
       });
 
-      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (t) => { if (t.kind === "audio") document.body.appendChild(t.attach()); });
+      // 🔥 FIX: Cara Modern Nampilin Audio LiveKit (Tanpa diblokir Browser) 🔥
+      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        if (track.kind === LiveKit.Track.Kind.Audio) {
+           const audioElement = document.createElement('audio');
+           audioElement.autoplay = true;
+           track.attach(audioElement);
+        }
+      });
+
+      // 2. Konek ke server LiveKit
+      await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
+      
+      // 3. Nyalain Mic
+      try {
+        await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
+      } catch (micErr) {
+        showNotif("Harap izinkan akses Mikrofon!", "warning");
+      }
+
+      // 4. Jika saat konek ternyata orangnya udah di room, langsung set Connected
+      if (refs.lkRoom.current.remoteParticipants.size > 0) {
+         handleCallConnected();
+      }
+
     } catch (e: any) { 
-      showNotif(t('call_error'), "error"); 
+      showNotif("Panggilan gagal tersambung", "error"); 
       endCall(); 
     }
   };
 
   const endCall = (silent = false) => {
     if (refs.audio.current?.ring) { refs.audio.current.ring.pause(); refs.audio.current.ring.currentTime = 0; }
-    refs.lkRoom.current?.disconnect();
+    if (refs.lkRoom.current) { refs.lkRoom.current.disconnect(); refs.lkRoom.current = null; }
+    
     setCallStatus('idle'); 
     clearInterval(refs.callTimer.current);
     clearTimeout(refs.callTimeout.current);
@@ -504,12 +547,17 @@ export default function ChatArea() {
           <p>{callStatus.toUpperCase()}</p>
           <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
             {callStatus === 'incoming' && <button onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }} className="btn-answer" style={{background:'#2ecc71', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_answer')}</button>}
-            <button onClick={() => endCall()} className="btn-decline" style={{background:'#ff4757', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_decline')}</button>
+            <button onClick={() => {
+               endCall();
+               if(callStatus === 'incoming') {
+                 supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan Ditolak`, is_system: true }]);
+               }
+            }} className="btn-decline" style={{background:'#ff4757', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_decline')}</button>
           </div>
         </div>
       )}
 
-      {/* 🔥 FIX: UI FLOATING TOAST SAAT SUDAH TERSAMBUNG (BISA SAMBIL CHAT) 🔥 */}
+      {/* UI FLOATING TOAST SAAT SUDAH TERSAMBUNG (BISA SAMBIL CHAT) */}
       {callStatus === 'connected' && (
         <div style={{
           position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',

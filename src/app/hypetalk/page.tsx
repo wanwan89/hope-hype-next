@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect, useRef } from 'react'; 
 import { useRouter } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
+import * as LiveKit from 'livekit-client'; 
 import './Hypetalk.css';
 
 export default function HypetalkPage() {
@@ -24,16 +25,27 @@ export default function HypetalkPage() {
   const [searchUserId, setSearchUserId] = useState(''); 
   const [groupName, setGroupName] = useState(''); 
 
-  const [typingStatus, setTypingStatus] = useState<Record<string, boolean>>({});
+  const [typingStatus, setTypingStatus] = useState<Record<string, string>>({});
 
-  // 🔥 STATE BARU UNTUK PROFIL KLIK AVATAR 🔥
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [isBlocking, setIsBlocking] = useState(false);
+
+  const [callStatus, setCallStatus] = useState<'idle'|'calling'|'incoming'|'connected'>('idle');
+  const [callData, setCallData] = useState<any>({ seconds: 0 });
+  const refs = {
+    audio: useRef<{ ring: HTMLAudioElement } | null>(null),
+    lkRoom: useRef<LiveKit.Room | null>(null),
+    callTimeout: useRef<any>(null),
+    callInterval: useRef<any>(null)
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLimit = localStorage.getItem('doi_limit');
       if (savedLimit) setSisaLimitDoi(parseInt(savedLimit));
+      
+      refs.audio.current = { ring: new Audio("/asets/sound/call.wav") };
+      if (refs.audio.current.ring) refs.audio.current.ring.loop = true;
     }
     initUser();
   }, []);
@@ -42,6 +54,7 @@ export default function HypetalkPage() {
     return () => {
       setIsSidebarOpen(false);
       setActiveModal(null);
+      endCall(true); 
     };
   }, []);
 
@@ -71,35 +84,54 @@ export default function HypetalkPage() {
     
     try {
       const waktu24JamLalu = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: pvMsgs } = await supabase.from("messages")
+      
+      // 🔥 FIX: Ambil juga pesan grup dan global untuk dihitung unread-nya 🔥
+      const { data: allMsgs } = await supabase.from("messages")
         .select("*")
-        .ilike("room_id", "pv_%")
-        .ilike("room_id", `%${userId}%`)
         .gte("created_at", waktu24JamLalu)
         .order("created_at", { ascending: false });
       
-      let finalChats: any[] = [{ 
+      let finalChats: any[] = [];
+      const unreadMap = new Map(); 
+
+      // Hitung semua Unread Message (Private, Group, Global) yang BUKAN dikirim oleh kita
+      allMsgs?.forEach(msg => {
+         if (msg.status !== 'read' && msg.user_id !== userId) {
+            let targetRoomId = msg.room_id;
+            
+            // Konversi ID Private Room (pv_idA_idB) menjadi ID user lawan
+            if (msg.room_id.startsWith('pv_')) {
+               const pId = msg.room_id.replace("pv_", "").split("_").find((id: string) => id !== userId);
+               if(pId) targetRoomId = pId;
+            } else if (msg.room_id.startsWith('group_')) {
+               targetRoomId = msg.room_id.replace("group_", "");
+            }
+            
+            unreadMap.set(targetRoomId, (unreadMap.get(targetRoomId) || 0) + 1);
+         }
+      });
+
+      // 1. Setup Global Chat (Selalu ada di atas/ikut tersortir)
+      const globalMsgs = allMsgs?.filter(m => m.room_id === 'room-1');
+      const lastGlobalMsg = globalMsgs && globalMsgs.length > 0 ? globalMsgs[0] : null;
+      finalChats.push({ 
         id: 'room-1', 
         type: 'global', 
         name: 'HopeTalk Globe', 
-        preview: 'Obrolan umum komunitas', 
-        time: 'Always', 
-        sortTime: Date.now() + 10000,
-        unread: 0
-      }];
+        role: 'admin', 
+        preview: lastGlobalMsg ? (lastGlobalMsg.sticker_url ? "🖼 Mengirim Stiker" : (lastGlobalMsg.audio_url ? "🎤 Mengirim Voice Note" : lastGlobalMsg.message)) : 'Obrolan umum komunitas', 
+        time: lastGlobalMsg ? new Date(lastGlobalMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Always', 
+        sortTime: lastGlobalMsg ? new Date(lastGlobalMsg.created_at).getTime() : Date.now() + 10000,
+        unread: unreadMap.get('room-1') || 0 // 🔥 UNREAD GLOBAL AKTIF
+      });
 
-      if (pvMsgs) {
+      // 2. Setup Private Chats
+      if (allMsgs) {
         const lastPvMap = new Map();
-        const unreadMap = new Map(); 
-
-        pvMsgs.forEach(msg => {
+        
+        allMsgs.filter(m => m.room_id.startsWith('pv_') && m.room_id.includes(userId)).forEach(msg => {
           const pId = msg.room_id.replace("pv_", "").split("_").find((id: string) => id !== userId);
-          if (pId) {
-            if (!lastPvMap.has(pId)) lastPvMap.set(pId, msg);
-            if (msg.status !== 'read' && msg.user_id !== userId) {
-              unreadMap.set(pId, (unreadMap.get(pId) || 0) + 1);
-            }
-          }
+          if (pId && !lastPvMap.has(pId)) lastPvMap.set(pId, msg);
         });
 
         const partnerIds = Array.from(lastPvMap.keys());
@@ -122,19 +154,29 @@ export default function HypetalkPage() {
               lastMsgStatus: lastMsg.status, 
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
               sortTime: new Date(lastMsg.created_at).getTime(),
-              unread: unreadMap.get(p.id) || 0 
+              unread: unreadMap.get(p.id) || 0 // 🔥 UNREAD PRIVATE AKTIF
             });
           });
         }
       }
 
+      // 3. Setup Group Chats
       const { data: myGroups } = await supabase.from('group_members').select('group_id, groups(name, photo_url)').eq('user_id', userId);
       if (myGroups) {
         myGroups.forEach((g: any) => {
           if (g.groups) {
+             const groupMsgs = allMsgs?.filter(m => m.room_id === `group_${g.group_id}`);
+             const lastGroupMsg = groupMsgs && groupMsgs.length > 0 ? groupMsgs[0] : null;
+
             finalChats.push({
-              id: g.group_id, type: 'group', name: g.groups.name, avatar: g.groups.photo_url || '/asets/png/profile.webp',
-              preview: 'Grup Chat', time: '', sortTime: Date.now() - 1000, unread: 0
+              id: g.group_id, 
+              type: 'group', 
+              name: g.groups.name, 
+              avatar: g.groups.photo_url || '/asets/png/profile.webp',
+              preview: lastGroupMsg ? (lastGroupMsg.sticker_url ? "🖼 Mengirim Stiker" : (lastGroupMsg.audio_url ? "🎤 Mengirim Voice Note" : lastGroupMsg.message)) : 'Grup Chat', 
+              time: lastGroupMsg ? new Date(lastGroupMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '', 
+              sortTime: lastGroupMsg ? new Date(lastGroupMsg.created_at).getTime() : Date.now() - 1000, 
+              unread: unreadMap.get(g.group_id) || 0 // 🔥 UNREAD GROUP AKTIF
             });
           }
         });
@@ -152,31 +194,44 @@ export default function HypetalkPage() {
     const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
     supabase.channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: any) => {
-        const isRelated = payload.new?.room_id?.includes(userId) || payload.old?.room_id?.includes(userId);
-        if (isRelated) loadAllChats(userId, true);
+        // 🔥 FIX: Render ulang list saat ada notif masuk dari room manapun yang dia ikuti
+        loadAllChats(userId, true);
       })
       .subscribe();
   };
 
-  const privateChatIds = chats.filter(c => c.type === 'private').map(c => c.id).sort().join(',');
-
+  // 🔥 FIX: TYPING INDICATOR UNTUK SEMUA CHAT (PRIVATE, GRUP, GLOBAL) 🔥
+  const roomIdsStr = chats.map(c => c.id).sort().join(',');
   useEffect(() => {
-    if (!currentUser || !privateChatIds) return;
-    const ids = privateChatIds.split(',');
-    const channels = ids.map(chatId => {
-      const userIds = [currentUser.id, chatId].sort();
-      const roomId = `pv_${userIds[0]}_${userIds[1]}`;
-      return supabase.channel(`presence-${roomId}`)
+    if (!currentUser || chats.length === 0) return;
+    
+    const channels = chats.map(chat => {
+      let roomIdStr = '';
+      if (chat.type === 'global') roomIdStr = 'room-1';
+      else if (chat.type === 'group') roomIdStr = `group_${chat.id}`;
+      else {
+        const ids = [currentUser.id, chat.id].sort();
+        roomIdStr = `pv_${ids[0]}_${ids[1]}`;
+      }
+
+      return supabase.channel(`presence-${roomIdStr}`)
         .on('broadcast', { event: 'typing' }, (p: any) => {
           if (p.payload.username !== currentUser.username) {
-            setTypingStatus(prev => ({ ...prev, [chatId]: true }));
-            setTimeout(() => setTypingStatus(prev => ({ ...prev, [chatId]: false })), 3000);
+            setTypingStatus(prev => ({ ...prev, [chat.id]: p.payload.username }));
+            setTimeout(() => {
+              setTypingStatus(prev => {
+                const newStat = { ...prev };
+                delete newStat[chat.id];
+                return newStat;
+              });
+            }, 3000);
           }
         })
         .subscribe();
     });
+    
     return () => { channels.forEach(c => c && supabase.removeChannel(c)); };
-  }, [privateChatIds, currentUser]);
+  }, [roomIdsStr, currentUser]);
 
   const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
   const closeModal = () => setActiveModal(null);
@@ -233,19 +288,32 @@ export default function HypetalkPage() {
     } catch (err) { showNotif("Gagal membuat grup", "error"); }
   };
 
-  const handleOpenChat = (chat: any) => {
+  const handleOpenChat = async (chat: any) => {
+    // Optimistic UI Update biar angka badge notif langsung ilang pas diklik
     setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
-    if (chat.type === 'private') {
+    
+    // Tembak Update Read Status ke Supabase buat Room Apapun
+    let roomIdToRead = '';
+    if (chat.type === 'global') roomIdToRead = 'room-1';
+    else if (chat.type === 'group') roomIdToRead = `group_${chat.id}`;
+    else {
       const ids = [currentUser.id, chat.id].sort();
-      const roomId = `pv_${ids[0]}_${ids[1]}`;
-      supabase.from('messages').update({ status: 'read' }).eq('room_id', roomId).neq('user_id', currentUser.id).neq('status', 'read').then();
+      roomIdToRead = `pv_${ids[0]}_${ids[1]}`;
     }
+    
+    // Ini dieksekusi di background, gausah di-await biar perpindahan halaman tetep instan
+    supabase.from('messages')
+      .update({ status: 'read' })
+      .eq('room_id', roomIdToRead)
+      .neq('user_id', currentUser.id)
+      .neq('status', 'read')
+      .then();
+
     if (chat.type === 'global') router.push('/hypetalk/room-1');
     else if (chat.type === 'group') router.push(`/hypetalk/chat?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
     else router.push(`/hypetalk/chat?from=${chat.id}`);
   };
 
-  // 🔥 FUNGSI BARU UNTUK KLIK AVATAR PROFIL 🔥
   const handleAvatarClick = async (e: React.MouseEvent, chatId: string, chatType: string) => {
     e.stopPropagation(); 
     if (chatType !== 'private') return; 
@@ -261,7 +329,6 @@ export default function HypetalkPage() {
     }
   };
 
-  // 🔥 FUNGSI BARU UNTUK BLOKIR USER 🔥
   const handleBlockUser = async (targetId: string) => {
     if (!confirm("Yakin ingin memblokir user ini? Obrolan akan hilang dari daftar.")) return;
     setIsBlocking(true);
@@ -282,10 +349,135 @@ export default function HypetalkPage() {
     }
   };
 
+  const startCallFromLobby = async (targetProfile: any) => {
+    if (!currentUser) return;
+
+    const ids = [currentUser.id, targetProfile.id].sort();
+    const callRoomId = `pv_${ids[0]}_${ids[1]}`;
+
+    setCallStatus('calling'); 
+    setCallData({ partnerName: targetProfile.username, partnerAvatar: targetProfile.avatar_url, seconds: 0, room: callRoomId });
+
+    await supabase.from('messages').insert([{ room_id: callRoomId, user_id: currentUser.id, message: `📞 Memanggil ${targetProfile.username}...`, is_system: true }]);
+    
+    clearTimeout(refs.callTimeout.current);
+    refs.callTimeout.current = setTimeout(async () => {
+      setCallStatus(prev => {
+        if(prev !== 'connected') {
+          endCall(true);
+          supabase.from('messages').insert([{ room_id: callRoomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
+        }
+        return prev;
+      });
+    }, 15000); 
+    
+    connectLiveKit(callRoomId);
+  };
+
+  const connectLiveKit = async (rName: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-livekit-token', { 
+         body: { username: currentUser?.username, identity: currentUser.id, roomName: rName } 
+      });
+      if (error || !data) throw new Error("Gagal ambil token");
+      
+      if (refs.lkRoom.current) refs.lkRoom.current.disconnect();
+
+      refs.lkRoom.current = new LiveKit.Room({ adaptiveStream: true, dynacast: true });
+
+      const handleCallConnected = () => {
+        setCallStatus('connected'); 
+        clearTimeout(refs.callTimeout.current);
+        clearInterval(refs.callInterval.current);
+        refs.callInterval.current = setInterval(() => setCallData((p:any) => ({...p, seconds: p.seconds+1})), 1000);
+      };
+
+      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, handleCallConnected);
+      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantDisconnected, () => endCall(true));
+      refs.lkRoom.current.on(LiveKit.RoomEvent.Disconnected, () => endCall(true));
+      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind === LiveKit.Track.Kind.Audio) {
+           const audioElement = document.createElement('audio');
+           audioElement.autoplay = true;
+           track.attach(audioElement);
+        }
+      });
+
+      await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
+      
+      try {
+        await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
+      } catch (micErr) {
+        showNotif("Harap izinkan akses Mikrofon!", "warning");
+      }
+
+      if (refs.lkRoom.current.remoteParticipants.size > 0) handleCallConnected();
+
+    } catch (e: any) { 
+      showNotif("Panggilan gagal", "error"); 
+      endCall(); 
+    }
+  };
+
+  const endCall = (silent = false) => {
+    if (refs.audio.current?.ring) { refs.audio.current.ring.pause(); refs.audio.current.ring.currentTime = 0; }
+    if (refs.lkRoom.current) { refs.lkRoom.current.disconnect(); refs.lkRoom.current = null; }
+    setCallStatus('idle'); 
+    clearTimeout(refs.callTimeout.current);
+    clearInterval(refs.callInterval.current);
+    if (!silent) showNotif('Panggilan berakhir', "info");
+  };
+
   const filteredChats = chats.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+      
+      <style>{`
+        @keyframes pulseCall {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        }
+      `}</style>
+
+      {(callStatus === 'calling' || callStatus === 'incoming') && (
+        <div className="call-overlay" style={{ zIndex: 9999999 }}>
+          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
+          <h2>{callData.partnerName}</h2>
+          <p>{callStatus.toUpperCase()}</p>
+          <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
+            {callStatus === 'incoming' && <button onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }} style={{background:'#2ecc71', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>Terima</button>}
+            <button onClick={() => endCall()} style={{background:'#ff4757', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>Tutup</button>
+          </div>
+        </div>
+      )}
+
+      {callStatus === 'connected' && (
+        <div style={{
+          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--bg-panel)', border: '1px solid var(--primary-blue)',
+          color: 'var(--text-main)', padding: '8px 16px', borderRadius: '30px',
+          display: 'flex', alignItems: 'center', gap: '12px',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 10000, width: 'max-content',
+        }}>
+          <div style={{width: 10, height: 10, background: '#2ecc71', borderRadius: '50%', animation: 'pulseCall 1.5s infinite'}}></div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{callData.partnerName}</span>
+             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+               {Math.floor(callData.seconds/60)}:{String(callData.seconds%60).padStart(2,'0')}
+             </span>
+          </div>
+          <button onClick={() => {
+            endCall();
+            const ids = [currentUser.id, selectedProfile?.id].sort();
+            supabase.from('messages').insert([{ room_id: `pv_${ids[0]}_${ids[1]}`, user_id: currentUser.id, message: `☎️ Panggilan berakhir (${Math.floor(callData.seconds/60)}:${String(callData.seconds%60).padStart(2,'0')})`, is_system: true }]);
+          }} style={{ background: '#ff4757', border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: '10px' }}>
+            <span className="material-icons" style={{ color: '#fff', fontSize: '18px' }}>call_end</span>
+          </button>
+        </div>
+      )}
+
       <header className="tg-header">
         <div className="tg-header-top">
           <div className="tg-header-left">
@@ -320,14 +512,16 @@ export default function HypetalkPage() {
         ) : (
           filteredChats.map(chat => (
             <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
-              {/* 🔥 FIX: Tambahkan onClick untuk Avatar 🔥 */}
               <div className="tg-avatar global-avatar" onClick={(e) => handleAvatarClick(e, chat.id, chat.type)}>
                 {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
               </div>
               <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div className="tg-chat-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--tg-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {chat.name} <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} />
+                  <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--tg-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
+                    {chat.name} 
+                    {chat.type === 'global' && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role) }} style={{marginLeft: '4px'}} />}
+                    {chat.type === 'group' && <span className="material-icons" style={{fontSize: '15px', color: '#1da1f2', marginLeft: '4px'}}>groups</span>}
+                    {chat.type === 'private' && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} style={{marginLeft: '4px'}} />}
                   </h4>
                   <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#1DA1F2' : 'var(--tg-text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
                     {chat.time}
@@ -341,9 +535,10 @@ export default function HypetalkPage() {
                       </span>
                     )}
                     <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#1DA1F2' : 'var(--tg-text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {typingStatus[chat.id] ? 'sedang mengetik...' : chat.preview}
+                      {typingStatus[chat.id] ? `${typingStatus[chat.id]} sedang mengetik...` : chat.preview}
                     </p>
                   </div>
+                  {/* 🔥 FIX: BADGE NOTIFIKASI UNREAD AKTIF DI SEMUA CHAT 🔥 */}
                   {chat.unread > 0 && (
                     <div style={{ background: '#1DA1F2', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
                       {chat.unread}
@@ -377,33 +572,53 @@ export default function HypetalkPage() {
         </div>
       </aside>
       
-      {/* 🔥 MODAL USER PROFILE (MUNCUL PAS AVATAR DIKLIK) 🔥 */}
       {activeModal === 'user-profile' && selectedProfile && (
-        <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
-          <div className="tg-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Profil Pengguna</h3>
-              <button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button>
+        <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={closeModal}>
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ 
+              background: 'var(--bg-panel)', width: '100%', maxWidth: '320px', 
+              borderRadius: '20px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)',
+              animation: 'fadeInModal 0.2s ease'
+            }}
+          >
+            <div style={{ position: 'relative', width: '100%', paddingTop: '100%' }}>
+              <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} alt="Profile" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', padding: '30px 20px 15px 20px' }}>
+                <h2 style={{ color: 'white', margin: 0, fontSize: '20px', fontWeight: '700', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                  {selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}
+                </h2>
+              </div>
             </div>
-            <div className="doi-profile-box" style={{ padding: '10px 0', textAlign: 'center' }}>
-              <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} alt="Profile" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #1f3cff', marginBottom: '12px' }} />
-              <h2 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 15px 0', color: 'var(--tg-text)' }}>
-                {selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}
-              </h2>
-              
-              <div className="doi-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
-                {selectedProfile.pekerjaan && <span className="d-tag" style={{ background: 'var(--tg-bg-secondary)', color: '#1f3cff', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>work</span> {selectedProfile.pekerjaan}</span>}
-                {selectedProfile.hobi && <span className="d-tag" style={{ background: 'var(--tg-bg-secondary)', color: '#dc2626', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>palette</span> {selectedProfile.hobi}</span>}
-                {selectedProfile.zodiak && <span className="d-tag" style={{ background: 'var(--tg-bg-secondary)', color: '#d97706', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}><span className="material-icons" style={{ fontSize: '14px' }}>auto_awesome</span> {selectedProfile.zodiak}</span>}
-                {!selectedProfile.pekerjaan && !selectedProfile.hobi && !selectedProfile.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Belum mengisi bio lengkap</span>}
+            
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+                {selectedProfile.pekerjaan && <span style={{ background: 'rgba(29, 161, 242, 0.1)', color: '#1da1f2', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>💼 {selectedProfile.pekerjaan}</span>}
+                {selectedProfile.hobi && <span style={{ background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>🎨 {selectedProfile.hobi}</span>}
+                {selectedProfile.zodiak && <span style={{ background: 'rgba(217, 119, 6, 0.1)', color: '#d97706', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>✨ {selectedProfile.zodiak}</span>}
+                {!selectedProfile.pekerjaan && !selectedProfile.hobi && !selectedProfile.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '12px', fontStyle: 'italic' }}>Bio belum diisi</span>}
               </div>
               
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button onClick={() => { closeModal(); router.push(`/hypetalk/chat?from=${selectedProfile.id}`); }} style={{ flex: 1, padding: '12px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', cursor: 'pointer' }}>
-                  <span className="material-icons" style={{ fontSize: '18px' }}>call</span> Telpon
+              <div style={{ display: 'flex', justifyContent: 'space-around', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+                <button onClick={() => { closeModal(); router.push(`/hypetalk/chat?from=${selectedProfile.id}`); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#1da1f2', cursor: 'pointer' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(29, 161, 242, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-icons" style={{ fontSize: '22px' }}>chat</span>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Chat</span>
                 </button>
-                <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} style={{ flex: 1, padding: '12px', background: '#ff4757', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', cursor: 'pointer', opacity: isBlocking ? 0.6 : 1 }}>
-                  <span className="material-icons" style={{ fontSize: '18px' }}>block</span> Blokir
+                
+                <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#2ecc71', cursor: 'pointer' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(46, 204, 113, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-icons" style={{ fontSize: '22px' }}>call</span>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Telpon</span>
+                </button>
+
+                <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#ff4757', cursor: 'pointer', opacity: isBlocking ? 0.5 : 1 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255, 71, 87, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-icons" style={{ fontSize: '22px' }}>block</span>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Blokir</span>
                 </button>
               </div>
 
@@ -412,7 +627,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL DOI CARD */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
@@ -432,7 +646,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL SEARCH ID */}
       {activeModal === 'search' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -446,7 +659,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL BUAT GRUP */}
       {activeModal === 'group' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -460,7 +672,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL BIO */}
       {activeModal === 'bio' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
