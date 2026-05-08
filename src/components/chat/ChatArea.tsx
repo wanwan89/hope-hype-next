@@ -38,13 +38,14 @@ export default function ChatArea() {
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
   const [deleteMenu, setDeleteMenu] = useState<any>(null);
   
-  // 🔥 FIX 1: Management Grup & Hak Akses 🔥
+  // 🔥 FIX 1: State Management Grup & Invite 🔥
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
   const [groupModalTab, setGroupModalTab] = useState<'invite' | 'settings'>('invite');
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [newGroupName, setNewGroupName] = useState('');
-  const [isOwner, setIsOwner] = useState(false); // Penanda Owner
+  const [isOwner, setIsOwner] = useState(false);
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
+  const [inviteSearch, setInviteSearch] = useState(''); // State buat cari member
 
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -98,7 +99,7 @@ export default function ChatArea() {
       if (gData) {
         setHeaderInfo({ title: gData.name, sub: "Grup", avatar: gData.avatar_url, role: 'user' });
         setNewGroupName(gData.name);
-        setIsOwner(gData.created_by === session.user.id); // Cek apakah lu yang bikin grup
+        setIsOwner(gData.created_by === session.user.id);
       }
       fetchGroupMembers();
     } else if (fromId) {
@@ -119,6 +120,38 @@ export default function ChatArea() {
     if (!groupId) return;
     const { data } = await supabase.from('group_members').select('*, profiles:user_id(*)').eq('group_id', groupId);
     if (data) setGroupMembers(data);
+  };
+
+  const handleAddMember = async () => {
+    if (!inviteSearch.trim() || !groupId) return;
+    setIsUpdatingGroup(true);
+    
+    // Cari user berdasarkan username atau short_id
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .or(`username.eq."${inviteSearch}",short_id.eq."${inviteSearch}"`)
+      .single();
+
+    if (userError || !userData) {
+      showNotif("User tidak ditemukan!", "error");
+    } else {
+      // Cek apakah sudah ada di grup
+      const { data: existing } = await supabase.from('group_members').select('id').eq('group_id', groupId).eq('user_id', userData.id).single();
+      if (existing) {
+        showNotif("User sudah ada di grup", "info");
+      } else {
+        const { error: addError } = await supabase.from('group_members').insert({ group_id: groupId, user_id: userData.id });
+        if (!addError) {
+          showNotif("Member berhasil ditambahkan!", "success");
+          fetchGroupMembers();
+          setInviteSearch('');
+        } else {
+          showNotif("Gagal menambahkan member", "error");
+        }
+      }
+    }
+    setIsUpdatingGroup(false);
   };
 
   const updateGroupInfo = async (field: 'name' | 'avatar_url', value: string) => {
@@ -231,13 +264,14 @@ export default function ChatArea() {
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(analyser);
     analyser.fftSize = 64; 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
     const update = () => {
       if (!isRecordingRef.current) return;
       analyser.getByteFrequencyData(dataArray);
       let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-      setAudioLevel(sum / dataArray.length); 
+      for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+      setAudioLevel(sum / bufferLength); 
       requestAnimationFrame(update);
     };
     update();
@@ -359,11 +393,16 @@ export default function ChatArea() {
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
-          <img 
-            src={headerInfo.avatar || (groupId ? '/asets/png/group_placeholder.png' : '/asets/png/profile.webp')} 
-            alt="avatar" 
-            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} 
-          />
+          
+          {/* 🔥 FIX 2: Avatar hanya muncul jika CHAT PRIVATE 🔥 */}
+          {targetId && (
+            <img 
+              src={headerInfo.avatar || '/asets/png/profile.webp'} 
+              alt="avatar" 
+              style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} 
+            />
+          )}
+
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
@@ -384,7 +423,6 @@ export default function ChatArea() {
               >
                 INVITE
               </button>
-              {/* 🔥 Tombol Setting Cuma Muncul Buat Bos (Owner) 🔥 */}
               {isOwner && (
                 <button 
                   onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }}
@@ -468,22 +506,48 @@ export default function ChatArea() {
         </div>
       </footer>
 
+      {/* 🔥 FIX 3: MODAL SLIDE UP (Invite & Settings) 🔥 */}
       {isGroupSettingsOpen && groupId && (
-        <div className="custom-modal-overlay" style={{ display: 'flex', zIndex: 100000 }} onClick={() => setIsGroupSettingsOpen(false)}>
-          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px', width: '90%', maxWidth: '350px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+        <div 
+          className="custom-modal-overlay" 
+          style={{ display: 'flex', zIndex: 100000, alignItems: 'flex-end', justifyContent: 'center' }} 
+          onClick={() => setIsGroupSettingsOpen(false)}
+        >
+          <div 
+            className="custom-modal-content" 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '100%', boxShadow: '0 -5px 25px rgba(0,0,0,0.2)', marginBottom: 0, animation: 'modalSlideUp 0.4s ease-out' }}
+          >
             
             {groupModalTab === 'invite' ? (
               <>
                 <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0 }}>Invite Member</h3>
+                  <h3 style={{ margin: 0 }}>Tambah Member</h3>
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--primary-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}><span className="material-icons" style={{fontSize: '30px'}}>share</span></div>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Bagikan Kode Grup ini ke teman lu:</p>
-                  <code style={{ background: 'var(--bg-main)', padding: '10px', borderRadius: '8px', display: 'block', margin: '10px 0', fontWeight: 'bold', color: 'var(--primary-blue)', fontSize: '16px' }}>{groupId}</code>
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px' }}>Ketik Username atau ID User:</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: akbar123" 
+                      value={inviteSearch}
+                      onChange={(e) => setInviteSearch(e.target.value)}
+                      style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)' }}
+                    />
+                    <button 
+                      onClick={handleAddMember}
+                      disabled={isUpdatingGroup}
+                      style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}
+                    >
+                      TAMBAH
+                    </button>
+                  </div>
                 </div>
-                <button className="action-btn" style={{ width: '100%', padding: '12px', background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '14px', fontWeight: 'bold' }} onClick={() => { navigator.clipboard.writeText(groupId); showNotif("ID Copied!", "success"); }}>COPY ID</button>
+                <div style={{ textAlign: 'center', padding: '15px', borderTop: '1px solid var(--border-color)' }}>
+                   <p style={{fontSize: '11px', color:'var(--text-muted)'}}>Atau bagikan Kode Grup:</p>
+                   <b style={{color: 'var(--primary-blue)', fontSize:'14px'}}>{groupId}</b>
+                </div>
               </>
             ) : (
               <>
@@ -513,7 +577,7 @@ export default function ChatArea() {
                   />
                 </div>
 
-                <div style={{ maxHeight: '150px', overflowY: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                <div style={{ maxHeight: '250px', overflowY: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
                   <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>MEMBER ({groupMembers.length})</p>
                   {groupMembers.map(m => (
                     <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>

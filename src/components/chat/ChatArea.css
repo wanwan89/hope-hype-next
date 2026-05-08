@@ -57,7 +57,6 @@ html.dark .hype-chat-scope {
   overscroll-behavior: none; 
 }
 
-/* 🔥 HEADER MELAYANG 🔥 */
 .hype-chat-scope .chat-header {
   position: relative; display: flex; align-items: center; justify-content: space-between;
   padding: 0 15px; padding-top: env(safe-area-inset-top); 
@@ -134,7 +133,7 @@ html.dark .hype-chat-scope {
 }
 
 /* =========================================
-   🔥 MODAL GRUP (INVITE & SETTINGS) 🔥
+   🔥 MODAL SLIDE UP (BOTTOM SHEET) 🔥
    ========================================= */
 .hype-chat-scope .custom-modal-overlay {
   position: fixed;
@@ -144,22 +143,33 @@ html.dark .hype-chat-scope {
   -webkit-backdrop-filter: blur(8px);
   z-index: 100000;
   display: flex;
-  align-items: center;
+  align-items: flex-end; /* 🔥 Nempel ke bawah 🔥 */
   justify-content: center;
-  padding: 20px;
   animation: modalFadeIn 0.3s ease;
 }
 
 .hype-chat-scope .custom-modal-content {
   background: var(--bg-panel);
   width: 100%;
-  max-width: 350px;
-  border-radius: 28px;
-  padding: 24px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  max-width: 100%; /* Full width di mobile */
+  border-radius: 28px 28px 0 0; /* Bulat atas doang */
+  padding: 16px 24px 32px;
+  padding-bottom: calc(32px + env(safe-area-inset-bottom)); /* Support iOS home bar */
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
   position: relative;
   /* 🔥 ANIMASI SLIDE UP PREMIUM 🔥 */
-  animation: modalSlideUp 0.45s cubic-bezier(0.22, 1, 0.36, 1); 
+  animation: modalSlideUpPremium 0.4s cubic-bezier(0.22, 1, 0.36, 1); 
+}
+
+/* Handle garis kecil ala bottom sheet */
+.hype-chat-scope .custom-modal-content::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  margin: 0 auto 15px;
 }
 
 @keyframes modalFadeIn {
@@ -167,22 +177,9 @@ html.dark .hype-chat-scope {
   to { opacity: 1; }
 }
 
-@keyframes modalSlideUp {
-  from { transform: translateY(100px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* =========================================
-   🔥 ANIMASI LAINNYA 🔥
-   ========================================= */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes reactionPop { 0% { transform: translate(-50%, 10px) scale(0.9); opacity: 0; } 100% { transform: translate(-50%, 0) scale(1); opacity: 1; } }
-@keyframes slideUpFadeWA { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
-
-@keyframes replyPopOut {
-  0% { opacity: 0; max-height: 0px; transform: translateY(15px) scale(0.98); }
-  100% { opacity: 1; max-height: 100px; transform: translateY(0) scale(1); }
+@keyframes modalSlideUpPremium {
+  from { transform: translateY(100%); } /* Mulai dari luar layar bawah */
+  to { transform: translateY(0); }
 }
 
 /* =========================================
@@ -210,4 +207,14 @@ html.dark .hype-chat-scope {
   background: var(--bg-panel) !important; border-radius: 16px !important; padding: 12px !important; 
   box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important; 
   animation: slideUpFadeWA 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards !important; 
+}
+
+/* SISA ANIMASI */
+@keyframes replyPopOut {
+  0% { opacity: 0; max-height: 0px; transform: translateY(15px) scale(0.98); }
+  100% { opacity: 1; max-height: 100px; transform: translateY(0) scale(1); }
+}
+@keyframes slideUpFadeWA { 
+  0% { opacity: 0; transform: translateY(20px); } 
+  100% { opacity: 1; transform: translateY(0); } 
 }

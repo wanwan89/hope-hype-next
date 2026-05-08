@@ -29,7 +29,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
 
   useEffect(() => {
-    // Sync ulang kalo ada ID reply tapi data objeknya belum ada (biasanya di pesan baru via realtime)
     if (msg.reply_to && !msg.reply_to_msg && !liveReply) {
       const fetchReplyData = async () => {
         try {
@@ -138,17 +137,21 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
           <div className="system-text">{displayMessage}</div>
         ) : (
           <>
-            {/* Avatar muncul hanya jika BUKAN Private Chat */}
-            {!isPrivateChat && (
-              <img className="avatar" src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" />
+            {/* 🔥 FIX: Foto muncul jika BUKAN Private Chat DAN BUKAN saya sendiri 🔥 */}
+            {!isPrivateChat && !isMe && (
+              <img 
+                className="avatar" 
+                src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} 
+                alt="avatar" 
+              />
             )}
             
             <div className="content">
               
-              {/* Username & Badge muncul hanya jika BUKAN Private Chat */}
-              {!isPrivateChat && (
+              {/* 🔥 FIX: Username & Badge muncul jika BUKAN Private Chat DAN BUKAN saya sendiri 🔥 */}
+              {!isPrivateChat && !isMe && (
                 <div className="username">
-                  {msg.profiles?.username} 
+                  {msg.profiles?.username || 'User'} 
                   <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}}/>
                 </div>
               )}
