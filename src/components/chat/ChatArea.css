@@ -47,7 +47,7 @@ html.dark .hype-chat-scope {
 }
 
 /* =========================================
-   🔥 HEADER MELAYANG (FIXED RAPI) 🔥
+   🔥 HEADER MELAYANG 🔥
    ========================================= */
 .hype-chat-scope .chat-header {
   position: relative; display: flex; align-items: center; justify-content: space-between;
@@ -93,7 +93,7 @@ html.dark .hype-chat-scope {
 .hype-chat-scope .loading-chat-hint { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 10px; font-weight: 500; }
 
 /* =========================================
-   🔥 FIX BUG 2: CALL OVERLAY (Pasti Muncul!) 🔥
+   🔥 CALL OVERLAY (Pasti Muncul!) 🔥
    ========================================= */
 .hype-chat-scope .call-overlay {
   position: fixed !important; 
@@ -179,26 +179,19 @@ html.dark .hype-chat-scope {
 }
 
 /* =========================================
-   🔥 FIX BUG 3: ANIMASI TOMBOL MIC/KIRIM 🔥
+   🔥 FIX 3: ANIMASI TOMBOL MIC (INSTAN) 🔥
    ========================================= */
 .hype-chat-scope #action-btn { 
   width: 50px; height: 50px; min-width: 50px; border-radius: 50%; border: none; cursor: pointer; 
   background-color: var(--primary-blue) !important; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
   box-shadow: 0 4px 10px rgba(29, 161, 242, 0.3) !important; 
 }
 
-/* Animasi saat Ditekan Biasa */
-.hype-chat-scope #action-btn:active { 
-  transform: scale(0.85) !important; 
-  box-shadow: 0 2px 5px rgba(29, 161, 242, 0.4) !important; 
-}
-
-/* Animasi saat Record (Menahan Mic) */
 .hype-chat-scope #action-btn.is-recording {
-  background-color: #ff4757 !important; /* Berubah Merah */
-  transform: scale(1.15) !important; /* Membesar */
-  animation: hype-pulse-record 1.5s infinite !important; /* Berdenyut */
+  background-color: #ff4757 !important; 
+  transform: scale(1.15) !important; 
+  animation: hype-pulse-record 1.5s infinite !important; 
 }
 
 @keyframes hype-pulse-record {
@@ -208,13 +201,12 @@ html.dark .hype-chat-scope {
 }
 
 /* =========================================
-   🔥 FIX BUG 1: WADAH STICKER MENU 🔥
+   🔥 FIX 2: WADAH STICKER 3x3 🔥
    ========================================= */
 .hype-chat-scope #sticker-menu { 
   position: absolute !important; 
-  bottom: calc(100% + 10px) !important; /* Melayang di atas input */
-  left: 12px !important; 
-  right: 12px !important; 
+  bottom: calc(100% + 10px) !important; 
+  left: 12px !important; right: 12px !important; 
   z-index: 10010 !important; 
   background: var(--bg-panel) !important; 
   border: 1px solid var(--border-color) !important;
@@ -222,26 +214,31 @@ html.dark .hype-chat-scope {
   padding: 15px !important; 
   box-shadow: 0 10px 35px rgba(0,0,0,0.15) !important; 
   animation: hype-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important; 
+  display: flex !important;
+  flex-direction: column !important; /* 🔥 WAJIB KOLOM 🔥 */
+  max-width: 350px !important;
+  margin: 0 auto !important;
 }
 
-.hype-chat-scope .sticker-search-wrapper { margin-bottom: 12px !important; display: flex !important; }
+.hype-chat-scope .sticker-search-wrapper { margin-bottom: 15px !important; display: block !important; width: 100% !important; }
 .hype-chat-scope .sticker-search-wrapper input { 
-  flex: 1 !important; background: var(--bg-main) !important; border: 1px solid var(--border-color) !important; 
-  color: var(--text-color) !important; padding: 10px 14px !important; border-radius: 14px !important; outline: none !important; 
+  width: 100% !important; box-sizing: border-box !important;
+  background: var(--bg-main) !important; border: 1px solid var(--border-color) !important; 
+  color: var(--text-color) !important; padding: 12px 14px !important; border-radius: 14px !important; outline: none !important; 
 }
 
 .hype-chat-scope #sticker-list { 
   display: grid !important; 
-  grid-template-columns: repeat(4, 1fr) !important; /* 4 Kolom biar rapi */
-  gap: 10px !important; 
-  max-height: 220px !important; 
+  grid-template-columns: repeat(3, 1fr) !important; /* 🔥 FIX: 3 KOLOM / 3x3 🔥 */
+  gap: 16px !important; 
+  max-height: 280px !important; 
   overflow-y: auto !important; 
   padding-right: 5px !important;
 }
 
 .hype-chat-scope #sticker-list img { 
-  width: 100% !important; height: auto !important; border-radius: 8px !important; 
-  cursor: pointer !important; transition: transform 0.2s !important; 
+  width: 100% !important; aspect-ratio: 1 / 1 !important; object-fit: contain !important; 
+  border-radius: 8px !important; cursor: pointer !important; transition: transform 0.2s !important; 
 }
 .hype-chat-scope #sticker-list img:active { transform: scale(0.9); }
 

@@ -38,28 +38,29 @@
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent !important;
-  /* Cegah user gak sengaja nge-hold dan munculin popup copy text di UI HP */
   -webkit-touch-callout: none;
   outline: none !important;
+  /* 🔥 FIX 2: Paksa SEMUA elemen bertransisi warna merata (warna, border, bg). 
+      Jadi modal, card, & input nggak akan 'kaget' pas ganti mode 🔥 */
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
+/* 🔥 FIX 1: Sinkronisasi HTML dan BODY 🔥 */
 html {
-  /* Biar kalau layar goyang, warnanya tetep sesuai tema */
   background-color: var(--bg-main) !important;
   height: 100%;
   scroll-behavior: smooth;
+  /* HTML harus ikut transisi biar overscroll/pinggiran HP gak kedip */
 }
 
 body { 
   width: 100%;
   min-height: 100%;
-  /* Sikat abis efek mental/bounce di HP yang bikin garis hitam muncul */
   overscroll-behavior-y: none;
   overflow-x: hidden;
   font-family: 'Poppins', sans-serif; 
   background-color: var(--bg-main); 
   color: var(--text-main); 
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Biar inputan & pesan bisa di-copy, tapi tombol nggak */
@@ -80,7 +81,6 @@ input, textarea, [contenteditable="true"], .selectable {
   flex-direction: column;
 }
 
-/* Khusus halaman Standalone (Voice/Misi) biar gak ada celah */
 .fixed-layout {
   height: 100dvh !important;
   overflow: hidden !important;
@@ -91,23 +91,19 @@ input, textarea, [contenteditable="true"], .selectable {
 .main-content {
   flex: 1;
   width: 100%;
-  /* Disamakan jadi 480px biar gak tiba-tiba melar pas ganti rute */
   max-width: 480px; 
   margin: 0 auto;
   position: relative;
-  /* Jarak buat Navbar bawah standar */
   padding-bottom: calc(100px + env(safe-area-inset-bottom));
   transition: padding 0.2s ease-out;
 }
 
-/* Mode Fullscreen (Profil, Notif, Voice, Misi) */
 .main-content.is-fullscreen {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   max-width: 100%;
 }
 
-/* Utilitas untuk scroller premium (sembunyiin scrollbar tapi tetep bisa scroll) */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -123,16 +119,21 @@ input, textarea, [contenteditable="true"], .selectable {
 
 .navbar-bottom {
   z-index: 100;
-  /* Support HP ber-layar panjang (Home Indicator) */
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Mencegah elemen random muncul pas transisi */
+/* 🔥 FIX 3: Perlunakkan efek pindah halaman biar nggak nge-blink putih/hitam 🔥 */
 .page-fade {
-  animation: fadeIn 0.3s ease-in-out;
+  animation: smoothFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes smoothFadeIn {
+  from { 
+    opacity: 0.4; /* Jangan mulai dari 0 biar nggak nge-blank */
+    transform: translateY(8px); /* Kasih efek naik dikit ala iOS */
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
 }

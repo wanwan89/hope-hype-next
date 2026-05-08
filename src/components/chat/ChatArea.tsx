@@ -35,8 +35,10 @@ export default function ChatArea() {
   const [replyTo, setReplyTo] = useState<any>(null);
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
+  
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
-  const [deleteMenu, setDeleteMenu] = useState<any>(null);
+  const [msgOptions, setMsgOptions] = useState<any>(null);
+  const [editMessageId, setEditMessageId] = useState<any>(null);
   
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
   const [groupModalTab, setGroupModalTab] = useState<'invite' | 'settings'>('invite');
@@ -46,6 +48,8 @@ export default function ChatArea() {
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [inviteSearch, setInviteSearch] = useState(''); 
 
+  // 🔥 FIX 1: STATE INSTAN UNTUK ANIMASI VN 🔥
+  const [isMicPressed, setIsMicPressed] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
@@ -168,14 +172,12 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FIX: HANDLE PREVIEW & UPLOAD FOTO 🔥
   const handleGroupPhotoUpload = async (e: any) => {
     const file = e.target.files[0];
     if (!file || !isOwner) return;
     
-    // Tampilkan preview lokal sementara loading
     const objectUrl = URL.createObjectURL(file);
-    setHeaderInfo(prev => ({ ...prev, avatar: objectUrl }));
+    setHeaderInfo(prev => ({ ...prev, avatar: objectUrl })); 
     
     setIsUpdatingGroup(true);
     const fd = new FormData();
@@ -245,6 +247,14 @@ export default function ChatArea() {
     const content = text || inputValue;
     if (!content && !sticker && !audio) return;
     refs.audio.current?.send.play().catch(()=>{});
+
+    if (editMessageId) {
+      await supabase.from('messages').update({ message: content }).eq('id', editMessageId);
+      setEditMessageId(null);
+      setInputValue('');
+      return;
+    }
+
     const { error } = await supabase.from('messages').insert([{
       room_id: roomId, user_id: currentUser.id, message: audio ? "🎤 Voice Note" : (sticker ? "🖼 Stiker" : content),
       sticker_url: sticker || null, audio_url: audio || null, reply_to: replyTo?.id || null, status: 'sent'
@@ -302,10 +312,14 @@ export default function ChatArea() {
       setRecordTime(0);
       refs.recordTimer.current = setInterval(() => setRecordTime(p => p + 1), 1000);
       if (navigator.vibrate) navigator.vibrate(50);
-    } catch (e) { showNotif(t('mic_error'), "error"); }
+    } catch (e) { 
+      setIsMicPressed(false); // Reset jika error
+      showNotif(t('mic_error'), "error"); 
+    }
   };
 
   const stopVN = (cancel = false) => {
+    setIsMicPressed(false); // 🔥 FIX: Hilangkan state animasi merah saat dilepas 🔥
     if (!isRecordingRef.current) return;
     setIsRecording(false); isRecordingRef.current = false;
     setAudioLevel(0);
@@ -317,7 +331,8 @@ export default function ChatArea() {
   };
 
   const handleMicTouchStart = (e: any) => {
-    if (!inputValue.trim()) {
+    if (!inputValue.trim() && !editMessageId) {
+      setIsMicPressed(true); // 🔥 FIX: Set animasi menyala detik itu juga 🔥
       vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       vnIsCanceled.current = false;
       startVN();
@@ -325,9 +340,13 @@ export default function ChatArea() {
   };
 
   const handleMicTouchMove = (e: any) => {
-    if (isRecordingRef.current && !vnIsCanceled.current) {
+    if ((isRecordingRef.current || isMicPressed) && !vnIsCanceled.current) {
       const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
-      if (vnTouchStartX.current - clientX > 80) { vnIsCanceled.current = true; stopVN(true); }
+      const diff = vnTouchStartX.current - clientX;
+      if (diff > 50) { 
+        vnIsCanceled.current = true;
+        stopVN(true); 
+      }
     }
   };
 
@@ -337,10 +356,12 @@ export default function ChatArea() {
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0 });
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
+    
     refs.callTimer.current = setTimeout(async () => {
       endCall(true);
       await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
-    }, 30000);
+    }, 15000); 
+    
     connectLiveKit(roomId);
   };
 
@@ -381,8 +402,24 @@ export default function ChatArea() {
     const d = await res.json(); setStickers(d.data || []);
   };
 
+  const handleSendReaction = async (msgId: string, emoji: string) => {
+    const msg = messages.find(m => m.id === msgId);
+    if(!msg) return;
+    const currentReactions = msg.reactions || {};
+    currentReactions[currentUser.id] = emoji;
+    await supabase.from('messages').update({ reactions: currentReactions }).eq('id', msgId);
+    setReactionMenu(null);
+  };
+
+  const handleDeleteMsg = async (id: string) => {
+    await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', sticker_url: null, audio_url: null }).eq('id', id);
+    setMsgOptions(null);
+  };
+
   return (
     <div className="telegram-chat hype-chat-scope">
+      
+      {/* UI CALL OVERLAY */}
       {callStatus !== 'idle' && (
         <div className="call-overlay">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
@@ -395,14 +432,49 @@ export default function ChatArea() {
         </div>
       )}
 
+      {/* UI DOUBLE TAP REACTION POPUP */}
+      {reactionMenu && (
+        <div className="custom-modal-overlay" onClick={() => setReactionMenu(null)} style={{ zIndex: 100000, background: 'transparent' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            position: 'absolute', top: Math.max(10, reactionMenu.y - 70), left: Math.max(10, Math.min(reactionMenu.x - 100, typeof window !== 'undefined' ? window.innerWidth - 220 : 0)),
+            background: 'var(--bg-panel)', padding: '10px 16px', borderRadius: '30px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+            display: 'flex', gap: '15px', border: '1px solid var(--border-color)', animation: 'hype-pop 0.2s ease'
+          }}>
+            {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
+              <span key={emoji} style={{ fontSize: '24px', cursor: 'pointer', transition: 'transform 0.2s' }} onClick={() => handleSendReaction(reactionMenu.id, emoji)}>{emoji}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* UI LONG PRESS PESAN (HAPUS/EDIT) */}
+      {msgOptions && (
+        <div className="custom-modal-overlay" onClick={() => setMsgOptions(null)}>
+          <div className="custom-modal-content" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '24px 24px 0 0' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', textAlign: 'center' }}>Opsi Pesan</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {msgOptions.user_id === currentUser?.id && !msgOptions.audio_url && !msgOptions.sticker_url && msgOptions.message !== 'Pesan ini telah dihapus' && (
+                <button onClick={() => { setEditMessageId(msgOptions.id); setInputValue(msgOptions.message); setMsgOptions(null); }} style={{ padding: '14px', background: 'var(--bg-main)', border: `1px solid var(--primary-blue)`, borderRadius: '12px', fontWeight: 600, color: 'var(--primary-blue)' }}>
+                  ✏️ Edit Pesan
+                </button>
+              )}
+              {msgOptions.user_id === currentUser?.id && msgOptions.message !== 'Pesan ini telah dihapus' && (
+                <button onClick={() => handleDeleteMsg(msgOptions.id)} style={{ padding: '14px', background: '#ff4757', border: 'none', borderRadius: '12px', fontWeight: 600, color: 'white' }}>
+                  🗑️ Hapus Pesan
+                </button>
+              )}
+              <button onClick={() => setMsgOptions(null)} style={{ padding: '14px', background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                ❌ Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
-          
-          {targetId && (
-            <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} />
-          )}
-
+          {targetId && <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} />}
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
@@ -411,7 +483,6 @@ export default function ChatArea() {
             <div className="status-container">{typingUser ? <span className="status-typing">{t('typing_status', { username: typingUser.username })}</span> : <span className="status-online">{t('online_status', { count: onlineCount })}</span>}</div>
           </div>
         </div>
-        
         <div className="header-right">
           {targetId ? (
             <button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button>
@@ -442,7 +513,14 @@ export default function ChatArea() {
               <span>{t('encryption_notice')}</span>
             </div>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} msg={msg} isMe={msg.user_id === currentUser?.id} onReply={setReplyTo} onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} onDelete={(id:any) => setDeleteMenu(id)} />
+              <MessageBubble 
+                key={msg.id} 
+                msg={msg} 
+                isMe={msg.user_id === currentUser?.id} 
+                onReply={setReplyTo} 
+                onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} 
+                onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
+              />
             ))}
           </>
         )}
@@ -461,14 +539,25 @@ export default function ChatArea() {
       </main>
 
       <footer className="chat-input-container">
+        
+        {/* 🔥 FIX 2: BOX STICKER 3x3 🔥 */}
         {isStickerOpen && (
-          <div id="sticker-menu" style={{ display: 'flex' }}>
+          <div id="sticker-menu">
             <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
             <div id="sticker-list">{stickers.map((s, idx) => <img key={idx} src={s.images.fixed_width_small.url} alt="sticker" onClick={() => sendMessage(undefined, s.images.fixed_width.url)} />)}</div>
           </div>
         )}
+
         <div className="input-row">
-          <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo ? '16px' : '28px' }}>
+          <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId ? '16px' : '28px' }}>
+            
+            {editMessageId && (
+              <div style={{ background: 'rgba(29, 161, 242, 0.1)', borderBottom: '1px solid var(--border-color)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)' }}>✏️ MENGEDIT PESAN</span>
+                <span onClick={() => { setEditMessageId(null); setInputValue(''); }} style={{ cursor: 'pointer', fontSize: '16px', color: 'var(--text-muted)' }}>&times;</span>
+              </div>
+            )}
+
             {replyTo && (
               <div id="reply-preview-box" style={{ display: 'flex' }}>
                 <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0 }}>
@@ -478,13 +567,15 @@ export default function ChatArea() {
                 <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8'}}>&times;</div>
               </div>
             )}
+
             <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
               {isRecording ? (
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}
+                     onTouchMove={handleMicTouchMove}>
                   <span className="online-dot" style={{ background: '#ff4757' }}></span>
                   <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
                   <div style={{ flex: 1 }}>{t('recording')}...</div>
-                  <span style={{ fontSize: '12px', opacity: 0.6 }}>{t('slide_cancel')}</span>
+                  <span style={{ fontSize: '12px', opacity: 0.6 }}>&lt; {t('slide_cancel')}</span>
                 </div>
               ) : (
                 <>
@@ -494,11 +585,18 @@ export default function ChatArea() {
               )}
             </div>
           </div>
-          <button id="action-btn" onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} onClick={() => inputValue.trim() && sendMessage()}><span className="material-icons">{inputValue.trim() ? 'send' : 'mic'}</span></button>
+          
+          {/* 🔥 FIX 1: STATE ISMICPRESSED DITERAPKAN DI CLASS 🔥 */}
+          <button id="action-btn" className={inputValue.trim() || editMessageId ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
+                  onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} 
+                  onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} 
+                  onClick={() => (inputValue.trim() || editMessageId) && sendMessage()}>
+            <span className="material-icons">{editMessageId ? 'check' : (inputValue.trim() ? 'send' : 'mic')}</span>
+          </button>
         </div>
       </footer>
 
-      {/* 🔥 FIX 4: MODAL GROUP SETTINGS (PREVIEW & TOMBOL SIMPAN) 🔥 */}
+      {/* MODAL GROUP SETTINGS */}
       {isGroupSettingsOpen && groupId && (
         <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -520,7 +618,6 @@ export default function ChatArea() {
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
 
-                {/* AREA PREVIEW FOTO */}
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <label style={{ position: 'relative', display: 'inline-block', cursor: isOwner ? 'pointer' : 'default' }}>
                     <img 
@@ -528,14 +625,11 @@ export default function ChatArea() {
                       style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary-blue)', opacity: isUpdatingGroup ? 0.5 : 1, transition: '0.3s' }} 
                       alt="grup" 
                     />
-                    
-                    {/* Tulisan Uploading pas nunggu */}
                     {isUpdatingGroup && (
                       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-blue)', fontWeight: 'bold', fontSize: '11px', background: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}>
                         UPLOADING
                       </div>
                     )}
-                    
                     {isOwner && !isUpdatingGroup && (
                       <div style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--primary-blue)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '3px solid var(--bg-panel)' }}>
                         <span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span>
@@ -546,7 +640,6 @@ export default function ChatArea() {
                   <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px'}}>{isOwner ? 'Klik foto untuk mengganti' : 'Foto Grup'}</p>
                 </div>
 
-                {/* TOMBOL SIMPAN NAMA */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
                   <input 
                     type="text" 

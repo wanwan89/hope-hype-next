@@ -58,7 +58,8 @@ export default function SettingsPage() {
           <div className="st-section-title">{t('appearance')}</div>
           <div className="st-card">
             
-            <div className="st-item" onClick={toggleTheme}>
+            {/* 🔥 FIX: onClick dicabut dari sini, cursor dibikin default 🔥 */}
+            <div className="st-item" style={{ cursor: 'default' }}>
               <div className="st-item-left">
                 <div className="st-icon-box">
                    <span className="material-icons">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
@@ -68,8 +69,9 @@ export default function SettingsPage() {
                   <span className="st-hint">{t('dark_mode_desc')}</span>
                 </div>
               </div>
-              <label className="st-switch" onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" checked={isDarkMode} readOnly />
+              {/* 🔥 FIX: Fungsi toggle dipindah murni ke switch ini 🔥 */}
+              <label className="st-switch" style={{ cursor: 'pointer' }}>
+                <input type="checkbox" checked={isDarkMode} onChange={toggleTheme} />
                 <span className="st-slider"></span>
               </label>
             </div>
@@ -108,7 +110,6 @@ export default function SettingsPage() {
               <span className="material-icons st-arrow">chevron_right</span>
             </div>
 
-            {/* 🔥 FIX: MENU PASSWORD BARU DITAMBAHKAN DI SINI 🔥 */}
             <div className="st-item" onClick={() => router.push('/settings/password')}>
               <div className="st-item-left">
                 <div className="st-icon-box">
@@ -122,7 +123,7 @@ export default function SettingsPage() {
               <span className="material-icons st-arrow">chevron_right</span>
             </div>
 
-            <div className="st-item">
+            <div className="st-item" style={{ cursor: 'default' }}>
               <div className="st-item-left">
                 <div className="st-icon-box">
                   <span className="material-icons">verified_user</span>
