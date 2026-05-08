@@ -37,6 +37,7 @@ declare global {
     openRoomSetting?: () => void;
     closeRoomSetting?: () => void;
     saveRoomSetting?: () => void;
+    openConfirmModal?: () => void; // 🔥 FIX: Udah ditambahin di sini
     closeConfirmModal?: () => void;
     openTopGiftersModal?: () => void;
     closeTopGiftersModal?: () => void;
@@ -56,6 +57,7 @@ function VoiceRoomContent() {
   
   const myTotalGiftSent = useRef(0);
   const myLevel = useRef(1);
+  const isMicOn = useRef(false);
   const giftComboCount = useRef(0);
   const lastGiftId = useRef<number | null>(null);
   const giftAnimTimer = useRef<NodeJS.Timeout | null>(null);
@@ -84,7 +86,6 @@ function VoiceRoomContent() {
     };
     updateTitle();
 
-    // --- HELPER LOGICS ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -232,13 +233,11 @@ function VoiceRoomContent() {
         const { data: p } = await sb.from('profiles').select('*').eq('id', MY_USER_ID.current).single();
         const { data: roomData } = await sb.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
         if (p) { myUsername.current = p.username; myRole.current = p.role; myLevel.current = p.level || 1; myTotalGiftSent.current = p.total_gift_sent || 0; if (document.getElementById('user-coins')) document.getElementById('user-coins')!.innerText = (p.coins || 0).toLocaleString(); }
-        
         if (roomData) {
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
             if (IS_OWNER.current) { await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID); } 
             else if (!roomData.is_active) { showNotif("Panggung sedang ditutup oleh Owner!", "error"); router.push('/hypetalk'); return; }
         }
-
         if (typeof window.LivekitClient !== 'undefined') {
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-livekit-token`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}` }, body: JSON.stringify({ username: myUsername.current, identity: MY_USER_ID.current, roomName: CURRENT_ROOM_ID }) });
@@ -274,7 +273,7 @@ function VoiceRoomContent() {
         });
     }
 
-    // --- GLOBAL WINDOW ASSIGNMENTS ---
+    // 🔥 WINDOW LOGIC 🔥
     window.toggleMicSidebar = async (e) => {
         e?.preventDefault();
         if (!roomRef.current?.localParticipant) return showNotif(t('mic_not_ready'), "warning");
@@ -282,25 +281,23 @@ function VoiceRoomContent() {
         if (!onStage) return showNotif(t('mic_stage_first'), "warning");
 
         const nowEnabled = roomRef.current.localParticipant.isMicrophoneEnabled;
-        const newStatus = !nowEnabled;
-        
-        await roomRef.current.localParticipant.setMicrophoneEnabled(newStatus);
-        await sb.from('profiles').update({ mic_off: !newStatus }).eq('id', MY_USER_ID.current);
+        await roomRef.current.localParticipant.setMicrophoneEnabled(!nowEnabled);
+        await sb.from('profiles').update({ mic_off: nowEnabled }).eq('id', MY_USER_ID.current);
 
         const icon = document.getElementById('mic-icon');
         const text = document.getElementById('mic-text');
         if (icon && text) {
-            icon.innerText = newStatus ? 'mic' : 'mic_off';
-            text.innerText = newStatus ? "Matikan Mic" : "Hidupkan Mic";
-            icon.style.color = newStatus ? '#2ecc71' : '#ef4444';
+            icon.innerText = !nowEnabled ? 'mic' : 'mic_off';
+            text.innerText = !nowEnabled ? "Matikan Mic" : "Hidupkan Mic";
+            icon.style.color = !nowEnabled ? '#2ecc71' : '#ef4444';
         }
         window.toggleSidebar?.();
         fetchStage();
     };
 
     window.mintaNaik = () => {
-        if (IS_OWNER.current) return showNotif("Lu kan owner-nya Bree!", "info");
-        showNotif("Permintaan naik panggung dikirim ke Owner...", "info");
+        if (IS_OWNER.current) return showNotif("Lu owner-nya Bree!", "info");
+        showNotif("Permintaan naik panggung terkirim...", "info");
         channelRef.current.send({ type: 'broadcast', event: 'minta_naik', payload: { userId: MY_USER_ID.current, username: myUsername.current } });
     };
 
@@ -312,7 +309,6 @@ function VoiceRoomContent() {
         if (!MY_USER_ID.current) return showNotif("Login dulu!", "warning");
         const { data: check } = await sb.from('room_slots').select('profile_id').match({ room_id: CURRENT_ROOM_ID, slot_index: idx }).single();
         if (check?.profile_id) return showNotif("Sudah terisi!", "warning");
-        
         if (roomRef.current) await roomRef.current.localParticipant.setMicrophoneEnabled(true);
         await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
         await sb.from('room_slots').update({ profile_id: MY_USER_ID.current }).match({ room_id: CURRENT_ROOM_ID, slot_index: idx });
@@ -339,7 +335,6 @@ function VoiceRoomContent() {
         roomRef.current?.disconnect(); router.push('/hypetalk');
     };
 
-    // 🔥 FIX build error: parameter 'total' must have a type number 🔥
     const LEVEL_THRESHOLDS_VAL = { 1: 0, 2: 1000, 3: 5000, 4: 20000, 5: 50000 };
     function checkLvl(total: number) {
         if (total >= LEVEL_THRESHOLDS_VAL[5]) return { level: 5 };
@@ -355,16 +350,12 @@ function VoiceRoomContent() {
         const total = (typeof harga === 'string' ? parseInt(harga) : harga) * jumlah;
         const { data: bal } = await sb.from('profiles').select('coins').eq('id', MY_USER_ID.current).single();
         if ((bal?.coins || 0) < total) return showNotif("Koin lo kurang Bree!", "error");
-        
         playGiftAnimation(giftId);
         const { data: newTotal, error } = await sb.rpc('transfer_gift', { sender_id: MY_USER_ID.current, receiver_id: selectedTargetId.current, amount: total });
         if (!error) {
             await sb.from('coin_history').insert([{ user_id: MY_USER_ID.current, transaction_type: 'send_gift', amount: -total, description: `Kirim ${giftName} ke ${selectedTargetName.current}` }]);
             let lvlData = checkLvl(newTotal);
-            if (lvlData.level !== myLevel.current) {
-                await sb.from('profiles').update({ level: lvlData.level }).eq('id', MY_USER_ID.current);
-                await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ ${myUsername.current} naik ke Level ${lvlData.level}!` }]);
-            }
+            if (lvlData.level !== myLevel.current) { await sb.from('profiles').update({ level: lvlData.level }).eq('id', MY_USER_ID.current); await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ ${myUsername.current} naik ke Level ${lvlData.level}!` }]); }
             myTotalGiftSent.current = newTotal; myLevel.current = lvlData.level;
             await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM_GIFT", text: `${myUsername.current} mengirim ${giftName} x${jumlah} ke ${selectedTargetName.current}`, role: giftId.toString() }]);
         }
