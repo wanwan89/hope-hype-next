@@ -4,14 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
+// 🔥 FIX: Import fungsi multi-bahasa
+import { useTranslation } from 'react-i18next';
 import './Saldo.css';
 
 export default function SaldoPage() {
   const router = useRouter();
   
+  // 🔥 FIX: Inisialisasi fungsi translasi
+  const { t } = useTranslation();
+  
   const [coins, setCoins] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // 🔥 STATE BARU: Untuk kontrol sembunyi saldo
   const [showBalance, setShowBalance] = useState(true);
 
   // Rate konversi: 1 Koin = Rp 70
@@ -43,7 +47,7 @@ export default function SaldoPage() {
 
     } catch (err: any) {
       console.error("Gagal load saldo:", err.message);
-      showNotif("Gagal memuat saldo", "error");
+      showNotif(t('failed_load_balance', 'Gagal memuat saldo'), "error");
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +65,7 @@ export default function SaldoPage() {
     router.push('/saldo/history');
   };
 
-  // 🔥 FUNGSI TOGGLE MATA
+  // FUNGSI TOGGLE MATA
   const toggleBalance = () => setShowBalance(!showBalance);
 
   return (
@@ -71,7 +75,7 @@ export default function SaldoPage() {
         <button className="saldo-btn-icon" onClick={() => router.back()}>
           <span className="material-icons">arrow_back</span>
         </button>
-        <h2>Saldo & Aset</h2>
+        <h2>{t('wallet_assets', 'Saldo & Aset')}</h2>
         <button className="saldo-btn-icon" onClick={handleCoinHistory}>
           <span className="material-icons">receipt_long</span>
         </button>
@@ -80,9 +84,8 @@ export default function SaldoPage() {
       {/* BALANCE SECTION */}
       <section className="saldo-balance-section">
         <div className="saldo-card">
-          {/* 🔥 MODIFIKASI LABEL: Tambah Tombol Mata 🔥 */}
           <div className="saldo-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            Total Koin HopeHype
+            {t('total_hypecoin', 'Total Koin HopeHype')}
             <span 
               className="material-icons" 
               onClick={toggleBalance} 
@@ -97,7 +100,6 @@ export default function SaldoPage() {
             {isLoading ? (
               <div className="saldo-skeleton" style={{ width: '120px', height: '36px' }}></div>
             ) : (
-              // 🔥 LOGIKA SEMBUNYIKAN SALDO
               showBalance ? (coins || 0).toLocaleString('id-ID') : '••••••'
             )}
           </div>
@@ -106,8 +108,7 @@ export default function SaldoPage() {
             {isLoading ? (
               <div className="saldo-skeleton" style={{ width: '80px', height: '14px' }}></div>
             ) : (
-              // 🔥 LOGIKA SEMBUNYIKAN ESTIMASI IDR
-              `Setara Rp ${showBalance ? ((coins || 0) * IDR_RATE).toLocaleString('id-ID') : '••••••'}`
+              `${t('equivalent_to', 'Setara Rp')} ${showBalance ? ((coins || 0) * IDR_RATE).toLocaleString('id-ID') : '••••••'}`
             )}
           </div>
         </div>
@@ -117,16 +118,16 @@ export default function SaldoPage() {
       <div className="saldo-menu-row">
         <button className="saldo-action-btn" onClick={handleWithdraw}>
           <span className="material-icons">account_balance_wallet</span>
-          <span>Tarik Tunai</span>
+          <span>{t('withdraw_cash', 'Tarik Tunai')}</span>
         </button>
         <button className="saldo-action-btn" onClick={handleWithdrawHistory}>
           <span className="material-icons">history</span>
-          <span>Riwayat WD</span>
+          <span>{t('withdraw_history', 'Riwayat WD')}</span>
         </button>
       </div>
 
       {/* ASSETS GRID */}
-      <h3 className="saldo-section-title">Aset Lainnya</h3>
+      <h3 className="saldo-section-title">{t('other_assets', 'Aset Lainnya')}</h3>
       <div className="saldo-assets-list">
         
         <div className="saldo-asset-item" onClick={handleCoinHistory} style={{ cursor: 'pointer' }}>
@@ -135,15 +136,14 @@ export default function SaldoPage() {
               <span className="material-icons" style={{ color: '#f59e0b' }}>toll</span>
             </div>
             <div className="saldo-asset-text">
-              <h4>Koin Hope</h4>
-              <p>Klik untuk lihat riwayat mutasi</p>
+              <h4>{t('hope_coin', 'Koin Hope')}</h4>
+              <p>{t('click_to_view_history', 'Klik untuk lihat riwayat mutasi')}</p>
             </div>
           </div>
           <div className="saldo-asset-value">
             {isLoading ? (
               <div className="saldo-skeleton" style={{ width: '40px', height: '20px' }}></div>
             ) : (
-              // 🔥 KONSISTEN: Sembunyikan juga di daftar aset
               showBalance ? (coins || 0).toLocaleString('id-ID') : '••••'
             )}
           </div>
@@ -155,8 +155,8 @@ export default function SaldoPage() {
               <span className="material-icons" style={{ color: '#10b981' }}>confirmation_number</span>
             </div>
             <div className="saldo-asset-text">
-              <h4>Tiket Undian</h4>
-              <p>Digunakan di Pusat Misi</p>
+              <h4>{t('raffle_ticket', 'Tiket Undian')}</h4>
+              <p>{t('used_in_mission_center', 'Digunakan di Pusat Misi')}</p>
             </div>
           </div>
           <div className="saldo-asset-value">0</div>

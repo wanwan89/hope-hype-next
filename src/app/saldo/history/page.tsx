@@ -4,10 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
+import { useTranslation } from 'react-i18next';
 import './CoinHistory.css';
 
 export default function CoinHistoryPage() {
   const router = useRouter();
+  
+  const { t } = useTranslation();
+
   const [loading, setLoading] = useState(true);
   const [totalCoins, setTotalCoins] = useState(0);
   const [history, setHistory] = useState<any[]>([]);
@@ -41,7 +45,7 @@ export default function CoinHistoryPage() {
       setHistory(chData || []);
     } catch (err: any) {
       console.error(err);
-      showNotif("Gagal ambil riwayat koin", "error");
+      showNotif(t('failed_load_history', 'Gagal ambil riwayat koin'), "error");
     } finally {
       setLoading(false);
     }
@@ -55,19 +59,60 @@ export default function CoinHistoryPage() {
     }).replace('pukul ', '');
   };
 
+  // 🔥 FIX: SISTEM DOWNLOAD EXCEL (CSV) 🔥
+  const handleDownloadExcel = () => {
+    if (history.length === 0) {
+      return showNotif(t('no_data_export', 'Tidak ada data untuk diunduh'), 'warning');
+    }
+
+    // Buat Header Tabel
+    const headers = ['Tanggal', 'Aktivitas', 'Tipe', 'Jumlah Koin'];
+    const csvRows = [headers.join(',')];
+
+    // Isi Baris Data
+    history.forEach(item => {
+      const date = formatDate(item.created_at).replace(/,/g, ''); // Hapus koma biar CSV ga berantakan
+      const desc = (item.description || t('transaction', 'Transaksi')).replace(/,/g, '');
+      const amount = Number(item.amount) || 0;
+      const isIncome = item.type === 'masuk' || (item.type !== 'keluar' && amount >= 0);
+      const type = isIncome ? 'Masuk' : 'Keluar';
+      
+      csvRows.push(`${date},${desc},${type},${Math.abs(amount)}`);
+    });
+
+    // Bikin File dan Trigger Download
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'Riwayat_Koin_HypeTalk.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotif(t('download_success', 'File Excel berhasil diunduh!'), 'success');
+  };
+
+  // 🔥 SISTEM MOCKUP GOOGLE DRIVE 🔥
+  const handleSaveToDrive = () => {
+    showNotif("Fitur Simpan ke Google Drive sedang dalam tahap integrasi API. Segera Hadir!", "info");
+  };
+
   return (
     <div className="coin-hist-wrapper">
       <header className="coin-hist-header">
         <button className="coin-hist-back-btn" onClick={() => router.back()}>
           <span className="material-icons">arrow_back</span>
         </button>
-        <h1>Riwayat Koin</h1>
+        <h1>{t('coin_history', 'Riwayat Koin')}</h1>
       </header>
 
       <main className="coin-hist-container">
         {/* TOTAL BALANCE CARD */}
         <div className="coin-hist-balance-card">
-          <p className="coin-hist-label">Total Koin Saat Ini</p>
+          <p className="coin-hist-label">{t('current_total_coins', 'Total Koin Saat Ini')}</p>
           <div className="coin-hist-amount-main">
             {loading ? (
               <div className="ch-skeleton" style={{ width: '100px', height: '40px', margin: '0 auto' }}></div>
@@ -77,7 +122,26 @@ export default function CoinHistoryPage() {
           </div>
         </div>
 
-        <h3 className="coin-hist-subtitle">Aktivitas Terbaru</h3>
+        {/* 🔥 TOMBOL EKSPOR DATA 🔥 */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <button 
+            onClick={handleDownloadExcel} 
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '12px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+          >
+            <span className="material-icons" style={{ fontSize: '18px', color: '#10b981' }}>description</span>
+            {t('download_excel', 'Unduh Excel')}
+          </button>
+
+          <button 
+            onClick={handleSaveToDrive} 
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#ebf8ff', color: '#0f172a', border: '1px solid #bbf7d0', padding: '10px', borderRadius: '12px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+          >
+            <span className="material-icons" style={{ fontSize: '18px', color: '#3b82f6' }}>add_to_drive</span>
+            {t('save_to_drive', 'Simpan ke Drive')}
+          </button>
+        </div>
+
+        <h3 className="coin-hist-subtitle">{t('recent_activity', 'Aktivitas Terbaru')}</h3>
 
         <div className="coin-hist-list">
           {loading ? (
@@ -93,7 +157,7 @@ export default function CoinHistoryPage() {
           ) : history.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ch-text-muted)' }}>
               <span className="material-icons" style={{ fontSize: '48px', opacity: 0.2 }}>history</span>
-              <p style={{ marginTop: '10px', fontSize: '14px' }}>Belum ada riwayat aktivitas koin.</p>
+              <p style={{ marginTop: '10px', fontSize: '14px' }}>{t('no_coin_history', 'Belum ada riwayat aktivitas koin.')}</p>
             </div>
           ) : (
             history.map((item) => {
@@ -104,7 +168,7 @@ export default function CoinHistoryPage() {
               return (
                 <div key={item.id} className="coin-hist-item">
                   <div className="coin-hist-info">
-                    <span className="coin-hist-desc">{item.description || 'Transaksi'}</span>
+                    <span className="coin-hist-desc">{item.description || t('transaction', 'Transaksi')}</span>
                     <span className="coin-hist-date">{formatDate(item.created_at)}</span>
                   </div>
                   <div className={`coin-hist-trx-amount ${isIncome ? 'plus' : 'minus'}`}>

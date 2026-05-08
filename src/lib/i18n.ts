@@ -24,6 +24,10 @@ const resources = {
       "save_changes": "Simpan Perubahan",
       "oops": "Waduh",
       "loading_data": "Memuat data...",
+      "understand": "Mengerti",
+      "month": "Bulan",
+      "processing": "Memproses...",
+      "loading": "Loading...",
 
       // --- Kategori Sidebar & Post ---
       "cat_all": "Semua",
@@ -51,12 +55,11 @@ const resources = {
       "tab_like": "Suka",
       "no_posts": "Belum ada postingan",
       "create_post": "Buat Postingan",
-
-      // 🔥 FIX: Modal Edit Profil 🔥
       "edit_profile_modal": "Edit Profil",
       "username_label": "Username",
       "bio_label": "Bio",
       "link_label": "Tautan / Website",
+      "share_profile_text": "Yuk mampir ke profil {{name}} di HypeTalk!",
 
       // --- Galeri / Feed ---
       "no_posts_found": "Tidak ada postingan.",
@@ -105,6 +108,38 @@ const resources = {
       "mission_center": "Pusat Misi",
       "contact_us": "Hubungi Kami",
       "share_profile": "Bagikan Profil",
+
+      // --- Saldo & Withdraw ---
+      "total_hypecoin": "Total Koin HopeHype",
+      "equivalent_to": "Setara Rp",
+      "withdraw_cash": "Tarik Tunai",
+      "withdraw_history": "Riwayat WD",
+      "other_assets": "Aset Lainnya",
+      "hope_coin": "Koin Hope",
+      "click_to_view_history": "Klik untuk lihat riwayat mutasi",
+      "raffle_ticket": "Tiket Undian",
+      "used_in_mission_center": "Digunakan di Pusat Misi",
+      "coin_history": "Riwayat Koin",
+      "current_total_coins": "Total Koin Saat Ini",
+      "recent_activity": "Aktivitas Terbaru",
+      "no_coin_history": "Belum ada riwayat aktivitas koin.",
+      "transaction": "Transaksi",
+      "withdraw_history_title": "Riwayat Penarikan",
+      "no_withdraw_history": "Belum ada riwayat penarikan.",
+      "coins": "Koin",
+      "download_excel": "Unduh Excel",
+      "save_to_drive": "Simpan ke Drive",
+      "download_success": "File Excel berhasil diunduh!",
+      "no_data_export": "Tidak ada data untuk diunduh",
+
+      // --- Notifikasi ---
+      "notifications": "Notifikasi",
+      "today": "Hari ini",
+      "empty_notifications": "Belum ada notifikasi nih.",
+      "notif_grouped_like": "<b>{{name}}</b> dan {{count}} lainnya menyukai postinganmu.",
+      "notif_grouped_repost": "<b>{{name}}</b> dan {{count}} lainnya membagikan ulang karyamu.",
+      "notif_grouped_follow": "<b>{{name}}</b> dan {{count}} lainnya mulai mengikuti kamu.",
+      "notif_single_repost": "<b>{{name}}</b> membagikan ulang karyamu.",
 
       // --- Voice Lobby & Room ---
       "hi_bree": "Halo, Bree!",
@@ -187,6 +222,48 @@ const resources = {
       "session_expired": "Sesi habis, login lagi ya",
       "room_closed_notif": "Room tutup!",
 
+      // --- Auth & Login ---
+      "login_subtitle": "Login dulu buat lanjut cari hype",
+      "signup_subtitle": "Bikin akun buat pamer karya lo",
+      "login_btn": "Masuk Sekarang",
+      "signup_btn": "Daftar Akun",
+      "forgot_password": "Lupa password?",
+      "or_divider": "Atau masuk dengan",
+      "login_success_notif": "Selamat datang kembali, Bree!",
+      "signup_success_notif": "Berhasil daftar! Cek email untuk aktivasi.",
+      "forgot_pass_error": "Ketik email lo dulu di kolom Email!",
+      "forgot_pass_success": "Berhasil! Cek email buat reset password.",
+
+      // --- VIP Benefits ---
+      "vip_verif_1": "Centang Biru Eksklusif",
+      "vip_verif_1_desc": "Tanda resmi akun terverifikasi.",
+      "vip_verif_2": "Prioritas Pencarian",
+      "vip_verif_2_desc": "Akun lebih mudah ditemukan.",
+      "vip_verif_3": "Profil Terpercaya",
+      "vip_verif_3_desc": "Tampil profesional.",
+      "vip_bronze_1": "Badge Perunggu",
+      "vip_bronze_1_desc": "Tampil beda dengan badge VIP.",
+      "vip_bronze_2": "Highlight Komentar",
+      "vip_bronze_2_desc": "Warna khusus di komentar.",
+      "vip_bronze_3": "Stiker VIP",
+      "vip_bronze_3_desc": "Akses stiker eksklusif.",
+      "vip_silver_1": "Badge Perak",
+      "vip_silver_1_desc": "Badge lebih elegan.",
+      "vip_silver_2": "Efek Masuk",
+      "vip_silver_2_desc": "Notifikasi khusus saat masuk room.",
+      "vip_silver_3": "Limit Ekstra",
+      "vip_silver_3_desc": "Batas pesan lebih banyak.",
+      "vip_silver_4": "Plus",
+      "vip_silver_4_desc": "Dapat SEMUA keuntungan Bronze.",
+      "vip_gold_1": "Badge Emas",
+      "vip_gold_1_desc": "Kasta tertinggi.",
+      "vip_gold_2": "Animasi Mewah",
+      "vip_gold_2_desc": "Efek visual super mencolok.",
+      "vip_gold_3": "Bebas Iklan 100%",
+      "vip_gold_3_desc": "Aplikasi tanpa iklan.",
+      "vip_gold_4": "Super Plus",
+      "vip_gold_4_desc": "Dapat keuntungan Bronze & Silver.",
+
       // --- CHAT ROOM (NEW) ---
       "msg_deleted": "Pesan ini telah dihapus",
       "media_label": "Media",
@@ -211,7 +288,7 @@ const resources = {
       "btn_answer": "Jawab",
       "btn_decline": "Tutup",
       
-      // --- TAMBAHAN MODULAR VOICE ROOM ---
+      // --- TAMBAHAN MODULAR VOICE ROOM & CONTACT ---
       "system_rule_msg": "Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu jawab dengan sopan, santai, dan tetap menghargai orang lain ya!",
       "share_room_text": "Gabung panggung suara yuk!",
       "type_comment": "Ketik komentar...",
@@ -228,7 +305,31 @@ const resources = {
       "btn_confirm": "YAKIN",
       "the_sultan": "🏆 THE SULTAN",
       "turn_off_mic": "Matikan Mic",
-      "leave_room": "Keluar Ruangan"
+      "leave_room": "Keluar Ruangan",
+
+      "contact_desc": "Punya keluhan, menemukan bug, atau ada ide keren buat HopeHype? Jangan ragu buat ngobrol sama kami!",
+      "send_direct_message": "Kirim Pesan Langsung",
+      "your_name": "Nama Kamu",
+      "name_placeholder": "Misal: John Doe",
+      "email_address": "Alamat Email",
+      "message_category": "Kategori Pesan",
+      "message_detail": "Detail Pesan",
+      "message_placeholder": "Jelaskan keluhan atau saran kamu secara detail...",
+      "btn_send_message": "Kirim Pesan",
+      "social_media_contact": "Sosial Media & Kontak",
+      "cat_suggestion": "Kritik & Saran",
+      "cat_bug": "Laporan Bug / Error",
+      "cat_payment": "Keluhan Pembayaran / Koin",
+      "cat_other": "Lainnya",
+      "fill_all_fields": "Harap isi semua kolom yang tersedia",
+      "message_sent": "Pesan terkirim! Terima kasih atas masukannya.",
+      "message_failed": "Gagal mengirim pesan. Coba lagi nanti.",
+
+      // --- Global Share Modal ---
+      "share_title": "Bagikan",
+      "copy_link": "Salin Tautan",
+      "copy": "Salin",
+      "copied": "Disalin!"
     }
   },
   en: {
@@ -249,6 +350,10 @@ const resources = {
       "save_changes": "Save Changes",
       "oops": "Oops",
       "loading_data": "Loading...",
+      "understand": "Understand",
+      "month": "Month",
+      "processing": "Processing...",
+      "loading": "Loading...",
 
       "cat_all": "All",
       "cat_karya": "Works",
@@ -274,12 +379,11 @@ const resources = {
       "tab_like": "Like",
       "no_posts": "No posts yet",
       "create_post": "Create Post",
-
-      // 🔥 FIX: Modal Edit Profil 🔥
       "edit_profile_modal": "Edit Profile",
       "username_label": "Username",
       "bio_label": "Bio",
       "link_label": "Link / Website",
+      "share_profile_text": "Come visit {{name}}'s profile on HypeTalk!",
 
       "no_posts_found": "No posts found.",
       "uploaded_on": "Uploaded",
@@ -325,6 +429,36 @@ const resources = {
       "mission_center": "Mission Center",
       "contact_us": "Contact Us",
       "share_profile": "Share Profile",
+
+      "total_hypecoin": "Total HopeHype Coins",
+      "equivalent_to": "Equivalent to",
+      "withdraw_cash": "Withdraw",
+      "withdraw_history": "WD History",
+      "other_assets": "Other Assets",
+      "hope_coin": "Hope Coin",
+      "click_to_view_history": "Click to view history",
+      "raffle_ticket": "Raffle Ticket",
+      "used_in_mission_center": "Used in Mission Center",
+      "coin_history": "Coin History",
+      "current_total_coins": "Current Total Coins",
+      "recent_activity": "Recent Activity",
+      "no_coin_history": "No coin activity history yet.",
+      "transaction": "Transaction",
+      "withdraw_history_title": "Withdrawal History",
+      "no_withdraw_history": "No withdrawal history yet.",
+      "coins": "Coins",
+      "download_excel": "Download Excel",
+      "save_to_drive": "Save to Drive",
+      "download_success": "Excel file downloaded successfully!",
+      "no_data_export": "No data available to export",
+
+      "notifications": "Notifications",
+      "today": "Today",
+      "empty_notifications": "No notifications yet.",
+      "notif_grouped_like": "<b>{{name}}</b> and {{count}} others liked your post.",
+      "notif_grouped_repost": "<b>{{name}}</b> and {{count}} others shared your work.",
+      "notif_grouped_follow": "<b>{{name}}</b> and {{count}} others started following you.",
+      "notif_single_repost": "<b>{{name}}</b> shared your work.",
 
       "hi_bree": "Hi, Bree!",
       "category_popular": "Popular",
@@ -403,13 +537,52 @@ const resources = {
       "session_expired": "Session expired",
       "room_closed_notif": "Room closed!",
 
-      // --- CHAT ROOM (NEW) ---
+      "login_subtitle": "Login first to continue searching for hype",
+      "signup_subtitle": "Create an account to show off your work",
+      "login_btn": "Login Now",
+      "signup_btn": "Register Account",
+      "forgot_password": "Forgot password?",
+      "or_divider": "Or sign in with",
+      "login_success_notif": "Welcome back!",
+      "signup_success_notif": "Registration successful! Check email for activation.",
+      "forgot_pass_error": "Please enter your email first!",
+      "forgot_pass_success": "Success! Check email to reset password.",
+
+      "vip_verif_1": "Exclusive Verified Badge",
+      "vip_verif_1_desc": "Official sign of a verified account.",
+      "vip_verif_2": "Search Priority",
+      "vip_verif_2_desc": "Account is easier to find.",
+      "vip_verif_3": "Trusted Profile",
+      "vip_verif_3_desc": "Look professional.",
+      "vip_bronze_1": "Bronze Badge",
+      "vip_bronze_1_desc": "Stand out with a VIP badge.",
+      "vip_bronze_2": "Comment Highlight",
+      "vip_bronze_2_desc": "Special color in comments.",
+      "vip_bronze_3": "VIP Stickers",
+      "vip_bronze_3_desc": "Access exclusive stickers.",
+      "vip_silver_1": "Silver Badge",
+      "vip_silver_1_desc": "More elegant badge.",
+      "vip_silver_2": "Entrance Effect",
+      "vip_silver_2_desc": "Special notification when entering room.",
+      "vip_silver_3": "Extra Limit",
+      "vip_silver_3_desc": "Increased message limits.",
+      "vip_silver_4": "Plus",
+      "vip_silver_4_desc": "Includes ALL Bronze benefits.",
+      "vip_gold_1": "Gold Badge",
+      "vip_gold_1_desc": "The highest tier.",
+      "vip_gold_2": "Luxury Animation",
+      "vip_gold_2_desc": "Super eye-catching visual effects.",
+      "vip_gold_3": "100% Ad-Free",
+      "vip_gold_3_desc": "App without ads.",
+      "vip_gold_4": "Super Plus",
+      "vip_gold_4_desc": "Includes Bronze & Silver benefits.",
+
       "msg_deleted": "This message was deleted",
       "media_label": "Media",
       "typing_status": "{{username}} is typing...",
       "online_status": "{{count}} Online",
       "connecting_chat": "Connecting to chat...",
-      "encryption_notice": "Messages and calls are end-to-end encrypted. No one outside of this chat can read or listen to them.",
+      "encryption_notice": "Messages and calls are end-to-end encrypted.",
       "search_sticker": "Search stickers...",
       "write_message": "Write a message...",
       "slide_cancel": "Slide to cancel",
@@ -417,7 +590,7 @@ const resources = {
       "btn_delete": "Delete",
       "group_info": "Group Info",
       "group_id": "Group ID: ",
-      "group_share": "Share this ID with your friends so they can search for it in the Chat Search menu and join the group.",
+      "group_share": "Share this ID with friends.",
       "btn_copy_id": "Copy Group ID",
       "copied_success": "Group ID copied successfully!",
       "vn_canceled": "Voice Note Canceled",
@@ -427,7 +600,6 @@ const resources = {
       "btn_answer": "Answer",
       "btn_decline": "Decline",
 
-      // --- TAMBAHAN MODULAR VOICE ROOM ---
       "system_rule_msg": "Do not use harsh words, insults, or bullying in any form. Always reply politely, casually, and respect others!",
       "share_room_text": "Let's join the voice stage!",
       "type_comment": "Type a comment...",
@@ -444,7 +616,30 @@ const resources = {
       "btn_confirm": "SURE",
       "the_sultan": "🏆 THE SULTAN",
       "turn_off_mic": "Turn Off Mic",
-      "leave_room": "Leave Room"
+      "leave_room": "Leave Room",
+
+      "contact_desc": "Have a complaint, found a bug, or have a cool idea for HopeHype? Don't hesitate to chat with us!",
+      "send_direct_message": "Send Direct Message",
+      "your_name": "Your Name",
+      "name_placeholder": "e.g., John Doe",
+      "email_address": "Email Address",
+      "message_category": "Message Category",
+      "message_detail": "Message Detail",
+      "message_placeholder": "Explain your complaint or suggestion in detail...",
+      "btn_send_message": "Send Message",
+      "social_media_contact": "Social Media & Contact",
+      "cat_suggestion": "Feedback & Suggestion",
+      "cat_bug": "Bug Report / Error",
+      "cat_payment": "Payment / Coin Issue",
+      "cat_other": "Others",
+      "fill_all_fields": "Please fill all required fields",
+      "message_sent": "Message sent! Thank you for your feedback.",
+      "message_failed": "Failed to send message. Try again later.",
+
+      "share_title": "Share",
+      "copy_link": "Copy Link",
+      "copy": "Copy",
+      "copied": "Copied!"
     }
   },
   zh: {
@@ -465,6 +660,10 @@ const resources = {
       "save_changes": "保存更改",
       "oops": "哎呀",
       "loading_data": "加载中...",
+      "understand": "明白",
+      "month": "月",
+      "processing": "处理中...",
+      "loading": "加载中...",
 
       "cat_all": "全部",
       "cat_karya": "作品",
@@ -490,8 +689,6 @@ const resources = {
       "tab_like": "点赞",
       "no_posts": "暂无帖子",
       "create_post": "发布帖子",
-
-      // 🔥 FIX: Modal Edit Profil 🔥
       "edit_profile_modal": "编辑资料",
       "username_label": "用户名",
       "bio_label": "个人简介",
@@ -542,6 +739,31 @@ const resources = {
       "contact_us": "联系我们",
       "share_profile": "分享主页",
 
+      "total_hypecoin": "HopeHype 币总数",
+      "equivalent_to": "相当于",
+      "withdraw_cash": "提现",
+      "withdraw_history": "提现记录",
+      "other_assets": "其他资产",
+      "hope_coin": "Hope 币",
+      "coin_history": "代币记录",
+      "current_total_coins": "当前代币总数",
+      "recent_activity": "最近活动",
+      "no_coin_history": "暂无代币活动记录。",
+      "transaction": "交易",
+      "withdraw_history_title": "提现历史",
+      "no_withdraw_history": "暂无提现历史。",
+      "coins": "硬币",
+      "download_excel": "下载 Excel",
+      "save_to_drive": "保存到云端硬盘",
+      "download_success": "Excel 文件下载成功！",
+
+      "notifications": "通知",
+      "today": "今天",
+      "empty_notifications": "暂无通知。",
+      "notif_grouped_like": "<b>{{name}}</b> 和其他 {{count}} 人赞了你的帖子。",
+      "notif_grouped_repost": "<b>{{name}}</b> 和其他 {{count}} 人转发了你的作品。",
+      "notif_grouped_follow": "<b>{{name}}</b> 和其他 {{count}} 人开始关注你。",
+
       "hi_bree": "你好，Bree!",
       "category_popular": "热门",
       "category_singing": "唱歌",
@@ -574,7 +796,7 @@ const resources = {
       "seat_occupied": "位置已被占用！",
       "kick_confirm": "移出 {{name}}?",
       "close_room_confirm": "关闭舞台并清除记录？",
-      "owner_only": "仅限房主！",
+      "owner_only": "房主特权！",
       "room_name_empty": "名称不能为空！",
       "top_rank": "排行",
       "loading_leaderboard": "计算中...",
@@ -619,7 +841,14 @@ const resources = {
       "session_expired": "会话过期",
       "room_closed_notif": "房间已关闭！",
 
-      // --- CHAT ROOM (NEW) ---
+      "login_subtitle": "先登录以继续寻找热度",
+      "signup_subtitle": "创建一个账户来展示你的作品",
+      "login_btn": "立即登录",
+      "signup_btn": "注册账户",
+      "forgot_password": "忘记密码？",
+      "or_divider": "或登录方式",
+      "login_success_notif": "欢迎回来！",
+
       "msg_deleted": "此消息已删除",
       "media_label": "媒体",
       "typing_status": "{{username}} 正在输入...",
@@ -643,7 +872,6 @@ const resources = {
       "btn_answer": "接听",
       "btn_decline": "拒绝",
 
-      // --- TAMBAHAN MODULAR VOICE ROOM ---
       "system_rule_msg": "请勿使用任何形式的粗言秽语、侮辱或欺凌。请始终礼貌、轻松地回复，并尊重他人！",
       "share_room_text": "一起加入语音舞台吧！",
       "type_comment": "输入评论...",
@@ -660,7 +888,27 @@ const resources = {
       "btn_confirm": "确定",
       "the_sultan": "🏆 大佬榜",
       "turn_off_mic": "关麦",
-      "leave_room": "离开房间"
+      "leave_room": "离开房间",
+
+      "contact_desc": "有什么投诉、发现错误或对 HopeHype 有什么好主意吗？尽管联系我们！",
+      "send_direct_message": "发送直接消息",
+      "your_name": "你的名字",
+      "name_placeholder": "例如：张三",
+      "email_address": "电子邮件地址",
+      "message_category": "消息类别",
+      "message_detail": "消息详情",
+      "message_placeholder": "请详细说明您的投诉或建议...",
+      "btn_send_message": "发送消息",
+      "social_media_contact": "社交媒体与联系方式",
+      "cat_suggestion": "反馈与建议",
+      "cat_bug": "错误报告",
+      "cat_payment": "付款/代币问题",
+      "cat_other": "其他",
+
+      "share_title": "分享",
+      "copy_link": "复制链接",
+      "copy": "复制",
+      "copied": "已复制！"
     }
   },
   ko: {
@@ -681,6 +929,10 @@ const resources = {
       "save_changes": "변경사항 저장",
       "oops": "어머나",
       "loading_data": "불러오는 중...",
+      "understand": "이해함",
+      "month": "월",
+      "processing": "처리 중...",
+      "loading": "로딩 중...",
 
       "cat_all": "전체",
       "cat_karya": "작품",
@@ -706,8 +958,6 @@ const resources = {
       "tab_like": "좋아요",
       "no_posts": "게시물이 없습니다",
       "create_post": "게시물 작성",
-
-      // 🔥 FIX: Modal Edit Profil 🔥
       "edit_profile_modal": "프로필 편집",
       "username_label": "사용자 이름",
       "bio_label": "소개",
@@ -757,6 +1007,31 @@ const resources = {
       "mission_center": "미션 센터",
       "contact_us": "고객 센터",
       "share_profile": "프로필 공유",
+
+      "total_hypecoin": "총 HopeHype 코인",
+      "equivalent_to": "상당액",
+      "withdraw_cash": "출금하기",
+      "withdraw_history": "출금 내역",
+      "other_assets": "기타 자산",
+      "hope_coin": "Hope 코인",
+      "coin_history": "코인 내역",
+      "current_total_coins": "현재 코인 총액",
+      "recent_activity": "최근 활동",
+      "no_coin_history": "코인 활동 내역이 없습니다.",
+      "transaction": "거래",
+      "withdraw_history_title": "출금 내역",
+      "no_withdraw_history": "출금 내역이 없습니다.",
+      "coins": "코인",
+      "download_excel": "Excel 다운로드",
+      "save_to_drive": "드라이브에 저장",
+      "download_success": "Excel 파일을 성공적으로 다운로드했습니다!",
+
+      "notifications": "알림",
+      "today": "오늘",
+      "empty_notifications": "알림이 없습니다.",
+      "notif_grouped_like": "<b>{{name}}</b>님 외 {{count}}명이 게시물을 좋아합니다.",
+      "notif_grouped_repost": "<b>{{name}}</b>님 외 {{count}}명이 작품을 공유했습니다.",
+      "notif_grouped_follow": "<b>{{name}}</b>님 외 {{count}}명이 팔로우를 시작했습니다.",
 
       "hi_bree": "안녕하세요, Bree님!",
       "category_popular": "인기",
@@ -835,7 +1110,14 @@ const resources = {
       "session_expired": "세션 만료",
       "room_closed_notif": "방이 닫혔습니다!",
 
-      // --- CHAT ROOM (NEW) ---
+      "login_subtitle": "계속하려면 먼저 로그인하세요",
+      "signup_subtitle": "작품을 보여주기 위해 계정을 만드세요",
+      "login_btn": "지금 로그인",
+      "signup_btn": "계정 등록",
+      "forgot_password": "비밀번호를 잊으셨나요?",
+      "or_divider": "또는 다음으로 로그인",
+      "login_success_notif": "다시 오신 것을 환영합니다!",
+
       "msg_deleted": "삭제된 메시지입니다",
       "media_label": "미디어",
       "typing_status": "{{username}}님이 입력 중...",
@@ -859,7 +1141,6 @@ const resources = {
       "btn_answer": "응답",
       "btn_decline": "거절",
 
-      // --- TAMBAHAN MODULAR VOICE ROOM ---
       "system_rule_msg": "어떤 형태의 욕설, 모욕, 괴롭힘도 사용하지 마세요. 항상 예의 바르고 편안하게 대답하며 다른 사람을 존중해 주세요!",
       "share_room_text": "보이스 스테이지에 함께 참여해요!",
       "type_comment": "댓글 입력...",
@@ -876,7 +1157,29 @@ const resources = {
       "btn_confirm": "확인",
       "the_sultan": "🏆 더 술탄",
       "turn_off_mic": "마이크 끄기",
-      "leave_room": "방 나가기"
+      "leave_room": "방 나가기",
+
+      "contact_desc": "불편 사항, 버그 제보 또는 HopeHype를 위한 좋은 아이디어가 있으신가요? 언제든 문의해 주세요!",
+      "send_direct_message": "직접 메시지 보내기",
+      "your_name": "이름",
+      "name_placeholder": "예: 홍길동",
+      "email_address": "이메일 주소",
+      "message_category": "문의 유형",
+      "message_detail": "문의 내용",
+      "message_placeholder": "내용을 자세히 적어주세요...",
+      "btn_send_message": "메시지 전송",
+      "social_media_contact": "소셜 미디어 및 연락처",
+      "cat_suggestion": "제안 및 피드백",
+      "cat_bug": "버그 제보",
+      "cat_payment": "결제/코인 문의",
+      "cat_other": "기타",
+
+      "share_title": "공유하기",
+      "copy_link": "링크 복사",
+      "copy": "복사",
+      "copied": "복사됨!",
+      "share_room_text": "보이스 스테이지에 함께 참여해요!",
+      "type_comment": "댓글 입력..."
     }
   }
 };

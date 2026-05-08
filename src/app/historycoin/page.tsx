@@ -4,10 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
+// 🔥 FIX 1: Import multi-bahasa
+import { useTranslation } from 'react-i18next';
 import './HistoryCoin.css';
 
 export default function HistoryWithdrawPage() {
   const router = useRouter();
+  
+  // 🔥 FIX 2: Inisialisasi i18n
+  const { t } = useTranslation();
   
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +47,7 @@ export default function HistoryWithdrawPage() {
 
     } catch (err: any) {
       console.error("Gagal load history withdraw:", err.message);
-      showNotif("Gagal memuat riwayat", "error");
+      showNotif(t('failed_load_history', 'Gagal memuat riwayat'), "error");
     } finally {
       setIsLoading(false);
     }
@@ -51,13 +56,13 @@ export default function HistoryWithdrawPage() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', { 
-      day: 'numeric', month: 'short', year: 'numeric'
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
   };
 
   const renderStatus = (status: string) => {
     const st = (status || 'pending').toLowerCase();
-    // Sesuaikan class dengan CSS status-pending, status-success, status-rejected
     let statusLabel = status;
     let statusClass = 'pending';
 
@@ -70,6 +75,46 @@ export default function HistoryWithdrawPage() {
     return <span className={`history-status status-${statusClass}`}>{statusLabel}</span>;
   };
 
+  // 🔥 FIX 3: SISTEM DOWNLOAD EXCEL (CSV) 🔥
+  const handleDownloadExcel = () => {
+    if (withdrawals.length === 0) {
+      return showNotif(t('no_data_export', 'Tidak ada data untuk diunduh'), 'warning');
+    }
+
+    // Buat Header Tabel
+    const headers = ['Tanggal', 'Metode Penarikan', 'Status', 'Jumlah Koin', 'Total Rupiah (Rp)'];
+    const csvRows = [headers.join(',')];
+
+    // Isi Baris Data
+    withdrawals.forEach(wd => {
+      const date = formatDate(wd.created_at).replace(/,/g, ''); // Hapus koma biar format CSV aman
+      const koin = wd.amount || 0;
+      const rp = koin * IDR_RATE;
+      
+      csvRows.push(`${date},${wd.method},${wd.status},${koin},${rp}`);
+    });
+
+    // Bikin File dan Trigger Download
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'Riwayat_Penarikan_HypeTalk.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotif(t('download_success', 'File Excel berhasil diunduh!'), 'success');
+  };
+
+  // 🔥 SISTEM MOCKUP GOOGLE DRIVE 🔥
+  const handleSaveToDrive = () => {
+    // Note: Integrasi asli butuh Google Picker API & OAuth 2.0 Client ID di Google Cloud Console lu
+    showNotif("Fitur Simpan ke Google Drive sedang dalam tahap integrasi API. Segera Hadir!", "info");
+  };
+
   return (
     <div className="history-wrapper">
       
@@ -78,8 +123,27 @@ export default function HistoryWithdrawPage() {
         <button className="history-back-btn" onClick={() => router.back()}>
           <span className="material-icons">arrow_back</span>
         </button>
-        <h2>Riwayat Penarikan</h2>
+        <h2>{t('withdraw_history_title', 'Riwayat Penarikan')}</h2>
       </header>
+
+      {/* TOMBOL EKSPOR DATA */}
+      <div style={{ display: 'flex', gap: '10px', padding: '0 16px', marginBottom: '16px', marginTop: '10px' }}>
+        <button 
+          onClick={handleDownloadExcel} 
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '12px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+        >
+          <span className="material-icons" style={{ fontSize: '18px', color: '#10b981' }}>description</span>
+          {t('download_excel', 'Unduh Excel')}
+        </button>
+
+        <button 
+          onClick={handleSaveToDrive} 
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#ebf8ff', color: '#0f172a', border: '1px solid #bbf7d0', padding: '10px', borderRadius: '12px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
+        >
+          <span className="material-icons" style={{ fontSize: '18px', color: '#3b82f6' }}>add_to_drive</span>
+          {t('save_to_drive', 'Simpan ke Drive')}
+        </button>
+      </div>
 
       {/* LIST PENARIKAN */}
       <main className="history-list-container">
@@ -101,7 +165,7 @@ export default function HistoryWithdrawPage() {
           // EMPTY STATE
           <div className="history-empty">
             <span className="material-icons">account_balance_wallet</span>
-            <p>Belum ada riwayat penarikan.</p>
+            <p>{t('no_withdraw_history', 'Belum ada riwayat penarikan.')}</p>
           </div>
         ) : (
           // DATA PENARIKAN
@@ -128,7 +192,7 @@ export default function HistoryWithdrawPage() {
                     {koinAmount.toLocaleString('id-ID')}
                   </div>
                   <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>
-                    Koin
+                    {t('coins', 'Koin')}
                   </span>
                 </div>
               </div>
