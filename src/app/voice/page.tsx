@@ -43,7 +43,7 @@ declare global {
     closeTopGiftersModal?: () => void;
     playGiftAnimation?: (giftId: number | string, forcedCombo?: number | null) => void;
     accNaikPanggung?: (userId: string, username: string) => void; 
-    updateRadarColor?: (color: string) => void; // 🔥 FIX: Fungsi Ganti Warna Radar
+    updateRadarColor?: (color: string) => void; 
   }
   var LivekitClient: any;
 }
@@ -77,21 +77,22 @@ function VoiceRoomContent() {
     setMounted(true);
     window.__VOICE_ROOM_INIT__ = true;
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    const CURRENT_ROOM_ID = searchParams?.get('id') || new URLSearchParams(window.location.search).get('id'); 
-    const CURRENT_ROOM_NAME = searchParams?.get('name') || new URLSearchParams(window.location.search).get('name') || "Voice Room";
+    const rawId = searchParams?.get('id');
+    const rawName = searchParams?.get('name');
+    const urlParams = new URLSearchParams(window.location.search);
+    const CURRENT_ROOM_ID = rawId || urlParams.get('id'); 
+    const CURRENT_ROOM_NAME = rawName || urlParams.get('name') || "Voice Room";
 
     const updateTitle = () => {
         const titleEl = document.querySelector('.room-title') as HTMLElement;
-        if (titleEl && CURRENT_ROOM_NAME) {
+        if (titleEl && CURRENT_ROOM_NAME && CURRENT_ROOM_NAME !== "Voice Room") {
             titleEl.innerText = CURRENT_ROOM_NAME.toUpperCase();
         }
     };
     updateTitle();
-    setTimeout(updateTitle, 300);
+    setTimeout(updateTitle, 500);
 
+    // --- LOGIKA HELPER ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -107,38 +108,41 @@ function VoiceRoomContent() {
         return `<span style="font-size: 9px; font-weight: 800; background: ${style.color}; color: #000; padding: 2px 4px; border-radius: 3px; margin-left: 5px; vertical-align: middle;">${style.title}</span>`;
     }
 
+    async function getRoomLeaderboard() {
+        try {
+            const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
+            const hargaKado: Record<string, number> = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000, '6': 5000, '7': 10000, '8': 25000, '9': 50000, '10': 100000 };
+            let totals: Record<string, number> = {};
+            messages?.forEach((m: any) => {
+                const match = m.text.match(/^(.+) mengirim .+ x(\d+) ke/);
+                if (match) {
+                    const user = match[1]; const count = parseInt(match[2]); const price = hargaKado[m.role] || 0;
+                    totals[user] = (totals[user] || 0) + (price * count);
+                }
+            });
+            const names = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 10);
+            if (names.length === 0) return [];
+            const { data: profs } = await sb.from('profiles').select('username, avatar_url, level, role').in('username', names);
+            return (profs || []).map(p => ({ ...p, room_total: totals[p.username] })).sort((a, b) => b.room_total - a.room_total);
+        } catch (e) { return []; }
+    }
+
     function playVIPEntrance(username: string, level: number) {
         if (level < 4) return; 
-
         if (!document.getElementById('vip-anim-styles-clean')) {
             const style = document.createElement('style');
             style.id = 'vip-anim-styles-clean';
-            style.innerHTML = `
-                @keyframes vipSlideInClean { 0% { transform: translate(-150vw, -50%); opacity: 0; } 15% { transform: translate(-50%, -50%); opacity: 1; } 85% { transform: translate(-50%, -50%); opacity: 1; } 100% { transform: translate(150vw, -50%); opacity: 0; } }
-                @keyframes vipShineClean { 0% { left: -100%; } 20% { left: 100%; } 100% { left: 100%; } }
-                .vip-banner-clean { position: fixed; top: 60%; left: 50%; z-index: 1000000; padding: 12px 28px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; pointer-events: none; width: max-content; max-width: 90%; animation: vipSlideInClean 4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-                .vip-shine-clean { position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%); transform: skewX(-20deg); animation: vipShineClean 2s infinite ease-in-out; }
-            `;
+            style.innerHTML = `@keyframes vipSlideInClean { 0% { transform: translate(-150vw, -50%); opacity: 0; } 15% { transform: translate(-50%, -50%); opacity: 1; } 85% { transform: translate(-50%, -50%); opacity: 1; } 100% { transform: translate(150vw, -50%); opacity: 0; } } .vip-banner-clean { position: fixed; top: 60%; left: 50%; z-index: 1000000; padding: 12px 28px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; pointer-events: none; width: max-content; max-width: 90%; animation: vipSlideInClean 4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }`;
             document.head.appendChild(style);
         }
-
         let overlay = document.getElementById('vip-entrance-overlay');
         if (overlay) overlay.remove(); 
         overlay = document.createElement('div');
         overlay.id = 'vip-entrance-overlay';
         overlay.className = 'vip-banner-clean';
-        
-        let bgStyle, textHTML;
-        if (level === 4) { 
-            bgStyle = "background: rgba(14, 165, 233, 0.95); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(14, 165, 233, 0.4); backdrop-filter: blur(10px);";
-            textHTML = `<span style="color:#fff; font-size: 13px; font-weight: 600; letter-spacing: 1px;">SULTAN</span> <b style="color:#fff; font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0 4px;">${username}</b> <span style="color:#fff; font-size: 13px; font-weight: 600;">MEMASUKI ROOM</span>`;
-        } else if (level >= 5) { 
-            bgStyle = "background: rgba(225, 29, 72, 0.95); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(225, 29, 72, 0.4); backdrop-filter: blur(10px);";
-            textHTML = `<span style="color:#fff; font-size: 13px; font-weight: 600; letter-spacing: 1px;">LEGEND</span> <b style="color:#fff; font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 0 4px;">${username}</b> <span style="color:#fff; font-size: 13px; font-weight: 600;">MEMASUKI ROOM</span>`;
-        }
-
-        overlay.setAttribute('style', bgStyle || '');
-        overlay.innerHTML = `<div class="vip-shine-clean"></div><div style="display: flex; align-items: center;">${textHTML}</div>`;
+        const bg = level === 4 ? "background: rgba(14, 165, 233, 0.95);" : "background: rgba(225, 29, 72, 0.95);";
+        overlay.setAttribute('style', `${bg} border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.3); backdrop-filter: blur(10px);`);
+        overlay.innerHTML = `<b>${username}</b> <span style="margin-left:5px;">MEMASUKI ROOM</span>`;
         document.body.appendChild(overlay);
         setTimeout(() => { if (overlay) overlay.remove(); }, 4100);
     }
@@ -146,7 +150,6 @@ function VoiceRoomContent() {
     function playGiftAnimation(giftId: number | string, forcedCombo: number | null = null) {
         const id = typeof giftId === 'string' ? parseInt(giftId) : (giftId || 1);
         const gifPath = `asets/gif/giftvid${id}.gif`; 
-        
         if (forcedCombo !== null) { giftComboCount.current = forcedCombo; lastGiftId.current = id; } 
         else { if (lastGiftId.current === id) giftComboCount.current++; else { giftComboCount.current = 1; lastGiftId.current = id; } }
 
@@ -157,26 +160,11 @@ function VoiceRoomContent() {
             overlay.style.cssText = "position:fixed; inset:0; pointer-events:none; z-index:9999999; display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); opacity:0; transition:opacity 0.3s;";
             document.body.appendChild(overlay);
         }
-        
         const iconPngPath = `asets/png/gift${id}.png`;
-        let comboHtml = '';
-        if (giftComboCount.current === 1) {
-             comboHtml = `<img src="${iconPngPath}" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(3px 3px 0px #f44336);">`;
-        } else if (giftComboCount.current > 1) {
-             comboHtml = `<div style="display: flex; align-items: center; justify-content: center; gap: 12px;"><img src="${iconPngPath}" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(3px 3px 0px #f44336);"><span>x${giftComboCount.current}</span></div>`;
-        }
-
-        overlay.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; position:relative;">
-                <img id="gift-anim-img" src="${gifPath}?t=${Date.now()}" style="width:280px; max-width:85%; object-fit:contain; filter:drop-shadow(0 0 20px gold);">
-                <div id="gift-combo-text" style="font-family:'Inter',sans-serif; font-size:80px; font-weight:900; color:#ffeb3b; text-shadow:4px 4px 0px #f44336, 0 0 20px rgba(255,255,0,0.8); transform:rotate(-15deg) scale(0); transition:transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-top:-60px; z-index:100;">
-                    ${comboHtml}
-                </div>
-            </div>`;
-
-        const comboEl = overlay.querySelector('#gift-combo-text') as HTMLElement;
+        overlay.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; position:relative;"><img id="gift-anim-img" src="${gifPath}?t=${Date.now()}" style="width:280px; max-width:85%; object-fit:contain; filter:drop-shadow(0 0 20px gold);"><div id="gift-combo-text" style="font-family:'Inter',sans-serif; font-size:80px; font-weight:900; color:#ffeb3b; text-shadow:4px 4px 0px #f44336, 0 0 20px rgba(255,255,0,0.8); transform:rotate(-15deg) scale(0); transition:transform 0.1s; margin-top:-60px; z-index:100;"><img src="${iconPngPath}" style="width: 150px; height: 150px; object-fit: contain;"> ${giftComboCount.current > 1 ? 'x'+giftComboCount.current : ''}</div></div>`;
         overlay.style.display = 'flex';
         setTimeout(() => { if(overlay) overlay.style.opacity = '1'; }, 10);
+        const comboEl = overlay.querySelector('#gift-combo-text') as HTMLElement;
         setTimeout(() => { if(comboEl) comboEl.style.transform = "rotate(-15deg) scale(1.2)"; }, 50);
 
         if (giftAnimTimer.current) clearTimeout(giftAnimTimer.current);
@@ -244,12 +232,23 @@ function VoiceRoomContent() {
             chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
             fetchTopGifters(); 
         })
+        .on('broadcast', { event: 'minta_naik' }, (p: any) => {
+            if (IS_OWNER.current) {
+                const acc = confirm(`${p.payload.username} ingin naik panggung. Izinkan?`);
+                if (acc) window.accNaikPanggung?.(p.payload.userId, p.payload.username);
+            }
+        })
+        .on('broadcast', { event: 'naik_diizinkan' }, async (p: any) => {
+            if (p.payload.userId === MY_USER_ID.current) {
+                showNotif("Permintaan diterima! Mencari kursi...", "success");
+                const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
+                const slotKosong = allSlots?.find(s => !s.profile_id);
+                if (slotKosong) window.naikKeStage?.(slotKosong.slot_index);
+            }
+        })
         .on('presence', { event: 'sync' }, () => {
             const countEl = document.getElementById('online-count');
             if (countEl) countEl.innerText = Object.keys(channelRef.current.presenceState()).length.toString();
-        })
-        .on('presence', { event: 'join' }, ({ newPresences }: any) => {
-            newPresences.forEach((p: any) => { if (p.key !== MY_USER_ID.current && p.level >= 4) playVIPEntrance(p.username, p.level); });
         })
         .subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
@@ -352,99 +351,61 @@ function VoiceRoomContent() {
         }, 600);
     }
 
-    async function getRoomLeaderboard() {
-        const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
-        if (!messages) return [];
-        const hargaKado: Record<string, number> = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000 };
-        let totals: Record<string, number> = {};
-        messages.forEach((m: any) => {
-            const match = m.text.match(/^(.+) mengirim (.+) x(\d+) ke/);
-            if (match) {
-                const user = match[1]; const count = parseInt(match[3]); const price = hargaKado[m.role] || 0;
-                totals[user] = (totals[user] || 0) + (price * count);
-            }
-        });
-        const users = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 10);
-        if (users.length === 0) return [];
-        const { data: profs } = await sb.from('profiles').select('username, avatar_url, level, role').in('username', users);
-        return (profs || []).map(p => ({ ...p, room_total: totals[p.username] })).sort((a, b) => b.room_total - a.room_total);
-    }
-
+    // 🔥 FIX 2: Hitung Top Gifter Murni Berdasarkan Room Ini Saja 🔥
     async function fetchTopGifters() {
-        try {
-            const { data: topUsers, error } = await sb.from('profiles').select('username, avatar_url, total_gift_sent').gt('total_gift_sent', 0).order('total_gift_sent', { ascending: false }).limit(3); 
-            if (error) throw error;
-            const container = document.getElementById('top-gifters-container');
-            if (!container || !topUsers || topUsers.length === 0) return;
-
-            let html = `<span style="font-size: 11px; color: #FFD700; font-weight: 800; margin-right: 6px; letter-spacing: 0.5px;">🏆 TOP</span><div style="display: flex; align-items: center;">`;
-            const bingkaiWarna = ['#FFD700', '#C0C0C0', '#CD7F32']; 
-            
-            topUsers.forEach((user, index) => {
-                const marginKiri = index === 0 ? '0' : '-12px'; 
-                const zIndex = 3 - index; 
-                html += `<img src="${user.avatar_url || '/asets/png/profile.webp'}" title="${user.username} (Total: ${user.total_gift_sent} koin)" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid ${bingkaiWarna[index]}; margin-left: ${marginKiri}; z-index: ${zIndex}; position: relative; background: #222; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">`;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-            container.onclick = () => window.openTopGiftersModal?.();
-        } catch (err: any) { console.error("Gagal memuat Top Gifters:", err.message); }
+        const topData = await getRoomLeaderboard();
+        const container = document.getElementById('top-gifters-container');
+        if (!container) return;
+        if (topData.length === 0) { container.style.display = 'none'; return; }
+        container.style.display = 'flex';
+        container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 TOP</span>`;
+        topData.slice(0, 3).forEach((u, i) => {
+            container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
+        });
+        container.onclick = () => window.openTopGiftersModal?.();
     }
 
-    // 🔥 FIX 1: Sinkronisasi Tampilan Setting Owner 🔥
     function syncOwnerUI() {
         if (!IS_OWNER.current) return;
         const trySync = () => {
             const menuSet = document.getElementById('menu-setting');
-            if (menuSet) { 
-                menuSet.style.display = 'flex'; 
-            } else { 
-                setTimeout(trySync, 500); 
-            }
+            if (menuSet) { menuSet.style.display = 'flex'; } else { setTimeout(trySync, 500); }
         };
         trySync();
     }
 
     async function initApp() {
         const { data: { session } } = await sb.auth.getSession();
-        if (!session) { window.location.href = '/lobby'; return; }
+        if (!session) { router.push('/hypetalk'); return; }
         MY_USER_ID.current = session.user.id;
         const { data: p } = await sb.from('profiles').select('*').eq('id', MY_USER_ID.current).single();
+        const { data: roomData } = await sb.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
+        
         if (p) { 
-            myUsername.current = p.username; 
-            myRole.current = p.role; 
-            myLevel.current = p.level || 1; 
-            myTotalGiftSent.current = p.total_gift_sent || 0; 
-            if (document.getElementById('user-coins')) document.getElementById('user-coins')!.innerText = (p.coins || 0).toLocaleString();
+            myUsername.current = p.username; myRole.current = p.role; myLevel.current = p.level || 1; myTotalGiftSent.current = p.total_gift_sent || 0; 
+            if (document.getElementById('user-coins')) document.getElementById('user-coins')!.innerText = (p.coins || 0).toLocaleString(); 
         }
         
-        const { data: roomData } = await sb.from('rooms').select('owner_id, is_active').eq('id', CURRENT_ROOM_ID).maybeSingle();
         if (roomData) {
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
-            if (IS_OWNER.current) {
+            if (IS_OWNER.current) { 
                 await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
                 syncOwnerUI();
+            } else if (!roomData.is_active) { 
+                showNotif("Panggung sedang ditutup oleh Owner!", "error"); 
+                router.push('/hypetalk'); 
+                return; 
             }
         }
-        
+
         if (typeof window.LivekitClient !== 'undefined') {
             try {
-                const res = await fetch(`${supabaseUrl}/functions/v1/get-livekit-token`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey || '', 'Authorization': `Bearer ${supabaseKey}` },
-                    body: JSON.stringify({ username: myUsername.current, identity: MY_USER_ID.current, roomName: CURRENT_ROOM_ID || "main-room" })
-                });
+                const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-livekit-token`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}` }, body: JSON.stringify({ username: myUsername.current, identity: MY_USER_ID.current, roomName: CURRENT_ROOM_ID }) });
                 const data = await res.json();
-                if (!data.token) throw new Error("Token Error");
-                
                 roomRef.current = new window.LivekitClient.Room({ adaptiveStream: true, dynacast: true });
                 roomRef.current.on('activeSpeakersChanged', (speakers: any[]) => {
                     document.querySelectorAll('.avatar').forEach(el => el.classList.remove('speaking'));
-                    speakers.forEach(s => {
-                        let el = document.querySelector(`[data-user-id="${s.identity}"]`);
-                        if (!el && s.isLocal) el = document.querySelector(`[data-user-id="${MY_USER_ID.current}"]`);
-                        if (el) el.classList.add('speaking');
-                    });
+                    speakers.forEach(s => { let el = document.querySelector(`[data-user-id="${s.identity}"]`); if (!el && s.isLocal) el = document.querySelector(`[data-user-id="${MY_USER_ID.current}"]`); if (el) el.classList.add('speaking'); });
                 });
                 await roomRef.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
                 await roomRef.current.localParticipant.setMicrophoneEnabled(false);
@@ -550,7 +511,7 @@ function VoiceRoomContent() {
         const o = document.getElementById('room-drawer-overlay');
         d?.classList.toggle('open'); o?.classList.toggle('show');
         if (d?.classList.contains('open')) {
-            updateLevelProgressUI(); // 🔥 FIX: Panggil Bar Level Update 🔥
+            updateLevelProgressUI(); 
             sb.from('room_slots').select('profile_id, profiles(username, avatar_url)').eq('room_id', CURRENT_ROOM_ID).not('profile_id', 'is', null).neq('profile_id', MY_USER_ID.current)
             .then(({data}) => {
                 const tc = document.getElementById('gift-targets');
@@ -574,18 +535,33 @@ function VoiceRoomContent() {
     window.toggleSidebar = () => { 
         document.getElementById('sidebar')?.classList.toggle('active'); 
         document.getElementById('sidebar-overlay')?.classList.toggle('active'); 
-        if (IS_OWNER.current) syncOwnerUI(); // 🔥 FIX: Panggil ulang sync owner 🔥
+        if (IS_OWNER.current) syncOwnerUI(); 
     };
 
     window.openTopGiftersModal = async () => {
         const m = document.getElementById('top-gifters-modal'); const l = document.getElementById('top-gifters-list');
-        if(m && l) { m.style.display = 'flex'; l.innerHTML = `<div style="color:#fff; padding:20px; text-align:center;">${t('loading_leaderboard')}</div>`;
+        if(m && l) { 
+            m.style.display = 'flex'; l.innerHTML = `<div style="text-align:center; color:#fff; padding: 20px;">Menghitung koin panggung...</div>`;
             const top = await getRoomLeaderboard(); l.innerHTML = "";
+            if (top.length === 0) { l.innerHTML = '<div style="text-align:center; color:#888;">Belum ada kado di panggung ini. Ayo kirim yang pertama!</div>'; return; }
             top.forEach((u, i) => {
-                l.innerHTML += `<div style="display:flex; align-items:center; gap:12px; padding:10px; background:#2a3648; border-radius:8px; margin-bottom:8px;">
-                    <div style="font-weight:900; color:#FFD700; width:25px;">${i+1}</div>
-                    <img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
-                    <div style="flex:1;"><div style="color:#fff; font-weight:bold;">${u.username}</div><div style="color:#FFD700; font-size:12px;">${u.room_total.toLocaleString()} koin</div></div>
+                let rankHtml = '';
+                if (i === 0) rankHtml = `<div style="background: linear-gradient(135deg, #FFDF00, #D4AF37); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(255,215,0,0.5);">1</div>`;
+                else if (i === 1) rankHtml = `<div style="background: linear-gradient(135deg, #FFFFFF, #A9A9A9); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(192,192,192,0.3);">2</div>`;
+                else if (i === 2) rankHtml = `<div style="background: linear-gradient(135deg, #FFB37C, #C56F28); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(205,127,50,0.3);">3</div>`;
+                else rankHtml = `<div style="color: #94a3b8; font-weight: 900; font-size: 16px; width: 28px; text-align: center;">${i + 1}</div>`;
+                const bgGradient = i === 0 ? 'background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent); border-left: 4px solid #FFD700;' : i === 1 ? 'background: linear-gradient(90deg, rgba(192, 192, 192, 0.1), transparent); border-left: 4px solid #C0C0C0;' : i === 2 ? 'background: linear-gradient(90deg, rgba(205, 127, 50, 0.1), transparent); border-left: 4px solid #CD7F32;' : 'background: #2a3648; border-left: 4px solid transparent;';
+                
+                l.innerHTML += `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 6px; ${bgGradient} margin-bottom:8px;">
+                    <div style="width: 30px; display: flex; justify-content: center;">${rankHtml}</div>
+                    <img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div onclick="window.location.href='/data?username=${encodeURIComponent(u.username)}'" style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; cursor: pointer;">
+                            ${u.username} ${getLevelBadgeHTML(u.level || 1)} ${getUserBadge(u.role || '')}
+                        </div>
+                        <div style="color: #FFD700; font-size: 12px; margin-top: 2px; font-weight: 600;">${(u.room_total || 0).toLocaleString()} koin</div>
+                    </div>
                 </div>`;
             });
         }
@@ -600,26 +576,26 @@ function VoiceRoomContent() {
         inputEl.focus(); 
         inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         try {
-            await sb.from('room_messages').insert([{ 
-                room_id: CURRENT_ROOM_ID, 
-                username: myUsername.current, 
-                text: text, 
-                role: myRole.current, 
-                level: myLevel.current 
-            }]);
-        } catch (e) {
-            console.error(e);
-        }
+            await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: myUsername.current, text: text, role: myRole.current, level: myLevel.current }]);
+        } catch (e) { console.error(e); }
     };
 
-    window.mintaNaik = () => {
-        showNotif("Pilih kursi KOSONG di panggung untuk naik!", "info");
+    window.mintaNaik = async () => {
+        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').order('slot_index', { ascending: true });
+        const slotKosong = allSlots?.find(s => !s.profile_id);
+        if (slotKosong) window.naikKeStage?.(slotKosong.slot_index); else showNotif("Panggung penuh!", "warning");
     };
 
     window.keluarRoom = async () => {
-        await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
+        if (IS_OWNER.current && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
+            await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
+            await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
+            await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
+        } else {
+            await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
+        }
         roomRef.current?.disconnect();
-        window.location.href = '/hypetalk'; 
+        window.location.href = '/lobby'; 
     };
 
     window.toggleMicSidebar = async (e: any) => {
@@ -631,7 +607,6 @@ function VoiceRoomContent() {
 
         isMicOn.current = !isMicOn.current;
         await roomRef.current.localParticipant.setMicrophoneEnabled(isMicOn.current);
-        
         await sb.from('profiles').update({ mic_off: !isMicOn.current }).eq('id', MY_USER_ID.current);
 
         const icon = document.getElementById('mic-icon');
@@ -643,9 +618,10 @@ function VoiceRoomContent() {
         }
         
         window.toggleSidebar?.(); 
+        fetchStage();
     };
 
-    // 🔥 FIX 1: Tampilkan Modal Setting Tanpa Icon Aneh, Plus Injeksi Fitur Radar 🔥
+    // 🔥 FIX 1: Tampilkan Modal Setting dengan Fitur Ganti Warna Radar Pake createElement murni 🔥
     window.openRoomSetting = () => {
         const modal = document.getElementById('setting-modal');
         if (modal) {
@@ -654,42 +630,41 @@ function VoiceRoomContent() {
             if (body && !body.querySelector('.radar-settings')) {
                 const div = document.createElement('div');
                 div.className = 'radar-settings';
-                div.innerHTML = `
-                    <label style="margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;">Warna Radar Mic</label>
-                    <div style="display:flex; gap:12px; margin-bottom:20px;">
-                        <button onclick="window.updateRadarColor('#ef4444')" style="background:#ef4444; width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;"></button>
-                        <button onclick="window.updateRadarColor('#3b82f6')" style="background:#3b82f6; width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;"></button>
-                        <button onclick="window.updateRadarColor('#22c55e')" style="background:#22c55e; width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;"></button>
-                        <button onclick="window.updateRadarColor('rgb')" style="background:linear-gradient(45deg, red, blue, green); width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;"></button>
-                    </div>
-                `;
+                
+                const label = document.createElement('label');
+                label.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
+                label.innerText = 'Warna Radar Mic';
+                div.appendChild(label);
+                
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText = 'display:flex; gap:12px; margin-bottom:20px;';
+                
+                const colors = [
+                    { val: '#ef4444', bg: '#ef4444' },
+                    { val: '#3b82f6', bg: '#3b82f6' },
+                    { val: '#22c55e', bg: '#22c55e' },
+                    { val: 'rgb', bg: 'linear-gradient(45deg, red, blue, green)' }
+                ];
+                
+                colors.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.style.cssText = `background:${c.bg}; width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;`;
+                    btn.onclick = () => {
+                        if(window.updateRadarColor) window.updateRadarColor(c.val);
+                    };
+                    btnContainer.appendChild(btn);
+                });
+                
+                div.appendChild(btnContainer);
+                
                 const saveBtn = body.querySelector('.btn-save-setting');
                 if (saveBtn) body.insertBefore(div, saveBtn); else body.appendChild(div);
             }
         }
         window.toggleSidebar?.(); 
     };
-    
-    window.closeRoomSetting = () => {
-        document.getElementById('setting-modal')?.classList.remove('show');
-    };
 
-    window.saveRoomSetting = async () => {
-        const newName = (document.getElementById('edit-room-name') as HTMLInputElement)?.value;
-        const sysMsg = (document.getElementById('system-message') as HTMLInputElement)?.value;
-        if (!newName) return showNotif(t('room_name_empty'), "warning");
-        try {
-            await sb.from('rooms').update({ name: newName }).eq('id', CURRENT_ROOM_ID);
-            if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
-            const url = new URL(window.location.href); url.searchParams.set('name', newName); window.history.pushState({}, '', url); 
-            const titleEl = document.querySelector('.room-title') as HTMLElement;
-            if(titleEl) titleEl.innerText = newName.toUpperCase();
-            window.closeRoomSetting?.();
-            showNotif("Setting berhasil disimpan!", "success");
-        } catch (e: any) { showNotif("Gagal simpan: " + e.message, "error"); }
-    };
-    
-    // 🔥 FIX 1: Fungsi Eksekusi Warna Radar 🔥
     window.updateRadarColor = (color: string) => {
         const root = document.documentElement;
         if (color === 'rgb') {
@@ -702,6 +677,22 @@ function VoiceRoomContent() {
         showNotif("Warna radar diperbarui!", "success");
     };
     
+    window.closeRoomSetting = () => { document.getElementById('setting-modal')?.classList.remove('show'); };
+    
+    window.saveRoomSetting = async () => {
+        const newName = (document.getElementById('edit-room-name') as HTMLInputElement).value;
+        const sysMsg = (document.getElementById('system-message') as HTMLInputElement).value;
+        if (!newName) return showNotif(t('room_name_empty'), "warning");
+        try {
+            await sb.from('rooms').update({ name: newName }).eq('id', CURRENT_ROOM_ID);
+            if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
+            const url = new URL(window.location.href); url.searchParams.set('name', newName); window.history.pushState({}, '', url); 
+            const titleEl = document.querySelector('.room-title') as HTMLElement;
+            if(titleEl) titleEl.innerText = newName.toUpperCase();
+            window.closeRoomSetting?.();
+        } catch (e: any) { showNotif("Gagal simpan: " + e.message, "error"); }
+    };
+
     window.closeConfirmModal = () => {
         const m = document.getElementById('confirm-modal');
         if (m) m.style.display = 'none';
@@ -757,8 +748,8 @@ function VoiceRoomContent() {
       <Sidebar /><Modals />
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
-
-      {/* 🔥 FIX 1: CSS GLOBAL UNTUK ANIMASI RADAR MIC 🔥 */}
+      
+      {/* CSS GLOBAL UNTUK RADAR MIC */}
       <style jsx global>{`
         :root { --radar-color: #3b82f6; }
         .avatar.speaking { 
@@ -784,7 +775,6 @@ function VoiceRoomContent() {
   );
 }
 
-// 🔥 2. FUNGSI PAGE UTAMA DENGAN SUSPENSE BOUNDARY 🔥
 export default function Page() {
   return (
     <Suspense fallback={

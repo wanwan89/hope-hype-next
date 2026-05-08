@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import './Sidebarroom.css'; // 🔥 FIX: Import CSS khusus Sidebar
+import './Sidebarroom.css';
 
 // 👇 Kasih tau TypeScript fungsi sidebar apa aja yang nempel di window 👇
 declare global {
@@ -35,12 +35,11 @@ export default function Sidebarroom() {
             href="#" 
             id="menu-mic" 
             onClick={(e) => {
-              e.preventDefault(); // 🔥 FIX: Biar layar ga loncat ke atas
+              e.preventDefault(); 
               window.toggleMicSidebar && window.toggleMicSidebar(e);
             }}
           >
             <div className="menu-icon-box"><span className="material-icons" id="mic-icon">mic</span></div>
-            {/* ID mic-text jangan dihapus, karena JS di page.tsx butuh ini buat ganti teks Nyalakan/Matikan */}
             <span id="mic-text">{t('turn_off_mic', 'Matikan Mic')}</span>
           </a>
           
@@ -54,7 +53,8 @@ export default function Sidebarroom() {
             }}
           >
             <div className="menu-icon-box"><span className="material-icons">settings</span></div>
-            <span>{t('room_settings', 'Room Settings')}</span>
+            {/* 🔥 FIX: Hapus emoji ⚙️ bawaan dari terjemahan secara dinamis biar icon nggak double 🔥 */}
+            <span>{t('room_settings', 'Room Settings').replace(/⚙️\s?/g, '')}</span>
           </a>
           
           <div className="menu-divider"></div>
