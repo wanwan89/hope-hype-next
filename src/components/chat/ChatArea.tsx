@@ -74,7 +74,6 @@ export default function ChatArea() {
   useEffect(() => {
     initApp();
     return () => cleanup();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromId, groupId]);
 
   const initApp = async () => {
@@ -126,7 +125,7 @@ export default function ChatArea() {
     if (!inviteSearch.trim() || !groupId) return;
     setIsUpdatingGroup(true);
     
-    // 🔥 FIX: Query Filter yang lebih aman
+    // 🔥 FIX: Query Filter Supabase yang lebih stabil
     const { data: userData, error: userError } = await supabase
       .from('profiles')
       .select('id, username')
@@ -359,7 +358,7 @@ export default function ChatArea() {
   };
 
   const endCall = (silent = false) => {
-    refs.audio.current?.ring.pause();
+    if (refs.audio.current?.ring) { refs.audio.current.ring.pause(); refs.audio.current.ring.currentTime = 0; }
     refs.lkRoom.current?.disconnect();
     setCallStatus('idle'); clearInterval(refs.callTimer.current);
     if (!silent) showNotif(t('call_ended'), "info");
@@ -372,14 +371,15 @@ export default function ChatArea() {
 
   return (
     <div className="telegram-chat hype-chat-scope">
+      {/* 🔥 FIX: CALL OVERLAY (POSISI PALING ATAS) 🔥 */}
       {callStatus !== 'idle' && (
         <div className="call-overlay">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={callStatus === 'calling' ? 'anim-calling-avatar' : ''} alt="avatar" />
           <h2>{callData.partnerName}</h2>
           <p>{callStatus === 'connected' ? `${Math.floor(callData.seconds/60)}:${String(callData.seconds%60).padStart(2,'0')}` : callStatus.toUpperCase()}</p>
           <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
-            {callStatus === 'incoming' && <button onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }} className="btn-answer" style={{background:'#2ecc71', padding:'12px 30px', borderRadius:20, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_answer')}</button>}
-            <button onClick={() => endCall()} className="btn-decline" style={{background:'#ff4757', padding:'12px 30px', borderRadius:20, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_decline')}</button>
+            {callStatus === 'incoming' && <button onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }} className="btn-answer" style={{background:'#2ecc71', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_answer')}</button>}
+            <button onClick={() => endCall()} className="btn-decline" style={{background:'#ff4757', padding:'12px 30px', borderRadius:25, border:'none', color:'white', fontWeight:'bold'}}>{t('btn_decline')}</button>
           </div>
         </div>
       )}
@@ -387,12 +387,9 @@ export default function ChatArea() {
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
-          
-          {/* Avatar hanya muncul jika PRIVATE CHAT */}
           {targetId && (
             <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} />
           )}
-
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
@@ -401,26 +398,13 @@ export default function ChatArea() {
             <div className="status-container">{typingUser ? <span className="status-typing">{t('typing_status', { username: typingUser.username })}</span> : <span className="status-online">{t('online_status', { count: onlineCount })}</span>}</div>
           </div>
         </div>
-        
         <div className="header-right">
           {targetId ? (
             <button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button>
           ) : groupId ? (
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }}
-                style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
-              >
-                INVITE
-              </button>
-              {isOwner && (
-                <button 
-                  onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }}
-                  style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
-                >
-                  SETTINGS
-                </button>
-              )}
+              <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>INVITE</button>
+              {isOwner && <button onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }} style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>SETTINGS</button>}
             </div>
           ) : null}
         </div>
@@ -428,9 +412,9 @@ export default function ChatArea() {
 
       <main className="chat-messages">
         {isLoading ? (
-          /* 🔥 FIX: SKELETON LOADING STRUCTURE 🔥 */
+          /* 🔥 FIX: SKELETON PEMBUNGKUS (AGAR SHIMMER MUNCUL) 🔥 */
           <div className="chat-loading-screen">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(5)].map((_, i) => (
               <div key={i} className={`skeleton-msg ${i % 2 === 0 ? 'left' : 'right'}`}>
                 <div className="skeleton-avatar"></div>
                 <div className="skeleton-bubble"></div>
@@ -449,17 +433,6 @@ export default function ChatArea() {
             ))}
           </>
         )}
-        {typingUser && (
-          <div className="chat-message other" style={{ alignItems: 'flex-end', marginBottom: '8px' }}>
-            {!targetId && <img className="avatar" src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{width: '30px', height:'30px', borderRadius:'50%', margin:'0 8px 2px'}} />}
-            <div className="content" style={{ display: 'flex', flexDirection: 'column' }}>
-              {!targetId && <div className="username" style={{ marginBottom: '4px', fontSize:'12.5px', color:'var(--primary-blue)', fontWeight:700 }}>{typingUser.username}</div>}
-              <div style={{ background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '16px 16px 16px 4px', display: 'inline-block', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
-                <div className="typing-bubble" style={{ padding: 0 }}><span></span><span></span><span></span></div>
-              </div>
-            </div>
-          </div>
-        )}
         <div ref={refs.scroll} />
       </main>
 
@@ -471,83 +444,70 @@ export default function ChatArea() {
           </div>
         )}
         <div className="input-row">
-          <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo ? '16px' : '24px' }}>
+          <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo ? '16px' : '28px' }}>
             {replyTo && (
-              <div id="reply-preview-box" style={{ display: 'flex', alignItems: 'center', width: '100%', background: 'rgba(0,0,0,0.04)', borderRadius: '12px 12px 4px 4px', margin: '0 0 6px 0', borderLeft: '4px solid var(--primary-blue)', padding: '8px 12px' }}>
-                <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                  <div className="reply-title" style={{color: 'var(--primary-blue)', fontSize: '12px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
-                  <div className="reply-text-preview" style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
+              <div id="reply-preview-box" style={{ display: 'flex' }}>
+                <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
+                  <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
                 </div>
-                <div className="close-reply-btn" onClick={() => setReplyTo(null)} style={{fontSize: '24px', paddingLeft: '12px', cursor: 'pointer', color: '#94a3b8', lineHeight: 1}}>&times;</div>
+                <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8'}}>&times;</div>
               </div>
             )}
             <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
               {isRecording ? (
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
                   <span className="online-dot" style={{ background: '#ff4757' }}></span>
                   <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flex: 1, height: '24px', marginLeft: '10px' }}>
-                    {[...Array(15)].map((_, i) => (
-                      <div key={i} style={{ width: '3px', background: '#ff4757', borderRadius: '2px', height: `${Math.max(4, (audioLevel * (Math.random() * 0.8 + 0.2)) / 2)}px`, transition: 'height 0.05s ease' }} />
-                    ))}
-                  </div>
-                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)' }}><span className="material-icons" style={{fontSize: '16px'}}>chevron_left</span> {t('slide_cancel')}</span>
+                  <div style={{ flex: 1 }}>{t('recording')}...</div>
+                  <span style={{ fontSize: '12px', opacity: 0.6 }}>{t('slide_cancel')}</span>
                 </div>
               ) : (
                 <>
-                  <button id="sticker-btn" style={{ border: 'none', background: 'transparent', padding: '6px', cursor: 'pointer', color: '#64748b' }} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}><span className="material-icons">sentiment_satisfied_alt</span></button>
-                  <textarea id="chat-input" placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ paddingTop: '10px', paddingBottom: '10px', minHeight: '40px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px', lineHeight: '20px' }} />
+                  <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: '#64748b' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
+                  <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
                 </>
               )}
             </div>
           </div>
-          <button id="action-btn" className={inputValue.trim() ? 'mode-typing' : (isRecording ? 'is-recording' : '')} onMouseDown={handleMicTouchStart} onMouseMove={handleMicTouchMove} onMouseUp={() => stopVN(false)} onTouchStart={handleMicTouchStart} onTouchMove={handleMicTouchMove} onTouchEnd={() => stopVN(false)} onClick={() => inputValue.trim() && sendMessage()}><span className="material-icons">{inputValue.trim() ? 'send' : 'mic'}</span></button>
+          <button id="action-btn" onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} onClick={() => inputValue.trim() && sendMessage()}><span className="material-icons">{inputValue.trim() ? 'send' : 'mic'}</span></button>
         </div>
       </footer>
 
-      {/* MODAL BOTTOM SHEET */}
+      {/* 🔥 FIX: MODAL BOTTOM SHEET 🔥 */}
       {isGroupSettingsOpen && groupId && (
         <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
             {groupModalTab === 'invite' ? (
               <>
-                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0 }}>Tambah Member Baru</h3>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0 }}>Tambah Member</h3>
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px' }}>Ketik Username atau ID User teman lu:</p>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input type="text" placeholder="Username / ID..." value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }} />
-                    <button onClick={handleAddMember} disabled={isUpdatingGroup} style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}>TAMBAH</button>
-                  </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="text" placeholder="Username / ID..." value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }} />
+                  <button onClick={handleAddMember} disabled={isUpdatingGroup} style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}>TAMBAH</button>
                 </div>
               </>
             ) : (
               <>
-                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h3 style={{ margin: 0 }}>Pengaturan Grup</h3>
-                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
-                </div>
-                <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                  <label style={{ cursor: isOwner ? 'pointer' : 'default', position: 'relative', display: 'inline-block' }}>
-                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-blue)' }} alt="group" />
-                    {isOwner && <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', borderRadius: '50%', padding: '4px', color: 'white' }}><span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span></div>}
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <label style={{ position: 'relative', display: 'inline-block' }}>
+                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '90px', height: '90px', borderRadius: '50%', border: '3px solid var(--primary-blue)' }} alt="g" />
+                    {isOwner && <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', borderRadius: '50%', padding: '6px', color: 'white' }}><span className="material-icons" style={{fontSize: '18px'}}>camera_alt</span></div>}
                     <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner} />
                   </label>
                 </div>
-                <div style={{ marginBottom: '15px' }}>
-                  <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} onBlur={() => newGroupName !== headerInfo.title && updateGroupInfo('name', newGroupName)} disabled={!isOwner} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', textAlign: 'center', fontWeight: 'bold' }} />
-                </div>
-                <div style={{ maxHeight: '250px', overflowY: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-                  <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>MEMBER ({groupMembers.length})</p>
+                <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} onBlur={() => newGroupName !== headerInfo.title && updateGroupInfo('name', newGroupName)} disabled={!isOwner} style={{ width: '100%', padding: '12px', borderRadius: '15px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', textAlign: 'center', fontWeight: 'bold' }} />
+                <div style={{ marginTop: '20px', maxHeight: '200px', overflowY: 'auto' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>MEMBER ({groupMembers.length})</p>
                   {groupMembers.map(m => (
-                    <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '28px', height: '28px', borderRadius: '50%' }} alt="m" />
-                        <span style={{ fontSize: '13px' }}>{m.profiles?.username}</span>
+                    <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} alt="u" />
+                        <span>{m.profiles?.username}</span>
                       </div>
-                      {isOwner && m.user_id !== currentUser.id && <button onClick={() => kickMember(m.user_id)} style={{ background: 'none', border: 'none', color: '#ff4757', padding: '4px' }}><span className="material-icons" style={{fontSize: '18px'}}>person_remove</span></button>}
+                      {isOwner && m.user_id !== currentUser.id && <button onClick={() => kickMember(m.user_id)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">person_remove</span></button>}
                     </div>
                   ))}
                 </div>

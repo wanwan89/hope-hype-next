@@ -30,12 +30,6 @@ html.dark .hype-chat-scope {
   --input-box-bg: #2a3942;
 }
 
-.hype-chat-scope * {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
-  font-family: 'Inter', sans-serif;
-  box-sizing: border-box;
-}
-
 /* =========================================
    LAYOUT UTAMA
    ========================================= */
@@ -46,23 +40,13 @@ html.dark .hype-chat-scope {
   touch-action: pan-x pan-y; color: var(--text-color); overscroll-behavior: none; 
 }
 
-/* 🔥 FIX BUG 1: ICON TELPON (HILANGKAN KOTAK) 🔥 */
+/* FIX ICON TELPON (TANPA KOTAK) */
 .hype-chat-scope .btn-call {
-  background: none !important;
-  border: none !important;
-  outline: none !important;
-  padding: 8px !important;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--header-text);
-  border-radius: 50%;
-  transition: background 0.2s;
+  background: transparent !important; border: none !important; outline: none !important;
+  padding: 8px !important; display: flex; align-items: center; justify-content: center;
+  color: var(--header-text); border-radius: 50%;
 }
-.hype-chat-scope .btn-call:active { background: rgba(0,0,0,0.05); }
 
-/* HEADER */
 .hype-chat-scope .chat-header {
   position: relative; display: flex; align-items: center; justify-content: space-between;
   padding: 0 15px; padding-top: env(safe-area-inset-top); 
@@ -71,88 +55,90 @@ html.dark .hype-chat-scope {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); flex-shrink: 0; z-index: 10002; 
 }
 
-/* 🔥 FIX BUG 4: SKELETON LOADING (MENYAMBUNGKAN) 🔥 */
+/* 🔥 FIX SKELETON (FULL SCOPED & NO LEAK) 🔥 */
 .hype-chat-scope .chat-loading-screen {
-  display: flex; flex-direction: column; gap: 15px; padding: 20px;
+  display: flex; flex-direction: column; gap: 18px; padding: 20px;
+  background: var(--bg-main); height: 100%; width: 100%;
 }
-.hype-chat-scope .skeleton-msg { display: flex; gap: 10px; align-items: flex-end; max-width: 80%; }
+.hype-chat-scope .skeleton-msg { display: flex; gap: 12px; align-items: flex-end; max-width: 85%; }
 .hype-chat-scope .skeleton-msg.right { align-self: flex-end; flex-direction: row-reverse; }
-.hype-chat-scope .skeleton-avatar { width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; }
-.hype-chat-scope .skeleton-bubble {
-  height: 45px; border-radius: 18px; background: #f1f5f9; position: relative; overflow: hidden; flex: 1;
+
+.hype-chat-scope .skeleton-avatar { 
+  width: 36px; height: 36px; border-radius: 50%; 
+  background: var(--border-color); flex-shrink: 0; 
 }
+
+.hype-chat-scope .skeleton-bubble {
+  height: 48px; min-width: 140px; border-radius: 18px; 
+  background: var(--border-color); position: relative; overflow: hidden;
+}
+
+/* Nama Animasi Unik biar ga nabrak */
 .hype-chat-scope .skeleton-bubble::after {
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-  animation: shimmer 1.5s infinite;
-}
-@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-
-.hype-chat-scope .chat-messages {
-  flex: 1 1 auto !important; padding: 12px; padding-bottom: 120px !important; 
-  overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
-  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: hype-shimmer 1.6s infinite;
 }
 
-/* 🔥 FIX BUG 2: CALL OVERLAY (GELAP MEWAH) 🔥 */
+@keyframes hype-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.hype-chat-scope .loading-chat-hint {
+  text-align: center; font-size: 12px; color: var(--text-muted); 
+  margin-top: 10px; font-weight: 500;
+}
+
+/* FIX CALL OVERLAY */
 .hype-chat-scope .call-overlay {
   position: fixed !important; inset: 0 !important;
   background: rgba(11, 20, 26, 0.98) !important; 
-  backdrop-filter: blur(20px); z-index: 999999 !important; /* 🔥 Sangat Tinggi 🔥 */
+  backdrop-filter: blur(20px); z-index: 999999 !important; 
   display: flex !important; flex-direction: column !important;
   align-items: center !important; justify-content: center !important;
-  color: white !important; text-align: center;
+  color: white !important;
 }
-.hype-chat-scope .call-overlay img {
-  width: 130px; height: 130px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1);
-  margin-bottom: 30px; object-fit: cover;
-}
-.hype-chat-scope .anim-calling-avatar { animation: pulseCall 1.5s infinite; }
-@keyframes pulseCall { 0% { transform: scale(1); } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); } }
 
-/* 🔥 FIX BUG 3: SLIDE UP SETTING GRUP (BOTTOM SHEET) 🔥 */
+/* FIX SLIDE UP SETTING (BOTTOM SHEET) */
 .hype-chat-scope .custom-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px); z-index: 100005; 
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px); z-index: 100005; 
   display: flex; align-items: flex-end; justify-content: center;
 }
 .hype-chat-scope .custom-modal-content {
-  background: var(--bg-panel); width: 100%; border-radius: 30px 30px 0 0;
-  padding: 20px 24px 40px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
-  animation: slideSheet 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-  position: relative; max-height: 90vh; overflow-y: auto;
+  background: var(--bg-panel); width: 100%; border-radius: 32px 32px 0 0;
+  padding: 16px 24px 40px; box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
+  animation: hype-slide-up 0.4s cubic-bezier(0.33, 1, 0.68, 1);
+  position: relative;
 }
-/* Handle bar premium */
 .hype-chat-scope .custom-modal-content::before {
-  content: ""; display: block; width: 45px; height: 5px; 
-  background: #cbd5e1; border-radius: 10px; margin: 0 auto 20px;
+  content: ""; display: block; width: 42px; height: 5px; 
+  background: var(--border-color); border-radius: 10px; margin: 0 auto 20px;
 }
-@keyframes slideSheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-/* ENKRIPSI & BUBBLES */
-.hype-chat-scope .encryption-notice { 
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  background: #fff3c4; color: #654e00; font-size: 11px; padding: 10px 16px;
-  border-radius: 12px; margin: 15px auto; max-width: 85%;
+@keyframes hype-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* CHAT AREA MESSAGES */
+.hype-chat-scope .chat-messages {
+  flex: 1 1 auto !important; padding: 12px; padding-bottom: 110px !important; 
+  overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  background: var(--bg-main);
 }
-.hype-chat-scope .chat-message { display: flex; width: 100%; align-items: flex-end; margin-bottom: 8px; }
-.hype-chat-scope .chat-message.self { justify-content: flex-end; }
-.hype-chat-scope .chat-message.self .content { background: var(--chat-self-bg) !important; border-radius: 16px 16px 4px 16px; }
-.hype-chat-scope .chat-message.other .content { background: #f0f2f5 !important; border-radius: 16px 16px 16px 4px; }
-.hype-chat-scope .chat-message .content { display: flex; flex-direction: column; max-width: 75%; padding: 8px 12px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
 
-/* VN & INPUT */
-.hype-chat-scope .vn-custom-player { display: flex; align-items: center; gap: 10px; min-width: 180px; }
-.hype-chat-scope .vn-play-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--primary-blue) !important; border: none; color: white; display: flex; align-items: center; justify-content: center; }
-.hype-chat-scope .chat-input-container { position: fixed !important; bottom: 0 !important; left: 0; right: 0; z-index: 10000; padding: 8px 12px; pointer-events: none; }
+.hype-chat-scope .chat-message.self .content { background: var(--chat-self-bg) !important; border-radius: 18px 18px 4px 18px; }
+.hype-chat-scope .chat-message.other .content { background: var(--bg-panel) !important; border: 1px solid var(--border-color); border-radius: 18px 18px 18px 4px; }
+.hype-chat-scope .chat-message .content { display: flex; flex-direction: column; max-width: 78%; padding: 10px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+/* INPUT LAYER */
+.hype-chat-scope .chat-input-container { position: fixed !important; bottom: 0 !important; left: 0; right: 0; z-index: 10000; padding: 10px 14px; pointer-events: none; }
 .hype-chat-scope .chat-input-container > * { pointer-events: auto; }
-.hype-chat-scope .input-group-wrapper { flex: 1; background: var(--input-box-bg) !important; border: 1px solid var(--border-color); border-radius: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; align-items: center; min-height: 48px; }
-.hype-chat-scope #action-btn { width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; background-color: var(--primary-blue) !important; color: white; }
+.hype-chat-scope .input-group-wrapper { flex: 1; background: var(--input-box-bg) !important; border: 1px solid var(--border-color); border-radius: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; align-items: center; min-height: 50px; }
+.hype-chat-scope #action-btn { width: 50px; height: 50px; border-radius: 50%; border: none; cursor: pointer; background-color: var(--primary-blue) !important; color: white; transition: 0.3s; }
 
-/* REPLY BOX */
-.hype-chat-scope #reply-preview-box[style*="display: flex"] { 
-  display: flex !important; background: var(--input-box-bg) !important; 
-  border-left: 4px solid var(--primary-blue) !important; border-radius: 12px; 
-  padding: 10px 14px; margin-bottom: 8px; animation: replyIn 0.3s forwards; 
-}
-@keyframes replyIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+/* VN & REPLY */
+.hype-chat-scope .vn-custom-player { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+.hype-chat-scope .vn-play-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-blue) !important; border: none; color: white; display: flex; align-items: center; justify-content: center; }
+.hype-chat-scope #reply-preview-box[style*="display: flex"] { display: flex !important; background: var(--input-box-bg) !important; border-left: 4px solid var(--primary-blue) !important; border-radius: 14px; padding: 12px; margin-bottom: 10px; animation: hype-pop 0.3s forwards; }
+
+@keyframes hype-pop { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
