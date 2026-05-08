@@ -5,7 +5,6 @@ import Script from 'next/script';
 import { useSearchParams, useRouter } from 'next/navigation'; 
 import { supabase as sb } from '@/lib/supabase'; 
 import { useTranslation } from 'react-i18next';
-// Import UI Utils biar Badge & Notif muncul
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 
 import Sidebar from '@/components/room/Sidebarroom';
@@ -44,14 +43,12 @@ declare global {
     playGiftAnimation?: (giftId: number | string, forcedCombo?: number | null) => void;
     accNaikPanggung?: (userId: string, username: string) => void; 
     updateRadarColor?: (color: string) => void; 
-    // 🔥 FITUR BARU 🔥
     handleGlobalClick?: (e: any) => void;
     openUserProfile?: (userId: string) => void;
   }
   var LivekitClient: any;
 }
 
-// 🔥 1. FUNGSI KONTEN UTAMA (VoiceRoomContent) 🔥
 function VoiceRoomContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams(); 
@@ -59,8 +56,8 @@ function VoiceRoomContent() {
   const [mounted, setMounted] = useState(false);
   const roomRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
+  const initialized = useRef(false); // 🔥 Cegah re-run useEffect berulang
 
-  // 🔥 STATES BARU UNTUK TAP & PROFILE 🔥
   const [totalTaps, setTotalTaps] = useState(0);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -80,16 +77,21 @@ function VoiceRoomContent() {
   
   const selectedTargetId = useRef<string | null>(null);
   const selectedTargetName = useRef("");
+  let CURRENT_ROOM_ID: string | null = null;
+  let CURRENT_ROOM_NAME: string = "Voice Room";
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     setMounted(true);
     window.__VOICE_ROOM_INIT__ = true;
 
     const rawId = searchParams?.get('id');
     const rawName = searchParams?.get('name');
     const urlParams = new URLSearchParams(window.location.search);
-    const CURRENT_ROOM_ID = rawId || urlParams.get('id'); 
-    const CURRENT_ROOM_NAME = rawName || urlParams.get('name') || "Voice Room";
+    CURRENT_ROOM_ID = rawId || urlParams.get('id'); 
+    CURRENT_ROOM_NAME = rawName || urlParams.get('name') || "Voice Room";
 
     const updateTitle = () => {
         const titleEl = document.querySelector('.room-title') as HTMLElement;
@@ -100,7 +102,6 @@ function VoiceRoomContent() {
     updateTitle();
     setTimeout(updateTitle, 500);
      
-    // 🔥 LOGIKA ANIMASI TAP TAP (❤️ ONLY) 🔥
     function createTapAnimation(x: number, y: number) {
       const heart = document.createElement('div');
       heart.innerHTML = '❤️';
@@ -111,7 +112,6 @@ function VoiceRoomContent() {
       setTimeout(() => heart.remove(), 1000);
     }
 
-    // 🔥 LOGIKA TAP HANYA DI CHAT BOX + PERSISTENCE 🔥
     window.handleGlobalClick = async (e: any) => {
       const chatBoxArea = document.getElementById('chat-box');
       if (!chatBoxArea || !chatBoxArea.contains(e.target as Node)) return;
@@ -124,8 +124,7 @@ function VoiceRoomContent() {
       
       setTotalTaps(prev => {
         const newTotal = prev + 1;
-        // Simpan ke DB secara real-time (setiap 5 klik biar ga boros quota)
-        if (newTotal % 5 === 0) {
+        if (newTotal % 5 === 0 && CURRENT_ROOM_ID) {
           sb.from('rooms').update({ tap_count: newTotal }).eq('id', CURRENT_ROOM_ID).then();
         }
         return newTotal;
@@ -140,7 +139,6 @@ function VoiceRoomContent() {
       }
     };
 
-    // 🔥 LOGIKA PROFILE SLIDE UP 🔥
     window.openUserProfile = async (userId: string) => {
       if (!userId) return;
       try {
@@ -151,7 +149,6 @@ function VoiceRoomContent() {
       } catch (err) { console.error(err); }
     };
 
-    // --- LOGIKA HELPER ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -169,6 +166,7 @@ function VoiceRoomContent() {
 
     async function getRoomLeaderboard() {
         try {
+            if (!CURRENT_ROOM_ID) return [];
             const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
             const hargaKado: Record<string, number> = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000, '6': 5000, '7': 10000, '8': 25000, '9': 50000, '10': 100000 };
             let totals: Record<string, number> = {};
@@ -305,7 +303,6 @@ function VoiceRoomContent() {
                 const style = getLevelStyle(p.new.level || 1);
                 const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
                 const roleBadge = getUserBadge(p.new.role || '');
-                // 🔥 FIX: User Link to open slide up profile 🔥
                 const userLink = `<span onclick="window.openUserProfile('${p.new.user_id || ''}')" style="color:${style.color}; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
                 div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `${userLink}<span>: ${p.new.text}</span>`;
             }
@@ -314,7 +311,6 @@ function VoiceRoomContent() {
             chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
             fetchTopGifters(); 
         })
-        // 🔥 SYNC TAP BROADCAST 🔥
         .on('broadcast', { event: 'tap_event' }, (p: any) => {
           createTapAnimation(p.payload.x, p.payload.y);
           setTotalTaps(prev => prev + 1);
@@ -328,6 +324,7 @@ function VoiceRoomContent() {
         .on('broadcast', { event: 'naik_diizinkan' }, async (p: any) => {
             if (p.payload.userId === MY_USER_ID.current) {
                 showNotif("Permintaan diterima! Mencari kursi...", "success");
+                if (!CURRENT_ROOM_ID) return;
                 const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
                 const slotKosong = allSlots?.find(s => !s.profile_id);
                 if (slotKosong) window.naikKeStage?.(slotKosong.slot_index);
@@ -439,6 +436,7 @@ function VoiceRoomContent() {
     }
 
     async function initApp() {
+        if (!CURRENT_ROOM_ID) return;
         const { data: { session } } = await sb.auth.getSession();
         if (!session) { router.push('/hypetalk'); return; }
         MY_USER_ID.current = session.user.id;
@@ -451,7 +449,7 @@ function VoiceRoomContent() {
         }
         
         if (roomData) {
-            setTotalTaps(roomData.tap_count || 0); // 🔥 Load Tap dari DB
+            setTotalTaps(roomData.tap_count || 0);
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
             if (IS_OWNER.current) { 
                 await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
@@ -491,7 +489,6 @@ function VoiceRoomContent() {
             if (user) {
                 const style = getLevelStyle(user.level);
                 const roleBadgeHTML = getUserBadge(user.role || '');
-                // 🔥 Avatar click to open slide up profile 🔥
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
@@ -512,10 +509,99 @@ function VoiceRoomContent() {
     }
 
     // ==========================================================
-    // 🔥 GLOBAL WINDOW ASSIGNMENTS 🔥
+    // 🔥 PERBAIKAN & FUNGSI BARU 🔥
     // ==========================================================
+    
+    // 1. Perbaikan kirim komentar (pastikan room_id dan user_id terisi)
+    window.kirimKomentar = async () => {
+      const inputEl = document.getElementById('chat-input') as HTMLInputElement;
+      const text = inputEl?.value.trim();
+      if (!text || !CURRENT_ROOM_ID || !MY_USER_ID.current) {
+        if (!text) showNotif("Komentar tidak boleh kosong", "warning");
+        return;
+      }
+
+      inputEl.value = ''; 
+      inputEl.focus(); 
+      inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      try {
+        await sb.from('room_messages').insert([{ 
+          room_id: CURRENT_ROOM_ID, 
+          username: myUsername.current, 
+          text: text, 
+          role: myRole.current, 
+          level: myLevel.current,
+          user_id: MY_USER_ID.current 
+        }]);
+      } catch (e) { console.error(e); showNotif("Gagal mengirim pesan", "error"); }
+    };
+
+    // 2. Perbaikan tombol gift (dipanggil dari komponen GiftDrawer)
     window.sendGift = sendGift;
 
+    // 3. Fungsi toggle mic on/off (untuk tombol mic di sidebar/footer)
+    window.toggleMicSidebar = async (event?: any) => {
+      if (!roomRef.current || roomRef.current.state !== "connected") {
+        showNotif("Mic belum terhubung ke server", "warning");
+        return;
+      }
+      const newState = !isMicOn.current;
+      await roomRef.current.localParticipant.setMicrophoneEnabled(newState);
+      isMicOn.current = newState;
+      const micIcon = document.getElementById('mic-icon');
+      const micText = document.getElementById('mic-text');
+      if (micIcon) {
+        micIcon.innerText = newState ? "mic" : "mic_off";
+        micIcon.style.color = newState ? "#2ecc71" : "#e74c3c";
+      }
+      if (micText) micText.innerText = newState ? t('mute_mic') : t('unmute_mic');
+      if (MY_USER_ID.current) {
+        await sb.from('profiles').update({ mic_off: !newState }).eq('id', MY_USER_ID.current);
+      }
+      fetchStage();
+    };
+
+    // 4. Fungsi minta naik
+    window.mintaNaik = () => {
+      if (!MY_USER_ID.current || !CURRENT_ROOM_ID) {
+        showNotif("Silakan login terlebih dahulu", "warning");
+        return;
+      }
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'minta_naik',
+          payload: { userId: MY_USER_ID.current, username: myUsername.current }
+        });
+        showNotif("Permintaan naik panggung telah dikirim ke Owner", "info");
+      } else {
+        showNotif("Koneksi realtime belum siap", "error");
+      }
+    };
+
+    // 5. Fungsi accNaikPanggung untuk owner (jika belum ada)
+    window.accNaikPanggung = async (userId: string, username: string) => {
+      if (!IS_OWNER.current || !CURRENT_ROOM_ID) return;
+      const { data: slots } = await sb.from('room_slots').select('id, slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index');
+      const emptySlot = slots?.find(s => !s.profile_id);
+      if (!emptySlot) {
+        showNotif("Tidak ada kursi kosong", "warning");
+        return;
+      }
+      await sb.from('room_slots').update({ profile_id: userId }).eq('id', emptySlot.id);
+      await sb.from('profiles').update({ mic_off: false }).eq('id', userId);
+      fetchStage();
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'naik_diizinkan',
+          payload: { userId }
+        });
+      }
+      showNotif(`${username} telah naik panggung`, "success");
+    };
+
+    // Fungsi lain yang sudah ada (kickUser, toggleKickBtn, naikKeStage, turunMic, prosesTurunMic, dll)
     window.kickUser = async (targetId, targetName) => {
         if (!confirm(`Kick ${targetName}?`)) return;
         await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: targetId });
@@ -633,68 +719,6 @@ function VoiceRoomContent() {
         }
     };
 
-    window.kirimKomentar = async () => {
-        const inputEl = document.getElementById('chat-input') as HTMLInputElement;
-        const text = inputEl?.value.trim();
-        if (!text || !CURRENT_ROOM_ID || !MY_USER_ID.current) return;
-
-        inputEl.value = ''; 
-        inputEl.focus(); 
-        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        try {
-            // 🔥 FIX: Tambahkan user_id agar komentar muncul & profil bisa diklik 🔥
-            await sb.from('room_messages').insert([{ 
-                room_id: CURRENT_ROOM_ID, 
-                username: myUsername.current, 
-                text: text, 
-                role: myRole.current, 
-                level: myLevel.current,
-                user_id: MY_USER_ID.current 
-            }]);
-        } catch (e) { console.error(e); }
-    };
-
-    window.mintaNaik = async () => {
-        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').order('slot_index', { ascending: true });
-        const slotKosong = allSlots?.find(s => !s.profile_id);
-        if (slotKosong) window.naikKeStage?.(slotKosong.slot_index); else showNotif("Panggung penuh!", "warning");
-    };
-
-    window.keluarRoom = async () => {
-        if (IS_OWNER.current && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
-            await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
-            await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
-            await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
-        } else {
-            await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
-        }
-        roomRef.current?.disconnect();
-        window.location.href = '/lobby'; 
-    };
-
-    window.toggleMicSidebar = async (e: any) => {
-        e?.preventDefault();
-        if (!roomRef.current) return showNotif(t('mic_not_ready'), "warning");
-
-        const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID.current).single();
-        if (!onStage) return showNotif(t('mic_stage_first'), "warning");
-
-        isMicOn.current = !isMicOn.current;
-        await roomRef.current.localParticipant.setMicrophoneEnabled(isMicOn.current);
-        await sb.from('profiles').update({ mic_off: !isMicOn.current }).eq('id', MY_USER_ID.current);
-
-        const icon = document.getElementById('mic-icon');
-        const text = document.getElementById('mic-text');
-        if (icon && text) {
-            icon.innerText = isMicOn.current ? 'mic' : 'mic_off';
-            text.innerText = isMicOn.current ? t('mute_mic') : t('unmute_mic');
-            icon.style.color = isMicOn.current ? 'inherit' : '#ef4444';
-        }
-        
-        window.toggleSidebar?.(); 
-        fetchStage();
-    };
-
     window.openRoomSetting = () => {
         const modal = document.getElementById('setting-modal');
         if (modal) {
@@ -724,7 +748,7 @@ function VoiceRoomContent() {
         }
         window.toggleSidebar?.(); 
     };
-
+    
     window.updateRadarColor = (color: string) => {
         const root = document.documentElement;
         if (color === 'rgb') {
@@ -790,7 +814,6 @@ function VoiceRoomContent() {
 
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
 
-    // 🔥 FIX: Hapus totalTaps dari dependency array agar layar tidak keriset saat di-tap 🔥
     return () => {
         clearInterval(sdkInterval); 
         roomRef.current?.disconnect();
@@ -798,7 +821,7 @@ function VoiceRoomContent() {
         window.removeEventListener('orientationchange', fixMobileHeight);
         ['room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 'vip-entrance-overlay'].forEach(id => document.getElementById(id)?.remove());
     };
-  }, [t, searchParams, router]);
+  }, [t, searchParams, router]); // 🔥 Hapus totalTaps dari dependency untuk mencegah re-render tidak perlu
 
   if (!mounted) return null;
 
@@ -807,7 +830,6 @@ function VoiceRoomContent() {
       <Script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" />
       <Script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.12/dist/livekit-client.umd.min.js" />
       
-      {/* 🔥 CONTAINER JUMLAH TAP-TAP 🔥 */}
       <div className="tap-counter-box">
           <span className="material-icons">favorite</span>
           <b>{totalTaps.toLocaleString()}</b>
@@ -817,7 +839,6 @@ function VoiceRoomContent() {
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
 
-      {/* 🔥 PROFILE SLIDE UP (BOTTOM SHEET) 🔥 */}
       <div className={`user-profile-sheet-overlay ${isProfileOpen ? 'active' : ''}`} onClick={() => setIsProfileOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
@@ -831,7 +852,7 @@ function VoiceRoomContent() {
                 </h3>
                 <div className="profile-sheet-level">LEVEL {selectedUser.level || 1}</div>
               </div>
-              <button className="btn-view-profile-full" onClick={() => router.push(`/data?username=${selectedUser.username}`)}>
+              <button className="btn-view-profile-full" onClick={() => router.push(`/data?id=${selectedUser.id}`)}>
                 Lihat Profil Lengkap
               </button>
             </div>
@@ -839,11 +860,9 @@ function VoiceRoomContent() {
         </div>
       </div>
       
-      {/* CSS GLOBAL UNTUK RADAR MIC & TAP-TAP & PROFILE */}
       <style jsx global>{`
         :root { --radar-color: #3b82f6; }
         
-        /* 🔥 TAP COUNTER BOX 🔥 */
         .tap-counter-box {
           position: fixed;
           top: calc(env(safe-area-inset-top, 0px) + 12px);
@@ -864,7 +883,6 @@ function VoiceRoomContent() {
         }
         .tap-counter-box .material-icons { font-size: 14px; color: #ff4757; }
 
-        /* 🔥 EMOJI TERBANG 🔥 */
         .tap-emoji-fly {
           position: fixed;
           pointer-events: none;
@@ -879,7 +897,6 @@ function VoiceRoomContent() {
           100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; }
         }
 
-        /* 🔥 PROFILE SHEET 🔥 */
         .user-profile-sheet-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10005;
           opacity: 0; visibility: hidden; transition: 0.3s;
