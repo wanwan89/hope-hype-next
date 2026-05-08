@@ -38,7 +38,6 @@ export default function ChatArea() {
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
   const [deleteMenu, setDeleteMenu] = useState<any>(null);
   
-  // 🔥 FIX 1: Management Grup & Invite 🔥
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
   const [groupModalTab, setGroupModalTab] = useState<'invite' | 'settings'>('invite');
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
@@ -123,16 +122,15 @@ export default function ChatArea() {
     if (data) setGroupMembers(data);
   };
 
-  // 🔥 FIX 2: Fungsi Add Member Berdasarkan Input User 🔥
   const handleAddMember = async () => {
     if (!inviteSearch.trim() || !groupId) return;
     setIsUpdatingGroup(true);
     
-    // Cari user di profiles (username atau short_id)
+    // 🔥 FIX: Query Filter yang lebih aman
     const { data: userData, error: userError } = await supabase
       .from('profiles')
       .select('id, username')
-      .or(`username.eq."${inviteSearch}",short_id.eq."${inviteSearch}"`)
+      .or(`username.eq.${inviteSearch},short_id.eq.${inviteSearch}`)
       .single();
 
     if (userError || !userData) {
@@ -368,7 +366,7 @@ export default function ChatArea() {
   };
 
   const fetchStickers = async (q="") => {
-    const res = await fetch(`https://api.giphy.com/v1_1/stickers/${q ? 'search' : 'trending'}?api_key=vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08&limit=20&rating=g${q ? `&q=${q}` : ''}`);
+    const res = await fetch(`https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08&limit=20&rating=g${q ? `&q=${q}` : ''}`);
     const d = await res.json(); setStickers(d.data || []);
   };
 
@@ -390,13 +388,9 @@ export default function ChatArea() {
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
           
-          {/* 🔥 FIX 3: Avatar hanya muncul jika PRIVATE CHAT (targetId ada) 🔥 */}
+          {/* Avatar hanya muncul jika PRIVATE CHAT */}
           {targetId && (
-            <img 
-              src={headerInfo.avatar || '/asets/png/profile.webp'} 
-              alt="avatar" 
-              style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} 
-            />
+            <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} />
           )}
 
           <div className="header-info">
@@ -434,7 +428,16 @@ export default function ChatArea() {
 
       <main className="chat-messages">
         {isLoading ? (
-          <div className="chat-loading-screen"><div className="loading-chat-hint">{t('connecting_chat')}</div></div>
+          /* 🔥 FIX: SKELETON LOADING STRUCTURE 🔥 */
+          <div className="chat-loading-screen">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className={`skeleton-msg ${i % 2 === 0 ? 'left' : 'right'}`}>
+                <div className="skeleton-avatar"></div>
+                <div className="skeleton-bubble"></div>
+              </div>
+            ))}
+            <div className="loading-chat-hint">{t('connecting_chat')}</div>
+          </div>
         ) : (
           <>
             <div className="encryption-notice">
@@ -502,19 +505,10 @@ export default function ChatArea() {
         </div>
       </footer>
 
-      {/* 🔥 FIX 4: MODAL BOTTOM SHEET (Slide Up) 🔥 */}
+      {/* MODAL BOTTOM SHEET */}
       {isGroupSettingsOpen && groupId && (
-        <div 
-          className="custom-modal-overlay" 
-          style={{ display: 'flex', zIndex: 100000, alignItems: 'flex-end', justifyContent: 'center' }} 
-          onClick={() => setIsGroupSettingsOpen(false)}
-        >
-          <div 
-            className="custom-modal-content" 
-            onClick={(e) => e.stopPropagation()} 
-            style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '100%', boxShadow: '0 -10px 40px rgba(0,0,0,0.2)', marginBottom: 0 }}
-          >
-            
+        <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)}>
+          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
             {groupModalTab === 'invite' ? (
               <>
                 <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -524,20 +518,8 @@ export default function ChatArea() {
                 <div style={{ marginBottom: '20px' }}>
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px' }}>Ketik Username atau ID User teman lu:</p>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Username / ID..." 
-                      value={inviteSearch}
-                      onChange={(e) => setInviteSearch(e.target.value)}
-                      style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }}
-                    />
-                    <button 
-                      onClick={handleAddMember}
-                      disabled={isUpdatingGroup}
-                      style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}
-                    >
-                      TAMBAH
-                    </button>
+                    <input type="text" placeholder="Username / ID..." value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }} />
+                    <button onClick={handleAddMember} disabled={isUpdatingGroup} style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}>TAMBAH</button>
                   </div>
                 </div>
               </>
@@ -547,28 +529,16 @@ export default function ChatArea() {
                   <h3 style={{ margin: 0 }}>Pengaturan Grup</h3>
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
-
                 <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                   <label style={{ cursor: isOwner ? 'pointer' : 'default', position: 'relative', display: 'inline-block' }}>
                     <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-blue)' }} alt="group" />
-                    {isOwner && (
-                      <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', borderRadius: '50%', padding: '4px', color: 'white' }}><span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span></div>
-                    )}
+                    {isOwner && <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', borderRadius: '50%', padding: '4px', color: 'white' }}><span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span></div>}
                     <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner} />
                   </label>
                 </div>
-
                 <div style={{ marginBottom: '15px' }}>
-                  <input 
-                    type="text" 
-                    value={newGroupName} 
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    onBlur={() => newGroupName !== headerInfo.title && updateGroupInfo('name', newGroupName)}
-                    disabled={!isOwner}
-                    style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', textAlign: 'center', fontWeight: 'bold' }}
-                  />
+                  <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} onBlur={() => newGroupName !== headerInfo.title && updateGroupInfo('name', newGroupName)} disabled={!isOwner} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', textAlign: 'center', fontWeight: 'bold' }} />
                 </div>
-
                 <div style={{ maxHeight: '250px', overflowY: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
                   <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '8px' }}>MEMBER ({groupMembers.length})</p>
                   {groupMembers.map(m => (
@@ -577,9 +547,7 @@ export default function ChatArea() {
                         <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '28px', height: '28px', borderRadius: '50%' }} alt="m" />
                         <span style={{ fontSize: '13px' }}>{m.profiles?.username}</span>
                       </div>
-                      {isOwner && m.user_id !== currentUser.id && (
-                        <button onClick={() => kickMember(m.user_id)} style={{ background: 'none', border: 'none', color: '#ff4757', padding: '4px' }}><span className="material-icons" style={{fontSize: '18px'}}>person_remove</span></button>
-                      )}
+                      {isOwner && m.user_id !== currentUser.id && <button onClick={() => kickMember(m.user_id)} style={{ background: 'none', border: 'none', color: '#ff4757', padding: '4px' }}><span className="material-icons" style={{fontSize: '18px'}}>person_remove</span></button>}
                     </div>
                   ))}
                 </div>
@@ -590,4 +558,4 @@ export default function ChatArea() {
       )}
     </div>
   );
-} 
+}
