@@ -37,7 +37,7 @@ declare global {
     openRoomSetting?: () => void;
     closeRoomSetting?: () => void;
     saveRoomSetting?: () => void;
-    openConfirmModal?: () => void; // 🔥 FIX: Udah ditambahin di sini
+    openConfirmModal?: () => void;
     closeConfirmModal?: () => void;
     openTopGiftersModal?: () => void;
     closeTopGiftersModal?: () => void;
@@ -57,7 +57,6 @@ function VoiceRoomContent() {
   
   const myTotalGiftSent = useRef(0);
   const myLevel = useRef(1);
-  const isMicOn = useRef(false);
   const giftComboCount = useRef(0);
   const lastGiftId = useRef<number | null>(null);
   const giftAnimTimer = useRef<NodeJS.Timeout | null>(null);
@@ -86,6 +85,7 @@ function VoiceRoomContent() {
     };
     updateTitle();
 
+    // --- HELPER LOGICS ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -99,6 +99,31 @@ function VoiceRoomContent() {
         const style = getLevelStyle(level);
         if (!style.title) return ""; 
         return `<span style="font-size: 9px; font-weight: 800; background: ${style.color}; color: #000; padding: 2px 4px; border-radius: 3px; margin-left: 5px; vertical-align: middle;">${style.title}</span>`;
+    }
+
+    // 🔥 FIX: Definisikan getRoomLeaderboard agar bisa diakses oleh Window Assignments 🔥
+    async function getRoomLeaderboard() {
+        try {
+            const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
+            const hargaKado: Record<string, number> = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000, '6': 5000, '7': 10000, '8': 25000, '9': 50000, '10': 100000 };
+            let totals: Record<string, number> = {};
+            
+            messages?.forEach((m: any) => {
+                const match = m.text.match(/^(.+) mengirim .+ x(\d+) ke/);
+                if (match) {
+                    const user = match[1]; const count = parseInt(match[2]); const price = hargaKado[m.role] || 0;
+                    totals[user] = (totals[user] || 0) + (price * count);
+                }
+            });
+
+            const userNames = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 10);
+            if (userNames.length === 0) return [];
+
+            const { data: profs } = await sb.from('profiles').select('username, avatar_url, level, role').in('username', userNames);
+            return (profs || []).map(p => ({ ...p, room_total: totals[p.username] })).sort((a, b) => b.room_total - a.room_total);
+        } catch (e) {
+            return [];
+        }
     }
 
     function playVIPEntrance(username: string, level: number) {
@@ -158,11 +183,9 @@ function VoiceRoomContent() {
             const chatBox = document.getElementById('chat-box');
             if (!chatBox) return;
             const isGift = p.new.username === "SISTEM_GIFT";
-            let comboValue = 1;
             if (isGift) {
                 const match = p.new.text.match(/^(.+) mengirim .+ x(\d+) ke/);
-                if (match) { comboValue = parseInt(match[2]); }
-                if (!p.new.text.startsWith(`${myUsername.current} `)) playGiftAnimation(parseInt(p.new.role), comboValue);
+                if (match && match[1] !== myUsername.current) playGiftAnimation(parseInt(p.new.role), parseInt(match[2]));
             }
             const div = document.createElement('div'); div.id = `msg-${p.new.id}`;
             if (isGift) {
@@ -171,9 +194,7 @@ function VoiceRoomContent() {
                 const isSystem = p.new.username.startsWith("SISTEM");
                 div.className = isSystem ? 'msg system' : 'msg';
                 const style = getLevelStyle(p.new.level || 1);
-                const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
-                const roleBadge = getUserBadge(p.new.role || '');
-                const userLink = `<span onclick="window.location.href='/data?username=${encodeURIComponent(p.new.username)}'" style="color:${style.color}; font-weight:bold; cursor:pointer;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
+                const userLink = `<span onclick="window.location.href='/data?username=${encodeURIComponent(p.new.username)}'" style="color:${style.color}; font-weight:bold; cursor:pointer;">${p.new.username}${getLevelBadgeHTML(p.new.level || 1)}${getUserBadge(p.new.role || '')}</span>`;
                 div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `${userLink}<span>: ${p.new.text}</span>`;
             }
             chatBox.appendChild(div); chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
@@ -187,7 +208,7 @@ function VoiceRoomContent() {
         })
         .on('broadcast', { event: 'naik_diizinkan' }, async (p: any) => {
             if (p.payload.userId === MY_USER_ID.current) {
-                showNotif("Naik panggung diizinkan! Mencari kursi...", "success");
+                showNotif("Permintaan diterima! Mencari kursi...", "success");
                 const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
                 const slotKosong = allSlots?.find(s => !s.profile_id);
                 if (slotKosong) window.naikKeStage?.(slotKosong.slot_index);
@@ -205,23 +226,14 @@ function VoiceRoomContent() {
     }
 
     async function fetchTopGifters() {
-        const { data: messages } = await sb.from('room_messages').select('text, role').eq('room_id', CURRENT_ROOM_ID).eq('username', 'SISTEM_GIFT');
-        const hargaKado: Record<string, number> = { '1': 1, '2': 10, '3': 50, '4': 100, '5': 2000, '6': 5000, '7': 10000, '8': 25000, '9': 50000, '10': 100000 };
-        let totals: Record<string, number> = {};
-        messages?.forEach((m: any) => {
-            const match = m.text.match(/^(.+) mengirim .+ x(\d+) ke/);
-            if (match) { totals[match[1]] = (totals[match[1]] || 0) + (hargaKado[m.role] * parseInt(match[2])); }
-        });
-        const sorted = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 3);
+        const topData = await getRoomLeaderboard();
         const container = document.getElementById('top-gifters-container');
         if (!container) return;
-        if (sorted.length === 0) { container.style.display = 'none'; return; }
-        const { data: profs } = await sb.from('profiles').select('username, avatar_url').in('username', sorted);
+        if (topData.length === 0) { container.style.display = 'none'; return; }
         container.style.display = 'flex';
         container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 TOP</span>`;
-        sorted.forEach((name, i) => {
-            const p = profs?.find(x => x.username === name);
-            container.innerHTML += `<img src="${p?.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
+        topData.slice(0, 3).forEach((u, i) => {
+            container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
         });
         container.onclick = () => window.openTopGiftersModal?.();
     }
@@ -273,7 +285,7 @@ function VoiceRoomContent() {
         });
     }
 
-    // 🔥 WINDOW LOGIC 🔥
+    // 🔥 WINDOW ASSIGNMENTS 🔥
     window.toggleMicSidebar = async (e) => {
         e?.preventDefault();
         if (!roomRef.current?.localParticipant) return showNotif(t('mic_not_ready'), "warning");
