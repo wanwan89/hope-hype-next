@@ -1,4 +1,32 @@
-/* --- TOAST NOTIFIKASI (Paling Depan) --- */
+/* =========================================
+   1. VARIABEL TEMA (DARK/LIGHT MODE)
+   ========================================= */
+:root {
+  --os-bg-sheet: #ffffff;
+  --os-handle: #e0e0e0;
+  --os-btn-bg: #f9f9f9;
+  --os-btn-text: #1a1a1a;
+  --os-btn-active: #eeeeee;
+  --os-btn-danger-bg: #fff1f1;
+  --os-btn-danger-text: #ef4444;
+  --os-cancel-text: #888888;
+}
+
+/* SINKRONISASI DARK MODE */
+[data-theme='dark'], html.dark {
+  --os-bg-sheet: #151515;
+  --os-handle: #333333;
+  --os-btn-bg: #1e1e1e;
+  --os-btn-text: #f8fafc;
+  --os-btn-active: #2c2c2c;
+  --os-btn-danger-bg: rgba(239, 68, 68, 0.15);
+  --os-btn-danger-text: #f87171;
+  --os-cancel-text: #9ca3af;
+}
+
+/* =========================================
+   2. TOAST NOTIFIKASI (TETAP PUTIH/TIDAK DIUBAH)
+   ========================================= */
 #toast {
   position: fixed;
   top: 20px;
@@ -51,7 +79,9 @@
 .toast-title { font-size: 14px; font-weight: 700; color: #000; }
 .toast-subtitle { font-size: 12px; color: #666; }
 
-/* --- BIG IMAGE (ZOOM) --- */
+/* =========================================
+   3. BIG IMAGE (ZOOM)
+   ========================================= */
 .overlay-container {
   position: fixed;
   inset: 0;
@@ -65,6 +95,7 @@
 .overlay-bg {
   position: absolute;
   inset: 0;
+  /* Warna background overlay ini tetep hitam transparan di kedua mode */
   background: rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(8px);
 }
@@ -79,7 +110,9 @@
   transition: transform 0.3s ease;
 }
 
-/* --- ACTION SHEET (MENU BAWAH) --- */
+/* =========================================
+   4. ACTION SHEET (MENU BAWAH) - SINKRON TEMA
+   ========================================= */
 .action-sheet-overlay {
   position: fixed;
   inset: 0;
@@ -99,14 +132,14 @@
 }
 
 .action-sheet {
-  background: #ffffff;
+  background: var(--os-bg-sheet);
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
   border-radius: 24px 24px 0 0;
   padding: 20px 20px 40px 20px; /* Padding bawah lebih besar buat kenyamanan jari */
   transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s ease;
   box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
 }
 
@@ -117,9 +150,10 @@
 .sheet-handle {
   width: 40px;
   height: 5px;
-  background: #e0e0e0;
+  background: var(--os-handle);
   border-radius: 10px;
   margin: 0 auto 20px auto;
+  transition: background-color 0.3s ease;
 }
 
 .sheet-btn {
@@ -128,31 +162,40 @@
   justify-content: center;
   width: 100%;
   padding: 16px;
-  background: #f9f9f9;
+  background: var(--os-btn-bg);
   border: none;
   font-size: 15px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--os-btn-text);
   border-radius: 14px;
   margin-bottom: 10px;
-  transition: background 0.2s;
+  transition: background-color 0.2s, color 0.2s;
   cursor: pointer;
 }
 
-.sheet-btn:active { background: #eeeeee; }
-.sheet-btn.danger { color: #ef4444; background: #fff1f1; }
+.sheet-btn:active { 
+  background: var(--os-btn-active); 
+}
+
+.sheet-btn.danger { 
+  color: var(--os-btn-danger-text); 
+  background: var(--os-btn-danger-bg); 
+}
 
 .sheet-cancel {
   margin-top: 5px;
   background: transparent;
-  color: #888;
+  color: var(--os-cancel-text);
   font-weight: 500;
   width: 100%;
   padding: 10px;
   border: none;
+  transition: color 0.3s ease;
 }
 
-/* --- GIFT ANIMATION --- */
+/* =========================================
+   5. GIFT ANIMATION
+   ========================================= */
 #giftAnimationContainer {
   position: fixed;
   inset: 0;

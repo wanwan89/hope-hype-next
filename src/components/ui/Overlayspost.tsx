@@ -12,6 +12,19 @@ import CommentModal from '@/components/post/CommentModalpost';
 import GiftSheet from '@/components/post/GiftSheetpost';
 import './Overlays.css';
 
+// 🔥 FIX UTAMA: Deklarasi TypeScript yang rapi biar Vercel senyum 🔥
+declare global {
+  interface Window {
+    openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void;
+    showNotif?: (msg: string, type?: string) => void;
+    openBigImage?: (src: string) => void;
+    openPostOptions?: (postId: string, isOwner: boolean, creatorId: string) => void;
+    closePostOptions?: () => void;
+    sharePost?: (postId: string) => void;
+    confirmDeletePost?: (postId: string) => void;
+  }
+}
+
 export default function Overlayspost() {
   const [bigImgSrc, setBigImgSrc] = useState<string | null>(null);
   
@@ -27,7 +40,7 @@ export default function Overlayspost() {
     window.addEventListener('openPostModal', handleOpenPost);
 
     // --- 2. TOAST NOTIFIKASI (GLOBAL UTILS) ---
-    (window as any).showNotif = (msg: string, type: string = "info") => {
+    window.showNotif = (msg: string, type: string = "info") => {
       const container = document.getElementById("toast");
       if (!container) return;
 
@@ -58,7 +71,7 @@ export default function Overlayspost() {
     };
 
     // --- 3. ZOOM IMAGE (BIG IMAGE) ---
-    (window as any).openBigImage = (src: string) => {
+    window.openBigImage = (src: string) => {
       setBigImgSrc(src);
       const container = document.getElementById("bigImageContainer");
       if (container) {
@@ -71,7 +84,7 @@ export default function Overlayspost() {
     };
 
     // --- 4. ACTION SHEET (POST OPTIONS) ---
-    (window as any).openPostOptions = (postId: string, isOwner: boolean, creatorId: string) => {
+    window.openPostOptions = (postId: string, isOwner: boolean, creatorId: string) => {
       const sheet = document.getElementById('postOptionsSheet');
       const content = document.getElementById('sheetOptionsContent');
       if (!sheet || !content) return;
@@ -82,51 +95,52 @@ export default function Overlayspost() {
         ${isOwner ? `<button class="sheet-btn danger" id="deleteBtn">Hapus Karya</button>` : `<button class="sheet-btn" id="reportBtn">Laporkan</button>`}
       `;
 
-      content.querySelector('#shareBtn')?.addEventListener('click', () => (window as any).sharePost(postId));
-      content.querySelector('#profileBtn')?.addEventListener('click', () => window.location.href = `/data?id=${creatorId}`); // 🔥 FIX dikit: arahin ke /data (bukan /profile) sesuai struktur lu
-      content.querySelector('#deleteBtn')?.addEventListener('click', () => (window as any).confirmDeletePost(postId));
+      content.querySelector('#shareBtn')?.addEventListener('click', () => window.sharePost && window.sharePost(postId));
+      content.querySelector('#profileBtn')?.addEventListener('click', () => window.location.href = `/data?id=${creatorId}`); 
+      content.querySelector('#deleteBtn')?.addEventListener('click', () => window.confirmDeletePost && window.confirmDeletePost(postId));
       content.querySelector('#reportBtn')?.addEventListener('click', () => {
-        (window as any).showNotif('Karya telah dilaporkan.', 'info');
-        (window as any).closePostOptions();
+        if (window.showNotif) window.showNotif('Karya telah dilaporkan.', 'info');
+        if (window.closePostOptions) window.closePostOptions();
       });
 
       sheet.classList.add('active');
     };
 
-    (window as any).closePostOptions = () => {
+    window.closePostOptions = () => {
       document.getElementById('postOptionsSheet')?.classList.remove('active');
     };
 
     // 🔥 FIX: HUBUNGKAN KE GLOBAL SHARE MODAL 🔥
-    (window as any).sharePost = (postId: string) => {
+    window.sharePost = (postId: string) => {
       const url = window.location.origin + '/post?id=' + postId;
       
       // Tutup menu opsi sebelum buka modal share
-      (window as any).closePostOptions();
+      if (window.closePostOptions) window.closePostOptions();
 
-      if ((window as any).openGlobalShare) {
-        (window as any).openGlobalShare(
+      if (window.openGlobalShare) {
+        window.openGlobalShare(
           url,
           'Karya di HypeTalk',
-          'Cek karya keren ini di HypeTalk!'
+          'Cek karya keren ini di HypeTalk!',
+          undefined // Parameter name opsional
         );
       } else {
         // Fallback kalo misal ada error load modal
         navigator.clipboard.writeText(url);
-        (window as any).showNotif('Link disalin!', 'success');
+        if (window.showNotif) window.showNotif('Link disalin!', 'success');
       }
     };
 
-    (window as any).confirmDeletePost = async (postId: string) => {
-      (window as any).closePostOptions();
+    window.confirmDeletePost = async (postId: string) => {
+      if (window.closePostOptions) window.closePostOptions();
       if (!confirm("Hapus permanen?")) return;
       try {
         const { error } = await supabase.from("posts").delete().eq("id", postId);
         if (error) throw error;
-        (window as any).showNotif("Berhasil dihapus!", "success");
+        if (window.showNotif) window.showNotif("Berhasil dihapus!", "success");
         setTimeout(() => location.reload(), 1000);
       } catch (err: any) {
-        (window as any).showNotif(err.message, "error");
+        if (window.showNotif) window.showNotif(err.message, "error");
       }
     };
 
@@ -167,7 +181,14 @@ export default function Overlayspost() {
             src={bigImgSrc} 
             className="preview-img" 
             alt="Preview" 
-            style={{ transition: 'transform 0.3s ease', transform: 'scale(0.9)' }}
+            style={{ 
+              transition: 'transform 0.3s ease', 
+              transform: 'scale(0.9)',
+              // 🔥 FIX TAMBAHAN: Anti-Download buat gambar gede 🔥
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none'
+            }}
           />
         )}
       </div>
@@ -177,13 +198,13 @@ export default function Overlayspost() {
         className="action-sheet-overlay" 
         style={{ zIndex: 20000 }}
         onClick={(e) => {
-          if ((e.target as HTMLElement).id === "postOptionsSheet") (window as any).closePostOptions();
+          if ((e.target as HTMLElement).id === "postOptionsSheet" && window.closePostOptions) window.closePostOptions();
         }}
       >
         <div className="action-sheet">
           <div className="sheet-handle"></div>
           <div className="sheet-content" id="sheetOptionsContent"></div>
-          <button className="sheet-cancel" onClick={() => (window as any).closePostOptions()}>Batal</button>
+          <button className="sheet-cancel" onClick={() => window.closePostOptions && window.closePostOptions()}>Batal</button>
         </div>
       </div>
     </>

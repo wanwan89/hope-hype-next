@@ -10,8 +10,8 @@ declare global {
     kirimKomentar?: () => void;
     mintaNaik?: () => void;
     toast?: (title: string, msg: string, type: string) => void; 
-    // 🔥 FIX: Daftarin fungsi global share biar Vercel nggak protes 🔥
-    openGlobalShare?: (url?: string, title?: string, text?: string) => void; 
+    // 🔥 FIX UTAMA: Tambah parameter 'name' biar kembar identik 100% sama file lain 🔥
+    openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void; 
   }
 }
 
