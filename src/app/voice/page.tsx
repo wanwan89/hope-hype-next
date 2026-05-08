@@ -1,11 +1,11 @@
 'use client';
 
-// 🔥 FIX: Tambahkan Suspense dari react 🔥
 import { useEffect, useState, useRef, Suspense } from 'react';
 import Script from 'next/script';
 import { useSearchParams } from 'next/navigation'; 
 import { supabase as sb } from '@/lib/supabase'; 
 import { useTranslation } from 'react-i18next';
+// Import UI Utils biar Badge & Notif muncul
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 
 import Sidebar from '@/components/room/Sidebarroom';
@@ -45,7 +45,7 @@ declare global {
   var LivekitClient: any;
 }
 
-// 🔥 FIX: Kita ubah nama fungsi utama jadi VoiceRoomContent 🔥
+// 🔥 1. FUNGSI KONTEN UTAMA (VoiceRoomContent) 🔥
 function VoiceRoomContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams(); 
@@ -441,7 +441,7 @@ function VoiceRoomContent() {
         const grid = document.getElementById('stage-grid');
         if (!grid || !data) return;
         grid.innerHTML = "";
-        data.forEach((slot: any, i: number) => {
+        data.forEach((slot: any) => {
             const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
@@ -718,10 +718,24 @@ function VoiceRoomContent() {
     </div>
   );
 }
+
+// 🔥 2. FUNGSI PAGE UTAMA DENGAN SUSPENSE BOUNDARY 🔥
 export default function Page() {
   return (
-    <Suspense fallback={<div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff'}}>Memuat panggung...</div>}>
-      <RoomPage />
+    <Suspense fallback={
+      <div style={{
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: '#01070A', 
+        color: '#fff',
+        fontFamily: 'sans-serif'
+      }}>
+        Memuat panggung...
+      </div>
+    }>
+      <VoiceRoomContent />
     </Suspense>
-  )
+  );
 }
