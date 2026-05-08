@@ -3,13 +3,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showNotif } from '@/lib/ui-utils';
-// 🔥 Pake Lucide biar iconnya konsisten sama yang lain
-import { Copy, X, Share2 } from 'lucide-react';
+import { Copy, X, Share2, Send } from 'lucide-react';
 import './GlobalShareModal.css';
 
 declare global {
   interface Window {
-    openGlobalShare?: (url?: string, title?: string, text?: string) => void;
+    // 🔥 FIX: Tambahkan params untuk kirim nama user secara dinamis
+    openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void;
   }
 }
 
@@ -19,22 +19,31 @@ export default function GlobalShareModal() {
   const [isClosing, setIsClosing] = useState(false);
   const [shareData, setShareData] = useState({ url: '', title: '', text: '' });
 
-  // Fungsi tutup dengan animasi halus
   const closeModal = useCallback(() => {
     setIsClosing(true);
     setTimeout(() => {
       setIsOpen(false);
       setIsClosing(false);
-    }, 300); // Sesuaikan dengan durasi transisi CSS
+    }, 300);
   }, []);
 
   useEffect(() => {
-    window.openGlobalShare = (
-      url = window.location.href, 
-      title = 'HypeTalk', 
-      text = t('share_profile_text', 'Ayo gabung dan seru-seruan bareng di HypeTalk!')
-    ) => {
-      setShareData({ url, title, text });
+    // 🔥 FIX LOGIC: Default text sekarang pake key yang aman (tanpa placeholder)
+    // Tapi kalau ada argumen 'name' atau 'text' dari luar, itu yang dipake.
+    window.openGlobalShare = (url, title, text, name) => {
+      const finalUrl = url || window.location.href;
+      const finalTitle = title || 'HypeTalk';
+      
+      // Jika ada 'name', kita masukkan ke dalam translasi
+      // Jika tidak ada 'text' dari luar, pake default i18n
+      let finalText = text;
+      if (!finalText) {
+        finalText = name 
+          ? t('share_profile_text', { name: name }) // Ini kuncinya Bree!
+          : t('share_room_text', 'Ayo gabung di HypeTalk!'); // Fallback kalau gak ada nama
+      }
+
+      setShareData({ url: finalUrl, title: finalTitle, text: finalText });
       setIsOpen(true);
     };
 
@@ -66,7 +75,6 @@ export default function GlobalShareModal() {
     closeModal();
   };
 
-  // Fitur Bonus: Panggil Native Share bawaan HP kalau ada
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
@@ -77,7 +85,7 @@ export default function GlobalShareModal() {
         });
         closeModal();
       } catch (err) {
-        console.log('User cancelled native share');
+        console.log('User cancelled');
       }
     } else {
       copyLink();
@@ -96,35 +104,40 @@ export default function GlobalShareModal() {
         
         <div className="share-header">
           <h3>{t('share_title', 'Bagikan')}</h3>
-          <button className="close-share" onClick={closeModal} aria-label="Close">
+          <button className="close-share" onClick={closeModal}>
             <X size={20} />
           </button>
         </div>
         
         <div className="share-body">
+          {/* 🔥 Text sekarang munculin nama asli, bukan {{name}} lagi */}
           <p className="share-desc">{shareData.text}</p>
           
           <div className="share-options-grid">
-            {/* Salin Tautan */}
             <button className="share-opt-btn copy-btn" onClick={copyLink}>
               <div className="share-icon-wrapper">
-                <Copy size={24} />
+                <Copy size={22} />
               </div>
               <span>{t('copy', 'Salin')}</span>
             </button>
             
-            {/* WhatsApp */}
             <button className="share-opt-btn wa-btn" onClick={shareToWhatsApp}>
               <div className="share-icon-wrapper">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" />
               </div>
-              <span>WhatsApp</span>
+              <span>WHATSAPP</span>
+            </button>
+
+            <button className="share-opt-btn tg-btn" onClick={shareToTelegram}>
+              <div className="share-icon-wrapper">
+                <Send size={22} color="#0088cc" />
+              </div>
+              <span>TELEGRAM</span>
             </button>
             
-            {/* Native / Lainnya */}
             <button className="share-opt-btn native-btn" onClick={handleNativeShare}>
               <div className="share-icon-wrapper">
-                <Share2 size={24} />
+                <Share2 size={22} />
               </div>
               <span>{t('cat_other', 'Lainnya')}</span>
             </button>

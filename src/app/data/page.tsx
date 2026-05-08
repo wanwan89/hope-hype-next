@@ -7,9 +7,10 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './DataProfile.css';
 
+// 🔥 FIX 1: Update interface agar bisa nerima parameter 'name'
 declare global {
   interface Window {
-    openGlobalShare?: (url?: string, title?: string, text?: string) => void;
+    openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void;
   }
 }
 
@@ -161,15 +162,17 @@ function ProfileContent() {
     } catch (err) { console.error(err); } finally { setIsFollowLoading(false); }
   };
 
+  // 🔥 FIX 2: Kirim profil username ke modal bagikan agar {{name}} berubah jadi nama asli
   const handleShareProfile = () => {
     const url = window.location.href;
     const title = `Profil ${profile?.username}`;
-    const text = t('share_profile_text', `Yuk mampir ke profil ${profile?.username} di HypeTalk!`);
     
     setIsSidebarOpen(false);
 
     if (window.openGlobalShare) {
-      window.openGlobalShare(url, title, text);
+      // Kita kirim 'undefined' untuk text agar dia pakai default i18n, 
+      // tapi kita kirim profile.username agar diolah jadi nama asli.
+      window.openGlobalShare(url, title, undefined, profile?.username);
     } else {
       navigator.clipboard.writeText(url); 
       showNotif(t('link_copied', 'Link disalin!'), "success");
@@ -231,7 +234,6 @@ function ProfileContent() {
             <span className="material-icons">menu</span>
           </button>
         ) : (
-          /* 🔥 FIX: Tombol Back otomatis pulang ke profil lu sendiri tanpa loading 🔥 */
           <button className="header-btn" onClick={() => router.push('/data')}>
             <span className="material-icons">arrow_back</span>
           </button>
@@ -300,7 +302,6 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* Sidebar Setting hanya bisa diakses kalau isMe === true */}
       {isMe && (
         <>
           <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
@@ -354,7 +355,6 @@ function ProfileContent() {
       {isMounted && isMe && (
         <div className={`prof-modal-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => !isSaving && setIsEditModalOpen(false)}>
            <div className="prof-modal-content" onClick={e => e.stopPropagation()}>
-              {/* 🔥 FIX: Tambahkan Default Text Fallback di sini biar ga muncul kata kunci uppercase 🔥 */}
               <div className="modal-header">
                 <h3>{t('edit_profile_modal', 'Edit Profil')}</h3>
                 <span className="material-icons close-btn" onClick={() => setIsEditModalOpen(false)}>close</span>
