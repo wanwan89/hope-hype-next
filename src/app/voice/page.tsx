@@ -654,6 +654,47 @@ function VoiceRoomContent() {
         } catch (e) { console.error(e); }
     };
 
+    window.mintaNaik = async () => {
+        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').order('slot_index', { ascending: true });
+        const slotKosong = allSlots?.find(s => !s.profile_id);
+        if (slotKosong) window.naikKeStage?.(slotKosong.slot_index); else showNotif("Panggung penuh!", "warning");
+    };
+
+    window.keluarRoom = async () => {
+        if (IS_OWNER.current && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
+            await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
+            await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
+            await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
+        } else {
+            await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
+        }
+        roomRef.current?.disconnect();
+        window.location.href = '/lobby'; 
+    };
+
+    window.toggleMicSidebar = async (e: any) => {
+        e?.preventDefault();
+        if (!roomRef.current) return showNotif(t('mic_not_ready'), "warning");
+
+        const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID.current).single();
+        if (!onStage) return showNotif(t('mic_stage_first'), "warning");
+
+        isMicOn.current = !isMicOn.current;
+        await roomRef.current.localParticipant.setMicrophoneEnabled(isMicOn.current);
+        await sb.from('profiles').update({ mic_off: !isMicOn.current }).eq('id', MY_USER_ID.current);
+
+        const icon = document.getElementById('mic-icon');
+        const text = document.getElementById('mic-text');
+        if (icon && text) {
+            icon.innerText = isMicOn.current ? 'mic' : 'mic_off';
+            text.innerText = isMicOn.current ? t('mute_mic') : t('unmute_mic');
+            icon.style.color = isMicOn.current ? 'inherit' : '#ef4444';
+        }
+        
+        window.toggleSidebar?.(); 
+        fetchStage();
+    };
+
     window.openRoomSetting = () => {
         const modal = document.getElementById('setting-modal');
         if (modal) {
@@ -749,6 +790,7 @@ function VoiceRoomContent() {
 
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
 
+    // 🔥 FIX: Hapus totalTaps dari dependency array agar layar tidak keriset saat di-tap 🔥
     return () => {
         clearInterval(sdkInterval); 
         roomRef.current?.disconnect();
@@ -756,7 +798,7 @@ function VoiceRoomContent() {
         window.removeEventListener('orientationchange', fixMobileHeight);
         ['room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 'vip-entrance-overlay'].forEach(id => document.getElementById(id)?.remove());
     };
-  }, [t, searchParams, totalTaps, router]);
+  }, [t, searchParams, router]);
 
   if (!mounted) return null;
 
@@ -789,7 +831,7 @@ function VoiceRoomContent() {
                 </h3>
                 <div className="profile-sheet-level">LEVEL {selectedUser.level || 1}</div>
               </div>
-              <button className="btn-view-profile-full" onClick={() => router.push(`/data?id=${selectedUser.id}`)}>
+              <button className="btn-view-profile-full" onClick={() => router.push(`/data?username=${selectedUser.username}`)}>
                 Lihat Profil Lengkap
               </button>
             </div>
