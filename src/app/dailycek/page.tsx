@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import confetti from 'canvas-confetti';
 import './dailycek.css';
 
-// 🔥 FIX: Daftarin fungsi global share ke window biar TypeScript ga error 🔥
+// 🔥 FIX 1: Deklarasi harus identik se-aplikasi (4 parameter) biar ga error build 🔥
 declare global {
   interface Window {
-    openGlobalShare?: (url?: string, title?: string, text?: string) => void;
+    openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void;
   }
 }
 
-export default function PusatMisiPage() {
+// Komponen Utama
+function MisiContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSecurity, setShowSecurity] = useState(false);
@@ -33,7 +35,6 @@ export default function PusatMisiPage() {
 
   const REWARDS = [50, 50, 100, 50, 50, 100, 300];
   
-  // Misi Harian
   const MISSIONS = {
     like: { target: 5, reward: 25, type: 'mission_like', icon: 'favorite', color: '#ec4899' },
     comment: { target: 3, reward: 40, type: 'mission_comment', icon: 'chat', color: '#10b981' },
@@ -60,6 +61,7 @@ export default function PusatMisiPage() {
       const { data: prof, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (error) throw error;
 
+      // Anti Cheat Check
       const { data: dupe } = await supabase.from('profiles').select('id').eq('device_id', vid).neq('id', session.user.id).limit(1);
       if (dupe && dupe.length > 0) {
         setShowSecurity(true);
@@ -190,17 +192,17 @@ export default function PusatMisiPage() {
     }
   };
 
-  // 🔥 FIX 1: Hubungkan dengan Global Share Modal 🔥
+  // 🔥 FIX 2: Hubungkan dengan Global Share Modal Premium 🔥
   const handleShareLink = () => {
     const link = `${window.location.origin}/dailycek?ref=${profile?.invite_code}`;
-    const textDesc = `Yuk gabung HypeTalk dan dapatkan hadiah koin! Masukkan kode undanganku: ${profile?.invite_code}`;
+    const textDesc = `Yuk gabung HypeTalk dan klaim hadiah koin misi! Masukkan kode undanganku: ${profile?.invite_code}`;
     
     if (window.openGlobalShare) {
-      window.openGlobalShare(link, 'Undang Teman HypeTalk', textDesc);
+      // Sekarang aman dipanggil dan bakal munculin nama lu di modal
+      window.openGlobalShare(link, 'Undang Teman HypeTalk', textDesc, profile?.username);
     } else {
-      // Fallback
       navigator.clipboard.writeText(link);
-      showNotif("Link dan kode berhasil disalin!", "success");
+      showNotif("Link disalin!", "success");
     }
   };
 
@@ -212,11 +214,13 @@ export default function PusatMisiPage() {
     </div>
   );
 
+  if (isLoading) return null;
+
   return (
     <div className="mission-wrapper">
       <div className="mission-container">
         
-        {/* HEADER & EXCHANGE (YANG DIEM DI ATAS) */}
+        {/* HEADER & EXCHANGE */}
         <div className="sticky-top-wrapper">
           <header className="mission-header">
             <button className="back-btn" onClick={() => router.back()}>
@@ -241,10 +245,9 @@ export default function PusatMisiPage() {
           </div>
         </div>
 
-        {/* 🔥 WADAH SCROLL YANG KEMARIN ILANG 🔥 */}
+        {/* AREA SCROLL */}
         <div className="mission-scroll-area">
           
-          {/* CHECK-IN */}
           <div className="mission-card">
             <h2 className="streak-title">Check-in 7 Hari</h2>
             <p className="streak-desc">Klaim koin gratis tiap hari!</p>
@@ -270,17 +273,14 @@ export default function PusatMisiPage() {
             </button>
           </div>
 
-          {/* MISI PEMULA & REFERRAL */}
           <h3 className="section-title">Misi Pemula</h3>
           <div className="mission-list">
-            
             {!profile?.apk_downloaded && (
               <div className="mission-item">
                 <div className="m-icon-box" style={{background:'#10b981'}}><span className="material-icons">install_mobile</span></div>
                 <div className="m-info">
-                  <h4 className="m-title">Instal Aplikasi HopeHype</h4>
-                  <div className="m-reward"><div className="coin-dot" /> +300 Koin</div>
-                  <span className="progress-text">Akses lebih cepat & ringan</span>
+                  <h4 className="m-title">Instal Aplikasi</h4>
+                  <div className="m-reward">+300 Koin</div>
                 </div>
                 <button className="m-btn btn-klaim" onClick={handlePwaInstall}>Instal</button>
               </div>
@@ -290,8 +290,6 @@ export default function PusatMisiPage() {
               <div className="m-icon-box" style={{background:'#f97316'}}><span className="material-icons">card_giftcard</span></div>
               <div className="m-info">
                 <h4 className="m-title">Masukkan Kode Undangan</h4>
-                <div className="m-reward"><div className="coin-dot" /> +200 Koin</div>
-                
                 {!profile?.referred_by ? (
                   <input 
                     type="text" 
@@ -302,23 +300,19 @@ export default function PusatMisiPage() {
                       width: '100%', padding: '8px 12px', fontSize: '13px', 
                       borderRadius: '8px', border: '1px solid var(--border-color)', 
                       background: 'var(--bg-main)', color: 'var(--text-main)', 
-                      outline: 'none', marginTop: '6px', fontFamily: 'monospace'
+                      outline: 'none', marginTop: '6px'
                     }} 
                   />
                 ) : (
-                  <span className="progress-text" style={{color: '#10b981', display:'block', marginTop:'4px'}}>✓ Berhasil diklaim</span>
+                  <span className="progress-text" style={{color: '#10b981'}}>✓ Berhasil diklaim</span>
                 )}
               </div>
               {!profile?.referred_by && (
-                <button className="m-btn btn-klaim" onClick={handleClaimInviteCode} disabled={isSubmittingInvite}>
-                  {isSubmittingInvite ? '...' : 'Klaim'}
-                </button>
+                <button className="m-btn btn-klaim" onClick={handleClaimInviteCode} disabled={isSubmittingInvite}>Klaim</button>
               )}
             </div>
-
           </div>
 
-          {/* MISI HARIAN */}
           <h3 className="section-title">Misi Harian</h3>
           <div className="mission-list">
             {Object.entries(MISSIONS).map(([key, m]) => {
@@ -331,23 +325,17 @@ export default function PusatMisiPage() {
                   <div className="m-icon-box" style={{ backgroundColor: m.color }}>
                      <span className="material-icons" style={{ fontSize: '20px', color: 'white' }}>{m.icon}</span>
                   </div>
-                  
                   <div className="m-info">
                     <h4 className="m-title">{key.toUpperCase()} {m.target}X</h4>
-                    <div className="m-reward"><div className="coin-dot" /> +{m.reward} Koin</div>
-                    <div className="progress-bar"><div className="progress-fill" style={{width: `${(current/m.target)*100}%`}} /></div>
-                    <span className="progress-text">{current}/{m.target}</span>
+                    <div className="m-reward">+{m.reward} Koin</div>
+                    <div className="progress-bar"><div className="progress-fill" style={{width: `${Math.min((current/m.target)*100, 100)}%`}} /></div>
                   </div>
-                  
                   <button 
                     className={`m-btn ${canClaim ? 'btn-klaim' : isDone ? 'btn-done' : ''}`}
                     onClick={() => {
                       if (isDone) return;
-                      if (canClaim) {
-                        secureUpdate({ mission_coins: profile.mission_coins + m.reward }, { type:'masuk', transaction_type: m.type, amount: m.reward, description:'Misi Harian' });
-                      } else {
-                        router.push('/');
-                      }
+                      if (canClaim) secureUpdate({ mission_coins: profile.mission_coins + m.reward }, { type:'masuk', transaction_type: m.type, amount: m.reward, description:'Misi Harian' });
+                      else router.push('/');
                     }}
                   >
                     {isDone ? 'Selesai' : canClaim ? 'Klaim' : 'Mulai'}
@@ -357,26 +345,30 @@ export default function PusatMisiPage() {
             })}
           </div>
 
-          {/* PROGRAM REFERRAL */}
           <h3 className="section-title" style={{ marginTop: '1.25rem' }}>Program Referral</h3>
           <div className="mission-list" style={{ marginBottom: '2rem' }}>
             <div className="mission-item">
               <div className="m-icon-box" style={{background: '#ef4444'}}><span className="material-icons">group_add</span></div>
               <div className="m-info">
                 <h4 className="m-title">Undang & Dapat Koin</h4>
-                <div className="m-reward"><div className="coin-dot" /> +500 Koin / Teman</div>
-                <span className="progress-text">Kode: <b style={{color: 'var(--primary)', fontFamily: 'monospace', fontSize: '13px'}}>{profile?.invite_code || '...'}</b></span>
+                <div className="m-reward">+500 Koin / Teman</div>
+                <span className="progress-text">Kode: <b style={{color: 'var(--primary)', fontFamily: 'monospace'}}>{profile?.invite_code || '...'}</b></span>
               </div>
-              
-              {/* Tombol yang bakal ngebuka UI Share Modal Premium */}
               <button className="m-btn" onClick={handleShareLink}>Bagikan</button>
             </div>
           </div>
 
         </div> 
-        {/* 🔥 PENUTUP SCROLL AREA 🔥 */}
-
       </div>
     </div>
+  );
+}
+
+// 🔥 FIX 3: Wajib dibungkus Suspense karena pake useSearchParams 🔥
+export default function PusatMisiPage() {
+  return (
+    <Suspense fallback={null}>
+      <MisiContent />
+    </Suspense>
   );
 }
