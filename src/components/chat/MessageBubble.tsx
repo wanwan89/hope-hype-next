@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useRef, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; 
 import { getUserBadge } from '@/lib/ui-utils';
@@ -23,6 +25,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const lastTap = useRef(0);
 
   const isDeleted = msg.message === "Pesan ini telah dihapus";
+  
+  // 🔥 Deteksi apakah ini chat pribadi atau bukan (Grup/Global)
   const isPrivateChat = msg.room_id?.startsWith('pv_');
 
   // 🔥 State handle data reply hasil realtime
@@ -53,7 +57,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     } else if (msg.reply_to_msg) {
       setLiveReply(msg.reply_to_msg);
     }
-  }, [msg.reply_to, msg.reply_to_msg]);
+  }, [msg.reply_to, msg.reply_to_msg, liveReply]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -137,7 +141,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
           <div className="system-text">{displayMessage}</div>
         ) : (
           <>
-            {/* 🔥 FIX: Foto muncul jika BUKAN Private Chat DAN BUKAN saya sendiri 🔥 */}
+            {/* 🔥 FOTO PROFIL: Muncul di Grup/Global untuk orang lain 🔥 */}
             {!isPrivateChat && !isMe && (
               <img 
                 className="avatar" 
@@ -148,7 +152,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
             
             <div className="content">
               
-              {/* 🔥 FIX: Username & Badge muncul jika BUKAN Private Chat DAN BUKAN saya sendiri 🔥 */}
+              {/* 🔥 USERNAME: Muncul di Grup/Global untuk orang lain 🔥 */}
               {!isPrivateChat && !isMe && (
                 <div className="username">
                   {msg.profiles?.username || 'User'} 

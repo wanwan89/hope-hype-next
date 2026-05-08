@@ -28,41 +28,50 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-/* 🔥 WADAH BUBBLE CHAT (CONTENT) 🔥 */
+/* 🔥 WADAH BUBBLE CHAT 🔥 */
 .hype-chat-scope .chat-message .content { 
   display: flex; 
   flex-direction: column; 
   max-width: 75%; 
   padding: 8px 12px; 
   position: relative;
-  box-shadow: 0 1.5px 2px rgba(0,0,0,0.15); /* Bayangan halus biar muncul */
+  box-shadow: 0 1.5px 2px rgba(0,0,0,0.12);
 }
 
-/* WARNA BUBBLE SENDIRI (Hijau WA Premium) */
 .hype-chat-scope .chat-message.self .content { 
-  background: #dcf8c6 !important; /* Warna Hijau Solid */
+  background: #dcf8c6 !important; 
   color: #111b21; 
   border-radius: 16px 16px 4px 16px; 
 }
 
-/* WARNA BUBBLE LAWAN (Azure White - Biar gak bentrok background putih) */
 .hype-chat-scope .chat-message.other .content { 
-  background: #f0f2f5 !important; /* Abu-abu sangat muda/Off-white */
+  background: #f0f2f5 !important; 
   color: #111b21; 
   border-radius: 16px 16px 16px 4px; 
 }
 
 /* DARK MODE BUBBLE */
 [data-theme='dark'] .hype-chat-scope .chat-message.self .content,
-html.dark .hype-chat-scope .chat-message.self .content { 
-  background: #005c4b !important; 
-  color: #e9edef; 
-}
+html.dark .hype-chat-scope .chat-message.self .content { background: #005c4b !important; color: #e9edef; }
 [data-theme='dark'] .hype-chat-scope .chat-message.other .content,
-html.dark .hype-chat-scope .chat-message.other .content { 
-  background: #202c33 !important; 
-  color: #e9edef; 
+html.dark .hype-chat-scope .chat-message.other .content { background: #202c33 !important; color: #e9edef; }
+
+/* 🔥 REPLY BOX DI DALAM BUBBLE 🔥 */
+.hype-chat-scope .reply-preview-in-chat { 
+  cursor: pointer; 
+  background: rgba(0, 0, 0, 0.05); 
+  border-left: 3px solid var(--primary-blue); 
+  padding: 6px 10px; 
+  border-radius: 8px; 
+  margin-bottom: 6px; 
+  font-size: 11.5px; 
+  color: var(--text-muted); 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  white-space: nowrap; 
+  display: block;
 }
+[data-theme='dark'] .hype-chat-scope .reply-preview-in-chat { background: rgba(255, 255, 255, 0.1); }
 
 /* TEXT & INFO */
 .hype-chat-scope .chat-message .username { font-weight: 700; font-size: 12px; color: #1da1f2; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
@@ -70,56 +79,38 @@ html.dark .hype-chat-scope .chat-message.other .content {
 .hype-chat-scope .chat-message .message-info { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; }
 .hype-chat-scope .chat-message .timestamp { font-size: 10px; opacity: 0.6; font-weight: 500; }
 
-/* 🔥 WADAH PESAN SISTEM (PANGGILAN DLL) 🔥 */
-.hype-chat-scope .chat-message.system {
-  justify-content: center !important;
-  margin: 15px 0 !important;
-}
-
-.hype-chat-scope .system-text { 
-  background: rgba(0, 0, 0, 0.06) !important; 
-  color: #54656f !important; 
-  font-size: 11.5px !important; 
-  padding: 6px 16px !important; 
-  border-radius: 10px !important; 
-  font-weight: 600 !important;
-  text-align: center !important;
-  display: inline-block !important;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
-}
-
-/* 🔥 WADAH ENKRIPSI (KOTAK KUNING) 🔥 */
-.hype-chat-scope .encryption-notice { 
-  display: flex !important; 
-  align-items: center !important; 
-  justify-content: center !important; 
-  gap: 8px !important; 
-  background: #fff3c4 !important; 
-  color: #654e00 !important; 
-  font-size: 11px !important; 
-  padding: 10px 14px !important; 
-  border-radius: 10px !important; 
-  margin: 10px auto 20px auto !important; 
-  max-width: 85% !important; 
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; 
-}
-
-/* 🔥 VN PLAYER STYLING 🔥 */
-.hype-chat-scope .vn-custom-player { display: flex; align-items: center; gap: 12px; padding: 4px 0; min-width: 200px; }
+/* VN PLAYER STYLING */
+.hype-chat-scope .vn-custom-player { display: flex; align-items: center; gap: 10px; padding: 4px 0; min-width: 180px; }
 .hype-chat-scope .vn-play-btn { 
   display: flex; align-items: center; justify-content: center; 
-  width: 38px; height: 38px; border-radius: 50%; 
+  width: 36px; height: 36px; border-radius: 50%; 
   background: #1da1f2 !important; border: none; cursor: pointer; 
 }
-.hype-chat-scope .vn-waveform { display: flex; align-items: center; gap: 3px; height: 20px; flex-grow: 1; }
-.hype-chat-scope .vn-waveform .bar { width: 3px; height: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 2px; }
-.hype-chat-scope .playing .bar { animation: waveAnim 0.6s infinite alternate; background: #1da1f2; }
+.hype-chat-scope .vn-waveform { display: flex; align-items: center; gap: 3px; height: 18px; flex-grow: 1; }
+.hype-chat-scope .vn-waveform .bar { width: 2.5px; height: 10px; background: rgba(0, 0, 0, 0.2); border-radius: 1px; }
+
+/* 🔥 FIX: UKURAN FONT VN DIPERKECIL 🔥 */
+.hype-chat-scope .vn-time { 
+  font-size: 9px !important; 
+  font-weight: 700; 
+  color: var(--text-muted); 
+  white-space: nowrap; 
+  margin-left: 4px; 
+}
+
+/* SYSTEM & ENCRYPTION NOTICE */
+.hype-chat-scope .chat-message.system { justify-content: center !important; margin: 12px 0 !important; width: 100% !important; }
+.hype-chat-scope .system-text { background: rgba(0,0,0,0.06) !important; color: #54656f !important; font-size: 11px !important; padding: 6px 16px !important; border-radius: 20px !important; font-weight: 600 !important; text-align: center !important; display: inline-block !important; }
+
+.hype-chat-scope .encryption-notice { 
+  display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; 
+  background: #fff3c4 !important; color: #654e00 !important; font-size: 11px !important; padding: 10px 16px !important; 
+  border-radius: 10px !important; margin: 10px auto 20px auto !important; max-width: 85% !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; 
+}
 
 /* TYPING INDICATOR */
 .hype-chat-scope .typing-bubble { display: flex; align-items: center; gap: 4px; padding: 4px 8px; }
 .hype-chat-scope .typing-bubble .dot { width: 6px; height: 6px; background: #8696a0; border-radius: 50%; animation: typingBounce 1.4s infinite; }
-.hype-chat-scope .typing-bubble .dot:nth-child(2) { animation-delay: 0.2s; }
-.hype-chat-scope .typing-bubble .dot:nth-child(3) { animation-delay: 0.4s; }
-
 @keyframes typingBounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-4px); opacity: 1; } }
 @keyframes waveAnim { from { transform: scaleY(0.8); } to { transform: scaleY(1.4); } }
+.hype-chat-scope .playing .bar { animation: waveAnim 0.6s infinite alternate; background: #1da1f2; }

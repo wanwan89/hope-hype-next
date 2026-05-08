@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 import * as LiveKit from 'livekit-client';
 import { useTranslation } from 'react-i18next';
-import MessageBubble, { getStatusIcon } from './MessageBubble';
+import MessageBubble from './MessageBubble';
 import './ChatArea.css';
 
 export default function ChatArea() {
@@ -38,14 +38,14 @@ export default function ChatArea() {
   const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
   const [deleteMenu, setDeleteMenu] = useState<any>(null);
   
-  // 🔥 FIX 1: State Management Grup & Invite 🔥
+  // 🔥 FIX 1: Management Grup & Invite 🔥
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
   const [groupModalTab, setGroupModalTab] = useState<'invite' | 'settings'>('invite');
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [newGroupName, setNewGroupName] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
-  const [inviteSearch, setInviteSearch] = useState(''); // State buat cari member
+  const [inviteSearch, setInviteSearch] = useState(''); 
 
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -75,6 +75,7 @@ export default function ChatArea() {
   useEffect(() => {
     initApp();
     return () => cleanup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromId, groupId]);
 
   const initApp = async () => {
@@ -122,33 +123,29 @@ export default function ChatArea() {
     if (data) setGroupMembers(data);
   };
 
+  // 🔥 FIX 2: Fungsi Add Member Berdasarkan Input User 🔥
   const handleAddMember = async () => {
     if (!inviteSearch.trim() || !groupId) return;
     setIsUpdatingGroup(true);
     
-    // Cari user berdasarkan username atau short_id
+    // Cari user di profiles (username atau short_id)
     const { data: userData, error: userError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, username')
       .or(`username.eq."${inviteSearch}",short_id.eq."${inviteSearch}"`)
       .single();
 
     if (userError || !userData) {
       showNotif("User tidak ditemukan!", "error");
     } else {
-      // Cek apakah sudah ada di grup
-      const { data: existing } = await supabase.from('group_members').select('id').eq('group_id', groupId).eq('user_id', userData.id).single();
-      if (existing) {
-        showNotif("User sudah ada di grup", "info");
+      const { error: addError } = await supabase.from('group_members').insert({ group_id: groupId, user_id: userData.id });
+      if (!addError) {
+        showNotif(`${userData.username} ditambahkan!`, "success");
+        fetchGroupMembers();
+        setInviteSearch('');
       } else {
-        const { error: addError } = await supabase.from('group_members').insert({ group_id: groupId, user_id: userData.id });
-        if (!addError) {
-          showNotif("Member berhasil ditambahkan!", "success");
-          fetchGroupMembers();
-          setInviteSearch('');
-        } else {
-          showNotif("Gagal menambahkan member", "error");
-        }
+        if (addError.code === '23505') showNotif("User sudah ada di grup", "info");
+        else showNotif("Gagal menambahkan member", "error");
       }
     }
     setIsUpdatingGroup(false);
@@ -179,8 +176,7 @@ export default function ChatArea() {
     if (!file || !isOwner) return;
     setIsUpdatingGroup(true);
     const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", "hopehype_preset");
+    fd.append("file", file); fd.append("upload_preset", "hopehype_preset");
     const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
     const d = await res.json();
     if (d.secure_url) updateGroupInfo('avatar_url', d.secure_url);
@@ -372,7 +368,7 @@ export default function ChatArea() {
   };
 
   const fetchStickers = async (q="") => {
-    const res = await fetch(`https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08&limit=20&rating=g${q ? `&q=${q}` : ''}`);
+    const res = await fetch(`https://api.giphy.com/v1_1/stickers/${q ? 'search' : 'trending'}?api_key=vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08&limit=20&rating=g${q ? `&q=${q}` : ''}`);
     const d = await res.json(); setStickers(d.data || []);
   };
 
@@ -394,7 +390,7 @@ export default function ChatArea() {
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
           
-          {/* 🔥 FIX 2: Avatar hanya muncul jika CHAT PRIVATE 🔥 */}
+          {/* 🔥 FIX 3: Avatar hanya muncul jika PRIVATE CHAT (targetId ada) 🔥 */}
           {targetId && (
             <img 
               src={headerInfo.avatar || '/asets/png/profile.webp'} 
@@ -496,7 +492,7 @@ export default function ChatArea() {
                 </div>
               ) : (
                 <>
-                  <button id="sticker-btn" style={{ border: 'none', background: 'transparent', padding: '6px', cursor: 'pointer', color: '#64748b' }} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 1.5 8.5 1.5zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg></button>
+                  <button id="sticker-btn" style={{ border: 'none', background: 'transparent', padding: '6px', cursor: 'pointer', color: '#64748b' }} onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}><span className="material-icons">sentiment_satisfied_alt</span></button>
                   <textarea id="chat-input" placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ paddingTop: '10px', paddingBottom: '10px', minHeight: '40px', maxHeight: '80px', flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', fontSize: '15px', lineHeight: '20px' }} />
                 </>
               )}
@@ -506,7 +502,7 @@ export default function ChatArea() {
         </div>
       </footer>
 
-      {/* 🔥 FIX 3: MODAL SLIDE UP (Invite & Settings) 🔥 */}
+      {/* 🔥 FIX 4: MODAL BOTTOM SHEET (Slide Up) 🔥 */}
       {isGroupSettingsOpen && groupId && (
         <div 
           className="custom-modal-overlay" 
@@ -516,24 +512,24 @@ export default function ChatArea() {
           <div 
             className="custom-modal-content" 
             onClick={(e) => e.stopPropagation()} 
-            style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '100%', boxShadow: '0 -5px 25px rgba(0,0,0,0.2)', marginBottom: 0, animation: 'modalSlideUp 0.4s ease-out' }}
+            style={{ background: 'var(--bg-panel)', padding: '24px', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '100%', boxShadow: '0 -10px 40px rgba(0,0,0,0.2)', marginBottom: 0 }}
           >
             
             {groupModalTab === 'invite' ? (
               <>
                 <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0 }}>Tambah Member</h3>
+                  <h3 style={{ margin: 0 }}>Tambah Member Baru</h3>
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
                 <div style={{ marginBottom: '20px' }}>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px' }}>Ketik Username atau ID User:</p>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px' }}>Ketik Username atau ID User teman lu:</p>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input 
                       type="text" 
-                      placeholder="Contoh: akbar123" 
+                      placeholder="Username / ID..." 
                       value={inviteSearch}
                       onChange={(e) => setInviteSearch(e.target.value)}
-                      style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)' }}
+                      style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }}
                     />
                     <button 
                       onClick={handleAddMember}
@@ -544,21 +540,17 @@ export default function ChatArea() {
                     </button>
                   </div>
                 </div>
-                <div style={{ textAlign: 'center', padding: '15px', borderTop: '1px solid var(--border-color)' }}>
-                   <p style={{fontSize: '11px', color:'var(--text-muted)'}}>Atau bagikan Kode Grup:</p>
-                   <b style={{color: 'var(--primary-blue)', fontSize:'14px'}}>{groupId}</b>
-                </div>
               </>
             ) : (
               <>
                 <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h3 style={{ margin: 0 }}>Settings Grup</h3>
+                  <h3 style={{ margin: 0 }}>Pengaturan Grup</h3>
                   <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
                 </div>
 
                 <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                   <label style={{ cursor: isOwner ? 'pointer' : 'default', position: 'relative', display: 'inline-block' }}>
-                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-blue)' }} />
+                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-blue)' }} alt="group" />
                     {isOwner && (
                       <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', borderRadius: '50%', padding: '4px', color: 'white' }}><span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span></div>
                     )}
@@ -582,7 +574,7 @@ export default function ChatArea() {
                   {groupMembers.map(m => (
                     <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '28px', height: '28px', borderRadius: '50%' }} alt="m" />
                         <span style={{ fontSize: '13px' }}>{m.profiles?.username}</span>
                       </div>
                       {isOwner && m.user_id !== currentUser.id && (
@@ -598,4 +590,4 @@ export default function ChatArea() {
       )}
     </div>
   );
-}
+} 
