@@ -305,6 +305,12 @@ export default function ChatArea() {
       refs.audioChunks.current = [];
       refs.mediaRecorder.current.ondataavailable = (e) => refs.audioChunks.current.push(e.data);
       refs.mediaRecorder.current.onstop = async () => {
+        // 🔥 FIX 1: JANGAN UPLOAD KALAU DIBATALKAN 🔥
+        if (vnIsCanceled.current) {
+          refs.audioChunks.current = [];
+          return;
+        }
+        
         if (refs.audioChunks.current.length === 0) return;
         const blob = new Blob(refs.audioChunks.current, { type: 'audio/mpeg' });
         const fd = new FormData(); fd.append("file", blob); fd.append("upload_preset", "hopehype_preset"); fd.append("resource_type", "video");
@@ -323,33 +329,35 @@ export default function ChatArea() {
     }
   };
 
-  const stopVN = (cancel = false) => {
+  // 🔥 FIX 1: FUNGSI STOP VN YANG LEBIH TEGAS 🔥
+  const stopVN = (isCanceledByUser = false) => {
     setIsMicPressed(false); 
     if (!isRecordingRef.current) return;
-    setIsRecording(false); isRecordingRef.current = false;
+    
+    setIsRecording(false); 
+    isRecordingRef.current = false;
     setAudioLevel(0);
+    
     if (refs.audioCtx.current) { refs.audioCtx.current.close(); refs.audioCtx.current = null; }
     clearInterval(refs.recordTimer.current);
     
-    if (cancel) { 
-      refs.mediaRecorder.current!.onstop = null; 
+    if (isCanceledByUser || vnIsCanceled.current) { 
+      vnIsCanceled.current = true; // Pastikan statusnya terkirim ke onstop
       setCancelAnim(true);
-      
-      // 🔥 FIX 1: Kasih getaran singkat pas VN berhasil dibatalin 🔥
       if (navigator.vibrate) navigator.vibrate(50); 
-      
       setTimeout(() => setCancelAnim(false), 2000);
+    } else {
+      vnIsCanceled.current = false; // Kalau dilepas biasa, biarkan upload
     }
     
     refs.mediaRecorder.current?.stop();
-    refs.audioChunks.current = [];
   };
 
   const handleMicTouchStart = (e: any) => {
     if (!inputValue.trim() && !editMessageId) {
       setIsMicPressed(true); 
       vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
-      vnIsCanceled.current = false;
+      vnIsCanceled.current = false; // Reset status batal di awal
       startVN();
     }
   };
@@ -358,7 +366,9 @@ export default function ChatArea() {
     if ((isRecordingRef.current || isMicPressed) && !vnIsCanceled.current) {
       const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       const diff = vnTouchStartX.current - clientX;
-      if (diff > 50) { // Geser ke kiri 50px
+      
+      // Jika digeser lebih dari 60px ke kiri, langsung batalin!
+      if (diff > 60) { 
         vnIsCanceled.current = true;
         stopVN(true); 
       }
@@ -473,7 +483,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* UI LONG PRESS PESAN (HAPUS/EDIT) */}
+      {/* 🔥 FIX 3: MENU OPSI PESAN BERSIH TANPA ICON 🔥 */}
       {msgOptions && (
         <div className="custom-modal-overlay" onClick={() => setMsgOptions(null)}>
           <div className="custom-modal-content" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '24px 24px 0 0' }}>
@@ -481,16 +491,16 @@ export default function ChatArea() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {msgOptions.user_id === currentUser?.id && !msgOptions.audio_url && !msgOptions.sticker_url && msgOptions.message !== 'Pesan ini telah dihapus' && (
                 <button onClick={() => { setEditMessageId(msgOptions.id); setInputValue(msgOptions.message); setMsgOptions(null); }} style={{ padding: '14px', background: 'var(--bg-main)', border: `1px solid var(--primary-blue)`, borderRadius: '12px', fontWeight: 600, color: 'var(--primary-blue)' }}>
-                  ✏️ Edit Pesan
+                  Edit Pesan
                 </button>
               )}
               {msgOptions.user_id === currentUser?.id && msgOptions.message !== 'Pesan ini telah dihapus' && (
                 <button onClick={() => handleDeleteMsg(msgOptions.id)} style={{ padding: '14px', background: '#ff4757', border: 'none', borderRadius: '12px', fontWeight: 600, color: 'white' }}>
-                  🗑️ Hapus Pesan
+                  Hapus Pesan
                 </button>
               )}
               <button onClick={() => setMsgOptions(null)} style={{ padding: '14px', background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                ❌ Batal
+                Batal
               </button>
             </div>
           </div>
@@ -567,7 +577,7 @@ export default function ChatArea() {
             
             {editMessageId && (
               <div style={{ background: 'rgba(29, 161, 242, 0.1)', borderBottom: '1px solid var(--border-color)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)' }}>✏️ MENGEDIT PESAN</span>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)' }}>MENGEDIT PESAN</span>
                 <span onClick={() => { setEditMessageId(null); setInputValue(''); }} style={{ cursor: 'pointer', fontSize: '16px', color: 'var(--text-muted)' }}>&times;</span>
               </div>
             )}
@@ -586,12 +596,10 @@ export default function ChatArea() {
               
               {cancelAnim ? (
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
-                  <span className="material-icons" style={{ fontSize: '18px' }}>cancel</span>
-                  <div style={{ flex: 1, fontSize: '14px' }}>Voice Note dibatalkan</div>
+                  <div style={{ flex: 1, fontSize: '14px', textAlign: 'center' }}>Voice Note dibatalkan</div>
                 </div>
               ) : isRecording ? (
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}
-                     onTouchMove={handleMicTouchMove}>
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
                   <span className="online-dot" style={{ background: '#ff4757' }}></span>
                   <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
                   <div style={{ flex: 1 }}>{t('recording')}...</div>
@@ -609,6 +617,7 @@ export default function ChatArea() {
           <button id="action-btn" className={inputValue.trim() || editMessageId ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
                   onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} 
                   onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} 
+                  onTouchMove={handleMicTouchMove} /* 🔥 Dipindah ke wrapper tombol biar kebaca terus 🔥 */
                   onClick={() => (inputValue.trim() || editMessageId) && sendMessage()}>
             <span className="material-icons">{editMessageId ? 'check' : (inputValue.trim() ? 'send' : 'mic')}</span>
           </button>
