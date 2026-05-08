@@ -150,7 +150,8 @@ export default function SearchWrapperpost() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            window.dispatchEvent(new CustomEvent('openPostModal'));
+            // 🔥 FIX: Arahkan langsung ke halaman '/create' yang baru dibuat
+            router.push('/create');
           }}
           style={{ 
             background: 'var(--text-main)', 
