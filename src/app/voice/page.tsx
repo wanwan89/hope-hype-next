@@ -100,40 +100,6 @@ function VoiceRoomContent() {
     updateTitle();
     setTimeout(updateTitle, 500);
      
-    // ==========================================
-    // 🔥 HELPER FUNCTIONS (DEFINED FIRST) 🔥
-    // ==========================================
-
-    // Tambahkan ini biar error line 355 hilang
-    function syncOwnerUI() {
-        if (!IS_OWNER.current) return;
-        const trySync = () => {
-            const menuSet = document.getElementById('menu-setting');
-            if (menuSet) { 
-                menuSet.style.display = 'flex'; 
-            } else { 
-                // Jika element belum render, coba lagi dikit lagi
-                setTimeout(trySync, 500); 
-            }
-        };
-        trySync();
-    }
-
-    // Pastikan fetchTopGifters juga ada di sini (biar ga error lagi)
-    async function fetchTopGifters() {
-      const topData = await getRoomLeaderboard();
-      const container = document.getElementById('top-gifters-container');
-      if (!container) return;
-      if (topData.length === 0) { container.style.display = 'none'; return; }
-      container.style.display = 'flex';
-      container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 TOP</span>`;
-      topData.slice(0, 3).forEach((u, i) => {
-          container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
-      });
-      container.onclick = () => window.openTopGiftersModal?.();
-    }
-
-
     // 🔥 LOGIKA ANIMASI TAP TAP (❤️ ONLY) 🔥
     function createTapAnimation(x: number, y: number) {
       const heart = document.createElement('div');
@@ -280,6 +246,15 @@ function VoiceRoomContent() {
         container.onclick = () => window.openTopGiftersModal?.();
     }
 
+    function syncOwnerUI() {
+        if (!IS_OWNER.current) return;
+        const trySync = () => {
+            const menuSet = document.getElementById('menu-setting');
+            if (menuSet) { menuSet.style.display = 'flex'; } else { setTimeout(trySync, 500); }
+        };
+        trySync();
+    }
+
     function listenRealtime() {
         if (!CURRENT_ROOM_ID || !MY_USER_ID.current) return;
         channelRef.current = sb.channel(`room_active_${CURRENT_ROOM_ID}`, { config: { presence: { key: MY_USER_ID.current } } });
@@ -367,6 +342,100 @@ function VoiceRoomContent() {
                 await channelRef.current.track({ online_at: new Date().toISOString(), username: myUsername.current, level: myLevel.current });
             }
         });
+    }
+
+    const LEVEL_THRESHOLDS: Record<number, number> = { 1: 0, 2: 1000, 3: 5000, 4: 20000, 5: 50000 };
+    function checkLevelUp(totalGiftSent: number) {
+        if (totalGiftSent >= LEVEL_THRESHOLDS[5]) return { level: 5, name: "LEGEND", color: "#FF0055" };
+        if (totalGiftSent >= LEVEL_THRESHOLDS[4]) return { level: 4, name: "SULTAN", color: "#00E5FF" };
+        if (totalGiftSent >= LEVEL_THRESHOLDS[3]) return { level: 3, name: "PATRON", color: "#BB86FC" };
+        if (totalGiftSent >= LEVEL_THRESHOLDS[2]) return { level: 2, name: "SUPPORTER", color: "#FFD700" };
+        return { level: 1, name: "NEWBIE", color: "#FFFFFF" };
+    }
+
+    function updateLevelProgressUI() {
+        const container = document.getElementById('level-progress-container');
+        if (!container) return; 
+        let prevTarget = 0, currentTarget = 0, currentName = "";
+        
+        if (myLevel.current === 1) { prevTarget = 0; currentTarget = 1000; currentName = "NEWBIE"; }
+        else if (myLevel.current === 2) { prevTarget = 1000; currentTarget = 5000; currentName = "SUPPORTER"; }
+        else if (myLevel.current === 3) { prevTarget = 5000; currentTarget = 20000; currentName = "PATRON"; }
+        else if (myLevel.current === 4) { prevTarget = 20000; currentTarget = 50000; currentName = "SULTAN"; }
+        else { container.innerHTML = `<div style="text-align:center; font-size: 13px; color: #FF0055; font-weight: bold; margin: 15px 0;">LEVEL MAX (LEGEND)</div>`; return; }
+        
+        let needed = currentTarget - myTotalGiftSent.current;
+        let percent = ((myTotalGiftSent.current - prevTarget) / (currentTarget - prevTarget)) * 100;
+        if (percent > 100) percent = 100;
+        
+        container.innerHTML = `<div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 6px; padding: 0 5px;"><span>LVL ${myLevel.current} (${currentName})</span><span>Butuh <b style="color:#f1c40f">${needed} koin</b> lagi</span></div><div style="width: 100%; height: 6px; background: #333; border-radius: 4px; overflow: hidden;"><div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #00ff88, #00d2ff); transition: width 0.5s ease-out;"></div></div>`;
+    }
+
+    async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah = 1) {
+        if (!selectedTargetId.current) return showNotif(t('select_target'), "warning");
+        if (selectedTargetId.current === MY_USER_ID.current) return showNotif(t('gift_self_alert'), "warning");
+        
+        const totalHarga = (typeof harga === 'string' ? parseInt(harga) : harga) * jumlah; 
+        const coinDisplay = document.getElementById('user-coins');
+        let currentCoins = coinDisplay ? parseInt(coinDisplay.innerText.replace(/[,.]/g, '')) : 0;
+        if (currentCoins < totalHarga) return showNotif(t('min_topup_warning'), "error");
+
+        currentCoins -= totalHarga;
+        if (coinDisplay) coinDisplay.innerText = currentCoins.toLocaleString();
+
+        playGiftAnimation(giftId);
+        
+        const comboKey = `${giftName}_${selectedTargetId.current}`;
+        if (!activeCombos.current[comboKey]) {
+            activeCombos.current[comboKey] = { targetId: selectedTargetId.current, targetName: selectedTargetName.current, count: 0, pendingCoins: 0, msgId: null, syncTimer: null };
+        }
+        
+        const combo = activeCombos.current[comboKey];
+        combo.count += jumlah; 
+        combo.pendingCoins += totalHarga;
+
+        if (combo.syncTimer) clearTimeout(combo.syncTimer);
+        
+        combo.syncTimer = setTimeout(async () => {
+            const coinsToDeduct = combo.pendingCoins;
+            const currentCount = combo.count;
+            const finalTargetId = combo.targetId;
+            const finalTargetName = combo.targetName;
+            const savedMsgId = combo.msgId;
+
+            delete activeCombos.current[comboKey];
+            
+            try {
+                const { data: newTotalGift, error } = await sb.rpc('transfer_gift', { sender_id: MY_USER_ID.current, receiver_id: finalTargetId, amount: coinsToDeduct });
+                if (error) {
+                    showNotif("Gagal transfer kado", "error");
+                    const koinBalik = parseInt(document.getElementById('user-coins')?.innerText.replace(/[,.]/g, '') || "0") + coinsToDeduct;
+                    if (coinDisplay) coinDisplay.innerText = koinBalik.toLocaleString();
+                    return;
+                }
+                
+                await sb.from('coin_history').insert([{ user_id: MY_USER_ID.current, transaction_type: 'send_gift', amount: -coinsToDeduct, description: `Kirim ${giftName} x${currentCount} ke ${finalTargetName}`, balance_after: currentCoins }]);
+                await sb.from('coin_history').insert([{ user_id: finalTargetId, transaction_type: 'receive_gift', amount: coinsToDeduct, description: `Terima ${giftName} x${currentCount} dari ${myUsername.current}`, balance_after: 0 }]);
+
+                let lvlData = checkLevelUp(newTotalGift);
+                if (lvlData.level !== myLevel.current) {
+                    await sb.from('profiles').update({ level: lvlData.level }).eq('id', MY_USER_ID.current);
+                    await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ SELAMAT! ${myUsername.current} naik ke Level ${lvlData.level}!`, role: "admin" }]);
+                }
+                
+                myTotalGiftSent.current = newTotalGift; 
+                myLevel.current = lvlData.level; 
+                updateLevelProgressUI();
+                
+                const teksFinal = `${myUsername.current} mengirim ${giftName} x${currentCount} ke ${finalTargetName}`;
+                if (savedMsgId) {
+                    await sb.from('room_messages').update({ text: teksFinal }).eq('id', savedMsgId);
+                } else {
+                    const { data } = await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM_GIFT", text: teksFinal, role: giftId.toString(), level: myLevel.current, user_id: MY_USER_ID.current }]).select();
+                    if (data && data.length > 0) activeCombos.current[comboKey] = { ...activeCombos.current[comboKey], msgId: data[0].id };
+                }
+            } catch (e) { showNotif(t('gift_fail'), "error"); }
+        }, 600);
     }
 
     async function initApp() {
@@ -573,7 +642,7 @@ function VoiceRoomContent() {
         inputEl.focus(); 
         inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         try {
-            // 🔥 FIX: Tambahkan user_id agar komentar muncul & bisa diklik 🔥
+            // 🔥 FIX: Tambahkan user_id agar komentar muncul & profil bisa diklik 🔥
             await sb.from('room_messages').insert([{ 
                 room_id: CURRENT_ROOM_ID, 
                 username: myUsername.current, 
@@ -583,47 +652,6 @@ function VoiceRoomContent() {
                 user_id: MY_USER_ID.current 
             }]);
         } catch (e) { console.error(e); }
-    };
-
-    window.mintaNaik = async () => {
-        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').order('slot_index', { ascending: true });
-        const slotKosong = allSlots?.find(s => !s.profile_id);
-        if (slotKosong) window.naikKeStage?.(slotKosong.slot_index); else showNotif("Panggung penuh!", "warning");
-    };
-
-    window.keluarRoom = async () => {
-        if (IS_OWNER.current && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
-            await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
-            await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
-            await sb.from('room_messages').delete().eq('room_id', CURRENT_ROOM_ID);
-        } else {
-            await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current).eq('room_id', CURRENT_ROOM_ID);
-        }
-        roomRef.current?.disconnect();
-        window.location.href = '/lobby'; 
-    };
-
-    window.toggleMicSidebar = async (e: any) => {
-        e?.preventDefault();
-        if (!roomRef.current) return showNotif(t('mic_not_ready'), "warning");
-
-        const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID.current).single();
-        if (!onStage) return showNotif(t('mic_stage_first'), "warning");
-
-        isMicOn.current = !isMicOn.current;
-        await roomRef.current.localParticipant.setMicrophoneEnabled(isMicOn.current);
-        await sb.from('profiles').update({ mic_off: !isMicOn.current }).eq('id', MY_USER_ID.current);
-
-        const icon = document.getElementById('mic-icon');
-        const text = document.getElementById('mic-text');
-        if (icon && text) {
-            icon.innerText = isMicOn.current ? 'mic' : 'mic_off';
-            text.innerText = isMicOn.current ? t('mute_mic') : t('unmute_mic');
-            icon.style.color = isMicOn.current ? 'inherit' : '#ef4444';
-        }
-        
-        window.toggleSidebar?.(); 
-        fetchStage();
     };
 
     window.openRoomSetting = () => {
@@ -737,8 +765,8 @@ function VoiceRoomContent() {
       <Script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" />
       <Script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.12/dist/livekit-client.umd.min.js" />
       
-      {/* 🔥 JUMLAH TAP-TAP DI ATAS HEADER 🔥 */}
-      <div className="tap-counter-top">
+      {/* 🔥 CONTAINER JUMLAH TAP-TAP 🔥 */}
+      <div className="tap-counter-box">
           <span className="material-icons">favorite</span>
           <b>{totalTaps.toLocaleString()}</b>
       </div>
@@ -773,25 +801,43 @@ function VoiceRoomContent() {
       <style jsx global>{`
         :root { --radar-color: #3b82f6; }
         
-        .tap-counter-top {
-          position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
-          padding: 4px 12px; border-radius: 20px; color: #fff;
-          display: flex; align-items: center; gap: 6px; z-index: 3000;
-          font-size: 12px; border: 1px solid rgba(255,255,255,0.1); pointer-events: none;
+        /* 🔥 TAP COUNTER BOX 🔥 */
+        .tap-counter-box {
+          position: fixed;
+          top: calc(env(safe-area-inset-top, 0px) + 12px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(10px);
+          padding: 4px 12px;
+          border-radius: 20px;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          z-index: 2000;
+          font-size: 12px;
+          border: 1px solid rgba(255,255,255,0.1);
+          pointer-events: none;
         }
-        .tap-counter-top .material-icons { font-size: 14px; color: #ff4757; }
+        .tap-counter-box .material-icons { font-size: 14px; color: #ff4757; }
 
+        /* 🔥 EMOJI TERBANG 🔥 */
         .tap-emoji-fly {
-          position: fixed; pointer-events: none; z-index: 999999;
-          font-size: 28px; animation: flyUpAnim 1s ease-out forwards;
+          position: fixed;
+          pointer-events: none;
+          z-index: 999999;
+          font-size: 28px;
+          user-select: none;
+          animation: flyUpAnim 1s ease-out forwards;
         }
 
         @keyframes flyUpAnim {
-          0% { transform: translateY(0) scale(1); opacity: 1; }
-          100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5); opacity: 0; }
+          0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+          100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; }
         }
 
+        /* 🔥 PROFILE SHEET 🔥 */
         .user-profile-sheet-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10005;
           opacity: 0; visibility: hidden; transition: 0.3s;
