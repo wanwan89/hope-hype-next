@@ -30,7 +30,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
   
-  // 🔥 FIX: Tampilkan detail user buat chat orang lain di Grup / Global
+  // FIX: Tampilkan detail user buat chat orang lain di Grup / Global
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
 
   // State handle data reply hasil realtime
@@ -150,14 +150,14 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        // 🔥 FIX: Layout flex row untuk menyandingkan avatar dan konten bubble
+        // FIX: Layout flex row untuk menyandingkan avatar dan konten bubble
         style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
       >
         {msg.is_system ? (
           <div className="system-text">{displayMessage}</div>
         ) : (
           <>
-            {/* 🔥 FIX: Menampilkan Avatar User (Hanya di Global/Group untuk user lain) */}
+            {/* FIX: Menampilkan Avatar User (Hanya di Global/Group untuk user lain) */}
             {showUserDetail && (
               <img 
                 src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} 
@@ -169,13 +169,14 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               />
             )}
             
-            <div className="content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+            {/* 🔥 FIX: flex ditutup biar width fit-content 🔥 */}
+            <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0 }}>
               
-              {/* 🔥 FIX: Menampilkan Username + Badge (Hanya di Global/Group untuk user lain) */}
+              {/* FIX: Menampilkan Username + Badge (Hanya di Global/Group untuk user lain) */}
               {showUserDetail && (
                 <div style={{
-                  fontSize: '12px', fontWeight: 'bold', color: 'var(--primary-blue)', 
-                  marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px'
+                  fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', 
+                  marginBottom: '2px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px'
                 }}>
                   {msg.profiles?.username || 'User'} 
                   <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
@@ -193,7 +194,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               )}
 
               {msg.sticker_url ? (
-                <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '150px' }} />
+                <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '140px' }} />
               ) : msg.audio_url ? (
                 <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`}>
                   <button onClick={toggleVN} className="vn-play-btn">
@@ -204,12 +205,19 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                     )}
                   </button>
                   <div className="vn-waveform">
-                    {[...Array(12)].map((_, i) => <span key={i} className="bar"></span>)}
+                    {[...Array(10)].map((_, i) => <span key={i} className="bar"></span>)}
                   </div>
                   <span className="vn-time">VN</span>
                 </div>
               ) : (
-                <div className={`text ${isDeleted ? "deleted" : ""}`}>
+                /* 🔥 FIX: Style italic ditambahkan jika isDeleted 🔥 */
+                <div 
+                  className={`text ${isDeleted ? "deleted" : ""}`} 
+                  style={{ 
+                    fontStyle: isDeleted ? 'italic' : 'normal',
+                    opacity: isDeleted ? 0.7 : 1
+                  }}
+                >
                   {displayMessage}
                 </div>
               )}

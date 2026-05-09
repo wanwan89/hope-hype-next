@@ -5,7 +5,7 @@ import i18n from '@/lib/i18n';
 import { I18nextProvider } from 'react-i18next';
 
 import { usePathname } from 'next/navigation';
-import { useEffect, useLayoutEffect } from 'react'; 
+import { useEffect, useLayoutEffect, useRef } from 'react'; 
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -19,6 +19,8 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // 🔥 FIX 1: Ref untuk simpan path sebelumnya biar gak ganggu koneksi telpon
+  const prevPathnameRef = useRef(pathname);
 
   // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
@@ -65,10 +67,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 2. 🔥 SISTEM LAYOUT FIX (ANTI-JURANG HITAM) 🔥 ---
+  // --- 2. 🔥 SISTEM LAYOUT FIX (FULL FIX) 🔥 ---
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
+
+    // 🔥 FIX 2: Cek apakah pindah halaman beneran atau cuma ganti Query (biar telpon gak putus)
+    const currentBaseChat = pathname?.split('?')[0];
+    const prevBasePath = prevPathnameRef.current?.split('?')[0];
+
+    if (currentBaseChat !== prevBasePath) {
+      window.scrollTo(0, 0); // Hanya scroll jika ganti halaman, bukan ganti ID chat/telpon
+      prevPathnameRef.current = pathname;
+    }
 
     if (isStandaloneApp) {
       // Lock layar untuk Voice/Story/DailyCek
@@ -83,11 +94,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       // Bebaskan scroll untuk halaman biasa
       root.style.height = 'auto';
       root.style.overflow = 'visible';
-      body.style.overflow = 'auto';
-      body.style.height = 'auto';
-      body.style.position = 'static';
-      body.style.width = 'auto';
-      // 🔥 FIX: Ubah dari 'none' ke 'auto' agar halaman bisa PULL-TO-REFRESH (ditarik untuk refresh) 🔥
+      
+      // Kembalikan ke posisi static hanya jika sebelumnya fixed (biar gak flicker)
+      if (body.style.position !== 'static') {
+        body.style.position = 'static';
+        body.style.overflow = 'auto';
+        body.style.height = 'auto';
+        body.style.width = 'auto';
+      }
+      
+      // 🔥 FIX 3: Ubah ke 'auto' agar halaman bisa PULL-TO-REFRESH 🔥
       body.style.overscrollBehaviorY = 'auto'; 
       
       // Bersihkan sampah Voice jika keluar room
@@ -98,11 +114,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       voiceTrash.forEach(id => document.getElementById(id)?.remove());
     }
 
-    window.scrollTo(0, 0);
-
     return () => {
-      root.style.height = 'auto';
-      body.style.position = 'static';
+      // Cleanup minimalis
     };
   }, [pathname, isStandaloneApp]); 
 
