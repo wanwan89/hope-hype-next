@@ -23,7 +23,7 @@
 }
 
 /* ========================================== */
-/* 🔥 CAROUSEL ENGINE 🔥                      */
+/* 🔥 CAROUSEL & SLIDER ENGINE 🔥             */
 /* ========================================== */
 
 .slider {
@@ -79,21 +79,53 @@
   border-radius: 10px;
 }
 
-/* 🔥 FIX 1: WATERMARK SELALU DI ATAS 🔥 */
+/* 🔥 FIX 1: WATERMARK DI POJOK KIRI ATAS 🔥 */
 .watermark-overlay { 
   position: absolute; 
-  top: 12px; 
-  left: 12px; 
-  width: 90px; 
-  opacity: 0.8; /* Kita tebelin dikit biar keliatan */
+  top: 15px; 
+  left: 15px; 
+  width: 70px; 
+  opacity: 0.8;
   pointer-events: none; 
-  z-index: 99; /* Kita kasih kasta paling tinggi */
+  z-index: 50; /* Di bawah musik tapi di atas gambar */
 }
 .watermark-overlay img { 
   width: 100%; 
   height: auto; 
-  display: block;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* 🔥 FIX 2: ANIMASI MUSIK BERJALAN (MARQUEE) 🔥 */
+.music-marquee-container {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  color: white;
+  border-radius: 20px;
+  padding: 6px 12px;
+  z-index: 60;
+  max-width: 140px; /* Batasi lebar container */
+  overflow: hidden; /* Sembunyikan teks yang keluar jalur */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  padding-left: 100%; /* Mulai teks dari luar container kanan */
+  animation: marquee-play 10s linear infinite;
+  will-change: transform;
+}
+
+@keyframes marquee-play {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
 }
 
 /* ========================================== */
@@ -143,12 +175,10 @@
   font-size: 12px; 
   font-weight: 800;
   text-decoration: none; 
-  box-shadow: 0 4px 10px rgba(31, 60, 255, 0.2);
 }
 
 .engagement-group { display: flex; gap: 18px; align-items: center; }
 
-/* 🔥 FIX 2: HILANGIN KOTAK DI TITIK 3 & ICON LAIN 🔥 */
 .icon-btn, .options-btn {
   background: transparent !important; 
   border: none !important; 
@@ -166,12 +196,6 @@
 .options-btn {
   padding: 8px !important;
   border-radius: 50%;
-  transition: background 0.2s;
-}
-
-/* Biar pas di klik ada efek lingkaran transparan dikit aja (opsional) */
-.options-btn:active {
-  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .icon { width: 22px; height: 22px; fill: var(--text-main); }
@@ -179,39 +203,12 @@
 .icon-btn.reposted .icon { fill: #1DA1F2; }
 
 /* ========================================== */
-/* 🔥 SKELETON (RAPIH) 🔥                     */
+/* 🔥 SKELETON 🔥                             */
 /* ========================================== */
 
-.gallery-skeleton-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  width: 100%;
-}
-
-.gallery-skeleton-card { 
-  background: var(--bg-card); 
-  border-radius: 16px; 
-  height: 480px; 
-  position: relative; 
-  overflow: hidden; 
-  border: 1px solid var(--border-card); 
-}
-
-.gallery-skeleton-card::before {
-  content: ""; position: absolute; top: 16px; left: 16px; width: 40px; height: 40px; border-radius: 50%; background: var(--bg-input);
-}
-
-.gallery-skeleton-card::after {
-  content: ""; position: absolute; top: 28px; left: 65px; width: 100px; height: 14px; border-radius: 4px; background: var(--bg-input);
-}
-
-.gallery-skeleton-shimmer { 
-  position: absolute; inset: 0; transform: translateX(-100%); 
-  background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 20%, rgba(255, 255, 255, 0.08) 60%, transparent 100%); 
-  animation: gallery-shimmer 1.5s infinite; z-index: 2;
-}
-
+.gallery-skeleton-wrapper { display: flex; flex-direction: column; gap: 25px; width: 100%; }
+.gallery-skeleton-card { background: var(--bg-card); border-radius: 16px; height: 480px; position: relative; overflow: hidden; border: 1px solid var(--border-card); }
+.gallery-skeleton-shimmer { position: absolute; inset: 0; transform: translateX(-100%); background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 20%, rgba(255, 255, 255, 0.08) 60%, transparent 100%); animation: gallery-shimmer 1.5s infinite; z-index: 2; }
 @keyframes gallery-shimmer { 100% { transform: translateX(100%); } }
 
 /* PREVIEW MODAL */
