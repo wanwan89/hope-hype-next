@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils'; 
 import './Story.css';
 
-// Interface biar TypeScript gak rewel
 interface Story {
   id: string;
   creator_id: string;
@@ -34,18 +33,15 @@ export default function StoryViewerPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // State Nangkap Blokir Audio
   const [audioError, setAudioError] = useState(false);
   
-  // 🔥 STATE MODAL & INTERAKSI 🔥
+  // MODALS & STATE
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false); 
-  
-  // 🔥 STATE REPLY STORY 🔥
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
-  // 🔥 STATE VIEWERS STORY 🔥
+  // VIEWERS STATE
   const [viewers, setViewers] = useState<any[]>([]);
   const [isViewersModalOpen, setIsViewersModalOpen] = useState(false);
 
@@ -53,30 +49,22 @@ export default function StoryViewerPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const STORY_DURATION = 7000;
 
-  // Initial Load
   useEffect(() => {
-    if (storyId) {
-      initMultiStory();
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    if (storyId) initMultiStory();
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [storyId]);
 
-  // Logic pindah story: Handle like, audio, view, dan timer tiap ganti index
   useEffect(() => {
     if (allUserStories.length > 0) {
       const currentStory = allUserStories[currentIndex];
       checkIfLiked(currentStory.id);
       handleAudio(currentStory);
-      fetchViewers(currentStory.id); // Ambil data orang yg udah liat
-      recordView(currentStory.id);   // Catat kita ngeliat story ini
+      fetchViewers(currentStory.id); 
+      recordView(currentStory.id);   
       resetTimer();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, allUserStories]);
 
-  // 🔥 Nahan timer & audio kalau Modal/Keyboard/Viewers lagi dibuka 🔥
   useEffect(() => {
     if (isMenuOpen || isReplying || isViewersModalOpen) {
       setIsPaused(true);
@@ -87,7 +75,6 @@ export default function StoryViewerPage() {
       resetTimer();
       if (audioRef.current && !audioError) audioRef.current.play().catch(() => {});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMenuOpen, isReplying, isViewersModalOpen]);
 
   async function initMultiStory() {
@@ -113,22 +100,19 @@ export default function StoryViewerPage() {
     if (error || !stories || stories.length === 0) return router.back();
 
     setAllUserStories(stories as any);
-    
     const startIdx = stories.findIndex((s) => s.id === storyId);
     setCurrentIndex(startIdx === -1 ? 0 : startIdx);
     setLoading(false);
   }
 
   // ==========================================
-  // 🔥 FUNGSI REKAM & AMBIL VIEWERS STORY 🔥
+  // 🔥 FUNGSI VIEWERS (DIPERBAIKI) 🔥
   // ==========================================
   async function recordView(sId: string) {
     if (!currentUserId) return;
     const currentStory = allUserStories[currentIndex];
-    // Jangan catat kalau ini story sendiri
     if (currentStory && currentStory.creator_id === currentUserId) return;
 
-    // Cek dulu udah pernah liat belum
     const { data } = await supabase.from('story_views')
       .select('id').match({ story_id: sId, user_id: currentUserId }).maybeSingle();
     
@@ -139,18 +123,21 @@ export default function StoryViewerPage() {
 
   async function fetchViewers(sId: string) {
     const currentStory = allUserStories[currentIndex];
-    // Irit fetch: cuma ambil list viewers kalau ini story punya kita sendiri
     if (currentStory && currentStory.creator_id !== currentUserId) return;
 
+    // 🔥 FIX QUERY: Ambil data profile melalui user_id
     const { data, error } = await supabase
       .from('story_views')
-      .select('user_id, profiles(id, username, avatar_url)')
+      .select('id, user_id, profiles:user_id(id, username, avatar_url)') 
       .eq('story_id', sId)
       .order('created_at', { ascending: false });
 
     if (data && !error) {
+      // Ekstrak data profil dari hasil join
       const uniqueViewers = data.map((d: any) => d.profiles).filter(Boolean);
       setViewers(uniqueViewers);
+    } else {
+      console.error("Gagal load viewers:", error);
     }
   }
 
@@ -163,13 +150,8 @@ export default function StoryViewerPage() {
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           playPromise
-            .then(() => {
-              setAudioError(false);
-            })
-            .catch((err) => {
-              console.warn("Autoplay diblokir browser:", err);
-              setAudioError(true); 
-            });
+            .then(() => setAudioError(false))
+            .catch(() => setAudioError(true));
         }
       } else {
         audioRef.current.pause();
@@ -253,7 +235,6 @@ export default function StoryViewerPage() {
     const roomId = `pv_${ids[0]}_${ids[1]}`;
 
     let finalMessage = `Membalas ceritamu:\n"${replyText.trim()}"`;
-    
     if (!currentStory.image_url && currentStory.content) {
       finalMessage = `Membalas ceritamu: "${currentStory.content}"\n\n👉 ${replyText.trim()}`;
     }
@@ -283,15 +264,11 @@ export default function StoryViewerPage() {
   return (
     <div className="story-full-viewer">
       
-      {/* Tombol Darurat Putar Musik */}
       {audioError && currentStory.audio_src && !isMenuOpen && !isViewersModalOpen && (
         <button 
           onClick={(e) => {
             e.stopPropagation();
-            if (audioRef.current) {
-              audioRef.current.play();
-              setAudioError(false);
-            }
+            if (audioRef.current) { audioRef.current.play(); setAudioError(false); }
           }}
           style={{
             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -301,12 +278,10 @@ export default function StoryViewerPage() {
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)', transition: 'transform 0.2s ease'
           }}
         >
-          <span className="material-icons" style={{ fontSize: '20px' }}>volume_off</span> 
-          Ketuk untuk Putar Musik
+          <span className="material-icons" style={{ fontSize: '20px' }}>volume_off</span> Ketuk untuk Putar Musik
         </button>
       )}
 
-      {/* 🔥 FIX: Area Tap dibatasin tingginya biar ga numpuk input form & tombol bawah 🔥 */}
       <div className="tap-area" style={{ 
         position: 'absolute', top: 0, left: 0, right: 0, bottom: '110px', zIndex: 10,
         pointerEvents: (isMenuOpen || isReplying || isViewersModalOpen) ? 'none' : 'auto' 
@@ -315,7 +290,6 @@ export default function StoryViewerPage() {
         <div className="tap-right" onClick={nextStory} style={{ width: '70%', height: '100%', float: 'right' }}></div>
       </div>
 
-      {/* Progress Bars */}
       <div className="story-progress-container" style={{ position: 'absolute', top: '10px', left: 0, right: 0, zIndex: 10001, padding: '0 10px' }}>
         {allUserStories.map((_, idx) => (
           <div key={idx} className="bar-wrap">
@@ -331,7 +305,7 @@ export default function StoryViewerPage() {
         ))}
       </div>
 
-      {/* 🔥 FIX: Info User (Top) Dikasih absolute & z-index mantap 🔥 */}
+      {/* TOP INFO */}
       <div className="story-top-info" style={{ position: 'absolute', top: '25px', left: 0, right: 0, zIndex: 10000, pointerEvents: 'auto' }}>
         <div className="story-user" onClick={(e) => e.stopPropagation()}>
           <img 
@@ -369,11 +343,11 @@ export default function StoryViewerPage() {
               <span className="material-icons" style={{ fontSize: '26px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>more_vert</span>
             </button>
           )}
-          <button className="close-story" onClick={(e) => { e.stopPropagation(); router.back(); }} style={{ margin: 0 }}>✕</button>
+          {/* 🔥 TOMBOL X DIHAPUS DI SINI 🔥 */}
         </div>
       </div>
 
-      {/* Konten Utama */}
+      {/* KONTEN */}
       <div className="story-display">
         {currentStory.image_url ? (
           <img src={currentStory.image_url} className="s-img" alt="Story content" />
@@ -382,7 +356,7 @@ export default function StoryViewerPage() {
         )}
       </div>
 
-      {/* 🔥 FIX: Bottom Info (Caption & Interaksi) Dikasih absolute & z-index mentok 🔥 */}
+      {/* BOTTOM INFO */}
       <div className="story-bottom-info" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10000, pointerEvents: 'auto', paddingBottom: 'max(15px, env(safe-area-inset-bottom))' }}>
         <div className="footer-layout" style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '0 15px' }}>
           
@@ -393,157 +367,79 @@ export default function StoryViewerPage() {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-            
-            {/* Input Reply */}
             {!isMyStory ? (
-              <form 
-                onSubmit={handleSendReply} 
-                onClick={(e) => e.stopPropagation()} 
-                style={{ flex: 1, display: 'flex', position: 'relative' }}
-              >
+              <form onSubmit={handleSendReply} onClick={(e) => e.stopPropagation()} style={{ flex: 1, display: 'flex', position: 'relative' }}>
                 <input 
-                  type="text" 
-                  placeholder="Balas cerita ini..." 
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onFocus={() => setIsReplying(true)}
-                  onBlur={() => setTimeout(() => setIsReplying(false), 200)}
-                  onPointerDown={(e) => e.stopPropagation()} // Anti nyangkut di mobile
+                  type="text" placeholder="Balas cerita ini..." value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)} onFocus={() => setIsReplying(true)}
+                  onBlur={() => setTimeout(() => setIsReplying(false), 200)} onPointerDown={(e) => e.stopPropagation()}
                   style={{ 
                     flex: 1, padding: '12px 18px', paddingRight: '45px', borderRadius: '30px', 
                     border: '1.5px solid rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.3)', 
                     color: 'white', outline: 'none', fontSize: '14px', backdropFilter: 'blur(5px)'
                   }}
                 />
-                <button 
-                  type="submit" 
-                  style={{ 
+                <button type="submit" style={{ 
                     position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
-                    background: replyText.trim() ? '#1f3cff' : 'transparent', 
-                    border: 'none', color: 'white', cursor: replyText.trim() ? 'pointer' : 'default',
-                    width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.3s ease'
-                  }}
-                >
+                    background: replyText.trim() ? '#1f3cff' : 'transparent', border: 'none', color: 'white', 
+                    cursor: replyText.trim() ? 'pointer' : 'default', width: '32px', height: '32px', 
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.3s ease'
+                }}>
                   <span className="material-icons" style={{ fontSize: '18px', opacity: replyText.trim() ? 1 : 0.5 }}>send</span>
                 </button>
               </form>
             ) : (
-              // TOMBOL VIEWERS 
+              // 🔥 FIX: TOMBOL TAYANGAN MINIMALIS 🔥
               <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsViewersModalOpen(true); }}
-                  onPointerDown={(e) => e.stopPropagation()} // Anti nyangkut di mobile
+                  onPointerDown={(e) => e.stopPropagation()}
                   style={{
-                    background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: 'white',
-                    padding: '8px 16px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px',
-                    cursor: 'pointer', fontSize: '14px', fontWeight: 600, backdropFilter: 'blur(5px)', transition: 'transform 0.2s'
+                    background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.8)',
+                    padding: '8px 0', display: 'flex', alignItems: 'center', gap: '6px',
+                    cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'transform 0.2s'
                   }}
                   onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
                   onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 >
-                  <span className="material-icons" style={{ fontSize: '18px' }}>visibility</span>
+                  <span className="material-icons" style={{ fontSize: '16px' }}>visibility</span>
                   {viewers.length} Tayangan
                 </button>
               </div>
             )}
             
-            <button 
-              className="story-like-btn" 
-              onClick={toggleLike} 
-              onPointerDown={(e) => e.stopPropagation()} 
-              style={{ flexShrink: 0 }}
-            >
+            <button className="story-like-btn" onClick={toggleLike} onPointerDown={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
               <svg viewBox="0 0 24 24" className={`heart-svg ${isLiked ? 'liked' : ''}`} style={{ width: '32px', height: '32px' }}>
                 <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
               </svg>
             </button>
           </div>
-
         </div>
       </div>
 
       <audio ref={audioRef} preload="auto" playsInline crossOrigin="anonymous" />
 
-      {/* ==========================================
-          🔥 MODAL OPSI STORY (SLIDE UP) 🔥
-          ========================================== */}
+      {/* MODAL OPSI */}
       {isMenuOpen && (
-        <div 
-          style={{
-            position: 'fixed', inset: 0, zIndex: 999999, 
-            background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-            animation: 'fadeInOverlay 0.3s ease'
-          }}
-          onClick={() => setIsMenuOpen(false)}
-        >
-          <div 
-            style={{
-              background: '#1a1a1a', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-              padding: '24px 20px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
-              animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
-              display: 'flex', flexDirection: 'column', gap: '16px'
-            }}
-            onClick={(e) => e.stopPropagation()} 
-          >
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', animation: 'fadeInOverlay 0.3s ease' }} onClick={() => setIsMenuOpen(false)}>
+          <div style={{ background: '#1a1a1a', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '24px 20px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))', animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)', display: 'flex', flexDirection: 'column', gap: '16px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: '40px', height: '5px', background: '#333', borderRadius: '10px', margin: '0 auto 10px auto' }}></div>
-
-            <button 
-              onClick={handleDeleteStory}
-              style={{
-                width: '100%', padding: '16px', background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', 
-                border: 'none', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                fontSize: '16px', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s'
-              }}
-              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
-              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
+            <button onClick={handleDeleteStory} style={{ width: '100%', padding: '16px', background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', border: 'none', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '16px', fontWeight: 700, cursor: 'pointer' }}>
               <span className="material-icons">delete</span> Hapus Story
             </button>
-
-            <button 
-              onClick={() => setIsMenuOpen(false)}
-              style={{
-                width: '100%', padding: '16px', background: '#333', color: 'white', 
-                border: 'none', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px', fontWeight: 600, cursor: 'pointer', transition: 'transform 0.2s'
-              }}
-              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
-              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              Batal
-            </button>
+            <button onClick={() => setIsMenuOpen(false)} style={{ width: '100%', padding: '16px', background: '#333', color: 'white', border: 'none', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600, cursor: 'pointer' }}>Batal</button>
           </div>
         </div>
       )}
 
-      {/* ==========================================
-          🔥 MODAL DAFTAR VIEWERS (SLIDE UP) 🔥
-          ========================================== */}
+      {/* MODAL VIEWERS */}
       {isViewersModalOpen && (
-        <div 
-          style={{
-            position: 'fixed', inset: 0, zIndex: 999999, 
-            background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-            animation: 'fadeInOverlay 0.3s ease'
-          }}
-          onClick={() => setIsViewersModalOpen(false)}
-        >
-          <div 
-            style={{
-              background: '#1a1a1a', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-              padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
-              animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
-              display: 'flex', flexDirection: 'column', maxHeight: '75vh'
-            }}
-            onClick={(e) => e.stopPropagation()} 
-          >
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', animation: 'fadeInOverlay 0.3s ease' }} onClick={() => setIsViewersModalOpen(false)}>
+          <div style={{ background: '#1a1a1a', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)', display: 'flex', flexDirection: 'column', maxHeight: '75vh' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: '40px', height: '5px', background: '#333', borderRadius: '10px', margin: '0 auto 15px auto' }}></div>
-            
             <h3 style={{ color: 'white', margin: '0 0 15px 0', fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
               <span className="material-icons">visibility</span> Tayangan
             </h3>
-            
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '5px' }}>
               {viewers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
@@ -552,14 +448,7 @@ export default function StoryViewerPage() {
                 </div>
               ) : (
                 viewers.map(v => (
-                  <div 
-                    key={v.id} 
-                    onClick={() => { setIsViewersModalOpen(false); router.push(`/data?id=${v.id}`); }}
-                    style={{ 
-                      display: 'flex', alignItems: 'center', gap: '15px', padding: '12px 0', 
-                      borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' 
-                    }}
-                  >
+                  <div key={v.id} onClick={() => { setIsViewersModalOpen(false); router.push(`/data?id=${v.id}`); }} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
                     <img src={v.avatar_url || '/asets/png/profile.webp'} style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover' }} />
                     <span style={{ color: 'white', fontWeight: 600, fontSize: '15px' }}>{v.username}</span>
                   </div>
@@ -571,16 +460,9 @@ export default function StoryViewerPage() {
       )}
 
       <style>{`
-        @keyframes fadeInOverlay {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUpModal {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
+        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUpModal { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
-
     </div>
   );
 }

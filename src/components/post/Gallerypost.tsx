@@ -31,16 +31,16 @@ export default function Gallerypost() {
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, []);
 
-  // 🔥 FIX 1: LOGIKA OTOMATIS SCROLL KE POSTINGAN 🔥
+  // 🔥 LOGIKA OTOMATIS SCROLL KE POSTINGAN 🔥
   useEffect(() => {
-    const hash = window.location.hash; // Bakal dapet #post-123
+    const hash = window.location.hash; 
     if (hash && posts.length > 0 && !isLoading) {
       const timer = setTimeout(() => {
         const element = document.querySelector(hash);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 800); // Delay dikit biar gambar kelar ngerender
+      }, 800); 
       return () => clearTimeout(timer);
     }
   }, [posts, isLoading]);
@@ -228,6 +228,7 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
+  // 🔥 FIX 1: FUNGSI MUSIK BERSIH DARI INLINE STYLE 🔥
   const getMusicHtml = (post: any) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
@@ -237,8 +238,8 @@ export default function Gallerypost() {
     const finalAudio = cleanAudio.startsWith("http") ? cleanAudio : `/songs/${cleanAudio}`;
     
     return (
-      <div className="music-marquee-container" style={{ background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '20px', padding: '5px 15px', zIndex: 40, maxWidth: '150px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', pointerEvents: 'none', marginBottom: '10px' }}>
-        <div className="marquee-text" style={{ fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-block', animation: 'marquee-play 8s linear infinite', letterSpacing: '0.3px' }}>
+      <div className="music-marquee-container">
+        <div className="marquee-text">
           {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
         </div>
         <audio className="post-audio-element" loop preload="metadata" playsInline style={{ display: 'none' }}>
@@ -276,59 +277,7 @@ export default function Gallerypost() {
 
   return (
     <section>
-      <style>{`
-        /* 🔥 FIX 2: BIAR PAS SCROLL GAK KETUTUP HEADER 🔥 */
-        .card { scroll-margin-top: 100px; }
-
-        .photo-carousel {
-          display: flex;
-          overflow-x: auto;
-          scroll-snap-type: x mandatory;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          position: relative;
-        }
-        .photo-carousel::-webkit-scrollbar { display: none; }
-        
-        .carousel-item {
-          flex: 0 0 100%;
-          width: 100%;
-          scroll-snap-align: center;
-          position: relative;
-        }
-
-        .carousel-dots {
-          position: absolute;
-          bottom: 12px;
-          left: 50%;
-          transform: translateX(-50%);
-          display: flex;
-          gap: 5px;
-          z-index: 25;
-          pointer-events: none;
-        }
-        .dot {
-          width: 6px; height: 6px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.4);
-          transition: all 0.3s ease;
-        }
-        .dot.active { background: white; width: 12px; border-radius: 10px; }
-
-        .image-preview-overlay {
-          position: fixed; inset: 0; z-index: 100000;
-          background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
-          display: flex; align-items: center; justify-content: center;
-          opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
-        .image-preview-overlay.active { opacity: 1; pointer-events: auto; }
-        .image-preview-content img {
-          max-width: 95vw; max-height: 85vh; object-fit: contain;
-          border-radius: 12px; animation: popZoom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes popZoom { from { transform: scale(0.8); } to { transform: scale(1); } }
-      `}</style>
-
+      {/* PREVIEW MODAL */}
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
           {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
@@ -354,12 +303,12 @@ export default function Gallerypost() {
             const photoList = post.image_url ? post.image_url.split(',') : [];
 
             return (
-              // 🔥 FIX 3: PASANG ID DI SINI 🔥
               <div key={post.id} id={`post-${post.id}`} className="card" style={!post.image_url ? { padding: '16px' } : {}}>
                 {photoList.length > 0 ? (
                   <>
-                    <div className="slider" style={{ position: 'relative' }}>
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 40 }}>{getMusicHtml(post)}</div>
+                    <div className="slider">
+                      {/* 🔥 FIX 2: PANGGIL MUSIK LANGSUNG (TANPA DIBUNGKUS ABSOLUTE LAGI KARENA UDAH DI CSS) 🔥 */}
+                      {getMusicHtml(post)}
                       
                       <div className="photo-carousel" onScroll={(e) => {
                           const target = e.target as HTMLDivElement;
@@ -425,7 +374,8 @@ export default function Gallerypost() {
                       </button>
                     </div>
                     <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px' }}>{post.bio?.trim()}</div>
-                    {post.audio_src && <div style={{ marginTop: '10px' }}>{getMusicHtml(post)}</div>}
+                    {/* 🔥 FIX 3: WRAPPER RELATIVE UNTUK POST TANPA GAMBAR 🔥 */}
+                    {post.audio_src && <div style={{ position: 'relative', height: '40px', marginTop: '10px' }}>{getMusicHtml(post)}</div>}
                     <div className="actions" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px', paddingTop: '12px' }}>
                       <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_profile_link')}</a>
                       {renderEngagementButtons(post, postIdStr)}

@@ -49,28 +49,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // 🔥 INISIALISASI ERUDA
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const loadEruda = () => {
-      if ((window as any).eruda) {
-        (window as any).eruda.init();
-        console.log('Eruda sudah ada');
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/eruda';
-      script.onload = () => {
-        (window as any).eruda.init();
-        console.log('Eruda dimuat dan diinisialisasi');
-      };
-      script.onerror = () => console.error('Gagal memuat Eruda');
-      document.body.appendChild(script);
-    };
-    loadEruda();
-  }, []);
-
   // --- NADA DERING OTOMATIS SINKRON SAMA FLOATING CALL ---
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -346,7 +324,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
           .global-msg-content {
             flex: 1; 
-            min-width: 0; /* Biar ellipsis jalan */
+            min-width: 0; 
             display: flex; 
             flex-direction: column;
             justify-content: center;

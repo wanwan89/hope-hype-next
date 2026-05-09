@@ -32,6 +32,8 @@ function ProfileContent() {
   
   const [isFollowing, setIsFollowing] = useState(false);
   const [hasStory, setHasStory] = useState(false); 
+  const [storyIdToGo, setStoryIdToGo] = useState<string | null>(null); // 🔥 TAMBAHIN INI
+
   const [blockStatus, setBlockStatus] = useState<'none' | 'blocked_by_me' | 'blocking_me'>('none');
   
   const [activeTab, setActiveTab] = useState<'post' | 'like' | 'repost' | 'simpan'>('post');
@@ -120,17 +122,24 @@ const loadProfile = async () => {
     });
     setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
     
-    // 🔥 FIX: LOGIKA CEK STORY (SIMPEL & TANPA DUPLIKAT) 🔥
+    // 🔥 FIX: LOGIKA CEK STORY (SIMPEL & NANGKAP ID STORY) 🔥
     const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: stories } = await supabase
       .from('stories')
       .select('id')
       .eq('creator_id', profData.id) 
       .gte('created_at', timeLimit)
+      .order('created_at', { ascending: true }) // Ambil story yang paling awal
       .limit(1);
 
-    // Set true kalau ada data, set false kalau kosong
-    setHasStory(!!(stories && stories.length > 0)); 
+    // Kalau ada story, simpan status dan ID-nya!
+    if (stories && stories.length > 0) {
+      setHasStory(true);
+      setStoryIdToGo(String(stories[0].id)); // 🔥 Simpan ID Story-nya di sini
+    } else {
+      setHasStory(false);
+      setStoryIdToGo(null);
+    }
 
     // Update stats kalau tidak diblokir
     if (blockStatus === 'none') {
@@ -141,6 +150,7 @@ const loadProfile = async () => {
     console.error("Load Profile Error:", err); 
   }
 };
+
 
   const updateStats = async (targetId: string, currentUserId: string | null) => {
     const { count: fers } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', targetId);
@@ -224,14 +234,10 @@ const handleOpenPost = (postId: string) => {
 
 
 const handleAvatarClick = () => {
-  if (hasStory && profile?.id) {
-    // 💡 RUTE A: Jika pake folder src/app/story/[id]
-    router.push(`/story/${profile.id}`); 
-
-    // 💡 RUTE B: Jika pake folder src/app/story/page.tsx
-    // router.push(`/story?user_id=${profile.id}`); 
+  if (hasStory && storyIdToGo) {
+    // 🔥 Dia bakal loncat ke /story/24 (misalnya ID story-nya 24)
+    router.push(`/story/${storyIdToGo}`); 
   } else {
-    console.log("Klik gagal: hasStory =", hasStory, "ID =", profile?.id);
     showNotif("Belum ada story terbaru", "info");
   }
 };
@@ -445,20 +451,32 @@ const handleAvatarClick = () => {
         }
       `}</style>
 
-      <header className="profile-header">
-        <h2 style={{ marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-          {profile.username}
+      <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px' }}>
+        
+        {/* KIRI: Tombol Kembali (Hanya muncul kalau lagi liat profil orang) */}
+        {!isMe ? (
+          <button className="header-btn" onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
+            <span className="material-icons">arrow_back</span>
+          </button>
+        ) : (
+          <div style={{ width: '24px' }}></div> /* Spacer biar seimbang */
+        )}
+
+        {/* TENGAH: Username */}
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-main)' }}>
+          Hii {profile.username}
           {profile.is_private && <span className="material-icons" style={{fontSize: '14px', color: 'var(--text-secondary)'}}>lock</span>}
         </h2>
+
+        {/* KANAN: Tombol Menu (Hanya muncul di profil sendiri) */}
         {isMe ? (
-          <button className="header-btn" onClick={() => setIsSidebarOpen(true)}>
+          <button className="header-btn" onClick={() => setIsSidebarOpen(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
             <span className="material-icons">menu</span>
           </button>
         ) : (
-          <button className="header-btn" onClick={() => router.back()}>
-            <span className="material-icons">arrow_back</span>
-          </button>
+          <div style={{ width: '24px' }}></div> /* Spacer biar seimbang */
         )}
+
       </header>
 
       <div className="profile-top-section">
