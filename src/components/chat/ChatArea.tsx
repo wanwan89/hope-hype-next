@@ -446,10 +446,27 @@ export default function ChatArea() {
         refs.lkRoom.current = null;
       }
       
+      // 🔥 FIX: Tambahkan log detail untuk melacak error Supabase
+      console.log("Mengirim request token ke Supabase untuk Room:", rName);
+      
       const { data, error } = await supabase.functions.invoke('get-livekit-token', { 
-         body: { username: myProfile?.username, identity: currentUser.id, roomName: rName } 
+         body: { 
+           username: currentUser?.username || myProfile?.username || "User", 
+           identity: currentUser?.id, 
+           roomName: rName 
+         } 
       });
-      if (error || !data) throw new Error("Gagal ambil token");
+
+      // 🔥 FIX: Tangkap pesan error ASLI dari Supabase
+      if (error) {
+        console.error("Supabase Edge Function Error Asli:", error);
+        throw new Error(`Server Error: ${error.message || 'Cek console browser'}`);
+      }
+
+      if (!data || !data.token) {
+        console.error("Response data kosong atau tidak ada token:", data);
+        throw new Error("Token kosong dari server");
+      }
       
       refs.lkRoom.current = new LiveKit.Room({
          adaptiveStream: true,
@@ -482,15 +499,19 @@ export default function ChatArea() {
       });
 
       await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
+      
       try {
         await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
       } catch (micErr) {
         showNotif("Harap izinkan akses Mikrofon!", "warning");
       }
+      
       if (refs.lkRoom.current.remoteParticipants.size > 0) handleCallConnected();
+
     } catch (e: any) { 
-      console.error("ConnectLiveKit error:", e);
-      showNotif("Panggilan gagal tersambung", "error"); 
+      // 🔥 FIX: Tampilkan error aslinya di notif biar ketahuan
+      console.error("ConnectLiveKit terhenti karena:", e);
+      showNotif(e.message || "Panggilan gagal tersambung", "error"); 
       endCall(); 
     }
   };
