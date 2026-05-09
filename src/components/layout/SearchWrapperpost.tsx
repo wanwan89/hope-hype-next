@@ -72,10 +72,11 @@ export default function SearchWrapperpost() {
     setAnimatingStoryId(sId);
     setClickedStoryId(sId); 
     
+    // 🔥 Waktu tunggu ditambah sedikit (500ms) biar animasi muternya keliatan mulus dulu
     setTimeout(() => {
       router.push(`/story/${sId}`);
       setTimeout(() => setAnimatingStoryId(null), 100);
-    }, 200);
+    }, 500); 
   };
 
   if (!mounted || isHidden) return null;
@@ -92,7 +93,14 @@ export default function SearchWrapperpost() {
         transition: 'all 0.3s ease'
       }}
     >
-      
+      {/* 🔥 INJEKSI CSS ANIMASI MUTAR ALA IG 🔥 */}
+      <style>{`
+        @keyframes igSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* SEARCH BAR AREA */}
       <div 
         className="search-wrapper glass-effect" 
@@ -150,7 +158,6 @@ export default function SearchWrapperpost() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            // 🔥 FIX: Arahkan langsung ke halaman '/create' yang baru dibuat
             router.push('/create');
           }}
           style={{ 
@@ -196,24 +203,46 @@ export default function SearchWrapperpost() {
                 alignItems: 'center', 
                 gap: '8px', 
                 cursor: 'pointer',
-                transform: animatingStoryId === story.id ? 'scale(0.85)' : 'scale(1)',
-                opacity: animatingStoryId === story.id ? 0.7 : 1,
-                transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' 
+                transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)',
+                transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' 
               }}
             >
+              {/* 🔥 BUNGKUSAN AVATAR + RING 🔥 */}
               <div 
                 style={{
-                  width: '66px', height: '66px', borderRadius: '50%', padding: '2.5px',
-                  background: clickedStoryId === story.id 
-                    ? 'var(--border-color)' 
-                    : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
-                  transition: 'all 0.3s ease'
+                  position: 'relative',
+                  width: '66px', height: '66px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: '50%',
+                  overflow: 'hidden'
                 }}
               >
+                {/* RING GRADIENT (Cuma ini yang muter) */}
+                <div 
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '50%',
+                    background: clickedStoryId === story.id && animatingStoryId !== story.id 
+                      ? 'var(--border-color)' 
+                      : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
+                    animation: animatingStoryId === story.id ? 'igSpin 1s linear infinite' : 'none',
+                    zIndex: 1
+                  }}
+                />
+                
+                {/* GAMBAR PROFIL (Tengah, tetep diem gak ikut muter) */}
                 <img 
                   src={story.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${story.profiles?.username}`} 
                   alt="avatar"
-                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid var(--bg-main)' }}
+                  style={{ 
+                    width: '61px', height: '61px', 
+                    borderRadius: '50%', 
+                    objectFit: 'cover', 
+                    border: '2.5px solid var(--bg-main)', 
+                    position: 'relative',
+                    zIndex: 2 
+                  }}
                 />
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: '600', maxWidth: '65px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -22,37 +22,46 @@ function ProfileContent() {
   const urlId = searchParams?.get('id');
   const urlUser = searchParams?.get('user') || searchParams?.get('username');
 
+  // ==========================================
+  // 🔥 1. STATE MANAGEMENT (Udah Dirapihin) 🔥
+  // ==========================================
   const [isMounted, setIsMounted] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
-  const [isFollowing, setIsFollowing] = useState(false);
   
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [hasStory, setHasStory] = useState(false); // 🔥 State untuk Story
   const [blockStatus, setBlockStatus] = useState<'none' | 'blocked_by_me' | 'blocking_me'>('none');
-  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
-
-  const [activeTab, setActiveTab] = useState<'post' | 'simpan' | 'repost' | 'like'>('post');
+  
+  const [activeTab, setActiveTab] = useState<'post' | 'like' | 'repost' | 'simpan'>('post');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // Modals & Sheets
+  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '', website: '' });
-  
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
+  
   const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
   const [followList, setFollowList] = useState<any[]>([]);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+
+  // Form Edit
+  const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '', website: '' });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const avatarPresets = [
     '/asets/png/avatar1.png', '/asets/png/avatar2.png',
     '/asets/png/avatar3.png', '/asets/png/avatar4.png'
   ];
 
+  // ==========================================
+  // 🔥 2. LIFECYCLE & DATA FETCHING 🔥
+  // ==========================================
   useEffect(() => {
     setIsMounted(true);
     return () => {
@@ -91,6 +100,7 @@ function ProfileContent() {
       const { data: profData, error } = await query.single();
       if (error || !profData) return;
 
+      // Cek Blokir
       if (currentUserId && currentUserId !== profData.id) {
         const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
         if (myBlock) setBlockStatus('blocked_by_me');
@@ -108,6 +118,24 @@ function ProfileContent() {
       });
       setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
       
+      // 🔥 CEK STORY AKTIF (24 Jam Terakhir) 🔥
+      const { data: stories } = await supabase
+        .from('stories')
+        .select('created_at')
+        .eq('user_id', profData.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (stories && stories.length > 0) {
+        const storyTime = new Date(stories[0].created_at).getTime();
+        const now = new Date().getTime();
+        // Cek jika story dibuat kurang dari 24 jam yang lalu
+        if (now - storyTime < 24 * 60 * 60 * 1000) {
+          setHasStory(true);
+        }
+      }
+
+      // Ambil Stats (Followers/Likes)
       if (blockStatus === 'none') {
         updateStats(profData.id, currentUserId);
       }
@@ -162,16 +190,21 @@ function ProfileContent() {
     } catch (err) { console.error(err); setPosts([]); } finally { setIsLoadingPosts(false); }
   };
 
-  // 🔥 FIX 1: Fungsi Navigasi Hard Redirect ke /post 🔥
+  // ==========================================
+  // 🔥 3. EVENT HANDLERS 🔥
+  // ==========================================
   const handleOpenPost = (postId: string) => {
-    // Kombinasi ini maksa browser buat pindah halaman 100% tanpa nyangkut
-    try {
-      router.push(`/post?id=${postId}`); 
-    } catch (e) {
-      window.location.href = `/post?id=${postId}`;
-    }
+    try { router.push(`/post?id=${postId}`); } 
+    catch (e) { window.location.href = `/post?id=${postId}`; }
   };
 
+  const handleAvatarClick = () => {
+    if (hasStory) {
+      router.push(`/story?user_id=${profile.id}`);
+    } else {
+      // Bebas, bisa kasih fungsi lihat foto profil full (opsional)
+    }
+  };
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
     setFollowModalType(type);
@@ -196,9 +229,7 @@ function ProfileContent() {
   const handleShareProfile = () => {
     const url = window.location.href;
     const title = `Profil ${profile?.username}`;
-    
     setIsSidebarOpen(false);
-
     if (window.openGlobalShare) {
       window.openGlobalShare(url, title, undefined, profile?.username);
     } else {
@@ -272,21 +303,18 @@ function ProfileContent() {
     } catch (e: any) { showNotif(e.message, 'error'); }
   };
 
-  const handleReportUser = () => {
-    setIsActionSheetOpen(false);
-    showNotif('Laporan telah dikirim untuk ditinjau.', 'info');
-  };
-
   const navTo = (path: string) => { setIsSidebarOpen(false); router.push(path); };
 
+  // ==========================================
+  // 🔥 4. RENDER UI 🔥
+  // ==========================================
   if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)' }}></div>;
 
   const isMe = myId === profile.id;
 
-  // 🔥 TAMPILAN KALAU DIBLOKIR 🔥
+  // --- BLOKIR UI ---
   if (blockStatus === 'blocking_me') {
     return (
-      // 🔥 FIX 2: Layar digembok mati pake touchAction 'none' dan position fixed 🔥
       <div className="profile-page-container" style={{ position: 'fixed', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
         <header className="profile-header">
           <button className="header-btn" onClick={() => router.back()}><span className="material-icons">arrow_back</span></button>
@@ -299,10 +327,8 @@ function ProfileContent() {
     );
   }
 
-  // 🔥 TAMPILAN KALAU KITA NGEBLOK ORANGNYA 🔥
   if (blockStatus === 'blocked_by_me') {
     return (
-      // 🔥 FIX 2: Layar digembok mati pake touchAction 'none' dan position fixed 🔥
       <div className="profile-page-container" style={{ position: 'fixed', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
         <header className="profile-header">
           <button className="header-btn" onClick={() => router.back()}><span className="material-icons">arrow_back</span></button>
@@ -321,6 +347,28 @@ function ProfileContent() {
 
   return (
     <div className="profile-page-container">
+      
+      {/* 🔥 INJEKSI CSS STORY BORDER 🔥 */}
+      <style>{`
+        .story-ring {
+          position: relative;
+          padding: 3px;
+          border-radius: 50%;
+          background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+          cursor: pointer;
+          display: inline-block;
+          animation: pulseStory 2s infinite alternate;
+        }
+        .story-ring img {
+          border: 3px solid var(--bg-main) !important;
+          display: block;
+        }
+        @keyframes pulseStory {
+          0% { filter: brightness(1); }
+          100% { filter: brightness(1.2); }
+        }
+      `}</style>
+
       <header className="profile-header">
         <h2 style={{ marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
           {profile.username}
@@ -339,7 +387,14 @@ function ProfileContent() {
 
       <div className="profile-top-section">
         <section className="profile-info">
-          <div className="avatar-container"><img className="profile-avatar" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" /></div>
+          
+          {/* 🔥 AVATAR DENGAN STORY BORDER 🔥 */}
+          <div className="avatar-container" style={{ textAlign: 'center' }}>
+            <div className={hasStory ? 'story-ring' : ''} onClick={handleAvatarClick}>
+              <img className="profile-avatar" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
+            </div>
+          </div>
+          
           <h1 className="profile-name">{profile.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} /></h1>
           <p className="profile-username">@{profile.username.toLowerCase().replace(/\s/g, '')}</p>
 
@@ -379,9 +434,9 @@ function ProfileContent() {
         {(!profile.is_private || isMe || isFollowing) && (
           <div className="profile-tabs">
             <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
-            <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved', 'Tersimpan')}</div>
+            <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Suka')}</div>
             <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>{t('tab_repost', 'Repost')}</div>
-            <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Disukai')}</div>
+            <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved', 'Simpan')}</div>
           </div>
         )}
       </div>
@@ -400,11 +455,10 @@ function ProfileContent() {
               <div className="no-posts-v2">
                 <div className="no-posts-icon-circle"><span className="material-icons">auto_awesome</span></div>
                 <h3>{t('no_posts', 'Belum ada postingan')}</h3>
-                {isMe && <button className="btn-action btn-primary" onClick={() => router.push('/')}>{t('create_post', 'Buat Postingan')}</button>}
+                {isMe && activeTab === 'post' && <button className="btn-action btn-primary" onClick={() => router.push('/')}>{t('create_post', 'Buat Postingan')}</button>}
               </div>
            ) : (
               posts.map(post => (
-                 // 🔥 FIX 1: Panggil fungsi handleOpenPost untuk navigasi paksa 🔥
                  <div key={post.id} className="grid-item" style={{ cursor: 'pointer' }} onClick={() => handleOpenPost(post.id)}>
                     {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
                  </div>
@@ -413,6 +467,7 @@ function ProfileContent() {
         </div>
       </div>
 
+      {/* --- SIDEBAR MENU (Khusus Pemilik Akun) --- */}
       {isMe && (
         <>
           <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
@@ -438,6 +493,47 @@ function ProfileContent() {
         </>
       )}
 
+      {/* --- MODAL EDIT PROFIL --- */}
+      <div className={`p-sidebar-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => setIsEditModalOpen(false)} />
+      <aside className={`p-follow-sheet ${isEditModalOpen ? 'open' : ''}`} style={{height: 'auto', maxHeight: '90dvh', paddingBottom: '30px'}}>
+         <div className="follow-sheet-header">
+            <div className="drag-handle"></div>
+            <h3>{t('edit_profile_modal', 'Edit Profil')}</h3>
+            <span className="material-icons close-icon" onClick={() => setIsEditModalOpen(false)}>close</span>
+         </div>
+         <div className="follow-sheet-body" style={{padding: '0 20px'}}>
+            <div className="edit-avatar-section">
+               <img src={previewUrl || '/asets/png/profile.webp'} alt="Avatar" className="edit-avatar-preview" onClick={() => fileInputRef.current?.click()} />
+               <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleFileChange} />
+               <div className="avatar-presets">
+                  {avatarPresets.map((url, i) => (
+                     <img key={i} src={url} alt={`preset-${i}`} onClick={() => { setEditData({...editData, avatar_url: url}); setPreviewUrl(url); setSelectedFile(null); }} />
+                  ))}
+               </div>
+            </div>
+            
+            <div className="edit-form-group">
+               <label>{t('username_label', 'Username')}</label>
+               <input type="text" value={editData.username} onChange={e => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})} placeholder="Gunakan huruf kecil" />
+            </div>
+            
+            <div className="edit-form-group">
+               <label>{t('bio_label', 'Bio')}</label>
+               <textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} placeholder="Tulis sesuatu tentangmu..." rows={3} />
+            </div>
+            
+            <div className="edit-form-group">
+               <label>{t('link_label', 'Tautan / Website')}</label>
+               <input type="text" value={editData.website} onChange={e => setEditData({...editData, website: e.target.value})} placeholder="misal: instagram.com/hope" />
+            </div>
+
+            <button className="btn-save-profile" onClick={handleSaveSettings} disabled={isSaving}>
+               {isSaving ? t('saving', 'Menyimpan...') : t('save_changes', 'Simpan Perubahan')}
+            </button>
+         </div>
+      </aside>
+
+      {/* --- MODAL FOLLOWERS / FOLLOWING --- */}
       <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
       <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
         <div className="follow-sheet-header">
@@ -463,6 +559,7 @@ function ProfileContent() {
         </div>
       </aside>
 
+      {/* --- ACTION SHEET (LAPORKAN / BLOKIR) --- */}
       <div className={`p-sidebar-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)} />
       <aside className={`p-follow-sheet ${isActionSheetOpen ? 'open' : ''}`} style={{ height: 'auto', paddingBottom: '30px' }}>
         <div className="follow-sheet-header">
@@ -471,7 +568,7 @@ function ProfileContent() {
            <span className="material-icons close-icon" onClick={() => setIsActionSheetOpen(false)}>close</span>
         </div>
         <div className="follow-sheet-body" style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-           <button onClick={handleReportUser} style={{ width: '100%', padding: '16px', background: 'var(--bg-secondary)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-dark)', cursor: 'pointer' }}>
+           <button onClick={() => { setIsActionSheetOpen(false); showNotif('Laporan telah dikirim untuk ditinjau.', 'info'); }} style={{ width: '100%', padding: '16px', background: 'var(--bg-secondary)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-dark)', cursor: 'pointer' }}>
              Laporkan Pengguna
            </button>
            <button onClick={handleBlockUser} style={{ width: '100%', padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ef4444', cursor: 'pointer' }}>
@@ -488,15 +585,7 @@ export default function ProfilePage() {
   return (
     <Suspense 
       fallback={
-        <div style={{
-          height: '100dvh', 
-          width: '100%',
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          background: 'var(--bg-main, #01070A)',
-          color: 'transparent'
-        }}>
+        <div style={{ height: '100dvh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main, #01070A)' }}>
         </div>
       }
     >

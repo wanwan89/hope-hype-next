@@ -9,7 +9,7 @@
   --ct-border: #e5e7eb;
   --ct-input-bg: #f9fafb;
   --ct-input-border: #e5e7eb;
-  --ct-primary: #1DA1F2;
+  --ct-primary: #1f3cff; /* 🔥 FIX: Warna biru HypeTalk */
   --ct-glass: rgba(255, 255, 255, 0.95);
   --ct-shadow: 0 8px 30px rgba(0,0,0,0.04);
 
@@ -24,9 +24,10 @@
   display: flex;
   flex-direction: column;
   -webkit-overflow-scrolling: touch; 
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* SINKRONISASI DARK MODE */
+/* 🔥 SINKRONISASI DARK MODE 🔥 */
 [data-theme='dark'] .contact-container,
 html.dark .contact-container {
   --ct-bg-main: #0a0a0a;
@@ -56,6 +57,7 @@ html.dark .contact-container {
   -webkit-backdrop-filter: blur(15px);
   border-bottom: 1px solid var(--ct-border);
   box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .contact-content {
@@ -80,6 +82,7 @@ html.dark .contact-container {
   cursor: pointer;
   border-radius: 50%;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease;
 }
 
 .back-btn:active { 
@@ -92,6 +95,7 @@ html.dark .contact-container {
   font-size: 18px;
   font-weight: 700;
   color: var(--ct-text-main);
+  transition: color 0.3s ease;
 }
 
 .contact-desc {
@@ -100,6 +104,7 @@ html.dark .contact-container {
   line-height: 1.6;
   margin-bottom: 24px;
   text-align: center;
+  transition: color 0.3s ease;
 }
 
 .contact-card {
@@ -111,6 +116,7 @@ html.dark .contact-container {
   box-shadow: var(--ct-shadow); 
   width: 100%;
   box-sizing: border-box; 
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card-title {
@@ -121,6 +127,7 @@ html.dark .contact-container {
   align-items: center;
   gap: 10px;
   color: var(--ct-text-main);
+  transition: color 0.3s ease;
 }
 
 .form-group {
@@ -135,6 +142,7 @@ html.dark .contact-container {
   margin-bottom: 8px;
   font-weight: 600;
   text-transform: uppercase; 
+  transition: color 0.3s ease;
 }
 
 .form-group input, 
@@ -150,6 +158,7 @@ html.dark .contact-container {
   font-family: inherit;
   width: 100%;
   box-sizing: border-box;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .form-group input:focus, 
@@ -167,46 +176,104 @@ html.dark .contact-container {
   width: 100%;
   font-size: 15px;
   font-weight: 700;
-  box-shadow: 0 8px 20px rgba(29, 161, 242, 0.25);
+  box-shadow: 0 8px 20px rgba(31, 60, 255, 0.25);
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.btn-submit:active { transform: scale(0.97); }
-
-/* =========================================
-   🔥 SOCIAL MEDIA GRID (FIXED) 🔥
-   ========================================= */
-.social-grid {
-  display: grid;
-  /* Gunakan minmax(0, 1fr) biar layout nggak maksa melar! */
-  grid-template-columns: repeat(2, minmax(0, 1fr)); 
-  gap: 12px; 
-  width: 100%;
-}
-
-.social-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  /* Padding horizontal dikurangi sedikit biar muat di layar HP kecil */
-  padding: 14px 10px; 
-  border-radius: 16px; 
-  text-decoration: none;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
   -webkit-tap-highlight-color: transparent;
-  
-  /* Proteksi Anti-Jebol */
-  width: 100%;
-  box-sizing: border-box;
+}
+
+.btn-submit:active { 
+  transform: scale(0.97); 
+  filter: brightness(0.9);
+}
+
+/* =========================================
+   🔥 SOCIAL MEDIA LIST CUSTOM (ELEGAN) 🔥
+   ========================================= */
+
+.social-list-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 15px;
+}
+
+.social-card-btn {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+  text-decoration: none;
+  color: white !important;
+  gap: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.social-card-btn:active {
+  transform: scale(0.96);
+}
+
+.social-card-btn.ig {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  box-shadow: 0 4px 15px rgba(220, 39, 67, 0.2);
+}
+
+.social-card-btn.wa {
+  background: #25D366;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.2);
+}
+
+.social-card-btn.email {
+  background: #ea4335;
+  box-shadow: 0 4px 15px rgba(234, 67, 53, 0.2);
+}
+
+.social-icon-wrapper {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  flex-shrink: 0;
+}
+
+.social-icon-wrapper svg {
+  fill: white;
+  width: 24px;
+  height: 24px;
+}
+
+.social-icon-wrapper .material-icons {
+  color: white;
+  font-size: 24px;
+}
+
+.social-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.social-text-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+  margin-bottom: 2px;
+}
+
+.social-text-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.social-btn.ig { background: linear-gradient(45deg, #f09433, #bc1888); }
-.social-btn.wa { background: #25D366; }
-.social-btn.email { background: #ea4335; }

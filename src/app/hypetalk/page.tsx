@@ -40,6 +40,12 @@ export default function HypetalkPage() {
     callInterval: useRef<any>(null)
   };
 
+  // 🔥 FIX 1: Ref tambahan biar gak stale closure di dalam setTimeout 🔥
+  const callStatusRef = useRef(callStatus);
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLimit = localStorage.getItem('doi_limit');
@@ -175,16 +181,26 @@ export default function HypetalkPage() {
     }
   };
 
+  // 🔥 FIX 2: LOGIKA PENERIMAAN/PEMBATALAN TELPON LEBIH SOLID 🔥
   const subscribeToInbox = (userId: string) => {
     const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
     supabase.channel(channelName)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload: any) => {
         const newMsg = payload.new;
         if (newMsg && newMsg.room_id?.includes(userId)) {
+          
           if (newMsg.is_system && newMsg.message.includes("Memanggil") && newMsg.user_id !== userId) {
             handleIncomingCall(newMsg);
           }
-          if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab") || newMsg.message.includes("dibatalkan"))) {
+          
+          // 🔥 Anti-Case Sensitive biar gak nyangkut
+          const msgLower = String(newMsg.message).toLowerCase();
+          if (newMsg.is_system && (
+              msgLower.includes("panggilan berakhir") || 
+              msgLower.includes("ditolak") || 
+              msgLower.includes("tak terjawab") ||
+              msgLower.includes("dibatalkan")
+          )) {
             endCall(true);
           }
         }
@@ -241,7 +257,6 @@ export default function HypetalkPage() {
     finally { setIsSavingBio(false); }
   };
 
-  // 🔥 FIX 1: ANIMASI DOI RADAR SVG 🔥
   const handleCariDoi = async () => {
     if (sisaLimitDoi <= 0) return openModal('limit-doi');
     if (!currentUser?.gender) return openModal('bio');
@@ -340,7 +355,7 @@ export default function HypetalkPage() {
     }
   };
 
-  // ==================== CALL LOGIC STABIL ====================
+  // ==================== 🔥 FIX 3: CALL LOGIC STABIL 🔥 ====================
   const startCallFromLobby = async (targetProfile: any) => {
     if (!currentUser) return;
     if (callStatus !== 'idle') {
@@ -360,9 +375,25 @@ export default function HypetalkPage() {
     await supabase.from('messages').insert([{ 
       room_id: callRoomId, 
       user_id: currentUser.id, 
-      message: `Memanggil ${targetProfile.username}...`, 
+      message: `📞 Memanggil ${targetProfile.username}...`, 
       is_system: true 
     }]);
+    
+    clearTimeout(refs.callTimeout.current);
+    refs.callTimeout.current = setTimeout(async () => {
+      // Pastikan pake callStatusRef biar gak stale closure
+      if (callStatusRef.current === 'calling') {
+        endCall(true);
+        await supabase.from('messages').insert([{ 
+          room_id: callRoomId, 
+          user_id: currentUser.id, 
+          message: `☎️ Panggilan tak terjawab`, 
+          is_system: true 
+        }]);
+      }
+    }, 30000);
+    
+    connectLiveKit(callRoomId, targetProfile.id);
   };
 
   const handleIncomingCall = async (msg: any) => {
@@ -379,7 +410,9 @@ export default function HypetalkPage() {
       roomId: msg.room_id, 
       seconds: 0 
     });
-    refs.audio.current?.ring.play().catch(()=>{});
+    if (refs.audio.current?.ring) {
+      refs.audio.current.ring.play().catch(() => console.log("Audio diblokir browser"));
+    }
   };
 
   const connectLiveKit = async (rName: string, partnerId?: string) => {
@@ -394,9 +427,11 @@ export default function HypetalkPage() {
         body: { username: currentUser.username, identity: currentUser.id, roomName: rName }
       });
       if (error || !data) throw new Error("Gagal ambil token");
+      
       refs.lkRoom.current = new LiveKit.Room({ adaptiveStream: true, dynacast: true });
+      
       const handleCallConnected = () => {
-        if (callStatus === 'connected') return;
+        if (callStatusRef.current === 'connected') return; // Pake ref
         setCallStatus('connected');
         clearTimeout(refs.callTimeout.current);
         clearInterval(refs.callInterval.current);
@@ -404,14 +439,15 @@ export default function HypetalkPage() {
           setCallData((p: any) => ({ ...p, seconds: p.seconds + 1 }));
         }, 1000);
       };
+
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, handleCallConnected);
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantDisconnected, (participant) => {
-        if (participant.identity !== currentUser.id && callStatus === 'connected') {
+        if (participant.identity !== currentUser.id && callStatusRef.current === 'connected') {
           endCall(true);
         }
       });
       refs.lkRoom.current.on(LiveKit.RoomEvent.Disconnected, () => {
-        if (callStatus !== 'idle' && callStatus !== 'calling') {
+        if (callStatusRef.current !== 'idle' && callStatusRef.current !== 'calling') {
           endCall(true);
         }
       });
@@ -422,6 +458,7 @@ export default function HypetalkPage() {
           track.attach(audioElement);
         }
       });
+      
       await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
       try {
         await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
@@ -436,20 +473,28 @@ export default function HypetalkPage() {
     }
   };
 
+  // 🔥 FIX 4: Matikan semua status dan audio SEKETIKA (Hard Stop) 🔥
   const endCall = (silent = false) => {
-    if (callStatus === 'idle') return;
+    // 1. Audio di-pause paksa & waktu di reset ke 0 detik itu juga
     if (refs.audio.current?.ring) { 
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
     }
+    
+    // 2. Room LiveKit di-disconnect
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
+    
+    // 3. UI diubah kembali idle
     setCallStatus('idle');
+    
+    // 4. Timer panggilan dihapus
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
+    
     if (!silent) showNotif('Panggilan berakhir', "info");
   };
 
@@ -466,33 +511,37 @@ export default function HypetalkPage() {
         /* Floating call di ATAS */
         .call-overlay {
           position: fixed;
-          top: 80px;
-          left: 20px;
-          right: 20px;
-          background: var(--bg-panel);
-          backdrop-filter: blur(12px);
-          border-radius: 28px;
-          padding: 12px 16px;
+          top: max(env(safe-area-inset-top, 20px), 20px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(20, 20, 20, 0.95);
+          backdrop-filter: blur(10px);
+          border-radius: 24px;
+          padding: 12px 20px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-          z-index: 10000;
-          border: 1px solid rgba(255,255,255,0.2);
-          animation: slideDown 0.3s ease;
+          gap: 15px;
+          z-index: 9999999;
+          border: 1px solid rgba(46, 204, 113, 0.4);
+          box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+          width: 90%;
+          max-width: 360px;
+          animation: slideDownCall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes slideDownCall {
+          from { transform: translate(-50%, -120%); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
         }
         .call-overlay .call-info {
           display: flex;
           align-items: center;
           gap: 12px;
+          flex: 1;
+          overflow: hidden;
         }
         .call-overlay .call-avatar {
-          width: 40px;
-          height: 40px;
+          width: 45px;
+          height: 45px;
           border-radius: 50%;
           object-fit: cover;
           border: 2px solid #2ecc71;
@@ -511,14 +560,18 @@ export default function HypetalkPage() {
         }
         .call-btn-end, .call-btn-accept {
           border: none;
-          border-radius: 40px;
-          padding: 6px 16px;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           color: white;
-          font-weight: bold;
           cursor: pointer;
+          transition: transform 0.2s;
         }
-        .call-btn-end { background: #ff4757; }
-        .call-btn-accept { background: #2ecc71; }
+        .call-btn-end { background: #ff4757; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.4); }
+        .call-btn-accept { background: #2ecc71; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4); }
 
         /* Modal profil tidak transparan */
         .tg-modal-overlay {
@@ -526,7 +579,7 @@ export default function HypetalkPage() {
           backdrop-filter: blur(5px) !important;
         }
 
-        /* 🔥 FIX 2: ANIMASI RADAR & PESAWAT KERTAS 🔥 */
+        /* 🔥 FIX: ANIMASI RADAR & PESAWAT KERTAS 🔥 */
         .doi-search-overlay {
           position: fixed; inset: 0; background: rgba(10,15,20,0.95);
           display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -571,21 +624,26 @@ export default function HypetalkPage() {
       {/* TAMPILAN PANGGILAN CALLING / INCOMING */}
       {(callStatus === 'calling' || callStatus === 'incoming') && (
         <div className="call-overlay">
+          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={`call-avatar ${callStatus === 'calling' ? 'anim-calling-avatar' : ''}`} alt="avatar" />
           <div className="call-info">
-            <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={`call-avatar ${callStatus === 'calling' ? 'anim-calling-avatar' : ''}`} alt="avatar" />
-            <div>
-              <div style={{ fontWeight: 'bold' }}>{callData.partnerName}</div>
-              <div style={{ fontSize: '12px', opacity: 0.8 }}>{callStatus === 'calling' ? 'Memanggil...' : 'Menghubungi...'}</div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{callData.partnerName}</div>
+              <div style={{ color: '#2ecc71', fontSize: '12px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="material-icons" style={{ fontSize: '12px' }}>ring_volume</span> 
+                {callStatus === 'calling' ? 'Memanggil...' : 'Menghubungi...'}
+              </div>
             </div>
           </div>
           <div className="call-actions">
             {callStatus === 'incoming' && (
-              <button className="call-btn-accept" onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.roomId, callData.partnerId); }}>Terima</button>
+              <button className="call-btn-accept" onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.roomId, callData.partnerId); }}>
+                <span className="material-icons" style={{ fontSize: '20px' }}>call</span>
+              </button>
             )}
             <button className="call-btn-end" onClick={async () => {
               const rId = callData.roomId;
               const isIncoming = callStatus === 'incoming';
-              endCall(); // 🔥 FIX: Instan hilang dan suaranya langsung mati!
+              endCall(); // 🔥 Hard stop instan
               
               if (isIncoming) {
                 await supabase.from('messages').insert([{ room_id: rId, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
@@ -593,7 +651,7 @@ export default function HypetalkPage() {
                 await supabase.from('messages').insert([{ room_id: rId, user_id: currentUser.id, message: `Panggilan dibatalkan`, is_system: true }]);
               }
             }}>
-              {callStatus === 'incoming' ? 'Tolak' : 'Tutup'}
+              <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
             </button>
           </div>
         </div>
@@ -602,12 +660,12 @@ export default function HypetalkPage() {
       {/* FLOATING CALL SAAT SUDAH TERHUBUNG */}
       {callStatus === 'connected' && (
         <div className="call-overlay">
+          <div style={{ width: 10, height: 10, background: '#2ecc71', borderRadius: '50%', animation: 'pulseCall 1.5s infinite' }}></div>
+          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="call-avatar" alt="partner" />
           <div className="call-info">
-            <div style={{ width: 10, height: 10, background: '#2ecc71', borderRadius: '50%', animation: 'pulseCall 1.5s infinite' }}></div>
-            <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="call-avatar" alt="partner" />
-            <div>
-              <div style={{ fontWeight: 'bold' }}>{callData.partnerName}</div>
-              <div className="call-duration">
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{callData.partnerName}</div>
+              <div className="call-duration" style={{ color: '#888', fontSize: '12px' }}>
                 {Math.floor(callData.seconds / 60)}:{String(callData.seconds % 60).padStart(2, '0')}
               </div>
             </div>
@@ -622,7 +680,9 @@ export default function HypetalkPage() {
               message: `Panggilan berakhir (${Math.floor(callData.seconds / 60)}:${String(callData.seconds % 60).padStart(2, '0')})`, 
               is_system: true 
             }]);
-          }}>Akhiri</button>
+          }}>
+            <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
+          </button>
         </div>
       )}
 
@@ -712,44 +772,35 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* MODAL USER PROFILE - TANPA IKON & SOLID BACKGROUND */}
+      {/* MODAL USER PROFILE (KOTAK KECIL ALA WA) */}
       {activeModal === 'user-profile' && selectedProfile && (
-        <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={closeModal}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-panel)', width: '100%', maxWidth: '300px',
-              borderRadius: '16px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.5)',
-              animation: 'fadeInModal 0.2s ease'
-            }}
-          >
-            <div style={{ position: 'relative', width: '100%', paddingTop: '100%' }}>
-              <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} alt="Profile" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', padding: '30px 20px 15px 20px' }}>
-                <h2 style={{ color: 'white', margin: 0, fontSize: '20px', fontWeight: '700', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+        <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', padding: '20px' }} onClick={closeModal}>
+          <div className="wa-profile-card" onClick={(e) => e.stopPropagation()}>
+            <div className="wa-profile-img-container">
+              <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} alt="Profile" className="wa-profile-img" />
+              <div className="wa-profile-name-bar">
+                <h2 style={{ color: 'white', margin: 0, fontSize: '18px', fontWeight: '600' }}>
                   {selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}
                 </h2>
+                {selectedProfile.pekerjaan && <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', marginTop: '2px' }}>{selectedProfile.pekerjaan}</div>}
               </div>
             </div>
-            <div style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-                {selectedProfile.pekerjaan && <span style={{ background: 'rgba(29, 161, 242, 0.1)', color: '#1da1f2', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>{selectedProfile.pekerjaan}</span>}
-                {selectedProfile.hobi && <span style={{ background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>{selectedProfile.hobi}</span>}
-                {selectedProfile.zodiak && <span style={{ background: 'rgba(217, 119, 6, 0.1)', color: '#d97706', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>{selectedProfile.zodiak}</span>}
-                {!selectedProfile.pekerjaan && !selectedProfile.hobi && !selectedProfile.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '12px', fontStyle: 'italic' }}>Bio belum diisi</span>}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-around', borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
-                <button onClick={() => { closeModal(); router.push(`/hypetalk/chat?from=${selectedProfile.id}`); }} style={{ background: 'none', border: 'none', fontWeight: '700', fontSize: '13px', color: '#1da1f2', cursor: 'pointer' }}>Chat</button>
-                <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} style={{ background: 'none', border: 'none', fontWeight: '700', fontSize: '13px', color: '#2ecc71', cursor: 'pointer' }}>Telpon</button>
-                <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} style={{ background: 'none', border: 'none', fontWeight: '700', fontSize: '13px', color: '#ff4757', cursor: 'pointer', opacity: isBlocking ? 0.5 : 1 }}>Blokir</button>
-              </div>
+            <div className="wa-profile-actions">
+              <button onClick={() => { closeModal(); router.push(`/hypetalk/chat?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
+                <span className="material-icons" style={{ fontSize: '24px' }}>chat</span> Chat
+              </button>
+              <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="wa-action-btn" style={{ color: '#2ecc71' }}>
+                <span className="material-icons" style={{ fontSize: '24px' }}>call</span> Telpon
+              </button>
+              <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} className="wa-action-btn" style={{ color: '#ff4757', opacity: isBlocking ? 0.5 : 1 }}>
+                <span className="material-icons" style={{ fontSize: '24px' }}>block</span> Blokir
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🔥 FIX 3: MODAL DOI CARD DENGAN TOMBOL BIRU 🔥 */}
+      {/* MODAL DOI CARD DENGAN TOMBOL BIRU */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
@@ -764,7 +815,6 @@ export default function HypetalkPage() {
                 {!foundDoi.pekerjaan && !foundDoi.hobi && !foundDoi.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Belum mengisi bio lengkap</span>}
               </div>
             </div>
-            {/* Tombol Biru! */}
             <button className="action-btn love-btn" onClick={() => router.push(`/hypetalk/chat?from=${foundDoi.id}`)} style={{ width: '100%', background: 'linear-gradient(135deg, #1DA1F2, #1f3cff)', borderRadius: '15px', fontWeight: '800', color: 'white', padding: '14px', border: 'none' }}>Chat Sekarang 🚀</button>
           </div>
         </div>
@@ -812,7 +862,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* 🔥 FIX 2: ANIMASI RADAR PENCARI JODOH (NO AVATAR PHOTO) 🔥 */}
+      {/* ANIMASI DOI (RADAR SVG) */}
       {isSearchingDoi && (
         <div className="doi-search-overlay">
           <div className="radar-wrapper">
@@ -820,10 +870,8 @@ export default function HypetalkPage() {
             <div className="radar-ring delay-1"></div>
             <div className="radar-ring delay-2"></div>
             
-            {/* Ikon Profil Pusat */}
             <span className="material-icons radar-center-icon">person_search</span>
             
-            {/* Pesawat Kertas Mengorbit */}
             <div className="plane-container">
               <svg className="plane-svg" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </div>

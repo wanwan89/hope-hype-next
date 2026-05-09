@@ -23,9 +23,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter(); 
   const prevPathnameRef = useRef(pathname);
 
-  // --- 🔥 STATE UNTUK PANGGILAN GLOBAL 🔥 ---
+  // --- 🔥 STATE UNTUK PANGGILAN & PESAN GLOBAL 🔥 ---
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
+  const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); // 🔥 State baru buat pesan
+  
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+  const msgNotifTimerRef = useRef<any>(null); // Timer buat ngilangin notif pesan
 
   // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
@@ -68,7 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     loadEruda();
   }, []);
 
-  // --- 🔥 FIX 1: NADA DERING OTOMATIS SINKRON SAMA FLOATING 🔥 ---
+  // --- NADA DERING OTOMATIS SINKRON SAMA FLOATING CALL ---
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (!ringtoneRef.current) {
@@ -77,17 +80,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
 
       if (globalIncomingCall) {
-        ringtoneRef.current.play().catch(() => console.log("Audio diblokir browser"));
+        const playPromise = ringtoneRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => console.log("Audio diblokir browser"));
+        }
       } else {
         if (ringtoneRef.current) {
           ringtoneRef.current.pause();
-          ringtoneRef.current.currentTime = 0; // Reset dari awal
+          ringtoneRef.current.currentTime = 0; 
         }
       }
     }
   }, [globalIncomingCall]);
 
-  // --- 🔥 SISTEM PANGGILAN GLOBAL (MUNCUL DI SEMUA HALAMAN) 🔥 ---
+  // --- 🔥 SISTEM PANGGILAN & PESAN GLOBAL 🔥 ---
   useEffect(() => {
     let channel: any;
 
@@ -96,14 +102,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       if (!session) return;
       const myUserId = session.user.id;
 
-      channel = supabase.channel(`global-call-root-${myUserId}`)
+      channel = supabase.channel(`global-root-${myUserId}`)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload: any) => {
           const newMsg = payload.new;
           if (newMsg && newMsg.room_id?.includes(myUserId) && newMsg.user_id !== myUserId) {
             
-            // Jika ada telpon masuk
+            // 📞 JIKA ITU TELPON
             if (newMsg.is_system && newMsg.message.includes("Memanggil")) {
-              // Abaikan jika user sedang di halaman Hypetalk (Lobby/ChatArea)
               if (window.location.href.includes('/hypetalk')) return; 
 
               const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
@@ -115,15 +120,47 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               });
             }
 
-            // Jika telpon ditutup / selesai oleh si penelepon
+            const msgLower = String(newMsg.message).toLowerCase();
             if (newMsg.is_system && (
-              newMsg.message.includes("Panggilan berakhir") || 
-              newMsg.message.includes("Ditolak") || 
-              newMsg.message.includes("tak terjawab") ||
-              newMsg.message.includes("dibatalkan") 
+              msgLower.includes("panggilan berakhir") || 
+              msgLower.includes("ditolak") || 
+              msgLower.includes("tak terjawab") ||
+              msgLower.includes("dibatalkan") 
             )) {
               setGlobalIncomingCall(null);
+              if (ringtoneRef.current) {
+                ringtoneRef.current.pause();
+                ringtoneRef.current.currentTime = 0;
+              }
             }
+
+            // 💬 JIKA ITU PESAN CHAT BIASA (Bukan Sistem)
+            if (!newMsg.is_system) {
+              // Abaikan kalau user lagi di dalam menu Hypetalk/Chat
+              if (!window.location.href.includes('/hypetalk')) {
+                const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
+                
+                // Ambil info text (kalau stiker/VN ubah labelnya)
+                let previewText = newMsg.message;
+                if (newMsg.sticker_url) previewText = "Mengirim Stiker";
+                if (newMsg.audio_url) previewText = "Mengirim Voice Note";
+
+                setGlobalMessageNotif({
+                  senderId: p?.id,
+                  senderName: p?.username || 'User',
+                  senderAvatar: p?.avatar_url || '/asets/png/profile.webp',
+                  message: previewText,
+                  roomId: newMsg.room_id
+                });
+
+                // Auto tutup notif dalam 4 detik
+                clearTimeout(msgNotifTimerRef.current);
+                msgNotifTimerRef.current = setTimeout(() => {
+                  setGlobalMessageNotif(null);
+                }, 4000);
+              }
+            }
+
           }
         })
         .subscribe();
@@ -133,20 +170,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     return () => {
       if (channel) supabase.removeChannel(channel);
+      if (ringtoneRef.current) ringtoneRef.current.pause();
+      clearTimeout(msgNotifTimerRef.current);
     };
   }, []);
 
-  // --- 🔥 FIX 2: TOLAK TELPON INSTAN & HILANG SEKETIKA 🔥 ---
   const handleTolakGlobal = async () => {
     if (!globalIncomingCall) return;
-    
-    // Simpan roomId di variabel sementara
     const currentRoomId = globalIncomingCall.roomId;
     
-    // 1. Matikan Floating & Suara saat itu juga! (Nggak nunggu database)
     setGlobalIncomingCall(null);
+    if (ringtoneRef.current) {
+      ringtoneRef.current.pause();
+      ringtoneRef.current.currentTime = 0;
+    }
     
-    // 2. Kirim status Ditolak ke database (jalan di background)
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       await supabase.from('messages').insert([{ 
@@ -162,10 +200,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     if (!globalIncomingCall) return;
     const cid = globalIncomingCall.callerId;
     
-    // Matikan Floating & Suara
     setGlobalIncomingCall(null);
-    
-    // Bawa ke halaman chat
+    if (ringtoneRef.current) {
+      ringtoneRef.current.pause();
+      ringtoneRef.current.currentTime = 0;
+    }
+    router.push(`/hypetalk/chat?from=${cid}`);
+  };
+
+  // --- 🔥 FUNGSI KLIK NOTIF PESAN 🔥 ---
+  const handleMessageClick = () => {
+    if (!globalMessageNotif) return;
+    const cid = globalMessageNotif.senderId;
+    setGlobalMessageNotif(null);
+    // Langsung arahin ke ruang chat
     router.push(`/hypetalk/chat?from=${cid}`);
   };
 
@@ -248,8 +296,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
           body { background-color: var(--bg-main); }
           
-          /* Animasi & CSS untuk Popup Global Call */
-          @keyframes slideDownCall {
+          /* Animasi & CSS Popup Call */
+          @keyframes slideDownGlobal {
             from { transform: translate(-50%, -120%); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
           }
@@ -268,6 +316,49 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             cursor: pointer; color: white; transition: transform 0.2s;
           }
           .global-call-btn:active { transform: scale(0.9); }
+
+          /* 🔥 Animasi & CSS Popup Pesan Baru 🔥 */
+          .global-msg-popup {
+            position: fixed;
+            top: max(env(safe-area-inset-top, 20px), 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 25, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(31, 60, 255, 0.3);
+            border-radius: 20px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 9999998; /* Di bawah call popup sikit */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            width: 90%;
+            max-width: 380px;
+            cursor: pointer;
+            animation: slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.2s;
+          }
+          .global-msg-popup:active {
+            transform: translateX(-50%) scale(0.96);
+          }
+          .global-msg-avatar {
+            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.1);
+          }
+          .global-msg-content {
+            flex: 1; overflow: hidden; display: flex; flexDirection: column;
+          }
+          .global-msg-title {
+            color: white; font-weight: 700; font-size: 14px; 
+            white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+            display: flex; align-items: center; gap: 6px;
+          }
+          .global-msg-text {
+            color: #9ca3af; font-size: 13px; 
+            white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+            margin-top: 2px;
+          }
         `}</style>
       </head>
       
@@ -276,7 +367,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider>
             <GlobalShareModal />
 
-            {/* 🔥 POPUP INCOMING CALL GLOBAL 🔥 */}
+            {/* 🔥 POPUP PESAN MASUK GLOBAL 🔥 */}
+            {globalMessageNotif && !globalIncomingCall && (
+              <div className="global-msg-popup" onClick={handleMessageClick}>
+                <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
+                <div className="global-msg-content">
+                  <div className="global-msg-title">
+                    {globalMessageNotif.senderName}
+                    <span style={{ fontSize: '10px', background: '#1f3cff', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>Baru</span>
+                  </div>
+                  <div className="global-msg-text">
+                    {globalMessageNotif.message}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 🔥 POPUP PANGGILAN GLOBAL 🔥 */}
             {globalIncomingCall && (
               <div style={{
                 position: 'fixed', top: 'max(env(safe-area-inset-top, 20px), 20px)', left: '50%', transform: 'translateX(-50%)',
@@ -284,7 +391,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px',
                 display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999,
                 boxShadow: '0 15px 35px rgba(0,0,0,0.5)', width: '90%', maxWidth: '360px',
-                animation: 'slideDownCall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                animation: 'slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
               }}>
                 <img src={globalIncomingCall.callerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="caller" />
                 <div style={{ flex: 1, overflow: 'hidden' }}>

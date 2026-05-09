@@ -6,7 +6,7 @@
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* --- SEARCH AREA (TETAP DIAM) --- */
@@ -19,6 +19,7 @@
   position: relative;
   z-index: 15001; 
   border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 /* --- INPUT PENCARIAN --- */
@@ -38,13 +39,13 @@
   border: 1px solid transparent;
   border-radius: 20px; 
   outline: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease;
 }
 
 .brutal-input:focus {
   background: var(--bg-main, #fff);
-  border-color: #1DA1F2;
-  box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.1); 
+  border-color: #1f3cff; /* 🔥 FIX: Pakai warna biru utama HypeTalk */
+  box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.1); 
 }
 
 /* --- TOMBOL TAMBAH --- */
@@ -52,8 +53,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: none;
   background-color: var(--text-main, #1a1a1a); 
@@ -63,7 +64,8 @@
   position: relative;
   z-index: 16000;
   pointer-events: auto !important; 
-  transition: transform 0.1s ease;
+  transition: transform 0.1s ease, background-color 0.3s ease, color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .add-post-btn:active {
@@ -81,7 +83,7 @@
   -ms-overflow-style: none;
   position: relative;
   z-index: 14000; 
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
   -webkit-overflow-scrolling: touch; /* Biar smooth di HP */
 }
 
@@ -94,56 +96,69 @@
   gap: 6px;
   flex-shrink: 0;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.story-item:active {
+  transform: scale(0.92);
+}
+
+/* --- 🔥 ANIMASI POP & SPIN ALA IG STORY (FIXED) 🔥 --- */
 .story-circle {
-  width: 64px;
-  height: 64px;
+  position: relative;
+  width: 66px;
+  height: 66px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.5px; 
-  transition: all 0.2s ease;
+  /* Memotong background biar tetep bulat */
+  overflow: hidden; 
+  background: var(--border-color, #e4e6eb);
 }
 
-.story-circle.unseen { 
-  /* Gradasi IG */
-  background: conic-gradient(from 45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888, #f09433); 
+/* Pseudo-element ini yang dikasih gradient warna IG */
+.story-circle.unseen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  border-radius: 50%;
+  z-index: 0;
 }
 
-.story-circle.seen { 
-  background: var(--border-card, #e4e6eb); 
+/* Kalau lagi loading diklik, CUMA pseudo-element ini yang muter! */
+.story-circle.animating::before {
+  animation: spinIG 1s linear infinite;
+}
+
+@keyframes spinIG {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .story-circle img {
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 1; /* Harus di atas gradient */
+  width: 61px;
+  height: 61px;
   border-radius: 50%;
   object-fit: cover;
-  background: #eee;
-  border: 2.5px solid var(--bg-main, #fff);
+  background: var(--bg-secondary);
+  /* Border warna background bikin ilusi ada jarak/gap antara ring dan gambar */
+  border: 2.5px solid var(--bg-main, #ffffff);
+  transition: border-color 0.3s ease;
 }
 
-/* --- 🔥 ANIMASI POP & SPIN ALA IG STORY 🔥 --- */
-.story-circle.clicked {
-  /* Putar gradient-nya */
-  animation: spinBorder 1s linear infinite !important;
-}
-
-/* Biar foto profil gak ikut muter/kebalik, kita putar ke arah sebaliknya! */
-.story-circle.clicked img {
-  animation: counterSpin 1s linear infinite !important;
-}
-
-/* Keyframes putar pembungkusnya ke kanan */
-@keyframes spinBorder {
-  0% { transform: scale(0.9) rotate(0deg); }
-  100% { transform: scale(0.9) rotate(360deg); }
-}
-
-/* Keyframes putar isinya (gambar) ke kiri */
-@keyframes counterSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(-360deg); }
+/* Nama Story Teks */
+.story-name {
+  font-size: 11px; 
+  color: var(--text-main); 
+  font-weight: 600; 
+  max-width: 65px; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  white-space: nowrap;
+  transition: color 0.3s ease;
 }
