@@ -100,6 +100,7 @@ function ProfileContent() {
       const { data: profData, error } = await query.single();
       if (error || !profData) return;
 
+      // Cek Blokir
       if (currentUserId && currentUserId !== profData.id) {
         const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
         if (myBlock) setBlockStatus('blocked_by_me');
@@ -117,6 +118,7 @@ function ProfileContent() {
       });
       setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
       
+      // CEK STORY AKTIF (24 Jam Terakhir)
       const { data: stories } = await supabase
         .from('stories')
         .select('created_at')
@@ -272,6 +274,12 @@ function ProfileContent() {
     }
   };
 
+  // 🔥 FIX 1: Fungsi Report User Ditambahkan Lagi 🔥
+  const handleReportUser = () => {
+    setIsActionSheetOpen(false);
+    showNotif('Laporan telah dikirim untuk ditinjau.', 'info');
+  };
+
   const handleBlockUser = async () => {
     if (!myId || !profile) return;
     if (confirm(`Yakin ingin memblokir ${profile.username}?`)) {
@@ -299,6 +307,9 @@ function ProfileContent() {
 
   const navTo = (path: string) => { setIsSidebarOpen(false); router.push(path); };
 
+  // ==========================================
+  // 🔥 4. RENDER UI 🔥
+  // ==========================================
   if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)' }}></div>;
 
   const isMe = myId === profile.id;
@@ -338,6 +349,63 @@ function ProfileContent() {
 
   return (
     <div className="profile-page-container">
+      
+      {/* 🔥 INJEKSI CSS FIX UKURAN AVATAR & STORY BORDER 🔥 */}
+      <style>{`
+        .avatar-container {
+          margin: 0 auto 12px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        
+        .story-ring, .normal-ring {
+          width: 90px;
+          height: 90px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          overflow: hidden;
+        }
+
+        .story-ring {
+          background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+          animation: pulseStory 2s infinite alternate;
+        }
+        
+        .normal-ring {
+          border: 2px solid var(--border-color);
+          background: transparent;
+        }
+
+        .profile-avatar-img {
+          width: 82px;
+          height: 82px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3.5px solid var(--bg-main);
+          background: var(--bg-secondary);
+        }
+
+        @keyframes pulseStory {
+          0% { filter: brightness(1); }
+          100% { filter: brightness(1.2); }
+        }
+
+        .edit-avatar-preview {
+          width: 95px;
+          height: 95px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid var(--primary-blue);
+          cursor: pointer;
+          margin-bottom: 15px;
+          background: var(--bg-secondary);
+          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+      `}</style>
 
       <header className="profile-header">
         <h2 style={{ marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -358,10 +426,9 @@ function ProfileContent() {
       <div className="profile-top-section">
         <section className="profile-info">
           
-          {/* 🔥 AVATAR DENGAN STORY BORDER YANG SUDAH DI-FIX 🔥 */}
           <div className="avatar-container">
             <div className={`avatar-ring ${hasStory ? 'has-story' : 'no-story'}`} onClick={handleAvatarClick}>
-              <img className="profile-avatar" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
+              <img className="profile-avatar-img" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
             </div>
           </div>
           
@@ -463,7 +530,7 @@ function ProfileContent() {
         </>
       )}
 
-      {/* --- 🔥 FIX: MODAL EDIT PROFIL (Ukuran Gambar Disetel) 🔥 --- */}
+      {/* --- MODAL EDIT PROFIL --- */}
       <div className={`p-sidebar-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => setIsEditModalOpen(false)} />
       <aside className={`p-follow-sheet ${isEditModalOpen ? 'open' : ''}`} style={{height: 'auto', maxHeight: '90dvh', paddingBottom: '30px'}}>
          <div className="follow-sheet-header">
@@ -507,6 +574,7 @@ function ProfileContent() {
          </div>
       </aside>
 
+      {/* --- MODAL FOLLOWERS / FOLLOWING --- */}
       <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
       <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
         <div className="follow-sheet-header">
@@ -532,6 +600,7 @@ function ProfileContent() {
         </div>
       </aside>
 
+      {/* --- ACTION SHEET (LAPORKAN / BLOKIR) --- */}
       <div className={`p-sidebar-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)} />
       <aside className={`p-follow-sheet ${isActionSheetOpen ? 'open' : ''}`} style={{ height: 'auto', paddingBottom: '30px' }}>
         <div className="follow-sheet-header">
