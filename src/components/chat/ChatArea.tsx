@@ -854,7 +854,8 @@ export default function ChatArea() {
                 onReply={setReplyTo} 
                 onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} 
                 onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
-                onStickerClick={(url) => setLightboxSticker(url)}
+                // 🔥 FIX: TYPE ANNOTATION (url: string) AGAR LOLOS BUILD TYPESCRIPT 🔥
+                onStickerClick={(url: string) => setLightboxSticker(url)}
               />
             ))}
           </>
@@ -932,100 +933,6 @@ export default function ChatArea() {
           </button>
         </div>
       </footer>
-
-      {/* MODAL GROUP SETTINGS */}
-      {isGroupSettingsOpen && groupId && (
-        <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)}>
-          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
-            {groupModalTab === 'invite' ? (
-              <>
-                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0 }}>Tambah Member</h3>
-                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', padding: '15px', background: 'var(--bg-main)', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
-                   <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} alt="grup" />
-                   <div>
-                      <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-color)' }}>{headerInfo.title}</h4>
-                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>ID Grup: {groupId}</p>
-                   </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="text" placeholder="Username / ID..." value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }} />
-                  <button onClick={handleAddMember} disabled={isUpdatingGroup} style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}>TAMBAH</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h3 style={{ margin: 0 }}>Pengaturan Grup</h3>
-                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
-                </div>
-
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <label style={{ position: 'relative', display: 'inline-block', cursor: isOwner ? 'pointer' : 'default' }}>
-                    <img 
-                      src={headerInfo.avatar || '/asets/png/group_placeholder.png'} 
-                      style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary-blue)', opacity: isUpdatingGroup ? 0.5 : 1, transition: '0.3s' }} 
-                      alt="grup" 
-                    />
-                    {isUpdatingGroup && (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-blue)', fontWeight: 'bold', fontSize: '11px', background: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}>
-                        UPLOADING
-                      </div>
-                    )}
-                    {isOwner && !isUpdatingGroup && (
-                      <div style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--primary-blue)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '3px solid var(--bg-panel)' }}>
-                        <span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span>
-                      </div>
-                    )}
-                    <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner || isUpdatingGroup} />
-                  </label>
-                  <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px'}}>{isOwner ? 'Klik foto untuk mengganti' : 'Foto Grup'}</p>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-                  <input 
-                    type="text" 
-                    value={newGroupName} 
-                    onChange={(e) => setNewGroupName(e.target.value)} 
-                    disabled={!isOwner} 
-                    style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none', fontWeight: 'bold' }} 
-                  />
-                  {isOwner && (
-                    <button 
-                      onClick={() => updateGroupInfo('name', newGroupName)} 
-                      disabled={isUpdatingGroup || newGroupName === headerInfo.title} 
-                      style={{ background: newGroupName === headerInfo.title ? 'var(--border-color)' : 'var(--primary-blue)', color: newGroupName === headerInfo.title ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold', transition: '0.3s' }}
-                    >
-                      SIMPAN
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ marginTop: '20px', maxHeight: '200px', overflowY: 'auto' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>MEMBER ({groupMembers.length})</p>
-                  {groupMembers.map(m => (
-                    <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} alt="u" />
-                        <span>{m.profiles?.username}</span>
-                      </div>
-                      {isOwner && m.user_id !== currentUser.id && (
-                        <button onClick={() => kickMember(m.user_id, m.profiles?.username)} style={{ background: 'none', border: 'none', color: '#ff4757' }}>
-                           <span className="material-icons">person_remove</span>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
