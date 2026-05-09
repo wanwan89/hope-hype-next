@@ -48,6 +48,9 @@ export default function ChatArea() {
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [inviteSearch, setInviteSearch] = useState(''); 
 
+  // 🔥 STATE PROFIL MINIMALIS 🔥
+  const [selectedProfile, setSelectedProfile] = useState<any>(null);
+
   // State VN & Batal
   const [isMicPressed, setIsMicPressed] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -57,10 +60,6 @@ export default function ChatArea() {
   const [audioLevel, setAudioLevel] = useState(0); 
   const vnTouchStartX = useRef(0);
   const vnIsCanceled = useRef(false);
-
-  // Lightbox untuk stiker
-  const [lightboxSticker, setLightboxSticker] = useState<string | null>(null);
-
   // State panggilan
   const [callStatus, setCallStatus] = useState<'idle'|'calling'|'incoming'|'connected'>('idle');
   const [callData, setCallData] = useState<any>({ seconds: 0, partnerName: '', partnerAvatar: '', room: '' });
@@ -245,7 +244,12 @@ export default function ChatArea() {
           if (newMsg.is_system && newMsg.message.includes("Memanggil") && newMsg.user_id !== user.id) {
              handleIncomingCall(newMsg);
           }
-          if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) {
+          if (newMsg.is_system && (
+              newMsg.message.includes("Panggilan berakhir") || 
+              newMsg.message.includes("Ditolak") || 
+              newMsg.message.includes("tak terjawab") ||
+              newMsg.message.includes("dibatalkan") 
+          )) {
              endCall(true);
           }
           
@@ -399,7 +403,7 @@ export default function ChatArea() {
   };
 
   // ======================================================
-  // 🔥 CALL LOGIC STABIL + FULLSCREEN + FLOATING 🔥
+  // 🔥 FIX: LOGIKA TELPON SINKRON DENGAN ROOT LAYOUT 🔥
   // ======================================================
   const startCall = async () => {
     if (callStatus !== 'idle') {
@@ -413,15 +417,17 @@ export default function ChatArea() {
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0, room: roomId });
     
-    await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Memanggil ${headerInfo.title}...`, is_system: true }]);
+    await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
+      // Pastikan status benar-benar masih manggil dan belum diangkat
       if (callStatusRef.current === 'calling') {
+        // 🔥 Eksekusi matikan UI & Suara secara instan!
         endCall(true);
-        await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Panggilan tak terjawab`, is_system: true }]);
+        await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
       }
-    }, 30000);
+    }, 30000); // Batas 30 detik nunggu
     
     connectLiveKit(roomId);
   };
@@ -494,17 +500,28 @@ export default function ChatArea() {
     }
   };
 
+  // 🔥 Fungsi eksekusi pemutusan panggilan secara instan! 🔥
   const endCall = (silent = false) => {
-    if (callStatus === 'idle') return;
-    if (refs.audio.current?.ring) { refs.audio.current.ring.pause(); refs.audio.current.ring.currentTime = 0; }
+    // 1. Matikan nada dering saat itu juga
+    if (refs.audio.current?.ring) { 
+      refs.audio.current.ring.pause(); 
+      refs.audio.current.ring.currentTime = 0; 
+    }
+    
+    // 2. Putus koneksi server LiveKit
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
+    
+    // 3. Matikan UI overlay
     setCallStatus('idle');
+    
+    // 4. Hapus semua timer yang jalan
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
+    
     if (!silent) showNotif(t('call_ended'), "info");
   };
 
@@ -513,6 +530,7 @@ export default function ChatArea() {
     const d = await res.json(); setStickers(d.data || []);
   };
 
+  // 🔥 DOUBLE TAP REACTION HANDLER 🔥
   const handleSendReaction = async (msgId: string, emoji: string) => {
     const msg = messages.find(m => m.id === msgId);
     if(!msg) return;
@@ -551,7 +569,7 @@ export default function ChatArea() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        /* 🔥 FIX 2: Tidy up Fullscreen Call Overlay 🔥 */
+        /* Fullscreen call overlay */
         .call-fullscreen-overlay {
           position: fixed;
           inset: 0;
@@ -689,13 +707,6 @@ export default function ChatArea() {
         }
       `}</style>
 
-      {/* LIGHTBOX STIKER */}
-      {lightboxSticker && (
-        <div className="sticker-lightbox" onClick={() => setLightboxSticker(null)}>
-          <img src={lightboxSticker} alt="full sticker" />
-        </div>
-      )}
-
       {/* FULLSCREEN CALL OVERLAY (CALLING / INCOMING) */}
       {(callStatus === 'calling' || callStatus === 'incoming') && (
         <div className="call-fullscreen-overlay">
@@ -723,16 +734,22 @@ export default function ChatArea() {
               )}
               <button 
                 className="call-fullscreen-btn btn-decline" 
-                onClick={() => {
-                  endCall();
-                  if (callStatus === 'incoming') {
-                    supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
+                onClick={async () => {
+                  const currentRoom = callData.room;
+                  const isIncoming = callStatus === 'incoming';
+                  
+                  // 🔥 FIX 1: Panggil fungsi ini dulu biar UI & suara mati SEKETIKA
+                  endCall(true);
+                  
+                  // Baru masukin data ke database tanpa nge-delay UI
+                  if (isIncoming) {
+                    await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
+                  } else {
+                    await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan dibatalkan`, is_system: true }]);
                   }
                 }}
               >
-                {/* 🔥 FIX 1: Teks khusus saat memanggil diganti "Tutup" (sekarang pakai ikon saja agar UI mewah & rapi, jika wajib teks bisa diganti ke span) 🔥 */}
                 <span className="material-icons" style={{ fontSize: '32px' }}>call_end</span>
-                {/* Kalau lu lebih suka tulisan daripada icon, hapus span di atas, pake ini: {callStatus === 'calling' ? 'Tutup' : 'Tolak'} */}
               </button>
             </div>
             <div style={{ marginTop: '15px', fontSize: '13px', fontWeight: 'bold' }}>
@@ -766,7 +783,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* UI DOUBLE TAP REACTION POPUP (tidak auto-close) */}
+      {/* 🔥 FIX 2: UI DOUBLE TAP REACTION POPUP (BERFUNGSI) 🔥 */}
       {reactionMenu && (
         <div className="custom-modal-overlay" onClick={() => setReactionMenu(null)} style={{ zIndex: 100000, background: 'transparent' }}>
           <div onClick={(e) => e.stopPropagation()} style={{
@@ -819,7 +836,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* 🔥 FIX 5: SETTINGS GRUP DIKEMBALIKAN 🔥 */}
+      {/* MODAL GROUP SETTINGS DIKEMBALIKAN */}
       {isGroupSettingsOpen && groupId && (
         <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)} style={{ zIndex: 100000 }}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -885,7 +902,7 @@ export default function ChatArea() {
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
-              {targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
+              {roomId !== 'room-1' && targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
             <div className="status-container">
               <span className={typingUser ? "status-typing" : "status-online"}>{displayStatus}</span>
@@ -897,7 +914,6 @@ export default function ChatArea() {
             <button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button>
           ) : groupId ? (
             <div style={{ display: 'flex', gap: '8px' }}>
-              {/* 🔥 FIX 5: TOMBOL GROUP BISA DITEKAN KARENA MODALNYA UDAH DIBALIKIN DI ATAS 🔥 */}
               <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>INVITE</button>
               {isOwner && <button onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }} style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>SETTINGS</button>}
             </div>
@@ -930,10 +946,7 @@ export default function ChatArea() {
                 onReply={setReplyTo} 
                 onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} 
                 onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
-                onStickerClick={(url: string) => setLightboxSticker(url)}
-              />
-            ))}
-            {/* 🔥 FIX 3: BUBBLE TYPING INDICATOR MUNCUL DI BAWAH CHAT 🔥 */}
+            {/* BUBBLE TYPING INDICATOR MUNCUL DI BAWAH CHAT */}
             {typingUser && (
               <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
                 {(roomId === 'room-1' || roomId.startsWith('group_')) && (
@@ -966,8 +979,9 @@ export default function ChatArea() {
                   alt="sticker" 
                   onClick={() => {
                     sendMessage(undefined, s.images.fixed_width.url);
-                    setLightboxSticker(s.images.fixed_width.url);
+                    setIsStickerOpen(false); // Opsional: Biar menu stiker otomatis nutup abis ngirim
                   }} 
+
                 />
               ))}
             </div>
@@ -1008,8 +1022,8 @@ export default function ChatArea() {
                 </div>
               ) : (
                 <>
-                  {/* 🔥 FIX 4: TOMBOL STIKER SEKARANG WARNA PUTIH 🔥 */}
-                  <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: '#ffffff' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
+<button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
+
                   <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
                 </>
               )}

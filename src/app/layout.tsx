@@ -6,7 +6,7 @@ import { I18nextProvider } from 'react-i18next';
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'; 
-import { supabase } from '@/lib/supabase'; // 🔥 Tambahan Supabase untuk Global Call
+import { supabase } from '@/lib/supabase';
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -20,7 +20,7 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter(); // 🔥 Tambahan Router
+  const router = useRouter(); 
   const prevPathnameRef = useRef(pathname);
 
   // --- 🔥 STATE UNTUK PANGGILAN GLOBAL 🔥 ---
@@ -68,11 +68,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     loadEruda();
   }, []);
 
+  // --- 🔥 FIX 1: NADA DERING OTOMATIS SINKRON SAMA FLOATING 🔥 ---
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (!ringtoneRef.current) {
+        ringtoneRef.current = new Audio("/asets/sound/call.wav");
+        ringtoneRef.current.loop = true;
+      }
+
+      if (globalIncomingCall) {
+        ringtoneRef.current.play().catch(() => console.log("Audio diblokir browser"));
+      } else {
+        if (ringtoneRef.current) {
+          ringtoneRef.current.pause();
+          ringtoneRef.current.currentTime = 0; // Reset dari awal
+        }
+      }
+    }
+  }, [globalIncomingCall]);
+
   // --- 🔥 SISTEM PANGGILAN GLOBAL (MUNCUL DI SEMUA HALAMAN) 🔥 ---
   useEffect(() => {
-    ringtoneRef.current = new Audio("/asets/sound/call.wav");
-    if (ringtoneRef.current) ringtoneRef.current.loop = true;
-
     let channel: any;
 
     const initGlobalListener = async () => {
@@ -87,8 +103,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             
             // Jika ada telpon masuk
             if (newMsg.is_system && newMsg.message.includes("Memanggil")) {
-              // 🔥 Bypass: Abaikan jika user sedang di halaman Hypetalk (Lobby/ChatArea)
-              // Karena di sana sudah ada UI Fullscreen khusus
+              // Abaikan jika user sedang di halaman Hypetalk (Lobby/ChatArea)
               if (window.location.href.includes('/hypetalk')) return; 
 
               const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
@@ -98,14 +113,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 callerAvatar: p?.avatar_url,
                 roomId: newMsg.room_id
               });
-              ringtoneRef.current?.play().catch(()=>{});
             }
 
-            // Jika telpon ditutup / selesai
-            if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) {
+            // Jika telpon ditutup / selesai oleh si penelepon
+            if (newMsg.is_system && (
+              newMsg.message.includes("Panggilan berakhir") || 
+              newMsg.message.includes("Ditolak") || 
+              newMsg.message.includes("tak terjawab") ||
+              newMsg.message.includes("dibatalkan") 
+            )) {
               setGlobalIncomingCall(null);
-              ringtoneRef.current?.pause();
-              if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
             }
           }
         })
@@ -116,31 +133,39 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     return () => {
       if (channel) supabase.removeChannel(channel);
-      ringtoneRef.current?.pause();
     };
   }, []);
 
+  // --- 🔥 FIX 2: TOLAK TELPON INSTAN & HILANG SEKETIKA 🔥 ---
   const handleTolakGlobal = async () => {
     if (!globalIncomingCall) return;
+    
+    // Simpan roomId di variabel sementara
+    const currentRoomId = globalIncomingCall.roomId;
+    
+    // 1. Matikan Floating & Suara saat itu juga! (Nggak nunggu database)
+    setGlobalIncomingCall(null);
+    
+    // 2. Kirim status Ditolak ke database (jalan di background)
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       await supabase.from('messages').insert([{ 
-        room_id: globalIncomingCall.roomId, 
+        room_id: currentRoomId, 
         user_id: session.user.id, 
         message: `Panggilan Ditolak`, 
         is_system: true 
       }]);
     }
-    setGlobalIncomingCall(null);
-    ringtoneRef.current?.pause();
   };
 
   const handleAngkatGlobal = () => {
     if (!globalIncomingCall) return;
     const cid = globalIncomingCall.callerId;
+    
+    // Matikan Floating & Suara
     setGlobalIncomingCall(null);
-    ringtoneRef.current?.pause();
-    // Langsung pindah ke ruang obrolan lawan untuk connect LiveKit
+    
+    // Bawa ke halaman chat
     router.push(`/hypetalk/chat?from=${cid}`);
   };
 

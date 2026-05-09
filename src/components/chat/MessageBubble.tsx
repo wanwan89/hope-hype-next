@@ -105,7 +105,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     let diff = touchCurrentX.current - touchStartX.current;
 
     const now = Date.now();
-    if (now - lastTap.current < 300 && Math.abs(diff) < 10 && !isDeleted) {
+    // 🔥 FIX 1: Sensitivitas Double Tap dinaikin biar gampang kebaca (dari 300ms jadi 400ms, jarak diff dilonggarin)
+    if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted) {
       onReaction(msg, e.changedTouches ? e.changedTouches[0] : (e as any));
     }
     lastTap.current = now;
@@ -120,6 +121,13 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
       if (navigator.vibrate) navigator.vibrate(30);
     }
     isSwiping.current = false;
+  };
+
+  // 🔥 FIX 1 Backup: Biar bisa double tap juga pake mouse / tap standar
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (!isDeleted) {
+      onReaction(msg, { clientX: e.clientX, clientY: e.clientY });
+    }
   };
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -141,6 +149,9 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
 
   const displayMessage = isDeleted ? t('msg_deleted') : msg.message;
 
+  // 🔥 FIX 2: Pola gelombang suara untuk Voice Note (dalam persentase tinggi)
+  const wavePattern = [35, 60, 100, 75, 45, 80, 100, 60, 40, 85, 50, 30];
+
   return (
     <div className="hype-chat-scope">
       <div 
@@ -150,14 +161,13 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        // FIX: Layout flex row untuk menyandingkan avatar dan konten bubble
+        onDoubleClick={handleDoubleClick} // Fallback support double tap
         style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
       >
         {msg.is_system ? (
           <div className="system-text">{displayMessage}</div>
         ) : (
           <>
-            {/* FIX: Menampilkan Avatar User (Hanya di Global/Group untuk user lain) */}
             {showUserDetail && (
               <img 
                 src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} 
@@ -169,10 +179,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               />
             )}
             
-            {/* 🔥 FIX: flex ditutup biar width fit-content 🔥 */}
             <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0 }}>
               
-              {/* FIX: Menampilkan Username + Badge (Hanya di Global/Group untuk user lain) */}
               {showUserDetail && (
                 <div style={{
                   fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', 
@@ -183,7 +191,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               )}
               
-              {/* LIVE REPLY BOX */}
               {liveReply && (
                 <div 
                   className="reply-preview-in-chat" 
@@ -204,13 +211,23 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
                     )}
                   </button>
-                  <div className="vn-waveform">
-                    {[...Array(10)].map((_, i) => <span key={i} className="bar"></span>)}
+                  {/* 🔥 FIX 2: Waveform Realistis 🔥 */}
+                  <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '20px' }}>
+                    {wavePattern.map((heightPercent, i) => (
+                      <span 
+                        key={i} 
+                        className="bar" 
+                        style={{
+                          height: `${heightPercent}%`,
+                          animationDelay: `${i * 0.1}s`, // Biar riaknya gantian
+                          transition: 'height 0.2s ease'
+                        }}
+                      ></span>
+                    ))}
                   </div>
                   <span className="vn-time">VN</span>
                 </div>
               ) : (
-                /* 🔥 FIX: Style italic ditambahkan jika isDeleted 🔥 */
                 <div 
                   className={`text ${isDeleted ? "deleted" : ""}`} 
                   style={{ 
@@ -222,14 +239,12 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               )}
 
-              {/* REACTIONS */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                 <div className="message-reactions">
                   {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
                 </div>
               )}
               
-              {/* WAKTU & STATUS (CENTANG) */}
               <div className="message-info">
                 <span className="timestamp">
                   {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}

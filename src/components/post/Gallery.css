@@ -10,6 +10,7 @@
   box-sizing: border-box;
 }
 
+/* 🔥 FIX: Tambahkan transisi background dan border pada card 🔥 */
 .card { 
   background: var(--bg-card); 
   border-radius: 16px; 
@@ -19,7 +20,8 @@
   border: 1px solid var(--border-card);
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  /* Transisi warna digabung dengan animasi transform biar smooth pas ganti tema */
+  transition: transform 0.2s ease, box-shadow 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
   /* 🔥 Anti highlight kotak biru pas di-tap di HP 🔥 */
   -webkit-tap-highlight-color: transparent; 
 }
@@ -59,11 +61,23 @@
 
 .overlay { padding: 15px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 
-.name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; color: var(--text-main); white-space: nowrap; margin: 0; cursor: pointer; }
+/* 🔥 FIX: Tambahkan transisi color pada teks 🔥 */
+.name { 
+  font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; 
+  color: var(--text-main); white-space: nowrap; margin: 0; cursor: pointer; 
+  transition: color 0.3s ease; 
+}
 .verified { display: inline-flex; flex-shrink: 0; }
 
-.post-bio { font-size: 14px; color: var(--text-muted); margin: 0; line-height: 1.4; width: 100%; word-break: break-word;}
-.post-date-wrapper { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.post-bio { 
+  font-size: 14px; color: var(--text-muted); margin: 0; line-height: 1.4; 
+  width: 100%; word-break: break-word; 
+  transition: color 0.3s ease; 
+}
+.post-date-wrapper { 
+  font-size: 11px; color: var(--text-muted); margin-bottom: 4px; 
+  transition: color 0.3s ease; 
+}
 
 .actions { 
   display: flex; 
@@ -95,7 +109,7 @@
   gap: 6px;
   cursor: pointer; 
   font-size: 14px; 
-  transition: 0.2s; 
+  transition: color 0.3s ease, transform 0.2s ease; 
   padding: 0; 
   font-family: 'Poppins', sans-serif;
   outline: none !important; 
@@ -105,12 +119,21 @@
 
 .options-btn { padding: 5px !important; border-radius: 50%; }
 
-.icon { width: 22px; height: 22px; fill: var(--icon-fill); transition: transform 0.2s, fill 0.3s; }
+/* 🔥 FIX: Transisi fill stroke icon saat pindah dark/light mode 🔥 */
+.icon { 
+  width: 22px; height: 22px; 
+  fill: var(--icon-fill); 
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.3s ease, stroke 0.3s ease; 
+}
+
 .icon-btn.liked .icon { fill: #ff2e63; }
 .icon-btn.reposted .icon { stroke: #1DA1F2; fill: #1DA1F2; } 
 .icon-btn.reposted .repost-count { color: #1DA1F2; font-weight: bold; }
 
-.like-count, .comment-count, .repost-count { font-size: 13px; color: var(--text-main); }
+.like-count, .comment-count, .repost-count { 
+  font-size: 13px; color: var(--text-main); 
+  transition: color 0.3s ease; 
+}
 
 /* Animasi hover tombol khusus desktop */
 @media (hover: hover) {
@@ -139,6 +162,7 @@
   width: 100%; 
 }
 
+/* 🔥 FIX: Tambahkan transisi ke skeleton juga 🔥 */
 .gallery-skeleton-card { 
   background: var(--bg-card); 
   border-radius: 20px; 
@@ -146,6 +170,7 @@
   position: relative; 
   overflow: hidden; 
   border: 1px solid var(--border-card); 
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .gallery-skeleton-shimmer { 
@@ -160,7 +185,6 @@
 @keyframes gallery-shimmer { 
   100% { transform: translateX(100%); } 
 }
-
 
 /* ANIMASI TOMBOL REPOST (SPIN POP) */
 @keyframes repostSpin {
