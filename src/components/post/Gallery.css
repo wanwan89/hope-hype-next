@@ -4,7 +4,6 @@
   width: 100%;
   max-width: 480px; 
   margin: 0 auto; 
-  /* Memberikan ruang di bawah agar tidak mentok navbar */
   padding: 10px 15px calc(100px + env(safe-area-inset-bottom)); 
   box-sizing: border-box;
 }
@@ -32,7 +31,7 @@
   width: 100%; 
   background: #1a1a1a;
   overflow: hidden;
-  min-height: 300px; /* Biar gak jumping pas gambar belum ke-load */
+  min-height: 300px;
   display: flex;
   align-items: center;
 }
@@ -80,6 +79,23 @@
   border-radius: 10px;
 }
 
+/* 🔥 FIX 1: WATERMARK SELALU DI ATAS 🔥 */
+.watermark-overlay { 
+  position: absolute; 
+  top: 12px; 
+  left: 12px; 
+  width: 90px; 
+  opacity: 0.8; /* Kita tebelin dikit biar keliatan */
+  pointer-events: none; 
+  z-index: 99; /* Kita kasih kasta paling tinggi */
+}
+.watermark-overlay img { 
+  width: 100%; 
+  height: auto; 
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
 /* ========================================== */
 /* 🔥 UI DETAILS 🔥                           */
 /* ========================================== */
@@ -88,7 +104,7 @@
   padding: 16px; 
   display: flex; 
   flex-direction: column; 
-  gap: 8px; 
+  gap: 4px; 
 }
 
 .name { 
@@ -104,6 +120,7 @@
   font-size: 14px; 
   color: var(--text-main);
   line-height: 1.5; 
+  margin: 4px 0;
 }
 
 .post-date-wrapper { 
@@ -126,13 +143,35 @@
   font-size: 12px; 
   font-weight: 800;
   text-decoration: none; 
+  box-shadow: 0 4px 10px rgba(31, 60, 255, 0.2);
 }
 
 .engagement-group { display: flex; gap: 18px; align-items: center; }
 
-.icon-btn {
-  background: transparent !important; border: none; color: var(--text-main);
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
+/* 🔥 FIX 2: HILANGIN KOTAK DI TITIK 3 & ICON LAIN 🔥 */
+.icon-btn, .options-btn {
+  background: transparent !important; 
+  border: none !important; 
+  color: var(--text-main);
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  cursor: pointer;
+  padding: 0; 
+  outline: none;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.options-btn {
+  padding: 8px !important;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+/* Biar pas di klik ada efek lingkaran transparan dikit aja (opsional) */
+.options-btn:active {
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .icon { width: 22px; height: 22px; fill: var(--text-main); }
@@ -140,67 +179,42 @@
 .icon-btn.reposted .icon { fill: #1DA1F2; }
 
 /* ========================================== */
-/* 🔥 FIX SKELETON (RAPIH & GAK DEMPET) 🔥    */
+/* 🔥 SKELETON (RAPIH) 🔥                     */
 /* ========================================== */
 
 .gallery-skeleton-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 25px; /* Jarak antar skeleton card */
+  gap: 25px;
   width: 100%;
 }
 
 .gallery-skeleton-card { 
   background: var(--bg-card); 
   border-radius: 16px; 
-  height: 480px; /* Tinggi disesuaikan dengan rata-rata postingan */
+  height: 480px; 
   position: relative; 
   overflow: hidden; 
   border: 1px solid var(--border-card); 
-  display: flex;
-  flex-direction: column;
 }
 
-/* Bagian header skeleton (foto profil & nama) */
 .gallery-skeleton-card::before {
-  content: "";
-  position: absolute;
-  top: 16px; left: 16px;
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: var(--bg-input);
+  content: ""; position: absolute; top: 16px; left: 16px; width: 40px; height: 40px; border-radius: 50%; background: var(--bg-input);
 }
 
-/* Bagian baris nama di samping foto profil */
 .gallery-skeleton-card::after {
-  content: "";
-  position: absolute;
-  top: 28px; left: 65px;
-  width: 100px; height: 14px;
-  border-radius: 4px;
-  background: var(--bg-input);
+  content: ""; position: absolute; top: 28px; left: 65px; width: 100px; height: 14px; border-radius: 4px; background: var(--bg-input);
 }
 
 .gallery-skeleton-shimmer { 
-  position: absolute; 
-  inset: 0;
-  transform: translateX(-100%); 
-  /* Efek kilatan cahaya */
-  background-image: linear-gradient(
-    90deg, 
-    transparent 0%, 
-    rgba(255, 255, 255, 0.03) 20%, 
-    rgba(255, 255, 255, 0.08) 60%, 
-    transparent 100%
-  ); 
-  animation: gallery-shimmer 1.5s infinite; 
-  z-index: 2;
+  position: absolute; inset: 0; transform: translateX(-100%); 
+  background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 20%, rgba(255, 255, 255, 0.08) 60%, transparent 100%); 
+  animation: gallery-shimmer 1.5s infinite; z-index: 2;
 }
 
 @keyframes gallery-shimmer { 100% { transform: translateX(100%); } }
 
-/* PREVIEW MODAL & WATERMARK */
-.watermark-overlay { position: absolute; top: 10px; left: 10px; width: 80px; opacity: 0.6; pointer-events: none; z-index: 30; }
+/* PREVIEW MODAL */
 .image-preview-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .image-preview-overlay.active { opacity: 1; pointer-events: auto; }
 .image-preview-content img { max-width: 95vw; max-height: 85vh; border-radius: 12px; transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
