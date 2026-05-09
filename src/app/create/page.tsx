@@ -38,6 +38,71 @@ export default function CreatePostPage() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // 🔥 STATE HASHTAG 🔥
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+
+  // 🔥 EFEK CARI HASHTAG AUTO-COMPLETE 🔥
+  useEffect(() => {
+    if (!tagInput.trim()) {
+      setSuggestedTags([]);
+      return;
+    }
+    const fetchTags = async () => {
+      let searchStr = tagInput.toLowerCase().trim();
+      
+      // Tetap cari meskipun user lagi ngetik dengan atau tanpa #
+      if (!searchStr.startsWith('#')) {
+        searchStr = '#' + searchStr;
+      }
+
+      try {
+        const { data } = await supabase
+          .from('hashtags')
+          .select('tag')
+          .ilike('tag', `${searchStr}%`)
+          .limit(5);
+        if (data) setSuggestedTags(data.map(d => d.tag));
+      } catch (err) {
+        console.error("Gagal cari hashtag", err);
+      }
+    };
+    const timer = setTimeout(fetchTags, 300);
+    return () => clearTimeout(timer);
+  }, [tagInput]);
+
+  // 🔥 HANDLER HASHTAG (SYARAT KETAT: WAJIB PAKE #) 🔥
+  const handleAddTag = (tagToAdd: string) => {
+    let cleanTag = tagToAdd.toLowerCase().trim();
+    if (!cleanTag) return;
+    
+    // Syarat mutlak: Kalau gak diawali '#', tolak dan kasih notif
+    if (!cleanTag.startsWith('#')) {
+      showNotif("Hashtag harus pakai tanda # di depannya!", "warning");
+      return;
+    }
+    
+    // Hindari hashtag ganda yang sama
+    if (!tags.includes(cleanTag)) {
+      setTags([...tags, cleanTag]);
+    }
+    setTagInput('');
+    setSuggestedTags([]);
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleAddTag(tagInput);
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  // EFEK CARI MUSIK
   useEffect(() => {
     if (!searchMusic.trim()) {
       setMusicResults([]);
@@ -133,6 +198,17 @@ export default function CreatePostPage() {
         return;
       }
 
+      // 🔥 SIMPAN HASHTAG BARU KE DATABASE 🔥
+      if (tags.length > 0) {
+        const tagsToInsert = tags.map(t => ({ tag: t }));
+        await supabase.from('hashtags').upsert(tagsToInsert, { onConflict: 'tag' }).select();
+      }
+
+      // 🔥 GABUNG CAPTION DENGAN HASHTAG 🔥
+      const finalCaption = tags.length > 0 
+        ? `${caption.trim()}\n\n${tags.join(' ')}` 
+        : caption.trim();
+
       let imageUrl = null;
       if (selectedFile && postType === 'image') {
         const cData = await uploadToCloudinary(selectedFile);
@@ -143,7 +219,7 @@ export default function CreatePostPage() {
         await supabase.from("stories").insert({
           creator_id: session.user.id,
           image_url: imageUrl,
-          content: caption,
+          content: finalCaption,
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName
@@ -153,7 +229,7 @@ export default function CreatePostPage() {
         await supabase.from("posts").insert({
           creator_id: session.user.id,
           name: prof?.username || "User",
-          bio: caption,
+          bio: finalCaption,
           category: category,
           image_url: imageUrl,
           audio_src: selectedMusic?.previewUrl,
@@ -172,7 +248,6 @@ export default function CreatePostPage() {
   };
 
   return (
-    // 🔥 FIX: Menggunakan warna CSS Variables supaya ikut Dark/Light Mode
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
       {/* Header Page */}
@@ -186,7 +261,7 @@ export default function CreatePostPage() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
         
-        {/* UI EDITOR CROP TETAP (Ini wajar gelap karena overlay crop emang bagusnya gelap) */}
+        {/* UI EDITOR CROP */}
         {imageForCrop && (
           <div className="crop-overlay-wrapper" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000' }}>
             <div className="crop-container-box" style={{ position: 'relative', width: '100%', height: 'calc(100vh - 120px)' }}>
@@ -286,6 +361,40 @@ export default function CreatePostPage() {
             onChange={(e) => setCaption(e.target.value)}
             style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', marginTop: '20px', outline: 'none', resize: 'vertical' }}
           />
+
+          {/* 🔥 UI TAMBAH HASHTAG 🔥 */}
+          <div className="hashtag-section" style={{ marginTop: '15px', position: 'relative' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: tags.length > 0 ? '10px' : '0' }}>
+              {tags.map(t => (
+                <span key={t} style={{ background: 'rgba(31, 60, 255, 0.1)', color: '#1f3cff', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                  {t} <span onClick={() => removeTag(t)} style={{cursor: 'pointer', fontSize: '16px', lineHeight: 1}}>&times;</span>
+                </span>
+              ))}
+            </div>
+            
+            <div style={{ position: 'relative' }}>
+              {/* Placeholder diubah buat ingetin harus pake # */}
+              <input
+                type="text"
+                placeholder="Ketik Hashtag... (Wajib pakai #, lalu tekan Spasi)"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                style={{ width: '100%', padding: '12px 15px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '12px', color: 'var(--text-main)', outline: 'none', fontSize: '14px' }}
+              />
+              
+              {/* DROPDOWN SUGGESTIONS HASHTAG */}
+              {suggestedTags.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', marginTop: '6px', zIndex: 10, boxShadow: '0 4px 15px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                  {suggestedTags.map(st => (
+                    <div key={st} onClick={() => handleAddTag(st)} style={{ padding: '12px 15px', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {st}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           <div style={{ position: 'relative', marginTop: '20px' }}>
             <select 

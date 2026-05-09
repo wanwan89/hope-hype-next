@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { showNotif } from '@/lib/ui-utils'; // Pastikan ada fungsi ini
 import './Story.css';
 
 // Interface biar TypeScript gak rewel
@@ -33,8 +34,12 @@ export default function StoryViewerPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // 🔥 FIX: State buat nangkap blokir audio dari browser
+  // State Nangkap Blokir Audio
   const [audioError, setAudioError] = useState(false);
+  
+  // 🔥 STATE MODAL OPSI STORY 🔥
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false); // Buat nahan bar kalau menu lagi buka
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,7 +63,22 @@ export default function StoryViewerPage() {
       handleAudio(currentStory);
       resetTimer();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, allUserStories]);
+
+  // Nahan timer & audio kalau Menu Option lagi dibuka
+  useEffect(() => {
+    if (isMenuOpen) {
+      setIsPaused(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (audioRef.current) audioRef.current.pause();
+    } else {
+      setIsPaused(false);
+      resetTimer();
+      if (audioRef.current && !audioError) audioRef.current.play().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMenuOpen]);
 
   async function initMultiStory() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -89,7 +109,6 @@ export default function StoryViewerPage() {
     setLoading(false);
   }
 
-  // 🔥 FIX: Logic Audio Play yang aman dari blokir Browser
   const handleAudio = (story: Story) => {
     if (audioRef.current) {
       if (story.audio_src) {
@@ -100,11 +119,11 @@ export default function StoryViewerPage() {
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              setAudioError(false); // Sukses play
+              setAudioError(false);
             })
             .catch((err) => {
               console.warn("Autoplay diblokir browser:", err);
-              setAudioError(true); // Gagal play, tampilkan tombol unmute
+              setAudioError(true); 
             });
         }
       } else {
@@ -117,7 +136,9 @@ export default function StoryViewerPage() {
 
   const resetTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(nextStory, STORY_DURATION);
+    if (!isPaused) {
+      timerRef.current = setTimeout(nextStory, STORY_DURATION);
+    }
   };
 
   const nextStory = () => {
@@ -162,15 +183,38 @@ export default function StoryViewerPage() {
     }
   };
 
+  // 🔥 HANDLER HAPUS STORY 🔥
+  const handleDeleteStory = async () => {
+    const sId = allUserStories[currentIndex].id;
+    setIsMenuOpen(false); // Tutup modal duluan
+
+    try {
+      // Hapus dari database
+      const { error } = await supabase.from('stories').delete().eq('id', sId);
+      if (error) throw error;
+      
+      showNotif("Story berhasil dihapus", "success");
+      
+      // Auto mundur karena story udah ilang
+      router.back();
+    } catch (err: any) {
+      console.error(err);
+      showNotif("Gagal menghapus story", "error");
+    }
+  };
+
   if (loading) return <div className="story-full-viewer dark-bg"></div>;
 
   const currentStory = allUserStories[currentIndex];
 
+  // 🔥 Cek apakah Story ini punya user yang lagi login 🔥
+  const isMyStory = currentUserId === currentStory.creator_id;
+
   return (
     <div className="story-full-viewer">
       
-      {/* 🔥 FIX: Tombol Darurat Putar Musik (Muncul kalau diblokir Browser) */}
-      {audioError && currentStory.audio_src && (
+      {/* Tombol Darurat Putar Musik */}
+      {audioError && currentStory.audio_src && !isMenuOpen && (
         <button 
           onClick={(e) => {
             e.stopPropagation();
@@ -194,8 +238,8 @@ export default function StoryViewerPage() {
         </button>
       )}
 
-      {/* Area Tap buat Skip/Back */}
-      <div className="tap-area">
+      {/* Area Tap buat Skip/Back (dimatikan kalau modal opsi buka) */}
+      <div className="tap-area" style={{ pointerEvents: isMenuOpen ? 'none' : 'auto' }}>
         <div className="tap-left" onClick={prevStory}></div>
         <div className="tap-right" onClick={nextStory}></div>
       </div>
@@ -208,7 +252,9 @@ export default function StoryViewerPage() {
               className={`bar-inner ${idx === currentIndex ? 'active-anim' : ''}`}
               style={{ 
                 transform: idx < currentIndex ? 'scaleX(1)' : 'scaleX(0)',
-                animationDuration: idx === currentIndex ? `${STORY_DURATION}ms` : '0ms'
+                animationDuration: idx === currentIndex ? `${STORY_DURATION}ms` : '0ms',
+                // Tahan animasi bar kalau di pause
+                animationPlayState: isPaused ? 'paused' : 'running'
               }}
             ></div>
           </div>
@@ -217,15 +263,16 @@ export default function StoryViewerPage() {
 
       {/* Info User (Top) */}
       <div className="story-top-info">
-        <div className="story-user">
+        <div className="story-user" onClick={(e) => e.stopPropagation()}>
           <img 
             src={currentStory.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${currentStory.profiles?.username}`} 
             className="s-avatar" 
             alt="profile"
+            onClick={() => router.push(`/data?id=${currentStory.creator_id}`)}
           />
           <div className="user-meta">
             <div className="user-meta-top">
-              <span id="storyUser">{currentStory.profiles?.username}</span>
+              <span id="storyUser" onClick={() => router.push(`/data?id=${currentStory.creator_id}`)}>{currentStory.profiles?.username}</span>
               <span className="story-time">
                 {new Date(currentStory.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -242,7 +289,30 @@ export default function StoryViewerPage() {
             )}
           </div>
         </div>
-        <button className="close-story" onClick={() => router.back()}>✕</button>
+
+        {/* 🔥 KUMPULAN TOMBOL KANAN ATAS 🔥 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          
+          {/* Tombol Opsi Titik Tiga (Muncul KHUSUS Kalo Punya Dia Sendiri) */}
+          {isMyStory && (
+            <button 
+              style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+              onClick={(e) => { e.stopPropagation(); setIsMenuOpen(true); }}
+            >
+              <span className="material-icons" style={{ fontSize: '26px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>more_vert</span>
+            </button>
+          )}
+
+          {/* Tombol Close Silang */}
+          <button 
+            className="close-story" 
+            onClick={(e) => { e.stopPropagation(); router.back(); }}
+            style={{ margin: 0 }}
+          >
+            ✕
+          </button>
+        </div>
+
       </div>
 
       {/* Konten Utama (Gambar atau Teks) */}
@@ -270,8 +340,75 @@ export default function StoryViewerPage() {
         </div>
       </div>
 
-      {/* 🔥 FIX: Tambah playsInline biar audio jalan mulus di Mobile (iOS/Android) */}
       <audio ref={audioRef} preload="auto" playsInline crossOrigin="anonymous" />
+
+      {/* ==========================================
+          🔥 MODAL OPSI STORY (SLIDE UP) 🔥
+          ========================================== */}
+      {isMenuOpen && (
+        <div 
+          style={{
+            position: 'fixed', inset: 0, zIndex: 999999, 
+            background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            animation: 'fadeInOverlay 0.3s ease'
+          }}
+          onClick={() => setIsMenuOpen(false)}
+        >
+          <div 
+            style={{
+              background: '#1a1a1a', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+              padding: '24px 20px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
+              animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
+              display: 'flex', flexDirection: 'column', gap: '16px'
+            }}
+            onClick={(e) => e.stopPropagation()} // Biar nggak nutup pas diklik di kotaknya
+          >
+            {/* Garis Drag Handle */}
+            <div style={{ width: '40px', height: '5px', background: '#333', borderRadius: '10px', margin: '0 auto 10px auto' }}></div>
+
+            {/* Tombol Hapus */}
+            <button 
+              onClick={handleDeleteStory}
+              style={{
+                width: '100%', padding: '16px', background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', 
+                border: 'none', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                fontSize: '16px', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s'
+              }}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <span className="material-icons">delete</span> Hapus Story
+            </button>
+
+            {/* Tombol Batal */}
+            <button 
+              onClick={() => setIsMenuOpen(false)}
+              style={{
+                width: '100%', padding: '16px', background: '#333', color: 'white', 
+                border: 'none', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '16px', fontWeight: 600, cursor: 'pointer', transition: 'transform 0.2s'
+              }}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Injeksi CSS Animasi Modal */}
+      <style>{`
+        @keyframes fadeInOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUpModal {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
+
     </div>
   );
 }
