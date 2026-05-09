@@ -65,6 +65,13 @@ export default function ChatArea() {
   const [callStatus, setCallStatus] = useState<'idle'|'calling'|'incoming'|'connected'>('idle');
   const [callData, setCallData] = useState<any>({ seconds: 0, partnerName: '', partnerAvatar: '', room: '' });
 
+  // Ref untuk menyimpan status panggilan terkini (hindari stale closure)
+  const callStatusRef = useRef(callStatus);
+
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
   const refs = {
     scroll: useRef<HTMLDivElement>(null),
     msgChannel: useRef<any>(null),
@@ -410,8 +417,8 @@ export default function ChatArea() {
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
-      // Hanya jika status masih 'calling' (belum terhubung) maka anggap tak terjawab
-      if (callStatus === 'calling') {
+      // Gunakan callStatusRef agar selalu membaca status terbaru, bukan stale closure
+      if (callStatusRef.current === 'calling') {
         endCall(true);
         await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Panggilan tak terjawab`, is_system: true }]);
       }
