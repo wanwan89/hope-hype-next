@@ -205,7 +205,11 @@ export default function ChatArea() {
     if (refs.msgChannel.current) supabase.removeChannel(refs.msgChannel.current);
     if (refs.presenceChannel.current) supabase.removeChannel(refs.presenceChannel.current);
     if (refs.globalChannel.current) supabase.removeChannel(refs.globalChannel.current);
-    if (refs.lkRoom.current) refs.lkRoom.current.disconnect();
+    if (refs.lkRoom.current) {
+      refs.lkRoom.current.removeAllListeners();
+      refs.lkRoom.current.disconnect();
+      refs.lkRoom.current = null;
+    }
     if (refs.audioCtx.current) refs.audioCtx.current.close();
     clearInterval(refs.callTimer.current);
     clearTimeout(refs.callTimeout.current);
@@ -227,11 +231,9 @@ export default function ChatArea() {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as any;
           
-          // Deteksi panggilan masuk dari orang lain
           if (newMsg.is_system && newMsg.message.includes("📞 Memanggil") && newMsg.user_id !== user.id) {
              handleIncomingCall(newMsg);
           }
-          // Deteksi panggilan ditutup
           if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) {
              endCall(true);
           }
@@ -386,10 +388,16 @@ export default function ChatArea() {
   };
 
   // ======================================================
-  // 🔥 FIX CALL LOGIC: Koneksi LiveKit yang Stabil 🔥
+  // 🔥 PERBAIKAN CALL LOGIC (TIDAK LANGSUNG PUTUS) 🔥
   // ======================================================
   const startCall = async () => {
+    // Cegah memulai panggilan jika sedang ada panggilan aktif
+    if (callStatus !== 'idle') {
+      showNotif("Panggilan sedang berlangsung", "warning");
+      return;
+    }
     if (!targetId) return;
+    
     const { data: pTarget } = await supabase.from('profiles').select('avatar_url').eq('id', targetId).single();
     
     setCallStatus('calling'); 
@@ -398,7 +406,7 @@ export default function ChatArea() {
     // Kirim notif ke chat bahwa kita memanggil
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `📞 Memanggil ${headerInfo.title}...`, is_system: true }]);
     
-    // Set batas tunggu diangkat (15 detik)
+    // Set batas tunggu diangkat (30 detik, lebih panjang dari sebelumnya)
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
       setCallStatus(prev => {
@@ -408,13 +416,19 @@ export default function ChatArea() {
         }
         return prev;
       });
-    }, 15000); 
+    }, 30000); // 30 detik
     
     // Nyambungin room LiveKit
     connectLiveKit(roomId);
   };
 
   const handleIncomingCall = async (msg: any) => {
+    // Jangan mengganggu panggilan yang sudah ada
+    if (callStatus !== 'idle') {
+      // Tolak otomatis
+      await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `☎️ Sibuk, coba lagi nanti`, is_system: true }]);
+      return;
+    }
     const { data: p } = await supabase.from('profiles').select('username, avatar_url').eq('id', msg.user_id).single();
     setCallStatus('incoming'); 
     setCallData({ partnerName: p?.username, partnerAvatar: p?.avatar_url, room: msg.room_id, seconds: 0 });
@@ -423,23 +437,25 @@ export default function ChatArea() {
 
   const connectLiveKit = async (rName: string) => {
     try {
+      // 🔥 FIX 1: Bersihkan room lama tanpa trigger endCall
+      if (refs.lkRoom.current) {
+        refs.lkRoom.current.removeAllListeners(); // Hapus semua listener agar tidak memicu endCall
+        await refs.lkRoom.current.disconnect();
+        refs.lkRoom.current = null;
+      }
+      
       const { data, error } = await supabase.functions.invoke('get-livekit-token', { 
          body: { username: myProfile?.username, identity: currentUser.id, roomName: rName } 
       });
       if (error || !data) throw new Error("Gagal ambil token");
       
-      // Matikan room lama kalau ada
-      if (refs.lkRoom.current) {
-         refs.lkRoom.current.disconnect();
-      }
-
       refs.lkRoom.current = new LiveKit.Room({
          adaptiveStream: true,
          dynacast: true,
       });
 
-      // 1. Tangkap Event Dulu Sebelum Konek
       const handleCallConnected = () => {
+        if (callStatus === 'connected') return; // sudah connected
         setCallStatus('connected'); 
         clearTimeout(refs.callTimeout.current);
         clearInterval(refs.callInterval.current);
@@ -449,15 +465,17 @@ export default function ChatArea() {
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, handleCallConnected);
       
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantDisconnected, () => {
-        if (!groupId) endCall(true); 
+        // Hanya endCall jika bukan grup call dan status connected
+        if (!groupId && callStatus === 'connected') endCall(true); 
       });
       
       refs.lkRoom.current.on(LiveKit.RoomEvent.Disconnected, () => {
-        endCall(true);
+        // Jangan langsung endCall jika sedang dalam proses call (misal karena disconnect wajar)
+        // Tapi biar aman, hanya endCall jika status bukan idle
+        if (callStatus !== 'idle') endCall(true);
       });
 
-      // 🔥 FIX: Cara Modern Nampilin Audio LiveKit (Tanpa diblokir Browser) 🔥
-      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === LiveKit.Track.Kind.Audio) {
            const audioElement = document.createElement('audio');
            audioElement.autoplay = true;
@@ -465,31 +483,36 @@ export default function ChatArea() {
         }
       });
 
-      // 2. Konek ke server LiveKit
       await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
       
-      // 3. Nyalain Mic
       try {
         await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
       } catch (micErr) {
         showNotif("Harap izinkan akses Mikrofon!", "warning");
       }
 
-      // 4. Jika saat konek ternyata orangnya udah di room, langsung set Connected
+      // Jika saat konek ternyata orangnya udah di room, langsung set Connected
       if (refs.lkRoom.current.remoteParticipants.size > 0) {
          handleCallConnected();
       }
 
     } catch (e: any) { 
+      console.error("ConnectLiveKit error:", e);
       showNotif("Panggilan gagal tersambung", "error"); 
       endCall(); 
     }
   };
 
   const endCall = (silent = false) => {
-    if (refs.audio.current?.ring) { refs.audio.current.ring.pause(); refs.audio.current.ring.currentTime = 0; }
-    if (refs.lkRoom.current) { refs.lkRoom.current.disconnect(); refs.lkRoom.current = null; }
+    // 🔥 FIX 2: Jangan lakukan apa-apa jika sudah idle
+    if (callStatus === 'idle') return;
     
+    if (refs.audio.current?.ring) { refs.audio.current.ring.pause(); refs.audio.current.ring.currentTime = 0; }
+    if (refs.lkRoom.current) {
+        refs.lkRoom.current.removeAllListeners(); // matikan listener sebelum disconnect
+        refs.lkRoom.current.disconnect();
+        refs.lkRoom.current = null;
+    }
     setCallStatus('idle'); 
     clearInterval(refs.callTimer.current);
     clearTimeout(refs.callTimeout.current);
@@ -530,7 +553,6 @@ export default function ChatArea() {
   return (
     <div className="telegram-chat hype-chat-scope">
       
-      {/* Animasi Injeksi CSS Khusus Floating Toast */}
       <style>{`
         @keyframes pulseCall {
           0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
@@ -557,7 +579,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* UI FLOATING TOAST SAAT SUDAH TERSAMBUNG (BISA SAMBIL CHAT) */}
+      {/* UI FLOATING TOAST SAAT SUDAH TERSAMBUNG */}
       {callStatus === 'connected' && (
         <div style={{
           position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
@@ -597,7 +619,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* MENU OPSI PESAN BERSIH TANPA ICON */}
+      {/* MENU OPSI PESAN */}
       {msgOptions && (
         <div className="custom-modal-overlay" onClick={() => setMsgOptions(null)}>
           <div className="custom-modal-content" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '24px 24px 0 0' }}>
