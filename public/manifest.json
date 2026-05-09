@@ -1,5 +1,5 @@
 {
-  "name": "Hope Hype",
+  "name": "Hopehype ltd",
   "short_name": "HopeHype",
   "description": "Creative Digital Hub",
   "start_url": "/",
@@ -9,13 +9,13 @@
   "theme_color": "#1f3cff",
   "icons": [
     {
-      "src": "/asets/png/book.png",
+      "src": "/asets/png/brand.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/asets/png/book.png",
+      "src": "/asets/png/brand.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
