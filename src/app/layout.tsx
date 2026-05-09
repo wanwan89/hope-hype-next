@@ -14,7 +14,6 @@ import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar"; 
 import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
-import Script from 'next/script'; // 🔥 Import Script untuk Eruda
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -22,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const prevPathnameRef = useRef(pathname);
 
+  // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
@@ -40,7 +40,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // Anti-download foto
+  // 🔥 INISIALISASI ERUDA (PASTI MUNCUL)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const loadEruda = () => {
+      // Jika eruda sudah ada, init saja
+      if ((window as any).eruda) {
+        (window as any).eruda.init();
+        console.log('Eruda sudah ada');
+        return;
+      }
+
+      // Tambahkan script tag
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+      script.onload = () => {
+        (window as any).eruda.init();
+        console.log('Eruda dimuat dan diinisialisasi');
+        // (Opsional) tampilkan langsung
+        // (window as any).eruda.show();
+      };
+      script.onerror = () => console.error('Gagal memuat Eruda');
+      document.body.appendChild(script);
+    };
+
+    // Eksekusi setelah DOM siap
+    loadEruda();
+  }, []);
+
+  // --- 1. SISTEM ANTI-DOWNLOAD FOTO ---
   useEffect(() => {
     const preventSave = (e: MouseEvent | TouchEvent) => {
       if ((e.target as HTMLElement).tagName === 'IMG') {
@@ -59,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // Layout effect
+  // --- 2. SISTEM LAYOUT FIX ---
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
@@ -119,10 +148,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
           body { background-color: var(--bg-main); }
         `}</style>
-
-        {/* 🔥 ERUDA DEBUG TOOL 🔥 */}
-        <script src="https://cdn.jsdelivr.net/npm/eruda" defer></script>
-        <script id="eruda-init" dangerouslySetInnerHTML={{ __html: 'eruda.init();' }} defer></script>
       </head>
       
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
