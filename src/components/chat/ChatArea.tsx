@@ -417,7 +417,6 @@ export default function ChatArea() {
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
-      // Gunakan callStatusRef agar selalu membaca status terbaru, bukan stale closure
       if (callStatusRef.current === 'calling') {
         endCall(true);
         await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Panggilan tak terjawab`, is_system: true }]);
@@ -446,27 +445,10 @@ export default function ChatArea() {
         refs.lkRoom.current = null;
       }
       
-      // 🔥 FIX: Tambahkan log detail untuk melacak error Supabase
-      console.log("Mengirim request token ke Supabase untuk Room:", rName);
-      
       const { data, error } = await supabase.functions.invoke('get-livekit-token', { 
-         body: { 
-           username: currentUser?.username || myProfile?.username || "User", 
-           identity: currentUser?.id, 
-           roomName: rName 
-         } 
+         body: { username: myProfile?.username, identity: currentUser.id, roomName: rName } 
       });
-
-      // 🔥 FIX: Tangkap pesan error ASLI dari Supabase
-      if (error) {
-        console.error("Supabase Edge Function Error Asli:", error);
-        throw new Error(`Server Error: ${error.message || 'Cek console browser'}`);
-      }
-
-      if (!data || !data.token) {
-        console.error("Response data kosong atau tidak ada token:", data);
-        throw new Error("Token kosong dari server");
-      }
+      if (error || !data) throw new Error("Gagal ambil token");
       
       refs.lkRoom.current = new LiveKit.Room({
          adaptiveStream: true,
@@ -499,19 +481,15 @@ export default function ChatArea() {
       });
 
       await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
-      
       try {
         await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
       } catch (micErr) {
         showNotif("Harap izinkan akses Mikrofon!", "warning");
       }
-      
       if (refs.lkRoom.current.remoteParticipants.size > 0) handleCallConnected();
-
     } catch (e: any) { 
-      // 🔥 FIX: Tampilkan error aslinya di notif biar ketahuan
-      console.error("ConnectLiveKit terhenti karena:", e);
-      showNotif(e.message || "Panggilan gagal tersambung", "error"); 
+      console.error("ConnectLiveKit error:", e);
+      showNotif("Panggilan gagal tersambung", "error"); 
       endCall(); 
     }
   };
@@ -573,12 +551,12 @@ export default function ChatArea() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        /* Fullscreen call overlay */
+        /* 🔥 FIX 2: Tidy up Fullscreen Call Overlay 🔥 */
         .call-fullscreen-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.85);
-          backdrop-filter: blur(12px);
+          background: rgba(10, 15, 20, 0.95);
+          backdrop-filter: blur(15px);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -589,66 +567,75 @@ export default function ChatArea() {
         .call-fullscreen-content {
           text-align: center;
           color: white;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
         .call-fullscreen-avatar {
-          width: 120px;
-          height: 120px;
+          width: 140px;
+          height: 140px;
           border-radius: 50%;
           object-fit: cover;
-          border: 3px solid #2ecc71;
-          margin-bottom: 20px;
+          border: 4px solid #1f3cff;
+          margin-bottom: 24px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.4);
         }
         .anim-calling-avatar {
-          animation: pulseCall 1.2s infinite;
+          animation: pulseCall 1.5s infinite;
         }
         .call-fullscreen-name {
-          font-size: 24px;
-          font-weight: bold;
+          font-size: 26px;
+          font-weight: 800;
           margin-bottom: 8px;
+          letter-spacing: 0.5px;
         }
         .call-fullscreen-status {
-          font-size: 14px;
-          opacity: 0.8;
-          margin-bottom: 40px;
+          font-size: 15px;
+          opacity: 0.7;
+          margin-bottom: 50px;
+          letter-spacing: 1px;
         }
         .call-fullscreen-buttons {
           display: flex;
-          gap: 30px;
+          gap: 40px;
         }
         .call-fullscreen-btn {
-          padding: 12px 32px;
+          width: 70px;
+          height: 70px;
+          border-radius: 50%;
           border: none;
-          border-radius: 40px;
-          font-weight: bold;
-          font-size: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: transform 0.2s, box-shadow 0.2s;
         }
-        .call-fullscreen-btn:active { transform: scale(0.95); }
-        .btn-answer { background: #2ecc71; color: white; }
-        .btn-decline { background: #ff4757; color: white; }
+        .call-fullscreen-btn:active { transform: scale(0.9); }
+        .btn-answer { background: #2ecc71; color: white; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4); }
+        .btn-decline { background: #ff4757; color: white; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
         
         /* Floating call box (saat connected) */
         .floating-call-box {
           position: fixed;
           top: 80px;
-          left: 20px;
-          right: 20px;
+          left: 50%;
+          transform: translateX(-50%);
           background: var(--bg-panel);
           backdrop-filter: blur(12px);
-          border-radius: 28px;
-          padding: 12px 16px;
+          border-radius: 40px;
+          padding: 10px 16px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          gap: 15px;
           box-shadow: 0 10px 30px rgba(0,0,0,0.3);
           z-index: 10000;
-          border: 1px solid rgba(255,255,255,0.2);
+          border: 1px solid rgba(255,255,255,0.1);
           animation: slideDown 0.3s ease;
+          width: max-content;
         }
         @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translate(-50%, -20px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
         }
         .floating-call-info {
           display: flex;
@@ -664,16 +651,20 @@ export default function ChatArea() {
         }
         .floating-call-duration {
           font-family: monospace;
-          font-size: 16px;
+          font-size: 14px;
           font-weight: bold;
+          color: var(--text-muted);
         }
         .floating-call-end {
           background: #ff4757;
           border: none;
-          border-radius: 40px;
-          padding: 6px 16px;
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           color: white;
-          font-weight: bold;
           cursor: pointer;
         }
 
@@ -727,7 +718,7 @@ export default function ChatArea() {
                     connectLiveKit(callData.room); 
                   }}
                 >
-                  Terima
+                  <span className="material-icons" style={{ fontSize: '32px' }}>call</span>
                 </button>
               )}
               <button 
@@ -739,8 +730,13 @@ export default function ChatArea() {
                   }
                 }}
               >
-                Tolak
+                {/* 🔥 FIX 1: Teks khusus saat memanggil diganti "Tutup" (sekarang pakai ikon saja agar UI mewah & rapi, jika wajib teks bisa diganti ke span) 🔥 */}
+                <span className="material-icons" style={{ fontSize: '32px' }}>call_end</span>
+                {/* Kalau lu lebih suka tulisan daripada icon, hapus span di atas, pake ini: {callStatus === 'calling' ? 'Tutup' : 'Tolak'} */}
               </button>
+            </div>
+            <div style={{ marginTop: '15px', fontSize: '13px', fontWeight: 'bold' }}>
+               {callStatus === 'calling' ? 'Tutup' : 'Tolak'}
             </div>
           </div>
         </div>
@@ -751,9 +747,8 @@ export default function ChatArea() {
         <div className="floating-call-box">
           <div className="floating-call-info">
             <div style={{ width: 10, height: 10, background: '#2ecc71', borderRadius: '50%', animation: 'pulseCall 1.5s infinite' }}></div>
-            <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="floating-call-avatar" alt="partner" />
             <div>
-              <div style={{ fontWeight: 'bold' }}>{callData.partnerName}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--text-main)' }}>{callData.partnerName}</div>
               <div className="floating-call-duration">
                 {Math.floor(callData.seconds / 60)}:{String(callData.seconds % 60).padStart(2, '0')}
               </div>
@@ -766,7 +761,7 @@ export default function ChatArea() {
               supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Panggilan berakhir (${Math.floor(callData.seconds / 60)}:${String(callData.seconds % 60).padStart(2, '0')})`, is_system: true }]);
             }}
           >
-            Akhiri
+            <span className="material-icons" style={{ fontSize: '18px' }}>call_end</span>
           </button>
         </div>
       )}
@@ -824,6 +819,65 @@ export default function ChatArea() {
         </div>
       )}
 
+      {/* 🔥 FIX 5: SETTINGS GRUP DIKEMBALIKAN 🔥 */}
+      {isGroupSettingsOpen && groupId && (
+        <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)} style={{ zIndex: 100000 }}>
+          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
+            {groupModalTab === 'invite' ? (
+              <>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0 }}>Tambah Member</h3>
+                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', padding: '15px', background: 'var(--bg-main)', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
+                   <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} alt="grup" />
+                   <div>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-color)' }}>{headerInfo.title}</h4>
+                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>ID Grup: {groupId}</p>
+                   </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="text" placeholder="Username / ID..." value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }} />
+                  <button onClick={handleAddMember} disabled={isUpdatingGroup} style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}>TAMBAH</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0 }}>Pengaturan Grup</h3>
+                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
+                </div>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <label style={{ position: 'relative', display: 'inline-block', cursor: isOwner ? 'pointer' : 'default' }}>
+                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary-blue)', opacity: isUpdatingGroup ? 0.5 : 1, transition: '0.3s' }} alt="grup" />
+                    {isUpdatingGroup && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-blue)', fontWeight: 'bold', fontSize: '11px', background: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}>UPLOADING</div>}
+                    {isOwner && !isUpdatingGroup && <div style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--primary-blue)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '3px solid var(--bg-panel)' }}><span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span></div>}
+                    <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner || isUpdatingGroup} />
+                  </label>
+                  <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px'}}>{isOwner ? 'Klik foto untuk mengganti' : 'Foto Grup'}</p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+                  <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} disabled={!isOwner} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none', fontWeight: 'bold' }} />
+                  {isOwner && <button onClick={() => updateGroupInfo('name', newGroupName)} disabled={isUpdatingGroup || newGroupName === headerInfo.title} style={{ background: newGroupName === headerInfo.title ? 'var(--border-color)' : 'var(--primary-blue)', color: newGroupName === headerInfo.title ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold', transition: '0.3s' }}>SIMPAN</button>}
+                </div>
+                <div style={{ marginTop: '20px', maxHeight: '200px', overflowY: 'auto' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>MEMBER ({groupMembers.length})</p>
+                  {groupMembers.map(m => (
+                    <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} alt="u" />
+                        <span>{m.profiles?.username}</span>
+                      </div>
+                      {isOwner && m.user_id !== currentUser.id && <button onClick={() => kickMember(m.user_id, m.profiles?.username)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">person_remove</span></button>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
@@ -843,6 +897,7 @@ export default function ChatArea() {
             <button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button>
           ) : groupId ? (
             <div style={{ display: 'flex', gap: '8px' }}>
+              {/* 🔥 FIX 5: TOMBOL GROUP BISA DITEKAN KARENA MODALNYA UDAH DIBALIKIN DI ATAS 🔥 */}
               <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>INVITE</button>
               {isOwner && <button onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }} style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>SETTINGS</button>}
             </div>
@@ -875,10 +930,25 @@ export default function ChatArea() {
                 onReply={setReplyTo} 
                 onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} 
                 onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
-                // 🔥 FIX: TYPE ANNOTATION (url: string) AGAR LOLOS BUILD TYPESCRIPT 🔥
                 onStickerClick={(url: string) => setLightboxSticker(url)}
               />
             ))}
+            {/* 🔥 FIX 3: BUBBLE TYPING INDICATOR MUNCUL DI BAWAH CHAT 🔥 */}
+            {typingUser && (
+              <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
+                {(roomId === 'room-1' || roomId.startsWith('group_')) && (
+                  <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
+                )}
+                <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '14px 14px 14px 4px', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px' }}>{typingUser.username}</div>
+                  <div className="typing-bubble" style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '14px' }}>
+                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out' }}></span>
+                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.2s' }}></span>
+                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.4s' }}></span>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
         <div ref={refs.scroll} />
@@ -938,7 +1008,8 @@ export default function ChatArea() {
                 </div>
               ) : (
                 <>
-                  <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: '#64748b' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
+                  {/* 🔥 FIX 4: TOMBOL STIKER SEKARANG WARNA PUTIH 🔥 */}
+                  <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: '#ffffff' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
                   <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
                 </>
               )}

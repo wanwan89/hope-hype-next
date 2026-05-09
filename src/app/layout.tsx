@@ -4,8 +4,9 @@ import '@/lib/i18n';
 import i18n from '@/lib/i18n';
 import { I18nextProvider } from 'react-i18next';
 
-import { usePathname } from 'next/navigation';
-import { useEffect, useLayoutEffect, useRef } from 'react'; 
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'; 
+import { supabase } from '@/lib/supabase'; // 🔥 Tambahan Supabase untuk Global Call
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -19,7 +20,12 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter(); // 🔥 Tambahan Router
   const prevPathnameRef = useRef(pathname);
+
+  // --- 🔥 STATE UNTUK PANGGILAN GLOBAL 🔥 ---
+  const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
   // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
@@ -40,34 +46,103 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // 🔥 INISIALISASI ERUDA (PASTI MUNCUL)
+  // 🔥 INISIALISASI ERUDA
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const loadEruda = () => {
-      // Jika eruda sudah ada, init saja
       if ((window as any).eruda) {
         (window as any).eruda.init();
         console.log('Eruda sudah ada');
         return;
       }
-
-      // Tambahkan script tag
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/eruda';
       script.onload = () => {
         (window as any).eruda.init();
         console.log('Eruda dimuat dan diinisialisasi');
-        // (Opsional) tampilkan langsung
-        // (window as any).eruda.show();
       };
       script.onerror = () => console.error('Gagal memuat Eruda');
       document.body.appendChild(script);
     };
-
-    // Eksekusi setelah DOM siap
     loadEruda();
   }, []);
+
+  // --- 🔥 SISTEM PANGGILAN GLOBAL (MUNCUL DI SEMUA HALAMAN) 🔥 ---
+  useEffect(() => {
+    ringtoneRef.current = new Audio("/asets/sound/call.wav");
+    if (ringtoneRef.current) ringtoneRef.current.loop = true;
+
+    let channel: any;
+
+    const initGlobalListener = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const myUserId = session.user.id;
+
+      channel = supabase.channel(`global-call-root-${myUserId}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload: any) => {
+          const newMsg = payload.new;
+          if (newMsg && newMsg.room_id?.includes(myUserId) && newMsg.user_id !== myUserId) {
+            
+            // Jika ada telpon masuk
+            if (newMsg.is_system && newMsg.message.includes("Memanggil")) {
+              // 🔥 Bypass: Abaikan jika user sedang di halaman Hypetalk (Lobby/ChatArea)
+              // Karena di sana sudah ada UI Fullscreen khusus
+              if (window.location.href.includes('/hypetalk')) return; 
+
+              const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
+              setGlobalIncomingCall({
+                callerId: p?.id,
+                callerName: p?.username,
+                callerAvatar: p?.avatar_url,
+                roomId: newMsg.room_id
+              });
+              ringtoneRef.current?.play().catch(()=>{});
+            }
+
+            // Jika telpon ditutup / selesai
+            if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) {
+              setGlobalIncomingCall(null);
+              ringtoneRef.current?.pause();
+              if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
+            }
+          }
+        })
+        .subscribe();
+    };
+    
+    initGlobalListener();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      ringtoneRef.current?.pause();
+    };
+  }, []);
+
+  const handleTolakGlobal = async () => {
+    if (!globalIncomingCall) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await supabase.from('messages').insert([{ 
+        room_id: globalIncomingCall.roomId, 
+        user_id: session.user.id, 
+        message: `Panggilan Ditolak`, 
+        is_system: true 
+      }]);
+    }
+    setGlobalIncomingCall(null);
+    ringtoneRef.current?.pause();
+  };
+
+  const handleAngkatGlobal = () => {
+    if (!globalIncomingCall) return;
+    const cid = globalIncomingCall.callerId;
+    setGlobalIncomingCall(null);
+    ringtoneRef.current?.pause();
+    // Langsung pindah ke ruang obrolan lawan untuk connect LiveKit
+    router.push(`/hypetalk/chat?from=${cid}`);
+  };
 
   // --- 1. SISTEM ANTI-DOWNLOAD FOTO ---
   useEffect(() => {
@@ -147,6 +222,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             -webkit-user-drag: none !important;
           }
           body { background-color: var(--bg-main); }
+          
+          /* Animasi & CSS untuk Popup Global Call */
+          @keyframes slideDownCall {
+            from { transform: translate(-50%, -120%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+          }
+          .global-call-avatar {
+            width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
+            border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite;
+          }
+          @keyframes pulseCallGlobal {
+            0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+            70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+          }
+          .global-call-btn {
+            border: none; border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: white; transition: transform 0.2s;
+          }
+          .global-call-btn:active { transform: scale(0.9); }
         `}</style>
       </head>
       
@@ -154,6 +250,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
             <GlobalShareModal />
+
+            {/* 🔥 POPUP INCOMING CALL GLOBAL 🔥 */}
+            {globalIncomingCall && (
+              <div style={{
+                position: 'fixed', top: 'max(env(safe-area-inset-top, 20px), 20px)', left: '50%', transform: 'translateX(-50%)',
+                background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px',
+                display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999,
+                boxShadow: '0 15px 35px rgba(0,0,0,0.5)', width: '90%', maxWidth: '360px',
+                animation: 'slideDownCall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}>
+                <img src={globalIncomingCall.callerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="caller" />
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                    {globalIncomingCall.callerName}
+                  </div>
+                  <div style={{ color: '#2ecc71', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="material-icons" style={{ fontSize: '12px' }}>ring_volume</span> Memanggil...
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={handleTolakGlobal} className="global-call-btn" style={{ background: '#ff4757', boxShadow: '0 4px 10px rgba(255, 71, 87, 0.4)' }}>
+                    <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
+                  </button>
+                  <button onClick={handleAngkatGlobal} className="global-call-btn" style={{ background: '#2ecc71', boxShadow: '0 4px 10px rgba(46, 204, 113, 0.4)' }}>
+                    <span className="material-icons" style={{ fontSize: '20px' }}>call</span>
+                  </button>
+                </div>
+              </div>
+            )}
             
             {!hideSidebar && <Sidebar />}
             
@@ -186,4 +312,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-

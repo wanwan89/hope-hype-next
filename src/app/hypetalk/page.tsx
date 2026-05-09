@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react'; 
+import { useRouter } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
-import * as LiveKit from 'livekit-client';
+import * as LiveKit from 'livekit-client'; 
 import './Hypetalk.css';
 
 export default function HypetalkPage() {
   const router = useRouter();
-
+  
   // --- STATES ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [chats, setChats] = useState<any[]>([]);
@@ -22,9 +22,11 @@ export default function HypetalkPage() {
   const [foundDoi, setFoundDoi] = useState<any>(null);
   const [bioForm, setBioForm] = useState({ umur: '', gender: 'Pria', zodiak: '', pekerjaan: '', hobi: '' });
   const [isSavingBio, setIsSavingBio] = useState(false);
-  const [searchUserId, setSearchUserId] = useState('');
-  const [groupName, setGroupName] = useState('');
+  const [searchUserId, setSearchUserId] = useState(''); 
+  const [groupName, setGroupName] = useState(''); 
+
   const [typingStatus, setTypingStatus] = useState<Record<string, string>>({});
+
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [isBlocking, setIsBlocking] = useState(false);
   const [floatingAvatars, setFloatingAvatars] = useState<string[]>([]); // untuk efek doi
@@ -102,7 +104,6 @@ export default function HypetalkPage() {
         }
       });
 
-      // Global Chat
       const globalMsgs = allMsgs?.filter(m => m.room_id === 'room-1');
       const lastGlobalMsg = globalMsgs && globalMsgs.length > 0 ? globalMsgs[0] : null;
       finalChats.push({
@@ -115,7 +116,6 @@ export default function HypetalkPage() {
         unread: unreadMap.get('room-1') || 0
       });
 
-      // Private Chats
       if (allMsgs) {
         const lastPvMap = new Map();
         allMsgs.filter(m => m.room_id.startsWith('pv_') && m.room_id.includes(userId)).forEach(msg => {
@@ -147,7 +147,6 @@ export default function HypetalkPage() {
         }
       }
 
-      // Group Chats
       const { data: myGroups } = await supabase.from('group_members').select('group_id, groups(name, photo_url)').eq('user_id', userId);
       if (myGroups) {
         myGroups.forEach((g: any) => {
@@ -176,10 +175,25 @@ export default function HypetalkPage() {
     }
   };
 
+  // 🔥 FIX 1: PENDETEKSI TELPON MASUK DI HALAMAN UTAMA 🔥
   const subscribeToInbox = (userId: string) => {
     const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
     supabase.channel(channelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload: any) => {
+        const newMsg = payload.new;
+        if (newMsg && newMsg.room_id?.includes(userId)) {
+          // Telpon Masuk
+          if (newMsg.is_system && newMsg.message.includes("Memanggil") && newMsg.user_id !== userId) {
+            handleIncomingCall(newMsg);
+          }
+          // Telpon Berakhir
+          if (newMsg.is_system && (newMsg.message.includes("Panggilan berakhir") || newMsg.message.includes("Ditolak") || newMsg.message.includes("tak terjawab"))) {
+            endCall(true);
+          }
+        }
+        loadAllChats(userId, true);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => {
         loadAllChats(userId, true);
       })
       .subscribe();
@@ -247,11 +261,16 @@ export default function HypetalkPage() {
         .select('avatar_url')
         .neq('id', currentUser.id)
         .limit(8);
-      if (randomUsers) {
+      if (randomUsers && randomUsers.length > 0) {
         const urls = randomUsers.map(u => u.avatar_url).filter(Boolean);
         setFloatingAvatars(urls);
+      } else {
+        // Fallback default avatar jika database sepi
+        setFloatingAvatars(Array(8).fill('/asets/png/profile.webp'));
       }
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      setFloatingAvatars(Array(8).fill('/asets/png/profile.webp'));
+    }
 
     setTimeout(async () => {
       try {
@@ -382,6 +401,23 @@ export default function HypetalkPage() {
       });
     }, 30000);
     connectLiveKit(callRoomId, targetProfile.id);
+  };
+
+  const handleIncomingCall = async (msg: any) => {
+    if (callStatus !== 'idle') {
+      await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `Sibuk, coba lagi nanti`, is_system: true }]);
+      return;
+    }
+    const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', msg.user_id).single();
+    setCallStatus('incoming'); 
+    setCallData({ 
+      partnerId: p?.id,
+      partnerName: p?.username, 
+      partnerAvatar: p?.avatar_url, 
+      roomId: msg.room_id, 
+      seconds: 0 
+    });
+    refs.audio.current?.ring.play().catch(()=>{});
   };
 
   const connectLiveKit = async (rName: string, partnerId?: string) => {
@@ -522,65 +558,81 @@ export default function HypetalkPage() {
         .call-btn-end { background: #ff4757; }
         .call-btn-accept { background: #2ecc71; }
 
-        /* Modal profil tidak transparan */
+        /* 🔥 FIX 2: MODAL PROFIL KECIL ALA WA & SOLID BACKGROUND 🔥 */
         .tg-modal-overlay {
-          background: rgba(0,0,0,0.9) !important;
-          backdrop-filter: none !important;
+          background: rgba(0,0,0,0.65) !important; /* Gelap pekat, tidak tembus */
+          backdrop-filter: blur(4px) !important;
+        }
+        .wa-profile-card {
+          width: 100%;
+          max-width: 270px;
+          background: var(--bg-panel);
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+          animation: fadeInModal 0.2s ease;
+        }
+        .wa-profile-img-container {
+          width: 100%;
+          padding-top: 100%; /* Bikin Kotak (Aspect Ratio 1:1) */
+          position: relative;
+          background: var(--border-color);
+        }
+        .wa-profile-img {
+          position: absolute;
+          top: 0; left: 0; width: 100%; height: 100%;
+          object-fit: cover;
+        }
+        .wa-profile-name-bar {
+          position: absolute;
+          bottom: 0; left: 0; width: 100%;
+          padding: 15px 15px;
+          background: linear-gradient(transparent, rgba(0,0,0,0.85));
+        }
+        .wa-profile-actions {
+          display: flex;
+          justify-content: space-around;
+          padding: 15px 10px;
+          background: var(--bg-panel);
+        }
+        .wa-action-btn {
+          background: none;
+          border: none;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
         }
 
-        /* Efek floating avatars saat mencari doi */
+        /* 🔥 FIX 3: EFEK DOI AVATAR MELAYANG 🔥 */
+        .doi-search-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          z-index: 100000; overflow: hidden;
+        }
         .floating-avatars {
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 99995;
-          overflow: hidden;
+          position: absolute; inset: 0; pointer-events: none;
         }
         .floating-avatar {
           position: absolute;
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          object-fit: cover;
-          opacity: 0;
-          animation: floatAround 5s linear forwards;
-          box-shadow: 0 0 15px rgba(0,0,0,0.3);
-          border: 2px solid white;
+          width: 60px; height: 60px; border-radius: 50%; object-fit: cover;
+          opacity: 0; border: 2px solid white; box-shadow: 0 0 15px rgba(0,0,0,0.4);
+          animation: floatAround 4s linear infinite;
         }
         @keyframes floatAround {
           0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
-          10% { opacity: 0.8; }
-          90% { opacity: 0.8; }
-          100% { opacity: 0; transform: translate(var(--tx, 200px), var(--ty, -200px)) scale(1.2); }
+          20% { opacity: 0.9; }
+          80% { opacity: 0.9; }
+          100% { opacity: 0; transform: translate(var(--tx, 150px), var(--ty, -150px)) scale(1.2); }
+        }
+        .search-title-glow {
+          position: relative; z-index: 10; font-size: 20px; font-weight: bold; color: white;
+          text-shadow: 0 0 10px rgba(255,71,87,0.8); margin-top: 20px;
         }
       `}</style>
-
-      {/* Efek avatar melayang saat mencari doi */}
-      {isSearchingDoi && floatingAvatars.length > 0 && (
-        <div className="floating-avatars">
-          {floatingAvatars.map((url, idx) => {
-            const randomX = (Math.random() - 0.5) * (typeof window !== 'undefined' ? window.innerWidth : 400);
-            const randomY = (Math.random() - 0.5) * (typeof window !== 'undefined' ? window.innerHeight : 600);
-            const duration = 3 + Math.random() * 2;
-            return (
-              <img
-                key={idx}
-                src={url}
-                className="floating-avatar"
-                style={{
-                  left: '50%',
-                  top: '50%',
-                  '--tx': `${randomX}px`,
-                  '--ty': `${randomY}px`,
-                  animationDuration: `${duration}s`,
-                  animationDelay: `${idx * 0.3}s`
-                } as React.CSSProperties}
-                alt="floating"
-              />
-            );
-          })}
-        </div>
-      )}
 
       {/* TAMPILAN PANGGILAN CALLING / INCOMING */}
       {(callStatus === 'calling' || callStatus === 'incoming') && (
@@ -714,45 +766,29 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* MODAL USER PROFILE - TANPA IKON */}
+      {/* MODAL USER PROFILE (KOTAK KECIL ALA WA) */}
       {activeModal === 'user-profile' && selectedProfile && (
-        <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={closeModal}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-panel)', width: '100%', maxWidth: '320px',
-              borderRadius: '20px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)',
-              animation: 'fadeInModal 0.2s ease'
-            }}
-          >
-            <div style={{ position: 'relative', width: '100%', paddingTop: '100%' }}>
-              <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} alt="Profile" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', padding: '30px 20px 15px 20px' }}>
-                <h2 style={{ color: 'white', margin: 0, fontSize: '20px', fontWeight: '700', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+        <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', padding: '20px' }} onClick={closeModal}>
+          <div className="wa-profile-card" onClick={(e) => e.stopPropagation()}>
+            <div className="wa-profile-img-container">
+              <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} alt="Profile" className="wa-profile-img" />
+              <div className="wa-profile-name-bar">
+                <h2 style={{ color: 'white', margin: 0, fontSize: '18px', fontWeight: '600' }}>
                   {selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}
                 </h2>
+                {selectedProfile.pekerjaan && <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', marginTop: '2px' }}>{selectedProfile.pekerjaan}</div>}
               </div>
             </div>
-            <div style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-                {selectedProfile.pekerjaan && <span style={{ background: 'rgba(29, 161, 242, 0.1)', color: '#1da1f2', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>{selectedProfile.pekerjaan}</span>}
-                {selectedProfile.hobi && <span style={{ background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>{selectedProfile.hobi}</span>}
-                {selectedProfile.zodiak && <span style={{ background: 'rgba(217, 119, 6, 0.1)', color: '#d97706', padding: '6px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>{selectedProfile.zodiak}</span>}
-                {!selectedProfile.pekerjaan && !selectedProfile.hobi && !selectedProfile.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '12px', fontStyle: 'italic' }}>Bio belum diisi</span>}
-              </div>
-
-              {/* TOMBOL TANPA IKON */}
-              <div className="profile-actions">
-                <button onClick={() => { closeModal(); router.push(`/hypetalk/chat?from=${selectedProfile.id}`); }} className="profile-action-btn chat">
-                  Chat
-                </button>
-                <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="profile-action-btn call">
-                  Telpon
-                </button>
-                <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} className="profile-action-btn block">
-                  Blokir
-                </button>
-              </div>
+            <div className="wa-profile-actions">
+              <button onClick={() => { closeModal(); router.push(`/hypetalk/chat?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
+                <span className="material-icons" style={{ fontSize: '24px' }}>chat</span> Chat
+              </button>
+              <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="wa-action-btn" style={{ color: '#2ecc71' }}>
+                <span className="material-icons" style={{ fontSize: '24px' }}>call</span> Telpon
+              </button>
+              <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} className="wa-action-btn" style={{ color: '#ff4757', opacity: isBlocking ? 0.5 : 1 }}>
+                <span className="material-icons" style={{ fontSize: '24px' }}>block</span> Blokir
+              </button>
             </div>
           </div>
         </div>
@@ -819,10 +855,37 @@ export default function HypetalkPage() {
         </div>
       )}
 
+      {/* ANIMASI DOI (TANPA ICON SISTEM) */}
       {isSearchingDoi && (
-        <div className="doi-search-overlay" style={{ display: 'flex' }}>
-          <div className="paper-plane-container"><span className="material-icons paper-plane-icon">send</span></div>
-          <h3 className="search-title-glow">Mencari kecocokan..</h3>
+        <div className="doi-search-overlay">
+          <div className="floating-avatars">
+            {floatingAvatars.map((url, idx) => {
+              const randomX = (Math.random() - 0.5) * (typeof window !== 'undefined' ? window.innerWidth : 400) * 1.5;
+              const randomY = (Math.random() - 0.5) * (typeof window !== 'undefined' ? window.innerHeight : 600) * 1.5;
+              const duration = 2.5 + Math.random() * 2;
+              return (
+                <img
+                  key={idx}
+                  src={url}
+                  className="floating-avatar"
+                  style={{
+                    left: 'calc(50% - 30px)',
+                    top: 'calc(50% - 30px)',
+                    '--tx': `${randomX}px`,
+                    '--ty': `${randomY}px`,
+                    animationDuration: `${duration}s`,
+                    animationDelay: `${idx * 0.2}s`
+                  } as React.CSSProperties}
+                  alt="floating"
+                />
+              );
+            })}
+          </div>
+          <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* Radar glow ringan di tengah */}
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid rgba(255, 71, 87, 0.8)', animation: 'pulseCall 1.5s infinite' }}></div>
+            <h3 className="search-title-glow">Mencari kecocokan..</h3>
+          </div>
         </div>
       )}
     </div>
