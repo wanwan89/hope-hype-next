@@ -410,7 +410,8 @@ export default function ChatArea() {
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
-      if (callStatus !== 'connected') {
+      // Hanya jika status masih 'calling' (belum terhubung) maka anggap tak terjawab
+      if (callStatus === 'calling') {
         endCall(true);
         await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Panggilan tak terjawab`, is_system: true }]);
       }
@@ -846,7 +847,7 @@ export default function ChatArea() {
                 onReply={setReplyTo} 
                 onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} 
                 onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
-                onStickerClick={(url) => setLightboxSticker(url)} // kirim url stiker ke parent
+                onStickerClick={(url) => setLightboxSticker(url)}
               />
             ))}
           </>
@@ -866,7 +867,7 @@ export default function ChatArea() {
                   alt="sticker" 
                   onClick={() => {
                     sendMessage(undefined, s.images.fixed_width.url);
-                    setLightboxSticker(s.images.fixed_width.url); // tampilkan lightbox
+                    setLightboxSticker(s.images.fixed_width.url);
                   }} 
                 />
               ))}
