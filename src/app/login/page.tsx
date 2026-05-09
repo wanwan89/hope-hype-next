@@ -26,17 +26,47 @@ export default function LoginPage() {
 
   // Cek sesi login
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.push('/');
+    // Listener ini nangkep event login dari Google juga
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        // 🔥 JARING PENGAMAN: Cek profil pas login pakai Google 🔥
+        const userId = session.user.id;
+        const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).single();
+        
+        // Kalau belum punya profil, kita buatkan otomatis
+        if (!profile) {
+          const userMeta = session.user.user_metadata;
+          // Ngambil nama dari google (kalau null pake email dipotong, kalau null juga pake 'user_hype')
+          const rawName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || 'user_hype';
+          const safeUsername = rawName.toLowerCase().replace(/\s+/g, '');
+          const safeAvatar = userMeta?.avatar_url || userMeta?.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${safeUsername}`;
+
+          // Insert ke tabel profiles
+          await supabase.from('profiles').insert([{
+            id: userId,
+            username: safeUsername,
+            avatar_url: safeAvatar,
+            role: 'user'
+          }]);
+        }
+        
+        router.push('/');
+      }
     });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, [router]);
 
   // --- Handlers ---
   const handleGoogleLogin = async () => {
+    setIsLoading(true);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + "/" }
     });
+    // Loading ga di-false karena halaman akan ke-redirect ke Google
   };
 
   const handleForgotPassword = async (e: React.MouseEvent) => {
@@ -69,7 +99,7 @@ export default function LoginPage() {
         setIsLoading(false);
       } else {
         showNotif(t('login_success_notif', 'Selamat datang kembali!'), "success");
-        router.push('/');
+        // Gak perlu router.push disini karena udah ditangani onAuthStateChange di useEffect
       }
     } else {
       // --- SIGNUP LOGIC ---
@@ -83,13 +113,15 @@ export default function LoginPage() {
       }
 
       const finalRole = role === 'creator' ? `creator_${creatorType}` : 'user';
-      const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${username}`;
+      // 🔥 FIX: Bersihin spasi dari username pas daftar normal
+      const safeUsername = username.toLowerCase().replace(/\s+/g, '');
+      const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${safeUsername}`;
 
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { username, avatar_url: avatar, role: finalRole }
+          data: { username: safeUsername, avatar_url: avatar, role: finalRole }
         }
       });
 
@@ -144,9 +176,9 @@ export default function LoginPage() {
               <span className="material-icons">person_outline</span>
               <input 
                 type="text" 
-                placeholder="Username" 
+                placeholder="Username (tanpa spasi)" 
                 value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))} 
               />
             </div>
           )}
@@ -224,7 +256,7 @@ export default function LoginPage() {
         </div>
 
         {/* Google Login (SVG Murni) */}
-        <button type="button" onClick={handleGoogleLogin} className="btn-google">
+        <button type="button" onClick={handleGoogleLogin} className="btn-google" disabled={isLoading}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22px" height="22px">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
