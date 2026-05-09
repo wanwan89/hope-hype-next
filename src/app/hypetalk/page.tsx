@@ -40,7 +40,6 @@ export default function HypetalkPage() {
     callInterval: useRef<any>(null)
   };
 
-  // 🔥 FIX 1: Ref tambahan biar gak stale closure di dalam setTimeout 🔥
   const callStatusRef = useRef(callStatus);
   useEffect(() => {
     callStatusRef.current = callStatus;
@@ -181,7 +180,6 @@ export default function HypetalkPage() {
     }
   };
 
-  // 🔥 FIX 2: LOGIKA PENERIMAAN/PEMBATALAN TELPON LEBIH SOLID 🔥
   const subscribeToInbox = (userId: string) => {
     const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
     supabase.channel(channelName)
@@ -193,7 +191,6 @@ export default function HypetalkPage() {
             handleIncomingCall(newMsg);
           }
           
-          // 🔥 Anti-Case Sensitive biar gak nyangkut
           const msgLower = String(newMsg.message).toLowerCase();
           if (newMsg.is_system && (
               msgLower.includes("panggilan berakhir") || 
@@ -355,7 +352,6 @@ export default function HypetalkPage() {
     }
   };
 
-  // ==================== 🔥 FIX 3: CALL LOGIC STABIL 🔥 ====================
   const startCallFromLobby = async (targetProfile: any) => {
     if (!currentUser) return;
     if (callStatus !== 'idle') {
@@ -381,7 +377,6 @@ export default function HypetalkPage() {
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
-      // Pastikan pake callStatusRef biar gak stale closure
       if (callStatusRef.current === 'calling') {
         endCall(true);
         await supabase.from('messages').insert([{ 
@@ -431,7 +426,7 @@ export default function HypetalkPage() {
       refs.lkRoom.current = new LiveKit.Room({ adaptiveStream: true, dynacast: true });
       
       const handleCallConnected = () => {
-        if (callStatusRef.current === 'connected') return; // Pake ref
+        if (callStatusRef.current === 'connected') return;
         setCallStatus('connected');
         clearTimeout(refs.callTimeout.current);
         clearInterval(refs.callInterval.current);
@@ -473,28 +468,19 @@ export default function HypetalkPage() {
     }
   };
 
-  // 🔥 FIX 4: Matikan semua status dan audio SEKETIKA (Hard Stop) 🔥
   const endCall = (silent = false) => {
-    // 1. Audio di-pause paksa & waktu di reset ke 0 detik itu juga
     if (refs.audio.current?.ring) { 
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
     }
-    
-    // 2. Room LiveKit di-disconnect
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
-    
-    // 3. UI diubah kembali idle
     setCallStatus('idle');
-    
-    // 4. Timer panggilan dihapus
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
-    
     if (!silent) showNotif('Panggilan berakhir', "info");
   };
 
@@ -508,7 +494,6 @@ export default function HypetalkPage() {
           70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
           100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
         }
-        /* Floating call di ATAS */
         .call-overlay {
           position: fixed;
           top: max(env(safe-area-inset-top, 20px), 20px);
@@ -573,13 +558,59 @@ export default function HypetalkPage() {
         .call-btn-end { background: #ff4757; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.4); }
         .call-btn-accept { background: #2ecc71; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4); }
 
-        /* Modal profil tidak transparan */
         .tg-modal-overlay {
           background: rgba(0,0,0,0.85) !important;
           backdrop-filter: blur(5px) !important;
         }
 
-        /* 🔥 FIX: ANIMASI RADAR & PESAWAT KERTAS 🔥 */
+        /* 🔥 FIX KOTAK PROFIL (UKURAN DIPERBAIKI) 🔥 */
+        .wa-profile-card {
+          width: 100%;
+          max-width: 280px; /* Ukuran dibatasi */
+          background: var(--tg-bg);
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+          animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .wa-profile-img-container {
+          width: 100%;
+          padding-top: 100%; /* Bikin Kotak 1:1 sempurna */
+          position: relative;
+          background: var(--tg-border);
+        }
+        .wa-profile-img {
+          position: absolute;
+          top: 0; left: 0; width: 100%; height: 100%;
+          object-fit: cover;
+        }
+        .wa-profile-name-bar {
+          position: absolute;
+          bottom: 0; left: 0; width: 100%;
+          padding: 24px 16px 12px;
+          background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+        .wa-profile-actions {
+          display: flex;
+          justify-content: space-around;
+          padding: 16px 10px;
+          background: var(--tg-bg);
+          border-top: 1px solid var(--tg-border);
+        }
+        .wa-action-btn {
+          background: none;
+          border: none;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: transform 0.2s;
+        }
+        .wa-action-btn:active { transform: scale(0.9); }
+
         .doi-search-overlay {
           position: fixed; inset: 0; background: rgba(10,15,20,0.95);
           display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -614,7 +645,6 @@ export default function HypetalkPage() {
           position: absolute; top: 0; left: 50%; transform: translateX(-50%) rotate(45deg);
           width: 24px; height: 24px; fill: #1DA1F2; filter: drop-shadow(0 0 5px rgba(29,161,242,0.8));
         }
-
         .search-title-glow {
           position: relative; z-index: 10; font-size: 18px; font-weight: bold; color: white;
           text-shadow: 0 0 15px rgba(29,161,242,0.8); letter-spacing: 1px;
@@ -643,7 +673,7 @@ export default function HypetalkPage() {
             <button className="call-btn-end" onClick={async () => {
               const rId = callData.roomId;
               const isIncoming = callStatus === 'incoming';
-              endCall(); // 🔥 Hard stop instan
+              endCall(); 
               
               if (isIncoming) {
                 await supabase.from('messages').insert([{ room_id: rId, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
@@ -772,9 +802,9 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* MODAL USER PROFILE (KOTAK KECIL ALA WA) */}
+      {/* 🔥 FIX: MODAL USER PROFILE (KOTAK KECIL ALA WA) 🔥 */}
       {activeModal === 'user-profile' && selectedProfile && (
-        <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', padding: '20px' }} onClick={closeModal}>
+        <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={closeModal}>
           <div className="wa-profile-card" onClick={(e) => e.stopPropagation()}>
             <div className="wa-profile-img-container">
               <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} alt="Profile" className="wa-profile-img" />

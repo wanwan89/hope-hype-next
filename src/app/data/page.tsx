@@ -31,7 +31,7 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   
   const [isFollowing, setIsFollowing] = useState(false);
-  const [hasStory, setHasStory] = useState(false); // 🔥 State untuk Story
+  const [hasStory, setHasStory] = useState(false); 
   const [blockStatus, setBlockStatus] = useState<'none' | 'blocked_by_me' | 'blocking_me'>('none');
   
   const [activeTab, setActiveTab] = useState<'post' | 'like' | 'repost' | 'simpan'>('post');
@@ -118,7 +118,7 @@ function ProfileContent() {
       });
       setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
       
-      // 🔥 CEK STORY AKTIF (24 Jam Terakhir) 🔥
+      // CEK STORY AKTIF (24 Jam Terakhir)
       const { data: stories } = await supabase
         .from('stories')
         .select('created_at')
@@ -129,13 +129,11 @@ function ProfileContent() {
       if (stories && stories.length > 0) {
         const storyTime = new Date(stories[0].created_at).getTime();
         const now = new Date().getTime();
-        // Cek jika story dibuat kurang dari 24 jam yang lalu
         if (now - storyTime < 24 * 60 * 60 * 1000) {
           setHasStory(true);
         }
       }
 
-      // Ambil Stats (Followers/Likes)
       if (blockStatus === 'none') {
         updateStats(profData.id, currentUserId);
       }
@@ -201,8 +199,6 @@ function ProfileContent() {
   const handleAvatarClick = () => {
     if (hasStory) {
       router.push(`/story?user_id=${profile.id}`);
-    } else {
-      // Bebas, bisa kasih fungsi lihat foto profil full (opsional)
     }
   };
 
@@ -348,24 +344,62 @@ function ProfileContent() {
   return (
     <div className="profile-page-container">
       
-      {/* 🔥 INJEKSI CSS STORY BORDER 🔥 */}
+      {/* 🔥 INJEKSI CSS FIX UKURAN AVATAR & STORY BORDER 🔥 */}
       <style>{`
-        .story-ring {
-          position: relative;
-          padding: 3px;
+        .avatar-container {
+          margin: 0 auto 12px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        
+        .story-ring, .normal-ring {
+          width: 90px;
+          height: 90px;
           border-radius: 50%;
-          background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
-          display: inline-block;
+          overflow: hidden;
+        }
+
+        .story-ring {
+          background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
           animation: pulseStory 2s infinite alternate;
         }
-        .story-ring img {
-          border: 3px solid var(--bg-main) !important;
-          display: block;
+        
+        .normal-ring {
+          border: 2px solid var(--border-color);
+          background: transparent;
         }
+
+        /* Ini yg bikin fotonya fix ga meledak gedenya */
+        .profile-avatar-img {
+          width: 82px;
+          height: 82px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3.5px solid var(--bg-main);
+          background: var(--bg-secondary);
+        }
+
         @keyframes pulseStory {
           0% { filter: brightness(1); }
           100% { filter: brightness(1.2); }
+        }
+
+        /* 🔥 FIX: Ukuran Avatar di Modal Edit Profil 🔥 */
+        .edit-avatar-preview {
+          width: 95px;
+          height: 95px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid var(--primary-blue);
+          cursor: pointer;
+          margin-bottom: 15px;
+          background: var(--bg-secondary);
+          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
       `}</style>
 
@@ -388,10 +422,10 @@ function ProfileContent() {
       <div className="profile-top-section">
         <section className="profile-info">
           
-          {/* 🔥 AVATAR DENGAN STORY BORDER 🔥 */}
-          <div className="avatar-container" style={{ textAlign: 'center' }}>
-            <div className={hasStory ? 'story-ring' : ''} onClick={handleAvatarClick}>
-              <img className="profile-avatar" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
+          {/* 🔥 AVATAR DENGAN STORY BORDER YANG SUDAH DI-FIX 🔥 */}
+          <div className="avatar-container">
+            <div className={hasStory ? 'story-ring' : 'normal-ring'} onClick={handleAvatarClick}>
+              <img className="profile-avatar-img" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
             </div>
           </div>
           
@@ -503,6 +537,7 @@ function ProfileContent() {
          </div>
          <div className="follow-sheet-body" style={{padding: '0 20px'}}>
             <div className="edit-avatar-section">
+               {/* 🔥 FIX: Classnya udah diupdate jadi edit-avatar-preview biar ukurannya bener 🔥 */}
                <img src={previewUrl || '/asets/png/profile.webp'} alt="Avatar" className="edit-avatar-preview" onClick={() => fileInputRef.current?.click()} />
                <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleFileChange} />
                <div className="avatar-presets">
