@@ -980,7 +980,7 @@ export default function ChatArea() {
                       <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
                       <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
                     </>
-1)}
+                  )}
                 </div>
               </div>
               
