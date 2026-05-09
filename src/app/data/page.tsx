@@ -87,71 +87,60 @@ function ProfileContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, profile, isMounted, blockStatus, isFollowing]);
 
-  const loadProfile = async () => {
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const currentUserId = authData?.user?.id || null;
-      setMyId(currentUserId);
+const loadProfile = async () => {
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const currentUserId = authData?.user?.id || null;
+    setMyId(currentUserId);
 
-      let query = supabase.from('profiles').select('*');
-      if (urlId) query = query.eq('id', urlId);
-      else if (urlUser) query = query.eq('username', urlUser);
-      else if (currentUserId) query = query.eq('id', currentUserId);
-      else { router.push('/login'); return; }
+    let query = supabase.from('profiles').select('*');
+    if (urlId) query = query.eq('id', urlId);
+    else if (urlUser) query = query.eq('username', urlUser);
+    else if (currentUserId) query = query.eq('id', currentUserId);
+    else { router.push('/login'); return; }
 
-      const { data: profData, error } = await query.single();
-      if (error || !profData) return;
+    const { data: profData, error } = await query.single();
+    if (error || !profData) return;
 
-      // Cek Blokir
-      if (currentUserId && currentUserId !== profData.id) {
-        const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
-        if (myBlock) setBlockStatus('blocked_by_me');
+    // Cek Status Blokir
+    if (currentUserId && currentUserId !== profData.id) {
+      const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
+      if (myBlock) setBlockStatus('blocked_by_me');
 
-        const { data: theirBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: profData.id, blocked_id: currentUserId }).maybeSingle();
-        if (theirBlock) setBlockStatus('blocking_me');
-      }
+      const { data: theirBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: profData.id, blocked_id: currentUserId }).maybeSingle();
+      if (theirBlock) setBlockStatus('blocking_me');
+    }
 
-      setProfile(profData);
-      setEditData({
-        username: profData.username || '',
-        bio: profData.bio || '',
-        avatar_url: profData.avatar_url || '',
-        website: profData.website || ''
-      });
-      setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
-      
-      // 🔥 FIX 2: CEK STORY LEBIH AKURAT 🔥
-      // Ambil waktu 24 jam yang lalu
-// Ambil waktu 24 jam yang lalu
-const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    setProfile(profData);
+    setEditData({
+      username: profData.username || '',
+      bio: profData.bio || '',
+      avatar_url: profData.avatar_url || '',
+      website: profData.website || ''
+    });
+    setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
+    
+    // 🔥 FIX: LOGIKA CEK STORY (SIMPEL & TANPA DUPLIKAT) 🔥
+    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: stories } = await supabase
+      .from('stories')
+      .select('id')
+      .eq('creator_id', profData.id) 
+      .gte('created_at', timeLimit)
+      .limit(1);
 
-const { data: stories } = await supabase
-  .from('stories')
-  .select('id')
-  .eq('creator_id', profData.id) // Pastikan kolom di DB lu beneran 'creator_id'
-  .gte('created_at', timeLimit)
-  .limit(1);
+    // Set true kalau ada data, set false kalau kosong
+    setHasStory(!!(stories && stories.length > 0)); 
 
-// 🔥 FIX: Langsung set true/false biar gak nyangkut
-setHasStory(!!(stories && stories.length > 0)); 
+    // Update stats kalau tidak diblokir
+    if (blockStatus === 'none') {
+      updateStats(profData.id, currentUserId);
+    }
 
-        // Fallback cek pake creator_id just in case
-        const { data: fallbackStories } = await supabase
-          .from('stories')
-          .select('id')
-          .eq('creator_id', profData.id)
-          .gte('created_at', timeLimit)
-          .limit(1);
-        if (fallbackStories && fallbackStories.length > 0) {
-          setHasStory(true);
-        }
-      }
-
-      if (blockStatus === 'none') {
-        updateStats(profData.id, currentUserId);
-      }
-    } catch (err) { console.error(err); }
-  };
+  } catch (err) { 
+    console.error("Load Profile Error:", err); 
+  }
+};
 
   const updateStats = async (targetId: string, currentUserId: string | null) => {
     const { count: fers } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', targetId);
