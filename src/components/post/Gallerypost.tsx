@@ -21,6 +21,10 @@ export default function Gallerypost() {
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
 
+  // 🔥 STATE BUAT PREVIEW MODAL & DOUBLE TAP 🔥
+  const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
+  const lastTapRef = useRef<Record<string, number>>({}); 
+
   useEffect(() => {
     initGallery();
     const handleCategoryChange = (e: any) => fetchPosts(e.detail.category);
@@ -172,6 +176,18 @@ export default function Gallerypost() {
     } catch (err) { console.error(err); }
   };
 
+  // 🔥 DOUBLE TAP HANDLER 🔥
+  const handleImageDoubleTap = (e: any, imageUrl: string, postId: string) => {
+    const now = Date.now();
+    const lastTapTime = lastTapRef.current[postId] || 0;
+    if (now - lastTapTime < 400) {
+      setActivePreviewImage(imageUrl);
+      lastTapRef.current[postId] = 0;
+    } else {
+      lastTapRef.current[postId] = now;
+    }
+  };
+
   const initAutoPlayObserver = () => {
     let userHasInteracted = false;
     const handleFirstInteract = () => { userHasInteracted = true; document.body.removeEventListener('click', handleFirstInteract); };
@@ -200,7 +216,6 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
-  // 🔥 FIX: Balikin Style Awal (Glassmorphism & Marquee)
   const getMusicHtml = (post: any) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
@@ -210,7 +225,7 @@ export default function Gallerypost() {
     const finalAudio = cleanAudio.startsWith("http") ? cleanAudio : `/songs/${cleanAudio}`;
     
     return (
-      <div className="music-marquee-container" style={{ background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '20px', padding: '5px 15px', zIndex: 10, maxWidth: '150px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', pointerEvents: 'none', marginBottom: '10px' }}>
+      <div className="music-marquee-container" style={{ background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '20px', padding: '5px 15px', zIndex: 40, maxWidth: '150px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', pointerEvents: 'none', marginBottom: '10px' }}>
         <div className="marquee-text" style={{ fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-block', animation: 'marquee-play 8s linear infinite', letterSpacing: '0.3px' }}>
           {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
         </div>
@@ -249,6 +264,65 @@ export default function Gallerypost() {
 
   return (
     <section>
+      <style>{`
+        /* 🔥 STYLE CAROUSEL GESER 🔥 */
+        .photo-carousel {
+          display: flex;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          position: relative;
+        }
+        .photo-carousel::-webkit-scrollbar { display: none; }
+        
+        .carousel-item {
+          flex: 0 0 100%;
+          width: 100%;
+          scroll-snap-align: center;
+          position: relative;
+        }
+
+        .carousel-dots {
+          position: absolute;
+          bottom: 12px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 5px;
+          z-index: 25;
+          pointer-events: none;
+        }
+        .dot {
+          width: 6px; height: 6px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.4);
+          transition: all 0.3s ease;
+        }
+        .dot.active { background: white; width: 12px; border-radius: 10px; }
+
+        /* 🔥 PREVIEW MODAL 🔥 */
+        .image-preview-overlay {
+          position: fixed; inset: 0; z-index: 100000;
+          background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
+          display: flex; align-items: center; justify-content: center;
+          opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .image-preview-overlay.active { opacity: 1; pointer-events: auto; }
+        .image-preview-content img {
+          max-width: 95vw; max-height: 85vh; object-fit: contain;
+          border-radius: 12px; animation: popZoom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popZoom { from { transform: scale(0.8); } to { transform: scale(1); } }
+      `}</style>
+
+      {/* MODAL PREVIEW */}
+      <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
+        <div className="image-preview-content">
+          {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
+        </div>
+      </div>
+
       <div className="gallery" id="mainGallery">
         {isLoading ? (
           <div className="gallery-skeleton-wrapper">
@@ -265,13 +339,45 @@ export default function Gallerypost() {
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
 
+            // 🔥 PECAH URL MULTIPLE FOTO 🔥
+            const photoList = post.image_url ? post.image_url.split(',') : [];
+
             return (
               <div key={post.id} id={`post-${post.id}`} className="card" style={!post.image_url ? { padding: '16px' } : {}}>
-                {post.image_url && post.image_url.trim() !== "" ? (
+                {photoList.length > 0 ? (
                   <>
-                    <div className="slider">
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}>{getMusicHtml(post)}</div>
-                      <img src={post.image_url} className="active" loading="lazy" alt="Post" onClick={() => (window as any).openBigImage?.(post.image_url)} />
+                    <div className="slider" style={{ position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 40 }}>{getMusicHtml(post)}</div>
+                      
+                      {/* 🔥 CAROUSEL GESER 🔥 */}
+                      <div className="photo-carousel" onScroll={(e) => {
+                          const target = e.target as HTMLDivElement;
+                          const index = Math.round(target.scrollLeft / target.offsetWidth);
+                          const dots = document.querySelectorAll(`.dots-${post.id} .dot`);
+                          dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
+                      }}>
+                        {photoList.map((url: string, i: number) => (
+                          <div key={i} className="carousel-item">
+                            <img 
+                              src={url.trim()} 
+                              className="active" 
+                              loading="lazy" 
+                              alt={`Post ${i}`} 
+                              onClick={(e) => handleImageDoubleTap(e, url.trim(), postIdStr)} 
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* DOTS INDIKATOR */}
+                      {photoList.length > 1 && (
+                        <div className={`carousel-dots dots-${post.id}`}>
+                          {photoList.map((_: any, i: number) => (
+                            <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
+                          ))}
+                        </div>
+                      )}
+
                       <div className="watermark-overlay"><img src="/asets/svg/watermark.svg" alt="watermark" /></div>
                     </div>
                     

@@ -196,3 +196,7 @@
 .icon-btn.reposted.animating .icon {
   animation: repostSpin 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+/* Cari selector card lu atau tambahin ini */
+.card {
+  scroll-margin-top: 90px; /* Sesuaikan dengan tinggi header lu */
+}

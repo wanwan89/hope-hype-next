@@ -123,13 +123,13 @@ function ProfileContent() {
       // 🔥 FIX 2: CEK STORY LEBIH AKURAT 🔥
       // Ambil waktu 24 jam yang lalu
       const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: stories } = await supabase
-        .from('stories')
-        .select('id') // Cukup cek ada ID nya apa nggak
-        .eq('user_id', profData.id) // Pastikan kolom di database namanya user_id atau creator_id! 
-        // Note: Kalau di tabel pake creator_id, ubah 'user_id' jadi 'creator_id'
-        .gte('created_at', timeLimit)
-        .limit(1);
+const { data: stories } = await supabase
+  .from('stories')
+  .select('id')
+  .eq('creator_id', profData.id) // ✅ Samain sama nama kolom di tabel 'stories'
+  .gte('created_at', timeLimit)
+  .limit(1);
+
 
       if (stories && stories.length > 0) {
         setHasStory(true);
@@ -224,16 +224,20 @@ function ProfileContent() {
   // 🔥 3. EVENT HANDLERS 🔥
   // ==========================================
   
-  const handleOpenPost = (postId: string) => {
-    if (!postId) return;
-    router.push(`/post?id=${postId}`);
-  };
+const handleOpenPost = (postId: string) => {
+  if (!postId) return;
+  // Kita arahkan ke /post?id=XXX#post-XXX
+  router.push(`/post?id=${postId}#post-${postId}`);
+};
 
-  const handleAvatarClick = () => {
-    if (hasStory) {
-      router.push(`/story?user_id=${profile.id}`);
-    }
-  };
+
+const handleAvatarClick = () => {
+  if (hasStory && profile?.id) {
+    // Arahkan ke rute story yang sesuai dengan struktur folder lu
+    // Kalau folder lu src/app/story/[id]/page.tsx, maka pake yang bawah:
+    router.push(`/story/${profile.id}`); 
+  }
+};
 
   // 🔥 FUNGSI NAVIGASI CHAT 🔥
   const handleGoToChat = () => {
@@ -464,7 +468,12 @@ function ProfileContent() {
         <section className="profile-info">
           
           <div className="avatar-container">
-            <div className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} onClick={handleAvatarClick}>
+<div 
+  className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} 
+  onClick={handleAvatarClick}
+  style={{ cursor: hasStory ? 'pointer' : 'default' }}
+>
+
               <img className="profile-avatar-img" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
             </div>
           </div>
@@ -537,11 +546,37 @@ function ProfileContent() {
                 {isMe && activeTab === 'post' && <button className="btn-action btn-primary" onClick={() => router.push('/')}>{t('create_post', 'Buat Postingan')}</button>}
               </div>
            ) : (
-              posts.map(post => (
-                 <div key={post.id} className="grid-item" style={{ cursor: 'pointer' }} onClick={() => handleOpenPost(post.id)}>
-                    {post.image_url ? <img src={post.image_url} alt="post" /> : <div className="grid-no-img"><span className="material-icons">article</span></div>}
-                 </div>
-              ))
+posts.map(post => {
+   // 🔥 LOGIKA FIX: Pecah string URL, ambil foto pertama buat thumbnail
+   const allImages = post.image_url ? post.image_url.split(',') : [];
+   const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
+
+   return (
+      <div 
+        key={post.id} 
+        className="grid-item" 
+        style={{ cursor: 'pointer', position: 'relative' }} 
+        onClick={() => handleOpenPost(post.id)}
+      >
+         {thumbUrl ? (
+            <>
+              <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {/* Tambahin icon tumpukan kalau fotonya lebih dari 1 biar keren */}
+              {allImages.length > 1 && (
+                <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>
+                  filter_none
+                </span>
+              )}
+            </>
+         ) : (
+            <div className="grid-no-img">
+               <span className="material-icons">article</span>
+            </div>
+         )}
+      </div>
+   );
+})
+
            )}
         </div>
       </div>

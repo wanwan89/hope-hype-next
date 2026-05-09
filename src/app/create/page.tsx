@@ -20,10 +20,14 @@ export default function CreatePostPage() {
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
   
-  const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // 🔥 FIX MULTIPLE IMAGES 🔥
+  const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); // Antrean gambar yg mau di-crop
+  const [croppedImages, setCroppedImages] = useState<Blob[]>([]); // Hasil crop yg siap upload
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]); // URL sementara buat ditampilin di UI
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // State buat cropper
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -38,12 +42,10 @@ export default function CreatePostPage() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 🔥 STATE HASHTAG 🔥
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
 
-  // 🔥 EFEK CARI HASHTAG AUTO-COMPLETE 🔥
   useEffect(() => {
     if (!tagInput.trim()) {
       setSuggestedTags([]);
@@ -51,11 +53,7 @@ export default function CreatePostPage() {
     }
     const fetchTags = async () => {
       let searchStr = tagInput.toLowerCase().trim();
-      
-      // Tetap cari meskipun user lagi ngetik dengan atau tanpa #
-      if (!searchStr.startsWith('#')) {
-        searchStr = '#' + searchStr;
-      }
+      if (!searchStr.startsWith('#')) searchStr = '#' + searchStr;
 
       try {
         const { data } = await supabase
@@ -72,18 +70,13 @@ export default function CreatePostPage() {
     return () => clearTimeout(timer);
   }, [tagInput]);
 
-  // 🔥 HANDLER HASHTAG (SYARAT KETAT: WAJIB PAKE #) 🔥
   const handleAddTag = (tagToAdd: string) => {
     let cleanTag = tagToAdd.toLowerCase().trim();
     if (!cleanTag) return;
-    
-    // Syarat mutlak: Kalau gak diawali '#', tolak dan kasih notif
     if (!cleanTag.startsWith('#')) {
       showNotif("Hashtag harus pakai tanda # di depannya!", "warning");
       return;
     }
-    
-    // Hindari hashtag ganda yang sama
     if (!tags.includes(cleanTag)) {
       setTags([...tags, cleanTag]);
     }
@@ -102,7 +95,6 @@ export default function CreatePostPage() {
     setTags(tags.filter(t => t !== tagToRemove));
   };
 
-  // EFEK CARI MUSIK
   useEffect(() => {
     if (!searchMusic.trim()) {
       setMusicResults([]);
@@ -123,31 +115,78 @@ export default function CreatePostPage() {
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
+  // 🔥 UPDATE: Handle Multiple Files 🔥
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImageForCrop(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Cek batas maksimal gambar yang udah dipilih + yang mau ditambahin
+    if (croppedImages.length + files.length > 3) {
+      showNotif("Maksimal hanya bisa 3 foto!", "warning");
+      return;
     }
+
+    const readersArr: Promise<string>[] = files.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readersArr).then(results => {
+      setRawImagesQueue(results);
+      setImageForCrop(results[0]); // Langsung masukin foto pertama ke antrean crop
+    });
   };
 
   const onCropComplete = useCallback((_croppedArea: any, pixels: any) => {
     setCroppedAreaPixels(pixels);
   }, []);
 
+  // 🔥 UPDATE: Lanjut Crop ke foto berikutnya kalau masih ada di antrean 🔥
   const handleSaveCrop = async () => {
     if (!imageForCrop || !croppedAreaPixels) return;
     try {
       const croppedBlob = await getCroppedImg(imageForCrop, croppedAreaPixels);
-      setSelectedFile(croppedBlob);
-      setPreviewUrl(URL.createObjectURL(croppedBlob));
-      setImageForCrop(null);
+      
+      setCroppedImages(prev => [...prev, croppedBlob]);
+      setPreviewUrls(prev => [...prev, URL.createObjectURL(croppedBlob)]);
+
+      // Cek apakah masih ada gambar di antrean (queue)
+      const nextQueue = rawImagesQueue.slice(1);
+      if (nextQueue.length > 0) {
+        setRawImagesQueue(nextQueue);
+        setImageForCrop(nextQueue[0]);
+        // Reset state cropper
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setCroppedAreaPixels(null);
+      } else {
+        // Antrean habis, tutup cropper
+        setRawImagesQueue([]);
+        setImageForCrop(null);
+      }
     } catch (e) {
       console.error("Error Cropping:", e);
     }
+  };
+
+  const handleCancelCrop = () => {
+    // Kalau batal crop, buang foto itu dan lanjut ke antrean berikutnya (kalau ada)
+    const nextQueue = rawImagesQueue.slice(1);
+    if (nextQueue.length > 0) {
+      setRawImagesQueue(nextQueue);
+      setImageForCrop(nextQueue[0]);
+    } else {
+      setRawImagesQueue([]);
+      setImageForCrop(null);
+    }
+  };
+
+  const handleRemovePreview = (index: number) => {
+    setCroppedImages(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
@@ -185,8 +224,13 @@ export default function CreatePostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile && !caption.trim()) {
+    if (croppedImages.length === 0 && !caption.trim()) {
       alert(t('alert_empty_post'));
+      return;
+    }
+
+    if (destination === "story" && croppedImages.length > 1) {
+      showNotif("Story hanya bisa upload 1 foto saja!", "warning");
       return;
     }
 
@@ -198,27 +242,29 @@ export default function CreatePostPage() {
         return;
       }
 
-      // 🔥 SIMPAN HASHTAG BARU KE DATABASE 🔥
       if (tags.length > 0) {
         const tagsToInsert = tags.map(t => ({ tag: t }));
         await supabase.from('hashtags').upsert(tagsToInsert, { onConflict: 'tag' }).select();
       }
 
-      // 🔥 GABUNG CAPTION DENGAN HASHTAG 🔥
       const finalCaption = tags.length > 0 
         ? `${caption.trim()}\n\n${tags.join(' ')}` 
         : caption.trim();
 
-      let imageUrl = null;
-      if (selectedFile && postType === 'image') {
-        const cData = await uploadToCloudinary(selectedFile);
-        imageUrl = cData.secure_url;
+      // 🔥 UPDATE: Upload semua gambar pake Promise.all biar cepet 🔥
+      let finalImageUrl: string | null = null;
+      if (croppedImages.length > 0 && postType === 'image') {
+        const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob));
+        const uploadResults = await Promise.all(uploadPromises);
+        
+        // Gabungin semua URL pake koma buat disimpen ke database
+        finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
       }
 
       if (destination === "story") {
         await supabase.from("stories").insert({
           creator_id: session.user.id,
-          image_url: imageUrl,
+          image_url: finalImageUrl, // Story cuma ngambil foto pertama kok aman
           content: finalCaption,
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
@@ -231,7 +277,7 @@ export default function CreatePostPage() {
           name: prof?.username || "User",
           bio: finalCaption,
           category: category,
-          image_url: imageUrl,
+          image_url: finalImageUrl,
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
@@ -250,7 +296,6 @@ export default function CreatePostPage() {
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
-      {/* Header Page */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
         <button type="button" onClick={handleClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -261,9 +306,12 @@ export default function CreatePostPage() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
         
-        {/* UI EDITOR CROP */}
+        {/* UI EDITOR CROP (Muncul selama ada gambar yg diset di imageForCrop) */}
         {imageForCrop && (
           <div className="crop-overlay-wrapper" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000' }}>
+            <div style={{ position: 'absolute', top: '15px', right: '20px', color: 'white', zIndex: 10000, fontWeight: 'bold' }}>
+              Crop Gambar {croppedImages.length + 1} dari {croppedImages.length + rawImagesQueue.length}
+            </div>
             <div className="crop-container-box" style={{ position: 'relative', width: '100%', height: 'calc(100vh - 120px)' }}>
               <Cropper
                 image={imageForCrop}
@@ -281,16 +329,14 @@ export default function CreatePostPage() {
                 <input 
                   type="range" 
                   value={zoom} 
-                  min={1} 
-                  max={3} 
-                  step={0.1} 
+                  min={1} max={3} step={0.1} 
                   onChange={(e) => setZoom(Number(e.target.value))} 
                   style={{ flex: 1 }}
                 />
                 <span className="material-icons">add</span>
               </div>
               <div className="crop-action-btns" style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" className="crop-cancel" onClick={() => setImageForCrop(null)} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#333', color: '#fff', border: 'none', fontWeight: 600 }}>{t('crop_cancel')}</button>
+                <button type="button" className="crop-cancel" onClick={handleCancelCrop} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#333', color: '#fff', border: 'none', fontWeight: 600 }}>Lewati / Batal</button>
                 <button type="button" className="crop-confirm" onClick={handleSaveCrop} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#1f3cff', color: '#fff', border: 'none', fontWeight: 600 }}>{t('crop_confirm')}</button>
               </div>
             </div>
@@ -339,16 +385,34 @@ export default function CreatePostPage() {
           </div>
 
           {postType === 'image' && (
-            <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ marginTop: '20px', width: '100%', height: '300px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer', border: '2px dashed var(--border-card)' }}>
-              <input type="file" ref={fileInputRef} accept="image/*" hidden onChange={handleFileChange} />
-              {!previewUrl ? (
-                <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <span className="material-icons" style={{ fontSize: '40px', marginBottom: '10px', color: '#1f3cff' }}>add_photo_alternate</span>
-                  <div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>{t('choose_photo')}</div>
-                  <small style={{ fontSize: '12px' }}>{t('upload_limit')}</small>
+            <div style={{ marginTop: '20px' }}>
+              <input type="file" ref={fileInputRef} accept="image/*" multiple hidden onChange={handleFileChange} />
+              
+              {/* Kalau belum ada foto atau jumlah foto belum batas maksimal, kasih tombol nambah */}
+              {previewUrls.length === 0 ? (
+                <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ width: '100%', height: '250px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}>
+                  <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <span className="material-icons" style={{ fontSize: '40px', marginBottom: '10px', color: '#1f3cff' }}>add_photo_alternate</span>
+                    <div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>Pilih Foto (Max 3)</div>
+                  </div>
                 </div>
               ) : (
-                <img src={previewUrl} className="post-preview-image" alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }}>
+                  {previewUrls.map((url, i) => (
+                    <div key={i} style={{ position: 'relative', width: '120px', height: '160px', flexShrink: 0 }}>
+                      <img src={url} alt={`Preview ${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+                      <button type="button" onClick={() => handleRemovePreview(i)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: '25px', height: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <span className="material-icons" style={{ fontSize: '14px' }}>close</span>
+                      </button>
+                    </div>
+                  ))}
+                  {/* Tombol tambah foto kalau masih kurang dari 3 */}
+                  {previewUrls.length < 3 && destination === 'feed' && (
+                    <div onClick={() => fileInputRef.current?.click()} style={{ width: '120px', height: '160px', border: '2px dashed var(--border-card)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, color: 'var(--text-muted)' }}>
+                       <span className="material-icons" style={{ fontSize: '30px' }}>add</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -362,7 +426,6 @@ export default function CreatePostPage() {
             style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', marginTop: '20px', outline: 'none', resize: 'vertical' }}
           />
 
-          {/* 🔥 UI TAMBAH HASHTAG 🔥 */}
           <div className="hashtag-section" style={{ marginTop: '15px', position: 'relative' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: tags.length > 0 ? '10px' : '0' }}>
               {tags.map(t => (
@@ -373,7 +436,6 @@ export default function CreatePostPage() {
             </div>
             
             <div style={{ position: 'relative' }}>
-              {/* Placeholder diubah buat ingetin harus pake # */}
               <input
                 type="text"
                 placeholder="Ketik Hashtag... (Wajib pakai #, lalu tekan Spasi)"
@@ -383,7 +445,6 @@ export default function CreatePostPage() {
                 style={{ width: '100%', padding: '12px 15px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '12px', color: 'var(--text-main)', outline: 'none', fontSize: '14px' }}
               />
               
-              {/* DROPDOWN SUGGESTIONS HASHTAG */}
               {suggestedTags.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', marginTop: '6px', zIndex: 10, boxShadow: '0 4px 15px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
                   {suggestedTags.map(st => (
