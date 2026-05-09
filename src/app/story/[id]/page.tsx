@@ -300,22 +300,23 @@ export default function StoryViewerPage() {
             fontWeight: 800, fontSize: '14px', cursor: 'pointer', backdropFilter: 'blur(10px)',
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)', transition: 'transform 0.2s ease'
           }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(0.95)'}
-          onMouseUp={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
         >
           <span className="material-icons" style={{ fontSize: '20px' }}>volume_off</span> 
           Ketuk untuk Putar Musik
         </button>
       )}
 
-      {/* Area Tap buat Skip/Back */}
-      <div className="tap-area" style={{ pointerEvents: (isMenuOpen || isReplying || isViewersModalOpen) ? 'none' : 'auto' }}>
-        <div className="tap-left" onClick={prevStory}></div>
-        <div className="tap-right" onClick={nextStory}></div>
+      {/* 🔥 FIX: Area Tap dibatasin tingginya biar ga numpuk input form & tombol bawah 🔥 */}
+      <div className="tap-area" style={{ 
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: '110px', zIndex: 10,
+        pointerEvents: (isMenuOpen || isReplying || isViewersModalOpen) ? 'none' : 'auto' 
+      }}>
+        <div className="tap-left" onClick={prevStory} style={{ width: '30%', height: '100%', float: 'left' }}></div>
+        <div className="tap-right" onClick={nextStory} style={{ width: '70%', height: '100%', float: 'right' }}></div>
       </div>
 
       {/* Progress Bars */}
-      <div className="story-progress-container">
+      <div className="story-progress-container" style={{ position: 'absolute', top: '10px', left: 0, right: 0, zIndex: 10001, padding: '0 10px' }}>
         {allUserStories.map((_, idx) => (
           <div key={idx} className="bar-wrap">
             <div 
@@ -330,8 +331,8 @@ export default function StoryViewerPage() {
         ))}
       </div>
 
-      {/* Info User (Top) */}
-      <div className="story-top-info">
+      {/* 🔥 FIX: Info User (Top) Dikasih absolute & z-index mantap 🔥 */}
+      <div className="story-top-info" style={{ position: 'absolute', top: '25px', left: 0, right: 0, zIndex: 10000, pointerEvents: 'auto' }}>
         <div className="story-user" onClick={(e) => e.stopPropagation()}>
           <img 
             src={currentStory.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${currentStory.profiles?.username}`} 
@@ -359,7 +360,7 @@ export default function StoryViewerPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '15px' }}>
           {isMyStory && (
             <button 
               style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
@@ -381,9 +382,9 @@ export default function StoryViewerPage() {
         )}
       </div>
 
-      {/* Caption & Interaksi Balas/Like (Bottom) */}
-      <div className="story-bottom-info" style={{ zIndex: 10000 }}>
-        <div className="footer-layout" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      {/* 🔥 FIX: Bottom Info (Caption & Interaksi) Dikasih absolute & z-index mentok 🔥 */}
+      <div className="story-bottom-info" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10000, pointerEvents: 'auto', paddingBottom: 'max(15px, env(safe-area-inset-bottom))' }}>
+        <div className="footer-layout" style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '0 15px' }}>
           
           {currentStory.content && (
             <div className="caption-container">
@@ -393,18 +394,21 @@ export default function StoryViewerPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
             
-            {/* Input Reply (Cuma buat story orang lain) */}
+            {/* Input Reply */}
             {!isMyStory ? (
-              <form onSubmit={handleSendReply} style={{ flex: 1, display: 'flex', position: 'relative' }}>
+              <form 
+                onSubmit={handleSendReply} 
+                onClick={(e) => e.stopPropagation()} 
+                style={{ flex: 1, display: 'flex', position: 'relative' }}
+              >
                 <input 
                   type="text" 
                   placeholder="Balas cerita ini..." 
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   onFocus={() => setIsReplying(true)}
-                  onBlur={() => {
-                    setTimeout(() => setIsReplying(false), 150); 
-                  }}
+                  onBlur={() => setTimeout(() => setIsReplying(false), 200)}
+                  onPointerDown={(e) => e.stopPropagation()} // Anti nyangkut di mobile
                   style={{ 
                     flex: 1, padding: '12px 18px', paddingRight: '45px', borderRadius: '30px', 
                     border: '1.5px solid rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.3)', 
@@ -425,10 +429,11 @@ export default function StoryViewerPage() {
                 </button>
               </form>
             ) : (
-              // 🔥 TOMBOL VIEWERS (KHUSUS STORY SENDIRI) 🔥
+              // TOMBOL VIEWERS 
               <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsViewersModalOpen(true); }}
+                  onPointerDown={(e) => e.stopPropagation()} // Anti nyangkut di mobile
                   style={{
                     background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: 'white',
                     padding: '8px 16px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px',
@@ -443,7 +448,12 @@ export default function StoryViewerPage() {
               </div>
             )}
             
-            <button className="story-like-btn" onClick={toggleLike} style={{ flexShrink: 0 }}>
+            <button 
+              className="story-like-btn" 
+              onClick={toggleLike} 
+              onPointerDown={(e) => e.stopPropagation()} 
+              style={{ flexShrink: 0 }}
+            >
               <svg viewBox="0 0 24 24" className={`heart-svg ${isLiked ? 'liked' : ''}`} style={{ width: '32px', height: '32px' }}>
                 <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
               </svg>

@@ -13,6 +13,7 @@ export default function HypetalkPage() {
   // --- STATES ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [chats, setChats] = useState<any[]>([]);
+  const [requestChats, setRequestChats] = useState<any[]>([]); // 🔥 STATE BARU BUAT PERMINTAAN PESAN
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -87,13 +88,19 @@ export default function HypetalkPage() {
   const loadAllChats = async (userId: string, isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     try {
+      // 1. Ambil data Followers (Orang yang nge-follow kita)
+      const { data: followerData } = await supabase.from('followers').select('follower_id').eq('following_id', userId);
+      const followerIds = new Set(followerData?.map((f: any) => f.follower_id) || []);
+
+      // 2. Ambil Semua Pesan 24 Jam Terakhir
       const waktu24JamLalu = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: allMsgs } = await supabase.from("messages")
         .select("*")
         .gte("created_at", waktu24JamLalu)
         .order("created_at", { ascending: false });
 
-      let finalChats: any[] = [];
+      let mainChats: any[] = [];
+      let reqChats: any[] = [];
       const unreadMap = new Map();
 
       allMsgs?.forEach(msg => {
@@ -109,9 +116,10 @@ export default function HypetalkPage() {
         }
       });
 
+      // --- CHAT GLOBAL ---
       const globalMsgs = allMsgs?.filter(m => m.room_id === 'room-1');
       const lastGlobalMsg = globalMsgs && globalMsgs.length > 0 ? globalMsgs[0] : null;
-      finalChats.push({
+      mainChats.push({
         id: 'room-1',
         type: 'global',
         name: 'HopeTalk Globe',
@@ -121,12 +129,14 @@ export default function HypetalkPage() {
         unread: unreadMap.get('room-1') || 0
       });
 
+      // --- CHAT PRIVATE & REQUESTS ---
       if (allMsgs) {
         const lastPvMap = new Map();
         allMsgs.filter(m => m.room_id.startsWith('pv_') && m.room_id.includes(userId)).forEach(msg => {
           const pId = msg.room_id.replace("pv_", "").split("_").find((id: string) => id !== userId);
           if (pId && !lastPvMap.has(pId)) lastPvMap.set(pId, msg);
         });
+        
         const partnerIds = Array.from(lastPvMap.keys());
         if (partnerIds.length > 0) {
           const { data: profiles } = await supabase.from("profiles").select("id, username, avatar_url, role").in("id", partnerIds);
@@ -135,7 +145,8 @@ export default function HypetalkPage() {
             let msgPreview = lastMsg.message;
             if (lastMsg.sticker_url) msgPreview = "Mengirim Stiker";
             if (lastMsg.audio_url) msgPreview = "Mengirim Voice Note";
-            finalChats.push({
+            
+            const chatItem = {
               id: p.id,
               type: 'private',
               name: p.username,
@@ -147,18 +158,35 @@ export default function HypetalkPage() {
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               sortTime: new Date(lastMsg.created_at).getTime(),
               unread: unreadMap.get(p.id) || 0
-            });
+            };
+
+            // 🔥 LOGIKA PERMINTAAN PESAN (REQUESTS) 🔥
+            const ids = [userId, p.id].sort();
+            const roomIdStr = `pv_${ids[0]}_${ids[1]}`;
+            const roomMsgs = allMsgs.filter(m => m.room_id === roomIdStr);
+            
+            // Cek apakah kita pernah membalas pesannya?
+            const iHaveReplied = roomMsgs.some(m => m.user_id === userId);
+            const isFollower = followerIds.has(p.id);
+
+            // Kalau BUKAN follower dan KITA BELUM PERNAH BALAS -> Masuk Requests
+            if (!isFollower && !iHaveReplied) {
+              reqChats.push(chatItem);
+            } else {
+              mainChats.push(chatItem);
+            }
           });
         }
       }
 
+      // --- CHAT GROUP ---
       const { data: myGroups } = await supabase.from('group_members').select('group_id, groups(name, photo_url)').eq('user_id', userId);
       if (myGroups) {
         myGroups.forEach((g: any) => {
           if (g.groups) {
             const groupMsgs = allMsgs?.filter(m => m.room_id === `group_${g.group_id}`);
             const lastGroupMsg = groupMsgs && groupMsgs.length > 0 ? groupMsgs[0] : null;
-            finalChats.push({
+            mainChats.push({
               id: g.group_id,
               type: 'group',
               name: g.groups.name,
@@ -172,7 +200,8 @@ export default function HypetalkPage() {
         });
       }
 
-      setChats(finalChats.sort((a, b) => b.sortTime - a.sortTime));
+      setChats(mainChats.sort((a, b) => b.sortTime - a.sortTime));
+      setRequestChats(reqChats.sort((a, b) => b.sortTime - a.sortTime)); // Simpan state request chat
     } catch (err) {
       console.error(err);
     } finally {
@@ -563,10 +592,9 @@ export default function HypetalkPage() {
           backdrop-filter: blur(5px) !important;
         }
 
-        /* 🔥 FIX KOTAK PROFIL (UKURAN DIPERBAIKI) 🔥 */
         .wa-profile-card {
           width: 100%;
-          max-width: 280px; /* Ukuran dibatasi */
+          max-width: 280px; 
           background: var(--tg-bg);
           border-radius: 16px;
           overflow: hidden;
@@ -575,7 +603,7 @@ export default function HypetalkPage() {
         }
         .wa-profile-img-container {
           width: 100%;
-          padding-top: 100%; /* Bikin Kotak 1:1 sempurna */
+          padding-top: 100%; 
           position: relative;
           background: var(--tg-border);
         }
@@ -649,6 +677,25 @@ export default function HypetalkPage() {
           position: relative; z-index: 10; font-size: 18px; font-weight: bold; color: white;
           text-shadow: 0 0 15px rgba(29,161,242,0.8); letter-spacing: 1px;
         }
+
+        /* 🔥 CSS BANNER PERMINTAAN PESAN 🔥 */
+        .message-request-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 16px;
+          background: var(--tg-bg-secondary);
+          margin: 0 16px 10px 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: transform 0.2s;
+        }
+        .message-request-banner:active { transform: scale(0.98); }
+        .req-left { display: flex; align-items: center; gap: 12px; }
+        .req-left .material-icons { color: #1f3cff; background: rgba(31, 60, 255, 0.1); padding: 8px; border-radius: 50%; }
+        .req-text h4 { margin: 0; font-size: 14px; color: var(--tg-text); font-weight: 700; }
+        .req-text p { margin: 0; font-size: 12px; color: var(--tg-text-muted); }
+        .message-request-banner .arrow { color: var(--tg-text-muted); }
       `}</style>
 
       {/* TAMPILAN PANGGILAN CALLING / INCOMING */}
@@ -734,6 +781,21 @@ export default function HypetalkPage() {
       </header>
 
       <main className="tg-chat-list">
+        
+        {/* 🔥 BANNER PERMINTAAN PESAN 🔥 */}
+        {!isLoading && requestChats.length > 0 && !searchQuery && (
+          <div className="message-request-banner" onClick={() => router.push('/hypetalk/requests')}>
+            <div className="req-left">
+              <span className="material-icons">mark_email_unread</span>
+              <div className="req-text">
+                <h4>Permintaan Pesan</h4>
+                <p>{requestChats.length} pesan belum dibalas</p>
+              </div>
+            </div>
+            <span className="material-icons arrow">chevron_right</span>
+          </div>
+        )}
+
         {isLoading ? (
           Array(8).fill(0).map((_, i) => (
             <div key={i} className="tg-chat-item skeleton-chat">
@@ -802,7 +864,7 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* 🔥 FIX: MODAL USER PROFILE (KOTAK KECIL ALA WA) 🔥 */}
+      {/* MODAL USER PROFILE */}
       {activeModal === 'user-profile' && selectedProfile && (
         <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={closeModal}>
           <div className="wa-profile-card" onClick={(e) => e.stopPropagation()}>
@@ -830,7 +892,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL DOI CARD DENGAN TOMBOL BIRU */}
+      {/* MODAL DOI CARD */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
@@ -850,6 +912,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
+      {/* MODAL SEARCH/NEW CHAT */}
       {activeModal === 'search' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -863,6 +926,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
+      {/* MODAL GROUP */}
       {activeModal === 'group' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -876,6 +940,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
+      {/* MODAL BIO */}
       {activeModal === 'bio' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>

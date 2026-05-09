@@ -57,17 +57,17 @@ html.dark .profile-page-container {
 .profile-top-section { flex-shrink: 0; background: var(--bg-main); }
 .profile-info { padding: 15px 20px 10px; text-align: center; }
 
-/* 🔥 FIX: LOGIKA AVATAR RING (STORY BORDER) 🔥 */
+/* 🔥 FIX: LOGIKA AVATAR RING (STORY BORDER DITIPISIN) 🔥 */
 .avatar-container {
     display: flex; 
     justify-content: center; 
     margin-bottom: 12px;
 }
 .avatar-ring {
-    width: 90px; 
-    height: 90px; 
+    width: 86px; /* Dibikin proporsional */
+    height: 86px; 
     border-radius: 50%; 
-    padding: 3px; /* Jarak untuk border img */
+    padding: 2px; /* 🔥 Ketebalan warna ring ditipisin jadi 2px */
     display: flex; 
     align-items: center; 
     justify-content: center; 
@@ -79,19 +79,20 @@ html.dark .profile-page-container {
     animation: pulseStory 2s infinite alternate;
 }
 .avatar-ring.no-story {
-    background: var(--primary-blue); /* 🔥 Border biru jika tidak ada story */
+    background: var(--primary-blue); 
 }
 @keyframes pulseStory {
     0% { filter: brightness(1); }
     100% { filter: brightness(1.2); }
 }
-.profile-avatar { 
-    width: 100%; 
+.profile-avatar-img { 
+    width: 100%; /* Otomatis ngisi penuh ke ring */
     height: 100%; 
     border-radius: 50%; 
     object-fit: cover; 
-    border: 3px solid var(--bg-main); /* Jarak antara foto dan ring */
+    border: 2px solid var(--bg-main); /* 🔥 Jarak kosong ke foto ditipisin jadi 2px */
     background: var(--bg-secondary); 
+    box-sizing: border-box; /* Biar border ngukur dari dalam, nggak meluber keluar */
 }
 
 .profile-name { font-size: 19px; font-weight: 800; margin-bottom: 2px; display: flex; align-items: center; justify-content: center; gap: 4px; }
@@ -186,7 +187,7 @@ html.dark .profile-page-container {
 .menu-item-tiktok.logout { color: #ff4757; margin-top: auto; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
 .menu-item-tiktok.logout .icon-wrapper, .menu-item-tiktok.logout .menu-text { color: #ff4757 !important; }
 
-/* --- 🔥 FIX: MODAL EDIT PROFIL (UKURAN DIPERBAIKI) 🔥 --- */
+/* --- 🔥 MODAL EDIT PROFIL (DITIPISIN JUGA) 🔥 --- */
 .edit-avatar-section { 
     display: flex; 
     flex-direction: column; 
@@ -206,7 +207,7 @@ html.dark .profile-page-container {
     height: 100%; 
     border-radius: 50%; 
     object-fit: cover; 
-    border: 3px solid var(--primary-blue); 
+    border: 2px solid var(--primary-blue); /* 🔥 Border diedit profil ditipisin jadi 2px */
     background: var(--bg-secondary); 
 }
 .upload-badge { 
@@ -215,7 +216,8 @@ html.dark .profile-page-container {
     background: var(--primary-blue); color: white; 
     border-radius: 50%; width: 28px; height: 28px; 
     display: flex; align-items: center; justify-content: center; 
-    border: 3px solid var(--bg-main); box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+    border: 2px solid var(--bg-main); /* 🔥 Ditipisin juga */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
 }
 .upload-badge .material-icons { font-size: 14px; }
 

@@ -73,6 +73,7 @@ function ProfileContent() {
 
   useEffect(() => { 
     if (isMounted) loadProfile(); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlId, urlUser, isMounted]);
 
   useEffect(() => { 
@@ -83,6 +84,7 @@ function ProfileContent() {
         loadPostsTab(activeTab); 
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, profile, isMounted, blockStatus, isFollowing]);
 
   const loadProfile = async () => {
@@ -118,18 +120,28 @@ function ProfileContent() {
       });
       setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
       
-      // CEK STORY AKTIF (24 Jam Terakhir)
+      // 🔥 FIX 2: CEK STORY LEBIH AKURAT 🔥
+      // Ambil waktu 24 jam yang lalu
+      const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: stories } = await supabase
         .from('stories')
-        .select('created_at')
-        .eq('user_id', profData.id)
-        .order('created_at', { ascending: false })
+        .select('id') // Cukup cek ada ID nya apa nggak
+        .eq('user_id', profData.id) // Pastikan kolom di database namanya user_id atau creator_id! 
+        // Note: Kalau di tabel pake creator_id, ubah 'user_id' jadi 'creator_id'
+        .gte('created_at', timeLimit)
         .limit(1);
 
       if (stories && stories.length > 0) {
-        const storyTime = new Date(stories[0].created_at).getTime();
-        const now = new Date().getTime();
-        if (now - storyTime < 24 * 60 * 60 * 1000) {
+        setHasStory(true);
+      } else {
+        // Fallback cek pake creator_id just in case
+        const { data: fallbackStories } = await supabase
+          .from('stories')
+          .select('id')
+          .eq('creator_id', profData.id)
+          .gte('created_at', timeLimit)
+          .limit(1);
+        if (fallbackStories && fallbackStories.length > 0) {
           setHasStory(true);
         }
       }
@@ -158,9 +170,6 @@ function ProfileContent() {
     }
   };
 
-  // ==========================================
-  // 🔥 FIX LOGIKA FETCH TAB POSTINGAN 🔥
-  // ==========================================
   const loadPostsTab = async (type: string) => {
     if (!profile) return;
     setIsLoadingPosts(true);
@@ -168,7 +177,6 @@ function ProfileContent() {
 
     try {
       if (type === 'post') {
-        // Ambil postingan karya asli dia
         const { data, error } = await supabase
           .from('posts')
           .select('id, image_url')
@@ -178,14 +186,12 @@ function ProfileContent() {
         if (data && !error) setPosts(data);
       } 
       else {
-        // Tentukan tabel mana yang mau dilirik berdasarkan Tab
         let tableName = '';
         if (type === 'simpan') tableName = 'bookmarks';
         else if (type === 'repost') tableName = 'reposts';
         else if (type === 'like') tableName = 'likes';
 
         if (tableName) {
-          // Cari post_id yang pernah di-like/repost/simpan sama user ini
           const { data: relData, error: relError } = await supabase
             .from(tableName)
             .select('post_id')
@@ -193,11 +199,9 @@ function ProfileContent() {
             .order('created_at', { ascending: false });
 
           if (relData && relData.length > 0 && !relError) {
-            // Bersihin array post_id biar gak ada yang null
             const postIds = relData.map((r: any) => r.post_id).filter(Boolean);
             
             if (postIds.length > 0) {
-              // Baru deh ambil wujud aslinya dari tabel posts pakai ID tadi
               const { data: pData, error: pError } = await supabase
                 .from('posts')
                 .select('id, image_url')
@@ -220,7 +224,6 @@ function ProfileContent() {
   // 🔥 3. EVENT HANDLERS 🔥
   // ==========================================
   
-  // 🔥 FIX BUKA POSTINGAN BIAR LANGSUNG TELEPORT 🔥
   const handleOpenPost = (postId: string) => {
     if (!postId) return;
     router.push(`/post?id=${postId}`);
@@ -230,6 +233,12 @@ function ProfileContent() {
     if (hasStory) {
       router.push(`/story?user_id=${profile.id}`);
     }
+  };
+
+  // 🔥 FUNGSI NAVIGASI CHAT 🔥
+  const handleGoToChat = () => {
+    if (!profile?.id) return;
+    router.push(`/hypetalk/chat?from=${profile.id}`);
   };
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
@@ -455,7 +464,7 @@ function ProfileContent() {
         <section className="profile-info">
           
           <div className="avatar-container">
-            <div className={`avatar-ring ${hasStory ? 'has-story' : 'no-story'}`} onClick={handleAvatarClick}>
+            <div className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} onClick={handleAvatarClick}>
               <img className="profile-avatar-img" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
             </div>
           </div>
@@ -477,6 +486,11 @@ function ProfileContent() {
                 </>
              ) : (
                 <>
+                  {/* 🔥 FIX 1: TOMBOL CHAT DITAMBAHKAN DI SINI 🔥 */}
+                  <button className="btn-action btn-secondary" onClick={handleGoToChat}>
+                    <span className="material-icons" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '4px' }}>chat</span>
+                    Chat
+                  </button>
                   <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? t('following_btn', 'Mengikuti') : t('follow', 'Ikuti')}</button>
                   <button className="btn-action btn-secondary" onClick={() => setIsActionSheetOpen(true)} style={{ padding: '8px 12px' }}>
                     <span className="material-icons" style={{ fontSize: '18px' }}>more_horiz</span>

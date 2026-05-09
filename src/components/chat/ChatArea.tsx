@@ -48,6 +48,9 @@ export default function ChatArea() {
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [inviteSearch, setInviteSearch] = useState(''); 
 
+  // 🔥 STATE HUBUNGAN (PERMINTAAN PESAN) 🔥
+  const [relation, setRelation] = useState({ iFollowThem: false, theyFollowMe: false });
+
   // 🔥 STATE PROFIL MINIMALIS 🔥
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
 
@@ -68,7 +71,6 @@ export default function ChatArea() {
   const [callStatus, setCallStatus] = useState<'idle'|'calling'|'incoming'|'connected'>('idle');
   const [callData, setCallData] = useState<any>({ seconds: 0, partnerName: '', partnerAvatar: '', room: '' });
 
-  // Ref untuk menyimpan status panggilan terkini (hindari stale closure)
   const callStatusRef = useRef(callStatus);
 
   useEffect(() => {
@@ -131,6 +133,11 @@ export default function ChatArea() {
       if (pTarget) {
         setHeaderInfo({ title: pTarget.username, sub: `#${pTarget.short_id}`, avatar: pTarget.avatar_url, role: pTarget.role });
       }
+
+      // 🔥 CEK HUBUNGAN FOLLOWER BUAT PERMINTAAN PESAN 🔥
+      const { data: f1 } = await supabase.from('followers').select('id').match({ follower_id: session.user.id, following_id: fromId }).maybeSingle();
+      const { data: f2 } = await supabase.from('followers').select('id').match({ follower_id: fromId, following_id: session.user.id }).maybeSingle();
+      setRelation({ iFollowThem: !!f1, theyFollowMe: !!f2 });
     }
     setRoomId(currentRoom);
     await fetchMessages(currentRoom);
@@ -239,7 +246,6 @@ export default function ChatArea() {
     scrollToBottom();
   };
 
-  // 🔥 FIX 1: Logika Deteksi Pembatalan Telpon Otomatis 🔥
   const setupRealtime = (room: string, user: any, prof: any) => {
     refs.msgChannel.current = supabase.channel(`msg-${room}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${room}` }, async (payload) => {
@@ -311,6 +317,20 @@ export default function ChatArea() {
     if (refs.presenceChannel.current && refs.presenceChannel.current.state === 'joined') {
       refs.presenceChannel.current.send({ type: 'broadcast', event: 'typing', payload: { username: myProfile?.username, avatar_url: myProfile?.avatar_url } });
     }
+  };
+
+  // 🔥 FUNGSI PERMINTAAN PESAN 🔥
+  const handleTerimaRequest = async () => {
+    await supabase.from('messages').insert([{
+      room_id: roomId, user_id: currentUser.id, message: `Permintaan pesan diterima. Kamu sekarang bisa membalas dan melakukan panggilan.`, is_system: true, status: 'sent'
+    }]);
+    showNotif("Pesan diterima", "success");
+  };
+
+  const handleTolakRequest = async () => {
+    await supabase.from('messages').delete().eq('room_id', roomId);
+    showNotif("Permintaan obrolan dihapus", "info");
+    router.back();
   };
 
   const startVisualizer = (stream: MediaStream) => {
@@ -408,9 +428,6 @@ export default function ChatArea() {
     }
   };
 
-  // ======================================================
-  // 🔥 FIX 2: LOGIKA TELPON SINKRON DENGAN ROOT LAYOUT 🔥
-  // ======================================================
   const startCall = async () => {
     if (callStatus !== 'idle') {
       showNotif("Panggilan sedang berlangsung", "warning");
@@ -427,13 +444,11 @@ export default function ChatArea() {
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
-      // Pastikan status benar-benar masih manggil dan belum diangkat
       if (callStatusRef.current === 'calling') {
-        // 🔥 Eksekusi matikan UI & Suara secara instan!
         endCall(true);
         await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
       }
-    }, 30000); // Batas 30 detik nunggu
+    }, 30000); 
     
     connectLiveKit(roomId);
   };
@@ -447,7 +462,6 @@ export default function ChatArea() {
     setCallStatus('incoming'); 
     setCallData({ partnerName: p?.username, partnerAvatar: p?.avatar_url, room: msg.room_id, seconds: 0 });
     
-    // Play ringtone dengan penanganan error
     if (refs.audio.current?.ring) {
       refs.audio.current.ring.play().catch(() => console.log("Audio play diblokir"));
     }
@@ -510,25 +524,20 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FIX 3: Fungsi eksekusi pemutusan panggilan secara instan! 🔥
   const endCall = (silent = false) => {
-    // 1. Matikan nada dering saat itu juga & reset
     if (refs.audio.current?.ring) { 
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
     }
     
-    // 2. Putus koneksi server LiveKit
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
     
-    // 3. Matikan UI overlay
     setCallStatus('idle');
     
-    // 4. Hapus semua timer yang jalan
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
     
@@ -540,7 +549,6 @@ export default function ChatArea() {
     const d = await res.json(); setStickers(d.data || []);
   };
 
-  // 🔥 DOUBLE TAP REACTION HANDLER 🔥
   const handleSendReaction = async (msgId: string, emoji: string) => {
     const msg = messages.find(m => m.id === msgId);
     if(!msg) return;
@@ -554,6 +562,22 @@ export default function ChatArea() {
     await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', sticker_url: null, audio_url: null }).eq('id', id);
     setMsgOptions(null);
   };
+
+  // 🔥 LOGIKA PENENTU STATUS CHAT PERMINTAAN 🔥
+  let chatState = 'normal'; // 'normal', 'i_must_approve', 'i_am_blocked_by_request'
+  if (targetId && currentUser) {
+    const myRawMsgs = messages.filter(m => m.user_id === currentUser.id);
+    const partnerRawMsgs = messages.filter(m => m.user_id === targetId);
+
+    // Kalau dia ngirim pesan, gue belom pernah ngirim/balas, dan gue GA FOLLOW DIA
+    if (partnerRawMsgs.length > 0 && myRawMsgs.length === 0 && !relation.iFollowThem) {
+      chatState = 'i_must_approve';
+    } 
+    // Kalau gue ngirim pesan ke dia, dia belom balas, dan DIA GA FOLLOW GUE
+    else if (myRawMsgs.length > 0 && partnerRawMsgs.length === 0 && !relation.theyFollowMe) {
+      chatState = 'i_am_blocked_by_request';
+    }
+  }
 
   let displayStatus = 'Offline';
   if (typingUser) {
@@ -580,7 +604,6 @@ export default function ChatArea() {
           to { opacity: 1; }
         }
         
-        /* 🔥 FIX 4: UI Panggilan Dibuat Jadi Kapsul Floating di Atas Tengah 🔥 */
         .call-floating-popup {
           position: fixed;
           top: max(env(safe-area-inset-top, 20px), 20px);
@@ -628,7 +651,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* 🔥 FIX 4: FLOATING CALL UNTUK SEMUA STATUS (CALLING/INCOMING/CONNECTED) 🔥 */}
+      {/* FLOATING CALL UNTUK SEMUA STATUS (CALLING/INCOMING/CONNECTED) */}
       {(callStatus !== 'idle') && (
         <div className="call-floating-popup">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="partner" />
@@ -670,10 +693,8 @@ export default function ChatArea() {
                 const isIncoming = callStatus === 'incoming';
                 const isConnected = callStatus === 'connected';
                 
-                // Matikan UI seketika
                 endCall(true);
                 
-                // Tulis history ke database
                 if (isIncoming) {
                   await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
                 } else if (isConnected) {
@@ -816,8 +837,18 @@ export default function ChatArea() {
           </div>
         </div>
         <div className="header-right">
+          {/* 🔥 LOGIKA TOMBOL TELPON DIMATIKAN SEMENTARA KALAU BELUM DI-ACC 🔥 */}
           {targetId ? (
-            <button className="btn-call" onClick={startCall}><span className="material-icons">call</span></button>
+            <button 
+              className="btn-call" 
+              style={{ opacity: chatState === 'normal' ? 1 : 0.3 }}
+              onClick={() => {
+                if (chatState === 'normal') startCall();
+                else showNotif("Permintaan pesan belum disetujui", "warning");
+              }}
+            >
+              <span className="material-icons">call</span>
+            </button>
           ) : groupId ? (
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>INVITE</button>
@@ -875,77 +906,96 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
+      {/* ==========================================
+          🔥 LOGIKA RENDER FOOTER INPUT/REQUEST 🔥
+          ========================================== */}
       <footer className="chat-input-container">
-        {isStickerOpen && (
-          <div id="sticker-menu">
-            <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
-            <div id="sticker-list">
-              {stickers.map((s, idx) => (
-                <img 
-                  key={idx} 
-                  src={s.images.fixed_width_small.url} 
-                  alt="sticker" 
-                  onClick={() => {
-                    sendMessage(undefined, s.images.fixed_width.url);
-                    setIsStickerOpen(false); // Opsional: Biar menu stiker otomatis nutup abis ngirim
-                  }} 
-                />
-              ))}
+        {chatState === 'i_must_approve' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>{headerInfo.title} bukan pengikutmu. Terima pesan untuk membalas dan melakukan panggilan.</p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={handleTolakRequest} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: 'none', background: '#ff4757', color: 'white', fontWeight: 600 }}>Tolak</button>
+              <button onClick={handleTerimaRequest} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: 'none', background: '#1f3cff', color: 'white', fontWeight: 600 }}>Terima</button>
             </div>
           </div>
-        )}
-        <div className="input-row">
-          <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId ? '16px' : '28px' }}>
-            
-            {editMessageId && (
-              <div style={{ background: 'rgba(29, 161, 242, 0.1)', borderBottom: '1px solid var(--border-color)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)' }}>MENGEDIT PESAN</span>
-                <span onClick={() => { setEditMessageId(null); setInputValue(''); }} style={{ cursor: 'pointer', fontSize: '16px', color: 'var(--text-muted)' }}>&times;</span>
-              </div>
-            )}
-
-            {replyTo && (
-              <div id="reply-preview-box" style={{ display: 'flex' }}>
-                <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
-                  <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
+        ) : chatState === 'i_am_blocked_by_request' ? (
+          <div style={{ padding: '20px 15px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Menunggu permintaan pesan diterima oleh {headerInfo.title}. Anda tidak dapat mengirim pesan lagi saat ini.</p>
+          </div>
+        ) : (
+          <>
+            {isStickerOpen && (
+              <div id="sticker-menu">
+                <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
+                <div id="sticker-list">
+                  {stickers.map((s, idx) => (
+                    <img 
+                      key={idx} 
+                      src={s.images.fixed_width_small.url} 
+                      alt="sticker" 
+                      onClick={() => {
+                        sendMessage(undefined, s.images.fixed_width.url);
+                        setIsStickerOpen(false); 
+                      }} 
+                    />
+                  ))}
                 </div>
-                <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8'}}>&times;</div>
               </div>
             )}
+            <div className="input-row">
+              <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId ? '16px' : '28px' }}>
+                
+                {editMessageId && (
+                  <div style={{ background: 'rgba(29, 161, 242, 0.1)', borderBottom: '1px solid var(--border-color)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)' }}>MENGEDIT PESAN</span>
+                    <span onClick={() => { setEditMessageId(null); setInputValue(''); }} style={{ cursor: 'pointer', fontSize: '16px', color: 'var(--text-muted)' }}>&times;</span>
+                  </div>
+                )}
 
-            <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+                {replyTo && (
+                  <div id="reply-preview-box" style={{ display: 'flex' }}>
+                    <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
+                      <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
+                    </div>
+                    <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8'}}>&times;</div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+                  
+                  {cancelAnim ? (
+                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
+                      <div style={{ flex: 1, fontSize: '14px', textAlign: 'center' }}>Voice Note dibatalkan</div>
+                    </div>
+                  ) : isRecording ? (
+                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
+                      <span className="online-dot" style={{ background: '#ff4757' }}></span>
+                      <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
+                      <div style={{ flex: 1 }}>{t('recording')}...</div>
+                      <span style={{ fontSize: '12px', opacity: 0.6 }}>&lt; {t('slide_cancel')}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
+                      <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
+                    </>
+                  )}
+                </div>
+              </div>
               
-              {cancelAnim ? (
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
-                  <div style={{ flex: 1, fontSize: '14px', textAlign: 'center' }}>Voice Note dibatalkan</div>
-                </div>
-              ) : isRecording ? (
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
-                  <span className="online-dot" style={{ background: '#ff4757' }}></span>
-                  <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
-                  <div style={{ flex: 1 }}>{t('recording')}...</div>
-                  <span style={{ fontSize: '12px', opacity: 0.6 }}>&lt; {t('slide_cancel')}</span>
-                </div>
-              ) : (
-                <>
-<button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
-
-                  <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
-                </>
-              )}
+              <button id="action-btn" className={inputValue.trim() || editMessageId ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
+                      onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} 
+                      onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} 
+                      onTouchMove={handleMicTouchMove} 
+                      onClick={() => (inputValue.trim() || editMessageId) && sendMessage()}>
+                <span className="material-icons">{editMessageId ? 'check' : (inputValue.trim() ? 'send' : 'mic')}</span>
+              </button>
             </div>
-          </div>
-          
-          <button id="action-btn" className={inputValue.trim() || editMessageId ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
-                  onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} 
-                  onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} 
-                  onTouchMove={handleMicTouchMove} 
-                  onClick={() => (inputValue.trim() || editMessageId) && sendMessage()}>
-            <span className="material-icons">{editMessageId ? 'check' : (inputValue.trim() ? 'send' : 'mic')}</span>
-          </button>
-        </div>
+          </>
+        )}
       </footer>
+
     </div>
   );
 }
