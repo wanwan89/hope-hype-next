@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { showNotif } from '@/lib/ui-utils'; // Pastikan ada fungsi ini
+import { showNotif } from '@/lib/ui-utils'; 
 import './Story.css';
 
 // Interface biar TypeScript gak rewel
@@ -37,9 +37,17 @@ export default function StoryViewerPage() {
   // State Nangkap Blokir Audio
   const [audioError, setAudioError] = useState(false);
   
-  // 🔥 STATE MODAL OPSI STORY 🔥
+  // 🔥 STATE MODAL & INTERAKSI 🔥
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isPaused, setIsPaused] = useState(false); // Buat nahan bar kalau menu lagi buka
+  const [isPaused, setIsPaused] = useState(false); 
+  
+  // 🔥 STATE REPLY STORY 🔥
+  const [replyText, setReplyText] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+
+  // 🔥 STATE VIEWERS STORY 🔥
+  const [viewers, setViewers] = useState<any[]>([]);
+  const [isViewersModalOpen, setIsViewersModalOpen] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -55,20 +63,22 @@ export default function StoryViewerPage() {
     };
   }, [storyId]);
 
-  // Logic pindah story: Handle like, audio, dan timer tiap ganti index
+  // Logic pindah story: Handle like, audio, view, dan timer tiap ganti index
   useEffect(() => {
     if (allUserStories.length > 0) {
       const currentStory = allUserStories[currentIndex];
       checkIfLiked(currentStory.id);
       handleAudio(currentStory);
+      fetchViewers(currentStory.id); // Ambil data orang yg udah liat
+      recordView(currentStory.id);   // Catat kita ngeliat story ini
       resetTimer();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, allUserStories]);
 
-  // Nahan timer & audio kalau Menu Option lagi dibuka
+  // 🔥 Nahan timer & audio kalau Modal/Keyboard/Viewers lagi dibuka 🔥
   useEffect(() => {
-    if (isMenuOpen) {
+    if (isMenuOpen || isReplying || isViewersModalOpen) {
       setIsPaused(true);
       if (timerRef.current) clearTimeout(timerRef.current);
       if (audioRef.current) audioRef.current.pause();
@@ -78,7 +88,7 @@ export default function StoryViewerPage() {
       if (audioRef.current && !audioError) audioRef.current.play().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isReplying, isViewersModalOpen]);
 
   async function initMultiStory() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -107,6 +117,41 @@ export default function StoryViewerPage() {
     const startIdx = stories.findIndex((s) => s.id === storyId);
     setCurrentIndex(startIdx === -1 ? 0 : startIdx);
     setLoading(false);
+  }
+
+  // ==========================================
+  // 🔥 FUNGSI REKAM & AMBIL VIEWERS STORY 🔥
+  // ==========================================
+  async function recordView(sId: string) {
+    if (!currentUserId) return;
+    const currentStory = allUserStories[currentIndex];
+    // Jangan catat kalau ini story sendiri
+    if (currentStory && currentStory.creator_id === currentUserId) return;
+
+    // Cek dulu udah pernah liat belum
+    const { data } = await supabase.from('story_views')
+      .select('id').match({ story_id: sId, user_id: currentUserId }).maybeSingle();
+    
+    if (!data) {
+      await supabase.from('story_views').insert({ story_id: sId, user_id: currentUserId });
+    }
+  }
+
+  async function fetchViewers(sId: string) {
+    const currentStory = allUserStories[currentIndex];
+    // Irit fetch: cuma ambil list viewers kalau ini story punya kita sendiri
+    if (currentStory && currentStory.creator_id !== currentUserId) return;
+
+    const { data, error } = await supabase
+      .from('story_views')
+      .select('user_id, profiles(id, username, avatar_url)')
+      .eq('story_id', sId)
+      .order('created_at', { ascending: false });
+
+    if (data && !error) {
+      const uniqueViewers = data.map((d: any) => d.profiles).filter(Boolean);
+      setViewers(uniqueViewers);
+    }
   }
 
   const handleAudio = (story: Story) => {
@@ -183,19 +228,15 @@ export default function StoryViewerPage() {
     }
   };
 
-  // 🔥 HANDLER HAPUS STORY 🔥
   const handleDeleteStory = async () => {
     const sId = allUserStories[currentIndex].id;
-    setIsMenuOpen(false); // Tutup modal duluan
+    setIsMenuOpen(false); 
 
     try {
-      // Hapus dari database
       const { error } = await supabase.from('stories').delete().eq('id', sId);
       if (error) throw error;
       
       showNotif("Story berhasil dihapus", "success");
-      
-      // Auto mundur karena story udah ilang
       router.back();
     } catch (err: any) {
       console.error(err);
@@ -203,18 +244,47 @@ export default function StoryViewerPage() {
     }
   };
 
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim() || !currentUserId) return;
+
+    const currentStory = allUserStories[currentIndex];
+    const ids = [currentUserId, currentStory.creator_id].sort();
+    const roomId = `pv_${ids[0]}_${ids[1]}`;
+
+    let finalMessage = `Membalas ceritamu:\n"${replyText.trim()}"`;
+    
+    if (!currentStory.image_url && currentStory.content) {
+      finalMessage = `Membalas ceritamu: "${currentStory.content}"\n\n👉 ${replyText.trim()}`;
+    }
+
+    try {
+      await supabase.from('messages').insert([{
+        room_id: roomId,
+        user_id: currentUserId,
+        message: finalMessage,
+        sticker_url: currentStory.image_url || null, 
+        status: 'sent'
+      }]);
+      
+      showNotif('Balasan terkirim!', 'success');
+      setReplyText('');
+      setIsReplying(false); 
+    } catch (err) {
+      showNotif('Gagal mengirim balasan', 'error');
+    }
+  };
+
   if (loading) return <div className="story-full-viewer dark-bg"></div>;
 
   const currentStory = allUserStories[currentIndex];
-
-  // 🔥 Cek apakah Story ini punya user yang lagi login 🔥
   const isMyStory = currentUserId === currentStory.creator_id;
 
   return (
     <div className="story-full-viewer">
       
       {/* Tombol Darurat Putar Musik */}
-      {audioError && currentStory.audio_src && !isMenuOpen && (
+      {audioError && currentStory.audio_src && !isMenuOpen && !isViewersModalOpen && (
         <button 
           onClick={(e) => {
             e.stopPropagation();
@@ -238,13 +308,13 @@ export default function StoryViewerPage() {
         </button>
       )}
 
-      {/* Area Tap buat Skip/Back (dimatikan kalau modal opsi buka) */}
-      <div className="tap-area" style={{ pointerEvents: isMenuOpen ? 'none' : 'auto' }}>
+      {/* Area Tap buat Skip/Back */}
+      <div className="tap-area" style={{ pointerEvents: (isMenuOpen || isReplying || isViewersModalOpen) ? 'none' : 'auto' }}>
         <div className="tap-left" onClick={prevStory}></div>
         <div className="tap-right" onClick={nextStory}></div>
       </div>
 
-      {/* Progress Bars (Gaya IG) */}
+      {/* Progress Bars */}
       <div className="story-progress-container">
         {allUserStories.map((_, idx) => (
           <div key={idx} className="bar-wrap">
@@ -253,7 +323,6 @@ export default function StoryViewerPage() {
               style={{ 
                 transform: idx < currentIndex ? 'scaleX(1)' : 'scaleX(0)',
                 animationDuration: idx === currentIndex ? `${STORY_DURATION}ms` : '0ms',
-                // Tahan animasi bar kalau di pause
                 animationPlayState: isPaused ? 'paused' : 'running'
               }}
             ></div>
@@ -290,10 +359,7 @@ export default function StoryViewerPage() {
           </div>
         </div>
 
-        {/* 🔥 KUMPULAN TOMBOL KANAN ATAS 🔥 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          
-          {/* Tombol Opsi Titik Tiga (Muncul KHUSUS Kalo Punya Dia Sendiri) */}
           {isMyStory && (
             <button 
               style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
@@ -302,20 +368,11 @@ export default function StoryViewerPage() {
               <span className="material-icons" style={{ fontSize: '26px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>more_vert</span>
             </button>
           )}
-
-          {/* Tombol Close Silang */}
-          <button 
-            className="close-story" 
-            onClick={(e) => { e.stopPropagation(); router.back(); }}
-            style={{ margin: 0 }}
-          >
-            ✕
-          </button>
+          <button className="close-story" onClick={(e) => { e.stopPropagation(); router.back(); }} style={{ margin: 0 }}>✕</button>
         </div>
-
       </div>
 
-      {/* Konten Utama (Gambar atau Teks) */}
+      {/* Konten Utama */}
       <div className="story-display">
         {currentStory.image_url ? (
           <img src={currentStory.image_url} className="s-img" alt="Story content" />
@@ -324,19 +381,75 @@ export default function StoryViewerPage() {
         )}
       </div>
 
-      {/* Caption & Like (Bottom) */}
-      <div className="story-bottom-info">
-        <div className="footer-layout">
-          <div className="caption-container">
-            <p className="story-caption">{currentStory.content}</p>
-          </div>
-          <div className="story-actions-right">
-            <button className="story-like-btn" onClick={toggleLike}>
-              <svg viewBox="0 0 24 24" className={`heart-svg ${isLiked ? 'liked' : ''}`}>
+      {/* Caption & Interaksi Balas/Like (Bottom) */}
+      <div className="story-bottom-info" style={{ zIndex: 10000 }}>
+        <div className="footer-layout" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          
+          {currentStory.content && (
+            <div className="caption-container">
+              <p className="story-caption">{currentStory.content}</p>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+            
+            {/* Input Reply (Cuma buat story orang lain) */}
+            {!isMyStory ? (
+              <form onSubmit={handleSendReply} style={{ flex: 1, display: 'flex', position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder="Balas cerita ini..." 
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onFocus={() => setIsReplying(true)}
+                  onBlur={() => {
+                    setTimeout(() => setIsReplying(false), 150); 
+                  }}
+                  style={{ 
+                    flex: 1, padding: '12px 18px', paddingRight: '45px', borderRadius: '30px', 
+                    border: '1.5px solid rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.3)', 
+                    color: 'white', outline: 'none', fontSize: '14px', backdropFilter: 'blur(5px)'
+                  }}
+                />
+                <button 
+                  type="submit" 
+                  style={{ 
+                    position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
+                    background: replyText.trim() ? '#1f3cff' : 'transparent', 
+                    border: 'none', color: 'white', cursor: replyText.trim() ? 'pointer' : 'default',
+                    width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.3s ease'
+                  }}
+                >
+                  <span className="material-icons" style={{ fontSize: '18px', opacity: replyText.trim() ? 1 : 0.5 }}>send</span>
+                </button>
+              </form>
+            ) : (
+              // 🔥 TOMBOL VIEWERS (KHUSUS STORY SENDIRI) 🔥
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setIsViewersModalOpen(true); }}
+                  style={{
+                    background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: 'white',
+                    padding: '8px 16px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px',
+                    cursor: 'pointer', fontSize: '14px', fontWeight: 600, backdropFilter: 'blur(5px)', transition: 'transform 0.2s'
+                  }}
+                  onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <span className="material-icons" style={{ fontSize: '18px' }}>visibility</span>
+                  {viewers.length} Tayangan
+                </button>
+              </div>
+            )}
+            
+            <button className="story-like-btn" onClick={toggleLike} style={{ flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" className={`heart-svg ${isLiked ? 'liked' : ''}`} style={{ width: '32px', height: '32px' }}>
                 <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
               </svg>
             </button>
           </div>
+
         </div>
       </div>
 
@@ -361,12 +474,10 @@ export default function StoryViewerPage() {
               animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
               display: 'flex', flexDirection: 'column', gap: '16px'
             }}
-            onClick={(e) => e.stopPropagation()} // Biar nggak nutup pas diklik di kotaknya
+            onClick={(e) => e.stopPropagation()} 
           >
-            {/* Garis Drag Handle */}
             <div style={{ width: '40px', height: '5px', background: '#333', borderRadius: '10px', margin: '0 auto 10px auto' }}></div>
 
-            {/* Tombol Hapus */}
             <button 
               onClick={handleDeleteStory}
               style={{
@@ -380,7 +491,6 @@ export default function StoryViewerPage() {
               <span className="material-icons">delete</span> Hapus Story
             </button>
 
-            {/* Tombol Batal */}
             <button 
               onClick={() => setIsMenuOpen(false)}
               style={{
@@ -397,7 +507,59 @@ export default function StoryViewerPage() {
         </div>
       )}
 
-      {/* Injeksi CSS Animasi Modal */}
+      {/* ==========================================
+          🔥 MODAL DAFTAR VIEWERS (SLIDE UP) 🔥
+          ========================================== */}
+      {isViewersModalOpen && (
+        <div 
+          style={{
+            position: 'fixed', inset: 0, zIndex: 999999, 
+            background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            animation: 'fadeInOverlay 0.3s ease'
+          }}
+          onClick={() => setIsViewersModalOpen(false)}
+        >
+          <div 
+            style={{
+              background: '#1a1a1a', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+              padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+              animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
+              display: 'flex', flexDirection: 'column', maxHeight: '75vh'
+            }}
+            onClick={(e) => e.stopPropagation()} 
+          >
+            <div style={{ width: '40px', height: '5px', background: '#333', borderRadius: '10px', margin: '0 auto 15px auto' }}></div>
+            
+            <h3 style={{ color: 'white', margin: '0 0 15px 0', fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+              <span className="material-icons">visibility</span> Tayangan
+            </h3>
+            
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '5px' }}>
+              {viewers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
+                  <span className="material-icons" style={{ fontSize: '40px', marginBottom: '10px', opacity: 0.5 }}>visibility_off</span>
+                  <p style={{ margin: 0, fontSize: '14px' }}>Belum ada tayangan</p>
+                </div>
+              ) : (
+                viewers.map(v => (
+                  <div 
+                    key={v.id} 
+                    onClick={() => { setIsViewersModalOpen(false); router.push(`/data?id=${v.id}`); }}
+                    style={{ 
+                      display: 'flex', alignItems: 'center', gap: '15px', padding: '12px 0', 
+                      borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' 
+                    }}
+                  >
+                    <img src={v.avatar_url || '/asets/png/profile.webp'} style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover' }} />
+                    <span style={{ color: 'white', fontWeight: 600, fontSize: '15px' }}>{v.username}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes fadeInOverlay {
           from { opacity: 0; }

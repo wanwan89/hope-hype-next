@@ -158,6 +158,9 @@ function ProfileContent() {
     }
   };
 
+  // ==========================================
+  // 🔥 FIX LOGIKA FETCH TAB POSTINGAN 🔥
+  // ==========================================
   const loadPostsTab = async (type: string) => {
     if (!profile) return;
     setIsLoadingPosts(true);
@@ -165,35 +168,62 @@ function ProfileContent() {
 
     try {
       if (type === 'post') {
-        const { data } = await supabase.from('posts').select('id, image_url').eq('creator_id', profile.id).eq('status', 'approved').order('created_at', { ascending: false });
-        setPosts(data || []);
+        // Ambil postingan karya asli dia
+        const { data, error } = await supabase
+          .from('posts')
+          .select('id, image_url')
+          .eq('creator_id', profile.id)
+          .order('created_at', { ascending: false });
+        
+        if (data && !error) setPosts(data);
       } 
-      else if (type === 'simpan') {
-        const { data: saves } = await supabase.from('bookmarks').select('post_id').eq('user_id', profile.id);
-        if (saves && saves.length > 0) {
-          const postIds = saves.map((s: any) => s.post_id);
-          const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', postIds).eq('status', 'approved');
-          setPosts(pData || []);
-        }
-      } 
-      else if (type === 'repost' || type === 'like') {
-        const tableName = type === 'repost' ? 'reposts' : 'likes';
-        const { data: rels } = await supabase.from(tableName).select('post_id').eq('user_id', profile.id);
-        if (rels && rels.length > 0) {
-          const postIds = rels.map((r: any) => r.post_id);
-          const { data: pData } = await supabase.from('posts').select('id, image_url').in('id', postIds).eq('status', 'approved');
-          setPosts(pData || []);
+      else {
+        // Tentukan tabel mana yang mau dilirik berdasarkan Tab
+        let tableName = '';
+        if (type === 'simpan') tableName = 'bookmarks';
+        else if (type === 'repost') tableName = 'reposts';
+        else if (type === 'like') tableName = 'likes';
+
+        if (tableName) {
+          // Cari post_id yang pernah di-like/repost/simpan sama user ini
+          const { data: relData, error: relError } = await supabase
+            .from(tableName)
+            .select('post_id')
+            .eq('user_id', profile.id)
+            .order('created_at', { ascending: false });
+
+          if (relData && relData.length > 0 && !relError) {
+            // Bersihin array post_id biar gak ada yang null
+            const postIds = relData.map((r: any) => r.post_id).filter(Boolean);
+            
+            if (postIds.length > 0) {
+              // Baru deh ambil wujud aslinya dari tabel posts pakai ID tadi
+              const { data: pData, error: pError } = await supabase
+                .from('posts')
+                .select('id, image_url')
+                .in('id', postIds)
+                .order('created_at', { ascending: false });
+              
+              if (pData && !pError) setPosts(pData);
+            }
+          }
         }
       }
-    } catch (err) { console.error(err); setPosts([]); } finally { setIsLoadingPosts(false); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setIsLoadingPosts(false); 
+    }
   };
 
   // ==========================================
   // 🔥 3. EVENT HANDLERS 🔥
   // ==========================================
+  
+  // 🔥 FIX BUKA POSTINGAN BIAR LANGSUNG TELEPORT 🔥
   const handleOpenPost = (postId: string) => {
-    try { router.push(`/post?id=${postId}`); } 
-    catch (e) { window.location.href = `/post?id=${postId}`; }
+    if (!postId) return;
+    router.push(`/post?id=${postId}`);
   };
 
   const handleAvatarClick = () => {
@@ -274,7 +304,6 @@ function ProfileContent() {
     }
   };
 
-  // 🔥 FIX 1: Fungsi Report User Ditambahkan Lagi 🔥
   const handleReportUser = () => {
     setIsActionSheetOpen(false);
     showNotif('Laporan telah dikirim untuk ditinjau.', 'info');
@@ -350,7 +379,6 @@ function ProfileContent() {
   return (
     <div className="profile-page-container">
       
-      {/* 🔥 INJEKSI CSS FIX UKURAN AVATAR & STORY BORDER 🔥 */}
       <style>{`
         .avatar-container {
           margin: 0 auto 12px;

@@ -25,10 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   // --- 🔥 STATE UNTUK PANGGILAN & PESAN GLOBAL 🔥 ---
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
-  const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); // 🔥 State baru buat pesan
+  const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); 
   
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
-  const msgNotifTimerRef = useRef<any>(null); // Timer buat ngilangin notif pesan
+  const msgNotifTimerRef = useRef<any>(null); 
 
   // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
@@ -208,12 +208,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     router.push(`/hypetalk/chat?from=${cid}`);
   };
 
-  // --- 🔥 FUNGSI KLIK NOTIF PESAN 🔥 ---
   const handleMessageClick = () => {
     if (!globalMessageNotif) return;
     const cid = globalMessageNotif.senderId;
     setGlobalMessageNotif(null);
-    // Langsung arahin ke ruang chat
     router.push(`/hypetalk/chat?from=${cid}`);
   };
 
@@ -317,7 +315,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
           .global-call-btn:active { transform: scale(0.9); }
 
-          /* 🔥 Animasi & CSS Popup Pesan Baru 🔥 */
+          /* 🔥 Animasi & CSS Popup Pesan Baru (DI RAPIHKAN) 🔥 */
           .global-msg-popup {
             position: fixed;
             top: max(env(safe-area-inset-top, 20px), 20px);
@@ -327,11 +325,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             backdrop-filter: blur(12px);
             border: 1px solid rgba(31, 60, 255, 0.3);
             border-radius: 20px;
-            padding: 12px 16px;
+            padding: 14px 16px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            z-index: 9999998; /* Di bawah call popup sikit */
+            gap: 14px;
+            z-index: 9999998; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.4);
             width: 90%;
             max-width: 380px;
@@ -343,21 +341,47 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             transform: translateX(-50%) scale(0.96);
           }
           .global-msg-avatar {
-            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
-            border: 1px solid rgba(255,255,255,0.1);
+            width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;
           }
           .global-msg-content {
-            flex: 1; overflow: hidden; display: flex; flexDirection: column;
+            flex: 1; 
+            min-width: 0; /* Biar ellipsis jalan */
+            display: flex; 
+            flex-direction: column;
+            justify-content: center;
+          }
+          .global-msg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            width: 100%;
           }
           .global-msg-title {
-            color: white; font-weight: 700; font-size: 14px; 
-            white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
-            display: flex; align-items: center; gap: 6px;
+            color: white; 
+            font-weight: 700; 
+            font-size: 15px; 
+            white-space: nowrap; 
+            text-overflow: ellipsis; 
+            overflow: hidden;
+          }
+          .global-msg-badge {
+            font-size: 10px;
+            background: #1f3cff;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: 800;
+            flex-shrink: 0;
+            margin-left: 10px;
           }
           .global-msg-text {
-            color: #9ca3af; font-size: 13px; 
-            white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
-            margin-top: 2px;
+            color: #9ca3af; 
+            font-size: 13px; 
+            white-space: nowrap; 
+            text-overflow: ellipsis; 
+            overflow: hidden;
           }
         `}</style>
       </head>
@@ -367,14 +391,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider>
             <GlobalShareModal />
 
-            {/* 🔥 POPUP PESAN MASUK GLOBAL 🔥 */}
+            {/* 🔥 POPUP PESAN MASUK GLOBAL (RAPIH) 🔥 */}
             {globalMessageNotif && !globalIncomingCall && (
               <div className="global-msg-popup" onClick={handleMessageClick}>
                 <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
                 <div className="global-msg-content">
-                  <div className="global-msg-title">
-                    {globalMessageNotif.senderName}
-                    <span style={{ fontSize: '10px', background: '#1f3cff', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' }}>Baru</span>
+                  <div className="global-msg-header">
+                    <span className="global-msg-title">{globalMessageNotif.senderName}</span>
+                    <span className="global-msg-badge">Baru</span>
                   </div>
                   <div className="global-msg-text">
                     {globalMessageNotif.message}
