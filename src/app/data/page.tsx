@@ -122,18 +122,19 @@ function ProfileContent() {
       
       // 🔥 FIX 2: CEK STORY LEBIH AKURAT 🔥
       // Ambil waktu 24 jam yang lalu
-      const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+// Ambil waktu 24 jam yang lalu
+const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
 const { data: stories } = await supabase
   .from('stories')
   .select('id')
-  .eq('creator_id', profData.id) // ✅ Samain sama nama kolom di tabel 'stories'
+  .eq('creator_id', profData.id) // Pastikan kolom di DB lu beneran 'creator_id'
   .gte('created_at', timeLimit)
   .limit(1);
 
+// 🔥 FIX: Langsung set true/false biar gak nyangkut
+setHasStory(!!(stories && stories.length > 0)); 
 
-      if (stories && stories.length > 0) {
-        setHasStory(true);
-      } else {
         // Fallback cek pake creator_id just in case
         const { data: fallbackStories } = await supabase
           .from('stories')
@@ -176,15 +177,17 @@ const { data: stories } = await supabase
     setPosts([]); 
 
     try {
-      if (type === 'post') {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('id, image_url')
-          .eq('creator_id', profile.id)
-          .order('created_at', { ascending: false });
-        
-        if (data && !error) setPosts(data);
-      } 
+if (type === 'post') {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, image_url')
+    .eq('creator_id', profile.id) // Pakai kolom creator_id sesuai tabel lu
+    .eq('status', 'approved')    // 🔥 WAJIB: Cuma yang sudah di-ACC
+    .order('created_at', { ascending: false });
+  
+  if (data && !error) setPosts(data);
+}
+
       else {
         let tableName = '';
         if (type === 'simpan') tableName = 'bookmarks';
@@ -226,16 +229,21 @@ const { data: stories } = await supabase
   
 const handleOpenPost = (postId: string) => {
   if (!postId) return;
-  // Kita arahkan ke /post?id=XXX#post-XXX
+  // Ini bakal ngirim ?id=123#post-123 ke halaman gallery
   router.push(`/post?id=${postId}#post-${postId}`);
 };
 
 
 const handleAvatarClick = () => {
   if (hasStory && profile?.id) {
-    // Arahkan ke rute story yang sesuai dengan struktur folder lu
-    // Kalau folder lu src/app/story/[id]/page.tsx, maka pake yang bawah:
+    // 💡 RUTE A: Jika pake folder src/app/story/[id]
     router.push(`/story/${profile.id}`); 
+
+    // 💡 RUTE B: Jika pake folder src/app/story/page.tsx
+    // router.push(`/story?user_id=${profile.id}`); 
+  } else {
+    console.log("Klik gagal: hasStory =", hasStory, "ID =", profile?.id);
+    showNotif("Belum ada story terbaru", "info");
   }
 };
 

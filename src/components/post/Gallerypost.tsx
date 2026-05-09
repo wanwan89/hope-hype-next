@@ -21,7 +21,6 @@ export default function Gallerypost() {
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // 🔥 STATE BUAT PREVIEW MODAL & DOUBLE TAP 🔥
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({}); 
 
@@ -31,6 +30,20 @@ export default function Gallerypost() {
     window.addEventListener('changeCategory', handleCategoryChange);
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, []);
+
+  // 🔥 FIX 1: LOGIKA OTOMATIS SCROLL KE POSTINGAN 🔥
+  useEffect(() => {
+    const hash = window.location.hash; // Bakal dapet #post-123
+    if (hash && posts.length > 0 && !isLoading) {
+      const timer = setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 800); // Delay dikit biar gambar kelar ngerender
+      return () => clearTimeout(timer);
+    }
+  }, [posts, isLoading]);
 
   const initGallery = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -176,7 +189,6 @@ export default function Gallerypost() {
     } catch (err) { console.error(err); }
   };
 
-  // 🔥 DOUBLE TAP HANDLER 🔥
   const handleImageDoubleTap = (e: any, imageUrl: string, postId: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -265,7 +277,9 @@ export default function Gallerypost() {
   return (
     <section>
       <style>{`
-        /* 🔥 STYLE CAROUSEL GESER 🔥 */
+        /* 🔥 FIX 2: BIAR PAS SCROLL GAK KETUTUP HEADER 🔥 */
+        .card { scroll-margin-top: 100px; }
+
         .photo-carousel {
           display: flex;
           overflow-x: auto;
@@ -301,7 +315,6 @@ export default function Gallerypost() {
         }
         .dot.active { background: white; width: 12px; border-radius: 10px; }
 
-        /* 🔥 PREVIEW MODAL 🔥 */
         .image-preview-overlay {
           position: fixed; inset: 0; z-index: 100000;
           background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
@@ -316,7 +329,6 @@ export default function Gallerypost() {
         @keyframes popZoom { from { transform: scale(0.8); } to { transform: scale(1); } }
       `}</style>
 
-      {/* MODAL PREVIEW */}
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
           {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
@@ -339,17 +351,16 @@ export default function Gallerypost() {
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
 
-            // 🔥 PECAH URL MULTIPLE FOTO 🔥
             const photoList = post.image_url ? post.image_url.split(',') : [];
 
             return (
+              // 🔥 FIX 3: PASANG ID DI SINI 🔥
               <div key={post.id} id={`post-${post.id}`} className="card" style={!post.image_url ? { padding: '16px' } : {}}>
                 {photoList.length > 0 ? (
                   <>
                     <div className="slider" style={{ position: 'relative' }}>
                       <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 40 }}>{getMusicHtml(post)}</div>
                       
-                      {/* 🔥 CAROUSEL GESER 🔥 */}
                       <div className="photo-carousel" onScroll={(e) => {
                           const target = e.target as HTMLDivElement;
                           const index = Math.round(target.scrollLeft / target.offsetWidth);
@@ -369,7 +380,6 @@ export default function Gallerypost() {
                         ))}
                       </div>
 
-                      {/* DOTS INDIKATOR */}
                       {photoList.length > 1 && (
                         <div className={`carousel-dots dots-${post.id}`}>
                           {photoList.map((_: any, i: number) => (
