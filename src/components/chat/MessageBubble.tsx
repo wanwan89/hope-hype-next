@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; 
 import { getUserBadge } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next'; 
+import { useRouter } from 'next/navigation'; // 🔥 FIX: Tambahin router buat klik Story 🔥
 import './MessageBubble.css';
 
 // --- HELPER: ICON STATUS WHATSAPP ---
@@ -17,6 +18,7 @@ export const getStatusIcon = (status: string) => {
 
 export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete }: any) {
   const { t } = useTranslation(); 
+  const router = useRouter(); // 🔥 Inisialisasi router
   const bubbleRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
@@ -30,7 +32,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
   
-  // FIX: Tampilkan detail user buat chat orang lain di Grup / Global
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
 
   // State handle data reply hasil realtime
@@ -63,7 +64,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     }
   }, [msg.reply_to, msg.reply_to_msg, liveReply]);
 
-  // Auto-Scroll ke Bawah Saat Render Selesai
   useEffect(() => {
     setTimeout(() => {
         const chatContainer = document.querySelector('.chat-messages');
@@ -105,7 +105,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     let diff = touchCurrentX.current - touchStartX.current;
 
     const now = Date.now();
-    // 🔥 FIX 1: Sensitivitas Double Tap dinaikin biar gampang kebaca (dari 300ms jadi 400ms, jarak diff dilonggarin)
     if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted) {
       onReaction(msg, e.changedTouches ? e.changedTouches[0] : (e as any));
     }
@@ -123,7 +122,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     isSwiping.current = false;
   };
 
-  // 🔥 FIX 1 Backup: Biar bisa double tap juga pake mouse / tap standar
   const handleDoubleClick = (e: React.MouseEvent) => {
     if (!isDeleted) {
       onReaction(msg, { clientX: e.clientX, clientY: e.clientY });
@@ -148,9 +146,25 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   };
 
   const displayMessage = isDeleted ? t('msg_deleted') : msg.message;
-
-  // 🔥 FIX 2: Pola gelombang suara untuk Voice Note (dalam persentase tinggi)
   const wavePattern = [35, 60, 100, 75, 45, 80, 100, 60, 40, 85, 50, 30];
+
+  // 🔥 FIX 1: FUNGSI KLIK FOTO STORY BIAR TELEPORT 🔥
+  const handleStickerClick = async (url: string) => {
+    // Kalau itu balasan story, kita cari ID story-nya dari database
+    if (msg.message && msg.message.includes("Membalas ceritamu")) {
+      try {
+        // Cari story yang punya gambar ini
+        const { data } = await supabase.from('stories').select('id').eq('image_url', url).maybeSingle();
+        if (data && data.id) {
+          router.push(`/story/${data.id}`);
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    // Kalau bukan story atau ga ketemu ID-nya, nggak ngapa-ngapain
+  };
 
   return (
     <div className="hype-chat-scope">
@@ -161,7 +175,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onDoubleClick={handleDoubleClick} // Fallback support double tap
+        onDoubleClick={handleDoubleClick}
         style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
       >
         {msg.is_system ? (
@@ -200,10 +214,43 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               )}
 
-              {msg.sticker_url ? (
-                <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '140px' }} />
-              ) : msg.audio_url ? (
-                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`}>
+              {/* 🔥 FIX 2: RENDER FOTO/STIKER DULU, LALU TEKS DI BAWAHNYA KALAU ADA 🔥 */}
+              {msg.sticker_url && (
+                <div 
+                  style={{ 
+                    cursor: msg.message?.includes("Membalas ceritamu") ? 'pointer' : 'default',
+                    position: 'relative'
+                  }}
+                  onClick={() => handleStickerClick(msg.sticker_url)}
+                >
+                  <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: msg.message && msg.message !== "Stiker" ? '6px' : '0' }} />
+                  
+                  {/* Kalau ini balasan story, kasih icon panah biar keliatan bisa diklik */}
+                  {msg.message?.includes("Membalas ceritamu") && (
+                    <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span className="material-icons" style={{ fontSize: '14px', color: 'white' }}>open_in_new</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* RENDER TEKS (Kalau bukan sekadar tulisan "Stiker" atau kalau dia gak punya stiker) */}
+              {!msg.sticker_url || (msg.message && msg.message !== "Stiker" && !msg.audio_url) ? (
+                <div 
+                  className={`text ${isDeleted ? "deleted" : ""}`} 
+                  style={{ 
+                    fontStyle: isDeleted ? 'italic' : 'normal',
+                    opacity: isDeleted ? 0.7 : 1,
+                    whiteSpace: 'pre-wrap' // Biar enter (\n) kebaca rapi
+                  }}
+                >
+                  {displayMessage}
+                </div>
+              ) : null}
+
+              {/* RENDER VN */}
+              {msg.audio_url && (
+                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: msg.sticker_url ? '6px' : '0' }}>
                   <button onClick={toggleVN} className="vn-play-btn">
                     {isPlaying ? (
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -211,7 +258,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
                     )}
                   </button>
-                  {/* 🔥 FIX 2: Waveform Realistis 🔥 */}
                   <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '20px' }}>
                     {wavePattern.map((heightPercent, i) => (
                       <span 
@@ -219,23 +265,13 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                         className="bar" 
                         style={{
                           height: `${heightPercent}%`,
-                          animationDelay: `${i * 0.1}s`, // Biar riaknya gantian
+                          animationDelay: `${i * 0.1}s`,
                           transition: 'height 0.2s ease'
                         }}
                       ></span>
                     ))}
                   </div>
                   <span className="vn-time">VN</span>
-                </div>
-              ) : (
-                <div 
-                  className={`text ${isDeleted ? "deleted" : ""}`} 
-                  style={{ 
-                    fontStyle: isDeleted ? 'italic' : 'normal',
-                    opacity: isDeleted ? 0.7 : 1
-                  }}
-                >
-                  {displayMessage}
                 </div>
               )}
 

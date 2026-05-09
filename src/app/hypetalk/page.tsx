@@ -13,7 +13,7 @@ export default function HypetalkPage() {
   // --- STATES ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [chats, setChats] = useState<any[]>([]);
-  const [requestChats, setRequestChats] = useState<any[]>([]); // 🔥 STATE BARU BUAT PERMINTAAN PESAN
+  const [requestChats, setRequestChats] = useState<any[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -88,7 +88,7 @@ export default function HypetalkPage() {
   const loadAllChats = async (userId: string, isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     try {
-      // 1. Ambil data Followers (Orang yang nge-follow kita)
+      // 1. Ambil data Followers
       const { data: followerData } = await supabase.from('followers').select('follower_id').eq('following_id', userId);
       const followerIds = new Set(followerData?.map((f: any) => f.follower_id) || []);
 
@@ -119,14 +119,26 @@ export default function HypetalkPage() {
       // --- CHAT GLOBAL ---
       const globalMsgs = allMsgs?.filter(m => m.room_id === 'room-1');
       const lastGlobalMsg = globalMsgs && globalMsgs.length > 0 ? globalMsgs[0] : null;
+      
+      let globalPreview = 'Obrolan umum komunitas';
+      let globalUnread = unreadMap.get('room-1') || 0;
+      if (lastGlobalMsg) {
+        globalPreview = lastGlobalMsg.sticker_url ? "Mengirim Stiker" : (lastGlobalMsg.audio_url ? "Mengirim Voice Note" : lastGlobalMsg.message);
+        // 🔥 FIX: Teks 'Anda' & Reset Unread 🔥
+        if (lastGlobalMsg.user_id === userId) {
+          globalPreview = `Anda: ${globalPreview}`;
+          globalUnread = 0; 
+        }
+      }
+
       mainChats.push({
         id: 'room-1',
         type: 'global',
         name: 'HopeTalk Globe',
-        preview: lastGlobalMsg ? (lastGlobalMsg.sticker_url ? "Mengirim Stiker" : (lastGlobalMsg.audio_url ? "Mengirim Voice Note" : lastGlobalMsg.message)) : 'Obrolan umum komunitas',
+        preview: globalPreview,
         time: lastGlobalMsg ? new Date(lastGlobalMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Always',
         sortTime: lastGlobalMsg ? new Date(lastGlobalMsg.created_at).getTime() : Date.now() + 10000,
-        unread: unreadMap.get('room-1') || 0
+        unread: globalUnread
       });
 
       // --- CHAT PRIVATE & REQUESTS ---
@@ -146,6 +158,14 @@ export default function HypetalkPage() {
             if (lastMsg.sticker_url) msgPreview = "Mengirim Stiker";
             if (lastMsg.audio_url) msgPreview = "Mengirim Voice Note";
             
+            let currentUnread = unreadMap.get(p.id) || 0;
+
+            // 🔥 FIX: Kalau kita yang ngirim terakhir, unread harus 0 & tambah "Anda: " 🔥
+            if (lastMsg.user_id === userId) {
+              msgPreview = `Anda: ${msgPreview}`;
+              currentUnread = 0;
+            }
+
             const chatItem = {
               id: p.id,
               type: 'private',
@@ -157,19 +177,16 @@ export default function HypetalkPage() {
               lastMsgStatus: lastMsg.status,
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               sortTime: new Date(lastMsg.created_at).getTime(),
-              unread: unreadMap.get(p.id) || 0
+              unread: currentUnread
             };
 
-            // 🔥 LOGIKA PERMINTAAN PESAN (REQUESTS) 🔥
             const ids = [userId, p.id].sort();
             const roomIdStr = `pv_${ids[0]}_${ids[1]}`;
             const roomMsgs = allMsgs.filter(m => m.room_id === roomIdStr);
             
-            // Cek apakah kita pernah membalas pesannya?
             const iHaveReplied = roomMsgs.some(m => m.user_id === userId);
             const isFollower = followerIds.has(p.id);
 
-            // Kalau BUKAN follower dan KITA BELUM PERNAH BALAS -> Masuk Requests
             if (!isFollower && !iHaveReplied) {
               reqChats.push(chatItem);
             } else {
@@ -186,22 +203,35 @@ export default function HypetalkPage() {
           if (g.groups) {
             const groupMsgs = allMsgs?.filter(m => m.room_id === `group_${g.group_id}`);
             const lastGroupMsg = groupMsgs && groupMsgs.length > 0 ? groupMsgs[0] : null;
+            
+            let grpPreview = 'Grup Chat';
+            let grpUnread = unreadMap.get(g.group_id) || 0;
+
+            if (lastGroupMsg) {
+              grpPreview = lastGroupMsg.sticker_url ? "Mengirim Stiker" : (lastGroupMsg.audio_url ? "Mengirim Voice Note" : lastGroupMsg.message);
+              // 🔥 FIX: Teks 'Anda' & Reset Unread Grup 🔥
+              if (lastGroupMsg.user_id === userId) {
+                grpPreview = `Anda: ${grpPreview}`;
+                grpUnread = 0;
+              }
+            }
+
             mainChats.push({
               id: g.group_id,
               type: 'group',
               name: g.groups.name,
               avatar: g.groups.photo_url || '/asets/png/profile.webp',
-              preview: lastGroupMsg ? (lastGroupMsg.sticker_url ? "Mengirim Stiker" : (lastGroupMsg.audio_url ? "Mengirim Voice Note" : lastGroupMsg.message)) : 'Grup Chat',
+              preview: grpPreview,
               time: lastGroupMsg ? new Date(lastGroupMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
               sortTime: lastGroupMsg ? new Date(lastGroupMsg.created_at).getTime() : Date.now() - 1000,
-              unread: unreadMap.get(g.group_id) || 0
+              unread: grpUnread
             });
           }
         });
       }
 
       setChats(mainChats.sort((a, b) => b.sortTime - a.sortTime));
-      setRequestChats(reqChats.sort((a, b) => b.sortTime - a.sortTime)); // Simpan state request chat
+      setRequestChats(reqChats.sort((a, b) => b.sortTime - a.sortTime)); 
     } catch (err) {
       console.error(err);
     } finally {
