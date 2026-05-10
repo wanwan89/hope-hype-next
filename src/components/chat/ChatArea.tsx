@@ -36,7 +36,9 @@ export default function ChatArea() {
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
   
-  // 🔥 STATE UNTUK KIRIM FOTO VIP 🔥
+  // 🔥 STATE UNTUK PREVIEW & KIRIM FOTO VIP 🔥
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -300,7 +302,7 @@ export default function ChatArea() {
     const { error } = await supabase.from('messages').insert([{
       room_id: roomId, 
       user_id: currentUser.id, 
-      message: image ? "📸 Mengirim Foto" : audio ? "🎤 Voice Note" : (sticker ? "🎨 Stiker" : content),
+      message: image && !content ? "📸 Mengirim Foto" : audio ? "🎤 Voice Note" : (sticker ? "🎨 Stiker" : content),
       sticker_url: sticker || null, 
       audio_url: audio || null, 
       image_url: image || null, 
@@ -409,7 +411,7 @@ export default function ChatArea() {
   };
 
   const handleMicTouchStart = (e: any) => {
-    if (!inputValue.trim() && !editMessageId) {
+    if (!inputValue.trim() && !editMessageId && !pendingImage) {
       setIsMicPressed(true); 
       vnTouchStartX.current = ('touches' in e) ? e.touches[0].clientX : e.clientX;
       vnIsCanceled.current = false; 
@@ -429,6 +431,7 @@ export default function ChatArea() {
     }
   };
 
+  // 🔥 FUNGSI PILIH FOTO (PREVIEW DULU) 🔥
   const handlePhotoClick = () => {
     const allowedRoles = ['verified', 'vip', 'admin', 'developer', 'creator'];
     const userRole = myProfile?.role?.toLowerCase() || 'user';
@@ -440,30 +443,41 @@ export default function ChatArea() {
     }
   };
 
-  const handlePhotoUpload = async (e: any) => {
+  const handlePhotoSelect = (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
+    setPendingImage(file);
+    setPendingImagePreview(URL.createObjectURL(file));
+    if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+  };
 
-    setIsUploadingImg(true);
-    try {
-      const fd = new FormData(); 
-      fd.append("file", file); 
-      fd.append("upload_preset", "hopehype_preset");
-      
-      const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
-      const d = await res.json();
-      
-      if (d.secure_url) {
-        await sendMessage(undefined, undefined, undefined, d.secure_url);
-      } else {
-        showNotif("Gagal upload foto", "error");
+  // 🔥 FUNGSI KIRIM SEMUA (TEKS + FOTO) 🔥
+  const handleSendClick = async () => {
+    if (pendingImage) {
+      setIsUploadingImg(true);
+      try {
+        const fd = new FormData(); 
+        fd.append("file", pendingImage); 
+        fd.append("upload_preset", "hopehype_preset");
+        
+        const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
+        const d = await res.json();
+        
+        if (d.secure_url) {
+          await sendMessage(inputValue, undefined, undefined, d.secure_url);
+        } else {
+          showNotif("Gagal upload foto", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showNotif("Terjadi kesalahan saat upload", "error");
+      } finally {
+        setIsUploadingImg(false);
+        setPendingImage(null);
+        setPendingImagePreview(null);
       }
-    } catch (err) {
-      console.error(err);
-      showNotif("Terjadi kesalahan saat upload", "error");
-    } finally {
-      setIsUploadingImg(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    } else {
+      sendMessage();
     }
   };
 
@@ -613,6 +627,9 @@ export default function ChatArea() {
     displayStatus = `${onlineCount} hopers sedang online`;
   }
 
+  // Apakah tombol kanan jadi Send atau Mic?
+  const canSend = inputValue.trim() || editMessageId || pendingImagePreview;
+
   return (
     <div className="telegram-chat hype-chat-scope">
       
@@ -676,7 +693,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* FLOATING CALL UNTUK SEMUA STATUS (CALLING/INCOMING/CONNECTED) */}
+      {/* FLOATING CALL */}
       {(callStatus !== 'idle') && (
         <div className="call-floating-popup">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="partner" />
@@ -735,31 +752,7 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* MENU OPSI PESAN */}
-      {msgOptions && (
-        <div className="custom-modal-overlay" onClick={() => setMsgOptions(null)}>
-          <div className="custom-modal-content" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '24px 24px 0 0' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', textAlign: 'center' }}>Opsi Pesan</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {msgOptions.user_id === currentUser?.id && !msgOptions.audio_url && !msgOptions.image_url && !msgOptions.sticker_url && msgOptions.message !== 'Pesan ini telah dihapus' && (
-                <button onClick={() => { setEditMessageId(msgOptions.id); setInputValue(msgOptions.message); setMsgOptions(null); }} style={{ padding: '14px', background: 'var(--bg-main)', border: `1px solid var(--primary-blue)`, borderRadius: '12px', fontWeight: 600, color: 'var(--primary-blue)' }}>
-                  Edit Pesan
-                </button>
-              )}
-              {msgOptions.user_id === currentUser?.id && msgOptions.message !== 'Pesan ini telah dihapus' && (
-                <button onClick={() => handleDeleteMsg(msgOptions.id)} style={{ padding: '14px', background: '#ff4757', border: 'none', borderRadius: '12px', fontWeight: 600, color: 'white' }}>
-                  Hapus Pesan
-                </button>
-              )}
-              <button onClick={() => setMsgOptions(null)} style={{ padding: '14px', background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL GROUP SETTINGS DIKEMBALIKAN */}
+      {/* MODAL GROUP SETTINGS */}
       {isGroupSettingsOpen && groupId && (
         <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)} style={{ zIndex: 100000 }}>
           <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -874,7 +867,7 @@ export default function ChatArea() {
               <MessageBubble 
                 key={msg.id} 
                 msg={msg} 
-                currentUser={currentUser} /* DIPERLUKAN OLEH MESSAGE BUBBLE */
+                currentUser={currentUser}
                 isMe={msg.user_id === currentUser?.id} 
                 onReply={setReplyTo} 
                 onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
@@ -934,7 +927,7 @@ export default function ChatArea() {
               </div>
             )}
             <div className="input-row">
-              <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId ? '16px' : '28px' }}>
+              <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId || pendingImagePreview ? '16px' : '28px' }}>
                 
                 {editMessageId && (
                   <div style={{ background: 'rgba(29, 161, 242, 0.1)', borderBottom: '1px solid var(--border-color)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
@@ -953,6 +946,19 @@ export default function ChatArea() {
                   </div>
                 )}
 
+                {/* 🔥 PREVIEW FOTO YANG AKAN DIKIRIM 🔥 */}
+                {pendingImagePreview && (
+                  <div style={{ padding: '10px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', position: 'relative', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'center' }}>
+                    <img src={pendingImagePreview} style={{ maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--border-color)' }} alt="preview" />
+                    <button 
+                      onClick={() => { setPendingImage(null); setPendingImagePreview(null); }} 
+                      style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <span className="material-icons" style={{fontSize: '18px'}}>close</span>
+                    </button>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
                   
                   {cancelAnim ? (
@@ -968,36 +974,42 @@ export default function ChatArea() {
                     </div>
                   ) : (
                     <>
+                      {/* URUTAN 1: TOMBOL STIKER */}
                       <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
                       
+                      {/* URUTAN 2: TEXTAREA INPUT */}
+                      <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 6px', fontSize: '15px' }} />
+
+                      {/* URUTAN 3: TOMBOL FOTO VIP (DI SEBERANG STIKER) */}
                       <button 
                         onClick={handlePhotoClick} 
                         disabled={isUploadingImg} 
-                        style={{ border: 'none', background: 'transparent', padding: '8px', color: isUploadingImg ? 'var(--text-muted)' : 'var(--text-color)', cursor: 'pointer', position: 'relative' }}
+                        style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer', position: 'relative' }}
                       >
-                        {isUploadingImg ? (
-                          <span className="material-icons" style={{ animation: 'hypeSpin 1s linear infinite' }}>autorenew</span>
-                        ) : (
-                          <span className="material-icons">image</span>
-                        )}
+                        <span className="material-icons">image</span>
                         {(!myProfile || !['verified', 'vip', 'admin', 'developer', 'creator'].includes(myProfile?.role?.toLowerCase())) && (
                           <span className="material-icons" style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '10px', background: '#ff4757', color: 'white', borderRadius: '50%', padding: '2px' }}>lock</span>
                         )}
                       </button>
-                      <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoUpload} />
-
-                      <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
+                      <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
                     </>
                   )}
                 </div>
               </div>
               
-              <button id="action-btn" className={inputValue.trim() || editMessageId ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
-                      onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} 
-                      onTouchStart={handleMicTouchStart} onTouchEnd={() => stopVN(false)} 
-                      onTouchMove={handleMicTouchMove} 
-                      onClick={() => (inputValue.trim() || editMessageId) && sendMessage()}>
-                <span className="material-icons">{editMessageId ? 'check' : (inputValue.trim() ? 'send' : 'mic')}</span>
+              <button 
+                id="action-btn" 
+                className={canSend ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
+                onMouseDown={!canSend ? handleMicTouchStart : undefined} 
+                onMouseUp={!canSend ? () => stopVN(false) : undefined} 
+                onTouchStart={!canSend ? handleMicTouchStart : undefined} 
+                onTouchEnd={!canSend ? () => stopVN(false) : undefined} 
+                onTouchMove={!canSend ? handleMicTouchMove : undefined} 
+                onClick={() => canSend && handleSendClick()}
+              >
+                <span className="material-icons">
+                  {isUploadingImg ? 'hourglass_empty' : editMessageId ? 'check' : (canSend ? 'send' : 'mic')}
+                </span>
               </button>
             </div>
           </>

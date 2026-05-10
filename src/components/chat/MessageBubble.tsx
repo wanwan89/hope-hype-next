@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
 import './MessageBubble.css';
 
-// --- HELPER: ICON STATUS WHATSAPP ---
 export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{fontSize: '10px', opacity: 0.6}}>🕒</span>;
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
@@ -16,7 +15,6 @@ export const getStatusIcon = (status: string) => {
   return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
-// 🔥 OPTIMASI GAMBAR CLOUDINARY 🔥
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -26,7 +24,32 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete }: any) {
+// 🔥 FUNGSI SAKTI BUAT BIKIN LINK JADI BISA DI-KLIK 🔥
+const renderTextWithLinks = (text: string) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a 
+          key={i} 
+          href={part} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{ color: '#1DA1F2', textDecoration: 'underline', wordBreak: 'break-all' }}
+          onClick={(e) => e.stopPropagation()} 
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
+export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUser }: any) {
   const { t } = useTranslation(); 
   const router = useRouter(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -38,49 +61,30 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
 
   const isDeleted = msg.message === "Pesan ini telah dihapus";
   
-  // Deteksi Ruang Obrolan
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
   
-  // Deteksi Tipe Khusus
   const isStoryReply = msg.message && msg.message.includes("Membalas ceritamu");
 
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
+  
+  // 🔥 STATE REACTION LOKAL 🔥
+  const [showReactions, setShowReactions] = useState(false);
 
   useEffect(() => {
     if (msg.reply_to && !msg.reply_to_msg && !liveReply) {
       const fetchReplyData = async () => {
         try {
-          const { data, error } = await supabase
-            .from('messages')
-            .select('id, message, profiles(username)')
-            .eq('id', msg.reply_to)
-            .single();
-          
-          if (data && !error) {
-            setLiveReply({
-              id: data.id,
-              username: (data.profiles as any)?.username || 'User',
-              message: data.message
-            });
-          }
-        } catch (err) {
-          console.error("Fetch reply error:", err);
-        }
+          const { data, error } = await supabase.from('messages').select('id, message, profiles(username)').eq('id', msg.reply_to).single();
+          if (data && !error) setLiveReply({ id: data.id, username: (data.profiles as any)?.username || 'User', message: data.message });
+        } catch (err) { console.error(err); }
       };
       fetchReplyData();
     } else if (msg.reply_to_msg) {
       setLiveReply(msg.reply_to_msg);
     }
   }, [msg.reply_to, msg.reply_to_msg, liveReply]);
-
-  useEffect(() => {
-    setTimeout(() => {
-        const chatContainer = document.querySelector('.chat-messages');
-        if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 150);
-  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -114,8 +118,10 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     let diff = touchCurrentX.current - touchStartX.current;
     const now = Date.now();
     
-    if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted) {
-      onReaction(msg, e.changedTouches ? e.changedTouches[0] : (e as any));
+    // DETEKSI DOUBLE TAP -> BUKA MENU REACTION LOKAL
+    if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted && !msg.is_system) {
+      setShowReactions(true);
+      if (navigator.vibrate) navigator.vibrate(20);
     }
     lastTap.current = now;
 
@@ -132,7 +138,25 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    if (!isDeleted) onReaction(msg, { clientX: e.clientX, clientY: e.clientY });
+    if (!isDeleted && !msg.is_system) {
+      setShowReactions(true);
+    }
+  };
+
+  // 🔥 FUNGSI KIRIM REACTION 🔥
+  const handleReactionSelect = async (emoji: string, e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if (!currentUser) return;
+    
+    const currentReactions = msg.reactions || {};
+    if (currentReactions[currentUser.id] === emoji) {
+      delete currentReactions[currentUser.id]; // Hapus kalau diklik emoji yang sama
+    } else {
+      currentReactions[currentUser.id] = emoji; // Tambah / Update
+    }
+    
+    await supabase.from('messages').update({ reactions: currentReactions }).eq('id', msg.id);
+    setShowReactions(false);
   };
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -152,22 +176,60 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
     }
   };
 
-  const displayMessage = isDeleted ? t('msg_deleted') : msg.message;
-  const wavePattern = [35, 60, 100, 75, 45, 80, 100, 60, 40, 85, 50, 30];
-
   const handleStoryClick = async (url: string) => {
     try {
       const { data } = await supabase.from('stories').select('id').eq('image_url', url).maybeSingle();
-      if (data && data.id) {
-        router.push(`/story/${data.id}`);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      if (data && data.id) router.push(`/story/${data.id}`);
+    } catch (err) { console.error(err); }
   };
 
+  // 🔥 BERSIHKAN TEKS DARI PLACEHOLDER BAWAAN 🔥
+  let cleanMsg = msg.message || "";
+  if (isStoryReply) {
+    cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
+    if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
+  }
+  const isPlaceholder = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
+  const shouldShowText = cleanMsg && (!isPlaceholder || isDeleted);
+
+  const wavePattern = [35, 60, 100, 75, 45, 80, 100, 60, 40, 85, 50, 30];
+
   return (
-    <div className="hype-chat-scope">
+    <div className="hype-chat-scope" style={{ position: 'relative' }}>
+      
+      {/* 🔥 OVERLAY & BOX REACTION (MUNCUL PAS DOUBLE TAP) 🔥 */}
+      {showReactions && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99998 }} onClick={() => setShowReactions(false)} />
+          <div style={{
+            position: 'absolute',
+            top: '-45px',
+            [isMe ? 'right' : 'left']: '0',
+            background: 'var(--bg-panel, #ffffff)',
+            padding: '8px 14px',
+            borderRadius: '24px',
+            boxShadow: '0 5px 20px rgba(0,0,0,0.2)',
+            display: 'flex',
+            gap: '12px',
+            border: '1px solid var(--border-color)',
+            zIndex: 99999,
+            animation: 'hype-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}>
+            {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
+              <span 
+                key={emoji} 
+                onClick={(e) => handleReactionSelect(emoji, e)}
+                style={{ fontSize: '22px', cursor: 'pointer', transition: 'transform 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {emoji}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
       <div 
         ref={bubbleRef}
         id={`msg-${msg.id}`}
@@ -179,7 +241,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
       >
         {msg.is_system ? (
-          // 🔥 FIX 1: HAPUS BOX SHADOW DI PESAN SISTEM (Memanggil, Ditolak, dll) 🔥
           <div 
             className="system-text" 
             style={{ 
@@ -199,12 +260,12 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               textAlign: 'center'
             }}
           >
-            {(displayMessage.includes("Memanggil") || displayMessage.includes("Panggilan") || displayMessage.includes("terjawab") || displayMessage.includes("dibatalkan")) && (
-               <span className="material-icons" style={{ fontSize: '14px', color: displayMessage.includes("ditolak") || displayMessage.includes("tak") ? '#ff4757' : '#2ecc71' }}>
-                 {displayMessage.includes("ditolak") || displayMessage.includes("tak") ? 'call_missed' : 'phone_in_talk'}
+            {(msg.message.includes("Memanggil") || msg.message.includes("Panggilan") || msg.message.includes("terjawab") || msg.message.includes("dibatalkan")) && (
+               <span className="material-icons" style={{ fontSize: '14px', color: msg.message.includes("ditolak") || msg.message.includes("tak") ? '#ff4757' : '#2ecc71' }}>
+                 {msg.message.includes("ditolak") || msg.message.includes("tak") ? 'call_missed' : 'phone_in_talk'}
                </span>
             )}
-            {displayMessage.replace(/📞/g, '').replace(/🎤/g, '').trim()}
+            {msg.message.replace(/📞/g, '').replace(/🎤/g, '').trim()}
           </div>
         ) : (
           <>
@@ -219,7 +280,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               />
             )}
             
-            <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '10px 14px' }}>
+            <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px' }}>
               
               {showUserDetail && (
                 <div style={{
@@ -245,64 +306,64 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               )}
 
-              {/* RENDER FOTO (IMAGE_URL) */}
+              {/* 🔥 FOTO + TEKS (RAPIH) 🔥 */}
               {msg.image_url && !isDeleted && (
-                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: msg.message && !msg.message.includes("Mengirim Foto") ? '6px' : '0' }}>
+                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: shouldShowText ? '6px' : '0' }}>
                   <img 
                     src={getOptimizedImage(msg.image_url)} 
                     alt="Foto Kiriman" 
-                    style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: 'auto', height: 'auto', objectFit: 'cover' }} 
+                    style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: 'auto', objectFit: 'cover' }} 
                   />
                 </div>
               )}
 
-              {/* 🔥 FIX 2: RENDER KHUSUS BALASAN STORY 🔥 */}
+              {/* 🔥 STORY REPLY + TEKS (RAPIH) 🔥 */}
               {isStoryReply && msg.sticker_url && !isDeleted ? (
                 <div 
                   className="story-reply-card"
                   onClick={() => handleStoryClick(msg.sticker_url)}
                   style={{ 
-                    cursor: 'pointer', background: 'rgba(0,0,0,0.2)', padding: '6px', 
-                    borderRadius: '12px', display: 'flex', gap: '10px', alignItems: 'center',
-                    marginBottom: '6px', border: '1px solid rgba(255,255,255,0.1)'
+                    cursor: 'pointer', background: 'var(--bg-secondary)', padding: '6px', 
+                    borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center',
+                    marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)',
+                    width: '100%'
                   }}
                 >
-                  <div style={{ position: 'relative', width: '50px', height: '70px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                  <div style={{ position: 'relative', width: '40px', height: '55px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
                      <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                     <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '30px', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}></div>
-                     <span className="material-icons" style={{ position: 'absolute', bottom: '4px', left: '50%', transform: 'translateX(-50%)', fontSize: '14px', color: 'white' }}>slow_motion_video</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, fontStyle: 'italic' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, fontStyle: 'italic', flex: 1 }}>
                     Membalas Cerita...
                   </div>
                 </div>
               ) : (
-                /* RENDER STIKER BIASA */
-                msg.sticker_url && !isDeleted && (
+                /* STIKER BIASA */
+                msg.sticker_url && !isDeleted && !isStoryReply && (
                   <div style={{ position: 'relative' }}>
-                    <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: msg.message && !msg.message.includes("Stiker") ? '6px' : '0' }} />
+                    <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0' }} />
                   </div>
                 )
               )}
 
-              {/* RENDER TEKS */}
-              {(!msg.sticker_url && !msg.audio_url && !msg.image_url) || (msg.message && !msg.message.includes("Stiker") && !msg.message.includes("Voice Note") && !msg.message.includes("Mengirim Foto") && !msg.message.includes("Membalas ceritamu")) ? (
+              {/* 🔥 TEKS AKTUAL (BISA DI-KLIK LINK) 🔥 */}
+              {shouldShowText && (
                 <div 
                   className={`text ${isDeleted ? "deleted" : ""}`} 
                   style={{ 
                     fontStyle: isDeleted ? 'italic' : 'normal',
                     opacity: isDeleted ? 0.7 : 1,
                     whiteSpace: 'pre-wrap',
-                    padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0'
+                    padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0',
+                    wordBreak: 'break-word'
                   }}
                 >
-                  {displayMessage}
+                  {isDeleted ? t('msg_deleted') : renderTextWithLinks(cleanMsg)}
                 </div>
-              ) : null}
+              )}
 
-              {/* RENDER VN */}
+              {/* VN */}
               {msg.audio_url && !isDeleted && (
-                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: msg.sticker_url || msg.image_url || (msg.message && !msg.message.includes("Voice Note")) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || msg.sticker_url) ? '0 6px' : '0' }}>
+                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0' }}>
                   <button onClick={toggleVN} className="vn-play-btn">
                     {isPlaying ? (
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -312,29 +373,21 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                   </button>
                   <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '20px', flex: 1 }}>
                     {wavePattern.map((heightPercent, i) => (
-                      <span 
-                        key={i} 
-                        className="bar" 
-                        style={{
-                          height: `${heightPercent}%`,
-                          animationDelay: `${i * 0.1}s`,
-                          transition: 'height 0.2s ease'
-                        }}
-                      ></span>
+                      <span key={i} className="bar" style={{ height: `${heightPercent}%`, animationDelay: `${i * 0.1}s`, transition: 'height 0.2s ease' }}></span>
                     ))}
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #8e8e93)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
                 </div>
               )}
 
-              {/* RENDER REACTION EMOJI */}
+              {/* EMOJI REACTIONS */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                 <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '-12px' : '-16px' }}>
                   {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
                 </div>
               )}
               
-              {/* TIMESTAMP & STATUS BACA */}
+              {/* TIMESTAMP */}
               <div className="message-info" style={{ 
                 paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0',
                 paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0'
