@@ -41,103 +41,64 @@ export default function CreatePostPage() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
-  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
-
-  // 🔥 STATE UNTUK MENTIONS (@) 🔥
-  const [showMentions, setShowMentions] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionResults, setMentionResults] = useState<any[]>([]);
+  // 🔥 STATE UNTUK POPUP MENTIONS (@) & HASHTAGS (#) 🔥
+  const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [popupResults, setPopupResults] = useState<any[]>([]);
 
   // ===============================================
-  // 🔥 FUNGSI HASHTAG
+  // 🔥 FUNGSI PENCARIAN TEMAN (@) & HASHTAG (#) 🔥
   // ===============================================
   useEffect(() => {
-    if (!tagInput.trim()) {
-      setSuggestedTags([]);
-      return;
-    }
-    const fetchTags = async () => {
-      let searchStr = tagInput.toLowerCase().trim();
-      if (!searchStr.startsWith('#')) searchStr = '#' + searchStr;
+    if (showPopup === 'none') return;
 
-      try {
-        const { data } = await supabase
-          .from('hashtags')
-          .select('tag')
-          .ilike('tag', `${searchStr}%`)
-          .limit(5);
-        if (data) setSuggestedTags(data.map(d => d.tag));
-      } catch (err) {
-        console.error("Gagal cari hashtag", err);
-      }
-    };
-    const timer = setTimeout(fetchTags, 300);
-    return () => clearTimeout(timer);
-  }, [tagInput]);
+    const fetchSuggestions = async () => {
+      if (showPopup === 'mention') {
+        // Cari Teman (Mention)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const myId = session.user.id;
 
-  const handleAddTag = (tagToAdd: string) => {
-    let cleanTag = tagToAdd.toLowerCase().trim();
-    if (!cleanTag) return;
-    if (!cleanTag.startsWith('#')) {
-      showNotif("Hashtag harus pakai tanda # di depannya!", "warning");
-      return;
-    }
-    if (!tags.includes(cleanTag)) {
-      setTags([...tags, cleanTag]);
-    }
-    setTagInput('');
-    setSuggestedTags([]);
-  };
+        const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
+        const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
+        
+        const connectedIds = new Set([
+            ...(following?.map(f => f.following_id) || []),
+            ...(followers?.map(f => f.follower_id) || [])
+        ]);
 
-  const handleTagKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleAddTag(tagInput);
-    }
-  };
+        if (connectedIds.size > 0) {
+          let query = supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(connectedIds)).limit(10);
+          if (searchQuery) query = query.ilike('username', `%${searchQuery}%`);
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(t => t !== tagToRemove));
-  };
+          const { data: profiles } = await query;
+          setPopupResults(profiles || []);
+        } else {
+          setPopupResults([]);
+        }
+      } else if (showPopup === 'hashtag') {
+        // Cari Hashtag
+        let queryStr = searchQuery.toLowerCase().trim();
+        if (!queryStr.startsWith('#')) queryStr = '#' + queryStr; // Supabase butuh tanda # di query
 
-  // ===============================================
-  // 🔥 FUNGSI PENCARIAN TEMAN UNTUK MENTIONS (@) 🔥
-  // ===============================================
-  useEffect(() => {
-    if (!showMentions) return;
-
-    const fetchMentionSuggestions = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const myId = session.user.id;
-
-      // Ambil teman (yg di-follow atau yg nge-follow)
-      const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
-      const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
-      
-      const connectedIds = new Set([
-          ...(following?.map(f => f.following_id) || []),
-          ...(followers?.map(f => f.follower_id) || [])
-      ]);
-
-      if (connectedIds.size > 0) {
-        let query = supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(connectedIds)).limit(10);
-        if (mentionQuery) query = query.ilike('username', `%${mentionQuery}%`);
-
-        const { data: profiles } = await query;
-        setMentionResults(profiles || []);
-      } else {
-        setMentionResults([]);
+        try {
+          const { data } = await supabase
+            .from('hashtags')
+            .select('tag')
+            .ilike('tag', `${queryStr}%`)
+            .limit(10);
+          setPopupResults(data || []);
+        } catch (err) {
+          console.error("Gagal cari hashtag", err);
+        }
       }
     };
 
-    const delayDebounceFn = setTimeout(() => { fetchMentionSuggestions(); }, 300);
+    const delayDebounceFn = setTimeout(() => { fetchSuggestions(); }, 300);
     return () => clearTimeout(delayDebounceFn);
-  }, [mentionQuery, showMentions]);
+  }, [searchQuery, showPopup]);
 
-  // 🔥 DETEKSI KETIKAN @ DI TEXTAREA 🔥
+  // 🔥 DETEKSI KETIKAN @ DAN # DI TEXTAREA 🔥
   const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setCaption(val);
@@ -145,29 +106,40 @@ export default function CreatePostPage() {
     const cursorPosition = e.target.selectionStart || 0;
     const textBeforeCursor = val.slice(0, cursorPosition);
     
-    // Cari kata terakhir yang berawalan @ sebelum kursor
+    // Cari @ atau # terakhir sebelum kursor
     const mentionMatch = textBeforeCursor.match(/(?:^|\s)@(\w*)$/);
+    const hashtagMatch = textBeforeCursor.match(/(?:^|\s)#(\w*)$/);
 
     if (mentionMatch) {
-      setShowMentions(true);
-      setMentionQuery(mentionMatch[1]); // Ambil teks setelah @
+      setShowPopup('mention');
+      setSearchQuery(mentionMatch[1]);
+    } else if (hashtagMatch) {
+      setShowPopup('hashtag');
+      setSearchQuery(hashtagMatch[1]);
     } else {
-      setShowMentions(false);
+      setShowPopup('none');
     }
   };
 
-  const handleSelectMention = (username: string) => {
+  const handleSelectPopupItem = (selectedItem: string) => {
     if (!captionInputRef.current) return;
     
     const cursor = captionInputRef.current.selectionStart || 0;
     const textBeforeCursor = caption.slice(0, cursor);
     const textAfterCursor = caption.slice(cursor);
     
-    // Replace @... terakhir dengan @username yang dipilih
-    const newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${username} `);
+    let newTextBefore = "";
+    
+    if (showPopup === 'mention') {
+      newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${selectedItem} `);
+    } else if (showPopup === 'hashtag') {
+      // Pastikan hashtag yang dimasukin pakai #
+      const formattedTag = selectedItem.startsWith('#') ? selectedItem : `#${selectedItem}`;
+      newTextBefore = textBeforeCursor.replace(/#\w*$/, `${formattedTag} `);
+    }
     
     setCaption(newTextBefore + textAfterCursor);
-    setShowMentions(false);
+    setShowPopup('none');
     captionInputRef.current.focus();
   };
 
@@ -274,12 +246,12 @@ export default function CreatePostPage() {
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       const myUserId = session.user.id;
 
-      if (tags.length > 0) {
-        const tagsToInsert = tags.map(t => ({ tag: t }));
+      // 🔥 EKSTRAK HASHTAG DARI CAPTION & SIMPAN KE DATABASE 🔥
+      const extractedTags = [...new Set((caption.match(/#(\w+)/g) || []).map(t => t.toLowerCase()))];
+      if (extractedTags.length > 0) {
+        const tagsToInsert = extractedTags.map(t => ({ tag: t }));
         await supabase.from('hashtags').upsert(tagsToInsert, { onConflict: 'tag' }).select();
       }
-
-      const finalCaption = tags.length > 0 ? `${caption.trim()}\n\n${tags.join(' ')}` : caption.trim();
 
       let finalImageUrl: string | null = null;
       if (croppedImages.length > 0 && postType === 'image') {
@@ -294,7 +266,7 @@ export default function CreatePostPage() {
         await supabase.from("stories").insert({
           creator_id: myUserId,
           image_url: finalImageUrl, 
-          content: finalCaption,
+          content: caption.trim(),
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName
@@ -304,7 +276,7 @@ export default function CreatePostPage() {
         const { data: newPost } = await supabase.from("posts").insert({
           creator_id: myUserId,
           name: prof?.username || "User",
-          bio: finalCaption,
+          bio: caption.trim(),
           category: category,
           image_url: finalImageUrl,
           audio_src: selectedMusic?.previewUrl,
@@ -318,7 +290,7 @@ export default function CreatePostPage() {
 
       // 🔥 KIRIM NOTIFIKASI MENTION JIKA ADA 🔥
       if (newPostId || destination === "story") {
-        const mentionedUsernames = [...new Set((finalCaption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
+        const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         
         if (mentionedUsernames.length > 0) {
           const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
@@ -351,30 +323,31 @@ export default function CreatePostPage() {
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
-      {/* --- MENTIONS POPUP CSS --- */}
+      {/* --- MENTIONS & HASHTAG POPUP CSS (FIX POSISI ABSOLUT MELAYANG) --- */}
       <style>{`
-        .mention-popup {
+        .popup-suggestion-box {
           position: absolute; 
-          top: 100%; /* 🔥 Muncul di bawah textarea biar nggak ketutup */
+          bottom: 105%; /* Muncul di atas textarea */
           left: 0; 
           width: 100%; 
-          max-height: 200px;
+          max-height: 220px;
           background: var(--bg-card); 
           border: 1px solid var(--border-card); 
-          border-radius: 12px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
+          border-radius: 16px;
+          box-shadow: 0 -4px 25px rgba(0,0,0,0.4); 
           overflow-y: auto; 
-          z-index: 1000;
-          margin-top: 5px;
+          z-index: 99999;
+          backdrop-filter: blur(10px);
         }
-        .mention-item {
-          display: flex; align-items: center; padding: 10px 14px; gap: 12px;
+        .popup-item {
+          display: flex; align-items: center; padding: 12px 16px; gap: 12px;
           cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;
         }
-        .mention-item:hover, .mention-item:active { background: var(--bg-input); }
-        .mention-item img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
-        .mention-name { font-size: 13px; font-weight: 700; color: var(--text-main); }
-        .mention-empty { padding: 12px; text-align: center; font-size: 12px; color: var(--text-muted); }
+        .popup-item:hover, .popup-item:active { background: var(--bg-input); }
+        .popup-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); }
+        .popup-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
+        .popup-tag { font-size: 14px; font-weight: 700; color: #1DA1F2; } /* Warna biru buat hashtag */
+        .popup-empty { padding: 16px; text-align: center; font-size: 13px; color: var(--text-muted); font-weight: 500; }
       `}</style>
 
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
@@ -478,71 +451,54 @@ export default function CreatePostPage() {
             </div>
           )}
 
-          {/* 🔥 INPUT CAPTION DENGAN MENTION FEATURE 🔥 */}
+          {/* 🔥 INPUT CAPTION DENGAN MENTION & HASHTAG FEATURE 🔥 */}
           <div style={{ position: 'relative', marginTop: '20px' }}>
+            
+            {showPopup !== 'none' && (
+              <div className="popup-suggestion-box">
+                {popupResults.length > 0 ? (
+                  popupResults.map(item => (
+                    <div 
+                      key={item.id || item.tag} 
+                      className="popup-item" 
+                      onClick={() => handleSelectPopupItem(showPopup === 'mention' ? item.username : item.tag)}
+                    >
+                      {showPopup === 'mention' ? (
+                        <>
+                          <img src={item.avatar_url || '/asets/png/profile.webp'} alt={item.username} />
+                          <div className="popup-name">{item.username}</div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-icons" style={{ color: '#1DA1F2' }}>tag</span>
+                          <div className="popup-tag">{item.tag}</div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="popup-empty">Tidak ditemukan...</div>
+                )}
+              </div>
+            )}
+
             <textarea 
               ref={captionInputRef}
               className="post-textarea" 
-              placeholder={postType === 'image' ? t('placeholder_caption') : t('placeholder_thought')} 
+              placeholder={postType === 'image' ? "Tulis caption atau gunakan @ untuk tag dan # untuk hashtag..." : "Tulis cerita, gunakan @ untuk tag dan # untuk hashtag..."} 
               maxLength={300}
               value={caption}
               onChange={handleCaptionChange}
               onKeyDown={(e) => {
-                if (showMentions && e.key === "Enter") {
+                if (showPopup !== 'none' && e.key === "Enter") {
                   e.preventDefault();
-                  if (mentionResults.length > 0) handleSelectMention(mentionResults[0].username);
+                  if (popupResults.length > 0) {
+                    handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag);
+                  }
                 }
               }}
               style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }}
             />
-            
-            {showMentions && (
-              <div className="mention-popup">
-                {mentionResults.length > 0 ? (
-                  mentionResults.map(user => (
-                    <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
-                      <img src={user.avatar_url || '/asets/png/profile.webp'} alt={user.username} />
-                      <div className="mention-info">
-                        <span className="mention-name">{user.username}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="mention-empty">Tidak ditemukan...</div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="hashtag-section" style={{ marginTop: '15px', position: 'relative' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: tags.length > 0 ? '10px' : '0' }}>
-              {tags.map(t => (
-                <span key={t} style={{ background: 'rgba(31, 60, 255, 0.1)', color: '#1f3cff', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                  {t} <span onClick={() => removeTag(t)} style={{cursor: 'pointer', fontSize: '16px', lineHeight: 1}}>&times;</span>
-                </span>
-              ))}
-            </div>
-            
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                placeholder="Ketik Hashtag... (Wajib pakai #, lalu tekan Spasi)"
-                value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                style={{ width: '100%', padding: '12px 15px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '12px', color: 'var(--text-main)', outline: 'none', fontSize: '14px' }}
-              />
-              
-              {suggestedTags.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', marginTop: '6px', zIndex: 10, boxShadow: '0 4px 15px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                  {suggestedTags.map(st => (
-                    <div key={st} onClick={() => handleAddTag(st)} style={{ padding: '12px 15px', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {st}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
           <div style={{ position: 'relative', marginTop: '20px' }}>
