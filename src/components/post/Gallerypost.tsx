@@ -44,6 +44,25 @@ export default function Gallerypost() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
+// TAMBAHKAN EFFECT INI DI DALAM KOMPONEN:
+useEffect(() => {
+  const handleCommentRefresh = (e: any) => {
+    const { postId } = e.detail;
+    if (postId) {
+      setCounts(prev => ({
+        ...prev,
+        [postId]: { 
+          ...prev[postId], 
+          comments: (prev[postId]?.comments || 0) + 1 
+        }
+      }));
+    }
+  };
+
+  window.addEventListener('commentAdded', handleCommentRefresh);
+  return () => window.removeEventListener('commentAdded', handleCommentRefresh);
+}, []);
+
 
   useEffect(() => { initGallery(); }, []);
 
@@ -395,11 +414,16 @@ export default function Gallerypost() {
         </svg>
         <span className="save-count">{counts[postIdStr]?.saves || 0}</span>
       </button>
-      
-      <button className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} onClick={() => handleRepost(postIdStr)}>
-        <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/></svg>
-        <span className="repost-count">{counts[postIdStr]?.reposts || 0}</span>
-      </button>
+<button 
+  className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} 
+  onClick={() => handleRepost(postIdStr)}
+  style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} // 🔥 WARNA BIRU HYPETALK
+>
+  <svg viewBox="0 0 24 24" className="icon" fill="currentColor">
+    <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
+  </svg>
+  <span className="repost-count">{counts[postIdStr]?.reposts || 0}</span>
+</button>
 
       <button className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} onClick={() => handleLike(postIdStr, post.creator_id)}>
         <svg viewBox="0 0 24 24" className="icon heart" fill="currentColor"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg>
@@ -502,7 +526,7 @@ export default function Gallerypost() {
                         
                         {/* 🔥 RENDER VIDEO JIKA ADA 🔥 */}
                         {isVideoPost ? (
-                          <div className="carousel-item" style={{ aspectRatio: '9 / 16', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                          <div className="carousel-item" style={{ aspectRatio: '2 / 3', overflow: 'hidden', position: 'relative', background: '#000' }}>
                             <video 
                               src={post.video_url} 
                               className="post-video-element"
