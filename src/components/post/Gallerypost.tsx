@@ -381,7 +381,12 @@ export default function Gallerypost() {
                         <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
                           {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                         </h2>
-                        <button className="options-btn" onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}>
+<button 
+  className="options-btn" 
+  aria-label="Opsi Postingan" /* 🔥 FIX: Google jadi tau ini tombol menu opsi 🔥 */
+  onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}
+>
+
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
                       </div>
@@ -400,7 +405,8 @@ export default function Gallerypost() {
                   <>
                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
-                        <img src={avatarUrl} style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
+<img src={avatarUrl} alt="Avatar Profil" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
+
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
                             {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>

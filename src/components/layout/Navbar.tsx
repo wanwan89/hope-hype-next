@@ -146,33 +146,38 @@ function NavbarContent() {
   return (
     <>
       {/* Tombol Toggle Navbar dengan Safe Area */}
-      <button
-        onClick={() => setIsManualHidden(!isManualHidden)}
-        style={{
-          position: 'fixed',
-          bottom: isManualHidden ? 'max(20px, env(safe-area-inset-bottom))' : 'max(95px, calc(95px + env(safe-area-inset-bottom)))', 
-          right: '20px',
-          zIndex: 9001,
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-          cursor: 'pointer',
-          color: '#333',
-          transform: isVisible ? 'translateY(0)' : 'translateY(150px)',
-          transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
-          outline: 'none'
-        }}
-      >
-        {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-      </button>
+<button
+  onClick={() => setIsManualHidden(!isManualHidden)}
+  
+  // 🔥 FIX: Google & Screen Reader jadi tau fungsi tombol ini pas lagi sembunyi atau muncul 🔥
+  aria-label={isManualHidden ? "Tampilkan Menu Navigasi" : "Sembunyikan Menu Navigasi"}
+  
+  style={{
+    position: 'fixed',
+    bottom: isManualHidden ? 'max(20px, env(safe-area-inset-bottom))' : 'max(95px, calc(95px + env(safe-area-inset-bottom)))', 
+    right: '20px',
+    zIndex: 9001,
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    border: '1px solid rgba(0,0,0,0.05)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+    cursor: 'pointer',
+    color: '#333',
+    transform: isVisible ? 'translateY(0)' : 'translateY(150px)',
+    transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+    outline: 'none'
+  }}
+>
+  {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+</button>
+
 
       {/* Container Navbar Utama dengan Safe Area */}
       <div style={{
@@ -214,6 +219,7 @@ function NavbarContent() {
               <Link 
                 key={item.name} 
                 href={item.path}
+                aria-label={item.name} /* 🔥 TARUH DI SINI BREE! 🔥 */
                 onPointerDown={(e) => {
                   setClickedItem(item.name);
                   setTimeout(() => setClickedItem(null), 300); 

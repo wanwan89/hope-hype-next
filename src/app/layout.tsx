@@ -98,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               });
             }
 
+            // 🔥 FIX: DETEKSI KALAU PANGGILAN MATI / DITOLAK / DIBATALKAN / TAK TERJAWAB 🔥
             const msgLower = String(newMsg.message).toLowerCase();
             if (newMsg.is_system && (
               msgLower.includes("panggilan berakhir") || 
@@ -114,11 +115,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             // 💬 JIKA ITU PESAN CHAT BIASA (Bukan Sistem)
             if (!newMsg.is_system) {
-              // Abaikan kalau user lagi di dalam menu Hypetalk/Chat
               if (!window.location.href.includes('/hypetalk')) {
                 const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
                 
-                // Ambil info text (kalau stiker/VN ubah labelnya)
                 let previewText = newMsg.message;
                 if (newMsg.sticker_url) previewText = "Mengirim Stiker";
                 if (newMsg.audio_url) previewText = "Mengirim Voice Note";
@@ -131,7 +130,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   roomId: newMsg.room_id
                 });
 
-                // Auto tutup notif dalam 4 detik
                 clearTimeout(msgNotifTimerRef.current);
                 msgNotifTimerRef.current = setTimeout(() => {
                   setGlobalMessageNotif(null);
@@ -253,17 +251,48 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="id" suppressHydrationWarning>
-      <head>
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+       <head>
+        {/* --- 1. SEO DASAR & IDENTITY --- */}
+        <title>HypeTalk - Komunitas Kreatif & Jaringan Sosial Kreator Seni</title>
+        <meta name="description" content="HypeTalk adalah platform sosial eksklusif untuk kreator. Bagikan karya seni, musik, tulisan, dan bergabung di Voice Room untuk ngobrol seru bareng kreator lainnya." />
+        <meta name="keywords" content="HypeTalk, komunitas kreatif, platform seni, berbagi musik, penulis, chat room, voice room indonesia, hypevoice, kreator muda" />
+        <meta name="author" content="HypeTalk Team" />
+        <meta name="robots" content="index, follow" />
+        <meta name="language" content="id" />
+        <link rel="canonical" href="https://hypetalk.is-a.dev/" />
+
+        {/* --- 2. OPEN GRAPH (WhatsApp, Facebook, Instagram) --- */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://hypetalk.is-a.dev/" />
+        <meta property="og:title" content="HypeTalk - Tempatnya Para Kreator Berkarya" />
+        <meta property="og:description" content="Wadahnya komunitas kreatif! Mulai dari musik, tulisan, hingga obrolan suara real-time. Join HypeTalk sekarang." />
+        <meta property="og:image" content="/asets/png/og-image.png" />
+        <meta property="og:site_name" content="HypeTalk Globe" />
+        <meta property="og:locale" content="id_ID" />
+
+        {/* --- 3. TWITTER CARD (X) --- */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="HypeTalk - Creative Community" />
+        <meta name="twitter:description" content="Platform sosial untuk berbagi karya seni dan ngobrol seru bareng kreator lain." />
+        <meta name="twitter:image" content="/asets/png/og-image.png" />
+
+        {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet" />
+        {/* Tambah &display=swap biar teks muncul duluan, skor PageSpeed makin Ijo */}
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+        
+        {/* --- 5. PWA & MOBILE TAGS (Milik Lu - Tetap Dipertahankan) --- */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
         <link rel="apple-touch-icon" href="/asets/png/book.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="HypeTalk" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
         
+        {/* Viewport Lu (maximum-scale=5 biar Accessibility Ijo) */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+        
+        {/* --- 6. INTERNAL STYLES (Milik Lu - Tidak Diubah Sedikitpun) --- */}
         <style>{`
           img {
             -webkit-touch-callout: none !important;
@@ -363,6 +392,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
         `}</style>
       </head>
+
       
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
         <I18nextProvider i18n={i18n}>

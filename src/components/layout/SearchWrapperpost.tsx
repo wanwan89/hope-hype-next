@@ -119,6 +119,7 @@ export default function SearchWrapperpost() {
         <button 
           id="mobileMenuBtn"
           type="button"
+          aria-label="Buka Menu" /* 🔥 INI OBATNYA BREE! 🔥 */
           onClick={() => window.dispatchEvent(new CustomEvent('openSidebar'))}
           style={{ 
             background: 'transparent', border: 'none', cursor: 'pointer',
@@ -126,6 +127,7 @@ export default function SearchWrapperpost() {
             width: '24px', flexShrink: 0, outline: 'none'
           }}
         >
+
           {[1,2,3].map(i => (
             <span key={i} style={{ display: 'block', width: '100%', height: '2px', backgroundColor: 'var(--text-main)', borderRadius: '2px' }}></span>
           ))}
