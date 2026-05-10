@@ -19,7 +19,7 @@
   border-top-left-radius: 32px; border-top-right-radius: 32px; 
   z-index: 10001; 
   padding-top: 32px; 
-  padding-bottom: 0 !important; /* Mentok ke bawah */
+  padding-bottom: 0 !important; 
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.08); 
   border-top: 1px solid var(--border); 
   transform: translateY(100%); 
@@ -87,7 +87,7 @@
 }
 .in-voice-room .progress-fill {
   height: 100%; border-radius: 10px;
-  background: #1f3cff; /* SOLID BLUE */
+  background: #1f3cff; 
   transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -115,32 +115,47 @@
 
 
 /* =========================================
-   🔥 UPGRADE UI 3D KADO JUMBO & SPAM MODE 🔥
+   🔥 UPGRADE UI 3D KADO & SCROLL HORIZONTAL 🔥
    ========================================= */
 
-/* WRAPPER KADO (3 KOLOM JUMBO) */
-.in-voice-room .gift-list-3d-wrapper {
-  flex: 1; overflow-y: auto; padding: 10px 15px 40px 15px;
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 12px;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+/* WRAPPER SCROLL KE SAMPING */
+.in-voice-room .gift-list-scroll-wrapper {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: visible; /* Penting! Biar gambar jumbo gak kepotong pas nge-zoom ke atas */
+  padding: 15px 15px 25px 15px;
+  gap: 15px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
 }
-.in-voice-room .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
+.in-voice-room .gift-list-scroll-wrapper::-webkit-scrollbar { display: none; }
+
+/* KOLOM (Nampung 2 kado atas-bawah) */
+.in-voice-room .gift-column {
+  display: flex;
+  flex-direction: column;
+  gap: 25px; 
+  flex-shrink: 0;
+  width: calc(33.333% - 10px); 
+  scroll-snap-align: start;
+}
 
 /* ITEM CONTAINER UTAMA */
 .in-voice-room .gift-item-3d {
   position: relative;
-  height: 120px; 
+  height: 100px; 
+  width: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   z-index: 1; 
 }
-.in-voice-room .gift-item-3d.active { z-index: 10; } /* Biar pop-out nembus ke atas */
+.in-voice-room .gift-item-3d.active { z-index: 10; } 
 
 /* GAMBAR KADO DEFAULT (FLAT NO SHADOW) */
 .in-voice-room .gift-img-3d {
-  width: 70px; height: 70px; object-fit: contain; filter: none;
-  position: absolute; top: 15px;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 85px; height: 85px; object-fit: contain; filter: none;
+  position: absolute; top: -10px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 2;
 }
 
@@ -152,14 +167,14 @@
 .in-voice-room .gift-label { font-size: 11px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
 .in-voice-room .gift-price-mini { font-size: 11px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 2px; }
 
-/* 🔥 BOX AKTIF (KECIL & SOLID) 🔥 */
+/* 🔥 BOX AKTIF (KECIL, SOLID, PENDEK BGT) 🔥 */
 .in-voice-room .gift-active-bg {
   position: absolute; bottom: 0; left: 0; right: 0;
-  height: 60px; /* BOX PENDEK */
-  background: rgba(31,60,255,0.05); 
+  height: 55px; 
+  background: transparent; 
   border: 1.5px solid #1f3cff; 
   border-radius: 12px; z-index: 0;
-  box-shadow: none; /* NO SHADOW */
+  box-shadow: none; 
   animation: popBox 0.2s ease forwards;
   display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
   padding-bottom: 6px;
@@ -169,11 +184,11 @@
   to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-/* GAMBAR POP OUT JUMBO KETIKA DIPILIH */
+/* 🔥 GAMBAR POP OUT EKSTRIM (145px) 🔥 */
 .in-voice-room .gift-item-3d.active .gift-img-3d {
-  width: 130px; height: 130px; /* SUPER BESAR */
-  top: -70px; /* Tembus box */
-  filter: none; /* NO SHADOW */
+  width: 145px; height: 145px; 
+  top: -90px; 
+  filter: none; 
   animation: floatActive 2s ease-in-out infinite;
 }
 @keyframes floatActive {
@@ -200,14 +215,14 @@
 }
 
 .in-voice-room .gift-send-btn {
-  background: #1f3cff; /* SOLID BLUE */
+  background: #1f3cff; 
   color: white; border: none; border-radius: 8px;
   padding: 6px 22px; font-weight: 800; font-size: 11px;
-  box-shadow: none; /* NO SHADOW */
+  box-shadow: none; 
   cursor: pointer; pointer-events: auto;
 }
 
-/* 🔥 EFEK 3D KETIKA SPAM/DIKLIK 🔥 */
+/* 🔥 EFEK SPAM 🔥 */
 .in-voice-room .gift-item-3d.spam-anim .gift-active-bg {
   transform: scale(0.95); background: rgba(31,60,255,0.1); 
   transition: 0.1s;
@@ -233,12 +248,25 @@
 }
 .in-voice-room .topup-btn {
   display: flex; align-items: center; gap: 4px;
-  background: #1f3cff; color: white; /* SOLID BLUE */
+  background: #1f3cff; color: white; 
   border: none; border-radius: 20px;
   padding: 10px 18px; font-weight: 800; font-size: 12px;
-  box-shadow: none; /* NO SHADOW */
+  box-shadow: none; 
   cursor: pointer; transition: 0.2s;
 }
 .in-voice-room .topup-btn:active { transform: scale(0.9); }
+
+/* SLIDE UP TOP UP */
+.in-voice-room .react-topup-sheet {
+  position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; z-index: 100005;
+  pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+}
+.in-voice-room .react-topup-sheet.active { pointer-events: auto; opacity: 1; }
+.in-voice-room .react-topup-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+.in-voice-room .react-topup-content {
+  position: relative; background: #1b1b1f; padding: 20px; border-top-left-radius: 24px; border-top-right-radius: 24px;
+  transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.in-voice-room .react-topup-sheet.active .react-topup-content { transform: translateY(0); }
 
 @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
