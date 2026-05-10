@@ -1,11 +1,11 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
 .header-sticky-wrapper {
-  position: relative; /* 🔥 FIX 1: Hapus sticky, ganti jadi relative biar bisa discroll */
-  z-index: 15000; 
+  position: relative; 
+  z-index: 1000; /* Normalin z-index-nya biar nggak bentrok sana-sini */
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
-  padding-top: 63px; /* 🔥 FIX 2: Kasih bantalan atas setinggi Search Bar biar Story gak ketiban di awal */
+  /* Hapus padding-top biar layout rapi ngikutin flow normal */
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -17,16 +17,21 @@
   gap: 15px; 
   background: var(--bg-main, #ffffff);
   
-  position: fixed; /* 🔥 FIX 3: Ubah jadi fixed biar melayang abadi di layar */
+  /* 🔥 FIX PALING PENTING: Pake sticky, bukan fixed! 🔥 */
+  /* Kalau pake fixed, lu harus pusing mikirin width. Kalau sticky, dia otomatis ngikutin lebar parent-nya (.main-content) */
+  position: sticky; 
   top: 0; 
-  left: 50%;
-  transform: translateX(-50%); /* Biar posisinya tetep di tengah ngikutin layout */
   width: 100%;
-  max-width: 600px; /* Sesuai dengan ukuran maksimal layout Home lu */
   
-  z-index: 15001; 
+  z-index: 9999 !important; /* Sengajain gede banget, dan pakai !important biar dia raja di atas segala konten */
+  
   border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
   transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Biar pas discroll ke bawah, search box-nya dapet bayangan tipis ala Glassmorphism */
+.header-scrolled .search-wrapper {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* --- INPUT PENCARIAN (TETAP SAMA) --- */
@@ -51,7 +56,7 @@
 
 .brutal-input:focus {
   background: var(--bg-main, #fff);
-  border-color: #1f3cff; /* 🔥 FIX: Pakai warna biru utama HypeTalk */
+  border-color: #1f3cff; 
   box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.1); 
 }
 
@@ -69,7 +74,7 @@
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
-  z-index: 16000;
+  z-index: 2;
   pointer-events: auto !important; 
   transition: transform 0.1s ease, background-color 0.3s ease, color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
@@ -84,14 +89,14 @@
   display: flex;
   gap: 15px;
   padding: 12px 15px 15px 15px;
-  overflow-x: auto; /* 🔥 Ini yang bikin story bisa digeser ke samping */
+  overflow-x: auto; 
   background: var(--bg-main, #ffffff);
   scrollbar-width: none; 
   -ms-overflow-style: none;
   position: relative;
-  z-index: 14000; 
+  z-index: 10; 
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
-  -webkit-overflow-scrolling: touch; /* Biar smooth di HP */
+  -webkit-overflow-scrolling: touch; 
 }
 
 .stories-container::-webkit-scrollbar { display: none; }
@@ -120,12 +125,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Memotong background biar tetep bulat */
   overflow: hidden; 
   background: var(--border-color, #e4e6eb);
 }
 
-/* Pseudo-element ini yang dikasih gradient warna IG */
 .story-circle.unseen::before {
   content: '';
   position: absolute;
@@ -135,7 +138,6 @@
   z-index: 0;
 }
 
-/* Kalau lagi loading diklik, CUMA pseudo-element ini yang muter! */
 .story-circle.animating::before {
   animation: spinIG 1s linear infinite;
 }
@@ -147,13 +149,12 @@
 
 .story-circle img {
   position: relative;
-  z-index: 1; /* Harus di atas gradient */
+  z-index: 1; 
   width: 61px;
   height: 61px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-secondary);
-  /* Border warna background bikin ilusi ada jarak/gap antara ring dan gambar */
   border: 2.5px solid var(--bg-main, #ffffff);
   transition: border-color 0.3s ease;
 }
