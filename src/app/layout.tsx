@@ -49,6 +49,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
+  // --- 🔥 FIX BENTROK NADA DERING: MATIKAN PAKSA KALAU MASUK HYPETALK 🔥 ---
+  useEffect(() => {
+    if (pathname?.includes('/hypetalk')) {
+      setGlobalIncomingCall(null);
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current.currentTime = 0;
+      }
+    }
+  }, [pathname]);
+
   // --- NADA DERING OTOMATIS SINKRON SAMA FLOATING CALL ---
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -87,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             
             // 📞 JIKA ITU TELPON
             if (newMsg.is_system && newMsg.message.includes("Memanggil")) {
+              // Pakai window.location.href biar dapet URL paling fresh saat itu juga
               if (window.location.href.includes('/hypetalk')) return; 
 
               const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
@@ -278,21 +290,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet" />
-        {/* Tambah &display=swap biar teks muncul duluan, skor PageSpeed makin Ijo */}
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
-        {/* --- 5. PWA & MOBILE TAGS (Milik Lu - Tetap Dipertahankan) --- */}
+        {/* --- 5. PWA & MOBILE TAGS --- */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
         <link rel="apple-touch-icon" href="/asets/png/book.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="HypeTalk" />
-        
-        {/* Viewport Lu (maximum-scale=5 biar Accessibility Ijo) */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
         
-        {/* --- 6. INTERNAL STYLES (Milik Lu - Tidak Diubah Sedikitpun) --- */}
+        {/* --- 6. INTERNAL STYLES --- */}
         <style>{`
           img {
             -webkit-touch-callout: none !important;

@@ -6,7 +6,6 @@ import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './CommentModal.css';
 
-// 🔥 OPTIMASI 1: KOMPRES AVATAR CLOUDINARY BIAR KOMENTAR NGEBUT 🔥
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -31,6 +30,9 @@ export default function CommentModalpost() {
   
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyToUsername, setReplyToUsername] = useState<string | null>(null);
+  // 🔥 FIX NOTIFIKASI: Tambahin state buat nyimpen ID user yang dibalas 🔥
+  const [replyToUserId, setReplyToUserId] = useState<string | null>(null); 
+  
   const [inputValue, setInputValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -40,7 +42,6 @@ export default function CommentModalpost() {
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionResults, setMentionResults] = useState<any[]>([]);
   
-  // 🔥 STATE UNTUK ACTION SHEET (HAPUS & LAPORKAN) 🔥
   const [actionSheetComment, setActionSheetComment] = useState<any>(null);
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
@@ -161,6 +162,7 @@ export default function CommentModalpost() {
     document.body.style.overflow = "";
     setReplyToId(null);
     setReplyToUsername(null);
+    setReplyToUserId(null); // Reset
     setInputValue("");
     setShowMentions(false);
     setIsActionSheetOpen(false);
@@ -232,6 +234,7 @@ export default function CommentModalpost() {
     inputRef.current.focus();
   };
 
+  // 🔥 FIX NOTIFIKASI: PEMISAHAN LOGIKA REPLY VS MENTION 🔥
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim() && !isSubmitting && !showMentions) {
       e.preventDefault();
@@ -241,6 +244,7 @@ export default function CommentModalpost() {
       const content = inputValue.trim();
       const parentId = replyToId;
       const targetUser = replyToUsername;
+      const targetUserId = replyToUserId; // ID orang yg dibalas
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -249,6 +253,7 @@ export default function CommentModalpost() {
 
         const pid = parseInt(currentPostId);
         
+        // 1. Insert Komentar
         const { data: newComment, error } = await supabase.from("comments").insert({
           post_id: pid,
           user_id: userId,
@@ -261,7 +266,19 @@ export default function CommentModalpost() {
         
         const { data: myProf } = await supabase.from("profiles").select("username").eq("id", userId).single();
 
-        if (currentCreatorId !== userId && currentCreatorId) {
+        // 2. Notif "Reply" (Balasan Komentar)
+        if (targetUserId && targetUserId !== userId) {
+          await supabase.from("notifications").insert({
+            user_id: targetUserId,
+            actor_id: userId,
+            post_id: pid,
+            type: "reply", // Tipe khusus buat balasan
+            message: `${myProf?.username} membalas komentar Anda.`
+          });
+        }
+
+        // 3. Notif "Comment" (Komentar di Postingan - Jangan double kalau dia yg dibalas)
+        if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
           await supabase.from("notifications").insert({
             user_id: currentCreatorId,
             actor_id: userId,
@@ -271,18 +288,22 @@ export default function CommentModalpost() {
           });
         }
 
+        // 4. Notif "Mention/Tag" (Pisahin user yang cuma di-tag)
         const mentionedUsernames = [...new Set((content.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
-        if (mentionedUsernames.length > 0) {
-          const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
+        // Hapus user yang dibalas dari daftar mention biar gak dapet 2 notif
+        const pureMentions = mentionedUsernames.filter(u => u !== targetUser); 
+        
+        if (pureMentions.length > 0) {
+          const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', pureMentions);
           
           if (taggedUsers) {
             const notifInserts = taggedUsers
-              .filter(u => u.id !== userId) 
+              .filter(u => u.id !== userId && u.id !== targetUserId) 
               .map(u => ({
                 user_id: u.id,
                 actor_id: userId,
                 post_id: pid,
-                type: "mention",
+                type: "mention", // Tipe khusus buat Tag
                 message: `${myProf?.username} menyebut Anda dalam komentar.`
               }));
             
@@ -294,6 +315,7 @@ export default function CommentModalpost() {
 
         setReplyToId(null);
         setReplyToUsername(null);
+        setReplyToUserId(null);
         setInputValue("");
         
       } catch (err) {
@@ -336,7 +358,6 @@ export default function CommentModalpost() {
     } catch (err) { console.error("Like error", err); }
   };
 
-  // 🔥 FUNGSI HOLD & DELETE KOMENTAR 🔥
   const handleTouchStart = (comment: any) => {
     holdTimer.current = setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(50);
@@ -379,8 +400,6 @@ export default function CommentModalpost() {
   const renderComment = (comment: any, isReply: boolean) => {
     const isPostOwner = comment.user_id === currentCreatorId;
     const p = comment.profiles;
-    
-    // 🔥 OPTIMASI: Panggil helper kompres gambar untuk avatar komentar 🔥
     const rawAvatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
     const avatar = getOptimizedImage(rawAvatar);
 
@@ -414,10 +433,12 @@ export default function CommentModalpost() {
         onPointerLeave={handleTouchEnd}
       >
         <div className="comment-left">
-          {/* 🔥 Tambah loading="lazy" buat hemat resource 🔥 */}
           <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
         </div>
+        
+        {/* 🔥 FIX ALIGNMENT LIKE: Kunci di kanan atas pake position absolute 🔥 */}
         <div className="comment-right" style={{ flex: 1, paddingRight: '45px', position: 'relative' }}>
+          
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/data?id=${p?.id}`}>
               {p?.username} 
@@ -426,14 +447,12 @@ export default function CommentModalpost() {
             </span>
           </div>
           
-          {/* 🔥 FIX CLS: Kasih wordBreak biar teks komentar panjang gak ngerusak layout 🔥 */}
-          <div className="comment-text" style={{ wordBreak: 'break-word' }}>
+          <div className="comment-text" style={{ wordBreak: 'break-word', marginTop: '2px' }}>
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
               <div className="gift-comment-bubble">
                  <span>{t('gave_gift', { giftName })}</span>
-                 {/* 🔥 Lazy load untuk gambar gift 🔥 */}
                  {giftImg && <img src={getOptimizedImage(giftImg)} loading="lazy" alt={giftName} />}
               </div>
             ) : (
@@ -441,12 +460,13 @@ export default function CommentModalpost() {
             )}
           </div>
 
-          <div className="comment-actions">
+          <div className="comment-actions" style={{ marginTop: '4px' }}>
             <span className="comment-time">{formatTimeAgo(comment.created_at)}</span>
             {!isGift && (
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
+                  setReplyToUserId(p?.id); // 🔥 Simpan ID user yg dibalas
                   setInputValue(`@${p?.username} `);
                   inputRef.current?.focus();
               }}>
@@ -455,14 +475,35 @@ export default function CommentModalpost() {
             )}
           </div>
 
-          <div className="comment-like-box" onClick={() => handleLikeComment(String(comment.id))}>
-            <svg viewBox="0 0 24 24" className={`heart-icon ${isCommentLiked ? 'active' : ''}`}>
+          {/* 🔥 POSISI LIKE DIKUNCI DI POJOK KANAN (Sejajar Sempurna) 🔥 */}
+          <div 
+            className="comment-like-box" 
+            onClick={() => handleLikeComment(String(comment.id))}
+            style={{ 
+              position: 'absolute', 
+              right: '0', 
+              top: '0', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '2px',
+              padding: '4px'
+            }}
+          >
+            <svg 
+              viewBox="0 0 24 24" 
+              className={`heart-icon ${isCommentLiked ? 'active' : ''}`}
+              style={{ width: '16px', height: '16px', color: isCommentLiked ? '#ff4757' : '#9ca3af', transition: '0.2s' }}
+            >
               <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z" />
             </svg>
             {(comment.likes_count > 0) && (
-              <span className="comment-like-count">{comment.likes_count}</span>
+              <span className="comment-like-count" style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>
+                {comment.likes_count}
+              </span>
             )}
           </div>
+
         </div>
       </div>
     );
@@ -479,7 +520,6 @@ export default function CommentModalpost() {
   return (
     <>
       <style>{`
-        /* --- ACTION SHEET CSS --- */
         .c-action-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.6);
           z-index: 100000; opacity: 0; visibility: hidden; transition: 0.3s;
@@ -513,7 +553,6 @@ export default function CommentModalpost() {
         <div className="comment-box">
           <div className="comment-header">
             {t('comments_title')}
-            {/* 🔥 AKSESIBILITAS: aria-label untuk tombol close 🔥 */}
             <button className="comment-close" aria-label="Tutup Komentar" onClick={closeModal}>&times;</button>
           </div>
           
@@ -578,7 +617,6 @@ export default function CommentModalpost() {
                 {mentionResults.length > 0 ? (
                   mentionResults.map(user => (
                     <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
-                      {/* 🔥 Lazy load avatar buat suggest mention 🔥 */}
                       <img src={getOptimizedImage(user.avatar_url) || '/asets/png/profile.webp'} loading="lazy" alt={user.username} />
                       <div className="mention-info">
                         <span className="mention-name">{user.username}</span>
@@ -610,7 +648,6 @@ export default function CommentModalpost() {
                 }}
                 disabled={isSubmitting}
               />
-              {/* 🔥 AKSESIBILITAS: aria-label untuk tombol kirim gift 🔥 */}
               <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
               </button>
@@ -619,7 +656,6 @@ export default function CommentModalpost() {
         </div>
       </div>
 
-      {/* 🔥 MODAL ACTION SHEET (TOMBOL HAPUS & LAPORKAN) 🔥 */}
       <div className={`c-action-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)}></div>
       <div className={`c-action-sheet ${isActionSheetOpen ? 'open' : ''}`}>
         <div className="c-drag-handle"></div>

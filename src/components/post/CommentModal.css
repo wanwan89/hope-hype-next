@@ -78,7 +78,8 @@
 .comment-username { color: var(--text-main); font-weight: 700; font-size: 13px; cursor: pointer; }
 .comment-text { color: var(--text-main); font-size: 14px; line-height: 1.5; word-break: break-word; }
 
-.reply-tag { color: #1DA1F2; font-weight: 700; margin-right: 4px; font-size: 13.5px; }
+/* 🔥 FIX: Tag Balas jadi abu-abu dan tipis 🔥 */
+.reply-tag { color: var(--text-muted, #9ca3af); font-weight: 400; margin-right: 4px; font-size: 13.5px; }
 .creator-tag { background: #1DA1F2; color: white; padding: 1px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px; font-weight: 800; letter-spacing: 0.5px; }
 
 /* 🔥 PREMIUM GIFT BUBBLE UI 🔥 */
@@ -349,9 +350,9 @@
   color: var(--text-muted);
 }
 
-/* Warnya nyala buat yang ditag */
+/* 🔥 FIX: Tag Mention jadi abu-abu dan tipis 🔥 */
 .mention-highlight {
-  color: #1DA1F2;
-  font-weight: 700;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 400;
   cursor: pointer;
 }

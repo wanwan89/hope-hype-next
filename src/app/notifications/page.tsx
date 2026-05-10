@@ -37,7 +37,6 @@ export default function NotificationsPage() {
     };
   }, []);
 
-  // Efek ini jalan otomatis buat nge-grup notif setiap kali rawNotifs berubah
   useEffect(() => {
     setGroupedNotifs(applyGrouping(rawNotifs));
   }, [rawNotifs]);
@@ -55,7 +54,7 @@ export default function NotificationsPage() {
 
   const loadNotifications = async (userId: string) => {
     try {
-      // 1. Ambil Notifikasi Standar (Termasuk Mention & Post Approved)
+      // 1. Ambil Notifikasi Standar
       const { data: dbNotifs, error } = await supabase
         .from('notifications')
         .select('*')
@@ -65,18 +64,16 @@ export default function NotificationsPage() {
 
       if (error) throw error;
 
-      // Siapin array penampung buat data external
       let formattedReposts: any[] = [];
       let formattedSaves: any[] = [];
       let formattedStoryLikes: any[] = [];
 
-      // 2. Ambil data dari postingan (Repost & Save)
+      // 2. Ambil data Repost & Save (Ini udah handle Repost dari dulu Bree!)
       const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
       
       if (myPosts && myPosts.length > 0) {
         const postIds = myPosts.map(p => p.id);
         
-        // --- AMBIL REPOSTS ---
         const { data: repostsData } = await supabase.from('reposts')
           .select('id, post_id, created_at, profiles(username)')
           .in('post_id', postIds)
@@ -96,7 +93,6 @@ export default function NotificationsPage() {
           }));
         }
 
-        // --- AMBIL BOOKMARKS (SAVES) ---
         const { data: savesData } = await supabase.from('bookmarks')
           .select('id, post_id, created_at, profiles(username)')
           .in('post_id', postIds)
@@ -117,12 +113,11 @@ export default function NotificationsPage() {
         }
       }
 
-      // 3. Ambil data dari Story (Story Likes)
+      // 3. Ambil data Story Likes
       const { data: myStories } = await supabase.from('stories').select('id').eq('creator_id', userId);
       
       if (myStories && myStories.length > 0) {
         const storyIds = myStories.map(s => s.id);
-        
         const { data: storyLikesData } = await supabase.from('story_likes')
           .select('id, story_id, created_at, profiles(username)')
           .in('story_id', storyIds)
@@ -133,7 +128,7 @@ export default function NotificationsPage() {
           formattedStoryLikes = storyLikesData.map((sl: any) => ({
             id: `storylike-${sl.id}`, 
             type: 'story_like',
-            story_id: sl.story_id, // Simpan ID story buat di-klik
+            story_id: sl.story_id, 
             user_id: userId,
             message: `<b>${sl.profiles?.username || 'Seseorang'}</b> menyukai ceritamu.`,
             created_at: sl.created_at,
@@ -143,7 +138,6 @@ export default function NotificationsPage() {
         }
       }
 
-      // Gabungkan semua dan urutkan berdasarkan waktu terbaru
       const allRaw = [
         ...(dbNotifs || []), 
         ...formattedReposts, 
@@ -161,36 +155,33 @@ export default function NotificationsPage() {
     }
   };
 
-  // --- 🔥 FUNGSI PENGELOMPOKAN (SMART GROUPING) 🔥 ---
+  // --- 🔥 PENGELOMPOKAN DIPERBARUI BUAT BALASAN & LIKE KOMENTAR 🔥 ---
   const applyGrouping = (notifs: any[]) => {
     const grouped: any[] = [];
     const seenLikes = new Set();
     const seenReposts = new Set();
     const seenSaves = new Set();
     const seenStoryLikes = new Set();
+    const seenReplies = new Set();
+    const seenCommentLikes = new Set();
     let followGroup: any = null;
 
     for (const n of notifs) {
-      // Ekstrak nama pelaku dari pesan kalau nggak ada
       let actorName = n.username;
       if (!actorName && n.message) {
-        // Cek format bold HTML <b>nama</b>
         const match = n.message.match(/<b>(.*?)<\/b>/);
         if (match) {
           actorName = match[1];
         } else {
-          // Kalau format teks biasa (biasanya untuk mention) -> "nama menyebut Anda..."
           const spaceIndex = n.message.indexOf(' ');
           if (spaceIndex > 0) actorName = n.message.substring(0, spaceIndex);
         }
       }
       if (!actorName) actorName = "Seseorang";
       
-      // Pastikan tipe terdeteksi
       const type = n.type || (n.message?.toLowerCase().includes('mengikuti') ? 'follow' : 'other');
       const notifObj = { ...n, type, actorName, groupedCount: 0 };
 
-      // Logika Grup Like (Berdasarkan Postingan yang sama)
       if (type === 'like' && n.post_id) {
         if (seenLikes.has(n.post_id)) {
            const parent = grouped.find(g => g.type === 'like' && g.post_id === n.post_id);
@@ -200,7 +191,6 @@ export default function NotificationsPage() {
         seenLikes.add(n.post_id);
         grouped.push(notifObj);
       } 
-      // Logika Grup Repost
       else if (type === 'repost' && n.post_id) {
         if (seenReposts.has(n.post_id)) {
            const parent = grouped.find(g => g.type === 'repost' && g.post_id === n.post_id);
@@ -210,7 +200,6 @@ export default function NotificationsPage() {
         seenReposts.add(n.post_id);
         grouped.push(notifObj);
       }
-      // Logika Grup Simpan (Bookmark)
       else if (type === 'save' && n.post_id) {
         if (seenSaves.has(n.post_id)) {
            const parent = grouped.find(g => g.type === 'save' && g.post_id === n.post_id);
@@ -220,7 +209,6 @@ export default function NotificationsPage() {
         seenSaves.add(n.post_id);
         grouped.push(notifObj);
       }
-      // Logika Grup Suka Story
       else if (type === 'story_like' && n.story_id) {
         if (seenStoryLikes.has(n.story_id)) {
            const parent = grouped.find(g => g.type === 'story_like' && g.story_id === n.story_id);
@@ -230,7 +218,26 @@ export default function NotificationsPage() {
         seenStoryLikes.add(n.story_id);
         grouped.push(notifObj);
       }
-      // Logika Grup Followers Baru (Berdasarkan rentang waktu berdekatan)
+      // 🔥 GRUP BALASAN KOMENTAR
+      else if (type === 'reply' && n.post_id) {
+        if (seenReplies.has(n.post_id)) {
+           const parent = grouped.find(g => g.type === 'reply' && g.post_id === n.post_id);
+           if (parent) parent.groupedCount += 1;
+           continue;
+        }
+        seenReplies.add(n.post_id);
+        grouped.push(notifObj);
+      }
+      // 🔥 GRUP LIKE KOMENTAR
+      else if (type === 'comment_like' && n.post_id) {
+        if (seenCommentLikes.has(n.post_id)) {
+           const parent = grouped.find(g => g.type === 'comment_like' && g.post_id === n.post_id);
+           if (parent) parent.groupedCount += 1;
+           continue;
+        }
+        seenCommentLikes.add(n.post_id);
+        grouped.push(notifObj);
+      }
       else if (type === 'follow') {
         if (followGroup) {
            followGroup.groupedCount += 1;
@@ -239,7 +246,6 @@ export default function NotificationsPage() {
         followGroup = notifObj;
         grouped.push(notifObj);
       } 
-      // Logika lain (Komentar, Mention, Gift, Post Approved, Sistem, dll) tidak di-grup
       else {
         grouped.push(notifObj);
       }
@@ -249,18 +255,11 @@ export default function NotificationsPage() {
 
   const setupRealtime = (userId: string) => {
     if (channelRef.current) supabase.removeChannel(channelRef.current);
-
     const channel = supabase
       .channel(`notif-realtime-${userId}`) 
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => {
-          setRawNotifs(prev => [payload.new, ...prev]);
-        }
-      )
-      .subscribe();
-
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        (payload) => { setRawNotifs(prev => [payload.new, ...prev]); }
+      ).subscribe();
     channelRef.current = channel;
   };
 
@@ -269,11 +268,8 @@ export default function NotificationsPage() {
     autoSlideTimer.current = setInterval(() => {
       if (sliderRef.current) {
         const slider = sliderRef.current;
-        if (slider.scrollLeft + slider.clientWidth >= slider.scrollWidth - 5) {
-          slider.scrollLeft = 0;
-        } else {
-          slider.scrollLeft += slider.clientWidth;
-        }
+        if (slider.scrollLeft + slider.clientWidth >= slider.scrollWidth - 5) slider.scrollLeft = 0;
+        else slider.scrollLeft += slider.clientWidth;
       }
     }, 5000);
   };
@@ -307,7 +303,6 @@ export default function NotificationsPage() {
   };
 
   const handleNotifClick = async (notif: any) => {
-    // Kalau ID nya manual yang kita buat (repost-, save-, storylike-), gak usah update table
     const isManualFormat = notif.id.toString().startsWith('repost-') || 
                            notif.id.toString().startsWith('save-') || 
                            notif.id.toString().startsWith('storylike-');
@@ -333,25 +328,26 @@ export default function NotificationsPage() {
     } else if (notif.type === 'story_like' && notif.story_id) {
       router.push(`/story/${notif.story_id}`);
     } else if (notif.post_id) {
-      // Pindah ke postingan (baik itu like, komentar, mention, repost, dsb)
       router.push(`/#post-${notif.post_id}`);
     } else if (notif.type === 'follow') {
       router.push(`/data`); 
     }
   };
 
-  // 🔥 TENTUKAN ICON & WARNA BERDASARKAN TIPE NOTIFIKASI 🔥
+  // 🔥 TAMBAH ICON REPLY DAN COMMENT_LIKE 🔥
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
       case 'comment': return { icon: 'chat_bubble', color: '#10b981' };
+      case 'reply': return { icon: 'reply', color: '#10b981' }; // Hijau Tosca
+      case 'comment_like': return { icon: 'favorite', color: '#ff2e63' }; // Pink 
       case 'repost': return { icon: 'repeat', color: '#1DA1F2' }; 
       case 'save': return { icon: 'bookmark', color: '#f59e0b' }; 
       case 'story_like': return { icon: 'favorite', color: '#ff2e63' }; 
       case 'gift': return { icon: 'card_giftcard', color: '#f59e0b' };
       case 'follow': return { icon: 'person_add', color: '#8b5cf6' };
-      case 'mention': return { icon: 'alternate_email', color: '#1DA1F2' }; // 🔥 MENTION ICON
-      case 'post_approved': return { icon: 'verified', color: '#10b981' }; // 🔥 APPROVED ICON
+      case 'mention': return { icon: 'alternate_email', color: '#1DA1F2' }; 
+      case 'post_approved': return { icon: 'verified', color: '#10b981' }; 
       case 'payment_pending': return { icon: 'credit_card', color: '#8b5cf6' };
       default: return { icon: 'notifications', color: '#3b82f6' };
     }
@@ -365,32 +361,24 @@ export default function NotificationsPage() {
       : dateObj.toLocaleDateString("id-ID", { month: "short", day: "numeric", hour: "2-digit", minute:"2-digit" });
   };
 
-  // 🔥 FUNGSI FORMAT TEKS SMART GROUPING & REGULER 🔥
+  // 🔥 UPDATE TEKS BIAR RAPIH 🔥
   const getDisplayText = (notif: any) => {
     if (notif.groupedCount > 0) {
-      if (notif.type === 'like') {
-        return t('notif_grouped_like', `<b>{{name}}</b> dan {{count}} lainnya menyukai postinganmu.`, { name: notif.actorName, count: notif.groupedCount });
-      }
-      if (notif.type === 'repost') {
-        return t('notif_grouped_repost', `<b>{{name}}</b> dan {{count}} lainnya membagikan ulang karyamu.`, { name: notif.actorName, count: notif.groupedCount });
-      }
-      if (notif.type === 'save') {
-        return t('notif_grouped_save', `<b>{{name}}</b> dan {{count}} lainnya menyimpan postinganmu.`, { name: notif.actorName, count: notif.groupedCount });
-      }
-      if (notif.type === 'story_like') {
-        return t('notif_grouped_story_like', `<b>{{name}}</b> dan {{count}} lainnya menyukai ceritamu.`, { name: notif.actorName, count: notif.groupedCount });
-      }
-      if (notif.type === 'follow') {
-        return t('notif_grouped_follow', `<b>{{name}}</b> dan {{count}} lainnya mulai mengikuti kamu.`, { name: notif.actorName, count: notif.groupedCount });
-      }
+      if (notif.type === 'like') return t('notif_grouped_like', `<b>{{name}}</b> dan {{count}} lainnya menyukai postinganmu.`, { name: notif.actorName, count: notif.groupedCount });
+      if (notif.type === 'repost') return t('notif_grouped_repost', `<b>{{name}}</b> dan {{count}} lainnya membagikan ulang karyamu.`, { name: notif.actorName, count: notif.groupedCount });
+      if (notif.type === 'save') return t('notif_grouped_save', `<b>{{name}}</b> dan {{count}} lainnya menyimpan postinganmu.`, { name: notif.actorName, count: notif.groupedCount });
+      if (notif.type === 'story_like') return t('notif_grouped_story_like', `<b>{{name}}</b> dan {{count}} lainnya menyukai ceritamu.`, { name: notif.actorName, count: notif.groupedCount });
+      if (notif.type === 'follow') return t('notif_grouped_follow', `<b>{{name}}</b> dan {{count}} lainnya mulai mengikuti kamu.`, { name: notif.actorName, count: notif.groupedCount });
+      if (notif.type === 'reply') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya membalas komentarmu.`;
+      if (notif.type === 'comment_like') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya menyukai komentarmu.`;
     }
     
-    // Fallback buat tipe spesifik
     if (notif.type === 'repost') return `<b>${notif.actorName}</b> membagikan ulang karyamu.`;
     if (notif.type === 'save') return `<b>${notif.actorName}</b> menyimpan karyamu.`;
     if (notif.type === 'story_like') return `<b>${notif.actorName}</b> menyukai ceritamu.`;
+    if (notif.type === 'reply') return `<b>${notif.actorName}</b> membalas komentarmu.`;
+    if (notif.type === 'comment_like') return `<b>${notif.actorName}</b> menyukai komentarmu.`;
     if (notif.type === 'mention') {
-       // Buat teks mention jadi bold namanya
        let msg = notif.message || `${notif.actorName} menyebut Anda.`;
        if (!msg.includes('<b>')) msg = `<b>${notif.actorName}</b> ${msg.replace(notif.actorName, '').trim()}`;
        return msg;
@@ -399,7 +387,7 @@ export default function NotificationsPage() {
        return `Selamat! Postinganmu telah <b>disetujui</b> dan sekarang tampil di publik.`;
     }
     
-    return notif.message; // Bawaan dari DB
+    return notif.message; 
   };
 
   return (
@@ -451,7 +439,6 @@ export default function NotificationsPage() {
                 </div>
                 
                 <div className="notif-content">
-                  {/* Tampilkan teks hasil smart grouping */}
                   <div className="notif-message" dangerouslySetInnerHTML={{ __html: getDisplayText(notif) }}></div>
                   <span className="notif-date">{formatDate(notif.created_at)}</span>
                 </div>
