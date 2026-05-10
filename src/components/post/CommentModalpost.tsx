@@ -15,6 +15,13 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
+// 🔥 FILTER KATA KASAR (ANTI TOXIC) 🔥
+const BAD_WORDS = ["anjing", "bangsat", "kontol", "babi", "memek", "jembut", "ngentot", "bgsd", "njing", "tolol", "goblok"];
+const containsBadWords = (text: string) => {
+  const lowerText = text.toLowerCase();
+  return BAD_WORDS.some(word => lowerText.includes(word));
+};
+
 export default function CommentModalpost() {
   const { t } = useTranslation();
 
@@ -167,6 +174,11 @@ export default function CommentModalpost() {
     setIsActionSheetOpen(false);
   };
 
+  // 🔥 TUTUP MODAL PAS KLIK AREA KOSONG 🔥
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) closeModal();
+  };
+
   const handleGiftClick = () => {
     if (!currentCreatorId) return;
     window.dispatchEvent(new CustomEvent('openGift', { detail: { creatorId: currentCreatorId, postId: currentPostId } }));
@@ -239,20 +251,22 @@ export default function CommentModalpost() {
       if (!currentPostId) return;
 
       let finalContent = inputValue.trim();
+
+      // 🔥 FILTER ANTI KATA KASAR 🔥
+      if (containsBadWords(finalContent)) {
+        showNotif("Komentar mengandung kata-kata yang tidak pantas!", "warning");
+        return;
+      }
+
       const parentId = replyToId;
       const targetUser = replyToUsername;
       const targetUserId = replyToUserId;
 
-      // 🔥 FIX 1: HAPUS @USERNAME DARI AWAL INPUTAN BIAR GAK DOUBLE 🔥
-      // Kalau kita lagi nge-reply, dan teks diawali dengan @namatarget, potong aja!
       if (targetUser && finalContent.startsWith(`@${targetUser}`)) {
         finalContent = finalContent.replace(`@${targetUser}`, '').trim();
       }
 
-      // Kalau setelah dihapus ternyata kosong (user cuma nekan enter tanpa nulis pesan), batalin!
-      if (!finalContent) {
-        return;
-      }
+      if (!finalContent) return;
 
       setIsSubmitting(true);
 
@@ -262,7 +276,6 @@ export default function CommentModalpost() {
         const userId = session.user.id;
         const pid = parseInt(currentPostId);
         
-        // 1. Insert Komentar (Pake finalContent yang udah bersih)
         const { data: newComment, error } = await supabase.from("comments").insert({
           post_id: pid,
           user_id: userId,
@@ -275,7 +288,6 @@ export default function CommentModalpost() {
         
         const { data: myProf } = await supabase.from("profiles").select("username").eq("id", userId).single();
 
-        // 2. Notif "Reply"
         if (targetUserId && targetUserId !== userId) {
           await supabase.from("notifications").insert({
             user_id: targetUserId,
@@ -286,7 +298,6 @@ export default function CommentModalpost() {
           });
         }
 
-        // 3. Notif "Comment" di Post
         if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
           await supabase.from("notifications").insert({
             user_id: currentCreatorId,
@@ -297,7 +308,6 @@ export default function CommentModalpost() {
           });
         }
 
-        // 4. Notif "Mention/Tag"
         const mentionedUsernames = [...new Set((finalContent.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         const pureMentions = mentionedUsernames.filter(u => u !== targetUser); 
         
@@ -394,7 +404,6 @@ export default function CommentModalpost() {
       if (countBadge) countBadge.textContent = String(count || 0);
 
     } catch (err) {
-      console.error(err);
       showNotif("Gagal menghapus komentar", "error");
       if (currentPostId) loadComments(currentPostId, myUserId || undefined);
     }
@@ -403,6 +412,21 @@ export default function CommentModalpost() {
   const handleReportComment = () => {
     setIsActionSheetOpen(false);
     showNotif("Laporan telah dikirim ke Admin untuk ditinjau.", "info");
+  };
+
+  // 🔥 FUNGSI KLIK MENTION 🔥
+  const handleMentionClick = async (e: React.MouseEvent, username: string) => {
+    e.stopPropagation();
+    try {
+      const { data } = await supabase.from('profiles').select('id').eq('username', username).single();
+      if (data && data.id) {
+        window.location.href = `/data?id=${data.id}`;
+      } else {
+        showNotif(`User @${username} tidak ditemukan`, "warning");
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const renderComment = (comment: any, isReply: boolean) => {
@@ -424,18 +448,32 @@ export default function CommentModalpost() {
 
     const isCommentLiked = likedComments.has(String(comment.id));
     
+    // 🔥 HIGHLIGHT MENTION (Warna Biru + Bisa Diklik) 🔥
     const highlightMentions = (text: string) => {
       const parts = text.split(/(@\w+)/g);
-      return parts.map((part, i) => 
-        part.startsWith('@') ? <span key={i} className="mention-highlight">{part}</span> : part
-      );
+      return parts.map((part, i) => {
+        if (part.startsWith('@')) {
+          const cleanUsername = part.substring(1);
+          return (
+            <span 
+              key={i} 
+              className="mention-tag-link" 
+              style={{ color: '#1f3cff', fontWeight: '700', cursor: 'pointer' }}
+              onClick={(e) => handleMentionClick(e, cleanUsername)}
+            >
+              {part}
+            </span>
+          );
+        }
+        return part;
+      });
     };
 
     return (
       <div 
         className="comment-item" 
         key={comment.id} 
-        style={isReply ? { marginBottom: '8px', marginLeft: '-20px' } : {}}
+        style={isReply ? { marginBottom: '8px', marginLeft: '-20px', position: 'relative' } : { position: 'relative' }}
         onPointerDown={() => handleTouchStart(comment)} 
         onPointerUp={handleTouchEnd}
         onPointerLeave={handleTouchEnd}
@@ -444,9 +482,8 @@ export default function CommentModalpost() {
           <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
         </div>
         
-        {/* 🔥 FIX 2: CONTAINER TEKS FLEKSIBEL BIAR LIKE BUTTON BISA DITARUH DI LUARNYA 🔥 */}
-        <div className="comment-right" style={{ flex: 1, minWidth: 0 }}>
-          
+        {/* CONTAINER TEKS (RATA KIRI, POTONG SISI KANAN BUAT TOMBOL LIKE) */}
+        <div className="comment-right" style={{ flex: 1, minWidth: 0, paddingRight: '40px' }}>
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/data?id=${p?.id}`}>
               {p?.username} 
@@ -456,7 +493,8 @@ export default function CommentModalpost() {
           </div>
           
           <div className="comment-text" style={{ wordBreak: 'break-word', marginTop: '2px' }}>
-            {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
+            {/* 🔥 WARNA KHUSUS UNTUK REPLY TAG (@namauser) 🔥 */}
+            {comment.reply_to_username && <span className="reply-tag" style={{ color: '#8e8e93', fontWeight: '600' }}>@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
               <div className="gift-comment-bubble">
@@ -484,19 +522,21 @@ export default function CommentModalpost() {
           </div>
         </div>
 
-        {/* 🔥 FIX 2: POSISI LIKE DIKUNCI DI CONTAINER TERSENDIRI BIAR RATA KANAN SEMPURNA 🔥 */}
+        {/* 🔥 FIX 1: LIKE BUTTON ABSOLUTE POSISI (RATA KANAN SEMPURNA) 🔥 */}
         <div 
           className="comment-like-box" 
           onClick={() => handleLikeComment(String(comment.id))}
           style={{ 
+            position: 'absolute',
+            top: '5px',
+            right: '0',
             width: '35px', 
-            flexShrink: 0, /* Biar lebarnya ga nyusut */
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
             justifyContent: 'flex-start',
             gap: '2px',
-            paddingTop: '2px'
+            cursor: 'pointer'
           }}
         >
           <svg 
@@ -557,8 +597,10 @@ export default function CommentModalpost() {
         .c-action-btn:active { transform: scale(0.96); }
       `}</style>
 
-      <div id="commentModal" className={isActive ? "active" : ""}>
-        <div className="comment-box">
+      {/* 🔥 FIX 5: OVERLAY KLIK TUTUP (KASIH ONCLICK DI PARENT LUAR) 🔥 */}
+      <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick}>
+        {/* Kontainer box-nya dikasih stopPropagation biar pas diklik dalemnya gak nutup modal */}
+        <div className="comment-box" onClick={(e) => e.stopPropagation()}>
           <div className="comment-header">
             {t('comments_title')}
             <button className="comment-close" aria-label="Tutup Komentar" onClick={closeModal}>&times;</button>
@@ -657,7 +699,8 @@ export default function CommentModalpost() {
                 disabled={isSubmitting}
               />
               <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+                {/* 🔥 FIX 6: WARNA SVG IKUT TEMA (var(--text-main)) 🔥 */}
+                <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
               </button>
             </div>
           </div>

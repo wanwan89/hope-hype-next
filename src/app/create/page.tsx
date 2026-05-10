@@ -15,16 +15,37 @@ export default function CreatePostPage() {
   const { t } = useTranslation();
   const router = useRouter(); 
 
-  const [postType, setPostType] = useState<'image' | 'text'>('image');
+  const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
+  
+  // 🔥 STATE VISIBILITY KHUSUS STORY 🔥
+  const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
+
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
   
+  // STATE GAMBAR
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); 
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]); 
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); 
 
+  // STATE VIDEO EDITOR
+  const [rawVideoFile, setRawVideoFile] = useState<File | null>(null);
+  const [rawVideoUrl, setRawVideoUrl] = useState<string | null>(null);
+  const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
+  
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoStart, setVideoStart] = useState(0); 
+  const [coverTime, setCoverTime] = useState(0); 
+  
+  const [coverBlob, setCoverBlob] = useState<Blob | null>(null);
+  const [coverPreviewUrl, setCoverUrlPreview] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null); 
 
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
@@ -41,24 +62,18 @@ export default function CreatePostPage() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 🔥 STATE UNTUK POPUP MENTIONS (@) & HASHTAGS (#) 🔥
+  // MENTIONS & HASHTAGS
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
-  // ===============================================
-  // 🔥 FUNGSI PENCARIAN TEMAN (@) & HASHTAG (#) 🔥
-  // ===============================================
   useEffect(() => {
     if (showPopup === 'none') return;
-
     const fetchSuggestions = async () => {
       if (showPopup === 'mention') {
-        // Cari Teman (Mention)
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
         const myId = session.user.id;
-
         const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
         const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
         
@@ -70,95 +85,66 @@ export default function CreatePostPage() {
         if (connectedIds.size > 0) {
           let query = supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(connectedIds)).limit(10);
           if (searchQuery) query = query.ilike('username', `%${searchQuery}%`);
-
           const { data: profiles } = await query;
           setPopupResults(profiles || []);
-        } else {
-          setPopupResults([]);
-        }
+        } else { setPopupResults([]); }
       } else if (showPopup === 'hashtag') {
-        // Cari Hashtag
         let queryStr = searchQuery.toLowerCase().trim();
-        if (!queryStr.startsWith('#')) queryStr = '#' + queryStr; // Supabase butuh tanda # di query
-
+        if (!queryStr.startsWith('#')) queryStr = '#' + queryStr; 
         try {
-          const { data } = await supabase
-            .from('hashtags')
-            .select('tag')
-            .ilike('tag', `${queryStr}%`)
-            .limit(10);
+          const { data } = await supabase.from('hashtags').select('tag').ilike('tag', `${queryStr}%`).limit(10);
           setPopupResults(data || []);
-        } catch (err) {
-          console.error("Gagal cari hashtag", err);
-        }
+        } catch (err) { console.error("Gagal cari hashtag", err); }
       }
     };
-
     const delayDebounceFn = setTimeout(() => { fetchSuggestions(); }, 300);
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, showPopup]);
 
-  // 🔥 DETEKSI KETIKAN @ DAN # DI TEXTAREA 🔥
   const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setCaption(val);
-
+    const val = e.target.value; setCaption(val);
     const cursorPosition = e.target.selectionStart || 0;
     const textBeforeCursor = val.slice(0, cursorPosition);
     
-    // Cari @ atau # terakhir sebelum kursor
     const mentionMatch = textBeforeCursor.match(/(?:^|\s)@(\w*)$/);
     const hashtagMatch = textBeforeCursor.match(/(?:^|\s)#(\w*)$/);
 
-    if (mentionMatch) {
-      setShowPopup('mention');
-      setSearchQuery(mentionMatch[1]);
-    } else if (hashtagMatch) {
-      setShowPopup('hashtag');
-      setSearchQuery(hashtagMatch[1]);
-    } else {
-      setShowPopup('none');
-    }
+    if (mentionMatch) { setShowPopup('mention'); setSearchQuery(mentionMatch[1]); } 
+    else if (hashtagMatch) { setShowPopup('hashtag'); setSearchQuery(hashtagMatch[1]); } 
+    else { setShowPopup('none'); }
   };
 
   const handleSelectPopupItem = (selectedItem: string) => {
     if (!captionInputRef.current) return;
-    
     const cursor = captionInputRef.current.selectionStart || 0;
     const textBeforeCursor = caption.slice(0, cursor);
     const textAfterCursor = caption.slice(cursor);
-    
     let newTextBefore = "";
     
-    if (showPopup === 'mention') {
-      newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${selectedItem} `);
-    } else if (showPopup === 'hashtag') {
-      // Pastikan hashtag yang dimasukin pakai #
+    if (showPopup === 'mention') { newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${selectedItem} `); } 
+    else if (showPopup === 'hashtag') {
       const formattedTag = selectedItem.startsWith('#') ? selectedItem : `#${selectedItem}`;
       newTextBefore = textBeforeCursor.replace(/#\w*$/, `${formattedTag} `);
     }
     
-    setCaption(newTextBefore + textAfterCursor);
-    setShowPopup('none');
-    captionInputRef.current.focus();
+    setCaption(newTextBefore + textAfterCursor); setShowPopup('none'); captionInputRef.current.focus();
   };
 
-  // ===============================================
-  // 🔥 MUSIC, FILE & CROP HANDLERS
-  // ===============================================
   useEffect(() => {
     if (!searchMusic.trim()) { setMusicResults([]); return; }
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchMusic)}&media=music&limit=10`);
-        const data = await res.json();
-        setMusicResults(data.results || []);
+        const data = await res.json(); setMusicResults(data.results || []);
       } catch (err) { console.error(err); } finally { setIsSearching(false); }
     }, 600);
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
+  // ===============================================
+  // 🔥 FUNGSI GAMBAR 🔥
+  // ===============================================
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -173,8 +159,7 @@ export default function CreatePostPage() {
     });
 
     Promise.all(readersArr).then(results => {
-      setRawImagesQueue(results);
-      setImageForCrop(results[0]); 
+      setRawImagesQueue(results); setImageForCrop(results[0]); 
     });
   };
 
@@ -184,17 +169,12 @@ export default function CreatePostPage() {
     if (!imageForCrop || !croppedAreaPixels) return;
     try {
       const croppedBlob = await getCroppedImg(imageForCrop, croppedAreaPixels);
-      setCroppedImages(prev => [...prev, croppedBlob]);
-      setPreviewUrls(prev => [...prev, URL.createObjectURL(croppedBlob)]);
+      setCroppedImages(prev => [...prev, croppedBlob]); setPreviewUrls(prev => [...prev, URL.createObjectURL(croppedBlob)]);
 
       const nextQueue = rawImagesQueue.slice(1);
       if (nextQueue.length > 0) {
-        setRawImagesQueue(nextQueue);
-        setImageForCrop(nextQueue[0]);
-        setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null);
-      } else {
-        setRawImagesQueue([]); setImageForCrop(null);
-      }
+        setRawImagesQueue(nextQueue); setImageForCrop(nextQueue[0]); setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null);
+      } else { setRawImagesQueue([]); setImageForCrop(null); }
     } catch (e) { console.error("Error Cropping:", e); }
   };
 
@@ -205,15 +185,59 @@ export default function CreatePostPage() {
   };
 
   const handleRemovePreview = (index: number) => {
-    setCroppedImages(prev => prev.filter((_, i) => i !== index));
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setCroppedImages(prev => prev.filter((_, i) => i !== index)); setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // ===============================================
+  // 🔥 FUNGSI VIDEO EDITOR 🔥
+  // ===============================================
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) return showNotif("Ukuran video terlalu besar! Maksimal 50MB.", "warning");
+
+    setRawVideoFile(file);
+    setRawVideoUrl(URL.createObjectURL(file));
+    setIsVideoEditorOpen(true);
+  };
+
+  const handleVideoLoadedMetadata = () => {
+    if (videoRef.current) {
+      const duration = videoRef.current.duration;
+      setVideoDuration(duration);
+      setVideoStart(0);
+      setCoverTime(0);
+    }
+  };
+
+  const captureFrameAndSave = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    
+    ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob((blob) => {
+      if (blob) {
+        setCoverBlob(blob);
+        setCoverUrlPreview(URL.createObjectURL(blob));
+        setIsVideoEditorOpen(false); 
+      }
+    }, 'image/jpeg', 0.9);
+  };
+
+  const handleRemoveVideo = () => {
+    setRawVideoFile(null); setRawVideoUrl(null); setCoverBlob(null); setCoverUrlPreview(null);
   };
 
   const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (playingUrl === url) {
-      audioRef.current?.pause(); setPlayingUrl(null);
-    } else {
+    if (playingUrl === url) { audioRef.current?.pause(); setPlayingUrl(null); } 
+    else {
       if (audioRef.current) audioRef.current.pause();
       audioRef.current = new Audio(url); audioRef.current.play(); setPlayingUrl(url);
       audioRef.current.onended = () => setPlayingUrl(null);
@@ -225,20 +249,23 @@ export default function CreatePostPage() {
     router.back(); 
   };
 
-  const uploadToCloudinary = async (file: File | Blob) => {
+  const uploadToCloudinary = async (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
     const fd = new FormData();
-    fd.append("file", file); fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
+    fd.append("file", file); 
+    fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, { method: "POST", body: fd });
     return await res.json();
   };
 
   // ===============================================
-  // 🔥 FUNGSI SUBMIT POSTINGAN & NOTIFIKASI
+  // 🔥 FUNGSI SUBMIT POSTINGAN 🔥
   // ===============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (croppedImages.length === 0 && !caption.trim()) return alert(t('alert_empty_post'));
-    if (destination === "story" && croppedImages.length > 1) return showNotif("Story hanya bisa upload 1 foto saja!", "warning");
+    
+    if (postType === 'image' && croppedImages.length === 0 && !caption.trim()) return alert(t('alert_empty_post'));
+    if (postType === 'video' && !rawVideoFile) return showNotif("Pilih video terlebih dahulu!", "warning");
+    if (destination === "story" && postType === 'image' && croppedImages.length > 1) return showNotif("Story hanya bisa upload 1 foto!", "warning");
 
     setIsSubmitting(true);
     try {
@@ -246,7 +273,6 @@ export default function CreatePostPage() {
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       const myUserId = session.user.id;
 
-      // 🔥 EKSTRAK HASHTAG DARI CAPTION & SIMPAN KE DATABASE 🔥
       const extractedTags = [...new Set((caption.match(/#(\w+)/g) || []).map(t => t.toLowerCase()))];
       if (extractedTags.length > 0) {
         const tagsToInsert = extractedTags.map(t => ({ tag: t }));
@@ -254,10 +280,24 @@ export default function CreatePostPage() {
       }
 
       let finalImageUrl: string | null = null;
-      if (croppedImages.length > 0 && postType === 'image') {
-        const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob));
+      let finalVideoUrl: string | null = null;
+
+      if (postType === 'image' && croppedImages.length > 0) {
+        const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
         const uploadResults = await Promise.all(uploadPromises);
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
+      } 
+      else if (postType === 'video' && rawVideoFile && coverBlob) {
+        showNotif("Mengunggah Video, mohon tunggu...", "info");
+        
+        const coverRes = await uploadToCloudinary(coverBlob, 'image');
+        finalImageUrl = coverRes.secure_url;
+
+        const videoRes = await uploadToCloudinary(rawVideoFile, 'video');
+        const uploadedVidUrl = videoRes.secure_url;
+
+        const endSegment = Math.min(videoDuration, videoStart + 15);
+        finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
       }
 
       let newPostId: string | null = null;
@@ -266,10 +306,12 @@ export default function CreatePostPage() {
         await supabase.from("stories").insert({
           creator_id: myUserId,
           image_url: finalImageUrl, 
+          video_url: finalVideoUrl, 
           content: caption.trim(),
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
-          artist: selectedMusic?.artistName
+          artist: selectedMusic?.artistName,
+          visibility: visibility // 🔥 INSERT KOLOM VISIBILITY 🔥
         });
       } else {
         const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
@@ -278,7 +320,8 @@ export default function CreatePostPage() {
           name: prof?.username || "User",
           bio: caption.trim(),
           category: category,
-          image_url: finalImageUrl,
+          image_url: finalImageUrl,  
+          video_url: finalVideoUrl,  
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
@@ -288,66 +331,46 @@ export default function CreatePostPage() {
         if (newPost) newPostId = newPost.id;
       }
 
-      // 🔥 KIRIM NOTIFIKASI MENTION JIKA ADA 🔥
       if (newPostId || destination === "story") {
         const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
-        
         if (mentionedUsernames.length > 0) {
           const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
-          
           if (taggedUsers) {
             const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-            const notifInserts = taggedUsers
-              .filter(u => u.id !== myUserId) 
-              .map(u => ({
-                user_id: u.id,
-                actor_id: myUserId,
-                post_id: newPostId ? parseInt(newPostId) : null,
-                type: "mention",
-                message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`
+            const notifInserts = taggedUsers.filter(u => u.id !== myUserId).map(u => ({
+                user_id: u.id, actor_id: myUserId, post_id: newPostId ? parseInt(newPostId) : null,
+                type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`
               }));
-            
             if (notifInserts.length > 0) await supabase.from("notifications").insert(notifInserts);
           }
         }
       }
 
+      showNotif("Postingan Berhasil Terkirim!", "success");
       handleClose();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err: any) { alert(err.message); } 
+    finally { setIsSubmitting(false); }
   };
+
 
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
-      {/* --- MENTIONS & HASHTAG POPUP CSS (FIX POSISI ABSOLUT MELAYANG) --- */}
       <style>{`
         .popup-suggestion-box {
-          position: absolute; 
-          bottom: 105%; /* Muncul di atas textarea */
-          left: 0; 
-          width: 100%; 
-          max-height: 220px;
-          background: var(--bg-card); 
-          border: 1px solid var(--border-card); 
-          border-radius: 16px;
-          box-shadow: 0 -4px 25px rgba(0,0,0,0.4); 
-          overflow-y: auto; 
-          z-index: 99999;
-          backdrop-filter: blur(10px);
+          position: absolute; bottom: 105%; left: 0; width: 100%; max-height: 220px;
+          background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 16px;
+          box-shadow: 0 -4px 25px rgba(0,0,0,0.4); overflow-y: auto; z-index: 99999; backdrop-filter: blur(10px);
         }
-        .popup-item {
-          display: flex; align-items: center; padding: 12px 16px; gap: 12px;
-          cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;
-        }
+        .popup-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; }
         .popup-item:hover, .popup-item:active { background: var(--bg-input); }
         .popup-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); }
         .popup-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
-        .popup-tag { font-size: 14px; font-weight: 700; color: #1DA1F2; } /* Warna biru buat hashtag */
+        .popup-tag { font-size: 14px; font-weight: 700; color: #1f3cff; } 
         .popup-empty { padding: 16px; text-align: center; font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+        .video-trim-slider { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 5px; outline: none; margin-top: 10px; }
+        .video-trim-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #1f3cff; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
       `}</style>
 
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
@@ -360,21 +383,14 @@ export default function CreatePostPage() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
         
+        {/* EDITOR FOTO (IMAGE CROP) */}
         {imageForCrop && (
           <div className="crop-overlay-wrapper" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000' }}>
             <div style={{ position: 'absolute', top: '15px', right: '20px', color: 'white', zIndex: 10000, fontWeight: 'bold' }}>
               Crop Gambar {croppedImages.length + 1} dari {croppedImages.length + rawImagesQueue.length}
             </div>
             <div className="crop-container-box" style={{ position: 'relative', width: '100%', height: 'calc(100vh - 120px)' }}>
-              <Cropper
-                image={imageForCrop}
-                crop={crop}
-                zoom={zoom}
-                aspect={3 / 4}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
+              <Cropper image={imageForCrop} crop={crop} zoom={zoom} aspect={3 / 4} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
             </div>
             <div className="crop-footer-controls" style={{ position: 'absolute', bottom: 0, width: '100%', padding: '20px', background: 'rgba(0,0,0,0.8)' }}>
               <div className="zoom-slider" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', color: '#fff' }}>
@@ -383,8 +399,68 @@ export default function CreatePostPage() {
                 <span className="material-icons">add</span>
               </div>
               <div className="crop-action-btns" style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" className="crop-cancel" onClick={handleCancelCrop} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#333', color: '#fff', border: 'none', fontWeight: 600 }}>Lewati / Batal</button>
-                <button type="button" className="crop-confirm" onClick={handleSaveCrop} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#1f3cff', color: '#fff', border: 'none', fontWeight: 600 }}>{t('crop_confirm')}</button>
+                <button type="button" onClick={handleCancelCrop} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#333', color: '#fff', border: 'none', fontWeight: 600 }}>Batal</button>
+                <button type="button" onClick={handleSaveCrop} style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#1f3cff', color: '#fff', border: 'none', fontWeight: 600 }}>Simpan</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EDITOR VIDEO (TRIM 15s + COVER) */}
+        {isVideoEditorOpen && rawVideoUrl && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '20px', color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: '16px' }}>
+              Edit Video & Pilih Cover
+            </div>
+
+            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
+              <video 
+                ref={videoRef} 
+                src={rawVideoUrl} 
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                onLoadedMetadata={handleVideoLoadedMetadata}
+                playsInline muted
+              />
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+            </div>
+
+            <div style={{ padding: '25px 20px', background: '#1a1a1a', borderTopLeftRadius: '20px', borderTopRightRadius: '20px' }}>
+              <div style={{ marginBottom: '25px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontSize: '13px', fontWeight: 600 }}>
+                  <span>Area Potong Video (Max 15s)</span>
+                  <span style={{ color: '#1f3cff' }}>{videoStart.toFixed(1)}s - {Math.min(videoDuration, videoStart + 15).toFixed(1)}s</span>
+                </div>
+                <input 
+                  type="range" className="video-trim-slider" 
+                  min={0} max={Math.max(0, videoDuration - 15)} step={0.1} value={videoStart} 
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setVideoStart(val);
+                    if (videoRef.current) videoRef.current.currentTime = val; 
+                    if (coverTime < val || coverTime > val + 15) setCoverTime(val); 
+                  }} 
+                />
+              </div>
+
+              <div style={{ marginBottom: '25px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontSize: '13px', fontWeight: 600 }}>
+                  <span>Pilih Cover Profil (Thumbnail)</span>
+                  <span style={{ color: '#f59e0b' }}>Frame: {coverTime.toFixed(1)}s</span>
+                </div>
+                <input 
+                  type="range" className="video-trim-slider" 
+                  min={videoStart} max={Math.min(videoDuration, videoStart + 15)} step={0.1} value={coverTime} 
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setCoverTime(val);
+                    if (videoRef.current) videoRef.current.currentTime = val; 
+                  }} 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <button type="button" onClick={() => { setIsVideoEditorOpen(false); handleRemoveVideo(); }} style={{ flex: 1, padding: '14px', background: '#333', color: 'white', borderRadius: '12px', border: 'none', fontWeight: 'bold' }}>Batal</button>
+                <button type="button" onClick={captureFrameAndSave} style={{ flex: 1, padding: '14px', background: '#1f3cff', color: 'white', borderRadius: '12px', border: 'none', fontWeight: 'bold' }}>Selesai & Lanjut</button>
               </div>
             </div>
           </div>
@@ -413,11 +489,42 @@ export default function CreatePostPage() {
                 </label>
               ))}
             </div>
+            
+            {/* 🔥 TOGGLE VISIBILITY KHUSUS STORY 🔥 */}
+            {destination === 'story' && (
+              <div className="visibility-toggle" style={{ display: 'flex', gap: '8px', marginTop: '15px', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '14px' }}>
+                 <button 
+                   type="button" 
+                   onClick={() => setVisibility('public')} 
+                   style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: visibility === 'public' ? 'var(--bg-input)' : 'transparent', color: visibility === 'public' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                 >
+                   <span className="material-icons" style={{ fontSize: '16px' }}>public</span> Publik
+                 </button>
+                 <button 
+                   type="button" 
+                   onClick={() => setVisibility('followers')} 
+                   style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: visibility === 'followers' ? 'var(--bg-input)' : 'transparent', color: visibility === 'followers' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                 >
+                   <span className="material-icons" style={{ fontSize: '16px' }}>group</span> Hanya Followers
+                 </button>
+              </div>
+            )}
           </div>
 
-          <div className="post-type-toggle" style={{ display: 'flex', gap: '10px', marginTop: '20px', background: 'var(--bg-secondary)', padding: '5px', borderRadius: '12px' }}>
-            <button type="button" className={`type-btn ${postType === 'image' ? 'active' : ''}`} onClick={() => setPostType('image')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: postType === 'image' ? 'var(--bg-input)' : 'transparent', color: postType === 'image' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}>{t('type_photo')}</button>
-            <button type="button" className={`type-btn ${postType === 'text' ? 'active' : ''}`} onClick={() => setPostType('text')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: postType === 'text' ? 'var(--bg-input)' : 'transparent', color: postType === 'text' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer' }}>{t('type_text')}</button>
+          <div className="post-type-toggle" style={{ display: 'flex', gap: '8px', marginTop: '20px', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '14px' }}>
+            {['image', 'video', 'text'].map(type => (
+               <button 
+                 key={type} type="button" 
+                 className={`type-btn ${postType === type ? 'active' : ''}`} 
+                 onClick={() => {
+                   setPostType(type as any);
+                   setCroppedImages([]); setPreviewUrls([]); handleRemoveVideo();
+                 }} 
+                 style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: postType === type ? 'var(--bg-input)' : 'transparent', color: postType === type ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s' }}
+               >
+                 {type === 'image' ? 'Foto' : type === 'video' ? 'Video' : 'Teks'}
+               </button>
+            ))}
           </div>
 
           {postType === 'image' && (
@@ -425,7 +532,7 @@ export default function CreatePostPage() {
               <input type="file" ref={fileInputRef} accept="image/*" multiple hidden onChange={handleFileChange} />
               
               {previewUrls.length === 0 ? (
-                <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ width: '100%', height: '250px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}>
+                <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ width: '100%', height: '200px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}>
                   <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                     <span className="material-icons" style={{ fontSize: '40px', marginBottom: '10px', color: '#1f3cff' }}>add_photo_alternate</span>
                     <div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>Pilih Foto (Max 3)</div>
@@ -436,7 +543,7 @@ export default function CreatePostPage() {
                   {previewUrls.map((url, i) => (
                     <div key={i} style={{ position: 'relative', width: '120px', height: '160px', flexShrink: 0 }}>
                       <img src={url} alt={`Preview ${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
-                      <button type="button" onClick={() => handleRemovePreview(i)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: '25px', height: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <button type="button" onClick={() => handleRemovePreview(i)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '25px', height: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         <span className="material-icons" style={{ fontSize: '14px' }}>close</span>
                       </button>
                     </div>
@@ -451,7 +558,34 @@ export default function CreatePostPage() {
             </div>
           )}
 
-          {/* 🔥 INPUT CAPTION DENGAN MENTION & HASHTAG FEATURE 🔥 */}
+          {/* AREA UPLOAD VIDEO (🔥 FIX TAMPILAN FULL 9:16 🔥) */}
+          {postType === 'video' && (
+            <div style={{ marginTop: '20px' }}>
+              <input type="file" ref={videoInputRef} accept="video/*" hidden onChange={handleVideoSelect} />
+              
+              {!coverPreviewUrl ? (
+                <div className="post-upload-area" onClick={() => videoInputRef.current?.click()} style={{ width: '100%', height: '300px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}>
+                  <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <span className="material-icons" style={{ fontSize: '50px', marginBottom: '10px', color: '#1f3cff' }}>videocam</span>
+                    <div className="post-upload-text" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-main)' }}>Pilih Video Vertikal</div>
+                    <div style={{ fontSize: '12px', marginTop: '5px' }}>(Max 50MB)</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000' }}>
+                  {/* Aspect Ratio 9:16 biar lega full vertikal ala Reels */}
+                  <img src={coverPreviewUrl} alt="Cover Preview" style={{ width: '100%', display: 'block', aspectRatio: '9/16', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', top: '15px', left: '15px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '6px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px' }}>play_circle_filled</span> Trimmed (15s)
+                  </div>
+                  <button type="button" onClick={handleRemoveVideo} style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+                    <span className="material-icons" style={{ fontSize: '20px' }}>delete</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ position: 'relative', marginTop: '20px' }}>
             
             {showPopup !== 'none' && (
@@ -485,7 +619,7 @@ export default function CreatePostPage() {
             <textarea 
               ref={captionInputRef}
               className="post-textarea" 
-              placeholder={postType === 'image' ? "Tulis caption atau gunakan @ untuk tag dan # untuk hashtag..." : "Tulis cerita, gunakan @ untuk tag dan # untuk hashtag..."} 
+              placeholder={postType === 'image' || postType === 'video' ? "Tulis caption atau gunakan @ untuk tag dan # untuk hashtag..." : "Tulis cerita, gunakan @ untuk tag dan # untuk hashtag..."} 
               maxLength={300}
               value={caption}
               onChange={handleCaptionChange}
@@ -553,7 +687,7 @@ export default function CreatePostPage() {
           </div>
 
           <button type="submit" className="post-submit-btn" disabled={isSubmitting} style={{ marginTop: '30px', width: '100%', padding: '16px', background: isSubmitting ? 'var(--bg-input)' : '#1f3cff', color: isSubmitting ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: 800, cursor: isSubmitting ? 'not-allowed' : 'pointer', boxShadow: isSubmitting ? 'none' : '0 8px 20px rgba(31, 60, 255, 0.3)' }}>
-            {isSubmitting ? t('btn_uploading') : t('btn_submit_post')}
+            {isSubmitting ? (postType === 'video' ? 'Memproses Video...' : t('btn_uploading')) : t('btn_submit_post')}
           </button>
         </form>
       </div>

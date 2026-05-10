@@ -6,7 +6,7 @@
   display: flex; align-items: flex-end; justify-content: center;
   z-index: 99999; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity 0.3s ease, visibility 0.3s ease;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(4px);
 }
 #commentModal.active {
   opacity: 1; visibility: visible; pointer-events: auto;
@@ -14,12 +14,13 @@
 
 /* --- KOTAK KOMENTAR (SLIDE UP) --- */
 .comment-box {
-  width: 100%; max-width: 500px; height: 80vh;
+  width: 100%; max-width: 600px; height: 85vh; /* Tambah tinggi dikit biar lega */
   background: var(--bg-modal); border-radius: 24px 24px 0 0;
   overflow: hidden; display: flex; flex-direction: column;
-  transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   box-shadow: 0 -15px 40px rgba(0,0,0,0.4);
   border: 1px solid rgba(255,255,255,0.05);
+  pointer-events: auto; /* Penting biar area ini bisa diklik tanpa nutup overlay */
 }
 #commentModal.active .comment-box { transform: translateY(0); }
 
@@ -38,7 +39,7 @@
   border: none; color: var(--text-main); width: 32px; height: 32px; border-radius: 50%;
   font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
 }
-.comment-close:hover { background: #ff4757; color: white; transform: rotate(90deg); }
+.comment-close:hover, .comment-close:active { background: #ff4757; color: white; transform: rotate(90deg); }
 
 /* --- LIST KOMENTAR --- */
 .comment-list {
@@ -73,14 +74,17 @@
 
 .comment-item.reply .comment-avatar { width: 28px; height: 28px; }
 
-.comment-right { flex: 1; min-width: 0; padding-top: 2px; }
+/* Wadah Teks yang udah dilimit width-nya buat nyisain ruang Like */
+.comment-right { flex: 1; min-width: 0; padding-top: 2px; padding-right: 40px; }
 .comment-topline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
 .comment-username { color: var(--text-main); font-weight: 700; font-size: 13px; cursor: pointer; }
 .comment-text { color: var(--text-main); font-size: 14px; line-height: 1.5; word-break: break-word; }
 
-/* 🔥 FIX: Tag Balas jadi abu-abu dan tipis 🔥 */
-.reply-tag { color: var(--text-muted, #9ca3af); font-weight: 400; margin-right: 4px; font-size: 13.5px; }
-.creator-tag { background: #1DA1F2; color: white; padding: 1px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px; font-weight: 800; letter-spacing: 0.5px; }
+/* 🔥 FIX TAGGING: BEDA WARNA BALASAN & MENTION 🔥 */
+.reply-tag { color: var(--text-muted, #9ca3af); font-weight: 600; margin-right: 4px; font-size: 13.5px; }
+.mention-tag-link { color: #1f3cff !important; font-weight: 700; cursor: pointer; }
+
+.creator-tag { background: #1f3cff; color: white; padding: 1px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px; font-weight: 800; letter-spacing: 0.5px; }
 
 /* 🔥 PREMIUM GIFT BUBBLE UI 🔥 */
 .gift-comment-bubble {
@@ -114,9 +118,33 @@
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-.comment-actions { margin-top: 8px; }
-.reply-btn { color: var(--text-muted); font-size: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; padding: 4px 0; }
-.reply-btn:hover { color: var(--text-main); }
+/* WAKTU DAN TOMBOL BALAS */
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.comment-time {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 500;
+}
+
+.reply-btn {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 4px 0;
+}
+
+.reply-btn:active {
+  color: var(--text-main, #1a1a1a);
+}
+
 
 /* --- SISTEM GARIS (THREAD LINES) --- */
 .replies-container {
@@ -188,7 +216,7 @@
   outline: none;
   background: var(--bg-input);
   color: var(--text-main);
-  padding: 10px 50px 10px 16px; /* 50px kanan biar teks ga tabrakan ama icon kado */
+  padding: 10px 50px 10px 16px; /* Sisa 50px di kanan untuk tombol Kado */
   border-radius: 25px;
   font-size: 14px;
   transition: all 0.3s ease;
@@ -196,17 +224,17 @@
 }
 
 .comment-input:focus {
-  border-color: #1DA1F2;
+  border-color: #1f3cff; /* Ganti ke warna solid HypeTalk */
   background: var(--bg-modal);
-  box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.1);
+  box-shadow: 0 0 0 4px rgba(31, 60, 255, 0.1);
 }
 
+/* 🔥 IKON GIFT (DINAMIS TEMA) 🔥 */
 .modal-gift-btn {
   position: absolute;
-  right: 6px; /* Pas di dalem bar input */
+  right: 6px; 
   background: none;
   border: none;
-  color: #f59e0b;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -219,7 +247,7 @@
 }
 
 .modal-gift-btn:hover {
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--bg-secondary);
 }
 
 .modal-gift-btn:active {
@@ -229,78 +257,15 @@
 .modal-gift-btn svg {
   width: 22px;
   height: 22px;
+  color: var(--text-main); /* FIX 6: Ganti otomatis hitam/putih sesuai tema */
 }
 
 /* --- UTILS --- */
 .loading-text, .empty-text {
   text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; font-weight: 500;
 }
-/* WAKTU DAN TOMBOL BALAS */
-.comment-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-}
 
-.comment-time {
-  font-size: 11px;
-  color: var(--text-muted, #9ca3af);
-  font-weight: 500;
-}
 
-.reply-btn {
-  font-size: 11px;
-  color: var(--text-muted, #9ca3af);
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.reply-btn:active {
-  color: var(--text-main, #1a1a1a);
-}
-
-/* TOMBOL LIKE ALA INSTAGRAM */
-.comment-like-box {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.heart-icon {
-  width: 14px;
-  height: 14px;
-  fill: transparent;
-  stroke: var(--text-muted, #9ca3af);
-  stroke-width: 2;
-  transition: transform 0.2s, fill 0.3s, stroke 0.3s;
-}
-
-.heart-icon.active {
-  fill: #ff2e63;
-  stroke: #ff2e63;
-  animation: likePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.comment-like-count {
-  font-size: 10px;
-  color: var(--text-muted, #9ca3af);
-  font-weight: 600;
-}
-
-@keyframes likePop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.4); }
-  100% { transform: scale(1); }
-}
 /* 🔥 MENTIONS POPUP CSS 🔥 */
 .mention-popup {
   position: absolute;
@@ -348,11 +313,4 @@
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
-}
-
-/* 🔥 FIX: Tag Mention jadi abu-abu dan tipis 🔥 */
-.mention-highlight {
-  color: var(--text-muted, #9ca3af);
-  font-weight: 400;
-  cursor: pointer;
 }

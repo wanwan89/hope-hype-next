@@ -4,7 +4,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import './Sidebarroom.css';
 
-// 👇 Kasih tau TypeScript fungsi sidebar apa aja yang nempel di window 👇
 declare global {
   interface Window {
     toggleSidebar?: () => void;
@@ -19,60 +18,63 @@ export default function Sidebarroom() {
 
   return (
     <>
-      {/* OVERLAY: Area transparan di luar menu. Kalo di-tap, nutup menu */}
+      {/* OVERLAY: Area gelap di luar menu */}
       <div 
         id="sidebar-overlay" 
         className="sidebar-overlay" 
-        onClick={() => window.toggleSidebar && window.toggleSidebar()}
+        onClick={() => window.toggleSidebar?.()}
       ></div>
 
-      <div id="sidebar" className="sidebar">
+      {/* PANEL SIDEBAR */}
+      <aside id="sidebar" className="sidebar-panel">
         
-        {/* Daftar Menu Sidebar */}
+        <div className="sidebar-header">
+          <h3>Menu Panggung</h3>
+          <button className="close-sidebar-btn" onClick={() => window.toggleSidebar?.()}>
+            <span className="material-icons">close</span>
+          </button>
+        </div>
+
         <div className="sidebar-menu">
           
-          <a 
-            href="#" 
+          <button 
             id="menu-mic" 
-            onClick={(e) => {
-              e.preventDefault(); 
-              window.toggleMicSidebar && window.toggleMicSidebar(e);
-            }}
+            className="sidebar-menu-btn"
+            onClick={(e) => window.toggleMicSidebar?.(e)}
           >
-            <div className="menu-icon-box"><span className="material-icons" id="mic-icon">mic</span></div>
-            <span id="mic-text">{t('turn_off_mic', 'Matikan Mic')}</span>
-          </a>
+            <div className="menu-icon-box">
+              <span className="material-icons" id="mic-icon">mic</span>
+            </div>
+            <span id="mic-text" className="menu-text">{t('turn_off_mic', 'Matikan Mic')}</span>
+          </button>
           
-          <a 
-            href="#" 
+          {/* Menu ini otomatis di-display 'flex' lewat page.tsx kalau dia Owner */}
+          <button 
             id="menu-setting" 
+            className="sidebar-menu-btn"
             style={{ display: 'none' }} 
-            onClick={(e) => {
-              e.preventDefault();
-              window.openRoomSetting && window.openRoomSetting();
-            }}
+            onClick={() => window.openRoomSetting?.()}
           >
-            <div className="menu-icon-box"><span className="material-icons">settings</span></div>
-            {/* 🔥 FIX: Hapus emoji ⚙️ bawaan dari terjemahan secara dinamis biar icon nggak double 🔥 */}
-            <span>{t('room_settings', 'Room Settings').replace(/⚙️\s?/g, '')}</span>
-          </a>
+            <div className="menu-icon-box">
+              <span className="material-icons">settings</span>
+            </div>
+            <span className="menu-text">{t('room_settings', 'Pengaturan Room').replace(/⚙️\s?/g, '')}</span>
+          </button>
           
           <div className="menu-divider"></div>
 
-          <a 
-            href="#" 
-            className="logout-item"
-            onClick={(e) => {
-              e.preventDefault();
-              window.keluarRoom && window.keluarRoom();
-            }} 
+          <button 
+            className="sidebar-menu-btn logout-item"
+            onClick={() => window.keluarRoom?.()} 
           >
-            <div className="menu-icon-box logout-box"><span className="material-icons">logout</span></div>
-            <span>{t('leave_room', 'Keluar Ruangan')}</span>
-          </a>
+            <div className="menu-icon-box logout-box">
+              <span className="material-icons">logout</span>
+            </div>
+            <span className="menu-text">{t('leave_room', 'Keluar Ruangan')}</span>
+          </button>
           
         </div>
-      </div> 
+      </aside> 
     </>
   );
 }

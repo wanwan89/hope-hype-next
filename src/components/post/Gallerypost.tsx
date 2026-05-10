@@ -7,8 +7,9 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
 import './Gallery.css';
 
-// 🔥 OPTIMASI 1: KOMPRES GAMBAR CLOUDINARY (Hemat Kuota User!) 🔥
+// Kompres Gambar Cloudinary
 const getOptimizedImage = (url: string) => {
+  if (!url) return '';
   let cleanUrl = url.trim();
   if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
     return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_800/');
@@ -28,7 +29,6 @@ export default function Gallerypost() {
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   
-  // 🔥 STATE UNTUK SISTEM FOLLOW 🔥
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   
@@ -39,19 +39,14 @@ export default function Gallerypost() {
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({}); 
 
-  // 🔥 OPTIMASI 2: STATE LOAD MORE (PAGINATION) 🔥
   const [currentCategory, setCurrentCategory] = useState("all");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
 
-  // 🔥 FIX BUG REFRESH: initGallery jalan 1x aja di awal 🔥
-  useEffect(() => {
-    initGallery();
-  }, []);
+  useEffect(() => { initGallery(); }, []);
 
-  // 🔥 Event listener buat kategori dipisah 🔥
   useEffect(() => {
     const handleCategoryChange = (e: any) => {
       const newCat = e.detail.category;
@@ -81,7 +76,6 @@ export default function Gallerypost() {
     const user = session?.user || null;
     setCurrentUser(user);
 
-    // 🔥 AMBIL DATA FOLLOWING USER SAAT INI 🔥
     if (user) {
       const { data: follows } = await supabase.from('followers').select('following_id').eq('follower_id', user.id);
       if (follows) {
@@ -92,7 +86,6 @@ export default function Gallerypost() {
     await fetchPosts("all", user, 1, false);
   };
 
-  // 🔥 OPTIMASI 3: FETCH DATA DIBATASI 15 BIAR MAIN THREAD NGGAK NGOS-NGOSAN 🔥
   const fetchPosts = async (category = "all", userObj = currentUser, pageNumber = 1, isLoadMore = false) => {
     if (isLoadMore) setIsLoadingMore(true);
     else setIsLoading(true);
@@ -101,8 +94,9 @@ export default function Gallerypost() {
       const from = (pageNumber - 1) * POSTS_PER_PAGE;
       const to = from + POSTS_PER_PAGE - 1;
 
+      // 🔥 PASTIKAN video_url TER-SELECT DARI DATABASE 🔥
       let query = supabase.from("posts")
-        .select(`id, image_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (username, role, avatar_url)`)
+        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (username, role, avatar_url)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .range(from, to); 
@@ -166,15 +160,13 @@ export default function Gallerypost() {
     }
   };
 
-  // 🔥 FUNGSI HANDLE FOLLOW DENGAN ANIMASI 🔥
   const handleFollowToggle = async (e: any, creatorId: string) => {
-    e.stopPropagation(); // Biar pas klik follow, gak redirect ke profil
+    e.stopPropagation(); 
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     if (currentUser.id === creatorId) return; 
 
     const isFollowing = followedUsers.has(creatorId);
 
-    // Animasi Klik
     setAnimatingFollows(prev => new Set(prev).add(creatorId));
     setTimeout(() => {
       setAnimatingFollows(prev => {
@@ -184,7 +176,6 @@ export default function Gallerypost() {
       });
     }, 200);
 
-    // Optimistic UI Update
     setFollowedUsers(prev => {
       const newSet = new Set(prev);
       isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId);
@@ -197,7 +188,6 @@ export default function Gallerypost() {
       } else {
         await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
         
-        // Kirim Notifikasi Follow
         const { data: myProf } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
         await supabase.from("notifications").insert({
           user_id: creatorId,
@@ -306,6 +296,7 @@ export default function Gallerypost() {
     }
   };
 
+  // 🔥 OBSERVER AUTOPLAY VIDEO & MUSIK (SANGAT CANGGIH) 🔥
   const initAutoPlayObserver = () => {
     let userHasInteracted = false;
     const handleFirstInteract = () => { userHasInteracted = true; document.body.removeEventListener('click', handleFirstInteract); };
@@ -315,18 +306,33 @@ export default function Gallerypost() {
 
     observerRef.current = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
+        // Kontrol Audio dari Gambar Feed
         const audio = entry.target.querySelector('.post-audio-element') as HTMLAudioElement;
-        if (!audio) return;
+        // Kontrol Native Video (kalo postingan itu tipe Video)
+        const video = entry.target.querySelector('.post-video-element') as HTMLVideoElement;
+
         if (entry.isIntersecting) {
-          document.querySelectorAll('.post-audio-element').forEach(el => { 
-            if (el !== audio) { (el as HTMLAudioElement).pause(); (el as HTMLAudioElement).muted = true; }
-          });
-          audio.currentTime = 0;
-          audio.volume = 1.0;
-          audio.muted = !userHasInteracted;
-          audio.play().catch(() => {});
+          if (audio) {
+            document.querySelectorAll('.post-audio-element').forEach(el => { 
+              if (el !== audio) { (el as HTMLAudioElement).pause(); (el as HTMLAudioElement).muted = true; }
+            });
+            audio.currentTime = 0;
+            audio.volume = 1.0;
+            audio.muted = !userHasInteracted;
+            audio.play().catch(() => {});
+          }
+
+          if (video) {
+            document.querySelectorAll('.post-video-element').forEach(el => { 
+              if (el !== video) { (el as HTMLVideoElement).pause(); }
+            });
+            video.muted = !userHasInteracted;
+            video.play().catch(() => {});
+          }
+
         } else {
-          audio.pause();
+          if (audio) audio.pause();
+          if (video) video.pause();
         }
       });
     }, { threshold: 0.6 });
@@ -354,9 +360,8 @@ export default function Gallerypost() {
     );
   };
 
-  // 🔥 RENDER TOMBOL FOLLOW 🔥
   const renderFollowButton = (creatorId: string) => {
-    if (!currentUser || currentUser.id === creatorId) return null; // Sembunyikan kalau post sendiri
+    if (!currentUser || currentUser.id === creatorId) return null; 
     const isFollowing = followedUsers.has(creatorId);
     const isAnimating = animatingFollows.has(creatorId);
 
@@ -412,29 +417,19 @@ export default function Gallerypost() {
     e.stopPropagation(); 
     try {
       const { data } = await supabase.from('profiles').select('id').eq('username', username).single();
-      if (data && data.id) {
-        router.push(`/data?id=${data.id}`); 
-      } else {
-        showNotif(`User @${username} tidak ditemukan`, "warning");
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      if (data && data.id) { router.push(`/data?id=${data.id}`); } 
+      else { showNotif(`User @${username} tidak ditemukan`, "warning"); }
+    } catch (err) { console.error(err); }
   };
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(@\w+)/g); 
-    
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
         const usernameOnly = part.substring(1); 
         return (
-          <span 
-            key={i} 
-            onClick={(e) => handleMentionClick(e, usernameOnly)}
-            style={{ color: '#1DA1F2', fontWeight: 700, cursor: 'pointer' }}
-          >
+          <span key={i} onClick={(e) => handleMentionClick(e, usernameOnly)} style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}>
             {part}
           </span>
         );
@@ -445,7 +440,6 @@ export default function Gallerypost() {
 
   return (
     <section>
-      {/* PREVIEW MODAL */}
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
           {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
@@ -475,34 +469,67 @@ export default function Gallerypost() {
             const postIdStr = String(post.id);
             const photoList = post.image_url ? post.image_url.split(',') : [];
 
+            // 🔥 LOGIKA RENDER (VIDEO vs GAMBAR) 🔥
+            const isVideoPost = !!post.video_url;
+
             return (
-              <div key={post.id} id={`post-${post.id}`} className="card" style={!post.image_url ? { padding: '16px' } : {}}>
-                {photoList.length > 0 ? (
+              <div key={post.id} id={`post-${post.id}`} className="card" style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
+                {(photoList.length > 0 || isVideoPost) ? (
                   <>
                     <div className="slider">
                       {getMusicHtml(post)}
                       
+                      {/* 🔥 BADGE INDIKATOR PINTAR (POJOK KANAN ATAS) 🔥 */}
+                      <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10, display: 'flex', gap: '8px' }}>
+                        {isVideoPost && (
+                          <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            <span className="material-icons" style={{ fontSize: '14px' }}>videocam</span> Video
+                          </div>
+                        )}
+                        {photoList.length > 1 && !isVideoPost && (
+                          <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            <span className="material-icons" style={{ fontSize: '14px' }}>collections</span> 1/{photoList.length}
+                          </div>
+                        )}
+                      </div>
+
                       <div className="photo-carousel" onScroll={(e) => {
                           const target = e.target as HTMLDivElement;
                           const index = Math.round(target.scrollLeft / target.offsetWidth);
                           const dots = document.querySelectorAll(`.dots-${post.id} .dot`);
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
                       }}>
-                        {photoList.map((url: string, i: number) => (
-                          <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', overflow: 'hidden', position: 'relative' }}>
-                            <img 
-                              src={getOptimizedImage(url)} 
-                              className="active" 
-                              loading={i === 0 ? "eager" : "lazy"} 
-                              alt={`Postingan Galeri ${i + 1}`} 
-                              onClick={(e) => handleImageDoubleTap(e, getOptimizedImage(url), postIdStr)} 
+                        
+                        {/* 🔥 RENDER VIDEO JIKA ADA 🔥 */}
+                        {isVideoPost ? (
+                          <div className="carousel-item" style={{ aspectRatio: '9 / 16', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                            <video 
+                              src={post.video_url} 
+                              className="post-video-element"
+                              poster={getOptimizedImage(post.image_url)} // Cover fallback
+                              playsInline loop muted
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                           </div>
-                        ))}
+                        ) : (
+                          /* 🔥 RENDER GAMBAR JIKA BUKAN VIDEO 🔥 */
+                          photoList.map((url: string, i: number) => (
+                            <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', overflow: 'hidden', position: 'relative' }}>
+                              <img 
+                                src={getOptimizedImage(url)} 
+                                className="active" 
+                                loading={i === 0 ? "eager" : "lazy"} 
+                                alt={`Postingan Galeri ${i + 1}`} 
+                                onClick={(e) => handleImageDoubleTap(e, getOptimizedImage(url), postIdStr)} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            </div>
+                          ))
+                        )}
                       </div>
 
-                      {photoList.length > 1 && (
+                      {/* TITIK SLIDE (JIKA LEBIH DARI 1 FOTO) */}
+                      {photoList.length > 1 && !isVideoPost && (
                         <div className={`carousel-dots dots-${post.id}`}>
                           {photoList.map((_: any, i: number) => (
                             <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
@@ -516,7 +543,6 @@ export default function Gallerypost() {
                     <div className="overlay">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                         
-                        {/* 🔥 HEADER POST FOTO + TOMBOL FOLLOW 🔥 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`} style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                             {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
@@ -545,31 +571,20 @@ export default function Gallerypost() {
                     </div>
                   </>
                 ) : (
+                  // 🔥 POSTINGAN FULL TEKS (TANPA GAMBAR/VIDEO) 🔥
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
-                        <img 
-                          src={optimizedAvatar} 
-                          alt="Avatar Profil" 
-                          loading="lazy" 
-                          style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} 
-                        />
+                        <img src={optimizedAvatar} alt="Avatar Profil" loading="lazy" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                          
-                          {/* 🔥 HEADER POST TEKS + TOMBOL FOLLOW 🔥 */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
                             {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                             {renderFollowButton(post.creator_id)}
                           </div>
-
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
                         </div>
                       </div>
-                      <button 
-                        aria-label="Opsi Postingan" 
-                        onClick={(e) => { e.stopPropagation(); (window as any).openPostOptions?.(post.id, isOwner, post.creator_id); }} 
-                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                      >
+                      <button aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); (window as any).openPostOptions?.(post.id, isOwner, post.creator_id); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
                     </div>

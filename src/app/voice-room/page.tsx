@@ -184,9 +184,14 @@ export default function VoiceLobbyPage() {
     handleBuyCoin(coins * 100, coins, `${coins} Koin Custom`);
   };
 
+  // 🔥 FUNGSI LIVE STREAM COMING SOON 🔥
+  const handleLiveStreamClick = () => {
+    showNotif("Live Video & Screen Share Coming Soon! 🚀", "info");
+  };
+
   return (
     <div className="voice-lobby-container">
-      <header className="lobby-header">
+      <header className="lobby-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="header-profile">
           <img src={currentUser?.avatar_url || '/asets/png/profile.webp'} alt="Av" />
           <div className="header-info">
@@ -197,6 +202,21 @@ export default function VoiceLobbyPage() {
             </div>
           </div>
         </div>
+
+        {/* 🔥 TOMBOL LIVE STREAM (KANAN ATAS) 🔥 */}
+        <button 
+          onClick={handleLiveStreamClick}
+          style={{
+            background: 'linear-gradient(135deg, #ef4444, #f43f5e)',
+            color: 'white', border: 'none', borderRadius: '12px',
+            padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px',
+            fontWeight: 800, fontSize: '12px', cursor: 'pointer',
+            boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)'
+          }}
+        >
+          <span className="material-icons" style={{ fontSize: '18px' }}>videocam</span>
+          LIVE
+        </button>
       </header>
 
       <section className="hero-banner">
@@ -308,7 +328,7 @@ export default function VoiceLobbyPage() {
             </div>
           ))}
 
-          {/* 🔥 FIX: GAMBAR PROMO TOP UP CUSTOM 🔥 */}
+          {/* GAMBAR PROMO TOP UP CUSTOM */}
           <div style={{
             width: '100%', 
             height: '90px', 

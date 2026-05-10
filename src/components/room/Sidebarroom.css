@@ -1,29 +1,177 @@
+/* src/components/room/Sidebarroom.css */
+
+/* --- OVERLAY GELAP --- */
 .in-voice-room .sidebar-overlay { 
-    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); 
-    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); 
-    z-index: 12000; display: none; opacity: 0; 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0, 0, 0, 0.45); 
+    backdrop-filter: blur(5px); 
+    -webkit-backdrop-filter: blur(5px); 
+    z-index: 12000; 
+    display: none; 
+    opacity: 0; 
     transition: opacity 0.3s ease; 
     overscroll-behavior: none; 
 }
-.in-voice-room .sidebar-overlay.active { display: block; opacity: 1; pointer-events: auto !important; }
 
-.in-voice-room .sidebar {
-    position: fixed; top: 0; right: 0 !important; left: auto !important; 
-    width: 260px; max-width: 75vw; height: 100%; background: var(--panel-bg); 
-    z-index: 12001; padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom)) 20px;
-    display: flex; flex-direction: column; 
-    border-top-left-radius: 28px; border-bottom-left-radius: 28px; border-top-right-radius: 0; border-bottom-right-radius: 0;
-    border-left: 1px solid var(--border); border-right: none; box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15); 
-    transform: translateX(100%); visibility: hidden; transition: transform 0.3s ease-out, visibility 0.3s ease-out; will-change: transform, visibility;
+.in-voice-room .sidebar-overlay.active { 
+    display: block; 
+    opacity: 1; 
+    pointer-events: auto !important; 
 }
-.in-voice-room .sidebar.active { transform: translateX(0); visibility: visible; }
 
-.in-voice-room .sidebar-menu { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.in-voice-room .sidebar-menu a { display: flex; align-items: center; gap: 14px; color: var(--text-main); text-decoration: none; padding: 12px 14px; border-radius: 16px; font-size: 14.5px; font-weight: 600; transition: all 0.2s ease; }
-.in-voice-room .menu-icon-box { width: 38px; height: 38px; background: var(--empty-slot); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-main); }
-.in-voice-room .menu-icon-box .material-icons { font-size: 20px; }
-.in-voice-room .sidebar-menu a:active { background-color: var(--empty-slot); transform: scale(0.96); }
-.in-voice-room .menu-divider { height: 1px; background: var(--border); margin: 10px 0; }
-.in-voice-room .sidebar-menu a.logout-item { color: #ef4444; margin-top: auto; }
-.in-voice-room .logout-box { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-.in-voice-room .sidebar-menu a.logout-item:active { background: rgba(239, 68, 68, 0.08); }
+/* --- PANEL SIDEBAR (SLIDE DARI KANAN) --- */
+.in-voice-room .sidebar-panel {
+    position: fixed; 
+    top: 0; 
+    right: 0 !important; 
+    left: auto !important; 
+    width: 260px; 
+    max-width: 75vw; 
+    height: 100%; 
+    background: var(--panel-bg); 
+    z-index: 12001; 
+    padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom)) 20px;
+    display: flex; 
+    flex-direction: column; 
+    border-top-left-radius: 28px; 
+    border-bottom-left-radius: 28px; 
+    border-top-right-radius: 0; 
+    border-bottom-right-radius: 0;
+    border-left: 1px solid var(--border); 
+    border-right: none; 
+    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15); 
+    transform: translateX(100%); 
+    visibility: hidden; 
+    transition: transform 0.3s ease-out, visibility 0.3s ease-out; 
+    will-change: transform, visibility;
+}
+
+.in-voice-room .sidebar-panel.active { 
+    transform: translateX(0); 
+    visibility: visible; 
+}
+
+/* --- HEADER SIDEBAR --- */
+.in-voice-room .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.in-voice-room .sidebar-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.in-voice-room .close-sidebar-btn {
+    background: var(--empty-slot);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-main);
+    transition: 0.2s;
+}
+
+.in-voice-room .close-sidebar-btn:active {
+    transform: scale(0.9);
+}
+
+/* --- DAFTAR MENU --- */
+.in-voice-room .sidebar-menu { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+    flex: 1; 
+}
+
+/* Ganti .sidebar-menu a jadi .sidebar-menu-btn buat nyocokin TSX */
+.in-voice-room .sidebar-menu-btn { 
+    display: flex; 
+    align-items: center; 
+    gap: 14px; 
+    color: var(--text-main); 
+    background: transparent;
+    border: none;
+    text-align: left;
+    padding: 12px 14px; 
+    border-radius: 16px; 
+    cursor: pointer;
+    transition: all 0.2s ease; 
+    width: 100%;
+}
+
+.in-voice-room .menu-icon-box { 
+    width: 38px; 
+    height: 38px; 
+    background: var(--empty-slot); 
+    border-radius: 12px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    color: var(--text-main); 
+    transition: 0.2s;
+}
+
+.in-voice-room .menu-icon-box .material-icons { 
+    font-size: 20px; 
+}
+
+.in-voice-room .menu-text {
+    font-size: 14.5px; 
+    font-weight: 600; 
+    flex: 1;
+    transition: 0.2s;
+}
+
+/* 🔥 Efek Hover Biru HypeTalk 🔥 */
+.in-voice-room .sidebar-menu-btn:hover { 
+    background-color: var(--empty-slot); 
+}
+.in-voice-room .sidebar-menu-btn:hover .menu-icon-box {
+    background: rgba(31, 60, 255, 0.1);
+    color: #1f3cff;
+}
+.in-voice-room .sidebar-menu-btn:hover .menu-text {
+    color: #1f3cff;
+}
+
+.in-voice-room .sidebar-menu-btn:active { 
+    transform: scale(0.96); 
+}
+
+.in-voice-room .menu-divider { 
+    height: 1px; 
+    background: var(--border); 
+    margin: 10px 0; 
+}
+
+/* --- TOMBOL LOGOUT KHUSUS --- */
+.in-voice-room .sidebar-menu-btn.logout-item { 
+    margin-top: auto; 
+}
+
+.in-voice-room .logout-item .menu-text {
+    color: #ef4444; 
+}
+
+.in-voice-room .logout-box { 
+    background: rgba(239, 68, 68, 0.1) !important; 
+    color: #ef4444 !important; 
+}
+
+.in-voice-room .sidebar-menu-btn.logout-item:hover { 
+    background: rgba(239, 68, 68, 0.05); 
+}
+
+.in-voice-room .sidebar-menu-btn.logout-item:active { 
+    background: rgba(239, 68, 68, 0.08); 
+}

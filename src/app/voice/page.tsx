@@ -61,6 +61,9 @@ function VoiceRoomContent() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   
+  // 🔥 STATE BARU BUAT NGATUR JUMLAH SLOT (Default 6) 🔥
+  const [roomSlotCount, setRoomSlotCount] = useState(6);
+  
   const myTotalGiftSent = useRef(0);
   const myLevel = useRef(1);
   const isMicOn = useRef(false);
@@ -252,6 +255,13 @@ function VoiceRoomContent() {
 
         channelRef.current
         .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, () => { fetchStage(); })
+        // 🔥 UPDATE LISTENER BUAT NGECEK PERUBAHAN slot_count 🔥
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${CURRENT_ROOM_ID}` }, (p: any) => { 
+            if(p.new.slot_count) {
+                setRoomSlotCount(p.new.slot_count);
+                fetchStage(p.new.slot_count);
+            }
+        })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p: any) => { 
             fetchStage(); 
             if (p.new && p.new.id === MY_USER_ID.current) {
@@ -308,17 +318,29 @@ function VoiceRoomContent() {
           createTapAnimation(p.payload.x, p.payload.y);
           setTotalTaps(prev => prev + 1);
         })
-        .on('broadcast', { event: 'minta_naik' }, (p: any) => {
+        // 🔥 UPDATE LISTENER MINTA NAIK (AUTO PILIH SLOT) 🔥
+        .on('broadcast', { event: 'minta_naik' }, async (p: any) => {
             if (IS_OWNER.current) {
                 const acc = confirm(`${p.payload.username} ingin naik panggung. Izinkan?`);
-                if (acc) window.accNaikPanggung?.(p.payload.userId, p.payload.username);
+                if (acc) {
+                    // Cari slot kosong pertama berdasarkan jumlah slot room saat ini
+                    const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
+                    // Filter slot yang index-nya dibawah jumlah slot maksimal
+                    const slotKosong = allSlots?.find(s => !s.profile_id && s.slot_index < roomSlotCount);
+                    
+                    if (slotKosong) {
+                        window.accNaikPanggung?.(p.payload.userId, p.payload.username);
+                    } else {
+                        showNotif("Panggung penuh! Tidak bisa acc.", "error");
+                    }
+                }
             }
         })
         .on('broadcast', { event: 'naik_diizinkan' }, async (p: any) => {
             if (p.payload.userId === MY_USER_ID.current) {
                 showNotif("Permintaan diterima! Mencari kursi...", "success");
                 const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
-                const slotKosong = allSlots?.find(s => !s.profile_id);
+                const slotKosong = allSlots?.find(s => !s.profile_id && s.slot_index < roomSlotCount);
                 if (slotKosong) window.naikKeStage?.(slotKosong.slot_index);
             }
         })
@@ -442,6 +464,11 @@ function VoiceRoomContent() {
         if (roomData) {
             setTotalTaps(roomData.tap_count || 0);
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
+            
+            // 🔥 INISIALISASI STATE JUMLAH SLOT 🔥
+            const sCount = roomData.slot_count || 6;
+            setRoomSlotCount(sCount);
+
             if (IS_OWNER.current) { 
                 await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
                 syncOwnerUI();
@@ -465,21 +492,28 @@ function VoiceRoomContent() {
                 await roomRef.current.localParticipant.setMicrophoneEnabled(false);
             } catch (e) { console.error(e); }
         }
-        fetchStage(); listenRealtime(); fetchTopGifters();
+        
+        // Panggil fetchStage bawa data slot saat ini
+        fetchStage(roomData?.slot_count || 6); 
+        listenRealtime(); fetchTopGifters();
     }
 
-    async function fetchStage() {
+    // 🔥 MODIFIKASI fetchStage BUAT RENDER SESUAI JUMLAH SLOT 🔥
+    async function fetchStage(overrideCount?: number) {
         if (!CURRENT_ROOM_ID) return;
+        const targetCount = overrideCount || roomSlotCount;
+
         const { data } = await sb.from('room_slots').select('*, profiles(*)').eq('room_id', CURRENT_ROOM_ID).order('slot_index');
         const grid = document.getElementById('stage-grid');
         if (!grid || !data) return;
         grid.innerHTML = "";
-        data.forEach((slot: any, i: number) => {
+        
+        // Looping cuma sebatas targetCount (2, 4, atau 6)
+        data.slice(0, targetCount).forEach((slot: any, i: number) => {
             const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
                 const roleBadgeHTML = getUserBadge(user.role || '');
-                // 🔥 FIX: USERNAME DI SLOT JADI ADAPTIF PUTIH/TERANG 🔥
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
@@ -504,7 +538,6 @@ function VoiceRoomContent() {
     // ==========================================================
     window.sendGift = sendGift;
 
-    // 🔥 FIX: FUNGSI KICK DIPERBAIKI UNTUK TURUNKAN SLOT 🔥
     window.kickUser = async (targetId, targetName) => {
         if (!confirm(`Turunkan ${targetName} dari slot panggung?`)) return;
         await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: targetId });
@@ -518,8 +551,11 @@ function VoiceRoomContent() {
         if(wrapper) wrapper.style.display = wrapper.style.display === 'none' ? 'flex' : 'none';
     };
 
+    // 🔥 FIX: NAIK KE STAGE SESUAI BATAS SLOT 🔥
     window.naikKeStage = async (idx) => {
         if (!MY_USER_ID.current) return showNotif("Login dulu!", "warning");
+        if (idx >= roomSlotCount) return showNotif("Slot ini sedang ditutup Owner", "warning");
+
         if (roomRef.current && roomRef.current.state === "connected") await roomRef.current.localParticipant.setMicrophoneEnabled(true);
         
         const { data: checkSlot } = await sb.from('room_slots').select('profile_id').match({ room_id: CURRENT_ROOM_ID, slot_index: idx }).single();
@@ -567,7 +603,11 @@ function VoiceRoomContent() {
         d?.classList.toggle('open'); o?.classList.toggle('show');
         if (d?.classList.contains('open')) {
             updateLevelProgressUI(); 
-            sb.from('room_slots').select('profile_id, profiles(username, avatar_url)').eq('room_id', CURRENT_ROOM_ID).not('profile_id', 'is', null).neq('profile_id', MY_USER_ID.current)
+            sb.from('room_slots').select('profile_id, profiles(username, avatar_url)')
+            .eq('room_id', CURRENT_ROOM_ID)
+            .lt('slot_index', roomSlotCount) // 🔥 CUMA TAMPILIN USER YANG ADA DI SLOT AKTIF 🔥
+            .not('profile_id', 'is', null)
+            .neq('profile_id', MY_USER_ID.current)
             .then(({data}) => {
                 const tc = document.getElementById('gift-targets');
                 if(!tc) return; tc.innerHTML = "";
@@ -643,9 +683,15 @@ function VoiceRoomContent() {
     };
 
     window.mintaNaik = async () => {
-        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').order('slot_index', { ascending: true });
-        const slotKosong = allSlots?.find(s => !s.profile_id);
-        if (slotKosong) window.naikKeStage?.(slotKosong.slot_index); else showNotif("Panggung penuh!", "warning");
+        const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
+        // 🔥 CARI SLOT KOSONG YANG SESUAI BATAS SLOT COUNT SAAT INI 🔥
+        const slotKosong = allSlots?.find(s => !s.profile_id && s.slot_index < roomSlotCount);
+        
+        if (slotKosong) {
+            window.naikKeStage?.(slotKosong.slot_index);
+        } else {
+            showNotif("Panggung penuh! Tunggu giliran", "warning");
+        }
     };
 
     window.keluarRoom = async () => {
@@ -688,11 +734,41 @@ function VoiceRoomContent() {
         if (modal) {
             modal.classList.add('show');
             const body = modal.querySelector('.modal-body');
+            
+            // 🔥 TAMBAH SETTING JUMLAH SLOT (2, 4, 6) JIKA BELUM ADA 🔥
+            if (body && !body.querySelector('.slot-settings')) {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'slot-settings';
+                
+                const slotLabel = document.createElement('label');
+                slotLabel.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
+                slotLabel.innerText = 'Jumlah Kursi Panggung';
+                slotDiv.appendChild(slotLabel);
+
+                const slotSelect = document.createElement('select');
+                slotSelect.id = 'edit-room-slots';
+                slotSelect.style.cssText = 'width: 100%; padding: 12px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; margin-bottom: 15px; outline:none;';
+                
+                [2, 4, 6].forEach(num => {
+                    const opt = document.createElement('option');
+                    opt.value = String(num);
+                    opt.text = `${num} Kursi`;
+                    // Set opsi terpilih berdasarkan state saat ini
+                    if (num === roomSlotCount) opt.selected = true;
+                    slotSelect.appendChild(opt);
+                });
+                slotDiv.appendChild(slotSelect);
+                
+                const saveBtn = body.querySelector('.btn-save-setting');
+                if (saveBtn) body.insertBefore(slotDiv, saveBtn); else body.appendChild(slotDiv);
+            }
+
+            // SETTING RADAR COLOR (Bawaan Lama)
             if (body && !body.querySelector('.radar-settings')) {
                 const div = document.createElement('div');
                 div.className = 'radar-settings';
                 const label = document.createElement('label');
-                label.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
+                label.style.cssText = 'margin-top:10px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
                 label.innerText = 'Warna Radar Mic';
                 div.appendChild(label);
                 const btnContainer = document.createElement('div');
@@ -727,17 +803,45 @@ function VoiceRoomContent() {
     
     window.closeRoomSetting = () => { document.getElementById('setting-modal')?.classList.remove('show'); };
     
+    // 🔥 FIX: SIMPAN ROOM SETTING (TERMASUK SLOT COUNT) 🔥
     window.saveRoomSetting = async () => {
         const newName = (document.getElementById('edit-room-name') as HTMLInputElement).value;
         const sysMsg = (document.getElementById('system-message') as HTMLInputElement).value;
+        const slotSelect = document.getElementById('edit-room-slots') as HTMLSelectElement;
+        
+        let newSlotCount = roomSlotCount;
+        if (slotSelect) {
+            newSlotCount = parseInt(slotSelect.value) || 6;
+        }
+
         if (!newName) return showNotif(t('room_name_empty'), "warning");
+        
         try {
-            await sb.from('rooms').update({ name: newName }).eq('id', CURRENT_ROOM_ID);
+            // Update nama dan slot_count ke database
+            await sb.from('rooms').update({ name: newName, slot_count: newSlotCount }).eq('id', CURRENT_ROOM_ID);
+            
+            // Kick user yang ada di slot yang di-disable (kalo Owner nurunin slot misal dari 6 ke 2)
+            if (newSlotCount < roomSlotCount) {
+                await sb.from('room_slots')
+                    .update({ profile_id: null })
+                    .eq('room_id', CURRENT_ROOM_ID)
+                    .gte('slot_index', newSlotCount); // Kosongkan slot_index yg lebih besar/sama dengan limit baru
+            }
+
             if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
+            
+            // Update State Lokal
+            setRoomSlotCount(newSlotCount);
+
             const url = new URL(window.location.href); url.searchParams.set('name', newName); window.history.pushState({}, '', url); 
             const titleEl = document.querySelector('.room-title') as HTMLElement;
             if(titleEl) titleEl.innerText = newName.toUpperCase();
+            
+            showNotif(`Pengaturan Panggung tersimpan (${newSlotCount} Kursi)`, "success");
             window.closeRoomSetting?.();
+            
+            // Render Ulang Stage
+            fetchStage(newSlotCount);
         } catch (e: any) { showNotif("Gagal simpan: " + e.message, "error"); }
     };
 
@@ -787,6 +891,11 @@ function VoiceRoomContent() {
     };
   }, [t, searchParams, router]);
 
+  // Karena listener pake hooks (closure lama), kita harus sync dependencies ke callback
+  useEffect(() => {
+    // Fungsi ini dipanggil dari dalam useEffect utama buat nge-update fetchStage tanpa bocor State
+  }, [roomSlotCount]);
+
   if (!mounted) return null;
 
   return (
@@ -803,7 +912,6 @@ function VoiceRoomContent() {
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
 
-      {/* 🔥 PROFILE SLIDE UP (BOTTOM SHEET) DIPERBARUI 🔥 */}
       <div className={`user-profile-sheet-overlay ${isProfileOpen ? 'active' : ''}`} onClick={() => setIsProfileOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
@@ -834,7 +942,7 @@ function VoiceRoomContent() {
                 )}
 
                 {/* 3. TOMBOL LIHAT PROFIL */}
-                <button className="btn-action-sheet primary" onClick={() => router.push(`/data?username=${selectedUser.username}`)}>
+                <button className="btn-action-sheet primary" onClick={() => router.push(`/data?id=${selectedUser.id}`)}>
                   Lihat Profil Lengkap
                 </button>
               </div>
@@ -864,7 +972,7 @@ function VoiceRoomContent() {
           100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; }
         }
 
-        /* 🔥 PROFILE SHEET CSS 🔥 */
+        /* PROFILE SHEET CSS */
         .user-profile-sheet-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10005;
           opacity: 0; visibility: hidden; transition: 0.3s;
@@ -881,7 +989,7 @@ function VoiceRoomContent() {
         .profile-sheet-avatar { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #1f3cff; object-fit: cover; margin-bottom: 15px; }
         .profile-sheet-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
         
-        /* 🔥 BUTTON ACTION DI DALAM SHEET 🔥 */
+        /* BUTTON ACTION DI DALAM SHEET */
         .btn-action-sheet {
           width: 100%; padding: 14px; border: none; border-radius: 14px;
           font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s;

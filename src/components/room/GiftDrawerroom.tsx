@@ -13,7 +13,7 @@ declare global {
   }
 }
 
-// 🔥 LIST KADO (DIPOTONG JADI 6 BIAR 3x2 PAS) 🔥
+// 🔥 LIST KADO LENGKAP 10 ITEM (Siap Di-Scroll) 🔥
 const GIFTS = [
   { id: 1, name: 'Love', price: 1, img: '/asets/png/gift1.png' },
   { id: 2, name: 'Daebak', price: 10, img: '/asets/png/gift2.png' },
@@ -21,6 +21,10 @@ const GIFTS = [
   { id: 4, name: 'Oppa', price: 100, img: '/asets/png/gift4.png' },
   { id: 5, name: 'Fighting', price: 2000, img: '/asets/png/gift5.png' },
   { id: 6, name: 'Saranghae', price: 5000, img: '/asets/png/gift6.png' },
+  { id: 7, name: 'Kiyowo', price: 10000, img: '/asets/png/gift7.png' },
+  { id: 8, name: 'Gomawo', price: 25000, img: '/asets/png/gift8.png' },
+  { id: 9, name: 'Daesang', price: 50000, img: '/asets/png/gift9.png' },
+  { id: 10, name: 'Sultan', price: 100000, img: '/asets/png/gift10.png' },
 ];
 
 export default function GiftDrawerroom() {
@@ -95,7 +99,6 @@ export default function GiftDrawerroom() {
     expNeeded = level * 200; 
   }
 
-  // 🔥 FIX BIKIN ERROR VERCEL: Variabel ini kepotong di kodingan lu sebelumnya 🔥
   const currentLevel = level;
   const currentExp = remainingExp;
   const maxExp = expNeeded;
@@ -138,15 +141,22 @@ export default function GiftDrawerroom() {
         #gift-targets { padding-top: 8px !important; padding-bottom: 8px !important; }
         #gift-targets .target-avatar { width: 44px !important; height: 44px !important; }
 
-        /* 🔥 GRID KADO (3x2 FIX LAYOUT) 🔥 */
+        /* 🔥 GRID KADO (SCROLL HORIZONTAL 10 KADO) 🔥 */
         .gift-list-3d-wrapper {
           padding: 15px 15px 25px 15px;
-          display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px 12px;
-          overflow: visible; /* Biar gambar jumbo gak kepotong */
+          display: flex; gap: 15px; overflow-x: auto; overflow-y: visible;
+          scroll-snap-type: x mandatory; scrollbar-width: none;
+        }
+        .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
+
+        .gift-column {
+          display: flex; flex-direction: column; gap: 25px; flex-shrink: 0;
+          width: calc(33.333% - 10px); /* 3 Kolom per frame, sisanya scroll */
+          scroll-snap-align: start;
         }
 
         .gift-item-3d {
-          position: relative; height: 100px; /* BOX PENDEK */
+          position: relative; height: 100px; width: 100%;
           display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
           cursor: pointer; -webkit-tap-highlight-color: transparent; z-index: 1;
         }
@@ -267,45 +277,50 @@ export default function GiftDrawerroom() {
           <div id="gift-targets" className="target-list" onClick={(e) => e.stopPropagation()}></div>
         </div>
 
+        {/* 🔥 DAFTAR KADO SCROLL HORIZONTAL (10 KADO, 5 KOLOM) 🔥 */}
         <div className="gift-list-3d-wrapper">
-          {GIFTS.map((gift) => {
-            const isActive = selectedGift?.id === gift.id;
-            const isSpam = spamAnimId === gift.id;
+          {Array.from({ length: Math.ceil(GIFTS.length / 2) }).map((_, colIndex) => (
+            <div key={colIndex} className="gift-column">
+              {GIFTS.slice(colIndex * 2, colIndex * 2 + 2).map((gift) => {
+                const isActive = selectedGift?.id === gift.id;
+                const isSpam = spamAnimId === gift.id;
 
-            return (
-              <div 
-                key={gift.id}
-                className={`gift-item-3d ${isActive ? 'active' : ''} ${isSpam ? 'spam-anim' : ''}`} 
-                onClick={(e) => {
-                  e.stopPropagation(); 
-                  handleGiftAction(gift, e);
-                }}
-              >
-                <img src={gift.img} className="gift-img-3d" alt={gift.name} />
-                
-                {!isActive && (
-                  <div className="gift-default-info">
-                    <span className="gift-label">{gift.name}</span>
-                    <span className="gift-price-mini"><span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.price}</span>
-                  </div>
-                )}
+                return (
+                  <div 
+                    key={gift.id}
+                    className={`gift-item-3d ${isActive ? 'active' : ''} ${isSpam ? 'spam-anim' : ''}`} 
+                    onClick={(e) => {
+                      e.stopPropagation(); 
+                      handleGiftAction(gift, e);
+                    }}
+                  >
+                    <img src={gift.img} className="gift-img-3d" alt={gift.name} />
+                    
+                    {!isActive && (
+                      <div className="gift-default-info">
+                        <span className="gift-label">{gift.name}</span>
+                        <span className="gift-price-mini"><span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.price}</span>
+                      </div>
+                    )}
 
-                {isActive && (
-                  <div className="gift-active-bg">
-                    <div className="gift-active-details">
-                      <span className="gift-price-active">
-                        <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
-                        {gift.price.toLocaleString('id-ID')}
-                      </span>
-                      <button className="gift-send-btn" onClick={(e) => handleGiftAction(gift, e)}>
-                        KIRIM
-                      </button>
-                    </div>
+                    {isActive && (
+                      <div className="gift-active-bg">
+                        <div className="gift-active-details">
+                          <span className="gift-price-active">
+                            <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
+                            {gift.price.toLocaleString('id-ID')}
+                          </span>
+                          <button className="gift-send-btn" onClick={(e) => handleGiftAction(gift, e)}>
+                            KIRIM
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </div>
 
         <div className="drawer-footer" onClick={(e) => e.stopPropagation()}>

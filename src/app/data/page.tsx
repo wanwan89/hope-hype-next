@@ -32,7 +32,7 @@ function ProfileContent() {
   
   const [isFollowing, setIsFollowing] = useState(false);
   const [hasStory, setHasStory] = useState(false); 
-  const [storyIdToGo, setStoryIdToGo] = useState<string | null>(null); // 🔥 TAMBAHIN INI
+  const [storyIdToGo, setStoryIdToGo] = useState<string | null>(null); 
 
   const [blockStatus, setBlockStatus] = useState<'none' | 'blocked_by_me' | 'blocking_me'>('none');
   
@@ -89,68 +89,64 @@ function ProfileContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, profile, isMounted, blockStatus, isFollowing]);
 
-const loadProfile = async () => {
-  try {
-    const { data: authData } = await supabase.auth.getUser();
-    const currentUserId = authData?.user?.id || null;
-    setMyId(currentUserId);
+  const loadProfile = async () => {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUserId = authData?.user?.id || null;
+      setMyId(currentUserId);
 
-    let query = supabase.from('profiles').select('*');
-    if (urlId) query = query.eq('id', urlId);
-    else if (urlUser) query = query.eq('username', urlUser);
-    else if (currentUserId) query = query.eq('id', currentUserId);
-    else { router.push('/login'); return; }
+      let query = supabase.from('profiles').select('*');
+      if (urlId) query = query.eq('id', urlId);
+      else if (urlUser) query = query.eq('username', urlUser);
+      else if (currentUserId) query = query.eq('id', currentUserId);
+      else { router.push('/login'); return; }
 
-    const { data: profData, error } = await query.single();
-    if (error || !profData) return;
+      const { data: profData, error } = await query.single();
+      if (error || !profData) return;
 
-    // Cek Status Blokir
-    if (currentUserId && currentUserId !== profData.id) {
-      const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
-      if (myBlock) setBlockStatus('blocked_by_me');
+      // Cek Status Blokir
+      if (currentUserId && currentUserId !== profData.id) {
+        const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
+        if (myBlock) setBlockStatus('blocked_by_me');
 
-      const { data: theirBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: profData.id, blocked_id: currentUserId }).maybeSingle();
-      if (theirBlock) setBlockStatus('blocking_me');
+        const { data: theirBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: profData.id, blocked_id: currentUserId }).maybeSingle();
+        if (theirBlock) setBlockStatus('blocking_me');
+      }
+
+      setProfile(profData);
+      setEditData({
+        username: profData.username || '',
+        bio: profData.bio || '',
+        avatar_url: profData.avatar_url || '',
+        website: profData.website || ''
+      });
+      setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
+      
+      const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: stories } = await supabase
+        .from('stories')
+        .select('id')
+        .eq('creator_id', profData.id) 
+        .gte('created_at', timeLimit)
+        .order('created_at', { ascending: true }) 
+        .limit(1);
+
+      if (stories && stories.length > 0) {
+        setHasStory(true);
+        setStoryIdToGo(String(stories[0].id)); 
+      } else {
+        setHasStory(false);
+        setStoryIdToGo(null);
+      }
+
+      if (blockStatus === 'none') {
+        updateStats(profData.id, currentUserId);
+      }
+
+    } catch (err) { 
+      console.error("Load Profile Error:", err); 
     }
-
-    setProfile(profData);
-    setEditData({
-      username: profData.username || '',
-      bio: profData.bio || '',
-      avatar_url: profData.avatar_url || '',
-      website: profData.website || ''
-    });
-    setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
-    
-    // 🔥 FIX: LOGIKA CEK STORY (SIMPEL & NANGKAP ID STORY) 🔥
-    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: stories } = await supabase
-      .from('stories')
-      .select('id')
-      .eq('creator_id', profData.id) 
-      .gte('created_at', timeLimit)
-      .order('created_at', { ascending: true }) // Ambil story yang paling awal
-      .limit(1);
-
-    // Kalau ada story, simpan status dan ID-nya!
-    if (stories && stories.length > 0) {
-      setHasStory(true);
-      setStoryIdToGo(String(stories[0].id)); // 🔥 Simpan ID Story-nya di sini
-    } else {
-      setHasStory(false);
-      setStoryIdToGo(null);
-    }
-
-    // Update stats kalau tidak diblokir
-    if (blockStatus === 'none') {
-      updateStats(profData.id, currentUserId);
-    }
-
-  } catch (err) { 
-    console.error("Load Profile Error:", err); 
-  }
-};
-
+  };
 
   const updateStats = async (targetId: string, currentUserId: string | null) => {
     const { count: fers } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', targetId);
@@ -176,16 +172,16 @@ const loadProfile = async () => {
     setPosts([]); 
 
     try {
-if (type === 'post') {
-  const { data, error } = await supabase
-    .from('posts')
-    .select('id, image_url')
-    .eq('creator_id', profile.id) // Pakai kolom creator_id sesuai tabel lu
-    .eq('status', 'approved')    // 🔥 WAJIB: Cuma yang sudah di-ACC
-    .order('created_at', { ascending: false });
-  
-  if (data && !error) setPosts(data);
-}
+      if (type === 'post') {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('id, image_url, video_url') // 🔥 TAMBAHIN video_url DI SINI 🔥
+          .eq('creator_id', profile.id) 
+          .eq('status', 'approved')    
+          .order('created_at', { ascending: false });
+        
+        if (data && !error) setPosts(data);
+      }
 
       else {
         let tableName = '';
@@ -206,7 +202,7 @@ if (type === 'post') {
             if (postIds.length > 0) {
               const { data: pData, error: pError } = await supabase
                 .from('posts')
-                .select('id, image_url')
+                .select('id, image_url, video_url') // 🔥 TAMBAHIN video_url DI SINI JUGA 🔥
                 .in('id', postIds)
                 .order('created_at', { ascending: false });
               
@@ -226,23 +222,19 @@ if (type === 'post') {
   // 🔥 3. EVENT HANDLERS 🔥
   // ==========================================
   
-const handleOpenPost = (postId: string) => {
-  if (!postId) return;
-  // Ini bakal ngirim ?id=123#post-123 ke halaman gallery
-  router.push(`/post?id=${postId}#post-${postId}`);
-};
+  const handleOpenPost = (postId: string) => {
+    if (!postId) return;
+    router.push(`/post?id=${postId}#post-${postId}`);
+  };
 
+  const handleAvatarClick = () => {
+    if (hasStory && storyIdToGo) {
+      router.push(`/story/${storyIdToGo}`); 
+    } else {
+      showNotif("Belum ada story terbaru", "info");
+    }
+  };
 
-const handleAvatarClick = () => {
-  if (hasStory && storyIdToGo) {
-    // 🔥 Dia bakal loncat ke /story/24 (misalnya ID story-nya 24)
-    router.push(`/story/${storyIdToGo}`); 
-  } else {
-    showNotif("Belum ada story terbaru", "info");
-  }
-};
-
-  // 🔥 FUNGSI NAVIGASI CHAT 🔥
   const handleGoToChat = () => {
     if (!profile?.id) return;
     router.push(`/hypetalk/chat?from=${profile.id}`);
@@ -359,7 +351,6 @@ const handleAvatarClick = () => {
 
   const isMe = myId === profile.id;
 
-  // --- BLOKIR UI ---
   if (blockStatus === 'blocking_me') {
     return (
       <div className="profile-page-container" style={{ position: 'fixed', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
@@ -453,28 +444,25 @@ const handleAvatarClick = () => {
 
       <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px' }}>
         
-        {/* KIRI: Tombol Kembali (Hanya muncul kalau lagi liat profil orang) */}
         {!isMe ? (
           <button className="header-btn" onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
             <span className="material-icons">arrow_back</span>
           </button>
         ) : (
-          <div style={{ width: '24px' }}></div> /* Spacer biar seimbang */
+          <div style={{ width: '24px' }}></div> 
         )}
 
-        {/* TENGAH: Username */}
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-main)' }}>
           Hii {profile.username}
           {profile.is_private && <span className="material-icons" style={{fontSize: '14px', color: 'var(--text-secondary)'}}>lock</span>}
         </h2>
 
-        {/* KANAN: Tombol Menu (Hanya muncul di profil sendiri) */}
         {isMe ? (
           <button className="header-btn" onClick={() => setIsSidebarOpen(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
             <span className="material-icons">menu</span>
           </button>
         ) : (
-          <div style={{ width: '24px' }}></div> /* Spacer biar seimbang */
+          <div style={{ width: '24px' }}></div> 
         )}
 
       </header>
@@ -483,12 +471,11 @@ const handleAvatarClick = () => {
         <section className="profile-info">
           
           <div className="avatar-container">
-<div 
-  className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} 
-  onClick={handleAvatarClick}
-  style={{ cursor: hasStory ? 'pointer' : 'default' }}
->
-
+            <div 
+              className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} 
+              onClick={handleAvatarClick}
+              style={{ cursor: hasStory ? 'pointer' : 'default' }}
+            >
               <img className="profile-avatar-img" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
             </div>
           </div>
@@ -510,7 +497,6 @@ const handleAvatarClick = () => {
                 </>
              ) : (
                 <>
-                  {/* 🔥 FIX 1: TOMBOL CHAT DITAMBAHKAN DI SINI 🔥 */}
                   <button className="btn-action btn-secondary" onClick={handleGoToChat}>
                     <span className="material-icons" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '4px' }}>chat</span>
                     Chat
@@ -558,45 +544,55 @@ const handleAvatarClick = () => {
               <div className="no-posts-v2">
                 <div className="no-posts-icon-circle"><span className="material-icons">auto_awesome</span></div>
                 <h3>{t('no_posts', 'Belum ada postingan')}</h3>
-                {isMe && activeTab === 'post' && <button className="btn-action btn-primary" onClick={() => router.push('/')}>{t('create_post', 'Buat Postingan')}</button>}
+                {isMe && activeTab === 'post' && <button className="btn-action btn-primary" onClick={() => router.push('/create')}>{t('create_post', 'Buat Postingan')}</button>}
               </div>
            ) : (
-posts.map(post => {
-   // 🔥 LOGIKA FIX: Pecah string URL, ambil foto pertama buat thumbnail
-   const allImages = post.image_url ? post.image_url.split(',') : [];
-   const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
+            posts.map(post => {
+              const allImages = post.image_url ? post.image_url.split(',') : [];
+              const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
+              
+              // 🔥 DETEKSI POSTINGAN VIDEO 🔥
+              const isVideo = !!post.video_url;
 
-   return (
-      <div 
-        key={post.id} 
-        className="grid-item" 
-        style={{ cursor: 'pointer', position: 'relative' }} 
-        onClick={() => handleOpenPost(post.id)}
-      >
-         {thumbUrl ? (
-            <>
-              <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              {/* Tambahin icon tumpukan kalau fotonya lebih dari 1 biar keren */}
-              {allImages.length > 1 && (
-                <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>
-                  filter_none
-                </span>
-              )}
-            </>
-         ) : (
-            <div className="grid-no-img">
-               <span className="material-icons">article</span>
-            </div>
-         )}
-      </div>
-   );
-})
-
+              return (
+                  <div 
+                    key={post.id} 
+                    className="grid-item" 
+                    style={{ cursor: 'pointer', position: 'relative' }} 
+                    onClick={() => handleOpenPost(post.id)}
+                  >
+                    {thumbUrl || isVideo ? (
+                        <>
+                          {thumbUrl ? (
+                            <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          )}
+                          
+                          {/* 🔥 IKON INDIKATOR (KANAN ATAS) 🔥 */}
+                          {isVideo ? (
+                            <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>
+                              play_circle_filled
+                            </span>
+                          ) : allImages.length > 1 ? (
+                            <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>
+                              filter_none
+                            </span>
+                          ) : null}
+                        </>
+                    ) : (
+                        <div className="grid-no-img">
+                          <span className="material-icons">article</span>
+                        </div>
+                    )}
+                  </div>
+              );
+            })
            )}
         </div>
       </div>
 
-      {/* --- SIDEBAR MENU (Khusus Pemilik Akun) --- */}
+      {/* --- SIDEBAR MENU --- */}
       {isMe && (
         <>
           <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />

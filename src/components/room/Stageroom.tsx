@@ -2,9 +2,8 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import './Stageroom.css'; // 🔥 FIX: Import CSS khusus Stage Room
+import './Stageroom.css'; 
 
-// 👇 Kasih tau TypeScript kalau window punya fungsi naikKeStage 👇
 declare global {
   interface Window {
     naikKeStage?: (index: number) => void;
@@ -15,17 +14,20 @@ export default function Stageroom() {
   const { t } = useTranslation();
 
   return (
-    // Wadah id="stage-grid" ini bakal ditimpa/diisi otomatis 
-    // sama fungsi fetchStage() di file page.tsx lu.
-    // Yang ada di bawah ini cuma tampilan skeleton/default sebelum data ke-load.
+    // Wadah id="stage-grid" ini bakal diisi dinamis oleh fetchStage() di page.tsx.
+    // Default kita kasih 6 slot kosong sebagai Skeleton/Loading state awal.
     <section id="stage-grid" className="stage-container">
-      <div className="speaker-item empty">
-        <div className="avatar" onClick={() => window.naikKeStage && window.naikKeStage(0)}>
-          <span className="material-icons">add</span>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="speaker-item empty">
+          <div 
+            className="avatar" 
+            onClick={() => window.naikKeStage && window.naikKeStage(index)}
+          >
+            <span className="material-icons">add</span>
+          </div>
+          <span className="name-label">{t('empty_slot', 'KOSONG')}</span>
         </div>
-        {/* 🔥 FIX: Support multi-bahasa 🔥 */}
-        <span className="name-label">{t('empty_slot', 'KOSONG')}</span>
-      </div>
+      ))}
     </section>
   );
 }
