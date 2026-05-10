@@ -2,10 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script'; // 🔥 Tambahin import Script dari next
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Login.css';
+
+// 🔥 Deklarasi global biar TypeScript nggak rewel soal Turnstile
+declare global {
+  interface Window {
+    turnstile: any;
+    onTurnstileSuccess: (token: string) => void;
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +25,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
+  // 🔥 State buat Cloudflare Turnstile
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  
   // --- Form Data ---
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,24 +36,26 @@ export default function LoginPage() {
   const [creatorType, setCreatorType] = useState('karya');
   const [agreed, setAgreed] = useState(false);
 
+  // Tangkap callback sukses dari Turnstile
+  useEffect(() => {
+    window.onTurnstileSuccess = (token: string) => {
+      setCaptchaToken(token);
+    };
+  }, []);
+
   // Cek sesi login
   useEffect(() => {
-    // Listener ini nangkep event login dari Google juga
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        // 🔥 JARING PENGAMAN: Cek profil pas login pakai Google 🔥
         const userId = session.user.id;
         const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).single();
         
-        // Kalau belum punya profil, kita buatkan otomatis
         if (!profile) {
           const userMeta = session.user.user_metadata;
-          // Ngambil nama dari google (kalau null pake email dipotong, kalau null juga pake 'user_hype')
           const rawName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || 'user_hype';
           const safeUsername = rawName.toLowerCase().replace(/\s+/g, '');
           const safeAvatar = userMeta?.avatar_url || userMeta?.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${safeUsername}`;
 
-          // Insert ke tabel profiles
           await supabase.from('profiles').insert([{
             id: userId,
             username: safeUsername,
@@ -66,21 +80,24 @@ export default function LoginPage() {
       provider: 'google',
       options: { redirectTo: window.location.origin + "/" }
     });
-    // Loading ga di-false karena halaman akan ke-redirect ke Google
   };
 
   const handleForgotPassword = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!email) return showNotif(t('forgot_pass_error', 'Silakan masukkan email Anda terlebih dahulu!'), "warning");
+    if (!captchaToken) return showNotif('Silakan selesaikan verifikasi keamanan (Captcha)!', 'warning');
 
     setIsLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password"
+      redirectTo: window.location.origin + "/reset-password",
+      captchaToken: captchaToken // 🔥 Kirim token captcha
     });
 
     setIsLoading(false);
     if (error) {
       showNotif(error.message, "error");
+      if (window.turnstile) window.turnstile.reset(); // Reset captcha jika gagal
+      setCaptchaToken(null);
     } else {
       showNotif(t('forgot_pass_success', 'Berhasil! Silakan periksa email Anda untuk mengatur ulang kata sandi.'), "success");
     }
@@ -88,18 +105,29 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 🔥 Validasi Captcha sebelum hit Supabase
+    if (!captchaToken) {
+      return showNotif('Silakan selesaikan verifikasi keamanan (Captcha) terlebih dahulu!', 'warning');
+    }
+
     setIsLoading(true);
 
     if (!isSignUpMode) {
       // --- LOGIN LOGIC ---
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password,
+        options: { captchaToken: captchaToken } // 🔥 Kirim token captcha
+      });
       
       if (error) {
         showNotif(error.message, "error");
         setIsLoading(false);
+        if (window.turnstile) window.turnstile.reset(); // Reset captcha jika gagal
+        setCaptchaToken(null);
       } else {
         showNotif(t('login_success_notif', 'Selamat datang kembali!'), "success");
-        // Gak perlu router.push disini karena udah ditangani onAuthStateChange di useEffect
       }
     } else {
       // --- SIGNUP LOGIC ---
@@ -113,7 +141,6 @@ export default function LoginPage() {
       }
 
       const finalRole = role === 'creator' ? `creator_${creatorType}` : 'user';
-      // 🔥 FIX: Bersihin spasi dari username pas daftar normal
       const safeUsername = username.toLowerCase().replace(/\s+/g, '');
       const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${safeUsername}`;
 
@@ -121,28 +148,35 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          data: { username: safeUsername, avatar_url: avatar, role: finalRole }
+          data: { username: safeUsername, avatar_url: avatar, role: finalRole },
+          captchaToken: captchaToken // 🔥 Kirim token captcha
         }
       });
 
       setIsLoading(false);
       if (error) {
         showNotif(error.message, "error");
+        if (window.turnstile) window.turnstile.reset(); // Reset captcha jika gagal
+        setCaptchaToken(null);
       } else {
         showNotif(t('signup_success_notif', 'Pendaftaran berhasil! Silakan periksa email Anda untuk aktivasi.'), "success");
         setIsSignUpMode(false); 
+        if (window.turnstile) window.turnstile.reset();
+        setCaptchaToken(null);
       }
     }
   };
 
   return (
     <div className="auth-wrapper">
+      {/* 🔥 Load Script Cloudflare Turnstile */}
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+
       <div className="auth-container">
         
         {/* Header Logo/Title */}
         <div className="auth-header">
           <div className="auth-logo-box">
-            {/* Logo Hype (SVG Murni) */}
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="36" height="36">
               <rect x="6" y="14" width="8" height="12" rx="4" fill="#3b82f6" />
               <rect x="26" y="14" width="8" height="12" rx="4" fill="#1e3a8a" />
@@ -158,7 +192,6 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {/* Email Input */}
           <div className="input-group-auth">
             <span className="material-icons">mail_outline</span>
             <input 
@@ -170,7 +203,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Username Input (Only Signup) */}
           {isSignUpMode && (
             <div className="input-group-auth slide-down">
               <span className="material-icons">person_outline</span>
@@ -183,7 +215,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Password Input */}
           <div className="input-group-auth">
             <span className="material-icons">lock_outline</span>
             <input 
@@ -201,7 +232,6 @@ export default function LoginPage() {
             </span>
           </div>
 
-          {/* Role Selection (Only Signup) */}
           {isSignUpMode && (
             <div className="role-area slide-down">
               <div className="input-group-auth">
@@ -236,12 +266,21 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Forgot Password Link (Only Login) */}
           {!isSignUpMode && (
             <a href="#" className="forgot-link" onClick={handleForgotPassword}>
               {t('forgot_password', 'Lupa kata sandi?')}
             </a>
           )}
+
+          {/* 🔥 Widget Cloudflare Turnstile 🔥 */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', marginBottom: '10px' }}>
+            <div 
+              className="cf-turnstile" 
+              data-sitekey="0x4AAAAAADMQo0LrMVDZvwKy" 
+              data-callback="onTurnstileSuccess"
+              data-theme="auto" 
+            ></div>
+          </div>
 
           {/* Submit Button */}
           <button type="submit" className="btn-auth-main" disabled={isLoading}>
@@ -255,7 +294,6 @@ export default function LoginPage() {
           <span>{t('or_divider', 'Atau masuk dengan')}</span>
         </div>
 
-        {/* Google Login (SVG Murni) */}
         <button type="button" onClick={handleGoogleLogin} className="btn-google" disabled={isLoading}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22px" height="22px">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -268,7 +306,11 @@ export default function LoginPage() {
 
         <p className="footer-auth">
           {isSignUpMode ? 'Sudah punya akun?' : 'Belum punya akun?'} 
-          <span onClick={() => setIsSignUpMode(!isSignUpMode)}>
+          <span onClick={() => {
+            setIsSignUpMode(!isSignUpMode);
+            if (window.turnstile) window.turnstile.reset(); // Reset captcha saat pindah mode
+            setCaptchaToken(null);
+          }}>
             {isSignUpMode ? ' Masuk' : ' Daftar'}
           </span>
         </p>
