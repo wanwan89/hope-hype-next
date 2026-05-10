@@ -62,9 +62,15 @@ export default function CommentModalpost() {
       
       if (btn) {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!requireLogin(session?.user)) return;
+        
+        // 🔥 FIX VERCEL BUILD: Kasih tau TypeScript kalau session pasti ada 🔥
+        if (!session || !session.user) {
+          requireLogin(null);
+          return;
+        }
 
         setMyUserId(session.user.id);
+
         const postId = btn.dataset.post || null;
         const creatorId = btn.dataset.creator || null;
         

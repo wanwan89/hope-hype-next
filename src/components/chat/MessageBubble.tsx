@@ -175,7 +175,6 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
       >
         {msg.is_system ? (
-          // 🔥 FIX 2: PESAN SISTEM (Panggilan) DIPERBAIKI BIAR KONTRAS DI DARK MODE 🔥
           <div 
             className="system-text" 
             style={{ 
@@ -201,7 +200,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                  {displayMessage.includes("ditolak") || displayMessage.includes("tak") ? 'call_missed' : 'phone_in_talk'}
                </span>
             )}
-            {displayMessage}
+            {/* 🔥 FIX 1: Potong emoji bawaan database biar gak dobel 🔥 */}
+            {displayMessage.replace(/📞/g, '').replace(/🎤/g, '').trim()}
           </div>
         ) : (
           <>
@@ -245,7 +245,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                   }}
                   onClick={() => handleStickerClick(msg.sticker_url)}
                 >
-                  <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: msg.message && msg.message !== "Stiker" ? '6px' : '0' }} />
+                  <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: msg.message && !msg.message.includes("Stiker") ? '6px' : '0' }} />
                   
                   {msg.message?.includes("Membalas ceritamu") && (
                     <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -255,8 +255,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               )}
 
-              {/* RENDER TEKS (Kecuali pas cuma kirim VN doang tanpa teks) */}
-              {(!msg.sticker_url && !msg.audio_url) || (msg.message && msg.message !== "Stiker" && msg.message !== "Voice Note") ? (
+              {/* 🔥 FIX 2: RENDER TEKS (Kecuali VN dan Stiker) 🔥 */}
+              {(!msg.sticker_url && !msg.audio_url) || (msg.message && !msg.message.includes("Stiker") && !msg.message.includes("Voice Note")) ? (
                 <div 
                   className={`text ${isDeleted ? "deleted" : ""}`} 
                   style={{ 
@@ -269,9 +269,9 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               ) : null}
 
-              {/* 🔥 FIX 1: RENDER VN (Lebih Clean Tanpa Tulisan Voice Note & Icon Mic) 🔥 */}
+              {/* 🔥 FIX 3: RENDER VN DENGAN TULISAN "VN" DI KANAN 🔥 */}
               {msg.audio_url && (
-                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: msg.sticker_url || (msg.message && msg.message !== "Voice Note") ? '6px' : '0' }}>
+                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: msg.sticker_url || (msg.message && !msg.message.includes("Voice Note")) ? '6px' : '0', display: 'flex', alignItems: 'center' }}>
                   <button onClick={toggleVN} className="vn-play-btn">
                     {isPlaying ? (
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -279,7 +279,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
                     )}
                   </button>
-                  <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '20px' }}>
+                  <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '20px', flex: 1 }}>
                     {wavePattern.map((heightPercent, i) => (
                       <span 
                         key={i} 
@@ -292,7 +292,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                       ></span>
                     ))}
                   </div>
-                  {/* Tulisan VN Dihapus, sisa panjang durasi (kalau mau) atau dibiarin kosong aja */}
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #8e8e93)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
                 </div>
               )}
 
