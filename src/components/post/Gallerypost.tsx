@@ -4,10 +4,12 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/navigation'; // Tambahin useRouter buat pindah halaman
 import './Gallery.css';
 
 export default function Gallerypost() {
   const { t, i18n } = useTranslation();
+  const router = useRouter(); // Inisialisasi router
   
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,7 +230,6 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
-  // 🔥 FIX 1: FUNGSI MUSIK BERSIH DARI INLINE STYLE 🔥
   const getMusicHtml = (post: any) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
@@ -275,6 +276,42 @@ export default function Gallerypost() {
     </div>
   );
 
+  // 🔥 FUNGSI BUAT WARNAIN MENTION (@USERNAME) DI CAPTION/BIO 🔥
+  const handleMentionClick = async (e: React.MouseEvent, username: string) => {
+    e.stopPropagation(); // Biar gak ngetrigger klik lain
+    try {
+      const { data } = await supabase.from('profiles').select('id').eq('username', username).single();
+      if (data && data.id) {
+        router.push(`/data?id=${data.id}`); // Pindah ke profil orang tersebut
+      } else {
+        showNotif(`User @${username} tidak ditemukan`, "warning");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const renderBioWithMentions = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(@\w+)/g); // Pecah berdasarkan kata yang diawali @
+    
+    return parts.map((part, i) => {
+      if (part.startsWith('@')) {
+        const usernameOnly = part.substring(1); // Ilangin logo @ nya buat pencarian
+        return (
+          <span 
+            key={i} 
+            onClick={(e) => handleMentionClick(e, usernameOnly)}
+            style={{ color: '#1DA1F2', fontWeight: 700, cursor: 'pointer' }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   return (
     <section>
       {/* PREVIEW MODAL */}
@@ -307,7 +344,6 @@ export default function Gallerypost() {
                 {photoList.length > 0 ? (
                   <>
                     <div className="slider">
-                      {/* 🔥 FIX 2: PANGGIL MUSIK LANGSUNG (TANPA DIBUNGKUS ABSOLUTE LAGI KARENA UDAH DI CSS) 🔥 */}
                       {getMusicHtml(post)}
                       
                       <div className="photo-carousel" onScroll={(e) => {
@@ -349,7 +385,10 @@ export default function Gallerypost() {
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
                       </div>
-                      <p className="post-bio">{post.bio?.trim()}</p>
+                      
+                      {/* 🔥 RENDER BIO/CAPTION DENGAN MENTION HIGHLIGHT 🔥 */}
+                      <p className="post-bio">{renderBioWithMentions(post.bio?.trim())}</p>
+                      
                       <div className="post-date-wrapper">{t('uploaded_on')} {formattedDate}</div>
                       <div className="actions">
                         <a href={`/data?id=${post.creator_id}`} className="primary">{t('view_detail')}</a>
@@ -373,8 +412,12 @@ export default function Gallerypost() {
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
                     </div>
-                    <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px' }}>{post.bio?.trim()}</div>
-                    {/* 🔥 FIX 3: WRAPPER RELATIVE UNTUK POST TANPA GAMBAR 🔥 */}
+                    
+                    {/* 🔥 RENDER BIO/CAPTION DENGAN MENTION HIGHLIGHT 🔥 */}
+                    <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px' }}>
+                      {renderBioWithMentions(post.bio?.trim())}
+                    </div>
+                    
                     {post.audio_src && <div style={{ position: 'relative', height: '40px', marginTop: '10px' }}>{getMusicHtml(post)}</div>}
                     <div className="actions" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px', paddingTop: '12px' }}>
                       <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_profile_link')}</a>

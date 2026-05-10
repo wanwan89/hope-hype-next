@@ -55,7 +55,7 @@ export default function NotificationsPage() {
 
   const loadNotifications = async (userId: string) => {
     try {
-      // 1. Ambil Notifikasi Standar
+      // 1. Ambil Notifikasi Standar (Termasuk Mention & Post Approved)
       const { data: dbNotifs, error } = await supabase
         .from('notifications')
         .select('*')
@@ -174,8 +174,15 @@ export default function NotificationsPage() {
       // Ekstrak nama pelaku dari pesan kalau nggak ada
       let actorName = n.username;
       if (!actorName && n.message) {
+        // Cek format bold HTML <b>nama</b>
         const match = n.message.match(/<b>(.*?)<\/b>/);
-        if (match) actorName = match[1];
+        if (match) {
+          actorName = match[1];
+        } else {
+          // Kalau format teks biasa (biasanya untuk mention) -> "nama menyebut Anda..."
+          const spaceIndex = n.message.indexOf(' ');
+          if (spaceIndex > 0) actorName = n.message.substring(0, spaceIndex);
+        }
       }
       if (!actorName) actorName = "Seseorang";
       
@@ -232,7 +239,7 @@ export default function NotificationsPage() {
         followGroup = notifObj;
         grouped.push(notifObj);
       } 
-      // Logika lain (Komentar, Gift, Sistem, dll) tidak di-grup
+      // Logika lain (Komentar, Mention, Gift, Post Approved, Sistem, dll) tidak di-grup
       else {
         grouped.push(notifObj);
       }
@@ -324,17 +331,16 @@ export default function NotificationsPage() {
         }
       } catch (err) { console.error(err); }
     } else if (notif.type === 'story_like' && notif.story_id) {
-      // Teleport ke story-nya langsung
       router.push(`/story/${notif.story_id}`);
     } else if (notif.post_id) {
-      // Teleport ke postingan
+      // Pindah ke postingan (baik itu like, komentar, mention, repost, dsb)
       router.push(`/#post-${notif.post_id}`);
     } else if (notif.type === 'follow') {
-      // Teleport ke profil kita
       router.push(`/data`); 
     }
   };
 
+  // 🔥 TENTUKAN ICON & WARNA BERDASARKAN TIPE NOTIFIKASI 🔥
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
@@ -344,6 +350,8 @@ export default function NotificationsPage() {
       case 'story_like': return { icon: 'favorite', color: '#ff2e63' }; 
       case 'gift': return { icon: 'card_giftcard', color: '#f59e0b' };
       case 'follow': return { icon: 'person_add', color: '#8b5cf6' };
+      case 'mention': return { icon: 'alternate_email', color: '#1DA1F2' }; // 🔥 MENTION ICON
+      case 'post_approved': return { icon: 'verified', color: '#10b981' }; // 🔥 APPROVED ICON
       case 'payment_pending': return { icon: 'credit_card', color: '#8b5cf6' };
       default: return { icon: 'notifications', color: '#3b82f6' };
     }
@@ -357,7 +365,7 @@ export default function NotificationsPage() {
       : dateObj.toLocaleDateString("id-ID", { month: "short", day: "numeric", hour: "2-digit", minute:"2-digit" });
   };
 
-  // 🔥 FUNGSI FORMAT TEKS SMART GROUPING 🔥
+  // 🔥 FUNGSI FORMAT TEKS SMART GROUPING & REGULER 🔥
   const getDisplayText = (notif: any) => {
     if (notif.groupedCount > 0) {
       if (notif.type === 'like') {
@@ -377,10 +385,19 @@ export default function NotificationsPage() {
       }
     }
     
-    // Fallback buat single manual format
+    // Fallback buat tipe spesifik
     if (notif.type === 'repost') return `<b>${notif.actorName}</b> membagikan ulang karyamu.`;
     if (notif.type === 'save') return `<b>${notif.actorName}</b> menyimpan karyamu.`;
     if (notif.type === 'story_like') return `<b>${notif.actorName}</b> menyukai ceritamu.`;
+    if (notif.type === 'mention') {
+       // Buat teks mention jadi bold namanya
+       let msg = notif.message || `${notif.actorName} menyebut Anda.`;
+       if (!msg.includes('<b>')) msg = `<b>${notif.actorName}</b> ${msg.replace(notif.actorName, '').trim()}`;
+       return msg;
+    }
+    if (notif.type === 'post_approved') {
+       return `Selamat! Postinganmu telah <b>disetujui</b> dan sekarang tampil di publik.`;
+    }
     
     return notif.message; // Bawaan dari DB
   };

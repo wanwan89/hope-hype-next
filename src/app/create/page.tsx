@@ -20,14 +20,13 @@ export default function CreatePostPage() {
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
   
-  // 🔥 FIX MULTIPLE IMAGES 🔥
-  const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); // Antrean gambar yg mau di-crop
-  const [croppedImages, setCroppedImages] = useState<Blob[]>([]); // Hasil crop yg siap upload
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]); // URL sementara buat ditampilin di UI
+  const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); 
+  const [croppedImages, setCroppedImages] = useState<Blob[]>([]); 
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]); 
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const captionInputRef = useRef<HTMLTextAreaElement>(null); // 🔥 REF buat textarea
 
-  // State buat cropper
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -46,6 +45,14 @@ export default function CreatePostPage() {
   const [tagInput, setTagInput] = useState('');
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
 
+  // 🔥 STATE UNTUK MENTIONS (@) 🔥
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionResults, setMentionResults] = useState<any[]>([]);
+
+  // ===============================================
+  // 🔥 FUNGSI HASHTAG
+  // ===============================================
   useEffect(() => {
     if (!tagInput.trim()) {
       setSuggestedTags([]);
@@ -95,36 +102,94 @@ export default function CreatePostPage() {
     setTags(tags.filter(t => t !== tagToRemove));
   };
 
+  // ===============================================
+  // 🔥 FUNGSI PENCARIAN TEMAN UNTUK MENTIONS (@) 🔥
+  // ===============================================
   useEffect(() => {
-    if (!searchMusic.trim()) {
-      setMusicResults([]);
-      return;
+    if (!showMentions) return;
+
+    const fetchMentionSuggestions = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const myId = session.user.id;
+
+      // Ambil teman
+      const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
+      const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
+      
+      const connectedIds = new Set([
+          ...(following?.map(f => f.following_id) || []),
+          ...(followers?.map(f => f.follower_id) || [])
+      ]);
+
+      if (connectedIds.size > 0) {
+        let query = supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(connectedIds)).limit(10);
+        if (mentionQuery) query = query.ilike('username', `%${mentionQuery}%`);
+
+        const { data: profiles } = await query;
+        setMentionResults(profiles || []);
+      } else {
+        setMentionResults([]);
+      }
+    };
+
+    const delayDebounceFn = setTimeout(() => { fetchMentionSuggestions(); }, 300);
+    return () => clearTimeout(delayDebounceFn);
+  }, [mentionQuery, showMentions]);
+
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setCaption(val);
+
+    const cursorPosition = e.target.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, cursorPosition);
+    
+    // Deteksi kata terakhir yang berawalan @
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+    if (mentionMatch) {
+      setShowMentions(true);
+      setMentionQuery(mentionMatch[1]);
+    } else {
+      setShowMentions(false);
     }
+  };
+
+  const handleSelectMention = (username: string) => {
+    if (!captionInputRef.current) return;
+    
+    const cursor = captionInputRef.current.selectionStart || 0;
+    const textBeforeCursor = caption.slice(0, cursor);
+    const textAfterCursor = caption.slice(cursor);
+    
+    // Replace @xxx dengan @username yang bener
+    const newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${username} `);
+    
+    setCaption(newTextBefore + textAfterCursor);
+    setShowMentions(false);
+    captionInputRef.current.focus();
+  };
+
+  // ===============================================
+  // 🔥 MUSIC, FILE & CROP HANDLERS
+  // ===============================================
+  useEffect(() => {
+    if (!searchMusic.trim()) { setMusicResults([]); return; }
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchMusic)}&media=music&limit=10`);
         const data = await res.json();
         setMusicResults(data.results || []);
-      } catch (err) {
-        console.error("Music Search Error:", err);
-      } finally {
-        setIsSearching(false);
-      }
+      } catch (err) { console.error(err); } finally { setIsSearching(false); }
     }, 600);
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
-  // 🔥 UPDATE: Handle Multiple Files 🔥
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-
-    // Cek batas maksimal gambar yang udah dipilih + yang mau ditambahin
-    if (croppedImages.length + files.length > 3) {
-      showNotif("Maksimal hanya bisa 3 foto!", "warning");
-      return;
-    }
+    if (croppedImages.length + files.length > 3) return showNotif("Maksimal hanya bisa 3 foto!", "warning");
 
     const readersArr: Promise<string>[] = files.map(file => {
       return new Promise((resolve) => {
@@ -136,52 +201,34 @@ export default function CreatePostPage() {
 
     Promise.all(readersArr).then(results => {
       setRawImagesQueue(results);
-      setImageForCrop(results[0]); // Langsung masukin foto pertama ke antrean crop
+      setImageForCrop(results[0]); 
     });
   };
 
-  const onCropComplete = useCallback((_croppedArea: any, pixels: any) => {
-    setCroppedAreaPixels(pixels);
-  }, []);
+  const onCropComplete = useCallback((_croppedArea: any, pixels: any) => { setCroppedAreaPixels(pixels); }, []);
 
-  // 🔥 UPDATE: Lanjut Crop ke foto berikutnya kalau masih ada di antrean 🔥
   const handleSaveCrop = async () => {
     if (!imageForCrop || !croppedAreaPixels) return;
     try {
       const croppedBlob = await getCroppedImg(imageForCrop, croppedAreaPixels);
-      
       setCroppedImages(prev => [...prev, croppedBlob]);
       setPreviewUrls(prev => [...prev, URL.createObjectURL(croppedBlob)]);
 
-      // Cek apakah masih ada gambar di antrean (queue)
       const nextQueue = rawImagesQueue.slice(1);
       if (nextQueue.length > 0) {
         setRawImagesQueue(nextQueue);
         setImageForCrop(nextQueue[0]);
-        // Reset state cropper
-        setCrop({ x: 0, y: 0 });
-        setZoom(1);
-        setCroppedAreaPixels(null);
+        setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null);
       } else {
-        // Antrean habis, tutup cropper
-        setRawImagesQueue([]);
-        setImageForCrop(null);
+        setRawImagesQueue([]); setImageForCrop(null);
       }
-    } catch (e) {
-      console.error("Error Cropping:", e);
-    }
+    } catch (e) { console.error("Error Cropping:", e); }
   };
 
   const handleCancelCrop = () => {
-    // Kalau batal crop, buang foto itu dan lanjut ke antrean berikutnya (kalau ada)
     const nextQueue = rawImagesQueue.slice(1);
-    if (nextQueue.length > 0) {
-      setRawImagesQueue(nextQueue);
-      setImageForCrop(nextQueue[0]);
-    } else {
-      setRawImagesQueue([]);
-      setImageForCrop(null);
-    }
+    if (nextQueue.length > 0) { setRawImagesQueue(nextQueue); setImageForCrop(nextQueue[0]); } 
+    else { setRawImagesQueue([]); setImageForCrop(null); }
   };
 
   const handleRemovePreview = (index: number) => {
@@ -192,88 +239,69 @@ export default function CreatePostPage() {
   const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (playingUrl === url) {
-      audioRef.current?.pause();
-      setPlayingUrl(null);
+      audioRef.current?.pause(); setPlayingUrl(null);
     } else {
       if (audioRef.current) audioRef.current.pause();
-      audioRef.current = new Audio(url);
-      audioRef.current.play();
-      setPlayingUrl(url);
+      audioRef.current = new Audio(url); audioRef.current.play(); setPlayingUrl(url);
       audioRef.current.onended = () => setPlayingUrl(null);
     }
   };
 
   const handleClose = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     router.back(); 
   };
 
   const uploadToCloudinary = async (file: File | Blob) => {
     const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-      method: "POST",
-      body: fd
-    });
+    fd.append("file", file); fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
     return await res.json();
   };
 
+  // ===============================================
+  // 🔥 FUNGSI SUBMIT POSTINGAN & NOTIFIKASI
+  // ===============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (croppedImages.length === 0 && !caption.trim()) {
-      alert(t('alert_empty_post'));
-      return;
-    }
-
-    if (destination === "story" && croppedImages.length > 1) {
-      showNotif("Story hanya bisa upload 1 foto saja!", "warning");
-      return;
-    }
+    if (croppedImages.length === 0 && !caption.trim()) return alert(t('alert_empty_post'));
+    if (destination === "story" && croppedImages.length > 1) return showNotif("Story hanya bisa upload 1 foto saja!", "warning");
 
     setIsSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.dispatchEvent(new CustomEvent('openLogin'));
-        return;
-      }
+      if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
+      const myUserId = session.user.id;
 
       if (tags.length > 0) {
         const tagsToInsert = tags.map(t => ({ tag: t }));
         await supabase.from('hashtags').upsert(tagsToInsert, { onConflict: 'tag' }).select();
       }
 
-      const finalCaption = tags.length > 0 
-        ? `${caption.trim()}\n\n${tags.join(' ')}` 
-        : caption.trim();
+      const finalCaption = tags.length > 0 ? `${caption.trim()}\n\n${tags.join(' ')}` : caption.trim();
 
-      // 🔥 UPDATE: Upload semua gambar pake Promise.all biar cepet 🔥
       let finalImageUrl: string | null = null;
       if (croppedImages.length > 0 && postType === 'image') {
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob));
         const uploadResults = await Promise.all(uploadPromises);
-        
-        // Gabungin semua URL pake koma buat disimpen ke database
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
       }
 
+      let newPostId: string | null = null;
+
       if (destination === "story") {
         await supabase.from("stories").insert({
-          creator_id: session.user.id,
-          image_url: finalImageUrl, // Story cuma ngambil foto pertama kok aman
+          creator_id: myUserId,
+          image_url: finalImageUrl, 
           content: finalCaption,
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName
         });
       } else {
-        const { data: prof } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
-        await supabase.from("posts").insert({
-          creator_id: session.user.id,
+        const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+        const { data: newPost } = await supabase.from("posts").insert({
+          creator_id: myUserId,
           name: prof?.username || "User",
           bio: finalCaption,
           category: category,
@@ -282,7 +310,33 @@ export default function CreatePostPage() {
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
           status: "pending"
-        });
+        }).select('id').single();
+        
+        if (newPost) newPostId = newPost.id;
+      }
+
+      // 🔥 KIRIM NOTIFIKASI MENTION JIKA ADA 🔥
+      if (newPostId || destination === "story") {
+        const mentionedUsernames = [...new Set((finalCaption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
+        
+        if (mentionedUsernames.length > 0) {
+          const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
+          
+          if (taggedUsers) {
+            const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+            const notifInserts = taggedUsers
+              .filter(u => u.id !== myUserId) 
+              .map(u => ({
+                user_id: u.id,
+                actor_id: myUserId,
+                post_id: newPostId ? parseInt(newPostId) : null,
+                type: "mention",
+                message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`
+              }));
+            
+            if (notifInserts.length > 0) await supabase.from("notifications").insert(notifInserts);
+          }
+        }
       }
 
       handleClose();
@@ -296,6 +350,23 @@ export default function CreatePostPage() {
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
+      {/* --- MENTIONS POPUP CSS --- */}
+      <style>{`
+        .mention-popup {
+          position: absolute; top: calc(100% + 5px); left: 0; width: 100%; max-height: 200px;
+          background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-y: auto; z-index: 100;
+        }
+        .mention-item {
+          display: flex; align-items: center; padding: 10px 14px; gap: 12px;
+          cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;
+        }
+        .mention-item:hover, .mention-item:active { background: var(--bg-input); }
+        .mention-item img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+        .mention-name { font-size: 13px; font-weight: 700; color: var(--text-main); }
+        .mention-empty { padding: 12px; text-align: center; font-size: 12px; color: var(--text-muted); }
+      `}</style>
+
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
         <button type="button" onClick={handleClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -306,7 +377,6 @@ export default function CreatePostPage() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
         
-        {/* UI EDITOR CROP (Muncul selama ada gambar yg diset di imageForCrop) */}
         {imageForCrop && (
           <div className="crop-overlay-wrapper" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000' }}>
             <div style={{ position: 'absolute', top: '15px', right: '20px', color: 'white', zIndex: 10000, fontWeight: 'bold' }}>
@@ -326,13 +396,7 @@ export default function CreatePostPage() {
             <div className="crop-footer-controls" style={{ position: 'absolute', bottom: 0, width: '100%', padding: '20px', background: 'rgba(0,0,0,0.8)' }}>
               <div className="zoom-slider" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', color: '#fff' }}>
                 <span className="material-icons">remove</span>
-                <input 
-                  type="range" 
-                  value={zoom} 
-                  min={1} max={3} step={0.1} 
-                  onChange={(e) => setZoom(Number(e.target.value))} 
-                  style={{ flex: 1 }}
-                />
+                <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} style={{ flex: 1 }} />
                 <span className="material-icons">add</span>
               </div>
               <div className="crop-action-btns" style={{ display: 'flex', gap: '10px' }}>
@@ -352,21 +416,10 @@ export default function CreatePostPage() {
                 { id: 'story', title: t('story_title'), desc: t('story_desc') }
               ].map((dest) => (
                 <label key={dest.id} className="dest-option" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '12px', border: destination === dest.id ? '2px solid #1f3cff' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
-                  <input 
-                    type="radio" 
-                    name="postDestination" 
-                    value={dest.id} 
-                    checked={destination === dest.id} 
-                    onChange={() => setDestination(dest.id as any)} 
-                    style={{ display: 'none' }}
-                  />
+                  <input type="radio" name="postDestination" value={dest.id} checked={destination === dest.id} onChange={() => setDestination(dest.id as any)} style={{ display: 'none' }} />
                   <div className="dest-content" style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '15px', padding: 0, background: 'transparent', border: 'none' }}>
                     <div className="dest-icon-box" style={{ width: '40px', height: '40px', background: destination === dest.id ? '#1f3cff' : 'var(--bg-card)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: destination === dest.id ? '#fff' : 'var(--text-muted)' }}>
-                      {dest.id === 'feed' ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                      )}
+                      {dest.id === 'feed' ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>}
                     </div>
                     <div className="dest-text" style={{ flex: 1 }}>
                       <div className="dest-title" style={{ color: 'var(--text-main)', fontSize: '15px', fontWeight: 700 }}>{dest.title}</div>
@@ -388,7 +441,6 @@ export default function CreatePostPage() {
             <div style={{ marginTop: '20px' }}>
               <input type="file" ref={fileInputRef} accept="image/*" multiple hidden onChange={handleFileChange} />
               
-              {/* Kalau belum ada foto atau jumlah foto belum batas maksimal, kasih tombol nambah */}
               {previewUrls.length === 0 ? (
                 <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ width: '100%', height: '250px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}>
                   <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -406,7 +458,6 @@ export default function CreatePostPage() {
                       </button>
                     </div>
                   ))}
-                  {/* Tombol tambah foto kalau masih kurang dari 3 */}
                   {previewUrls.length < 3 && destination === 'feed' && (
                     <div onClick={() => fileInputRef.current?.click()} style={{ width: '120px', height: '160px', border: '2px dashed var(--border-card)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, color: 'var(--text-muted)' }}>
                        <span className="material-icons" style={{ fontSize: '30px' }}>add</span>
@@ -417,14 +468,41 @@ export default function CreatePostPage() {
             </div>
           )}
 
-          <textarea 
-            className="post-textarea" 
-            placeholder={postType === 'image' ? t('placeholder_caption') : t('placeholder_thought')} 
-            maxLength={300}
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', marginTop: '20px', outline: 'none', resize: 'vertical' }}
-          />
+          {/* 🔥 INPUT CAPTION DENGAN MENTION FEATURE 🔥 */}
+          <div style={{ position: 'relative', marginTop: '20px' }}>
+            <textarea 
+              ref={captionInputRef}
+              className="post-textarea" 
+              placeholder={postType === 'image' ? t('placeholder_caption') : t('placeholder_thought')} 
+              maxLength={300}
+              value={caption}
+              onChange={handleCaptionChange}
+              onKeyDown={(e) => {
+                if (showMentions && e.key === "Enter") {
+                  e.preventDefault();
+                  if (mentionResults.length > 0) handleSelectMention(mentionResults[0].username);
+                }
+              }}
+              style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }}
+            />
+            
+            {showMentions && (
+              <div className="mention-popup">
+                {mentionResults.length > 0 ? (
+                  mentionResults.map(user => (
+                    <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
+                      <img src={user.avatar_url || '/asets/png/profile.webp'} alt={user.username} />
+                      <div className="mention-info">
+                        <span className="mention-name">{user.username}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="mention-empty">Tidak ditemukan...</div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="hashtag-section" style={{ marginTop: '15px', position: 'relative' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: tags.length > 0 ? '10px' : '0' }}>
@@ -458,23 +536,10 @@ export default function CreatePostPage() {
           </div>
 
           <div style={{ position: 'relative', marginTop: '20px' }}>
-            <select 
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="post-select-custom"
-              style={{
-                width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', appearance: 'none', WebkitAppearance: 'none', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', outline: 'none', fontWeight: '600'
-              }}
-            >
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="post-select-custom" style={{ width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', appearance: 'none', WebkitAppearance: 'none', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', outline: 'none', fontWeight: '600' }}>
               {[
-                { val: "Karya", label: t('cat_karya') },
-                { val: "Prestasi", label: t('cat_prestasi') },
-                { val: "Photography", label: t('cat_photo') },
-                { val: "Mountain", label: t('cat_mountain') },
-                { val: "Thread", label: t('cat_thread') }
-              ].map(opt => (
-                <option key={opt.val} value={opt.val}>{opt.label}</option>
-              ))}
+                { val: "Karya", label: t('cat_karya') }, { val: "Prestasi", label: t('cat_prestasi') }, { val: "Photography", label: t('cat_photo') }, { val: "Mountain", label: t('cat_mountain') }, { val: "Thread", label: t('cat_thread') }
+              ].map(opt => ( <option key={opt.val} value={opt.val}>{opt.label}</option> ))}
             </select>
             <i style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)', fontSize: '12px' }}>▼</i>
           </div>
@@ -485,14 +550,7 @@ export default function CreatePostPage() {
               <>
                 <div style={{ position: 'relative' }}>
                   <span className="material-icons" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '20px' }}>search</span>
-                  <input 
-                    type="text" 
-                    placeholder={t('search_music')} 
-                    className="music-search-input"
-                    value={searchMusic}
-                    onChange={(e) => setSearchMusic(e.target.value)}
-                    style={{ width: '100%', padding: '12px 15px 12px 40px', borderRadius: '10px', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
-                  />
+                  <input type="text" placeholder={t('search_music')} className="music-search-input" value={searchMusic} onChange={(e) => setSearchMusic(e.target.value)} style={{ width: '100%', padding: '12px 15px 12px 40px', borderRadius: '10px', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }} />
                 </div>
                 <div className="music-list-scroll" style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '15px' }}>
                   {isSearching && <p style={{textAlign:'center', fontSize:'12px', padding: '10px', color: 'var(--text-muted)'}}>{t('searching')}</p>}

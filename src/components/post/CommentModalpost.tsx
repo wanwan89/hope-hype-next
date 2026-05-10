@@ -13,7 +13,6 @@ export default function CommentModalpost() {
   const [comments, setComments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  // 🔥 STATE LIKES KOMENTAR
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
@@ -26,9 +25,14 @@ export default function CommentModalpost() {
 
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
 
+  // 🔥 STATE UNTUK MENTIONS (@)
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionResults, setMentionResults] = useState<any[]>([]);
+  
   const currentPostIdRef = useRef<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null); // Reference buat input
 
-  // --- Fungsi Format Waktu ---
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -44,9 +48,7 @@ export default function CommentModalpost() {
     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
-  useEffect(() => {
-    currentPostIdRef.current = currentPostId;
-  }, [currentPostId]);
+  useEffect(() => { currentPostIdRef.current = currentPostId; }, [currentPostId]);
 
   useEffect(() => {
     const handleBodyClick = async (e: MouseEvent) => {
@@ -68,12 +70,10 @@ export default function CommentModalpost() {
         if (postId) loadComments(postId, session?.user?.id);
       }
     };
-
     document.body.addEventListener("click", handleBodyClick);
     return () => document.body.removeEventListener("click", handleBodyClick);
   }, []);
 
-  // Event Insert Gift
   useEffect(() => {
     const handleInsertGift = async (e: any) => {
       const { postId, giftName, giftImg, creatorId } = e.detail;
@@ -112,16 +112,12 @@ export default function CommentModalpost() {
 
       } catch (err) { console.error(err); }
     };
-
     window.addEventListener("insertGiftComment", handleInsertGift);
     return () => window.removeEventListener("insertGiftComment", handleInsertGift);
   }, [t]);
 
-  // Load Comments
   const loadComments = async (postId: string, userId?: string) => {
     setIsLoading(true);
-    
-    // Ambil komentar beserta relasi ke tabel profiles
     const { data: commsData } = await supabase.from("comments")
       .select("id, content, created_at, user_id, parent_id, reply_to_username, likes_count, profiles(id, username, avatar_url, role)")
       .eq("post_id", postId)
@@ -129,19 +125,13 @@ export default function CommentModalpost() {
 
     setComments(commsData || []);
 
-    // Kalau user login, ambil data like komentar buat nandain tombol love
     if (userId && commsData) {
       const commentIds = commsData.map(c => c.id);
-      const { data: myLikes } = await supabase.from("comment_likes")
-        .select("comment_id")
-        .eq("user_id", userId)
-        .in("comment_id", commentIds);
-      
+      const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
       const likedSet = new Set<string>();
       myLikes?.forEach(l => likedSet.add(String(l.comment_id)));
       setLikedComments(likedSet);
     }
-    
     setIsLoading(false);
   };
 
@@ -151,6 +141,7 @@ export default function CommentModalpost() {
     setReplyToId(null);
     setReplyToUsername(null);
     setInputValue("");
+    setShowMentions(false);
   };
 
   const handleGiftClick = () => {
@@ -158,8 +149,87 @@ export default function CommentModalpost() {
     window.dispatchEvent(new CustomEvent('openGift', { detail: { creatorId: currentCreatorId, postId: currentPostId } }));
   };
 
+  // 🔥 FUNGSI DETEKSI KETIKAN & MENTIONS
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val);
+
+    // Ambil posisi kursor saat ini
+    const cursorPosition = e.target.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, cursorPosition);
+    
+    // Cari apakah ada kata berawalan @ tepat sebelum kursor
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+    if (mentionMatch) {
+      setShowMentions(true);
+      setMentionQuery(mentionMatch[1]);
+    } else {
+      setShowMentions(false);
+    }
+  };
+
+  // 🔥 FUNGSI PENCARIAN TEMAN UNTUK MENTIONS
+  useEffect(() => {
+    if (!showMentions) return;
+
+    const fetchMentionSuggestions = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const myId = session.user.id;
+
+      // Ambil list ID following/followers
+      const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
+      const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
+      
+      const connectedIds = new Set([
+          ...(following?.map(f => f.following_id) || []),
+          ...(followers?.map(f => f.follower_id) || [])
+      ]);
+
+      if (connectedIds.size > 0) {
+        let query = supabase.from('profiles')
+          .select('id, username, avatar_url, role')
+          .in('id', Array.from(connectedIds))
+          .limit(10);
+        
+        if (mentionQuery) {
+          query = query.ilike('username', `%${mentionQuery}%`);
+        }
+
+        const { data: profiles } = await query;
+        setMentionResults(profiles || []);
+      } else {
+        setMentionResults([]);
+      }
+    };
+
+    // Debounce biar ga ngespam request
+    const delayDebounceFn = setTimeout(() => {
+      fetchMentionSuggestions();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [mentionQuery, showMentions]);
+
+  const handleSelectMention = (username: string) => {
+    if (!inputRef.current) return;
+    
+    const cursor = inputRef.current.selectionStart || 0;
+    const textBeforeCursor = inputValue.slice(0, cursor);
+    const textAfterCursor = inputValue.slice(cursor);
+    
+    // Ganti kata yang di-mention
+    const newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${username} `);
+    
+    setInputValue(newTextBefore + textAfterCursor);
+    setShowMentions(false);
+    inputRef.current.focus();
+  };
+
+  // 🔥 SUBMIT KOMENTAR & NOTIF MENTIONS
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputValue.trim() && !isSubmitting) {
+    if (e.key === "Enter" && inputValue.trim() && !isSubmitting && !showMentions) {
       e.preventDefault();
       if (!currentPostId) return;
 
@@ -171,31 +241,64 @@ export default function CommentModalpost() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
+        const myUserId = session.user.id;
 
         const pid = parseInt(currentPostId);
-        await supabase.from("comments").insert({
+        
+        // 1. Insert Komentar (Optimistic)
+        const { data: newComment, error } = await supabase.from("comments").insert({
           post_id: pid,
-          user_id: session.user.id,
+          user_id: myUserId,
           content: content,
           parent_id: parentId ? parseInt(parentId) : null,
           reply_to_username: targetUser || null
-        });
+        }).select('*, profiles(id, username, avatar_url, role)').single();
 
-        if (currentCreatorId !== session.user.id && currentCreatorId) {
-          const { data: prof } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
+        if (error) throw error;
+        
+        const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+
+        // 2. Notif ke Pemilik Postingan
+        if (currentCreatorId !== myUserId && currentCreatorId) {
           await supabase.from("notifications").insert({
             user_id: currentCreatorId,
-            actor_id: session.user.id,
+            actor_id: myUserId,
             post_id: pid,
             type: "comment",
-            message: t('notif_commented', { username: prof?.username })
+            message: t('notif_commented', { username: myProf?.username })
           });
         }
+
+        // 🔥 3. LOGIKA NOTIFIKASI MENTIONS (@) 🔥
+        const mentionedUsernames = [...new Set((content.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
+        if (mentionedUsernames.length > 0) {
+          const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
+          
+          if (taggedUsers) {
+            const notifInserts = taggedUsers
+              .filter(u => u.id !== myUserId) // Jangan notif diri sendiri
+              .map(u => ({
+                user_id: u.id,
+                actor_id: myUserId,
+                post_id: pid,
+                type: "mention",
+                message: `${myProf?.username} menyebut Anda dalam komentar.`
+              }));
+            
+            if (notifInserts.length > 0) {
+              await supabase.from("notifications").insert(notifInserts);
+            }
+          }
+        }
+
+        // Update UI secara instan
+        if (newComment) setComments(prev => [...prev, newComment]);
 
         setReplyToId(null);
         setReplyToUsername(null);
         setInputValue("");
-        await loadComments(currentPostId, session.user.id);
+        
+        loadComments(currentPostId, myUserId);
 
       } catch (err) {
         showNotif(t('comment_error'), "error"); 
@@ -205,7 +308,6 @@ export default function CommentModalpost() {
     }
   };
 
-  // 🔥 FUNGSI LIKE KOMENTAR
   const handleLikeComment = async (commentIdStr: string) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!requireLogin(session?.user)) return;
@@ -213,7 +315,6 @@ export default function CommentModalpost() {
     const isLiked = likedComments.has(commentIdStr);
     const commentId = parseInt(commentIdStr);
 
-    // Optimistic UI Update
     setLikedComments(prev => {
       const newSet = new Set(prev);
       isLiked ? newSet.delete(commentIdStr) : newSet.add(commentIdStr);
@@ -254,6 +355,14 @@ export default function CommentModalpost() {
     }
 
     const isCommentLiked = likedComments.has(String(comment.id));
+    
+    // Warnain mention di komentar
+    const highlightMentions = (text: string) => {
+      const parts = text.split(/(@\w+)/g);
+      return parts.map((part, i) => 
+        part.startsWith('@') ? <span key={i} className="mention-highlight">{part}</span> : part
+      );
+    };
 
     const content = (
       <>
@@ -278,7 +387,7 @@ export default function CommentModalpost() {
                  {giftImg && <img src={giftImg} alt={giftName} />}
               </div>
             ) : (
-              comment.content
+              highlightMentions(comment.content)
             )}
           </div>
 
@@ -288,13 +397,14 @@ export default function CommentModalpost() {
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
+                  setInputValue(`@${p?.username} `);
+                  inputRef.current?.focus();
               }}>
                 {t('reply', 'Balas')}
               </span>
             )}
           </div>
 
-          {/* 🔥 TOMBOL LIKE KOMENTAR (Kanan Pojok) */}
           <div className="comment-like-box" onClick={() => handleLikeComment(String(comment.id))}>
             <svg viewBox="0 0 24 24" className={`heart-icon ${isCommentLiked ? 'active' : ''}`}>
               <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z" />
@@ -380,16 +490,43 @@ export default function CommentModalpost() {
           )}
         </div>
 
-        <div className="comment-input-wrap">
+        <div className="comment-input-wrap" style={{ position: 'relative' }}>
+          
+          {/* 🔥 POPUP MENTIONS SUGGESTION 🔥 */}
+          {showMentions && (
+            <div className="mention-popup">
+              {mentionResults.length > 0 ? (
+                mentionResults.map(user => (
+                  <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
+                    <img src={user.avatar_url || '/asets/png/profile.webp'} alt={user.username} />
+                    <div className="mention-info">
+                      <span className="mention-name">{user.username}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="mention-empty">Tidak ditemukan...</div>
+              )}
+            </div>
+          )}
+
           <div className="input-container">
             <input 
+              ref={inputRef}
               type="text" 
               className="comment-input" 
               placeholder={getPlaceholder()} 
               autoComplete="off"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (showMentions && e.key === "Enter") {
+                  e.preventDefault();
+                  if (mentionResults.length > 0) handleSelectMention(mentionResults[0].username);
+                } else {
+                  handleKeyDown(e);
+                }
+              }}
               disabled={isSubmitting}
             />
             <button className="modal-gift-btn" onClick={handleGiftClick}>
