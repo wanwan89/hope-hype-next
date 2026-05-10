@@ -13,7 +13,7 @@ declare global {
   }
 }
 
-// 🔥 LIST KADO LENGKAP 10 ITEM 🔥
+// 🔥 LIST KADO (DIPOTONG JADI 6 BIAR 3x2 PAS) 🔥
 const GIFTS = [
   { id: 1, name: 'Love', price: 1, img: '/asets/png/gift1.png' },
   { id: 2, name: 'Daebak', price: 10, img: '/asets/png/gift2.png' },
@@ -21,10 +21,6 @@ const GIFTS = [
   { id: 4, name: 'Oppa', price: 100, img: '/asets/png/gift4.png' },
   { id: 5, name: 'Fighting', price: 2000, img: '/asets/png/gift5.png' },
   { id: 6, name: 'Saranghae', price: 5000, img: '/asets/png/gift6.png' },
-  { id: 7, name: 'Kiyowo', price: 10000, img: '/asets/png/gift7.png' },
-  { id: 8, name: 'Gomawo', price: 25000, img: '/asets/png/gift8.png' },
-  { id: 9, name: 'Daesang', price: 50000, img: '/asets/png/gift9.png' },
-  { id: 10, name: 'Sultan', price: 100000, img: '/asets/png/gift10.png' },
 ];
 
 export default function GiftDrawerroom() {
@@ -35,6 +31,7 @@ export default function GiftDrawerroom() {
   const [myProfile, setMyProfile] = useState<any>(null);
   const [coinsGiven, setCoinsGiven] = useState(0);
   
+  // 🔥 STATE LACI TOP UP 🔥
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
 
   useEffect(() => {
@@ -58,13 +55,14 @@ export default function GiftDrawerroom() {
   };
 
   const handleTopUpClick = () => {
-    setIsTopUpOpen(true); 
+    setIsTopUpOpen(true); // Buka laci topup langsung di atas laci kado
   };
 
   const handleGiftAction = (gift: any, e: any) => {
     e.stopPropagation();
     if (selectedGift?.id === gift.id) {
       
+      // CEK KOIN: Kalau kurang, otomatis buka Top Up
       if (myProfile && myProfile.coins < gift.price) {
         showNotif("Koin tidak cukup! Silakan Top Up", "warning");
         handleTopUpClick(); 
@@ -97,7 +95,12 @@ export default function GiftDrawerroom() {
     expNeeded = level * 200; 
   }
 
-  const progressPercent = Math.min(100, (remainingExp / expNeeded) * 100);
+  // 🔥 FIX BIKIN ERROR VERCEL: Variabel ini kepotong di kodingan lu sebelumnya 🔥
+  const currentLevel = level;
+  const currentExp = remainingExp;
+  const maxExp = expNeeded;
+  const progressPercent = Math.min(100, (currentExp / maxExp) * 100);
+
   const fallbackAvatar = myProfile?.username ? `https://ui-avatars.com/api/?name=${myProfile.username}&background=1f3cff&color=fff&bold=true` : '/asets/png/profile.webp';
 
   return (
@@ -113,6 +116,7 @@ export default function GiftDrawerroom() {
           padding: 0 20px; margin-bottom: 15px;
         }
 
+        /* HEADER LEVEL BAR */
         .drawer-top-level {
           display: flex; align-items: center; gap: 12px; background: transparent;
           padding: 12px 0px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
@@ -134,35 +138,21 @@ export default function GiftDrawerroom() {
         #gift-targets { padding-top: 8px !important; padding-bottom: 8px !important; }
         #gift-targets .target-avatar { width: 44px !important; height: 44px !important; }
 
-        /* 🔥 SCROLL HORIZONTAL 10 KADO 🔥 */
-        .gift-list-scroll-wrapper {
-          display: flex;
-          overflow-x: auto;
-          overflow-y: visible; /* Biar gambar jumbo tembus ke atas */
+        /* 🔥 GRID KADO (3x2 FIX LAYOUT) 🔥 */
+        .gift-list-3d-wrapper {
           padding: 15px 15px 25px 15px;
-          gap: 15px;
-          scroll-snap-type: x mandatory; /* Biar scrollnya nge-snap pas per kolom */
-          scrollbar-width: none;
-        }
-        .gift-list-scroll-wrapper::-webkit-scrollbar { display: none; }
-
-        /* Kado dikelompokkin per 2 baris (Kolom Vertikal) */
-        .gift-column {
-          display: flex;
-          flex-direction: column;
-          gap: 25px; /* Jarak antara kado baris atas dan bawah */
-          flex-shrink: 0;
-          width: calc(33.333% - 10px); /* 3 Kolom per layar (Nampilin 6 Kado) */
-          scroll-snap-align: start;
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px 12px;
+          overflow: visible; /* Biar gambar jumbo gak kepotong */
         }
 
         .gift-item-3d {
-          position: relative; height: 100px; width: 100%;
+          position: relative; height: 100px; /* BOX PENDEK */
           display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
           cursor: pointer; -webkit-tap-highlight-color: transparent; z-index: 1;
         }
         .gift-item-3d.active { z-index: 10; }
 
+        /* GAMBAR KADO DEFAULT (MEMBESAR) */
         .gift-img-3d {
           width: 85px; height: 85px; object-fit: contain; filter: none;
           position: absolute; top: -10px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -176,9 +166,11 @@ export default function GiftDrawerroom() {
         .gift-label { font-size: 11px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
         .gift-price-mini { font-size: 11px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 2px; }
 
+        /* 🔥 BOX AKTIF (KECIL) 🔥 */
         .gift-active-bg {
           position: absolute; bottom: 0; left: 0; right: 0;
-          height: 55px; background: transparent; border: 1.5px solid #1f3cff; border-radius: 12px; box-shadow: none; 
+          height: 55px; /* SANGAT PENDEK BIAR GAMBAR KELUAR */
+          background: transparent; border: 1.5px solid #1f3cff; border-radius: 12px; box-shadow: none; 
           animation: popBox 0.2s ease forwards;
           display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
           padding-bottom: 6px;
@@ -188,8 +180,10 @@ export default function GiftDrawerroom() {
           to { transform: scale(1) translateY(0); opacity: 1; }
         }
 
+        /* 🔥 GAMBAR POP OUT SUPER EKSTRIM 🔥 */
         .gift-item-3d.active .gift-img-3d {
-          width: 145px; height: 145px; top: -90px;
+          width: 145px; height: 145px; /* GILA BESARNYA */
+          top: -90px; /* TEMBUS KE ATAS JAUH */
           filter: none; animation: floatActive 2s ease-in-out infinite;
         }
         @keyframes floatActive {
@@ -210,6 +204,7 @@ export default function GiftDrawerroom() {
         .gift-item-3d.spam-anim .gift-active-bg { transform: scale(0.95); transition: 0.1s; background: rgba(31,60,255,0.1); }
         .gift-item-3d.spam-anim .gift-img-3d { transform: scale(0.9) translateY(5px); transition: 0.1s; }
 
+        /* 🔥 FOOTER BAWAH SOLID 🔥 */
         .drawer-footer {
           display: flex; justify-content: space-between; align-items: center;
           padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom));
@@ -226,6 +221,7 @@ export default function GiftDrawerroom() {
         }
         .topup-btn:active { transform: scale(0.9); }
 
+        /* 🔥 SLIDE UP TOP UP DI DALAM REACT 🔥 */
         .react-topup-sheet {
           position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; z-index: 100005;
           pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
@@ -237,6 +233,7 @@ export default function GiftDrawerroom() {
           transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
         .react-topup-sheet.active .react-topup-content { transform: translateY(0); }
+        .drag-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 10px; margin: 0 auto 15px; }
       `}</style>
 
       <div id="room-drawer-overlay" className="drawer-overlay" onClick={(e) => { setSelectedGift(null); window.toggleRoomGiftDrawer && window.toggleRoomGiftDrawer(e); }}></div>
@@ -270,53 +267,45 @@ export default function GiftDrawerroom() {
           <div id="gift-targets" className="target-list" onClick={(e) => e.stopPropagation()}></div>
         </div>
 
-        {/* 🔥 DAFTAR KADO SCROLL HORIZONTAL 🔥 */}
-        <div className="gift-list-scroll-wrapper">
-          {/* Membagi 10 kado menjadi kolom-kolom (tiap kolom isi 2 kado: atas & bawah) */}
-          {Array.from({ length: Math.ceil(GIFTS.length / 2) }).map((_, colIndex) => (
-            <div key={colIndex} className="gift-column">
-              
-              {/* Loop isi kolom (maksimal 2 kado) */}
-              {GIFTS.slice(colIndex * 2, colIndex * 2 + 2).map((gift) => {
-                const isActive = selectedGift?.id === gift.id;
-                const isSpam = spamAnimId === gift.id;
+        <div className="gift-list-3d-wrapper">
+          {GIFTS.map((gift) => {
+            const isActive = selectedGift?.id === gift.id;
+            const isSpam = spamAnimId === gift.id;
 
-                return (
-                  <div 
-                    key={gift.id}
-                    className={`gift-item-3d ${isActive ? 'active' : ''} ${isSpam ? 'spam-anim' : ''}`} 
-                    onClick={(e) => {
-                      e.stopPropagation(); 
-                      handleGiftAction(gift, e);
-                    }}
-                  >
-                    <img src={gift.img} className="gift-img-3d" alt={gift.name} />
-                    
-                    {!isActive && (
-                      <div className="gift-default-info">
-                        <span className="gift-label">{gift.name}</span>
-                        <span className="gift-price-mini"><span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.price}</span>
-                      </div>
-                    )}
-
-                    {isActive && (
-                      <div className="gift-active-bg">
-                        <div className="gift-active-details">
-                          <span className="gift-price-active">
-                            <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
-                            {gift.price.toLocaleString('id-ID')}
-                          </span>
-                          <button className="gift-send-btn" onClick={(e) => handleGiftAction(gift, e)}>
-                            KIRIM
-                          </button>
-                        </div>
-                      </div>
-                    )}
+            return (
+              <div 
+                key={gift.id}
+                className={`gift-item-3d ${isActive ? 'active' : ''} ${isSpam ? 'spam-anim' : ''}`} 
+                onClick={(e) => {
+                  e.stopPropagation(); 
+                  handleGiftAction(gift, e);
+                }}
+              >
+                <img src={gift.img} className="gift-img-3d" alt={gift.name} />
+                
+                {!isActive && (
+                  <div className="gift-default-info">
+                    <span className="gift-label">{gift.name}</span>
+                    <span className="gift-price-mini"><span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.price}</span>
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                )}
+
+                {isActive && (
+                  <div className="gift-active-bg">
+                    <div className="gift-active-details">
+                      <span className="gift-price-active">
+                        <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
+                        {gift.price.toLocaleString('id-ID')}
+                      </span>
+                      <button className="gift-send-btn" onClick={(e) => handleGiftAction(gift, e)}>
+                        KIRIM
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="drawer-footer" onClick={(e) => e.stopPropagation()}>
@@ -331,6 +320,7 @@ export default function GiftDrawerroom() {
         </div>
       </div>
 
+      {/* 🔥 SLIDE UP TOP UP DI DALAM COMPONENT (INTEGRASI ASTRO LOGIC) 🔥 */}
       <div className={`react-topup-sheet ${isTopUpOpen ? 'active' : ''}`}>
         <div className="react-topup-overlay" onClick={() => setIsTopUpOpen(false)}></div>
         <div className="react-topup-content">
