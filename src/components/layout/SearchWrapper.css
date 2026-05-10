@@ -1,15 +1,15 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
 .header-sticky-wrapper {
-  position: relative; 
-  z-index: 1000; 
+  position: relative; /* 🔥 FIX 1: Hapus sticky, ganti jadi relative biar bisa discroll */
+  z-index: 15000; 
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
-  /* 🔥 Hapus padding-top karena pakai sticky jauh lebih rapih */
+  padding-top: 63px; /* 🔥 FIX 2: Kasih bantalan atas setinggi Search Bar biar Story gak ketiban di awal */
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* --- SEARCH AREA (TETAP DIAM & PALING ATAS) --- */
+/* --- SEARCH AREA (TETAP DIAM) --- */
 .search-wrapper {
   padding: 12px 18px;
   display: flex;
@@ -17,18 +17,19 @@
   gap: 15px; 
   background: var(--bg-main, #ffffff);
   
-  position: sticky; /* 🔥 KUNCI DI ATAS: Lebih mulus dari fixed */
+  position: fixed; /* 🔥 FIX 3: Ubah jadi fixed biar melayang abadi di layar */
   top: 0; 
-  margin: 0 auto; /* Tengahin otomatis di PC/Tablet */
+  left: 50%;
+  transform: translateX(-50%); /* Biar posisinya tetep di tengah ngikutin layout */
   width: 100%;
-  max-width: 600px; 
+  max-width: 600px; /* Sesuai dengan ukuran maksimal layout Home lu */
   
-  z-index: 99999 !important; /* 🔥 RAJA Z-INDEX: Gak ada elemen apapun yang bisa nembus ini! */
+  z-index: 15001; 
   border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* --- INPUT PENCARIAN --- */
+/* --- INPUT PENCARIAN (TETAP SAMA) --- */
 .brutal-input-container {
   position: relative;
   flex: 1; 
@@ -50,7 +51,7 @@
 
 .brutal-input:focus {
   background: var(--bg-main, #fff);
-  border-color: #1f3cff; 
+  border-color: #1f3cff; /* 🔥 FIX: Pakai warna biru utama HypeTalk */
   box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.1); 
 }
 
@@ -68,7 +69,7 @@
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
-  z-index: 2; /* Gak perlu gede-gede, karena induknya udah raja */
+  z-index: 16000;
   pointer-events: auto !important; 
   transition: transform 0.1s ease, background-color 0.3s ease, color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
@@ -83,14 +84,14 @@
   display: flex;
   gap: 15px;
   padding: 12px 15px 15px 15px;
-  overflow-x: auto; 
+  overflow-x: auto; /* 🔥 Ini yang bikin story bisa digeser ke samping */
   background: var(--bg-main, #ffffff);
   scrollbar-width: none; 
   -ms-overflow-style: none;
   position: relative;
-  z-index: 10; 
+  z-index: 14000; 
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
-  -webkit-overflow-scrolling: touch; 
+  -webkit-overflow-scrolling: touch; /* Biar smooth di HP */
 }
 
 .stories-container::-webkit-scrollbar { display: none; }
@@ -119,10 +120,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Memotong background biar tetep bulat */
   overflow: hidden; 
   background: var(--border-color, #e4e6eb);
 }
 
+/* Pseudo-element ini yang dikasih gradient warna IG */
 .story-circle.unseen::before {
   content: '';
   position: absolute;
@@ -132,6 +135,7 @@
   z-index: 0;
 }
 
+/* Kalau lagi loading diklik, CUMA pseudo-element ini yang muter! */
 .story-circle.animating::before {
   animation: spinIG 1s linear infinite;
 }
@@ -143,12 +147,13 @@
 
 .story-circle img {
   position: relative;
-  z-index: 1; 
+  z-index: 1; /* Harus di atas gradient */
   width: 61px;
   height: 61px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-secondary);
+  /* Border warna background bikin ilusi ada jarak/gap antara ring dan gambar */
   border: 2.5px solid var(--bg-main, #ffffff);
   transition: border-color 0.3s ease;
 }
