@@ -4,13 +4,22 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/navigation'; // Tambahin useRouter buat pindah halaman
+import { useRouter } from 'next/navigation'; 
 import './Gallery.css';
+
+// 🔥 OPTIMASI 1: KOMPRES GAMBAR CLOUDINARY (Hemat Kuota User!) 🔥
+const getOptimizedImage = (url: string) => {
+  let cleanUrl = url.trim();
+  if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
+    return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_800/');
+  }
+  return cleanUrl;
+};
 
 export default function Gallerypost() {
   const { t, i18n } = useTranslation();
-  const router = useRouter(); // Inisialisasi router
-  
+  const router = useRouter(); 
+
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -26,14 +35,25 @@ export default function Gallerypost() {
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({}); 
 
+  // 🔥 OPTIMASI 2: STATE LOAD MORE (PAGINATION) 🔥
+  const [currentCategory, setCurrentCategory] = useState("all");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const POSTS_PER_PAGE = 15;
+
   useEffect(() => {
     initGallery();
-    const handleCategoryChange = (e: any) => fetchPosts(e.detail.category);
+    const handleCategoryChange = (e: any) => {
+      const newCat = e.detail.category;
+      setCurrentCategory(newCat);
+      setPage(1); 
+      fetchPosts(newCat, currentUser, 1, false);
+    };
     window.addEventListener('changeCategory', handleCategoryChange);
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
-  }, []);
+  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 🔥 LOGIKA OTOMATIS SCROLL KE POSTINGAN 🔥
   useEffect(() => {
     const hash = window.location.hash; 
     if (hash && posts.length > 0 && !isLoading) {
@@ -51,17 +71,23 @@ export default function Gallerypost() {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user || null;
     setCurrentUser(user);
-    await fetchPosts("all", user);
+    await fetchPosts("all", user, 1, false);
   };
 
-  const fetchPosts = async (category = "all", userObj = currentUser) => {
-    setIsLoading(true);
+  // 🔥 OPTIMASI 3: FETCH DATA DIBATASI 15 BIAR MAIN THREAD NGGAK NGOS-NGOSAN 🔥
+  const fetchPosts = async (category = "all", userObj = currentUser, pageNumber = 1, isLoadMore = false) => {
+    if (isLoadMore) setIsLoadingMore(true);
+    else setIsLoading(true);
+
     try {
+      const from = (pageNumber - 1) * POSTS_PER_PAGE;
+      const to = from + POSTS_PER_PAGE - 1;
+
       let query = supabase.from("posts")
         .select(`id, image_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (username, role, avatar_url)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
-        .limit(100);
+        .range(from, to); // Pakai range untuk Load More
 
       if (category && category !== "all") {
         query = query.ilike("category", `%${category.trim()}%`);
@@ -71,7 +97,10 @@ export default function Gallerypost() {
       if (error) throw error;
 
       let fetchedPosts = rawPosts || [];
-      if (category === "all") fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
+      
+      setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+
+      if (category === "all" && !isLoadMore) fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
 
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
@@ -89,23 +118,34 @@ export default function Gallerypost() {
         commentsRes.data?.forEach(c => { if(newCounts[c.post_id]) newCounts[c.post_id].comments++; });
         repostsRes.data?.forEach(r => { if(newCounts[r.post_id]) newCounts[r.post_id].reposts++; });
         savesRes.data?.forEach(s => { if(newCounts[s.post_id]) newCounts[s.post_id].saves++; });
-        setCounts(newCounts);
+        
+        setCounts(prev => isLoadMore ? { ...prev, ...newCounts } : newCounts);
 
         if (userObj) {
           const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           const { data: mySaves } = await supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           
-          setMyLikedPosts(new Set(myLikes?.map(l => String(l.post_id))));
-          setMyRepostedPosts(new Set(myReposts?.map(r => String(r.post_id))));
-          setMySavedPosts(new Set(mySaves?.map(s => String(s.post_id))));
+          setMyLikedPosts(prev => isLoadMore ? new Set([...prev, ...(myLikes?.map(l => String(l.post_id)) || [])]) : new Set(myLikes?.map(l => String(l.post_id))));
+          setMyRepostedPosts(prev => isLoadMore ? new Set([...prev, ...(myReposts?.map(r => String(r.post_id)) || [])]) : new Set(myReposts?.map(r => String(r.post_id))));
+          setMySavedPosts(prev => isLoadMore ? new Set([...prev, ...(mySaves?.map(s => String(s.post_id)) || [])]) : new Set(mySaves?.map(s => String(s.post_id))));
         }
       }
 
-      setPosts(fetchedPosts);
+      if (isLoadMore) setPosts(prev => [...prev, ...fetchedPosts]);
+      else setPosts(fetchedPosts);
+
       setTimeout(initAutoPlayObserver, 500);
 
-    } catch (err) { console.error(err); } finally { setIsLoading(false); }
+    } catch (err) { console.error(err); } finally { setIsLoading(false); setIsLoadingMore(false); }
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPosts(currentCategory, currentUser, nextPage, true);
+    }
   };
 
   const handleLike = async (postId: string, creatorId: string) => {
@@ -243,7 +283,8 @@ export default function Gallerypost() {
         <div className="marquee-text">
           {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
         </div>
-        <audio className="post-audio-element" loop preload="metadata" playsInline style={{ display: 'none' }}>
+        {/* 🔥 OPTIMASI 4: KUNCI AUDIO BIAR NGGAK NYEDOT 23MB DI AWAL 🔥 */}
+        <audio className="post-audio-element" loop preload="none" playsInline style={{ display: 'none' }}>
           <source src={finalAudio} type="audio/mpeg" />
         </audio>
       </div>
@@ -276,13 +317,12 @@ export default function Gallerypost() {
     </div>
   );
 
-  // 🔥 FUNGSI BUAT WARNAIN MENTION (@USERNAME) DI CAPTION/BIO 🔥
   const handleMentionClick = async (e: React.MouseEvent, username: string) => {
-    e.stopPropagation(); // Biar gak ngetrigger klik lain
+    e.stopPropagation(); 
     try {
       const { data } = await supabase.from('profiles').select('id').eq('username', username).single();
       if (data && data.id) {
-        router.push(`/data?id=${data.id}`); // Pindah ke profil orang tersebut
+        router.push(`/data?id=${data.id}`); 
       } else {
         showNotif(`User @${username} tidak ditemukan`, "warning");
       }
@@ -293,11 +333,11 @@ export default function Gallerypost() {
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
-    const parts = text.split(/(@\w+)/g); // Pecah berdasarkan kata yang diawali @
+    const parts = text.split(/(@\w+)/g); 
     
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
-        const usernameOnly = part.substring(1); // Ilangin logo @ nya buat pencarian
+        const usernameOnly = part.substring(1); 
         return (
           <span 
             key={i} 
@@ -333,10 +373,16 @@ export default function Gallerypost() {
           posts.map(post => {
             const badge = getUserBadge(post.profiles?.role);
             const avatarUrl = post.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + post.profiles?.username;
+            
+            // 🔥 OPTIMASI 5: AVATAR KECIL CLOUDINARY 🔥
+            let optimizedAvatar = avatarUrl;
+            if (optimizedAvatar && optimizedAvatar.includes('res.cloudinary.com') && !optimizedAvatar.includes('f_auto')) {
+              optimizedAvatar = optimizedAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
+            }
+
             const formattedDate = new Date(post.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short" });
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
-
             const photoList = post.image_url ? post.image_url.split(',') : [];
 
             return (
@@ -353,13 +399,14 @@ export default function Gallerypost() {
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
                       }}>
                         {photoList.map((url: string, i: number) => (
-                          <div key={i} className="carousel-item">
+                          <div key={i} className="carousel-item" style={{ aspectRatio: '1 / 1', overflow: 'hidden', position: 'relative' }}>
                             <img 
-                              src={url.trim()} 
+                              src={getOptimizedImage(url)} 
                               className="active" 
-                              loading="lazy" 
-                              alt={`Post ${i}`} 
-                              onClick={(e) => handleImageDoubleTap(e, url.trim(), postIdStr)} 
+                              loading={i === 0 ? "eager" : "lazy"} 
+                              alt={`Postingan Galeri ${i + 1}`} 
+                              onClick={(e) => handleImageDoubleTap(e, getOptimizedImage(url), postIdStr)} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                           </div>
                         ))}
@@ -381,19 +428,19 @@ export default function Gallerypost() {
                         <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
                           {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                         </h2>
-<button 
-  className="options-btn" 
-  aria-label="Opsi Postingan" /* 🔥 FIX: Google jadi tau ini tombol menu opsi 🔥 */
-  onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}
->
-
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                        <button 
+                          className="options-btn" 
+                          aria-label="Opsi Postingan" 
+                          onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}
+                        >
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
                       </div>
                       
-                      {/* 🔥 RENDER BIO/CAPTION DENGAN MENTION HIGHLIGHT 🔥 */}
-                      <p className="post-bio">{renderBioWithMentions(post.bio?.trim())}</p>
-                      
+                      <p className="post-bio" style={{ minHeight: '24px', wordBreak: 'break-word', display: 'block' }}>
+                        {renderBioWithMentions(post.bio?.trim())}
+                      </p>
+
                       <div className="post-date-wrapper">{t('uploaded_on')} {formattedDate}</div>
                       <div className="actions">
                         <a href={`/data?id=${post.creator_id}`} className="primary">{t('view_detail')}</a>
@@ -403,10 +450,14 @@ export default function Gallerypost() {
                   </>
                 ) : (
                   <>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
-<img src={avatarUrl} alt="Avatar Profil" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
-
+                        <img 
+                          src={optimizedAvatar} 
+                          alt="Avatar Profil" 
+                          loading="lazy" 
+                          style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} 
+                        />
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
                             {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
@@ -414,13 +465,16 @@ export default function Gallerypost() {
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
                         </div>
                       </div>
-                      <button onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <button 
+                        aria-label="Opsi Postingan" 
+                        onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)} 
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      >
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
                     </div>
-                    
-                    {/* 🔥 RENDER BIO/CAPTION DENGAN MENTION HIGHLIGHT 🔥 */}
-                    <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px' }}>
+
+                    <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px', wordBreak: 'break-word' }}>
                       {renderBioWithMentions(post.bio?.trim())}
                     </div>
                     
@@ -434,6 +488,27 @@ export default function Gallerypost() {
               </div>
             );
           })
+        )}
+
+        {/* 🔥 OPTIMASI 6: TOMBOL LOAD MORE KEREN 🔥 */}
+        {posts.length > 0 && hasMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 50px 0', width: '100%' }}>
+            <button 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore}
+              style={{
+                background: 'linear-gradient(135deg, #1f3cff, #bc13fe)',
+                color: 'white', border: 'none', borderRadius: '25px',
+                padding: '12px 28px', fontWeight: 600, fontSize: '14px',
+                cursor: isLoadingMore ? 'not-allowed' : 'pointer',
+                opacity: isLoadingMore ? 0.7 : 1,
+                boxShadow: '0 4px 15px rgba(31, 60, 255, 0.3)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isLoadingMore ? "Sedang Mengambil Data..." : "Muat Lebih Banyak Karya"}
+            </button>
+          </div>
         )}
       </div>
     </section>
