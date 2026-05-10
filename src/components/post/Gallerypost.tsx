@@ -404,7 +404,7 @@ export default function Gallerypost() {
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
                       }}>
                         {photoList.map((url: string, i: number) => (
-                          <div key={i} className="carousel-item" style={{ aspectRatio: '1 / 1', overflow: 'hidden', position: 'relative' }}>
+                          <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', overflow: 'hidden', position: 'relative' }}>
                             <img 
                               src={getOptimizedImage(url)} 
                               className="active" 
