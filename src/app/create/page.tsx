@@ -25,7 +25,7 @@ export default function CreatePostPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); 
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const captionInputRef = useRef<HTMLTextAreaElement>(null); // 🔥 REF buat textarea
+  const captionInputRef = useRef<HTMLTextAreaElement>(null); 
 
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -113,7 +113,7 @@ export default function CreatePostPage() {
       if (!session) return;
       const myId = session.user.id;
 
-      // Ambil teman
+      // Ambil teman (yg di-follow atau yg nge-follow)
       const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
       const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
       
@@ -137,6 +137,7 @@ export default function CreatePostPage() {
     return () => clearTimeout(delayDebounceFn);
   }, [mentionQuery, showMentions]);
 
+  // 🔥 DETEKSI KETIKAN @ DI TEXTAREA 🔥
   const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setCaption(val);
@@ -144,12 +145,12 @@ export default function CreatePostPage() {
     const cursorPosition = e.target.selectionStart || 0;
     const textBeforeCursor = val.slice(0, cursorPosition);
     
-    // Deteksi kata terakhir yang berawalan @
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    // Cari kata terakhir yang berawalan @ sebelum kursor
+    const mentionMatch = textBeforeCursor.match(/(?:^|\s)@(\w*)$/);
 
     if (mentionMatch) {
       setShowMentions(true);
-      setMentionQuery(mentionMatch[1]);
+      setMentionQuery(mentionMatch[1]); // Ambil teks setelah @
     } else {
       setShowMentions(false);
     }
@@ -162,7 +163,7 @@ export default function CreatePostPage() {
     const textBeforeCursor = caption.slice(0, cursor);
     const textAfterCursor = caption.slice(cursor);
     
-    // Replace @xxx dengan @username yang bener
+    // Replace @... terakhir dengan @username yang dipilih
     const newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${username} `);
     
     setCaption(newTextBefore + textAfterCursor);
@@ -353,9 +354,18 @@ export default function CreatePostPage() {
       {/* --- MENTIONS POPUP CSS --- */}
       <style>{`
         .mention-popup {
-          position: absolute; top: calc(100% + 5px); left: 0; width: 100%; max-height: 200px;
-          background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-y: auto; z-index: 100;
+          position: absolute; 
+          top: 100%; /* 🔥 Muncul di bawah textarea biar nggak ketutup */
+          left: 0; 
+          width: 100%; 
+          max-height: 200px;
+          background: var(--bg-card); 
+          border: 1px solid var(--border-card); 
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
+          overflow-y: auto; 
+          z-index: 1000;
+          margin-top: 5px;
         }
         .mention-item {
           display: flex; align-items: center; padding: 10px 14px; gap: 12px;
