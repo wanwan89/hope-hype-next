@@ -150,9 +150,9 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     
     const currentReactions = msg.reactions || {};
     if (currentReactions[currentUser.id] === emoji) {
-      delete currentReactions[currentUser.id]; // Hapus kalau diklik emoji yang sama
+      delete currentReactions[currentUser.id]; 
     } else {
-      currentReactions[currentUser.id] = emoji; // Tambah / Update
+      currentReactions[currentUser.id] = emoji; 
     }
     
     await supabase.from('messages').update({ reactions: currentReactions }).eq('id', msg.id);
@@ -183,13 +183,12 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     } catch (err) { console.error(err); }
   };
 
-  // 🔥 BERSIHKAN TEKS DARI PLACEHOLDER BAWAAN 🔥
   let cleanMsg = msg.message || "";
   if (isStoryReply) {
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
-  const isPlaceholder = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
+  const isPlaceholder = [" Mengirim Foto", " Stiker", "Voice Note"].includes(cleanMsg);
   const shouldShowText = cleanMsg && (!isPlaceholder || isDeleted);
 
   const wavePattern = [35, 60, 100, 75, 45, 80, 100, 60, 40, 85, 50, 30];
@@ -280,7 +279,8 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
               />
             )}
             
-            <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px' }}>
+            {/* 🔥 TAMBAHKAN position: relative DI SINI 🔥 */}
+            <div className="content" style={{ position: 'relative', display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px' }}>
               
               {showUserDetail && (
                 <div style={{
@@ -306,7 +306,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
-              {/* 🔥 FOTO + TEKS (RAPIH) 🔥 */}
               {msg.image_url && !isDeleted && (
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: shouldShowText ? '6px' : '0' }}>
                   <img 
@@ -317,7 +316,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
-              {/* 🔥 STORY REPLY + TEKS (RAPIH) 🔥 */}
               {isStoryReply && msg.sticker_url && !isDeleted ? (
                 <div 
                   className="story-reply-card"
@@ -337,7 +335,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                   </div>
                 </div>
               ) : (
-                /* STIKER BIASA */
                 msg.sticker_url && !isDeleted && !isStoryReply && (
                   <div style={{ position: 'relative' }}>
                     <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0' }} />
@@ -345,7 +342,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 )
               )}
 
-              {/* 🔥 TEKS AKTUAL (BISA DI-KLIK LINK) 🔥 */}
               {shouldShowText && (
                 <div 
                   className={`text ${isDeleted ? "deleted" : ""}`} 
@@ -361,7 +357,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
-              {/* VN */}
               {msg.audio_url && !isDeleted && (
                 <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0' }}>
                   <button onClick={toggleVN} className="vn-play-btn">
@@ -380,17 +375,39 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
-              {/* EMOJI REACTIONS */}
+              {/* 🔥 TAMPILAN BADGE REACTION (LEBIH RAPIH & PREMIUM) 🔥 */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '-12px' : '-16px' }}>
+                <div 
+                  className="message-reactions-badge" 
+                  style={{ 
+                    position: 'absolute',
+                    bottom: '-12px',
+                    [isMe ? 'right' : 'left']: '16px',
+                    background: 'var(--bg-modal, #ffffff)',
+                    border: '1px solid var(--border-card, #e4e6eb)',
+                    borderRadius: '12px',
+                    padding: '2px 6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                    zIndex: 10,
+                    fontSize: '13px'
+                  }}
+                >
                   {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
+                  {Object.keys(msg.reactions).length > 1 && (
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-muted)', marginLeft: '3px' }}>
+                      {Object.keys(msg.reactions).length}
+                    </span>
+                  )}
                 </div>
               )}
               
-              {/* TIMESTAMP */}
               <div className="message-info" style={{ 
                 paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0',
-                paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0'
+                paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0',
+                marginTop: (msg.reactions && Object.keys(msg.reactions).length > 0) ? '6px' : '0'
               }}>
                 <span className="timestamp">
                   {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
