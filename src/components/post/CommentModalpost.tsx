@@ -6,6 +6,16 @@ import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './CommentModal.css';
 
+// 🔥 OPTIMASI 1: KOMPRES AVATAR CLOUDINARY BIAR KOMENTAR NGEBUT 🔥
+const getOptimizedImage = (url: string) => {
+  if (!url) return '';
+  let cleanUrl = url.trim();
+  if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
+    return cleanUrl.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
+  }
+  return cleanUrl;
+};
+
 export default function CommentModalpost() {
   const { t } = useTranslation();
 
@@ -63,7 +73,6 @@ export default function CommentModalpost() {
       if (btn) {
         const { data: { session } } = await supabase.auth.getSession();
         
-        // 🔥 FIX VERCEL BUILD: Kasih tau TypeScript kalau session pasti ada 🔥
         if (!session || !session.user) {
           requireLogin(null);
           return;
@@ -333,7 +342,7 @@ export default function CommentModalpost() {
       if (navigator.vibrate) navigator.vibrate(50);
       setActionSheetComment(comment);
       setIsActionSheetOpen(true);
-    }, 500); // Tahan 500ms buat buka Action Sheet
+    }, 500); 
   };
 
   const handleTouchEnd = () => {
@@ -344,7 +353,6 @@ export default function CommentModalpost() {
     if (!actionSheetComment) return;
     setIsActionSheetOpen(false);
 
-    // Optimistic Delete UI
     setComments(prev => prev.filter(c => c.id !== actionSheetComment.id && c.parent_id !== actionSheetComment.id));
 
     try {
@@ -352,7 +360,6 @@ export default function CommentModalpost() {
       if (error) throw error;
       showNotif("Komentar dihapus", "success");
       
-      // Update angka komentar di badge
       const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", currentPostId);
       const countBadge = document.querySelector(`.comment-toggle[data-post="${currentPostId}"] .comment-count`);
       if (countBadge) countBadge.textContent = String(count || 0);
@@ -360,7 +367,6 @@ export default function CommentModalpost() {
     } catch (err) {
       console.error(err);
       showNotif("Gagal menghapus komentar", "error");
-      // Revert data if error
       if (currentPostId) loadComments(currentPostId, myUserId || undefined);
     }
   };
@@ -373,7 +379,10 @@ export default function CommentModalpost() {
   const renderComment = (comment: any, isReply: boolean) => {
     const isPostOwner = comment.user_id === currentCreatorId;
     const p = comment.profiles;
-    const avatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
+    
+    // 🔥 OPTIMASI: Panggil helper kompres gambar untuk avatar komentar 🔥
+    const rawAvatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
+    const avatar = getOptimizedImage(rawAvatar);
 
     let isGift = false;
     let giftName = "";
@@ -400,12 +409,13 @@ export default function CommentModalpost() {
         className="comment-item" 
         key={comment.id} 
         style={isReply ? { marginBottom: '8px', marginLeft: '-20px' } : {}}
-        onPointerDown={() => handleTouchStart(comment)} // Mobile & Mouse support
+        onPointerDown={() => handleTouchStart(comment)} 
         onPointerUp={handleTouchEnd}
         onPointerLeave={handleTouchEnd}
       >
         <div className="comment-left">
-          <img className="comment-avatar" src={avatar} onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
+          {/* 🔥 Tambah loading="lazy" buat hemat resource 🔥 */}
+          <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
         </div>
         <div className="comment-right" style={{ flex: 1, paddingRight: '45px', position: 'relative' }}>
           <div className="comment-topline">
@@ -416,13 +426,15 @@ export default function CommentModalpost() {
             </span>
           </div>
           
-          <div className="comment-text">
+          {/* 🔥 FIX CLS: Kasih wordBreak biar teks komentar panjang gak ngerusak layout 🔥 */}
+          <div className="comment-text" style={{ wordBreak: 'break-word' }}>
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
               <div className="gift-comment-bubble">
                  <span>{t('gave_gift', { giftName })}</span>
-                 {giftImg && <img src={giftImg} alt={giftName} />}
+                 {/* 🔥 Lazy load untuk gambar gift 🔥 */}
+                 {giftImg && <img src={getOptimizedImage(giftImg)} loading="lazy" alt={giftName} />}
               </div>
             ) : (
               highlightMentions(comment.content)
@@ -501,7 +513,8 @@ export default function CommentModalpost() {
         <div className="comment-box">
           <div className="comment-header">
             {t('comments_title')}
-            <button className="comment-close" onClick={closeModal}>&times;</button>
+            {/* 🔥 AKSESIBILITAS: aria-label untuk tombol close 🔥 */}
+            <button className="comment-close" aria-label="Tutup Komentar" onClick={closeModal}>&times;</button>
           </div>
           
           <div className="comment-list" id="commentListContainer">
@@ -565,7 +578,8 @@ export default function CommentModalpost() {
                 {mentionResults.length > 0 ? (
                   mentionResults.map(user => (
                     <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
-                      <img src={user.avatar_url || '/asets/png/profile.webp'} alt={user.username} />
+                      {/* 🔥 Lazy load avatar buat suggest mention 🔥 */}
+                      <img src={getOptimizedImage(user.avatar_url) || '/asets/png/profile.webp'} loading="lazy" alt={user.username} />
                       <div className="mention-info">
                         <span className="mention-name">{user.username}</span>
                       </div>
@@ -596,7 +610,8 @@ export default function CommentModalpost() {
                 }}
                 disabled={isSubmitting}
               />
-              <button className="modal-gift-btn" onClick={handleGiftClick}>
+              {/* 🔥 AKSESIBILITAS: aria-label untuk tombol kirim gift 🔥 */}
+              <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
               </button>
             </div>
