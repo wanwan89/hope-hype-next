@@ -13,6 +13,9 @@ export default function CommentModalpost() {
   const [comments, setComments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
+  // 🔥 STATE LIKES KOMENTAR
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
   const [currentCreatorId, setCurrentCreatorId] = useState<string | null>(null);
   
@@ -24,6 +27,22 @@ export default function CommentModalpost() {
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
 
   const currentPostIdRef = useRef<string | null>(null);
+
+  // --- Fungsi Format Waktu ---
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return "Baru saja";
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}j`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}h`;
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
 
   useEffect(() => {
     currentPostIdRef.current = currentPostId;
@@ -46,7 +65,7 @@ export default function CommentModalpost() {
         setIsActive(true);
         document.body.style.overflow = "hidden";
         
-        if (postId) loadComments(postId);
+        if (postId) loadComments(postId, session?.user?.id);
       }
     };
 
@@ -54,6 +73,7 @@ export default function CommentModalpost() {
     return () => document.body.removeEventListener("click", handleBodyClick);
   }, []);
 
+  // Event Insert Gift
   useEffect(() => {
     const handleInsertGift = async (e: any) => {
       const { postId, giftName, giftImg, creatorId } = e.detail;
@@ -84,7 +104,7 @@ export default function CommentModalpost() {
           });
         }
 
-        if (currentPostIdRef.current === String(postId)) loadComments(String(postId));
+        if (currentPostIdRef.current === String(postId)) loadComments(String(postId), session.user.id);
 
         const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", postId);
         const countBadge = document.querySelector(`.comment-toggle[data-post="${postId}"] .comment-count`);
@@ -97,14 +117,31 @@ export default function CommentModalpost() {
     return () => window.removeEventListener("insertGiftComment", handleInsertGift);
   }, [t]);
 
-  const loadComments = async (postId: string) => {
+  // Load Comments
+  const loadComments = async (postId: string, userId?: string) => {
     setIsLoading(true);
-    const { data } = await supabase.from("comments")
-      .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
+    
+    // Ambil komentar beserta relasi ke tabel profiles
+    const { data: commsData } = await supabase.from("comments")
+      .select("id, content, created_at, user_id, parent_id, reply_to_username, likes_count, profiles(id, username, avatar_url, role)")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
 
-    setComments(data || []);
+    setComments(commsData || []);
+
+    // Kalau user login, ambil data like komentar buat nandain tombol love
+    if (userId && commsData) {
+      const commentIds = commsData.map(c => c.id);
+      const { data: myLikes } = await supabase.from("comment_likes")
+        .select("comment_id")
+        .eq("user_id", userId)
+        .in("comment_id", commentIds);
+      
+      const likedSet = new Set<string>();
+      myLikes?.forEach(l => likedSet.add(String(l.comment_id)));
+      setLikedComments(likedSet);
+    }
+    
     setIsLoading(false);
   };
 
@@ -158,7 +195,7 @@ export default function CommentModalpost() {
         setReplyToId(null);
         setReplyToUsername(null);
         setInputValue("");
-        await loadComments(currentPostId);
+        await loadComments(currentPostId, session.user.id);
 
       } catch (err) {
         showNotif(t('comment_error'), "error"); 
@@ -166,6 +203,38 @@ export default function CommentModalpost() {
         setIsSubmitting(false);
       }
     }
+  };
+
+  // 🔥 FUNGSI LIKE KOMENTAR
+  const handleLikeComment = async (commentIdStr: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!requireLogin(session?.user)) return;
+    
+    const isLiked = likedComments.has(commentIdStr);
+    const commentId = parseInt(commentIdStr);
+
+    // Optimistic UI Update
+    setLikedComments(prev => {
+      const newSet = new Set(prev);
+      isLiked ? newSet.delete(commentIdStr) : newSet.add(commentIdStr);
+      return newSet;
+    });
+
+    setComments(prevComments => 
+      prevComments.map(c => 
+        String(c.id) === commentIdStr 
+          ? { ...c, likes_count: Math.max(0, (c.likes_count || 0) + (isLiked ? -1 : 1)) }
+          : c
+      )
+    );
+
+    try {
+      if (isLiked) {
+        await supabase.from("comment_likes").delete().match({ comment_id: commentId, user_id: session!.user.id });
+      } else {
+        await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: session!.user.id });
+      }
+    } catch (err) { console.error("Like error", err); }
   };
 
   const renderComment = (comment: any, isReply: boolean) => {
@@ -184,12 +253,14 @@ export default function CommentModalpost() {
       giftImg = parts[2] || "";
     }
 
+    const isCommentLiked = likedComments.has(String(comment.id));
+
     const content = (
       <>
         <div className="comment-left">
           <img className="comment-avatar" src={avatar} onClick={() => window.location.href = `/profile?id=${p?.id}`} alt="Avatar" />
         </div>
-        <div className="comment-right">
+        <div className="comment-right" style={{ flex: 1, paddingRight: '45px', position: 'relative' }}>
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/profile?id=${p?.id}`}>
               {p?.username} 
@@ -212,13 +283,24 @@ export default function CommentModalpost() {
           </div>
 
           <div className="comment-actions">
+            <span className="comment-time">{formatTimeAgo(comment.created_at)}</span>
             {!isGift && (
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
               }}>
-                {t('reply')}
+                {t('reply', 'Balas')}
               </span>
+            )}
+          </div>
+
+          {/* 🔥 TOMBOL LIKE KOMENTAR (Kanan Pojok) */}
+          <div className="comment-like-box" onClick={() => handleLikeComment(String(comment.id))}>
+            <svg viewBox="0 0 24 24" className={`heart-icon ${isCommentLiked ? 'active' : ''}`}>
+              <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z" />
+            </svg>
+            {(comment.likes_count > 0 || isCommentLiked) && (
+              <span className="comment-like-count">{comment.likes_count || (isCommentLiked ? 1 : 0)}</span>
             )}
           </div>
         </div>
@@ -299,7 +381,6 @@ export default function CommentModalpost() {
         </div>
 
         <div className="comment-input-wrap">
-          {/* 🔥 FIX: Waduh Utama Tombol Gift & Input 🔥 */}
           <div className="input-container">
             <input 
               type="text" 

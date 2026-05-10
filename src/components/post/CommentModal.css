@@ -234,3 +234,69 @@
 .loading-text, .empty-text {
   text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; font-weight: 500;
 }
+/* WAKTU DAN TOMBOL BALAS */
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.comment-time {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 500;
+}
+
+.reply-btn {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.reply-btn:active {
+  color: var(--text-main, #1a1a1a);
+}
+
+/* TOMBOL LIKE ALA INSTAGRAM */
+.comment-like-box {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-icon {
+  width: 14px;
+  height: 14px;
+  fill: transparent;
+  stroke: var(--text-muted, #9ca3af);
+  stroke-width: 2;
+  transition: transform 0.2s, fill 0.3s, stroke 0.3s;
+}
+
+.heart-icon.active {
+  fill: #ff2e63;
+  stroke: #ff2e63;
+  animation: likePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.comment-like-count {
+  font-size: 10px;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 600;
+}
+
+@keyframes likePop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}

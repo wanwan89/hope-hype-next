@@ -5,7 +5,6 @@ import Script from 'next/script';
 import { useSearchParams, useRouter } from 'next/navigation'; 
 import { supabase as sb } from '@/lib/supabase'; 
 import { useTranslation } from 'react-i18next';
-// Import UI Utils biar Badge & Notif muncul
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 
 import Sidebar from '@/components/room/Sidebarroom';
@@ -44,14 +43,12 @@ declare global {
     playGiftAnimation?: (giftId: number | string, forcedCombo?: number | null) => void;
     accNaikPanggung?: (userId: string, username: string) => void; 
     updateRadarColor?: (color: string) => void; 
-    // 🔥 FITUR BARU 🔥
     handleGlobalClick?: (e: any) => void;
     openUserProfile?: (userId: string) => void;
   }
   var LivekitClient: any;
 }
 
-// 🔥 1. FUNGSI KONTEN UTAMA (VoiceRoomContent) 🔥
 function VoiceRoomContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams(); 
@@ -60,7 +57,6 @@ function VoiceRoomContent() {
   const roomRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
 
-  // 🔥 STATES BARU UNTUK TAP & PROFILE 🔥
   const [totalTaps, setTotalTaps] = useState(0);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -100,7 +96,6 @@ function VoiceRoomContent() {
     updateTitle();
     setTimeout(updateTitle, 500);
      
-    // 🔥 LOGIKA ANIMASI TAP TAP (❤️ ONLY) 🔥
     function createTapAnimation(x: number, y: number) {
       const heart = document.createElement('div');
       heart.innerHTML = '❤️';
@@ -111,7 +106,6 @@ function VoiceRoomContent() {
       setTimeout(() => heart.remove(), 1000);
     }
 
-    // 🔥 LOGIKA TAP HANYA DI CHAT BOX + PERSISTENCE 🔥
     window.handleGlobalClick = async (e: any) => {
       const chatBoxArea = document.getElementById('chat-box');
       if (!chatBoxArea || !chatBoxArea.contains(e.target as Node)) return;
@@ -124,7 +118,6 @@ function VoiceRoomContent() {
       
       setTotalTaps(prev => {
         const newTotal = prev + 1;
-        // Simpan ke DB secara real-time (setiap 5 klik biar ga boros quota)
         if (newTotal % 5 === 0) {
           sb.from('rooms').update({ tap_count: newTotal }).eq('id', CURRENT_ROOM_ID).then();
         }
@@ -140,7 +133,6 @@ function VoiceRoomContent() {
       }
     };
 
-    // 🔥 LOGIKA PROFILE SLIDE UP 🔥
     window.openUserProfile = async (userId: string) => {
       if (!userId) return;
       try {
@@ -151,7 +143,6 @@ function VoiceRoomContent() {
       } catch (err) { console.error(err); }
     };
 
-    // --- LOGIKA HELPER ---
     function getLevelStyle(level: string | number) {
         const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
         if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
@@ -305,7 +296,6 @@ function VoiceRoomContent() {
                 const style = getLevelStyle(p.new.level || 1);
                 const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
                 const roleBadge = getUserBadge(p.new.role || '');
-                // 🔥 FIX: User Link to open slide up profile 🔥
                 const userLink = `<span onclick="window.openUserProfile('${p.new.user_id || ''}')" style="color:${style.color}; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
                 div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `${userLink}<span>: ${p.new.text}</span>`;
             }
@@ -314,7 +304,6 @@ function VoiceRoomContent() {
             chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
             fetchTopGifters(); 
         })
-        // 🔥 SYNC TAP BROADCAST 🔥
         .on('broadcast', { event: 'tap_event' }, (p: any) => {
           createTapAnimation(p.payload.x, p.payload.y);
           setTotalTaps(prev => prev + 1);
@@ -451,7 +440,7 @@ function VoiceRoomContent() {
         }
         
         if (roomData) {
-            setTotalTaps(roomData.tap_count || 0); // 🔥 Load Tap dari DB
+            setTotalTaps(roomData.tap_count || 0);
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
             if (IS_OWNER.current) { 
                 await sb.from('rooms').update({ is_active: true }).eq('id', CURRENT_ROOM_ID);
@@ -489,9 +478,8 @@ function VoiceRoomContent() {
             const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
-                const style = getLevelStyle(user.level);
                 const roleBadgeHTML = getUserBadge(user.role || '');
-                // 🔥 Avatar click to open slide up profile 🔥
+                // 🔥 FIX: USERNAME DI SLOT JADI ADAPTIF PUTIH/TERANG 🔥
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
@@ -499,7 +487,7 @@ function VoiceRoomContent() {
                             <span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span>
                         </div>
                     </div>
-                    <span class="name-label" style="color:${style.color}">
+                    <span class="name-label" style="color: var(--text-main, #ffffff); font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">
                         <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
                             ${user.username} ${getLevelBadgeHTML(user.level)} ${roleBadgeHTML}
                         </div>
@@ -516,10 +504,11 @@ function VoiceRoomContent() {
     // ==========================================================
     window.sendGift = sendGift;
 
+    // 🔥 FIX: FUNGSI KICK DIPERBAIKI UNTUK TURUNKAN SLOT 🔥
     window.kickUser = async (targetId, targetName) => {
-        if (!confirm(`Kick ${targetName}?`)) return;
+        if (!confirm(`Turunkan ${targetName} dari slot panggung?`)) return;
         await sb.from('room_slots').update({ profile_id: null }).match({ room_id: CURRENT_ROOM_ID, profile_id: targetId });
-        await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `${targetName} dikeluarkan.` }]);
+        await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `${targetName} diturunkan dari panggung.` }]);
     };
 
     window.toggleKickBtn = (el, canKick) => {
@@ -642,7 +631,6 @@ function VoiceRoomContent() {
         inputEl.focus(); 
         inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         try {
-            // 🔥 FIX: Tambahkan user_id agar komentar muncul & profil bisa diklik 🔥
             await sb.from('room_messages').insert([{ 
                 room_id: CURRENT_ROOM_ID, 
                 username: myUsername.current, 
@@ -790,7 +778,6 @@ function VoiceRoomContent() {
 
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
 
-    // 🔥 FIX: Hapus totalTaps dari dependency array agar layar tidak keriset saat di-tap 🔥
     return () => {
         clearInterval(sdkInterval); 
         roomRef.current?.disconnect();
@@ -807,7 +794,6 @@ function VoiceRoomContent() {
       <Script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" />
       <Script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.12/dist/livekit-client.umd.min.js" />
       
-      {/* 🔥 CONTAINER JUMLAH TAP-TAP 🔥 */}
       <div className="tap-counter-box">
           <span className="material-icons">favorite</span>
           <b>{totalTaps.toLocaleString()}</b>
@@ -817,7 +803,7 @@ function VoiceRoomContent() {
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
 
-      {/* 🔥 PROFILE SLIDE UP (BOTTOM SHEET) 🔥 */}
+      {/* 🔥 PROFILE SLIDE UP (BOTTOM SHEET) DIPERBARUI 🔥 */}
       <div className={`user-profile-sheet-overlay ${isProfileOpen ? 'active' : ''}`} onClick={() => setIsProfileOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
@@ -829,11 +815,29 @@ function VoiceRoomContent() {
                   {selectedUser.username}
                   <span dangerouslySetInnerHTML={{ __html: getUserBadge(selectedUser.role) }} />
                 </h3>
-                <div className="profile-sheet-level">LEVEL {selectedUser.level || 1}</div>
               </div>
-              <button className="btn-view-profile-full" onClick={() => router.push(`/data?username=${selectedUser.username}`)}>
-                Lihat Profil Lengkap
-              </button>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
+                
+                {/* 1. TOMBOL TURUN SLOT (HANYA UNTUK DIRI SENDIRI) */}
+                {selectedUser.id === MY_USER_ID.current && (
+                  <button className="btn-action-sheet danger" onClick={() => { setIsProfileOpen(false); window.prosesTurunMic?.(); }}>
+                    <span className="material-icons" style={{ fontSize: '18px' }}>mic_off</span> Turun Slot
+                  </button>
+                )}
+
+                {/* 2. TOMBOL KICK/TURUNKAN (KHUSUS OWNER KE ORANG LAIN) */}
+                {IS_OWNER.current && selectedUser.id !== MY_USER_ID.current && (
+                  <button className="btn-action-sheet danger" onClick={() => { setIsProfileOpen(false); window.kickUser?.(selectedUser.id, selectedUser.username); }}>
+                    <span className="material-icons" style={{ fontSize: '18px' }}>person_remove</span> Turunkan dari Slot
+                  </button>
+                )}
+
+                {/* 3. TOMBOL LIHAT PROFIL */}
+                <button className="btn-action-sheet primary" onClick={() => router.push(`/data?username=${selectedUser.username}`)}>
+                  Lihat Profil Lengkap
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -843,43 +847,24 @@ function VoiceRoomContent() {
       <style jsx global>{`
         :root { --radar-color: #3b82f6; }
         
-        /* 🔥 TAP COUNTER BOX 🔥 */
         .tap-counter-box {
-          position: fixed;
-          top: calc(env(safe-area-inset-top, 0px) + 12px);
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(10px);
-          padding: 4px 12px;
-          border-radius: 20px;
-          color: #fff;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          z-index: 2000;
-          font-size: 12px;
-          border: 1px solid rgba(255,255,255,0.1);
-          pointer-events: none;
+          position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%);
+          background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: 20px;
+          color: #fff; display: flex; align-items: center; gap: 6px; z-index: 2000; font-size: 12px;
+          border: 1px solid rgba(255,255,255,0.1); pointer-events: none;
         }
         .tap-counter-box .material-icons { font-size: 14px; color: #ff4757; }
 
-        /* 🔥 EMOJI TERBANG 🔥 */
         .tap-emoji-fly {
-          position: fixed;
-          pointer-events: none;
-          z-index: 999999;
-          font-size: 28px;
-          user-select: none;
+          position: fixed; pointer-events: none; z-index: 999999; font-size: 28px; user-select: none;
           animation: flyUpAnim 1s ease-out forwards;
         }
-
         @keyframes flyUpAnim {
           0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
           100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; }
         }
 
-        /* 🔥 PROFILE SHEET 🔥 */
+        /* 🔥 PROFILE SHEET CSS 🔥 */
         .user-profile-sheet-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10005;
           opacity: 0; visibility: hidden; transition: 0.3s;
@@ -895,30 +880,21 @@ function VoiceRoomContent() {
         .sheet-handle { width: 40px; height: 5px; background: #444; border-radius: 10px; margin: 0 auto 20px; }
         .profile-sheet-avatar { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #1f3cff; object-fit: cover; margin-bottom: 15px; }
         .profile-sheet-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        .profile-sheet-level { font-size: 12px; color: #f1c40f; font-weight: 800; margin-top: 5px; }
-        .btn-view-profile-full {
-          width: 100%; padding: 14px; background: #1f3cff; border: none; border-radius: 14px;
-          color: #fff; font-weight: 800; font-size: 14px; margin-top: 25px; cursor: pointer;
+        
+        /* 🔥 BUTTON ACTION DI DALAM SHEET 🔥 */
+        .btn-action-sheet {
+          width: 100%; padding: 14px; border: none; border-radius: 14px;
+          font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+        .btn-action-sheet.primary { background: #1f3cff; color: #fff; }
+        .btn-action-sheet.danger { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255,71,87,0.3); }
+        .btn-action-sheet:active { transform: scale(0.96); }
 
-        .avatar.speaking { 
-            box-shadow: 0 0 0 4px var(--radar-color); 
-            animation: pulseRadar 1.5s infinite; 
-        }
-        .radar-rgb .avatar.speaking { 
-            animation: rgbRadar 2s infinite linear; 
-        }
-        @keyframes pulseRadar { 
-            0% { box-shadow: 0 0 0 0px var(--radar-color); } 
-            70% { box-shadow: 0 0 0 15px rgba(0,0,0,0); } 
-            100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); } 
-        }
-        @keyframes rgbRadar { 
-            0% { box-shadow: 0 0 10px red; } 
-            33% { box-shadow: 0 0 10px green; } 
-            66% { box-shadow: 0 0 10px blue; } 
-            100% { box-shadow: 0 0 10px red; } 
-        }
+        .avatar.speaking { box-shadow: 0 0 0 4px var(--radar-color); animation: pulseRadar 1.5s infinite; }
+        .radar-rgb .avatar.speaking { animation: rgbRadar 2s infinite linear; }
+        @keyframes pulseRadar { 0% { box-shadow: 0 0 0 0px var(--radar-color); } 70% { box-shadow: 0 0 0 15px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); } }
+        @keyframes rgbRadar { 0% { box-shadow: 0 0 10px red; } 33% { box-shadow: 0 0 10px green; } 66% { box-shadow: 0 0 10px blue; } 100% { box-shadow: 0 0 10px red; } }
       `}</style>
     </div>
   );
@@ -926,19 +902,7 @@ function VoiceRoomContent() {
 
 export default function Page() {
   return (
-    <Suspense fallback={
-      <div style={{
-        height: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        background: '#01070A', 
-        color: '#fff',
-        fontFamily: 'sans-serif'
-      }}>
-        Memuat panggung...
-      </div>
-    }>
+    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#01070A', color: '#fff', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
       <VoiceRoomContent />
     </Suspense>
   );

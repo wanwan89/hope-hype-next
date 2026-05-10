@@ -1,11 +1,11 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
 .header-sticky-wrapper {
-  position: sticky;
-  top: 0;
+  position: relative; /* 🔥 FIX 1: Hapus sticky, ganti jadi relative biar bisa discroll */
   z-index: 15000; 
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
+  padding-top: 63px; /* 🔥 FIX 2: Kasih bantalan atas setinggi Search Bar biar Story gak ketiban di awal */
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -15,14 +15,21 @@
   display: flex;
   align-items: center; 
   gap: 15px; 
-  background: var(--bg-main, #ffffff); /* Pastikan solid biar gak tembus */
-  position: relative;
+  background: var(--bg-main, #ffffff);
+  
+  position: fixed; /* 🔥 FIX 3: Ubah jadi fixed biar melayang abadi di layar */
+  top: 0; 
+  left: 50%;
+  transform: translateX(-50%); /* Biar posisinya tetep di tengah ngikutin layout */
+  width: 100%;
+  max-width: 600px; /* Sesuai dengan ukuran maksimal layout Home lu */
+  
   z-index: 15001; 
   border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* --- INPUT PENCARIAN --- */
+/* --- INPUT PENCARIAN (TETAP SAMA) --- */
 .brutal-input-container {
   position: relative;
   flex: 1; 
