@@ -215,11 +215,29 @@ export default function CreatePostPage() {
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Hitung target rasio 3:4
+    const targetRatio = 3 / 4;
+    const videoRatio = video.videoWidth / video.videoHeight;
+    
+    let cropWidth, cropHeight, startX, startY;
+
+    if (videoRatio > targetRatio) {
+      cropHeight = video.videoHeight;
+      cropWidth = cropHeight * targetRatio;
+      startX = (video.videoWidth - cropWidth) / 2;
+      startY = 0;
+    } else {
+      cropWidth = video.videoWidth;
+      cropHeight = cropWidth / targetRatio;
+      startX = 0;
+      startY = (video.videoHeight - cropHeight) / 2;
+    }
+
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
     const ctx = canvas.getContext('2d');
     
-    ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx?.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
     
     canvas.toBlob((blob) => {
       if (blob) {
@@ -290,14 +308,17 @@ export default function CreatePostPage() {
       else if (postType === 'video' && rawVideoFile && coverBlob) {
         showNotif("Mengunggah Video, mohon tunggu...", "info");
         
+        // Upload Cover Thumbnail (di-crop 3:4)
         const coverRes = await uploadToCloudinary(coverBlob, 'image');
-        finalImageUrl = coverRes.secure_url;
+        finalImageUrl = coverRes.secure_url.replace('/upload/', '/upload/c_fill,ar_3:4,g_auto/');
 
+        // Upload Full Video (di-crop 3:4 dan di-trim 15s)
         const videoRes = await uploadToCloudinary(rawVideoFile, 'video');
         const uploadedVidUrl = videoRes.secure_url;
-
         const endSegment = Math.min(videoDuration, videoStart + 15);
-        finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
+        
+        finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/c_fill,ar_3:4,g_auto/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
+
       }
 
       let newPostId: string | null = null;
@@ -574,7 +595,8 @@ export default function CreatePostPage() {
               ) : (
                 <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000' }}>
                   {/* Aspect Ratio 9:16 biar lega full vertikal ala Reels */}
-                  <img src={coverPreviewUrl} alt="Cover Preview" style={{ width: '100%', display: 'block', aspectRatio: '9/16', objectFit: 'cover' }} />
+<img src={coverPreviewUrl} alt="Cover Preview" style={{ width: '100%', display: 'block', aspectRatio: '3/4', objectFit: 'cover' }} />
+
                   <div style={{ position: 'absolute', top: '15px', left: '15px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '6px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span className="material-icons" style={{ fontSize: '16px' }}>play_circle_filled</span> Trimmed (15s)
                   </div>
