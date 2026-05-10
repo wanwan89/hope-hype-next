@@ -1,30 +1,156 @@
-.in-voice-room .drawer-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 10000; display: none; opacity: 0; transition: opacity 0.3s ease; will-change: opacity; pointer-events: none !important; overscroll-behavior: none; }
-.in-voice-room .drawer-overlay.show { display: block; opacity: 1; pointer-events: auto !important; animation: fadeInOverlay 0.3s ease forwards; }
+/* --- OVERLAY LACI --- */
+.in-voice-room .drawer-overlay { 
+  position: fixed; inset: 0; 
+  background: rgba(0, 0, 0, 0.6); 
+  backdrop-filter: blur(4px);
+  z-index: 10000; display: none; opacity: 0; 
+  transition: opacity 0.3s ease; will-change: opacity; 
+  pointer-events: none !important; overscroll-behavior: none; 
+}
+.in-voice-room .drawer-overlay.show { 
+  display: block; opacity: 1; pointer-events: auto !important; 
+  animation: fadeInOverlay 0.3s ease forwards; 
+}
 
-.in-voice-room .gift-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-base); border-top-left-radius: 32px; border-top-right-radius: 32px; z-index: 10001; padding: 24px 20px; padding-top: 32px; padding-bottom: calc(30px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.08); border-top: 1px solid var(--border); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; touch-action: pan-y; }
-[data-theme='dark'] .in-voice-room .gift-drawer, html.dark .in-voice-room .gift-drawer { box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4); }
+/* --- KOTAK LACI KADO UTAMA --- */
+.in-voice-room .gift-drawer { 
+  position: fixed; bottom: 0; left: 0; right: 0; 
+  background: var(--bg-base); 
+  border-top-left-radius: 32px; border-top-right-radius: 32px; 
+  z-index: 10001; 
+  padding-top: 32px; 
+  padding-bottom: 0; /* Dinolin karena kita pake Footer nempel bawah */
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.08); 
+  border-top: 1px solid var(--border); 
+  transform: translateY(100%); 
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); 
+  will-change: transform; touch-action: pan-y; 
+  display: flex; flex-direction: column;
+  max-height: 85vh; /* Biar gak bablas ngelewatin layar */
+}
+[data-theme='dark'] .in-voice-room .gift-drawer, html.dark .in-voice-room .gift-drawer { 
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5); 
+}
 .in-voice-room .gift-drawer.open { transform: translateY(0); }
-.in-voice-room .handle { width: 48px; height: 5px; background: var(--border); border-radius: 10px; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); }
 
-.in-voice-room .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+/* --- HANDLE (GARIS TARIK DI ATAS) --- */
+.in-voice-room .handle { 
+  width: 48px; height: 5px; background: var(--border); 
+  border-radius: 10px; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); 
+}
+
+/* --- HEADER & COIN PANEL --- */
+.in-voice-room .drawer-header { 
+  display: flex; justify-content: space-between; align-items: center; 
+  margin-bottom: 24px; padding: 0 20px;
+}
 .in-voice-room .drawer-title { font-weight: 800; font-size: 16px; color: var(--text-main); letter-spacing: -0.3px; }
-.in-voice-room .coin-panel { background: rgba(245, 158, 11, 0.12); padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(245, 158, 11, 0.2); }
+.in-voice-room .coin-panel { 
+  background: rgba(245, 158, 11, 0.12); padding: 6px 14px; 
+  border-radius: 20px; display: flex; align-items: center; gap: 6px; 
+  border: 1px solid rgba(245, 158, 11, 0.2); 
+}
 .in-voice-room #user-coins { color: var(--accent); font-weight: 800; font-size: 14px; }
 
-.in-voice-room .target-selection-container { margin-bottom: 24px; }
+/* --- TARGET SELECTION --- */
+.in-voice-room .target-selection-container { margin-bottom: 16px; padding: 0 20px; }
 .in-voice-room .target-label { font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; display: block; }
-.in-voice-room .target-list { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.in-voice-room .target-user { display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0.4; transition: opacity 0.3s ease, transform 0.2s ease; cursor: pointer; }
+.in-voice-room .target-list { 
+  display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; 
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; 
+}
+.in-voice-room .target-user { 
+  display: flex; flex-direction: column; align-items: center; gap: 8px; 
+  opacity: 0.4; transition: opacity 0.3s ease, transform 0.2s ease; cursor: pointer; 
+}
 .in-voice-room .target-user.selected { opacity: 1; transform: translateY(-2px); }
-.in-voice-room .target-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid transparent; transition: border-color 0.3s ease, box-shadow 0.3s ease; will-change: border-color, box-shadow; }
-.in-voice-room .target-user.selected .target-avatar { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+.in-voice-room .target-avatar { 
+  width: 50px; height: 50px; border-radius: 50%; object-fit: cover; 
+  border: 2px solid transparent; transition: border-color 0.3s ease, box-shadow 0.3s ease; 
+}
+.in-voice-room .target-user.selected .target-avatar { 
+  border-color: var(--primary); box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.2); 
+}
 .in-voice-room .target-name { font-size: 11px; font-weight: 600; color: var(--text-main); }
 
-.in-voice-room .gift-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 280px; overflow-y: auto; padding-right: 4px; padding-bottom: 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.in-voice-room .gift-item { background: var(--panel-bg); padding: 16px 8px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border); transition: transform 0.1s ease, border-color 0.1s; cursor: pointer; will-change: transform; }
-.in-voice-room .gift-item:active { transform: scale(0.92); border-color: var(--primary); }
-.in-voice-room .gift-img { width: 50px; height: 50px; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); }
-.in-voice-room .gift-label { font-size: 11px; font-weight: 700; color: var(--text-main); }
-.in-voice-room .gift-price { font-size: 12px; color: var(--accent); font-weight: 800; margin-top: 4px; display: flex; align-items: center; gap: 2px; }
+/* =========================================
+   🔥 UPGRADE UI 3D KADO & SPAM MODE 🔥
+   ========================================= */
+
+/* WRAPPER KADO (4 KOLOM) */
+.in-voice-room .gift-list-3d-wrapper {
+  flex: 1; overflow-y: auto; padding: 10px 20px 20px 20px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.in-voice-room .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
+
+/* KOTAK KADO 3D */
+.in-voice-room .gift-item-3d {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  padding: 12px 5px; border-radius: 16px;
+  background: var(--panel-bg, rgba(255, 255, 255, 0.03));
+  border: 2px solid transparent;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+
+/* EFEK SAAT DIPILIH (NEON GLOW) */
+.in-voice-room .gift-item-3d.active {
+  background: rgba(31, 60, 255, 0.1);
+  border: 2px solid #1f3cff;
+  box-shadow: 0 10px 25px rgba(31, 60, 255, 0.2);
+  transform: translateY(-4px);
+}
+.in-voice-room .gift-item-3d:active { transform: scale(0.92); }
+
+/* GAMBAR KADO 3D (DROP SHADOW) */
+.in-voice-room .gift-img-3d {
+  width: 50px; height: 50px; object-fit: contain;
+  filter: drop-shadow(0 6px 6px rgba(0,0,0,0.3));
+  transition: transform 0.3s ease, filter 0.3s ease;
+  margin-bottom: 8px;
+}
+
+/* GAMBAR MELAYANG SAAT DIPILIH */
+.in-voice-room .gift-item-3d.active .gift-img-3d {
+  animation: float3D 2s ease-in-out infinite;
+  filter: drop-shadow(0 12px 10px rgba(0,0,0,0.5));
+}
+
+@keyframes float3D {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* TEKS KADO */
+.in-voice-room .gift-label { font-size: 10px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
+.in-voice-room .gift-price { font-size: 11px; color: var(--accent); font-weight: 800; margin-top: 4px; display: flex; align-items: center; gap: 2px; }
+
+/* =========================================
+   🔥 FOOTER TOMBOL KIRIM / SPAM 🔥
+   ========================================= */
+.in-voice-room .gift-footer-action {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 15px 20px;
+  padding-bottom: calc(15px + env(safe-area-inset-bottom));
+  background: var(--bg-base);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+  box-shadow: 0 -4px 15px rgba(0,0,0,0.03);
+}
+
+.in-voice-room .send-gift-btn {
+  background: linear-gradient(135deg, #1f3cff, #bc13fe);
+  color: white; border: none; padding: 12px 30px;
+  border-radius: 25px; font-weight: 800; font-size: 14px;
+  box-shadow: 0 4px 15px rgba(31, 60, 255, 0.4);
+  cursor: pointer; transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.in-voice-room .send-gift-btn:active, 
+.in-voice-room .send-gift-btn.spamming {
+  transform: scale(0.85);
+}
 
 @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }

@@ -3,20 +3,24 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
-// 🔥 FIX 1: Import i18n
 import { useTranslation } from 'react-i18next';
 import './GiftSheet.css';
 
+// 🔥 FIX 1: UPDATE DAFTAR 10 GIFT (Disamain sama Voice Room) 🔥
 const GIFT_DATA = [
-  { id: 1, name: 'Troi', amount: 10, img: '/asets/png/gift1.png' },
-  { id: 2, name: 'Fox', amount: 20, img: '/asets/png/gift2.png' },
-  { id: 3, name: 'Panda', amount: 20, img: '/asets/png/gift3.png' },
-  { id: 4, name: 'Rabbit', amount: 25, img: '/asets/png/gift4.png' },
-  { id: 5, name: 'Catglow', amount: 100, img: '/asets/png/gift5.png' },
+  { id: 1, name: 'Love', amount: 1, img: '/asets/png/gift1.png' },
+  { id: 2, name: 'Daebak', amount: 10, img: '/asets/png/gift2.png' },
+  { id: 3, name: 'Omoomo', amount: 50, img: '/asets/png/gift3.png' },
+  { id: 4, name: 'Oppa', amount: 100, img: '/asets/png/gift4.png' },
+  { id: 5, name: 'Fighting', amount: 2000, img: '/asets/png/gift5.png' },
+  { id: 6, name: 'Saranghae', amount: 5000, img: '/asets/png/gift6.png' },
+  { id: 7, name: 'Kiyowo', amount: 10000, img: '/asets/png/gift7.png' },
+  { id: 8, name: 'Gomawo', amount: 25000, img: '/asets/png/gift8.png' },
+  { id: 9, name: 'Daesang', amount: 50000, img: '/asets/png/gift9.png' },
+  { id: 10, name: 'Sultan', amount: 100000, img: '/asets/png/gift10.png' },
 ];
 
 export default function GiftSheetpost() {
-  // 🔥 FIX 2: Inisialisasi Translate
   const { t } = useTranslation();
 
   const [isActive, setIsActive] = useState(false);
@@ -113,7 +117,7 @@ export default function GiftSheetpost() {
       });
       if (rpcErr) throw rpcErr;
 
-      // 2. Insert Transactions & History (Diterjemahkan deskripsinya)
+      // 2. Insert Transactions & History
       await Promise.all([
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
@@ -139,7 +143,7 @@ export default function GiftSheetpost() {
         ])
       ]);
 
-      // 3. Notifikasi (i18n)
+      // 3. Notifikasi
       const { data: sProf } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
       await supabase.from("notifications").insert({ 
         user_id: targetPost.creatorId, 
@@ -175,50 +179,109 @@ export default function GiftSheetpost() {
   };
 
   return (
-    <div className={`gift-sheet ${isActive ? 'active' : ''}`}>
-      <div className="gift-sheet-overlay" onClick={closeSheet} />
-      
-      <div className="gift-sheet-content">
-        <div className="sheet-handle" />
+    <>
+      <style>{`
+        /* 🔥 INJEKSI CSS UNTUK OVERRIDE WARNA TOMBOL & GRID 🔥 */
+        .gift-sheet-content .btn-send-gift {
+          background: linear-gradient(135deg, #1f3cff, #bc13fe) !important;
+          color: white !important;
+          border: none !important;
+          padding: 10px 24px !important;
+          border-radius: 20px !important;
+          font-weight: 800 !important;
+          font-size: 14px !important;
+          box-shadow: 0 4px 15px rgba(31, 60, 255, 0.4) !important;
+          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        }
+        .gift-sheet-content .btn-send-gift:active:not(:disabled) {
+          transform: scale(0.9) !important;
+        }
+        .gift-sheet-content .btn-send-gift:disabled {
+          background: var(--bg-secondary) !important;
+          color: var(--text-muted) !important;
+          box-shadow: none !important;
+        }
 
-        <div className="gift-header">
-          <span>{t('gift_sheet_header')}</span>
-          <span className="gift-close-x" onClick={closeSheet}>&times;</span>
-        </div>
+        /* Rapihin List biar bisa nampung 10 kado enak */
+        .gift-sheet-content .gift-grid {
+          display: grid !important;
+          grid-template-columns: repeat(4, 1fr) !important;
+          gap: 12px !important;
+          max-height: 280px !important;
+          overflow-y: auto !important;
+          padding-bottom: 20px !important;
+        }
+        .gift-sheet-content .gift-item {
+          display: flex; flex-direction: column; align-items: center;
+          padding: 10px 4px;
+          border-radius: 12px;
+          border: 2px solid transparent;
+          transition: 0.2s;
+        }
+        .gift-sheet-content .gift-item.selected-gift {
+          background: rgba(31, 60, 255, 0.1);
+          border-color: #1f3cff;
+        }
+        .gift-sheet-content .img-gift {
+          width: 50px; height: 50px; object-fit: contain;
+          filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+          transition: 0.3s;
+        }
+        .gift-sheet-content .gift-item.selected-gift .img-gift {
+          transform: scale(1.1) translateY(-4px);
+        }
+        .gift-sheet-content .gift-name {
+          font-size: 10px; font-weight: bold; margin-top: 6px; text-transform: uppercase;
+        }
+      `}</style>
 
-        <div className="gift-grid">
-          {GIFT_DATA.map((gift) => (
-            <div 
-              key={gift.id} 
-              className={`gift-item ${selectedGift?.id === gift.id ? 'selected-gift' : ''}`}
-              onClick={() => setSelectedGift(gift)}
-            >
-              <div className="gift-img-container">
-                <img src={gift.img} className="img-gift" alt={gift.name} />
-              </div>
-              <span className="gift-name">{gift.name}</span>
-              <span className="gift-price">
-                <img src="/asets/svg/koin.webp" className="img-coin-inline" alt="coin" /> {gift.amount}
-              </span>
-            </div>
-          ))}
-        </div>
+      <div className={`gift-sheet ${isActive ? 'active' : ''}`}>
+        <div className="gift-sheet-overlay" onClick={closeSheet} />
         
-        <div className="gift-footer">
-          <div className="user-coins-info" onClick={() => window.location.href='/topup'}>
-            <img src="/asets/svg/koin.webp" className="img-coin-footer" alt="user coin" />
-            <span>{userCoins}</span>
-            <span style={{ color: 'rgba(255,255,255,0.3)', marginLeft: '5px' }}>&rsaquo;</span>
+        <div className="gift-sheet-content">
+          <div className="sheet-handle" />
+
+          <div className="gift-header">
+            <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
+            <span className="gift-close-x" onClick={closeSheet} style={{ fontSize: '24px', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</span>
           </div>
-          <button 
-            className="btn-send-gift" 
-            disabled={!selectedGift || isSending}
-            onClick={handleSendGift}
-          >
-            {isSending ? t('sending') : selectedGift ? t('btn_send_amount', { amount: selectedGift.amount }) : t('btn_send')}
-          </button>
+
+          <div className="gift-grid">
+            {GIFT_DATA.map((gift) => (
+              <div 
+                key={gift.id} 
+                className={`gift-item ${selectedGift?.id === gift.id ? 'selected-gift' : ''}`}
+                onClick={() => setSelectedGift(gift)}
+              >
+                <div className="gift-img-container">
+                  <img src={gift.img} className="img-gift" alt={gift.name} />
+                </div>
+                <span className="gift-name">{gift.name}</span>
+                <span className="gift-price" style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '2px', marginTop: '2px' }}>
+                  <span className="material-icons" style={{ fontSize: '11px' }}>toll</span> 
+                  {gift.amount.toLocaleString('id-ID')}
+                </span>
+              </div>
+            ))}
+          </div>
+          
+          <div className="gift-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
+            <div className="user-coins-info" onClick={() => window.location.href='/topup'} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer' }}>
+              <span className="material-icons" style={{ color: '#f59e0b', fontSize: '16px' }}>toll</span>
+              <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '14px' }}>{userCoins.toLocaleString('id-ID')}</span>
+              <span style={{ color: '#f59e0b', opacity: 0.6, fontSize: '18px', marginLeft: '4px', lineHeight: 1 }}>&rsaquo;</span>
+            </div>
+            
+            <button 
+              className="btn-send-gift" 
+              disabled={!selectedGift || isSending}
+              onClick={handleSendGift}
+            >
+              {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
