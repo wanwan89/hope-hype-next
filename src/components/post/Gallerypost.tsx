@@ -42,8 +42,13 @@ export default function Gallerypost() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
 
+  // 🔥 FIX BUG REFRESH: initGallery jalan 1x aja di awal 🔥
   useEffect(() => {
     initGallery();
+  }, []);
+
+  // 🔥 Event listener buat kategori dipisah 🔥
+  useEffect(() => {
     const handleCategoryChange = (e: any) => {
       const newCat = e.detail.category;
       setCurrentCategory(newCat);
@@ -52,7 +57,7 @@ export default function Gallerypost() {
     };
     window.addEventListener('changeCategory', handleCategoryChange);
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
-  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentUser]);
 
   useEffect(() => {
     const hash = window.location.hash; 
