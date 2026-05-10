@@ -1,15 +1,15 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
 .header-sticky-wrapper {
   position: relative; 
-  z-index: 1000; /* Normalin z-index-nya biar nggak bentrok sana-sini */
+  z-index: 1000; 
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
-  /* Hapus padding-top biar layout rapi ngikutin flow normal */
+  /* 🔥 Hapus padding-top karena pakai sticky jauh lebih rapih */
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* --- SEARCH AREA (TETAP DIAM) --- */
+/* --- SEARCH AREA (TETAP DIAM & PALING ATAS) --- */
 .search-wrapper {
   padding: 12px 18px;
   display: flex;
@@ -17,24 +17,18 @@
   gap: 15px; 
   background: var(--bg-main, #ffffff);
   
-  /* 🔥 FIX PALING PENTING: Pake sticky, bukan fixed! 🔥 */
-  /* Kalau pake fixed, lu harus pusing mikirin width. Kalau sticky, dia otomatis ngikutin lebar parent-nya (.main-content) */
-  position: sticky; 
+  position: sticky; /* 🔥 KUNCI DI ATAS: Lebih mulus dari fixed */
   top: 0; 
+  margin: 0 auto; /* Tengahin otomatis di PC/Tablet */
   width: 100%;
+  max-width: 600px; 
   
-  z-index: 9999 !important; /* Sengajain gede banget, dan pakai !important biar dia raja di atas segala konten */
-  
+  z-index: 99999 !important; /* 🔥 RAJA Z-INDEX: Gak ada elemen apapun yang bisa nembus ini! */
   border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Biar pas discroll ke bawah, search box-nya dapet bayangan tipis ala Glassmorphism */
-.header-scrolled .search-wrapper {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-/* --- INPUT PENCARIAN (TETAP SAMA) --- */
+/* --- INPUT PENCARIAN --- */
 .brutal-input-container {
   position: relative;
   flex: 1; 
@@ -74,7 +68,7 @@
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
-  z-index: 2;
+  z-index: 2; /* Gak perlu gede-gede, karena induknya udah raja */
   pointer-events: auto !important; 
   transition: transform 0.1s ease, background-color 0.3s ease, color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
