@@ -28,6 +28,10 @@ export default function Gallerypost() {
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   
+  // 🔥 STATE UNTUK SISTEM FOLLOW 🔥
+  const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
+  const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
+  
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -76,6 +80,15 @@ export default function Gallerypost() {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user || null;
     setCurrentUser(user);
+
+    // 🔥 AMBIL DATA FOLLOWING USER SAAT INI 🔥
+    if (user) {
+      const { data: follows } = await supabase.from('followers').select('following_id').eq('follower_id', user.id);
+      if (follows) {
+        setFollowedUsers(new Set(follows.map(f => String(f.following_id))));
+      }
+    }
+
     await fetchPosts("all", user, 1, false);
   };
 
@@ -92,7 +105,7 @@ export default function Gallerypost() {
         .select(`id, image_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (username, role, avatar_url)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
-        .range(from, to); // Pakai range untuk Load More
+        .range(from, to); 
 
       if (category && category !== "all") {
         query = query.ilike("category", `%${category.trim()}%`);
@@ -150,6 +163,52 @@ export default function Gallerypost() {
       const nextPage = page + 1;
       setPage(nextPage);
       fetchPosts(currentCategory, currentUser, nextPage, true);
+    }
+  };
+
+  // 🔥 FUNGSI HANDLE FOLLOW DENGAN ANIMASI 🔥
+  const handleFollowToggle = async (e: any, creatorId: string) => {
+    e.stopPropagation(); // Biar pas klik follow, gak redirect ke profil
+    if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
+    if (currentUser.id === creatorId) return; 
+
+    const isFollowing = followedUsers.has(creatorId);
+
+    // Animasi Klik
+    setAnimatingFollows(prev => new Set(prev).add(creatorId));
+    setTimeout(() => {
+      setAnimatingFollows(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(creatorId);
+        return newSet;
+      });
+    }, 200);
+
+    // Optimistic UI Update
+    setFollowedUsers(prev => {
+      const newSet = new Set(prev);
+      isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId);
+      return newSet;
+    });
+
+    try {
+      if (isFollowing) {
+        await supabase.from("followers").delete().match({ follower_id: currentUser.id, following_id: creatorId });
+      } else {
+        await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
+        
+        // Kirim Notifikasi Follow
+        const { data: myProf } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
+        await supabase.from("notifications").insert({
+          user_id: creatorId,
+          actor_id: currentUser.id,
+          type: "follow",
+          message: `<b>${myProf?.username}</b> mulai mengikuti Anda.`
+        });
+      }
+    } catch (err) {
+      console.error("Follow error", err);
+      showNotif("Gagal mengikuti pengguna", "error");
     }
   };
 
@@ -288,11 +347,38 @@ export default function Gallerypost() {
         <div className="marquee-text">
           {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
         </div>
-        {/* 🔥 OPTIMASI 4: KUNCI AUDIO BIAR NGGAK NYEDOT 23MB DI AWAL 🔥 */}
         <audio className="post-audio-element" loop preload="none" playsInline style={{ display: 'none' }}>
           <source src={finalAudio} type="audio/mpeg" />
         </audio>
       </div>
+    );
+  };
+
+  // 🔥 RENDER TOMBOL FOLLOW 🔥
+  const renderFollowButton = (creatorId: string) => {
+    if (!currentUser || currentUser.id === creatorId) return null; // Sembunyikan kalau post sendiri
+    const isFollowing = followedUsers.has(creatorId);
+    const isAnimating = animatingFollows.has(creatorId);
+
+    return (
+      <button
+        onClick={(e) => handleFollowToggle(e, creatorId)}
+        style={{
+          background: isFollowing ? 'transparent' : '#1f3cff',
+          color: isFollowing ? 'var(--text-muted)' : '#ffffff',
+          border: isFollowing ? '1px solid var(--border-card)' : 'none',
+          padding: '4px 12px',
+          borderRadius: '16px',
+          fontSize: '11px',
+          fontWeight: 700,
+          marginLeft: '6px',
+          cursor: 'pointer',
+          transform: isAnimating ? 'scale(0.85)' : 'scale(1)',
+          transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s, color 0.3s',
+        }}
+      >
+        {isFollowing ? t('following', 'Mengikuti') : t('follow', 'Ikuti')}
+      </button>
     );
   };
 
@@ -379,7 +465,6 @@ export default function Gallerypost() {
             const badge = getUserBadge(post.profiles?.role);
             const avatarUrl = post.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + post.profiles?.username;
             
-            // 🔥 OPTIMASI 5: AVATAR KECIL CLOUDINARY 🔥
             let optimizedAvatar = avatarUrl;
             if (optimizedAvatar && optimizedAvatar.includes('res.cloudinary.com') && !optimizedAvatar.includes('f_auto')) {
               optimizedAvatar = optimizedAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
@@ -430,9 +515,15 @@ export default function Gallerypost() {
                     
                     <div className="overlay">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
-                          {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-                        </h2>
+                        
+                        {/* 🔥 HEADER POST FOTO + TOMBOL FOLLOW 🔥 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`} style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                            {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
+                          </h2>
+                          {renderFollowButton(post.creator_id)}
+                        </div>
+
                         <button 
                           className="options-btn" 
                           aria-label="Opsi Postingan" 
@@ -464,15 +555,19 @@ export default function Gallerypost() {
                           style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} 
                         />
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                          
+                          {/* 🔥 HEADER POST TEKS + TOMBOL FOLLOW 🔥 */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
                             {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
+                            {renderFollowButton(post.creator_id)}
                           </div>
+
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
                         </div>
                       </div>
                       <button 
                         aria-label="Opsi Postingan" 
-                        onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)} 
+                        onClick={(e) => { e.stopPropagation(); (window as any).openPostOptions?.(post.id, isOwner, post.creator_id); }} 
                         style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                       >
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
@@ -495,7 +590,7 @@ export default function Gallerypost() {
           })
         )}
 
-        {/* 🔥 OPTIMASI 6: TOMBOL LOAD MORE KEREN 🔥 */}
+        {/* 🔥 TOMBOL LOAD MORE 🔥 */}
         {posts.length > 0 && hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 50px 0', width: '100%' }}>
             <button 

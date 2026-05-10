@@ -36,7 +36,10 @@ export default function ChatArea() {
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
   
-  const [reactionMenu, setReactionMenu] = useState<{ id: any, x: number, y: number } | null>(null);
+  // 🔥 STATE UNTUK KIRIM FOTO VIP 🔥
+  const [isUploadingImg, setIsUploadingImg] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [msgOptions, setMsgOptions] = useState<any>(null);
   const [editMessageId, setEditMessageId] = useState<any>(null);
   
@@ -48,13 +51,9 @@ export default function ChatArea() {
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [inviteSearch, setInviteSearch] = useState(''); 
 
-  // 🔥 STATE HUBUNGAN (PERMINTAAN PESAN) 🔥
   const [relation, setRelation] = useState({ iFollowThem: false, theyFollowMe: false });
-
-  // 🔥 STATE PROFIL MINIMALIS 🔥
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
 
-  // State VN & Batal
   const [isMicPressed, setIsMicPressed] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [cancelAnim, setCancelAnim] = useState(false); 
@@ -64,10 +63,8 @@ export default function ChatArea() {
   const vnTouchStartX = useRef(0);
   const vnIsCanceled = useRef(false);
 
-  // Lightbox untuk stiker
   const [lightboxSticker, setLightboxSticker] = useState<string | null>(null);
 
-  // State panggilan
   const [callStatus, setCallStatus] = useState<'idle'|'calling'|'incoming'|'connected'>('idle');
   const [callData, setCallData] = useState<any>({ seconds: 0, partnerName: '', partnerAvatar: '', room: '' });
 
@@ -134,7 +131,6 @@ export default function ChatArea() {
         setHeaderInfo({ title: pTarget.username, sub: `#${pTarget.short_id}`, avatar: pTarget.avatar_url, role: pTarget.role });
       }
 
-      // 🔥 CEK HUBUNGAN FOLLOWER BUAT PERMINTAAN PESAN 🔥
       const { data: f1 } = await supabase.from('followers').select('id').match({ follower_id: session.user.id, following_id: fromId }).maybeSingle();
       const { data: f2 } = await supabase.from('followers').select('id').match({ follower_id: fromId, following_id: session.user.id }).maybeSingle();
       setRelation({ iFollowThem: !!f1, theyFollowMe: !!f2 });
@@ -189,7 +185,6 @@ export default function ChatArea() {
 
   const kickMember = async (targetUserId: string, targetName: string) => {
     if (!groupId || !isOwner) return;
-    
     const confirmKick = window.confirm(`Apakah kamu yakin ingin mengeluarkan ${targetName} dari grup?`);
     if (!confirmKick) return;
 
@@ -290,9 +285,9 @@ export default function ChatArea() {
 
   const scrollToBottom = () => setTimeout(() => refs.scroll.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
-  const sendMessage = async (text?: string, sticker?: string, audio?: string) => {
+  const sendMessage = async (text?: string, sticker?: string, audio?: string, image?: string) => {
     const content = text || inputValue;
-    if (!content && !sticker && !audio) return;
+    if (!content && !sticker && !audio && !image) return;
     refs.audio.current?.send.play().catch(()=>{});
 
     if (editMessageId) {
@@ -303,11 +298,18 @@ export default function ChatArea() {
     }
 
     const { error } = await supabase.from('messages').insert([{
-      room_id: roomId, user_id: currentUser.id, message: audio ? "Voice Note" : (sticker ? "Stiker" : content),
-      sticker_url: sticker || null, audio_url: audio || null, reply_to: replyTo?.id || null, status: 'sent'
+      room_id: roomId, 
+      user_id: currentUser.id, 
+      message: image ? "📸 Mengirim Foto" : audio ? "🎤 Voice Note" : (sticker ? "🎨 Stiker" : content),
+      sticker_url: sticker || null, 
+      audio_url: audio || null, 
+      image_url: image || null, 
+      reply_to: replyTo?.id || null, 
+      status: 'sent'
     }]);
+    
     if (!error) { setInputValue(''); setReplyTo(null); setIsStickerOpen(false); }
-    if (targetId && !sticker && !audio) {
+    if (targetId && !sticker && !audio && !image) {
       supabase.functions.invoke('send-chat-notif', { body: { record: { sender_id: currentUser.id, receiver_id: targetId, content } } });
     }
   };
@@ -319,7 +321,6 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FUNGSI PERMINTAAN PESAN 🔥
   const handleTerimaRequest = async () => {
     await supabase.from('messages').insert([{
       room_id: roomId, user_id: currentUser.id, message: `Permintaan pesan diterima. Kamu sekarang bisa membalas dan melakukan panggilan.`, is_system: true, status: 'sent'
@@ -371,7 +372,7 @@ export default function ChatArea() {
         const fd = new FormData(); fd.append("file", blob); fd.append("upload_preset", "hopehype_preset"); fd.append("resource_type", "video");
         const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
         const d = await res.json();
-        if (d.secure_url) sendMessage(undefined, undefined, d.secure_url);
+        if (d.secure_url) sendMessage(undefined, undefined, d.secure_url, undefined);
       };
       refs.mediaRecorder.current.start();
       setIsRecording(true); isRecordingRef.current = true;
@@ -425,6 +426,44 @@ export default function ChatArea() {
         vnIsCanceled.current = true;
         stopVN(true); 
       }
+    }
+  };
+
+  const handlePhotoClick = () => {
+    const allowedRoles = ['verified', 'vip', 'admin', 'developer', 'creator'];
+    const userRole = myProfile?.role?.toLowerCase() || 'user';
+    
+    if (allowedRoles.includes(userRole)) {
+      fileInputRef.current?.click();
+    } else {
+      showNotif("Fitur Kirim Foto khusus member Verified/VIP!", "warning");
+    }
+  };
+
+  const handlePhotoUpload = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingImg(true);
+    try {
+      const fd = new FormData(); 
+      fd.append("file", file); 
+      fd.append("upload_preset", "hopehype_preset");
+      
+      const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
+      const d = await res.json();
+      
+      if (d.secure_url) {
+        await sendMessage(undefined, undefined, undefined, d.secure_url);
+      } else {
+        showNotif("Gagal upload foto", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showNotif("Terjadi kesalahan saat upload", "error");
+    } finally {
+      setIsUploadingImg(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -529,18 +568,14 @@ export default function ChatArea() {
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
     }
-    
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
-    
     setCallStatus('idle');
-    
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
-    
     if (!silent) showNotif(t('call_ended'), "info");
   };
 
@@ -549,31 +584,19 @@ export default function ChatArea() {
     const d = await res.json(); setStickers(d.data || []);
   };
 
-  const handleSendReaction = async (msgId: string, emoji: string) => {
-    const msg = messages.find(m => m.id === msgId);
-    if(!msg) return;
-    const currentReactions = msg.reactions || {};
-    currentReactions[currentUser.id] = emoji;
-    await supabase.from('messages').update({ reactions: currentReactions }).eq('id', msgId);
-    setReactionMenu(null);
-  };
-
   const handleDeleteMsg = async (id: string) => {
-    await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', sticker_url: null, audio_url: null }).eq('id', id);
+    await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', sticker_url: null, audio_url: null, image_url: null }).eq('id', id);
     setMsgOptions(null);
   };
 
-  // 🔥 LOGIKA PENENTU STATUS CHAT PERMINTAAN 🔥
-  let chatState = 'normal'; // 'normal', 'i_must_approve', 'i_am_blocked_by_request'
+  let chatState = 'normal';
   if (targetId && currentUser) {
     const myRawMsgs = messages.filter(m => m.user_id === currentUser.id);
     const partnerRawMsgs = messages.filter(m => m.user_id === targetId);
 
-    // Kalau dia ngirim pesan, gue belom pernah ngirim/balas, dan gue GA FOLLOW DIA
     if (partnerRawMsgs.length > 0 && myRawMsgs.length === 0 && !relation.iFollowThem) {
       chatState = 'i_must_approve';
     } 
-    // Kalau gue ngirim pesan ke dia, dia belom balas, dan DIA GA FOLLOW GUE
     else if (myRawMsgs.length > 0 && partnerRawMsgs.length === 0 && !relation.theyFollowMe) {
       chatState = 'i_am_blocked_by_request';
     }
@@ -603,7 +626,9 @@ export default function ChatArea() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        
+        @keyframes hypeSpin {
+          100% { transform: rotate(360deg); }
+        }
         .call-floating-popup {
           position: fixed;
           top: max(env(safe-area-inset-top, 20px), 20px);
@@ -710,42 +735,13 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* UI DOUBLE TAP REACTION POPUP */}
-      {reactionMenu && (
-        <div className="custom-modal-overlay" onClick={() => setReactionMenu(null)} style={{ zIndex: 100000, background: 'transparent' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            position: 'absolute', 
-            top: Math.max(10, reactionMenu.y - 70), 
-            left: Math.max(10, Math.min(reactionMenu.x - 100, typeof window !== 'undefined' ? window.innerWidth - 220 : 0)),
-            background: 'var(--bg-panel)', 
-            padding: '10px 16px', 
-            borderRadius: '30px', 
-            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-            display: 'flex', 
-            gap: '15px', 
-            border: '1px solid var(--border-color)', 
-            animation: 'hype-pop 0.2s ease'
-          }}>
-            {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-              <span 
-                key={emoji} 
-                style={{ fontSize: '24px', cursor: 'pointer', transition: 'transform 0.2s' }} 
-                onClick={() => handleSendReaction(reactionMenu.id, emoji)}
-              >
-                {emoji}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* MENU OPSI PESAN */}
       {msgOptions && (
         <div className="custom-modal-overlay" onClick={() => setMsgOptions(null)}>
           <div className="custom-modal-content" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '24px 24px 0 0' }}>
             <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', textAlign: 'center' }}>Opsi Pesan</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {msgOptions.user_id === currentUser?.id && !msgOptions.audio_url && !msgOptions.sticker_url && msgOptions.message !== 'Pesan ini telah dihapus' && (
+              {msgOptions.user_id === currentUser?.id && !msgOptions.audio_url && !msgOptions.image_url && !msgOptions.sticker_url && msgOptions.message !== 'Pesan ini telah dihapus' && (
                 <button onClick={() => { setEditMessageId(msgOptions.id); setInputValue(msgOptions.message); setMsgOptions(null); }} style={{ padding: '14px', background: 'var(--bg-main)', border: `1px solid var(--primary-blue)`, borderRadius: '12px', fontWeight: 600, color: 'var(--primary-blue)' }}>
                   Edit Pesan
                 </button>
@@ -837,7 +833,6 @@ export default function ChatArea() {
           </div>
         </div>
         <div className="header-right">
-          {/* 🔥 LOGIKA TOMBOL TELPON DIMATIKAN SEMENTARA KALAU BELUM DI-ACC 🔥 */}
           {targetId ? (
             <button 
               className="btn-call" 
@@ -879,13 +874,12 @@ export default function ChatArea() {
               <MessageBubble 
                 key={msg.id} 
                 msg={msg} 
+                currentUser={currentUser} /* DIPERLUKAN OLEH MESSAGE BUBBLE */
                 isMe={msg.user_id === currentUser?.id} 
                 onReply={setReplyTo} 
-                onReaction={(m:any, touch:any) => setReactionMenu({ id: m.id, x: touch.clientX, y: touch.clientY })} 
                 onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
               />
             ))}
-            {/* BUBBLE TYPING INDICATOR MUNCUL DI BAWAH CHAT */}
             {typingUser && (
               <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
                 {(roomId === 'room-1' || roomId.startsWith('group_')) && (
@@ -906,9 +900,6 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
-      {/* ==========================================
-          🔥 LOGIKA RENDER FOOTER INPUT/REQUEST 🔥
-          ========================================== */}
       <footer className="chat-input-container">
         {chatState === 'i_must_approve' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
@@ -977,7 +968,24 @@ export default function ChatArea() {
                     </div>
                   ) : (
                     <>
-                      <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
+                      <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
+                      
+                      <button 
+                        onClick={handlePhotoClick} 
+                        disabled={isUploadingImg} 
+                        style={{ border: 'none', background: 'transparent', padding: '8px', color: isUploadingImg ? 'var(--text-muted)' : 'var(--text-color)', cursor: 'pointer', position: 'relative' }}
+                      >
+                        {isUploadingImg ? (
+                          <span className="material-icons" style={{ animation: 'hypeSpin 1s linear infinite' }}>autorenew</span>
+                        ) : (
+                          <span className="material-icons">image</span>
+                        )}
+                        {(!myProfile || !['verified', 'vip', 'admin', 'developer', 'creator'].includes(myProfile?.role?.toLowerCase())) && (
+                          <span className="material-icons" style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '10px', background: '#ff4757', color: 'white', borderRadius: '50%', padding: '2px' }}>lock</span>
+                        )}
+                      </button>
+                      <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoUpload} />
+
                       <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 0', fontSize: '15px' }} />
                     </>
                   )}

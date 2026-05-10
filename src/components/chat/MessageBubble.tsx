@@ -16,6 +16,16 @@ export const getStatusIcon = (status: string) => {
   return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
+// 🔥 OPTIMASI GAMBAR CLOUDINARY 🔥
+const getOptimizedImage = (url: string) => {
+  if (!url) return '';
+  let cleanUrl = url.trim();
+  if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
+    return cleanUrl.replace('/image/upload/', '/image/upload/w_600,c_limit,f_auto,q_auto/');
+  }
+  return cleanUrl;
+};
+
 export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete }: any) {
   const { t } = useTranslation(); 
   const router = useRouter(); 
@@ -28,13 +38,14 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
 
   const isDeleted = msg.message === "Pesan ini telah dihapus";
   
-  // Deteksi Ruang Obrolan Eksplisit
+  // Deteksi Ruang Obrolan
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
-  
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
+  
+  // Deteksi Tipe Khusus
+  const isStoryReply = msg.message && msg.message.includes("Membalas ceritamu");
 
-  // State handle data reply hasil realtime
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
 
   useEffect(() => {
@@ -67,9 +78,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   useEffect(() => {
     setTimeout(() => {
         const chatContainer = document.querySelector('.chat-messages');
-        if(chatContainer) {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+        if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
     }, 150);
   }, []);
 
@@ -103,8 +112,8 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const handleTouchEnd = (e: React.TouchEvent) => {
     clearTimeout(holdTimer.current);
     let diff = touchCurrentX.current - touchStartX.current;
-
     const now = Date.now();
+    
     if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted) {
       onReaction(msg, e.changedTouches ? e.changedTouches[0] : (e as any));
     }
@@ -123,9 +132,7 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    if (!isDeleted) {
-      onReaction(msg, { clientX: e.clientX, clientY: e.clientY });
-    }
+    if (!isDeleted) onReaction(msg, { clientX: e.clientX, clientY: e.clientY });
   };
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -148,17 +155,14 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
   const displayMessage = isDeleted ? t('msg_deleted') : msg.message;
   const wavePattern = [35, 60, 100, 75, 45, 80, 100, 60, 40, 85, 50, 30];
 
-  const handleStickerClick = async (url: string) => {
-    if (msg.message && msg.message.includes("Membalas ceritamu")) {
-      try {
-        const { data } = await supabase.from('stories').select('id').eq('image_url', url).maybeSingle();
-        if (data && data.id) {
-          router.push(`/story/${data.id}`);
-          return;
-        }
-      } catch (err) {
-        console.error(err);
+  const handleStoryClick = async (url: string) => {
+    try {
+      const { data } = await supabase.from('stories').select('id').eq('image_url', url).maybeSingle();
+      if (data && data.id) {
+        router.push(`/story/${data.id}`);
       }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -175,17 +179,18 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
         style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
       >
         {msg.is_system ? (
+          // 🔥 FIX 1: HAPUS BOX SHADOW DI PESAN SISTEM (Memanggil, Ditolak, dll) 🔥
           <div 
             className="system-text" 
             style={{ 
-              background: 'var(--bg-card, rgba(0, 0, 0, 0.4))', 
+              background: 'rgba(0, 0, 0, 0.3)', 
               color: 'var(--text-main, #ffffff)', 
-              padding: '6px 16px', 
+              padding: '6px 14px', 
               borderRadius: '20px', 
-              fontSize: '12px', 
+              fontSize: '11px', 
               fontWeight: 600,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              border: '1px solid var(--border-color, rgba(255,255,255,0.1))',
+              boxShadow: 'none', 
+              border: 'none', 
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -194,13 +199,11 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               textAlign: 'center'
             }}
           >
-            {/* Tambahin Icon Telepon Kecil biar makin jelas */}
             {(displayMessage.includes("Memanggil") || displayMessage.includes("Panggilan") || displayMessage.includes("terjawab") || displayMessage.includes("dibatalkan")) && (
                <span className="material-icons" style={{ fontSize: '14px', color: displayMessage.includes("ditolak") || displayMessage.includes("tak") ? '#ff4757' : '#2ecc71' }}>
                  {displayMessage.includes("ditolak") || displayMessage.includes("tak") ? 'call_missed' : 'phone_in_talk'}
                </span>
             )}
-            {/* 🔥 FIX 1: Potong emoji bawaan database biar gak dobel 🔥 */}
             {displayMessage.replace(/📞/g, '').replace(/🎤/g, '').trim()}
           </div>
         ) : (
@@ -216,12 +219,13 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
               />
             )}
             
-            <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0 }}>
+            <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '10px 14px' }}>
               
               {showUserDetail && (
                 <div style={{
                   fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', 
-                  marginBottom: '2px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px'
+                  marginBottom: '4px', marginLeft: '6px', display: 'flex', alignItems: 'center', gap: '4px',
+                  marginTop: (msg.image_url || msg.sticker_url) ? '4px' : '0'
                 }}>
                   {msg.profiles?.username || 'User'} 
                   <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
@@ -232,46 +236,73 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 <div 
                   className="reply-preview-in-chat" 
                   onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}
+                  style={{
+                    marginLeft: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0',
+                    marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0'
+                  }}
                 >
                   <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
                 </div>
               )}
 
-              {msg.sticker_url && (
-                <div 
-                  style={{ 
-                    cursor: msg.message?.includes("Membalas ceritamu") ? 'pointer' : 'default',
-                    position: 'relative'
-                  }}
-                  onClick={() => handleStickerClick(msg.sticker_url)}
-                >
-                  <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: msg.message && !msg.message.includes("Stiker") ? '6px' : '0' }} />
-                  
-                  {msg.message?.includes("Membalas ceritamu") && (
-                    <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span className="material-icons" style={{ fontSize: '14px', color: 'white' }}>open_in_new</span>
-                    </div>
-                  )}
+              {/* RENDER FOTO (IMAGE_URL) */}
+              {msg.image_url && !isDeleted && (
+                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: msg.message && !msg.message.includes("Mengirim Foto") ? '6px' : '0' }}>
+                  <img 
+                    src={getOptimizedImage(msg.image_url)} 
+                    alt="Foto Kiriman" 
+                    style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: 'auto', height: 'auto', objectFit: 'cover' }} 
+                  />
                 </div>
               )}
 
-              {/* 🔥 FIX 2: RENDER TEKS (Kecuali VN dan Stiker) 🔥 */}
-              {(!msg.sticker_url && !msg.audio_url) || (msg.message && !msg.message.includes("Stiker") && !msg.message.includes("Voice Note")) ? (
+              {/* 🔥 FIX 2: RENDER KHUSUS BALASAN STORY 🔥 */}
+              {isStoryReply && msg.sticker_url && !isDeleted ? (
+                <div 
+                  className="story-reply-card"
+                  onClick={() => handleStoryClick(msg.sticker_url)}
+                  style={{ 
+                    cursor: 'pointer', background: 'rgba(0,0,0,0.2)', padding: '6px', 
+                    borderRadius: '12px', display: 'flex', gap: '10px', alignItems: 'center',
+                    marginBottom: '6px', border: '1px solid rgba(255,255,255,0.1)'
+                  }}
+                >
+                  <div style={{ position: 'relative', width: '50px', height: '70px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                     <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                     <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '30px', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}></div>
+                     <span className="material-icons" style={{ position: 'absolute', bottom: '4px', left: '50%', transform: 'translateX(-50%)', fontSize: '14px', color: 'white' }}>slow_motion_video</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, fontStyle: 'italic' }}>
+                    Membalas Cerita...
+                  </div>
+                </div>
+              ) : (
+                /* RENDER STIKER BIASA */
+                msg.sticker_url && !isDeleted && (
+                  <div style={{ position: 'relative' }}>
+                    <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: msg.message && !msg.message.includes("Stiker") ? '6px' : '0' }} />
+                  </div>
+                )
+              )}
+
+              {/* RENDER TEKS */}
+              {(!msg.sticker_url && !msg.audio_url && !msg.image_url) || (msg.message && !msg.message.includes("Stiker") && !msg.message.includes("Voice Note") && !msg.message.includes("Mengirim Foto") && !msg.message.includes("Membalas ceritamu")) ? (
                 <div 
                   className={`text ${isDeleted ? "deleted" : ""}`} 
                   style={{ 
                     fontStyle: isDeleted ? 'italic' : 'normal',
                     opacity: isDeleted ? 0.7 : 1,
-                    whiteSpace: 'pre-wrap' 
+                    whiteSpace: 'pre-wrap',
+                    padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0'
                   }}
                 >
                   {displayMessage}
                 </div>
               ) : null}
 
-              {/* 🔥 FIX 3: RENDER VN DENGAN TULISAN "VN" DI KANAN 🔥 */}
-              {msg.audio_url && (
-                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: msg.sticker_url || (msg.message && !msg.message.includes("Voice Note")) ? '6px' : '0', display: 'flex', alignItems: 'center' }}>
+              {/* RENDER VN */}
+              {msg.audio_url && !isDeleted && (
+                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: msg.sticker_url || msg.image_url || (msg.message && !msg.message.includes("Voice Note")) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || msg.sticker_url) ? '0 6px' : '0' }}>
                   <button onClick={toggleVN} className="vn-play-btn">
                     {isPlaying ? (
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -296,13 +327,18 @@ export default function MessageBubble({ msg, isMe, onReply, onReaction, onDelete
                 </div>
               )}
 
+              {/* RENDER REACTION EMOJI */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                <div className="message-reactions">
+                <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '-12px' : '-16px' }}>
                   {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
                 </div>
               )}
               
-              <div className="message-info">
+              {/* TIMESTAMP & STATUS BACA */}
+              <div className="message-info" style={{ 
+                paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0',
+                paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0'
+              }}>
                 <span className="timestamp">
                   {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
                 </span>

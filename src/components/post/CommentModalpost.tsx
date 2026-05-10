@@ -30,7 +30,6 @@ export default function CommentModalpost() {
   
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyToUsername, setReplyToUsername] = useState<string | null>(null);
-  // 🔥 FIX NOTIFIKASI: Tambahin state buat nyimpen ID user yang dibalas 🔥
   const [replyToUserId, setReplyToUserId] = useState<string | null>(null); 
   
   const [inputValue, setInputValue] = useState("");
@@ -162,7 +161,7 @@ export default function CommentModalpost() {
     document.body.style.overflow = "";
     setReplyToId(null);
     setReplyToUsername(null);
-    setReplyToUserId(null); // Reset
+    setReplyToUserId(null);
     setInputValue("");
     setShowMentions(false);
     setIsActionSheetOpen(false);
@@ -234,30 +233,40 @@ export default function CommentModalpost() {
     inputRef.current.focus();
   };
 
-  // 🔥 FIX NOTIFIKASI: PEMISAHAN LOGIKA REPLY VS MENTION 🔥
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim() && !isSubmitting && !showMentions) {
       e.preventDefault();
       if (!currentPostId) return;
 
-      setIsSubmitting(true);
-      const content = inputValue.trim();
+      let finalContent = inputValue.trim();
       const parentId = replyToId;
       const targetUser = replyToUsername;
-      const targetUserId = replyToUserId; // ID orang yg dibalas
+      const targetUserId = replyToUserId;
+
+      // 🔥 FIX 1: HAPUS @USERNAME DARI AWAL INPUTAN BIAR GAK DOUBLE 🔥
+      // Kalau kita lagi nge-reply, dan teks diawali dengan @namatarget, potong aja!
+      if (targetUser && finalContent.startsWith(`@${targetUser}`)) {
+        finalContent = finalContent.replace(`@${targetUser}`, '').trim();
+      }
+
+      // Kalau setelah dihapus ternyata kosong (user cuma nekan enter tanpa nulis pesan), batalin!
+      if (!finalContent) {
+        return;
+      }
+
+      setIsSubmitting(true);
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
         const userId = session.user.id;
-
         const pid = parseInt(currentPostId);
         
-        // 1. Insert Komentar
+        // 1. Insert Komentar (Pake finalContent yang udah bersih)
         const { data: newComment, error } = await supabase.from("comments").insert({
           post_id: pid,
           user_id: userId,
-          content: content,
+          content: finalContent, 
           parent_id: parentId ? parseInt(parentId) : null,
           reply_to_username: targetUser || null
         }).select('*, profiles(id, username, avatar_url, role)').single();
@@ -266,18 +275,18 @@ export default function CommentModalpost() {
         
         const { data: myProf } = await supabase.from("profiles").select("username").eq("id", userId).single();
 
-        // 2. Notif "Reply" (Balasan Komentar)
+        // 2. Notif "Reply"
         if (targetUserId && targetUserId !== userId) {
           await supabase.from("notifications").insert({
             user_id: targetUserId,
             actor_id: userId,
             post_id: pid,
-            type: "reply", // Tipe khusus buat balasan
+            type: "reply",
             message: `${myProf?.username} membalas komentar Anda.`
           });
         }
 
-        // 3. Notif "Comment" (Komentar di Postingan - Jangan double kalau dia yg dibalas)
+        // 3. Notif "Comment" di Post
         if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
           await supabase.from("notifications").insert({
             user_id: currentCreatorId,
@@ -288,9 +297,8 @@ export default function CommentModalpost() {
           });
         }
 
-        // 4. Notif "Mention/Tag" (Pisahin user yang cuma di-tag)
-        const mentionedUsernames = [...new Set((content.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
-        // Hapus user yang dibalas dari daftar mention biar gak dapet 2 notif
+        // 4. Notif "Mention/Tag"
+        const mentionedUsernames = [...new Set((finalContent.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         const pureMentions = mentionedUsernames.filter(u => u !== targetUser); 
         
         if (pureMentions.length > 0) {
@@ -303,7 +311,7 @@ export default function CommentModalpost() {
                 user_id: u.id,
                 actor_id: userId,
                 post_id: pid,
-                type: "mention", // Tipe khusus buat Tag
+                type: "mention", 
                 message: `${myProf?.username} menyebut Anda dalam komentar.`
               }));
             
@@ -436,8 +444,8 @@ export default function CommentModalpost() {
           <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
         </div>
         
-        {/* 🔥 FIX ALIGNMENT LIKE: Kunci di kanan atas pake position absolute 🔥 */}
-        <div className="comment-right" style={{ flex: 1, paddingRight: '45px', position: 'relative' }}>
+        {/* 🔥 FIX 2: CONTAINER TEKS FLEKSIBEL BIAR LIKE BUTTON BISA DITARUH DI LUARNYA 🔥 */}
+        <div className="comment-right" style={{ flex: 1, minWidth: 0 }}>
           
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/data?id=${p?.id}`}>
@@ -466,7 +474,7 @@ export default function CommentModalpost() {
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
-                  setReplyToUserId(p?.id); // 🔥 Simpan ID user yg dibalas
+                  setReplyToUserId(p?.id); 
                   setInputValue(`@${p?.username} `);
                   inputRef.current?.focus();
               }}>
@@ -474,37 +482,37 @@ export default function CommentModalpost() {
               </span>
             )}
           </div>
-
-          {/* 🔥 POSISI LIKE DIKUNCI DI POJOK KANAN (Sejajar Sempurna) 🔥 */}
-          <div 
-            className="comment-like-box" 
-            onClick={() => handleLikeComment(String(comment.id))}
-            style={{ 
-              position: 'absolute', 
-              right: '0', 
-              top: '0', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              gap: '2px',
-              padding: '4px'
-            }}
-          >
-            <svg 
-              viewBox="0 0 24 24" 
-              className={`heart-icon ${isCommentLiked ? 'active' : ''}`}
-              style={{ width: '16px', height: '16px', color: isCommentLiked ? '#ff4757' : '#9ca3af', transition: '0.2s' }}
-            >
-              <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z" />
-            </svg>
-            {(comment.likes_count > 0) && (
-              <span className="comment-like-count" style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>
-                {comment.likes_count}
-              </span>
-            )}
-          </div>
-
         </div>
+
+        {/* 🔥 FIX 2: POSISI LIKE DIKUNCI DI CONTAINER TERSENDIRI BIAR RATA KANAN SEMPURNA 🔥 */}
+        <div 
+          className="comment-like-box" 
+          onClick={() => handleLikeComment(String(comment.id))}
+          style={{ 
+            width: '35px', 
+            flexShrink: 0, /* Biar lebarnya ga nyusut */
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'flex-start',
+            gap: '2px',
+            paddingTop: '2px'
+          }}
+        >
+          <svg 
+            viewBox="0 0 24 24" 
+            className={`heart-icon ${isCommentLiked ? 'active' : ''}`}
+            style={{ width: '15px', height: '15px', color: isCommentLiked ? '#ff4757' : '#9ca3af', transition: '0.2s' }}
+          >
+            <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z" />
+          </svg>
+          {(comment.likes_count > 0) && (
+            <span className="comment-like-count" style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600', marginTop: '2px' }}>
+              {comment.likes_count}
+            </span>
+          )}
+        </div>
+
       </div>
     );
   };
