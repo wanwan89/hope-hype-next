@@ -513,7 +513,7 @@ function ProfileContent() {
           </div>
           
           <h1 className="profile-name">{profile.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} /></h1>
-          <p className="profile-username">@{profile.username.toLowerCase().replace(/\s/g, '')}</p>
+<p className="profile-username">@{(profile.username || 'user').toLowerCase().replace(/\s/g, '')}</p>
 
           <div className="profile-stats">
             <div className="stat-box" onClick={() => handleOpenFollowModal('followers')}><span className="stat-num">{stats.followers}</span><span className="stat-label">{t('followers', 'Pengikut')}</span></div>
@@ -711,7 +711,8 @@ function ProfileContent() {
                     <img src={user.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
                     <div className="follow-item-info">
                        <span className="follow-username">{user.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) }} /></span>
-                       <span className="follow-handle">@{user.username.toLowerCase().replace(/\s/g, '')}</span>
+<span className="follow-handle">@{(user.username || 'user').toLowerCase().replace(/\s/g, '')}</span>
+
                     </div>
                     <span className="material-icons" style={{color: '#8a8b91'}}>chevron_right</span>
                  </div>
