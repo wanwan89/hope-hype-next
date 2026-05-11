@@ -9,10 +9,10 @@ import './MessageBubble.css';
 
 export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{fontSize: '10px', opacity: 0.6}}>🕒</span>;
-  if (status === 'sent') return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
-  if (status === 'delivered') return <span className="status-icon delivered" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
-  if (status === 'read') return <span className="status-icon read" style={{color: '#4fc3f7'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
-  return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
+  if (status === 'sent') return <span className="status-icon sent" style={{color: 'rgba(255,255,255,0.7)'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  if (status === 'delivered') return <span className="status-icon delivered" style={{color: 'rgba(255,255,255,0.7)'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M2 13l4 4L16 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 13l4 4L22 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  if (status === 'read') return <span className="status-icon read" style={{color: '#4fc3f7'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M2 13l4 4L16 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 13l4 4L22 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  return <span className="status-icon sent" style={{color: 'rgba(255,255,255,0.7)'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
 const getOptimizedImage = (url: string) => {
@@ -37,7 +37,7 @@ const renderTextWithLinks = (text: string) => {
           href={part} 
           target="_blank" 
           rel="noopener noreferrer" 
-          style={{ color: '#1DA1F2', textDecoration: 'underline', wordBreak: 'break-all' }}
+          style={{ color: 'inherit', textDecoration: 'underline', wordBreak: 'break-all', opacity: 0.9 }}
           onClick={(e) => e.stopPropagation()} 
         >
           {part}
@@ -83,7 +83,6 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
     }
   }, [msg?.reply_to, msg?.reply_to_msg, liveReply]);
 
-  // 🔥 RENDER ANIMASI MENGETIK (Jika isTyping = true) 🔥
   if (isTyping && typingUser) {
     const showUserDetailTyping = roomId === 'room-1' || roomId?.startsWith('group_');
     return (
@@ -202,7 +201,7 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
-  const isPlaceholder = [" Mengirim Foto", " Stiker", "Voice Note"].includes(cleanMsg);
+  const isPlaceholder = [" Mengirim Foto", " Stiker", "Voice Note", "🎤 Voice Note", "📸 Mengirim Foto", "🎨 Stiker"].includes(cleanMsg);
   const shouldShowText = cleanMsg && (!isPlaceholder || isDeleted);
 
   const wavePattern = [35, 60, 100, 75, 45, 80, 100, 60, 40, 85, 50, 30];
@@ -256,14 +255,14 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
           <div 
             className="system-text" 
             style={{ 
-              background: 'rgba(0, 0, 0, 0.3)', 
-              color: 'var(--text-main, #ffffff)', 
+              background: 'rgba(0, 0, 0, 0.05)', 
+              color: 'var(--text-muted)', 
               padding: '6px 14px', 
               borderRadius: '20px', 
               fontSize: '11px', 
               fontWeight: 600,
               boxShadow: 'none', 
-              border: 'none', 
+              border: '1px solid var(--border-color)', 
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -272,13 +271,15 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
               textAlign: 'center'
             }}
           >
-            {/* 🔥 ICON SISTEM HANYA MENGGUNAKAN MATERIAL ICONS 🔥 */}
             {(msg.message.includes("Memanggil") || msg.message.includes("Panggilan") || msg.message.includes("terjawab") || msg.message.includes("dibatalkan") || msg.message.includes("ditolak")) && (
-               <span className="material-icons" style={{ fontSize: '14px', color: msg.message.includes("ditolak") || msg.message.includes("tak") ? '#ff4757' : '#2ecc71' }}>
-                 {msg.message.includes("ditolak") || msg.message.includes("tak") ? 'call_missed' : 'phone_in_talk'}
-               </span>
+               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke={msg.message.includes("ditolak") || msg.message.includes("tak") ? '#ff4757' : '#2ecc71'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                 {msg.message.includes("ditolak") || msg.message.includes("tak") ? (
+                   <path d="M16 4L22 10M16 10L22 4M2 13.9C3.6 11.2 6.5 9 10 9c3.5 0 6.4 2.2 8 4.9"/>
+                 ) : (
+                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                 )}
+               </svg>
             )}
-            {/* Teks tanpa emoji, hapus 📞 dan 🎤 jika ada */}
             {msg.message.replace(/📞/g, '').replace(/🎤/g, '').trim()}
           </div>
         ) : (
@@ -300,18 +301,17 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
               flexDirection: 'column', 
               width: 'fit-content', 
               minWidth: 0, 
-              padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px',
-              background: isMe ? '#1f3cff' : 'var(--bg-panel)', // 🔥 WARNA BIRU UNTUK PESAN SENDIRI 🔥
+              padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '8px 12px',
+              background: isMe ? 'var(--primary-blue)' : 'var(--bg-panel)',
               color: isMe ? 'white' : 'var(--text-color)',
-              borderRadius: '14px',
+              borderRadius: '16px',
               border: isMe ? 'none' : '1px solid var(--border-color)',
-              boxShadow: isMe ? '0 2px 8px rgba(31, 60, 255, 0.3)' : 'none'
             }}>
               
               {showUserDetail && (
                 <div style={{
                   fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', 
-                  marginBottom: '4px', marginLeft: '6px', display: 'flex', alignItems: 'center', gap: '4px',
+                  marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px',
                   marginTop: (msg.image_url || msg.sticker_url) ? '4px' : '0'
                 }}>
                   {msg.profiles?.username || 'User'} 
@@ -325,10 +325,11 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
                   onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}
                   style={{
                     marginLeft: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0',
-                    marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0'
+                    marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0',
+                    color: isMe ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'
                   }}
                 >
-                  <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
+                  <b style={{color: isMe ? 'white' : 'var(--primary-blue)'}}>{liveReply.username}</b>: {liveReply.message || t('media_label')}
                 </div>
               )}
 
@@ -363,7 +364,7 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
               ) : (
                 msg.sticker_url && !isDeleted && !isStoryReply && (
                   <div style={{ position: 'relative' }}>
-                    <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0' }} />
+                    <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0', background: 'transparent' }} />
                   </div>
                 )
               )}
@@ -377,28 +378,31 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
                     whiteSpace: 'pre-wrap',
                     padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0',
                     wordBreak: 'break-word',
-                    color: isMe ? 'white' : 'inherit'
+                    color: isMe ? 'white' : 'inherit',
+                    textShadow: 'none' // 🔥 FIX BAYANGAN TEKS DIHAPUS 🔥
                   }}
                 >
                   {isDeleted ? t('msg_deleted') : renderTextWithLinks(cleanMsg)}
                 </div>
               )}
 
+              {/* 🔥 TAMPILAN VN ELEGAN 🔥 */}
               {msg.audio_url && !isDeleted && (
                 <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0' }}>
-                  <button onClick={toggleVN} className="vn-play-btn">
+                  <button onClick={toggleVN} className="vn-play-btn" style={{ background: isMe ? 'rgba(255,255,255,0.2)' : 'var(--primary-blue)' }}>
                     {isPlaying ? (
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill={isMe ? "white" : "white"}><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     ) : (
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill={isMe ? "white" : "white"} style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
                     )}
                   </button>
-                  <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '20px', flex: 1 }}>
+                  <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '20px', flex: 1, opacity: isMe ? 0.9 : 1 }}>
                     {wavePattern.map((heightPercent, i) => (
-                      <span key={i} className="bar" style={{ height: `${heightPercent}%`, animationDelay: `${i * 0.1}s`, transition: 'height 0.2s ease' }}></span>
+                      <span key={i} className="bar" style={{ height: `${heightPercent}%`, animationDelay: `${i * 0.1}s`, transition: 'height 0.2s ease', background: isMe ? 'white' : 'var(--primary-blue)' }}></span>
                     ))}
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: isMe ? 'white' : 'var(--text-muted, #8e8e93)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
+                  {/* 🔥 TEKS VN AJA, HAPUS "VOICE NOTE" 🔥 */}
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: isMe ? 'rgba(255,255,255,0.8)' : 'var(--primary-blue)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
                 </div>
               )}
 
@@ -410,7 +414,7 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
                     bottom: '-12px',
                     [isMe ? 'right' : 'left']: '16px',
                     background: 'var(--bg-modal, #ffffff)',
-                    border: '1px solid var(--border-card, #e4e6eb)',
+                    border: '1px solid var(--border-color)',
                     borderRadius: '12px',
                     padding: '2px 6px',
                     display: 'flex',

@@ -45,6 +45,10 @@ export default function Gallerypost() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
 
+  // 🔥 STATE & REF UNTUK MUTE/UNMUTE GLOBAL 🔥
+  const [isGloballyMuted, setIsGloballyMuted] = useState(true);
+  const isMutedRef = useRef(true);
+
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
       const postId = String(e.detail.postId);
@@ -313,11 +317,20 @@ export default function Gallerypost() {
     }
   };
 
-  const initAutoPlayObserver = () => {
-    let userHasInteracted = false;
-    const handleFirstInteract = () => { userHasInteracted = true; document.body.removeEventListener('click', handleFirstInteract); };
-    document.body.addEventListener('click', handleFirstInteract, { once: true });
+  // 🔥 FUNGSI ON/OFF SUARA GLOBAL 🔥
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextMuted = !isGloballyMuted;
+    setIsGloballyMuted(nextMuted);
+    isMutedRef.current = nextMuted;
 
+    // Terapkan ke semua elemen audio & video yang lagi jalan
+    document.querySelectorAll('.post-audio-element, .post-video-element').forEach((el: any) => {
+      el.muted = nextMuted;
+    });
+  };
+
+  const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
 
     observerRef.current = new IntersectionObserver((entries) => {
@@ -328,11 +341,11 @@ export default function Gallerypost() {
         if (entry.isIntersecting) {
           if (audio) {
             document.querySelectorAll('.post-audio-element').forEach(el => { 
-              if (el !== audio) { (el as HTMLAudioElement).pause(); (el as HTMLAudioElement).muted = true; }
+              if (el !== audio) { (el as HTMLAudioElement).pause(); }
             });
             audio.currentTime = 0;
             audio.volume = 1.0;
-            audio.muted = !userHasInteracted;
+            audio.muted = isMutedRef.current; // 🔥 Ambil dari state mute
             audio.play().catch(() => {});
           }
 
@@ -340,7 +353,7 @@ export default function Gallerypost() {
             document.querySelectorAll('.post-video-element').forEach(el => { 
               if (el !== video) { (el as HTMLVideoElement).pause(); }
             });
-            video.muted = !userHasInteracted;
+            video.muted = isMutedRef.current; // 🔥 Ambil dari state mute
             video.play().catch(() => {});
           }
 
@@ -369,7 +382,9 @@ export default function Gallerypost() {
           position: isOverlay ? 'absolute' : 'relative',
           top: isOverlay ? '12px' : 'auto',
           left: isOverlay ? '12px' : 'auto',
-          maxWidth: isOverlay ? '130px' : '100%', 
+          // 🔥 FIX: DIBATASI 220px BIAR GAK LEBAR UNTUK POSTINGAN TEKS 🔥
+          maxWidth: isOverlay ? '130px' : '220px', 
+          width: isOverlay ? 'auto' : 'fit-content',
           zIndex: 5, 
           background: isOverlay ? 'rgba(0,0,0,0.5)' : 'var(--bg-secondary)',
           backdropFilter: isOverlay ? 'blur(8px)' : 'none',
@@ -434,7 +449,6 @@ export default function Gallerypost() {
 
   const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
-      {/* 🔥 FIX 1: Tombol Save (Bookmark) diubah menjadi biru HypeTalk (#1f3cff) 🔥 */}
       <button 
         className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
         onClick={() => handleSave(postIdStr)} 
@@ -564,6 +578,38 @@ export default function Gallerypost() {
                         )}
                       </div>
 
+                      {/* 🔥 TOMBOL MUTE / UNMUTE (KIRI BAWAH) 🔥 */}
+                      {(post.audio_src || isVideoPost) && (
+                        <button
+                          onClick={toggleMute}
+                          style={{
+                            position: 'absolute',
+                            bottom: '12px',
+                            left: '12px',
+                            zIndex: 15,
+                            background: 'rgba(0,0,0,0.6)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'white',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <span className="material-icons" style={{ fontSize: '18px' }}>
+                            {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                          </span>
+                        </button>
+                      )}
+
                       <div className="photo-carousel" onScroll={(e) => {
                           const target = e.target as HTMLDivElement;
                           const index = Math.round(target.scrollLeft / target.offsetWidth);
@@ -599,7 +645,6 @@ export default function Gallerypost() {
                         )}
                       </div>
 
-                      {/* 🔥 FIX 2: Z-INDEX DOT DITURUNKAN JADI 10 🔥 */}
                       {photoList.length > 1 && !isVideoPost && (
                         <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 10 }}>
                           {photoList.map((_: any, i: number) => (
@@ -659,7 +704,35 @@ export default function Gallerypost() {
                       {renderBioWithMentions(post.bio?.trim())}
                     </div>
                     
-                    {post.audio_src && <div style={{ position: 'relative', height: '40px', marginTop: '10px' }}>{getMusicHtml(post, false)}</div>}
+                    {post.audio_src && (
+                      <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {getMusicHtml(post, false)}
+                        {/* 🔥 TOMBOL SPEAKER UNTUK POSTINGAN TEKS SAJA 🔥 */}
+                        <button
+                          onClick={toggleMute}
+                          style={{
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-card)',
+                            color: 'var(--text-main)',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <span className="material-icons" style={{ fontSize: '18px' }}>
+                            {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
                     <div className="actions" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px', paddingTop: '12px' }}>
                       <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_profile_link')}</a>
                       {renderEngagementButtons(post, postIdStr)}

@@ -297,7 +297,19 @@ export default function ChatArea() {
       .subscribe(async (s) => { if (s === 'SUBSCRIBED') await refs.presenceChannel.current.track({ user_id: user.id, online: true }); });
   };
 
-  const scrollToBottom = () => setTimeout(() => refs.scroll.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+  // 🔥 FIX 1: Tambah opsi buat scroll instan atau mulus 🔥
+  const scrollToBottom = (isSmooth = true) => {
+    setTimeout(() => {
+      refs.scroll.current?.scrollIntoView({ behavior: isSmooth ? 'smooth' : 'auto' });
+    }, 150); // Jeda dinaikin dikit biar gambar/bubble selesai kerender
+  };
+
+  // 🔥 FIX 2: Trigger otomatis lompat ke bawah pas chat selesai di-load 🔥
+  useEffect(() => {
+    if (!isLoading) {
+      scrollToBottom(false); // false = langsung lompat tanpa animasi (auto)
+    }
+  }, [isLoading]);
 
   const sendMessage = async (text?: string, sticker?: string, audio?: string, image?: string) => {
     const content = text || inputValue;
