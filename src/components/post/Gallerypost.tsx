@@ -370,7 +370,7 @@ export default function Gallerypost() {
           top: isOverlay ? '12px' : 'auto',
           left: isOverlay ? '12px' : 'auto',
           maxWidth: isOverlay ? '130px' : '100%', 
-          zIndex: 5, // 🔥 FIX: Z-INDEX DITURUNKAN JADI 5 BIAR GAK NEMBUS SEARCH BAR
+          zIndex: 5, 
           background: isOverlay ? 'rgba(0,0,0,0.5)' : 'var(--bg-secondary)',
           backdropFilter: isOverlay ? 'blur(8px)' : 'none',
           borderRadius: '16px',
@@ -434,6 +434,7 @@ export default function Gallerypost() {
 
   const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
+      {/* 🔥 FIX 1: Tombol Save (Bookmark) diubah menjadi biru HypeTalk (#1f3cff) 🔥 */}
       <button 
         className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
         onClick={() => handleSave(postIdStr)} 
@@ -442,7 +443,6 @@ export default function Gallerypost() {
           viewBox="0 0 24 24" 
           className="icon" 
           fill="currentColor"
-          /* 🔥 UBAH WARNA DI SINI JADI BIRU HYPETALK (#1f3cff) 🔥 */
           style={{ color: mySavedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} 
         >
           {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
@@ -451,6 +451,7 @@ export default function Gallerypost() {
           {counts[postIdStr]?.saves || 0}
         </span>
       </button>
+
       <button 
         className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} 
         onClick={() => handleRepost(postIdStr)}
@@ -549,7 +550,6 @@ export default function Gallerypost() {
                     <div className="slider">
                       {getMusicHtml(post, true)}
                       
-                      {/* 🔥 FIX: Z-INDEX BADGE VIDEO & FOTO DITURUNKAN JADI 5 🔥 */}
                       <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 5, display: 'flex', gap: '6px' }}>
                         {isVideoPost && (
                           <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
@@ -599,8 +599,9 @@ export default function Gallerypost() {
                         )}
                       </div>
 
+                      {/* 🔥 FIX 2: Z-INDEX DOT DITURUNKAN JADI 10 🔥 */}
                       {photoList.length > 1 && !isVideoPost && (
-                        <div className={`carousel-dots dots-${post.id}`}>
+                        <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 10 }}>
                           {photoList.map((_: any, i: number) => (
                             <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
                           ))}

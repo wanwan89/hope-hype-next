@@ -31,6 +31,8 @@ export default function CommentModalpost() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  // 🔥 FIX 1: State untuk nampung jumlah like aktual tiap komentar
+  const [commentLikesCount, setCommentLikesCount] = useState<Record<string, number>>({});
   
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
   const [currentCreatorId, setCurrentCreatorId] = useState<string | null>(null);
@@ -146,19 +148,36 @@ export default function CommentModalpost() {
 
   const loadComments = async (postId: string, userId?: string) => {
     setIsLoading(true);
+    // 🔥 FIX 1: Hapus ekspektasi likes_count dari tabel utama, biar kita hitung sendiri real-time
     const { data: commsData } = await supabase.from("comments")
-      .select("id, content, created_at, user_id, parent_id, reply_to_username, likes_count, profiles(id, username, avatar_url, role)")
+      .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
 
     setComments(commsData || []);
 
-    if (userId && commsData) {
+    if (commsData && commsData.length > 0) {
       const commentIds = commsData.map(c => c.id);
-      const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
-      const likedSet = new Set<string>();
-      myLikes?.forEach(l => likedSet.add(String(l.comment_id)));
-      setLikedComments(likedSet);
+      
+      // Mengambil total like dari tabel relasi untuk setiap komentar
+      const { data: allLikesData } = await supabase.from("comment_likes").select("comment_id").in("comment_id", commentIds);
+      
+      const newCounts: Record<string, number> = {};
+      commentIds.forEach(id => newCounts[String(id)] = 0);
+      
+      allLikesData?.forEach(like => {
+        newCounts[String(like.comment_id)] += 1;
+      });
+      
+      setCommentLikesCount(newCounts);
+
+      // Cek apakah user yang lagi login nge-like komentar tsb
+      if (userId) {
+        const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
+        const likedSet = new Set<string>();
+        myLikes?.forEach(l => likedSet.add(String(l.comment_id)));
+        setLikedComments(likedSet);
+      }
     }
     setIsLoading(false);
   };
@@ -174,7 +193,6 @@ export default function CommentModalpost() {
     setIsActionSheetOpen(false);
   };
 
-  // 🔥 TUTUP MODAL PAS KLIK AREA KOSONG 🔥
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) closeModal();
   };
@@ -252,7 +270,6 @@ export default function CommentModalpost() {
 
       let finalContent = inputValue.trim();
 
-      // 🔥 FILTER ANTI KATA KASAR 🔥
       if (containsBadWords(finalContent)) {
         showNotif("Komentar mengandung kata-kata yang tidak pantas!", "warning");
         return;
@@ -329,7 +346,11 @@ export default function CommentModalpost() {
           }
         }
 
-        if (newComment) setComments(prev => [...prev, newComment]);
+        if (newComment) {
+          setComments(prev => [...prev, newComment]);
+          // Jangan lupa set state count jadi 0 buat komentar baru biar nggak undefined
+          setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
+        }
 
         setReplyToId(null);
         setReplyToUsername(null);
@@ -357,15 +378,11 @@ export default function CommentModalpost() {
       return newSet;
     });
 
-    setComments(prevComments => 
-      prevComments.map(c => {
-        if (String(c.id) === commentIdStr) {
-          const newCount = Math.max(0, (c.likes_count || 0) + (isLiked ? -1 : 1));
-          return { ...c, likes_count: newCount };
-        }
-        return c;
-      })
-    );
+    // Update angkanya di state terpisah yang kita buat tadi
+    setCommentLikesCount(prev => ({
+      ...prev,
+      [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) + (isLiked ? -1 : 1))
+    }));
 
     try {
       if (isLiked) {
@@ -414,7 +431,6 @@ export default function CommentModalpost() {
     showNotif("Laporan telah dikirim ke Admin untuk ditinjau.", "info");
   };
 
-  // 🔥 FUNGSI KLIK MENTION 🔥
   const handleMentionClick = async (e: React.MouseEvent, username: string) => {
     e.stopPropagation();
     try {
@@ -447,8 +463,8 @@ export default function CommentModalpost() {
     }
 
     const isCommentLiked = likedComments.has(String(comment.id));
+    const currentLikeCount = commentLikesCount[String(comment.id)] || 0;
     
-    // 🔥 HIGHLIGHT MENTION (Warna Biru + Bisa Diklik) 🔥
     const highlightMentions = (text: string) => {
       const parts = text.split(/(@\w+)/g);
       return parts.map((part, i) => {
@@ -482,7 +498,6 @@ export default function CommentModalpost() {
           <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
         </div>
         
-        {/* CONTAINER TEKS (RATA KIRI, POTONG SISI KANAN BUAT TOMBOL LIKE) */}
         <div className="comment-right" style={{ flex: 1, minWidth: 0, paddingRight: '40px' }}>
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/data?id=${p?.id}`}>
@@ -493,7 +508,6 @@ export default function CommentModalpost() {
           </div>
           
           <div className="comment-text" style={{ wordBreak: 'break-word', marginTop: '2px' }}>
-            {/* 🔥 WARNA KHUSUS UNTUK REPLY TAG (@namauser) 🔥 */}
             {comment.reply_to_username && <span className="reply-tag" style={{ color: '#8e8e93', fontWeight: '600' }}>@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
@@ -522,7 +536,7 @@ export default function CommentModalpost() {
           </div>
         </div>
 
-        {/* 🔥 FIX 1: LIKE BUTTON ABSOLUTE POSISI (RATA KANAN SEMPURNA) 🔥 */}
+        {/* 🔥 FIX 2: ICON LOVE OUTLINE (KOSONG) & SOLID (MERAH) 🔥 */}
         <div 
           className="comment-like-box" 
           onClick={() => handleLikeComment(String(comment.id))}
@@ -539,22 +553,21 @@ export default function CommentModalpost() {
             cursor: 'pointer'
           }}
         >
-          <svg 
-            fill="currentColor"
-            viewBox="0 0 24 24" 
-            className={`heart-icon ${isCommentLiked ? 'active' : ''}`}
-            style={{ 
-              width: '15px', 
-              height: '15px', 
-              color: isCommentLiked ? '#ff4757' : 'var(--text-main, #000)', 
-              transition: '0.2s' 
-            }}
-          >
-            <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z" />
-          </svg>
-          {(comment.likes_count > 0) && (
+          {isCommentLiked ? (
+            /* Icon Hati Merah (Solid) saat dilike */
+            <svg viewBox="0 0 24 24" className="heart-icon active" fill="#ff4757" style={{ width: '15px', height: '15px', transition: '0.2s transform', transform: 'scale(1.1)' }}>
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          ) : (
+            /* Icon Hati Outline (Kosong) saat belum dilike */
+            <svg viewBox="0 0 24 24" className="heart-icon" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '15px', height: '15px', color: 'var(--text-muted, #9ca3af)', transition: '0.2s' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          )}
+
+          {(currentLikeCount > 0) && (
             <span className="comment-like-count" style={{ fontSize: '11px', color: 'var(--text-muted, #9ca3af)', fontWeight: '600', marginTop: '2px' }}>
-              {comment.likes_count}
+              {currentLikeCount}
             </span>
           )}
         </div>
@@ -601,16 +614,9 @@ export default function CommentModalpost() {
         .c-action-btn.danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
         .c-action-btn.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
         .c-action-btn:active { transform: scale(0.96); }
-        
-        /* Pastikan heart-icon bisa transisi warna */
-        .heart-icon {
-          fill: currentColor;
-        }
       `}</style>
 
-      {/* 🔥 FIX 5: OVERLAY KLIK TUTUP (KASIH ONCLICK DI PARENT LUAR) 🔥 */}
       <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick}>
-        {/* Kontainer box-nya dikasih stopPropagation biar pas diklik dalemnya gak nutup modal */}
         <div className="comment-box" onClick={(e) => e.stopPropagation()}>
           <div className="comment-header">
             {t('comments_title')}
@@ -710,7 +716,6 @@ export default function CommentModalpost() {
                 disabled={isSubmitting}
               />
               <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
-                {/* 🔥 FIX 6: WARNA SVG IKUT TEMA (var(--text-main)) 🔥 */}
                 <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
               </button>
             </div>
