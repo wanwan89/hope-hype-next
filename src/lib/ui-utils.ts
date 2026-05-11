@@ -10,7 +10,6 @@ export function getUserBadge(role: string): string {
   let badge = "";
   const roleLower = role.toLowerCase();
 
-  // Badge Developer Pakai SVG Premium
   if (roleLower === "admin") {
     badge += `
       <span class="admin-badge" style="
@@ -112,13 +111,13 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   
   requestAnimationFrame(() => toast!.classList.add("show"));
   
-  const closeBtn = toast.querySelector(".toast-close");
+  // 🔥 FIX TypeScript: Casting ke HTMLElement biar onclick diizinkan 🔥
+  const closeBtn = toast.querySelector(".toast-close") as HTMLElement;
   if (closeBtn) closeBtn.onclick = () => hideToast();
   
   toastTimer = setTimeout(() => hideToast(), 3200);
 }
 
-// 🔥 FUNGSI showNotif HARUS DI-EXPORT 🔥
 export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
   showToast(type === 'error' ? 'Gagal' : type === 'success' ? 'Berhasil' : 'Info', msg, type);
 };
@@ -126,7 +125,6 @@ export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | '
 // =======================
 // IMAGE UTILS (CROPPING)
 // =======================
-// 🔥 FUNGSI getCroppedImg HARUS DI-EXPORT 🔥
 export const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
   const image = new Image();
   image.src = imageSrc;
