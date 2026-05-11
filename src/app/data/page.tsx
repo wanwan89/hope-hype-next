@@ -67,6 +67,7 @@ function ProfileContent() {
   useEffect(() => {
     setIsMounted(true);
     return () => {
+      // Cleanup biar aman saat unmount
       setIsEditModalOpen(false);
       setIsSidebarOpen(false);
       setIsActionSheetOpen(false);
@@ -74,25 +75,42 @@ function ProfileContent() {
   }, []);
 
   useEffect(() => { 
-    if (isMounted) loadProfile(); 
+    // 🔥 FIX: Gunakan variabel isActive biar nge-fetch data aman pas pindah halaman cepet
+    let isComponentActive = true;
+
+    const initLoad = async () => {
+      if (isMounted) await loadProfile(isComponentActive); 
+    }
+    initLoad();
+
+    return () => {
+      isComponentActive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlId, urlUser, isMounted]);
 
   useEffect(() => { 
+    let isComponentActive = true;
+
     if (profile && isMounted && blockStatus === 'none') {
       if (profile.is_private && myId !== profile.id && !isFollowing) {
-        setPosts([]); 
+        if (isComponentActive) setPosts([]); 
       } else {
-        loadPostsTab(activeTab); 
+        loadPostsTab(activeTab, isComponentActive); 
       }
     }
+    
+    return () => {
+      isComponentActive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, profile, isMounted, blockStatus, isFollowing]);
 
-  const loadProfile = async () => {
+  const loadProfile = async (isComponentActive: boolean = true) => {
     try {
       const { data: authData } = await supabase.auth.getUser();
       const currentUserId = authData?.user?.id || null;
+      if (!isComponentActive) return;
       setMyId(currentUserId);
 
       let query = supabase.from('profiles').select('*');
@@ -103,24 +121,27 @@ function ProfileContent() {
 
       const { data: profData, error } = await query.single();
       if (error || !profData) return;
+      if (!isComponentActive) return;
 
       // Cek Status Blokir
       if (currentUserId && currentUserId !== profData.id) {
         const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
-        if (myBlock) setBlockStatus('blocked_by_me');
+        if (myBlock && isComponentActive) setBlockStatus('blocked_by_me');
 
         const { data: theirBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: profData.id, blocked_id: currentUserId }).maybeSingle();
-        if (theirBlock) setBlockStatus('blocking_me');
+        if (theirBlock && isComponentActive) setBlockStatus('blocking_me');
       }
 
-      setProfile(profData);
-      setEditData({
-        username: profData.username || '',
-        bio: profData.bio || '',
-        avatar_url: profData.avatar_url || '',
-        website: profData.website || ''
-      });
-      setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
+      if (isComponentActive) {
+        setProfile(profData);
+        setEditData({
+          username: profData.username || '',
+          bio: profData.bio || '',
+          avatar_url: profData.avatar_url || '',
+          website: profData.website || ''
+        });
+        setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
+      }
       
       const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: stories } = await supabase
@@ -131,16 +152,18 @@ function ProfileContent() {
         .order('created_at', { ascending: true }) 
         .limit(1);
 
-      if (stories && stories.length > 0) {
-        setHasStory(true);
-        setStoryIdToGo(String(stories[0].id)); 
-      } else {
-        setHasStory(false);
-        setStoryIdToGo(null);
+      if (isComponentActive) {
+        if (stories && stories.length > 0) {
+          setHasStory(true);
+          setStoryIdToGo(String(stories[0].id)); 
+        } else {
+          setHasStory(false);
+          setStoryIdToGo(null);
+        }
       }
 
       if (blockStatus === 'none') {
-        updateStats(profData.id, currentUserId);
+        updateStats(profData.id, currentUserId, isComponentActive);
       }
 
     } catch (err) { 
@@ -148,39 +171,48 @@ function ProfileContent() {
     }
   };
 
-  const updateStats = async (targetId: string, currentUserId: string | null) => {
-    const { count: fers } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', targetId);
-    const { count: fing } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', targetId);
-    
-    const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', targetId);
-    let totalLikes = 0;
-    if (myPosts && myPosts.length > 0) {
-        const { count: lks } = await supabase.from('likes').select('*', { count: 'exact', head: true }).in('post_id', myPosts.map(p => p.id));
-        totalLikes = lks || 0;
-    }
-    setStats({ followers: fers || 0, following: fing || 0, likes: totalLikes });
+  const updateStats = async (targetId: string, currentUserId: string | null, isComponentActive: boolean) => {
+    try {
+      const { count: fers } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', targetId);
+      const { count: fing } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', targetId);
+      
+      const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', targetId);
+      let totalLikes = 0;
+      if (myPosts && myPosts.length > 0) {
+          const { count: lks } = await supabase.from('likes').select('*', { count: 'exact', head: true }).in('post_id', myPosts.map(p => p.id));
+          totalLikes = lks || 0;
+      }
+      
+      if (isComponentActive) {
+        setStats({ followers: fers || 0, following: fing || 0, likes: totalLikes });
+      }
 
-    if (currentUserId && currentUserId !== targetId) {
-      const { data: isF } = await supabase.from('followers').select('id').match({ follower_id: currentUserId, following_id: targetId }).maybeSingle();
-      setIsFollowing(!!isF);
+      if (currentUserId && currentUserId !== targetId) {
+        const { data: isF } = await supabase.from('followers').select('id').match({ follower_id: currentUserId, following_id: targetId }).maybeSingle();
+        if (isComponentActive) setIsFollowing(!!isF);
+      }
+    } catch (e) {
+      console.error("Stats Error:", e);
     }
   };
 
-  const loadPostsTab = async (type: string) => {
+  const loadPostsTab = async (type: string, isComponentActive: boolean = true) => {
     if (!profile) return;
-    setIsLoadingPosts(true);
-    setPosts([]); 
+    if (isComponentActive) {
+      setIsLoadingPosts(true);
+      setPosts([]); 
+    }
 
     try {
       if (type === 'post') {
         const { data, error } = await supabase
           .from('posts')
-          .select('id, image_url, video_url') // 🔥 TAMBAHIN video_url DI SINI 🔥
+          .select('id, image_url, video_url') 
           .eq('creator_id', profile.id) 
           .eq('status', 'approved')    
           .order('created_at', { ascending: false });
         
-        if (data && !error) setPosts(data);
+        if (data && !error && isComponentActive) setPosts(data);
       }
 
       else {
@@ -202,11 +234,11 @@ function ProfileContent() {
             if (postIds.length > 0) {
               const { data: pData, error: pError } = await supabase
                 .from('posts')
-                .select('id, image_url, video_url') // 🔥 TAMBAHIN video_url DI SINI JUGA 🔥
+                .select('id, image_url, video_url') 
                 .in('id', postIds)
                 .order('created_at', { ascending: false });
               
-              if (pData && !pError) setPosts(pData);
+              if (pData && !pError && isComponentActive) setPosts(pData);
             }
           }
         }
@@ -214,7 +246,7 @@ function ProfileContent() {
     } catch (err) { 
       console.error(err); 
     } finally { 
-      setIsLoadingPosts(false); 
+      if (isComponentActive) setIsLoadingPosts(false); 
     }
   };
 
@@ -338,7 +370,7 @@ function ProfileContent() {
       await supabase.from('blocked_users').delete().match({ blocker_id: myId, blocked_id: profile.id });
       showNotif('Blokir dibuka.', 'success');
       setBlockStatus('none');
-      loadProfile(); 
+      loadProfile(true); 
     } catch (e: any) { showNotif(e.message, 'error'); }
   };
 

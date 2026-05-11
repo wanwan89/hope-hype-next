@@ -98,7 +98,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             
             // 📞 JIKA ITU TELPON
             if (newMsg.is_system && newMsg.message.includes("Memanggil")) {
-              // Pakai window.location.href biar dapet URL paling fresh saat itu juga
               if (window.location.href.includes('/hypetalk')) return; 
 
               const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
@@ -253,18 +252,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         body.style.width = 'auto';
       }
       body.style.overscrollBehaviorY = 'auto'; 
-      const voiceTrash = [
-        'room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 
-        'vip-entrance-overlay', 'vip-anim-styles-clean'
-      ];
-      voiceTrash.forEach(id => document.getElementById(id)?.remove());
+      
+      // 🔥 FIX: HANYA MENGHAPUS ELEMEN INJEKSI VANILLA JS (BUKAN KOMPONEN REACT)
+      // Kalau kita hapus Drawer pakai Vanilla JS, React bakal crash (Could not load)!
+      const vanillaJsTrash = ['vip-entrance-overlay', 'vip-anim-styles-clean'];
+      vanillaJsTrash.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      });
     }
   }, [pathname, isStandaloneApp]); 
 
   return (
     <html lang="id" suppressHydrationWarning>
        <head>
-        {/* --- 1. SEO DASAR & IDENTITY --- */}
         <title>HypeTalk - Komunitas Kreatif & Jaringan Sosial Kreator Seni</title>
         <meta name="description" content="HypeTalk adalah platform sosial eksklusif untuk kreator. Bagikan karya seni, musik, tulisan, dan bergabung di Voice Room untuk ngobrol seru bareng kreator lainnya." />
         <meta name="keywords" content="HypeTalk, komunitas kreatif, platform seni, berbagi musik, penulis, chat room, voice room indonesia, hypevoice, kreator muda" />
@@ -273,7 +274,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="language" content="id" />
         <link rel="canonical" href="https://hypetalk.is-a.dev/" />
 
-        {/* --- 2. OPEN GRAPH (WhatsApp, Facebook, Instagram) --- */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://hypetalk.is-a.dev/" />
         <meta property="og:title" content="HypeTalk - Tempatnya Para Kreator Berkarya" />
@@ -282,17 +282,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta property="og:site_name" content="HypeTalk Globe" />
         <meta property="og:locale" content="id_ID" />
 
-        {/* --- 3. TWITTER CARD (X) --- */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="HypeTalk - Creative Community" />
         <meta name="twitter:description" content="Platform sosial untuk berbagi karya seni dan ngobrol seru bareng kreator lain." />
         <meta name="twitter:image" content="/asets/png/og-image.png" />
 
-        {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
-        {/* --- 5. PWA & MOBILE TAGS --- */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
         <link rel="apple-touch-icon" href="/asets/png/book.png" />
@@ -301,7 +298,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="HypeTalk" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
         
-        {/* --- 6. INTERNAL STYLES --- */}
         <style>{`
           img {
             -webkit-touch-callout: none !important;
@@ -310,7 +306,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
           body { background-color: var(--bg-main); }
           
-          /* Animasi & CSS Popup Call */
           @keyframes slideDownGlobal {
             from { transform: translate(-50%, -120%); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
@@ -331,7 +326,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
           .global-call-btn:active { transform: scale(0.9); }
 
-          /* 🔥 Animasi & CSS Popup Pesan Baru (DI RAPIHKAN) 🔥 */
           .global-msg-popup {
             position: fixed;
             top: max(env(safe-area-inset-top, 20px), 20px);
@@ -402,13 +396,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</style>
       </head>
 
-      
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
             <GlobalShareModal />
 
-            {/* 🔥 POPUP PESAN MASUK GLOBAL (RAPIH) 🔥 */}
             {globalMessageNotif && !globalIncomingCall && (
               <div className="global-msg-popup" onClick={handleMessageClick}>
                 <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
@@ -424,7 +416,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             )}
 
-            {/* 🔥 POPUP PANGGILAN GLOBAL 🔥 */}
             {globalIncomingCall && (
               <div style={{
                 position: 'fixed', top: 'max(env(safe-area-inset-top, 20px), 20px)', left: '50%', transform: 'translateX(-50%)',

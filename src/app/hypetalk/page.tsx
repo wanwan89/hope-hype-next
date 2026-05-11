@@ -57,12 +57,29 @@ export default function HypetalkPage() {
   }, []);
 
   useEffect(() => {
+    // Component unmount / cleanup
     return () => {
       setIsSidebarOpen(false);
       setActiveModal(null);
-      endCall(true);
+      
+      // Hentikan nada dering kalau masih bunyi pas keluar halaman
+      if (refs.audio.current?.ring) {
+        refs.audio.current.ring.pause();
+        refs.audio.current.ring.currentTime = 0;
+      }
+      
+      // Putus koneksi LiveKit dengan bersih
+      if (refs.lkRoom.current) {
+        refs.lkRoom.current.removeAllListeners();
+        refs.lkRoom.current.disconnect();
+        refs.lkRoom.current = null;
+      }
+
+      clearTimeout(refs.callTimeout.current);
+      clearInterval(refs.callInterval.current);
     };
   }, []);
+
 
   const initUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -532,15 +549,23 @@ export default function HypetalkPage() {
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
     }
+    
+    // 🔥 PERBAIKAN PENTING DI SINI 🔥
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
+      // Pakai await (kalau di dalam fungsi async) atau pastikan disconnect jalan rapi
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
+    
     setCallStatus('idle');
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
-    if (!silent) showNotif('Panggilan berakhir', "info");
+    
+    // Hindari manggil setState kalau udah unmount
+    if (!silent) {
+       showNotif('Panggilan berakhir', "info");
+    }
   };
 
   const filteredChats = chats.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
