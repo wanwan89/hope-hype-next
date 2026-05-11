@@ -17,42 +17,42 @@ export function calculateLevel(giftSent: number) {
 
 // 2. Fungsi Ambil Ikon & Warna Berdasarkan Tingkat (Tier) Level
 export function getTierInfo(level: number) {
-  // TIER MAX (Level 40 - 50) - Mahkota Ruby
+  // TIER MAX (Level 40 - 50) - EMPEROR CROWN (Ruby)
   if (level >= 40) {
     return {
-      color: "#ff4757", // Merah Ruby
-      icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>`
+      color: "#ff0844", 
+      icon: `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20v2H2v-2zm.82-10.74l3.05 6.1H18.1l3.08-6.1-4.94 2.82L12 3l-4.24 8.08-4.94-2.82zM12 11.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`
     };
   }
-  // TIER 4 (Level 30 - 39) - Berlian
+  // TIER 4 (Level 30 - 39) - 3D FACETED DIAMOND (Cyan)
   if (level >= 30) {
     return {
-      color: "#00f2fe", // Diamond Cyan
-      icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 9l10 13 10-13L12 2zm0 3.3l6.5 4.7-6.5 8.3-6.5-8.3L12 5.3z"/></svg>`
+      color: "#00f2fe", 
+      icon: `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.5L2.5 8 12 22l9.5-14L12 1.5zm0 3.1l5.5 4.4H6.5L12 4.6zM4.6 9h4.8l2.6 9.8L4.6 9zm10 0h4.8l-7.4 9.8L14.6 9z"/></svg>`
     };
   }
-  // TIER 3 (Level 20 - 29) - Api Gold
+  // TIER 3 (Level 20 - 29) - ENERGY CORE (Gold)
   if (level >= 20) {
     return {
-      color: "#f59e0b", // Emas/Gold
-      icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-4 4.5-4 9.5a4 4 0 0 0 8 0C16 6.5 12 2 12 2zm1 12.5a2.5 2.5 0 0 1-5 0c0-2 2-4.5 2-4.5s2 2.5 2 4.5z"/></svg>`
+      color: "#f59e0b", 
+      icon: `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8.66 15H3.34L12 2zm0 3.5L6.3 14h11.4L12 5.5zM12 9l2.89 5H9.11L12 9z"/></svg>`
     };
   }
-  // TIER 2 (Level 10 - 19) - Perisai Silver
+  // TIER 2 (Level 10 - 19) - SCI-FI CREST (Silver)
   if (level >= 10) {
     return {
-      color: "#e2e8f0", // Perak/Silver
-      icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`
+      color: "#e2e8f0", 
+      icon: `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.5l5 2.5v4.5c0 4-2.5 8-5 9.5-2.5-1.5-5-5.5-5-9.5V6l5-2.5z"/></svg>`
     };
   }
-  // TIER 1 (Level 1 - 9) - Bintang Default
+  // TIER 1 (Level 1 - 9) - STAR SPARK (Bronze/Blue)
   return {
-    color: "#93c5fd", // Biru Muda/Bronze
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
+    color: "#93c5fd", 
+    icon: `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.5 8.5L23 11.5l-8.5 2.5L12 23l-2.5-8.5L1 11.5l8.5-2.5L12 0z"/></svg>`
   };
 }
 
-// 3. Fungsi Bikin HTML Badge Level Premium (Box Biru HypeTalk)
+// 3. Fungsi Bikin HTML Badge Level Premium (Box Biru Ramping)
 export function getLevelBadgeHTML(levelVal: string | number) {
   const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
   const tier = getTierInfo(lvl);
@@ -62,24 +62,25 @@ export function getLevelBadgeHTML(levelVal: string | number) {
       display: inline-flex; 
       align-items: center; 
       justify-content: center; 
-      gap: 4px;
-      background: linear-gradient(135deg, #1e3a8a, #1f3cff); /* Box Gradasi Biru */
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      gap: 3px;
+      background: linear-gradient(135deg, rgba(30, 58, 138, 0.8), rgba(31, 60, 255, 0.95)); 
+      border: 0.5px solid rgba(255, 255, 255, 0.25);
       color: #ffffff !important; 
-      font-size: 10px; 
+      font-size: 9px; 
       font-weight: 800; 
-      padding: 3px 8px; 
-      border-radius: 6px; /* Dibikin agak kotak (rounded-box) */
+      padding: 1.5px 5px; 
+      border-radius: 4px; 
       margin-left: 4px;
-      box-shadow: 0 3px 8px rgba(31, 60, 255, 0.5);
+      box-shadow: 0 2px 5px rgba(31, 60, 255, 0.4);
       vertical-align: middle;
       line-height: 1;
+      letter-spacing: 0.3px;
     ">
       <span style="
         color: ${tier.color}; 
         display: flex; 
         align-items: center; 
-        filter: drop-shadow(0 0 4px ${tier.color}); /* Ikonnya menyala sesuai tier */
+        filter: drop-shadow(0 0 3px ${tier.color});
       ">
         ${tier.icon}
       </span>
