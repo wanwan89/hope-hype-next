@@ -442,7 +442,8 @@ export default function Gallerypost() {
           viewBox="0 0 24 24" 
           className="icon" 
           fill="currentColor"
-          style={{ color: mySavedPosts.has(postIdStr) ? "#1DA1F2" : "inherit" }} 
+          /* 🔥 UBAH WARNA DI SINI JADI BIRU HYPETALK (#1f3cff) 🔥 */
+          style={{ color: mySavedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} 
         >
           {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
         </svg>
@@ -450,7 +451,6 @@ export default function Gallerypost() {
           {counts[postIdStr]?.saves || 0}
         </span>
       </button>
-
       <button 
         className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} 
         onClick={() => handleRepost(postIdStr)}
