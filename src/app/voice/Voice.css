@@ -5,17 +5,17 @@
 ================================================== */
 
 :root {
-    --radar-color: #3b82f6; 
+    --radar-color: #1f3cff; /* 🔥 FIX: Warna default radar HypeTalk */
 }
 
 .in-voice-room {
-    --primary: #3b82f6;         
-    --primary-soft: rgba(59, 130, 246, 0.1);
+    --primary: #1f3cff;         
+    --primary-soft: rgba(31, 60, 255, 0.1);
     --bg-base: #f8fafc;         
     --panel-bg: #ffffff;        
     --border: rgba(0, 0, 0, 0.05); 
     --empty-slot: #f1f5f9;      
-    --accent: #f59e0b;          
+    --accent: #ff4757;          
     --success: #10b981;         
     --text-main: #0f172a;       
     --text-muted: #64748b;      
@@ -25,14 +25,14 @@
     --msg-bg: rgba(255, 255, 255, 0.95);
     --msg-border: rgba(0, 0, 0, 0.04);
     --msg-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
-    --sys-bg: rgba(245, 158, 11, 0.08);
-    --sys-border: rgba(245, 158, 11, 0.2);
-    --sys-gift-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
-    --sys-gift-text: #d97706; 
+    --sys-bg: rgba(255, 71, 87, 0.08); /* 🔥 FIX: Theme system gift mengikuti HypeTalk */
+    --sys-border: rgba(255, 71, 87, 0.2);
+    --sys-gift-bg: linear-gradient(135deg, rgba(255, 71, 87, 0.15), rgba(31, 60, 255, 0.05));
+    --sys-gift-text: #ff4757; 
     --input-bg: #f1f5f9; 
     --footer-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03); 
     --overlay-bg: rgba(255, 255, 255, 0.3);
-    --gift-spotlight: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
+    --gift-spotlight: radial-gradient(circle, rgba(255, 71, 87, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
     --header-bg: rgba(255, 255, 255, 0.85); 
     --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
     --modal-bg: #ffffff;
@@ -48,13 +48,13 @@
 
 [data-theme='dark'] .in-voice-room,
 html.dark .in-voice-room {
-    --primary: #3b82f6;         
-    --primary-soft: rgba(59, 130, 246, 0.2);
+    --primary: #1f3cff;         
+    --primary-soft: rgba(31, 60, 255, 0.2);
     --bg-base: #0f172a;         
     --panel-bg: #1e293b;        
     --border: rgba(255, 255, 255, 0.06); 
     --empty-slot: #0f172a;      
-    --accent: #fbc02d;          
+    --accent: #ff4757;          
     --success: #00ff88;         
     --text-main: #f8fafc;       
     --text-muted: #94a3b8;      
@@ -63,14 +63,14 @@ html.dark .in-voice-room {
     --msg-bg: rgba(30, 41, 59, 0.85); 
     --msg-border: rgba(255, 255, 255, 0.05);
     --msg-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    --sys-bg: rgba(245, 158, 11, 0.1);
-    --sys-border: rgba(245, 158, 11, 0.15);
-    --sys-gift-bg: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
-    --sys-gift-text: #fbbf24; 
+    --sys-bg: rgba(255, 71, 87, 0.1);
+    --sys-border: rgba(255, 71, 87, 0.15);
+    --sys-gift-bg: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(31, 60, 255, 0.05));
+    --sys-gift-text: #ff6b81; 
     --input-bg: rgba(255, 255, 255, 0.05); 
     --footer-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
     --overlay-bg: rgba(15, 23, 42, 0.4); 
-    --gift-spotlight: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, rgba(15, 23, 42, 0) 60%);
+    --gift-spotlight: radial-gradient(circle, rgba(255, 71, 87, 0.25) 0%, rgba(15, 23, 42, 0) 60%);
     --header-bg: rgba(30, 41, 59, 0.85); 
     --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     --modal-bg: #1e293b;
@@ -116,7 +116,7 @@ html.dark .in-voice-room {
 .in-voice-room .stage-container {
     flex-shrink: 0; 
     display: grid; 
-    /* 🔥 FIX: Center grid & max 3 kolom buat nampung 2, 4, atau 6 slot dengan rapi 🔥 */
+    /* Center grid & max 3 kolom buat nampung 2, 4, atau 6 slot dengan rapi */
     grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); 
     justify-content: center;
     gap: 24px 12px; 
@@ -126,10 +126,10 @@ html.dark .in-voice-room {
     border-bottom: 1px solid var(--border); 
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
     z-index: 90;
-    transition: all 0.3s ease-in-out; /* Mulus pas berubah 6 -> 4 -> 2 */
+    transition: all 0.3s ease-in-out; 
 }
 
-/* Jika cuma ada 2 atau 4 elemen, paksa grid buat ke tengah */
+/* Jika cuma ada 2 atau 4 elemen, paksa grid buat ke tengah biar gak timpang */
 .in-voice-room .stage-container:has(> .speaker-item:nth-last-child(-n+4):first-child) {
     grid-template-columns: repeat(2, minmax(90px, 120px));
 }

@@ -60,8 +60,6 @@ function VoiceRoomContent() {
   const [totalTaps, setTotalTaps] = useState(0);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  
-  // 🔥 STATE BARU BUAT NGATUR JUMLAH SLOT (Default 6) 🔥
   const [roomSlotCount, setRoomSlotCount] = useState(6);
   
   const myTotalGiftSent = useRef(0);
@@ -128,11 +126,7 @@ function VoiceRoomContent() {
       });
 
       if (channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'tap_event',
-          payload: { x, y }
-        });
+        channelRef.current.send({ type: 'broadcast', event: 'tap_event', payload: { x, y } });
       }
     };
 
@@ -146,19 +140,37 @@ function VoiceRoomContent() {
       } catch (err) { console.error(err); }
     };
 
-    function getLevelStyle(level: string | number) {
-        const lvl = typeof level === 'string' ? parseInt(level) : (level || 1);
-        if (lvl >= 5) return { color: "#FF0055", textShadow: "0 0 8px rgba(255, 0, 85, 0.8)", title: "LGDN" };
-        if (lvl === 4) return { color: "#00E5FF", textShadow: "0 0 5px rgba(0, 229, 255, 0.7)", title: "SLTN" };
-        if (lvl === 3) return { color: "#BB86FC", textShadow: "none", title: "PATRON" };
-        if (lvl === 2) return { color: "#FFD700", textShadow: "none", title: "SPTR" };
-        return { color: "inherit", textShadow: "none", title: "" };
+    // 🔥 FIX 1: LOGIKA LEVEL 1 - 50 & ICON BADGE ELEGAN 🔥
+    function calculateLevel(giftSent: number) {
+      let lvl = Math.floor(giftSent / 500) + 1; // Tiap 500 Koin naik 1 level
+      if (lvl > 50) lvl = 50;
+      return lvl;
     }
 
-    function getLevelBadgeHTML(level: string | number) {
-        const style = getLevelStyle(level);
-        if (!style.title) return ""; 
-        return `<span style="font-size: 9px; font-weight: 800; background: ${style.color}; color: #000; padding: 2px 4px; border-radius: 3px; margin-left: 5px; vertical-align: middle;">${style.title}</span>`;
+    function getLevelColor(level: number) {
+      if (level >= 40) return ["#ff0844", "#ffb199"]; // Ruby
+      if (level >= 30) return ["#00c6ff", "#0072ff"]; // Diamond
+      if (level >= 20) return ["#f6d365", "#fda085"]; // Gold
+      if (level >= 10) return ["#89f7fe", "#66a6ff"]; // Silver
+      return ["#d4fc79", "#96e6a1"]; // Bronze
+    }
+
+    function getLevelBadgeHTML(levelVal: string | number) {
+        const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
+        const [c1, c2] = getLevelColor(lvl);
+        return `
+        <span style="
+          display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+          background: linear-gradient(135deg, ${c1}, ${c2});
+          color: #fff; font-size: 9px; font-weight: 900; 
+          padding: 2px 6px; border-radius: 12px; margin-left: 4px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3); vertical-align: middle;
+        ">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+          </svg>
+          ${lvl}
+        </span>`;
     }
 
     async function getRoomLeaderboard() {
@@ -175,29 +187,9 @@ function VoiceRoomContent() {
             });
             const names = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 10);
             if (names.length === 0) return [];
-            const { data: profs } = await sb.from('profiles').select('id, username, avatar_url, level, role').in('username', names);
+            const { data: profs } = await sb.from('profiles').select('id, username, avatar_url, level, role, total_gift_sent').in('username', names);
             return (profs || []).map(p => ({ ...p, room_total: totals[p.username] })).sort((a, b) => b.room_total - a.room_total);
         } catch (e) { return []; }
-    }
-
-    function playVIPEntrance(username: string, level: number) {
-        if (level < 4) return; 
-        if (!document.getElementById('vip-anim-styles-clean')) {
-            const style = document.createElement('style');
-            style.id = 'vip-anim-styles-clean';
-            style.innerHTML = `@keyframes vipSlideInClean { 0% { transform: translate(-150vw, -50%); opacity: 0; } 15% { transform: translate(-50%, -50%); opacity: 1; } 85% { transform: translate(-50%, -50%); opacity: 1; } 100% { transform: translate(150vw, -50%); opacity: 0; } } .vip-banner-clean { position: fixed; top: 60%; left: 50%; z-index: 1000000; padding: 12px 28px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; pointer-events: none; width: max-content; max-width: 90%; animation: vipSlideInClean 4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }`;
-            document.head.appendChild(style);
-        }
-        let overlay = document.getElementById('vip-entrance-overlay');
-        if (overlay) overlay.remove(); 
-        overlay = document.createElement('div');
-        overlay.id = 'vip-entrance-overlay';
-        overlay.className = 'vip-banner-clean';
-        const bg = level === 4 ? "background: rgba(14, 165, 233, 0.95);" : "background: rgba(225, 29, 72, 0.95);";
-        overlay.setAttribute('style', `${bg} border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.3); backdrop-filter: blur(10px);`);
-        overlay.innerHTML = `<b>${username}</b> <span style="margin-left:5px;">MEMASUKI ROOM</span>`;
-        document.body.appendChild(overlay);
-        setTimeout(() => { if (overlay) overlay.remove(); }, 4100);
     }
 
     function playGiftAnimation(giftId: number | string, forcedCombo: number | null = null) {
@@ -235,7 +227,7 @@ function VoiceRoomContent() {
         container.style.display = 'flex';
         container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:6px;">🏆 TOP</span>`;
         topData.slice(0, 3).forEach((u, i) => {
-            container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #555; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
+            container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:28px; height:28px; border-radius:50%; border:2px solid #222; margin-left:-12px; z-index:${3-i}; background:#222; object-fit:cover;">`;
         });
         container.onclick = () => window.openTopGiftersModal?.();
     }
@@ -255,7 +247,6 @@ function VoiceRoomContent() {
 
         channelRef.current
         .on('postgres_changes', { event: '*', schema: 'public', table: 'room_slots', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, () => { fetchStage(); })
-        // 🔥 UPDATE LISTENER BUAT NGECEK PERUBAHAN slot_count 🔥
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${CURRENT_ROOM_ID}` }, (p: any) => { 
             if(p.new.slot_count) {
                 setRoomSlotCount(p.new.slot_count);
@@ -303,11 +294,11 @@ function VoiceRoomContent() {
             } else {
                 const isSystem = p.new.username.startsWith("SISTEM");
                 div.className = isSystem ? 'msg system' : 'msg';
-                const style = getLevelStyle(p.new.level || 1);
                 const lvlBadge = getLevelBadgeHTML(p.new.level || 1);
                 const roleBadge = getUserBadge(p.new.role || '');
-                const userLink = `<span onclick="window.openUserProfile('${p.new.user_id || ''}')" style="color:${style.color}; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
-                div.innerHTML = isSystem ? `<span>${p.new.text}</span>` : `${userLink}<span>: ${p.new.text}</span>`;
+                // 🔥 FIX 2: WARNA USERNAME IKUT TEMA (var(--text-main)) 🔥
+                const userLink = `<span onclick="window.openUserProfile('${p.new.user_id || ''}')" style="color:var(--text-main, #ffffff); font-weight:700; cursor:pointer; display:inline-flex; align-items:center; position:relative; z-index:10; pointer-events:auto;">${p.new.username}${lvlBadge}${roleBadge}</span>`;
+                div.innerHTML = isSystem ? `<span style="opacity:0.8">${p.new.text}</span>` : `${userLink}<span style="opacity:0.9">: ${p.new.text}</span>`;
             }
 
             chatBox.appendChild(div); 
@@ -318,27 +309,20 @@ function VoiceRoomContent() {
           createTapAnimation(p.payload.x, p.payload.y);
           setTotalTaps(prev => prev + 1);
         })
-        // 🔥 UPDATE LISTENER MINTA NAIK (AUTO PILIH SLOT) 🔥
         .on('broadcast', { event: 'minta_naik' }, async (p: any) => {
             if (IS_OWNER.current) {
                 const acc = confirm(`${p.payload.username} ingin naik panggung. Izinkan?`);
                 if (acc) {
-                    // Cari slot kosong pertama berdasarkan jumlah slot room saat ini
                     const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
-                    // Filter slot yang index-nya dibawah jumlah slot maksimal
                     const slotKosong = allSlots?.find(s => !s.profile_id && s.slot_index < roomSlotCount);
-                    
-                    if (slotKosong) {
-                        window.accNaikPanggung?.(p.payload.userId, p.payload.username);
-                    } else {
-                        showNotif("Panggung penuh! Tidak bisa acc.", "error");
-                    }
+                    if (slotKosong) window.accNaikPanggung?.(p.payload.userId, p.payload.username);
+                    else showNotif("Panggung penuh!", "error");
                 }
             }
         })
         .on('broadcast', { event: 'naik_diizinkan' }, async (p: any) => {
             if (p.payload.userId === MY_USER_ID.current) {
-                showNotif("Permintaan diterima! Mencari kursi...", "success");
+                showNotif("Diterima! Naik panggung...", "success");
                 const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
                 const slotKosong = allSlots?.find(s => !s.profile_id && s.slot_index < roomSlotCount);
                 if (slotKosong) window.naikKeStage?.(slotKosong.slot_index);
@@ -355,31 +339,22 @@ function VoiceRoomContent() {
         });
     }
 
-    const LEVEL_THRESHOLDS: Record<number, number> = { 1: 0, 2: 1000, 3: 5000, 4: 20000, 5: 50000 };
-    function checkLevelUp(totalGiftSent: number) {
-        if (totalGiftSent >= LEVEL_THRESHOLDS[5]) return { level: 5, name: "LEGEND", color: "#FF0055" };
-        if (totalGiftSent >= LEVEL_THRESHOLDS[4]) return { level: 4, name: "SULTAN", color: "#00E5FF" };
-        if (totalGiftSent >= LEVEL_THRESHOLDS[3]) return { level: 3, name: "PATRON", color: "#BB86FC" };
-        if (totalGiftSent >= LEVEL_THRESHOLDS[2]) return { level: 2, name: "SUPPORTER", color: "#FFD700" };
-        return { level: 1, name: "NEWBIE", color: "#FFFFFF" };
-    }
-
     function updateLevelProgressUI() {
         const container = document.getElementById('level-progress-container');
         if (!container) return; 
-        let prevTarget = 0, currentTarget = 0, currentName = "";
         
-        if (myLevel.current === 1) { prevTarget = 0; currentTarget = 1000; currentName = "NEWBIE"; }
-        else if (myLevel.current === 2) { prevTarget = 1000; currentTarget = 5000; currentName = "SUPPORTER"; }
-        else if (myLevel.current === 3) { prevTarget = 5000; currentTarget = 20000; currentName = "PATRON"; }
-        else if (myLevel.current === 4) { prevTarget = 20000; currentTarget = 50000; currentName = "SULTAN"; }
-        else { container.innerHTML = `<div style="text-align:center; font-size: 13px; color: #FF0055; font-weight: bold; margin: 15px 0;">LEVEL MAX (LEGEND)</div>`; return; }
+        let targetKoin = myLevel.current * 500;
+        if (myLevel.current >= 50) {
+           container.innerHTML = `<div style="text-align:center; font-size: 13px; color: #ff0844; font-weight: 800; margin: 15px 0;">LEVEL MAX (50) TERCAPAI 👑</div>`; 
+           return; 
+        }
         
-        let needed = currentTarget - myTotalGiftSent.current;
-        let percent = ((myTotalGiftSent.current - prevTarget) / (currentTarget - prevTarget)) * 100;
+        let prevTarget = (myLevel.current - 1) * 500;
+        let needed = targetKoin - myTotalGiftSent.current;
+        let percent = ((myTotalGiftSent.current - prevTarget) / (targetKoin - prevTarget)) * 100;
         if (percent > 100) percent = 100;
         
-        container.innerHTML = `<div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 6px; padding: 0 5px;"><span>LVL ${myLevel.current} (${currentName})</span><span>Butuh <b style="color:#f1c40f">${needed} koin</b> lagi</span></div><div style="width: 100%; height: 6px; background: #333; border-radius: 4px; overflow: hidden;"><div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #00ff88, #00d2ff); transition: width 0.5s ease-out;"></div></div>`;
+        container.innerHTML = `<div style="display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 6px; padding: 0 2px;"><span>LVL ${myLevel.current}</span><span>Butuh <b style="color:#1f3cff">${needed} koin</b> -> LVL ${myLevel.current + 1}</span></div><div style="width: 100%; height: 6px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden;"><div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #ff4757, #1f3cff); transition: width 0.5s ease-out;"></div></div>`;
     }
 
     async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah = 1) {
@@ -428,14 +403,14 @@ function VoiceRoomContent() {
                 await sb.from('coin_history').insert([{ user_id: MY_USER_ID.current, transaction_type: 'send_gift', amount: -coinsToDeduct, description: `Kirim ${giftName} x${currentCount} ke ${finalTargetName}`, balance_after: currentCoins }]);
                 await sb.from('coin_history').insert([{ user_id: finalTargetId, transaction_type: 'receive_gift', amount: coinsToDeduct, description: `Terima ${giftName} x${currentCount} dari ${myUsername.current}`, balance_after: 0 }]);
 
-                let lvlData = checkLevelUp(newTotalGift);
-                if (lvlData.level !== myLevel.current) {
-                    await sb.from('profiles').update({ level: lvlData.level }).eq('id', MY_USER_ID.current);
-                    await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ SELAMAT! ${myUsername.current} naik ke Level ${lvlData.level}!`, role: "admin" }]);
+                let newLvl = calculateLevel(newTotalGift);
+                if (newLvl !== myLevel.current) {
+                    await sb.from('profiles').update({ level: newLvl }).eq('id', MY_USER_ID.current);
+                    await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `⭐ SELAMAT! ${myUsername.current} naik ke Level ${newLvl}!`, role: "admin" }]);
                 }
                 
                 myTotalGiftSent.current = newTotalGift; 
-                myLevel.current = lvlData.level; 
+                myLevel.current = newLvl; 
                 updateLevelProgressUI();
                 
                 const teksFinal = `${myUsername.current} mengirim ${giftName} x${currentCount} ke ${finalTargetName}`;
@@ -457,15 +432,15 @@ function VoiceRoomContent() {
         const { data: roomData } = await sb.from('rooms').select('*').eq('id', CURRENT_ROOM_ID).maybeSingle();
         
         if (p) { 
-            myUsername.current = p.username; myRole.current = p.role; myLevel.current = p.level || 1; myTotalGiftSent.current = p.total_gift_sent || 0; 
+            myUsername.current = p.username; myRole.current = p.role; 
+            myTotalGiftSent.current = p.total_gift_sent || 0; 
+            myLevel.current = calculateLevel(myTotalGiftSent.current); // Auto hitung level pas masuk
             if (document.getElementById('user-coins')) document.getElementById('user-coins')!.innerText = (p.coins || 0).toLocaleString(); 
         }
         
         if (roomData) {
             setTotalTaps(roomData.tap_count || 0);
             IS_OWNER.current = roomData.owner_id === MY_USER_ID.current;
-            
-            // 🔥 INISIALISASI STATE JUMLAH SLOT 🔥
             const sCount = roomData.slot_count || 6;
             setRoomSlotCount(sCount);
 
@@ -493,12 +468,10 @@ function VoiceRoomContent() {
             } catch (e) { console.error(e); }
         }
         
-        // Panggil fetchStage bawa data slot saat ini
         fetchStage(roomData?.slot_count || 6); 
         listenRealtime(); fetchTopGifters();
     }
 
-    // 🔥 MODIFIKASI fetchStage BUAT RENDER SESUAI JUMLAH SLOT 🔥
     async function fetchStage(overrideCount?: number) {
         if (!CURRENT_ROOM_ID) return;
         const targetCount = overrideCount || roomSlotCount;
@@ -508,12 +481,12 @@ function VoiceRoomContent() {
         if (!grid || !data) return;
         grid.innerHTML = "";
         
-        // Looping cuma sebatas targetCount (2, 4, atau 6)
-        data.slice(0, targetCount).forEach((slot: any, i: number) => {
+        data.slice(0, targetCount).forEach((slot: any) => {
             const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
-                const roleBadgeHTML = getUserBadge(user.role || '');
+                // Di sini getLevelBadgeHTML kita kasih argumen dari function calculateLevel dari db nya
+                const calculatedUserLvl = calculateLevel(user.total_gift_sent || 0);
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
@@ -521,13 +494,13 @@ function VoiceRoomContent() {
                             <span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span>
                         </div>
                     </div>
-                    <span class="name-label" style="color: var(--text-main, #ffffff); font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">
+                    <span class="name-label" style="color: var(--text-main, #ffffff); font-weight: 600; text-shadow: none;">
                         <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
-                            ${user.username} ${getLevelBadgeHTML(user.level)} ${roleBadgeHTML}
+                            ${user.username} ${getLevelBadgeHTML(calculatedUserLvl)}
                         </div>
                     </span>`;
             } else {
-                item.innerHTML = `<div class="avatar" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:#444; font-size:30px;">add</span></div><span class="name-label">${t('empty_slot')}</span>`;
+                item.innerHTML = `<div class="avatar" style="border: 1px dashed var(--border-color); opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:var(--text-muted); font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5">${t('empty_slot')}</span>`;
             }
             grid.appendChild(item);
         });
@@ -551,7 +524,6 @@ function VoiceRoomContent() {
         if(wrapper) wrapper.style.display = wrapper.style.display === 'none' ? 'flex' : 'none';
     };
 
-    // 🔥 FIX: NAIK KE STAGE SESUAI BATAS SLOT 🔥
     window.naikKeStage = async (idx) => {
         if (!MY_USER_ID.current) return showNotif("Login dulu!", "warning");
         if (idx >= roomSlotCount) return showNotif("Slot ini sedang ditutup Owner", "warning");
@@ -571,7 +543,7 @@ function VoiceRoomContent() {
         isMicOn.current = true;
         const micIcon = document.getElementById('mic-icon');
         const micText = document.getElementById('mic-text');
-        if(micIcon) { micIcon.innerText = "mic"; micIcon.style.color = "#2ecc71"; }
+        if(micIcon) { micIcon.innerText = "mic"; micIcon.style.color = "#1f3cff"; } // Warna biru aktif
         if(micText) micText.innerText = t('mute_mic');
 
         fetchStage();
@@ -592,7 +564,7 @@ function VoiceRoomContent() {
         isMicOn.current = false;
         const micIcon = document.getElementById('mic-icon');
         const micText = document.getElementById('mic-text');
-        if(micIcon) { micIcon.innerText = "mic_off"; micIcon.style.color = "#e74c3c"; }
+        if(micIcon) { micIcon.innerText = "mic_off"; micIcon.style.color = "#ff4757"; }
         if(micText) micText.innerText = t('unmute_mic');
         fetchStage();
     };
@@ -605,7 +577,7 @@ function VoiceRoomContent() {
             updateLevelProgressUI(); 
             sb.from('room_slots').select('profile_id, profiles(username, avatar_url)')
             .eq('room_id', CURRENT_ROOM_ID)
-            .lt('slot_index', roomSlotCount) // 🔥 CUMA TAMPILIN USER YANG ADA DI SLOT AKTIF 🔥
+            .lt('slot_index', roomSlotCount) 
             .not('profile_id', 'is', null)
             .neq('profile_id', MY_USER_ID.current)
             .then(({data}) => {
@@ -641,21 +613,20 @@ function VoiceRoomContent() {
             if (top.length === 0) { l.innerHTML = '<div style="text-align:center; color:#888;">Belum ada kado di panggung ini. Ayo kirim yang pertama!</div>'; return; }
             top.forEach((u, i) => {
                 let rankHtml = '';
-                if (i === 0) rankHtml = `<div style="background: linear-gradient(135deg, #FFDF00, #D4AF37); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(255,215,0,0.5);">1</div>`;
-                else if (i === 1) rankHtml = `<div style="background: linear-gradient(135deg, #FFFFFF, #A9A9A9); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(192,192,192,0.3);">2</div>`;
-                else if (i === 2) rankHtml = `<div style="background: linear-gradient(135deg, #FFB37C, #C56F28); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 15px; box-shadow: 0 2px 8px rgba(205,127,50,0.3);">3</div>`;
-                else rankHtml = `<div style="color: #94a3b8; font-weight: 900; font-size: 16px; width: 28px; text-align: center;">${i + 1}</div>`;
-                const bgGradient = i === 0 ? 'background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), transparent); border-left: 4px solid #FFD700;' : i === 1 ? 'background: linear-gradient(90deg, rgba(192, 192, 192, 0.1), transparent); border-left: 4px solid #C0C0C0;' : i === 2 ? 'background: linear-gradient(90deg, rgba(205, 127, 50, 0.1), transparent); border-left: 4px solid #CD7F32;' : 'background: #2a3648; border-left: 4px solid transparent;';
+                if (i === 0) rankHtml = `<div style="background: linear-gradient(135deg, #f6d365, #fda085); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 13px;">1</div>`;
+                else if (i === 1) rankHtml = `<div style="background: linear-gradient(135deg, #e2e2e2, #999); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 13px;">2</div>`;
+                else if (i === 2) rankHtml = `<div style="background: linear-gradient(135deg, #d4fc79, #96e6a1); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 13px;">3</div>`;
+                else rankHtml = `<div style="color: #888; font-weight: 900; font-size: 14px; width: 28px; text-align: center;">${i + 1}</div>`;
                 
                 l.innerHTML += `
-                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 6px; ${bgGradient} margin-bottom:8px;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div style="width: 30px; display: flex; justify-content: center;">${rankHtml}</div>
-                    <img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555;">
+                    <img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                     <div style="flex: 1; min-width: 0;">
-                        <div onclick="window.openUserProfile('${u.id || ''}')" style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; cursor: pointer;">
-                            ${u.username} ${getLevelBadgeHTML(u.level || 1)} ${getUserBadge(u.role || '')}
+                        <div onclick="window.openUserProfile('${u.id || ''}')" style="color: var(--text-main); font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; cursor: pointer;">
+                            ${u.username} ${getLevelBadgeHTML(calculateLevel(u.total_gift_sent || 0))}
                         </div>
-                        <div style="color: #FFD700; font-size: 12px; margin-top: 2px; font-weight: 600;">${(u.room_total || 0).toLocaleString()} koin</div>
+                        <div style="color: #1f3cff; font-size: 12px; margin-top: 2px; font-weight: 600;">${(u.room_total || 0).toLocaleString()} koin</div>
                     </div>
                 </div>`;
             });
@@ -684,7 +655,6 @@ function VoiceRoomContent() {
 
     window.mintaNaik = async () => {
         const { data: allSlots } = await sb.from('room_slots').select('slot_index, profile_id').eq('room_id', CURRENT_ROOM_ID).order('slot_index', { ascending: true });
-        // 🔥 CARI SLOT KOSONG YANG SESUAI BATAS SLOT COUNT SAAT INI 🔥
         const slotKosong = allSlots?.find(s => !s.profile_id && s.slot_index < roomSlotCount);
         
         if (slotKosong) {
@@ -722,7 +692,7 @@ function VoiceRoomContent() {
         if (icon && text) {
             icon.innerText = isMicOn.current ? 'mic' : 'mic_off';
             text.innerText = isMicOn.current ? t('mute_mic') : t('unmute_mic');
-            icon.style.color = isMicOn.current ? 'inherit' : '#ef4444';
+            icon.style.color = isMicOn.current ? '#1f3cff' : '#ff4757';
         }
         
         window.toggleSidebar?.(); 
@@ -735,25 +705,23 @@ function VoiceRoomContent() {
             modal.classList.add('show');
             const body = modal.querySelector('.modal-body');
             
-            // 🔥 TAMBAH SETTING JUMLAH SLOT (2, 4, 6) JIKA BELUM ADA 🔥
             if (body && !body.querySelector('.slot-settings')) {
                 const slotDiv = document.createElement('div');
                 slotDiv.className = 'slot-settings';
                 
                 const slotLabel = document.createElement('label');
-                slotLabel.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
+                slotLabel.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #888; margin-bottom: 8px;';
                 slotLabel.innerText = 'Jumlah Kursi Panggung';
                 slotDiv.appendChild(slotLabel);
 
                 const slotSelect = document.createElement('select');
                 slotSelect.id = 'edit-room-slots';
-                slotSelect.style.cssText = 'width: 100%; padding: 12px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; margin-bottom: 15px; outline:none;';
+                slotSelect.style.cssText = 'width: 100%; padding: 12px; background: rgba(0,0,0,0.05); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; font-weight: bold; margin-bottom: 15px; outline:none;';
                 
                 [2, 4, 6].forEach(num => {
                     const opt = document.createElement('option');
                     opt.value = String(num);
                     opt.text = `${num} Kursi`;
-                    // Set opsi terpilih berdasarkan state saat ini
                     if (num === roomSlotCount) opt.selected = true;
                     slotSelect.appendChild(opt);
                 });
@@ -762,48 +730,12 @@ function VoiceRoomContent() {
                 const saveBtn = body.querySelector('.btn-save-setting');
                 if (saveBtn) body.insertBefore(slotDiv, saveBtn); else body.appendChild(slotDiv);
             }
-
-            // SETTING RADAR COLOR (Bawaan Lama)
-            if (body && !body.querySelector('.radar-settings')) {
-                const div = document.createElement('div');
-                div.className = 'radar-settings';
-                const label = document.createElement('label');
-                label.style.cssText = 'margin-top:10px; display:block; font-size: 13px; font-weight: 700; color: #8696A0; margin-bottom: 8px;';
-                label.innerText = 'Warna Radar Mic';
-                div.appendChild(label);
-                const btnContainer = document.createElement('div');
-                btnContainer.style.cssText = 'display:flex; gap:12px; margin-bottom:20px;';
-                const colors = [{ val: '#ef4444', bg: '#ef4444' }, { val: '#3b82f6', bg: '#3b82f6' }, { val: '#22c55e', bg: '#22c55e' }, { val: 'rgb', bg: 'linear-gradient(45deg, red, blue, green)' }];
-                colors.forEach(c => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.style.cssText = `background:${c.bg}; width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;`;
-                    btn.onclick = () => { if(window.updateRadarColor) window.updateRadarColor(c.val); };
-                    btnContainer.appendChild(btn);
-                });
-                div.appendChild(btnContainer);
-                const saveBtn = body.querySelector('.btn-save-setting');
-                if (saveBtn) body.insertBefore(div, saveBtn); else body.appendChild(div);
-            }
         }
         window.toggleSidebar?.(); 
-    };
-
-    window.updateRadarColor = (color: string) => {
-        const root = document.documentElement;
-        if (color === 'rgb') {
-            root.style.setProperty('--radar-color', 'linear-gradient(90deg, #ff0000, #00ff00, #0000ff)');
-            document.body.classList.add('radar-rgb');
-        } else {
-            root.style.setProperty('--radar-color', color);
-            document.body.classList.remove('radar-rgb');
-        }
-        showNotif("Warna radar diperbarui!", "success");
     };
     
     window.closeRoomSetting = () => { document.getElementById('setting-modal')?.classList.remove('show'); };
     
-    // 🔥 FIX: SIMPAN ROOM SETTING (TERMASUK SLOT COUNT) 🔥
     window.saveRoomSetting = async () => {
         const newName = (document.getElementById('edit-room-name') as HTMLInputElement).value;
         const sysMsg = (document.getElementById('system-message') as HTMLInputElement).value;
@@ -817,20 +749,17 @@ function VoiceRoomContent() {
         if (!newName) return showNotif(t('room_name_empty'), "warning");
         
         try {
-            // Update nama dan slot_count ke database
             await sb.from('rooms').update({ name: newName, slot_count: newSlotCount }).eq('id', CURRENT_ROOM_ID);
             
-            // Kick user yang ada di slot yang di-disable (kalo Owner nurunin slot misal dari 6 ke 2)
             if (newSlotCount < roomSlotCount) {
                 await sb.from('room_slots')
                     .update({ profile_id: null })
                     .eq('room_id', CURRENT_ROOM_ID)
-                    .gte('slot_index', newSlotCount); // Kosongkan slot_index yg lebih besar/sama dengan limit baru
+                    .gte('slot_index', newSlotCount); 
             }
 
             if (sysMsg) await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `PENGUMUMAN: ${sysMsg}`, role: "admin" }]);
             
-            // Update State Lokal
             setRoomSlotCount(newSlotCount);
 
             const url = new URL(window.location.href); url.searchParams.set('name', newName); window.history.pushState({}, '', url); 
@@ -839,8 +768,6 @@ function VoiceRoomContent() {
             
             showNotif(`Pengaturan Panggung tersimpan (${newSlotCount} Kursi)`, "success");
             window.closeRoomSetting?.();
-            
-            // Render Ulang Stage
             fetchStage(newSlotCount);
         } catch (e: any) { showNotif("Gagal simpan: " + e.message, "error"); }
     };
@@ -887,13 +814,11 @@ function VoiceRoomContent() {
         roomRef.current?.disconnect();
         window.removeEventListener('resize', fixMobileHeight);
         window.removeEventListener('orientationchange', fixMobileHeight);
-        ['room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay', 'vip-entrance-overlay'].forEach(id => document.getElementById(id)?.remove());
+        ['room-gift-drawer', 'room-drawer-overlay', 'gift-anim-overlay'].forEach(id => document.getElementById(id)?.remove());
     };
   }, [t, searchParams, router]);
 
-  // Karena listener pake hooks (closure lama), kita harus sync dependencies ke callback
   useEffect(() => {
-    // Fungsi ini dipanggil dari dalam useEffect utama buat nge-update fetchStage tanpa bocor State
   }, [roomSlotCount]);
 
   if (!mounted) return null;
@@ -912,6 +837,7 @@ function VoiceRoomContent() {
       <div className="app-container"><Header /><Stage /><ChatBox /><Footer /></div> 
       <GiftDrawer /><GiftAnimOverlay />
 
+      {/* MODAL PROFILE SHEET ELEGAN */}
       <div className={`user-profile-sheet-overlay ${isProfileOpen ? 'active' : ''}`} onClick={() => setIsProfileOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
@@ -927,22 +853,20 @@ function VoiceRoomContent() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
                 
-                {/* 1. TOMBOL TURUN SLOT (HANYA UNTUK DIRI SENDIRI) */}
                 {selectedUser.id === MY_USER_ID.current && (
                   <button className="btn-action-sheet danger" onClick={() => { setIsProfileOpen(false); window.prosesTurunMic?.(); }}>
                     <span className="material-icons" style={{ fontSize: '18px' }}>mic_off</span> Turun Slot
                   </button>
                 )}
 
-                {/* 2. TOMBOL KICK/TURUNKAN (KHUSUS OWNER KE ORANG LAIN) */}
                 {IS_OWNER.current && selectedUser.id !== MY_USER_ID.current && (
                   <button className="btn-action-sheet danger" onClick={() => { setIsProfileOpen(false); window.kickUser?.(selectedUser.id, selectedUser.username); }}>
                     <span className="material-icons" style={{ fontSize: '18px' }}>person_remove</span> Turunkan dari Slot
                   </button>
                 )}
 
-                {/* 3. TOMBOL LIHAT PROFIL */}
-                <button className="btn-action-sheet primary" onClick={() => router.push(`/data?id=${selectedUser.id}`)}>
+                {/* 🔥 FIX 2: TOMBOL GRADASI MERAH BIRU 🔥 */}
+                <button className="btn-action-sheet btn-gradient" onClick={() => router.push(`/data?id=${selectedUser.id}`)}>
                   Lihat Profil Lengkap
                 </button>
               </div>
@@ -951,9 +875,9 @@ function VoiceRoomContent() {
         </div>
       </div>
       
-      {/* CSS GLOBAL UNTUK RADAR MIC & TAP-TAP & PROFILE */}
+      {/* CSS GLOBAL KHUSUS TEMA BARU */}
       <style jsx global>{`
-        :root { --radar-color: #3b82f6; }
+        :root { --radar-color: #1f3cff; }
         
         .tap-counter-box {
           position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%);
@@ -972,37 +896,45 @@ function VoiceRoomContent() {
           100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; }
         }
 
-        /* PROFILE SHEET CSS */
+        /* PROFILE SHEET CSS MINIMALIS */
         .user-profile-sheet-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10005;
+          position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 10005;
           opacity: 0; visibility: hidden; transition: 0.3s;
         }
         .user-profile-sheet-overlay.active { opacity: 1; visibility: visible; }
         .user-profile-sheet {
           position: absolute; bottom: 0; left: 0; right: 0;
-          background: #111; border-top-left-radius: 24px; border-top-right-radius: 24px;
+          background: var(--bg-main, #ffffff); border-top-left-radius: 24px; border-top-right-radius: 24px;
           padding: 20px 20px 40px; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-          text-align: center; border-top: 1px solid #333;
+          text-align: center; border-top: 1px solid var(--border-color);
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
         }
         .user-profile-sheet-overlay.active .user-profile-sheet { transform: translateY(0); }
-        .sheet-handle { width: 40px; height: 5px; background: #444; border-radius: 10px; margin: 0 auto 20px; }
-        .profile-sheet-avatar { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #1f3cff; object-fit: cover; margin-bottom: 15px; }
-        .profile-sheet-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .sheet-handle { width: 40px; height: 5px; background: var(--border-color); border-radius: 10px; margin: 0 auto 20px; }
         
-        /* BUTTON ACTION DI DALAM SHEET */
+        .profile-sheet-avatar { 
+          width: 90px; height: 90px; border-radius: 50%; border: 3px solid transparent; 
+          background-clip: padding-box, border-box; background-origin: padding-box, border-box;
+          background-image: linear-gradient(var(--bg-main), var(--bg-main)), linear-gradient(135deg, #ff4757, #1f3cff);
+          object-fit: cover; margin-bottom: 15px; 
+        }
+        .profile-sheet-name { font-size: 18px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        
+        /* TOMBOL SHEET ELEGAN */
         .btn-action-sheet {
           width: 100%; padding: 14px; border: none; border-radius: 14px;
-          font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s;
+          font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s, opacity 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .btn-action-sheet.primary { background: #1f3cff; color: #fff; }
-        .btn-action-sheet.danger { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255,71,87,0.3); }
-        .btn-action-sheet:active { transform: scale(0.96); }
+        .btn-action-sheet.danger { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255,71,87,0.2); }
+        .btn-action-sheet.btn-gradient { 
+          background: linear-gradient(135deg, #ff4757, #1f3cff); 
+          color: #fff; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3);
+        }
+        .btn-action-sheet:active { transform: scale(0.96); opacity: 0.9; }
 
-        .avatar.speaking { box-shadow: 0 0 0 4px var(--radar-color); animation: pulseRadar 1.5s infinite; }
-        .radar-rgb .avatar.speaking { animation: rgbRadar 2s infinite linear; }
-        @keyframes pulseRadar { 0% { box-shadow: 0 0 0 0px var(--radar-color); } 70% { box-shadow: 0 0 0 15px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); } }
-        @keyframes rgbRadar { 0% { box-shadow: 0 0 10px red; } 33% { box-shadow: 0 0 10px green; } 66% { box-shadow: 0 0 10px blue; } 100% { box-shadow: 0 0 10px red; } }
+        .avatar.speaking { box-shadow: 0 0 0 3px var(--radar-color); animation: pulseRadar 1.5s infinite; }
+        @keyframes pulseRadar { 0% { box-shadow: 0 0 0 0px var(--radar-color); } 70% { box-shadow: 0 0 0 10px rgba(31, 60, 255, 0); } 100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); } }
       `}</style>
     </div>
   );
@@ -1010,7 +942,7 @@ function VoiceRoomContent() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#01070A', color: '#fff', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
+    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
       <VoiceRoomContent />
     </Suspense>
   );
