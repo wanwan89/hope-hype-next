@@ -89,11 +89,10 @@ export default function SearchWrapperpost() {
         width: '100%',
         position: 'sticky', 
         top: 0,
-        zIndex: 999999, // 🔥 UBAH INI JADI 999999
+        zIndex: 15000, 
         transition: 'all 0.3s ease'
       }}
     >
-
       {/* 🔥 INJEKSI CSS ANIMASI MUTAR ALA IG 🔥 */}
       <style>{`
         @keyframes igSpin {
@@ -107,17 +106,15 @@ export default function SearchWrapperpost() {
         className="search-wrapper glass-effect" 
         style={{ 
           backgroundColor: 'var(--glass-bg)',
-          backdropFilter: 'blur(20px)', // 🔥 (Opsional) Naikin blur ke 20px
-          WebkitBackdropFilter: 'blur(20px)',
+          backdropFilter: 'blur(15px)',
+          WebkitBackdropFilter: 'blur(15px)',
           padding: '12px 18px',
           display: 'flex',
           alignItems: 'center',
           gap: '15px',
-          borderBottom: isStoriesVisible ? 'none' : '1px solid var(--border-color)',
-          position: 'relative' // 🔥 TAMBAHIN INI
+          borderBottom: isStoriesVisible ? 'none' : '1px solid var(--border-color)'
         }}
       >
-
         {/* TOMBOL SIDEBAR */}
         <button 
           id="mobileMenuBtn"
@@ -193,11 +190,9 @@ export default function SearchWrapperpost() {
             display: 'flex', gap: '15px', overflowX: 'auto',
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
             pointerEvents: isStoriesVisible ? 'auto' : 'none',
-            borderBottom: isStoriesVisible ? '1px solid var(--border-color)' : 'none',
-            position: 'relative' // 🔥 TAMBAHIN INI JUGA
+            borderBottom: isStoriesVisible ? '1px solid var(--border-color)' : 'none'
           }}
         >
-
           {stories.map((story) => (
             <div 
               key={story.id} 

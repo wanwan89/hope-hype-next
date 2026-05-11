@@ -354,7 +354,8 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
-  const getMusicHtml = (post: any) => {
+  // 🔥 FIX 1: UPDATE LOGIKA MUSIK BIAR MUNCUL DAN BERJALAN 🔥
+  const getMusicHtml = (post: any, isOverlay = true) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
     if (cleanAudio.includes('res.cloudinary.com') && cleanAudio.includes('/video/upload/')) {
@@ -363,9 +364,40 @@ export default function Gallerypost() {
     const finalAudio = cleanAudio.startsWith("http") ? cleanAudio : `/songs/${cleanAudio}`;
     
     return (
-      <div className="music-marquee-container" style={{ zIndex: 0 }}>
-        <div className="marquee-text">
-          {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
+      <div 
+        className="music-marquee-container" 
+        style={{ 
+          position: isOverlay ? 'absolute' : 'relative',
+          top: isOverlay ? '15px' : 'auto',
+          left: isOverlay ? '15px' : 'auto',
+          maxWidth: isOverlay ? 'calc(100% - 100px)' : '100%',
+          zIndex: 20, 
+          background: isOverlay ? 'rgba(0,0,0,0.6)' : 'var(--bg-secondary)',
+          backdropFilter: isOverlay ? 'blur(6px)' : 'none',
+          borderRadius: '12px',
+          padding: '4px 10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          overflow: 'hidden',
+          border: isOverlay ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-card)'
+        }}
+      >
+        <span className="material-icons" style={{ fontSize: '14px', color: isOverlay ? '#fff' : 'var(--text-main)' }}>music_note</span>
+        <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', width: '100%', position: 'relative' }}>
+          <div 
+            className="marquee-text"
+            style={{
+              display: 'inline-block',
+              color: isOverlay ? '#fff' : 'var(--text-main)',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              animation: 'marqueeMusic 8s linear infinite',
+              paddingLeft: '100%' // Biar mulai jalannya dari pojok kanan
+            }}
+          >
+            {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
+          </div>
         </div>
         <audio className="post-audio-element" loop preload="none" playsInline style={{ display: 'none' }}>
           <source src={finalAudio} type="audio/mpeg" />
@@ -401,10 +433,8 @@ export default function Gallerypost() {
     );
   };
 
-const renderEngagementButtons = (post: any, postIdStr: string) => (
+  const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
-      
-      {/* 🔥 FIX 1: TOMBOL SAVE 🔥 */}
       <button 
         className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
         onClick={() => handleSave(postIdStr)} 
@@ -413,7 +443,7 @@ const renderEngagementButtons = (post: any, postIdStr: string) => (
           viewBox="0 0 24 24" 
           className="icon" 
           fill="currentColor"
-          style={{ color: mySavedPosts.has(postIdStr) ? "#1DA1F2" : "inherit" }} // Pindahin kesini
+          style={{ color: mySavedPosts.has(postIdStr) ? "#1DA1F2" : "inherit" }} 
         >
           {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
         </svg>
@@ -476,6 +506,14 @@ const renderEngagementButtons = (post: any, postIdStr: string) => (
 
   return (
     <section>
+      {/* 🔥 INJEKSI ANIMASI MARQUEE MUSIK 🔥 */}
+      <style>{`
+        @keyframes marqueeMusic {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
+
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
           {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
@@ -511,7 +549,8 @@ const renderEngagementButtons = (post: any, postIdStr: string) => (
                 {(photoList.length > 0 || isVideoPost) ? (
                   <>
                     <div className="slider">
-                      {getMusicHtml(post)}
+                      {/* Panggil fungsi musik dengan parameter isOverlay = true */}
+                      {getMusicHtml(post, true)}
                       
                       <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10, display: 'flex', gap: '8px' }}>
                         {isVideoPost && (
@@ -621,7 +660,8 @@ const renderEngagementButtons = (post: any, postIdStr: string) => (
                       {renderBioWithMentions(post.bio?.trim())}
                     </div>
                     
-                    {post.audio_src && <div style={{ position: 'relative', height: '40px', marginTop: '10px' }}>{getMusicHtml(post)}</div>}
+                    {/* Panggil fungsi musik dengan parameter isOverlay = false untuk text-only post */}
+                    {post.audio_src && <div style={{ position: 'relative', height: '40px', marginTop: '10px' }}>{getMusicHtml(post, false)}</div>}
                     <div className="actions" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px', paddingTop: '12px' }}>
                       <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_profile_link')}</a>
                       {renderEngagementButtons(post, postIdStr)}
