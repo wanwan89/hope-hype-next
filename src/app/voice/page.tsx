@@ -418,9 +418,10 @@ const userLvl = user.level || 1;
                     </div>
                     <span class="name-label" style="color: #ffffff; font-weight: 600; text-shadow: none;">
                         <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
-                            ${user.username} ${getLevelBadgeHTML(calculatedUserLvl)}
+                            ${user.username} ${getLevelBadgeHTML(userLvl)}
                         </div>
                     </span>`;
+
             } else {
                 item.innerHTML = `<div class="avatar" style="border: 1px dashed rgba(255,255,255,0.2); opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:#aaa; font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:#fff;">${t('empty_slot')}</span>`;
             }
