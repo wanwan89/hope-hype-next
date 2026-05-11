@@ -27,6 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
   const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); 
   
+  // --- 🔥 STATE DETEKSI INTERNET (OFFLINE/ONLINE) 🔥 ---
+  const [isOnline, setIsOnline] = useState(true);
+
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
 
@@ -48,6 +51,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
+
+  // --- 🔥 EFEK UNTUK DETEKSI INTERNET 🔥 ---
+  useEffect(() => {
+    // Set status awal pas web dibuka
+    setIsOnline(navigator.onLine);
+
+    // Bikin fungsi penangkap sinyal
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    // Pasang kuping buat dengerin perubahan sinyal
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // --- 🔥 FIX BENTROK NADA DERING: MATIKAN PAKSA KALAU MASUK HYPETALK 🔥 ---
   useEffect(() => {
@@ -262,7 +284,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       body.style.overscrollBehaviorY = 'auto'; 
       
       // 🔥 FIX: HANYA MENGHAPUS ELEMEN INJEKSI VANILLA JS (BUKAN KOMPONEN REACT)
-      // Kalau kita hapus Drawer pakai Vanilla JS, React bakal crash (Could not load)!
       const vanillaJsTrash = ['vip-entrance-overlay', 'vip-anim-styles-clean'];
       vanillaJsTrash.forEach(id => {
         const el = document.getElementById(id);
@@ -401,6 +422,69 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             text-overflow: ellipsis; 
             overflow: hidden;
           }
+
+          /* 🔥 ANIMASI OFFLINE KEREN 🔥 */
+          .offline-global-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999999999;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInOffline 0.4s ease;
+          }
+
+          .offline-card {
+            background: var(--bg-panel, #1a1a1a);
+            padding: 30px 25px;
+            border-radius: 24px;
+            text-align: center;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 71, 87, 0.1);
+            width: 85%;
+            max-width: 320px;
+            animation: popUpOffline 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+
+          .offline-icon-ring {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 71, 87, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            color: #ff4757;
+            position: relative;
+          }
+
+          .offline-icon-ring::before {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            border: 2px solid #ff4757;
+            animation: pulseWarning 1.5s infinite;
+          }
+
+          @keyframes fadeInOffline {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
+          @keyframes popUpOffline {
+            from { transform: scale(0.8) translateY(20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+          }
+
+          @keyframes pulseWarning {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+          }
         `}</style>
       </head>
 
@@ -408,6 +492,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
             <GlobalShareModal />
+
+            {/* 🔥 POPUP OFFLINE ANIMASI KETIKA TIDAK ADA INTERNET 🔥 */}
+            {!isOnline && (
+              <div className="offline-global-overlay">
+                <div className="offline-card">
+                  <div className="offline-icon-ring">
+                    <span className="material-icons" style={{ fontSize: '32px' }}>wifi_off</span>
+                  </div>
+                  <h3 style={{ color: 'var(--text-main, #ffffff)', fontSize: '18px', fontWeight: '800', margin: '0 0 8px 0' }}>
+                    Koneksi Terputus
+                  </h3>
+                  <p style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '13px', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+                    Sinyal lu ngilang Bree! HypeTalk butuh koneksi internet buat jalan. Coba cek WiFi atau kuota lu.
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#ff4757', fontSize: '12px', fontWeight: 'bold' }}>
+                    <span className="material-icons" style={{ fontSize: '14px', animation: 'hypeSpin 2s linear infinite' }}>autorenew</span>
+                    Menunggu sinyal...
+                  </div>
+                </div>
+              </div>
+            )}
 
             {globalMessageNotif && !globalIncomingCall && (
               <div className="global-msg-popup" onClick={handleMessageClick}>
@@ -484,3 +589,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+
+        {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
+        {/* 🔥 FIX: Ganti swap jadi block khusus untuk Icon biar teksnya nggak bocor pas refresh 🔥 */}
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
+        
+        {/* Untuk font Poppins biarin tetap swap biar load text-nya cepet */}
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
