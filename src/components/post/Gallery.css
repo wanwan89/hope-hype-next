@@ -64,7 +64,7 @@
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
-  z-index: 10;
+  z-index: 10; /* 🔥 Pastikan angka ini 10 agar ada di bawah Search Bar 🔥 */
 }
 
 .dot {
@@ -203,8 +203,7 @@
 .icon { width: 22px; height: 22px; fill: var(--text-main); transition: fill 0.2s ease, transform 0.2s ease; }
 .icon-btn.liked .icon { fill: #ff2e63; }
 .icon-btn.reposted .icon { fill: #1f3cff; } /* FIX: Gunakan warna biru HypeTalk */
-.icon-btn.active .icon { fill: #1DA1F2; } /* Khusus untuk save/bookmark */
-
+.icon-btn.active .icon { fill: #1f3cff; } /* Khusus untuk save/bookmark */
 
 /* ✨ ANGKA ENGAGEMENT: ikuti warna tema (putih di dark, hitam di light) */
 /* FIX: Gabungin semua jenis hitungan biar konsisten */

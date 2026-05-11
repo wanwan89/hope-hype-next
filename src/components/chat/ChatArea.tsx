@@ -107,6 +107,12 @@ export default function ChatArea() {
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
     setMyProfile(prof);
 
+    // 🔥 HENTIKAN RINGTONE LAMA SEBELUM INISIALISASI BARU
+    if (refs.audio.current?.ring) {
+      refs.audio.current.ring.pause();
+      refs.audio.current.ring.currentTime = 0;
+    }
+
     refs.audio.current = {
       send: new Audio("/asets/sound/send.mp3"),
       receive: new Audio("/asets/sound/receive.mp3"),
@@ -220,6 +226,12 @@ export default function ChatArea() {
   };
 
   const cleanup = () => {
+    // 🔥 FIX RINGTONE: hentikan dan lepaskan referensi
+    if (refs.audio.current?.ring) {
+      refs.audio.current.ring.pause();
+      refs.audio.current.ring.currentTime = 0;
+      refs.audio.current.ring = null;
+    }
     if (refs.msgChannel.current) supabase.removeChannel(refs.msgChannel.current);
     if (refs.presenceChannel.current) supabase.removeChannel(refs.presenceChannel.current);
     if (refs.globalChannel.current) supabase.removeChannel(refs.globalChannel.current);
@@ -493,13 +505,13 @@ export default function ChatArea() {
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0, room: roomId });
     
-    await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: ` Memanggil ${headerInfo.title}...`, is_system: true }]);
+    await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Memanggil ${headerInfo.title}...`, is_system: true }]);
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
       if (callStatusRef.current === 'calling') {
         endCall(true);
-        await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `☎️ Panggilan tak terjawab`, is_system: true }]);
+        await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Panggilan tak terjawab`, is_system: true }]);
       }
     }, 30000); 
     
@@ -511,6 +523,12 @@ export default function ChatArea() {
       await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `Sibuk, coba lagi nanti`, is_system: true }]);
       return;
     }
+    // 🔥 FIX RINGTONE: hentikan terlebih dahulu sebelum membuat nada dering baru
+    if (refs.audio.current?.ring) {
+      refs.audio.current.ring.pause();
+      refs.audio.current.ring.currentTime = 0;
+    }
+
     const { data: p } = await supabase.from('profiles').select('username, avatar_url').eq('id', msg.user_id).single();
     setCallStatus('incoming'); 
     setCallData({ partnerName: p?.username, partnerAvatar: p?.avatar_url, room: msg.room_id, seconds: 0 });
@@ -522,6 +540,12 @@ export default function ChatArea() {
 
   const connectLiveKit = async (rName: string) => {
     try {
+      // 🔥 FIX RINGTONE: hentikan nada dering karena panggilan sudah dijawab/dimulai
+      if (refs.audio.current?.ring) {
+        refs.audio.current.ring.pause();
+        refs.audio.current.ring.currentTime = 0;
+      }
+
       if (refs.lkRoom.current) {
         refs.lkRoom.current.removeAllListeners();
         await refs.lkRoom.current.disconnect();
@@ -578,6 +602,7 @@ export default function ChatArea() {
   };
 
   const endCall = (silent = false) => {
+    // 🔥 FIX RINGTONE: pastikan nada dering dihentikan di setiap akhir panggilan
     if (refs.audio.current?.ring) { 
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
@@ -860,7 +885,7 @@ export default function ChatArea() {
         ) : (
           <>
             <div className="encryption-notice">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
+              <span className="material-icons" style={{ fontSize: '14px', marginRight: '4px' }}>lock</span>
               <span>{t('encryption_notice')}</span>
             </div>
             {messages.map((msg) => (
@@ -871,22 +896,18 @@ export default function ChatArea() {
                 isMe={msg.user_id === currentUser?.id} 
                 onReply={setReplyTo} 
                 onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
+                roomId={roomId}
               />
             ))}
+            {/* 🔥 TYPING BUBBLE DIRENDER VIA MessageBubble 🔥 */}
             {typingUser && (
-              <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
-                {(roomId === 'room-1' || roomId.startsWith('group_')) && (
-                  <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
-                )}
-                <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '14px 14px 14px 4px', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px' }}>{typingUser.username}</div>
-                  <div className="typing-bubble" style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '14px' }}>
-                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out' }}></span>
-                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.2s' }}></span>
-                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.4s' }}></span>
-                  </div>
-                </div>
-              </div>
+              <MessageBubble 
+                isTyping={true}
+                typingUser={typingUser}
+                roomId={roomId}
+                currentUser={currentUser}
+                isMe={false}
+              />
             )}
           </>
         )}

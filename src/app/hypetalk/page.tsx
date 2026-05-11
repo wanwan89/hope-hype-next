@@ -54,10 +54,7 @@ export default function HypetalkPage() {
       if (refs.audio.current.ring) refs.audio.current.ring.loop = true;
     }
     initUser();
-  }, []);
-
-  useEffect(() => {
-    // Component unmount / cleanup
+    // 🔥 FIX RINGTONE: bersihkan saat komponen unmount
     return () => {
       setIsSidebarOpen(false);
       setActiveModal(null);
@@ -79,7 +76,6 @@ export default function HypetalkPage() {
       clearInterval(refs.callInterval.current);
     };
   }, []);
-
 
   const initUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -472,6 +468,12 @@ export default function HypetalkPage() {
       await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `Sibuk, coba lagi nanti`, is_system: true }]);
       return;
     }
+    // 🔥 FIX RINGTONE: hentikan terlebih dahulu sebelum memutar yang baru
+    if (refs.audio.current?.ring) {
+      refs.audio.current.ring.pause();
+      refs.audio.current.ring.currentTime = 0;
+    }
+
     const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', msg.user_id).single();
     setCallStatus('incoming'); 
     setCallData({ 
@@ -489,6 +491,12 @@ export default function HypetalkPage() {
   const connectLiveKit = async (rName: string, partnerId?: string) => {
     if (!currentUser) return;
     try {
+      // 🔥 FIX RINGTONE: hentikan nada dering karena panggilan dijawab/dimulai
+      if (refs.audio.current?.ring) {
+        refs.audio.current.ring.pause();
+        refs.audio.current.ring.currentTime = 0;
+      }
+
       if (refs.lkRoom.current) {
         refs.lkRoom.current.removeAllListeners();
         await refs.lkRoom.current.disconnect();
@@ -545,6 +553,7 @@ export default function HypetalkPage() {
   };
 
   const endCall = (silent = false) => {
+    // 🔥 FIX RINGTONE: hentikan di setiap akhir panggilan
     if (refs.audio.current?.ring) { 
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
@@ -568,8 +577,7 @@ export default function HypetalkPage() {
     }
   };
 
-const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
-
+  const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
 
   return (
     <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>

@@ -24,7 +24,6 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// 🔥 FUNGSI SAKTI BUAT BIKIN LINK JADI BISA DI-KLIK 🔥
 const renderTextWithLinks = (text: string) => {
   if (!text) return null;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -49,7 +48,7 @@ const renderTextWithLinks = (text: string) => {
   });
 };
 
-export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUser }: any) {
+export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, currentUser, isTyping, typingUser, roomId }: any) {
   const { t } = useTranslation(); 
   const router = useRouter(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -59,21 +58,19 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   const holdTimer = useRef<any>(null);
   const lastTap = useRef(0);
 
-  const isDeleted = msg.message === "Pesan ini telah dihapus";
-  
-  const isGlobalChat = msg.room_id === 'room-1';
-  const isGroupChat = msg.room_id?.startsWith('group_');
+  const isDeleted = msg?.message === "Pesan ini telah dihapus";
+  const isGlobalChat = msg?.room_id === 'room-1';
+  const isGroupChat = msg?.room_id?.startsWith('group_');
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
-  
-  const isStoryReply = msg.message && msg.message.includes("Membalas ceritamu");
+  const isStoryReply = msg?.message && msg?.message.includes("Membalas ceritamu");
 
-  const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
-  
-  // 🔥 STATE REACTION LOKAL 🔥
+  const [liveReply, setLiveReply] = useState<any>(msg?.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (msg.reply_to && !msg.reply_to_msg && !liveReply) {
+    if (msg?.reply_to && !msg?.reply_to_msg && !liveReply) {
       const fetchReplyData = async () => {
         try {
           const { data, error } = await supabase.from('messages').select('id, message, profiles(username)').eq('id', msg.reply_to).single();
@@ -81,10 +78,32 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
         } catch (err) { console.error(err); }
       };
       fetchReplyData();
-    } else if (msg.reply_to_msg) {
+    } else if (msg?.reply_to_msg) {
       setLiveReply(msg.reply_to_msg);
     }
-  }, [msg.reply_to, msg.reply_to_msg, liveReply]);
+  }, [msg?.reply_to, msg?.reply_to_msg, liveReply]);
+
+  // 🔥 RENDER ANIMASI MENGETIK (Jika isTyping = true) 🔥
+  if (isTyping && typingUser) {
+    const showUserDetailTyping = roomId === 'room-1' || roomId?.startsWith('group_');
+    return (
+      <div className="hype-chat-scope" style={{ position: 'relative' }}>
+        <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
+          {showUserDetailTyping && (
+            <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
+          )}
+          <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '14px 14px 14px 4px', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px' }}>{typingUser.username}</div>
+            <div className="typing-bubble" style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '14px' }}>
+              <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out' }}></span>
+              <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.2s' }}></span>
+              <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.4s' }}></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -118,7 +137,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     let diff = touchCurrentX.current - touchStartX.current;
     const now = Date.now();
     
-    // DETEKSI DOUBLE TAP -> BUKA MENU REACTION LOKAL
     if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted && !msg.is_system) {
       setShowReactions(true);
       if (navigator.vibrate) navigator.vibrate(20);
@@ -143,7 +161,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     }
   };
 
-  // 🔥 FUNGSI KIRIM REACTION 🔥
   const handleReactionSelect = async (emoji: string, e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (!currentUser) return;
@@ -158,9 +175,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     await supabase.from('messages').update({ reactions: currentReactions }).eq('id', msg.id);
     setShowReactions(false);
   };
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggleVN = () => {
     if (isPlaying) {
@@ -183,7 +197,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     } catch (err) { console.error(err); }
   };
 
-  let cleanMsg = msg.message || "";
+  let cleanMsg = msg?.message || "";
   if (isStoryReply) {
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
@@ -196,7 +210,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   return (
     <div className="hype-chat-scope" style={{ position: 'relative' }}>
       
-      {/* 🔥 OVERLAY & BOX REACTION (MUNCUL PAS DOUBLE TAP) 🔥 */}
       {showReactions && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 99998 }} onClick={() => setShowReactions(false)} />
@@ -259,11 +272,13 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
               textAlign: 'center'
             }}
           >
-            {(msg.message.includes("Memanggil") || msg.message.includes("Panggilan") || msg.message.includes("terjawab") || msg.message.includes("dibatalkan")) && (
+            {/* 🔥 ICON SISTEM HANYA MENGGUNAKAN MATERIAL ICONS 🔥 */}
+            {(msg.message.includes("Memanggil") || msg.message.includes("Panggilan") || msg.message.includes("terjawab") || msg.message.includes("dibatalkan") || msg.message.includes("ditolak")) && (
                <span className="material-icons" style={{ fontSize: '14px', color: msg.message.includes("ditolak") || msg.message.includes("tak") ? '#ff4757' : '#2ecc71' }}>
                  {msg.message.includes("ditolak") || msg.message.includes("tak") ? 'call_missed' : 'phone_in_talk'}
                </span>
             )}
+            {/* Teks tanpa emoji, hapus 📞 dan 🎤 jika ada */}
             {msg.message.replace(/📞/g, '').replace(/🎤/g, '').trim()}
           </div>
         ) : (
@@ -279,8 +294,19 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
               />
             )}
             
-            {/* 🔥 TAMBAHKAN position: relative DI SINI 🔥 */}
-            <div className="content" style={{ position: 'relative', display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px' }}>
+            <div className="content" style={{ 
+              position: 'relative', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              width: 'fit-content', 
+              minWidth: 0, 
+              padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px',
+              background: isMe ? '#1f3cff' : 'var(--bg-panel)', // 🔥 WARNA BIRU UNTUK PESAN SENDIRI 🔥
+              color: isMe ? 'white' : 'var(--text-color)',
+              borderRadius: '14px',
+              border: isMe ? 'none' : '1px solid var(--border-color)',
+              boxShadow: isMe ? '0 2px 8px rgba(31, 60, 255, 0.3)' : 'none'
+            }}>
               
               {showUserDetail && (
                 <div style={{
@@ -350,7 +376,8 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                     opacity: isDeleted ? 0.7 : 1,
                     whiteSpace: 'pre-wrap',
                     padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0',
-                    wordBreak: 'break-word'
+                    wordBreak: 'break-word',
+                    color: isMe ? 'white' : 'inherit'
                   }}
                 >
                   {isDeleted ? t('msg_deleted') : renderTextWithLinks(cleanMsg)}
@@ -371,11 +398,10 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                       <span key={i} className="bar" style={{ height: `${heightPercent}%`, animationDelay: `${i * 0.1}s`, transition: 'height 0.2s ease' }}></span>
                     ))}
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #8e8e93)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: isMe ? 'white' : 'var(--text-muted, #8e8e93)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
                 </div>
               )}
 
-              {/* 🔥 TAMPILAN BADGE REACTION (LEBIH RAPIH & PREMIUM) 🔥 */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                 <div 
                   className="message-reactions-badge" 
@@ -409,7 +435,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0',
                 marginTop: (msg.reactions && Object.keys(msg.reactions).length > 0) ? '6px' : '0'
               }}>
-                <span className="timestamp">
+                <span className="timestamp" style={{ color: isMe ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>
                   {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
                 </span>
                 {isMe && getStatusIcon(msg.status || 'sent')}

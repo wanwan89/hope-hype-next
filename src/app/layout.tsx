@@ -74,12 +74,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           playPromise.catch(() => console.log("Audio diblokir browser"));
         }
       } else {
-        if (ringtoneRef.current) {
-          ringtoneRef.current.pause();
-          ringtoneRef.current.currentTime = 0; 
-        }
+        ringtoneRef.current.pause();
+        ringtoneRef.current.currentTime = 0; 
       }
     }
+    // 🔥 FIX RINGTONE: cleanup saat komponen unmount
+    return () => {
+      ringtoneRef.current?.pause();
+      ringtoneRef.current = null;
+    };
   }, [globalIncomingCall]);
 
   // --- 🔥 SISTEM PANGGILAN & PESAN GLOBAL 🔥 ---
@@ -157,7 +160,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     return () => {
       if (channel) supabase.removeChannel(channel);
-      if (ringtoneRef.current) ringtoneRef.current.pause();
+      // 🔥 FIX RINGTONE: hentikan juga saat listener dilepas
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current.currentTime = 0;
+      }
       clearTimeout(msgNotifTimerRef.current);
     };
   }, []);
@@ -188,6 +195,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const cid = globalIncomingCall.callerId;
     
     setGlobalIncomingCall(null);
+    // 🔥 FIX RINGTONE: hentikan saat angkat
     if (ringtoneRef.current) {
       ringtoneRef.current.pause();
       ringtoneRef.current.currentTime = 0;
