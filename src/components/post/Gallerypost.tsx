@@ -45,7 +45,6 @@ export default function Gallerypost() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
 
-  // 🔥 FIX 4: Pastikan ID ditangkap sebagai String biar nggak nyangkut
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
       const postId = String(e.detail.postId);
@@ -355,7 +354,6 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
-  // 🔥 FIX 1: UPDATE LOGIKA MUSIK MINIMALIS 🔥
   const getMusicHtml = (post: any, isOverlay = true) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
@@ -371,12 +369,12 @@ export default function Gallerypost() {
           position: isOverlay ? 'absolute' : 'relative',
           top: isOverlay ? '12px' : 'auto',
           left: isOverlay ? '12px' : 'auto',
-          maxWidth: isOverlay ? '130px' : '100%', // Dikecilin biar minimalis
-          zIndex: 20, 
+          maxWidth: isOverlay ? '130px' : '100%', 
+          zIndex: 5, // 🔥 FIX: Z-INDEX DITURUNKAN JADI 5 BIAR GAK NEMBUS SEARCH BAR
           background: isOverlay ? 'rgba(0,0,0,0.5)' : 'var(--bg-secondary)',
           backdropFilter: isOverlay ? 'blur(8px)' : 'none',
           borderRadius: '16px',
-          padding: '4px 8px', // Padding lebih tipis
+          padding: '4px 8px',
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
@@ -391,9 +389,9 @@ export default function Gallerypost() {
             style={{
               display: 'inline-block',
               color: isOverlay ? '#fff' : 'var(--text-main)',
-              fontSize: '10px', // Font lebih imut
+              fontSize: '10px', 
               fontWeight: 'bold',
-              animation: 'marqueeMusic 6s linear infinite', // Sedikit lebih cepat
+              animation: 'marqueeMusic 6s linear infinite', 
               paddingLeft: '100%' 
             }}
           >
@@ -551,7 +549,8 @@ export default function Gallerypost() {
                     <div className="slider">
                       {getMusicHtml(post, true)}
                       
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: '6px' }}>
+                      {/* 🔥 FIX: Z-INDEX BADGE VIDEO & FOTO DITURUNKAN JADI 5 🔥 */}
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 5, display: 'flex', gap: '6px' }}>
                         {isVideoPost && (
                           <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
                             <span className="material-icons" style={{ fontSize: '12px' }}>videocam</span> Video
@@ -560,7 +559,6 @@ export default function Gallerypost() {
                         {photoList.length > 1 && !isVideoPost && (
                           <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
                             <span className="material-icons" style={{ fontSize: '12px' }}>collections</span> 
-                            {/* 🔥 FIX 2: COUNTER DENGAN ID KHUSUS 🔥 */}
                             <span id={`slide-counter-${post.id}`}>1/{photoList.length}</span>
                           </div>
                         )}
@@ -572,7 +570,6 @@ export default function Gallerypost() {
                           const dots = document.querySelectorAll(`.dots-${post.id} .dot`);
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
                           
-                          // 🔥 FIX 2: UPDATE ANGKA COUNTER OTOMATIS SAAT DI-SLIDE 🔥
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
@@ -609,11 +606,6 @@ export default function Gallerypost() {
                           ))}
                         </div>
                       )}
-
-                      {/* 🔥 FIX 3: WATERMARK DIPINDAH KE KIRI BAWAH 🔥 */}
-                      <div className="watermark-overlay" style={{ position: 'absolute', bottom: '15px', left: '15px', zIndex: 5, opacity: 0.8, pointerEvents: 'none' }}>
-                        <img src="/asets/svg/watermark.svg" alt="watermark" style={{ height: '20px' }} />
-                      </div>
                     </div>
                     
                     <div className="overlay">
@@ -666,7 +658,6 @@ export default function Gallerypost() {
                       {renderBioWithMentions(post.bio?.trim())}
                     </div>
                     
-                    {/* Panggil fungsi musik dengan parameter isOverlay = false untuk text-only post */}
                     {post.audio_src && <div style={{ position: 'relative', height: '40px', marginTop: '10px' }}>{getMusicHtml(post, false)}</div>}
                     <div className="actions" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px', paddingTop: '12px' }}>
                       <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_profile_link')}</a>
