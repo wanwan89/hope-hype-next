@@ -44,25 +44,24 @@ export default function Gallerypost() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
-// TAMBAHKAN EFFECT INI DI DALAM KOMPONEN:
-useEffect(() => {
-  const handleCommentRefresh = (e: any) => {
-    const { postId } = e.detail;
-    if (postId) {
-      setCounts(prev => ({
-        ...prev,
-        [postId]: { 
-          ...prev[postId], 
-          comments: (prev[postId]?.comments || 0) + 1 
-        }
-      }));
-    }
-  };
 
-  window.addEventListener('commentAdded', handleCommentRefresh);
-  return () => window.removeEventListener('commentAdded', handleCommentRefresh);
-}, []);
+  useEffect(() => {
+    const handleCommentRefresh = (e: any) => {
+      const { postId } = e.detail;
+      if (postId) {
+        setCounts(prev => ({
+          ...prev,
+          [postId]: { 
+            ...prev[postId], 
+            comments: (prev[postId]?.comments || 0) + 1 
+          }
+        }));
+      }
+    };
 
+    window.addEventListener('commentAdded', handleCommentRefresh);
+    return () => window.removeEventListener('commentAdded', handleCommentRefresh);
+  }, []);
 
   useEffect(() => { initGallery(); }, []);
 
@@ -113,7 +112,6 @@ useEffect(() => {
       const from = (pageNumber - 1) * POSTS_PER_PAGE;
       const to = from + POSTS_PER_PAGE - 1;
 
-      // 🔥 PASTIKAN video_url TER-SELECT DARI DATABASE 🔥
       let query = supabase.from("posts")
         .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (username, role, avatar_url)`)
         .eq("status", "approved")
@@ -315,7 +313,6 @@ useEffect(() => {
     }
   };
 
-  // 🔥 OBSERVER AUTOPLAY VIDEO & MUSIK (SANGAT CANGGIH) 🔥
   const initAutoPlayObserver = () => {
     let userHasInteracted = false;
     const handleFirstInteract = () => { userHasInteracted = true; document.body.removeEventListener('click', handleFirstInteract); };
@@ -325,9 +322,7 @@ useEffect(() => {
 
     observerRef.current = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        // Kontrol Audio dari Gambar Feed
         const audio = entry.target.querySelector('.post-audio-element') as HTMLAudioElement;
-        // Kontrol Native Video (kalo postingan itu tipe Video)
         const video = entry.target.querySelector('.post-video-element') as HTMLVideoElement;
 
         if (entry.isIntersecting) {
@@ -368,7 +363,7 @@ useEffect(() => {
     const finalAudio = cleanAudio.startsWith("http") ? cleanAudio : `/songs/${cleanAudio}`;
     
     return (
-      <div className="music-marquee-container">
+      <div className="music-marquee-container" style={{ zIndex: 0 }}>
         <div className="marquee-text">
           {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
         </div>
@@ -412,31 +407,23 @@ useEffect(() => {
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor">
           {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
         </svg>
-        <span className="save-count">{counts[postIdStr]?.saves || 0}</span>
+        <span className="save-count" style={{ color: 'var(--text-main)' }}>{counts[postIdStr]?.saves || 0}</span>
       </button>
-<button 
-  className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} 
-  onClick={() => handleRepost(postIdStr)}
->
-  {/* 🔥 Warna biru cuma di Icon SVG 🔥 */}
-  <svg 
-    viewBox="0 0 24 24" 
-    className="icon" 
-    fill="currentColor"
-    style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }}
-  >
-    <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
-  </svg>
 
-  {/* 🔥 Angka pake var(--text-main) biar auto-switch Hitam/Putih 🔥 */}
-  <span 
-    className="repost-count" 
-    style={{ color: 'var(--text-main)' }}
-  >
-    {counts[postIdStr]?.reposts || 0}
-  </span>
-</button>
-
+      <button 
+        className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} 
+        onClick={() => handleRepost(postIdStr)}
+      >
+        <svg 
+          viewBox="0 0 24 24" 
+          className="icon" 
+          fill="currentColor"
+          style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }}
+        >
+          <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
+        </svg>
+        <span className="repost-count" style={{ color: 'var(--text-main)' }}>{counts[postIdStr]?.reposts || 0}</span>
+      </button>
 
       <button className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} onClick={() => handleLike(postIdStr, post.creator_id)}>
         <svg viewBox="0 0 24 24" className="icon heart" fill="currentColor"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg>
@@ -505,8 +492,6 @@ useEffect(() => {
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
             const photoList = post.image_url ? post.image_url.split(',') : [];
-
-            // 🔥 LOGIKA RENDER (VIDEO vs GAMBAR) 🔥
             const isVideoPost = !!post.video_url;
 
             return (
@@ -516,7 +501,6 @@ useEffect(() => {
                     <div className="slider">
                       {getMusicHtml(post)}
                       
-                      {/* 🔥 BADGE INDIKATOR PINTAR (POJOK KANAN ATAS) 🔥 */}
                       <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10, display: 'flex', gap: '8px' }}>
                         {isVideoPost && (
                           <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
@@ -536,20 +520,17 @@ useEffect(() => {
                           const dots = document.querySelectorAll(`.dots-${post.id} .dot`);
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
                       }}>
-                        
-                        {/* 🔥 RENDER VIDEO JIKA ADA 🔥 */}
                         {isVideoPost ? (
                           <div className="carousel-item" style={{ aspectRatio: '2 / 3', overflow: 'hidden', position: 'relative', background: '#000' }}>
                             <video 
                               src={post.video_url} 
                               className="post-video-element"
-                              poster={getOptimizedImage(post.image_url)} // Cover fallback
+                              poster={getOptimizedImage(post.image_url)}
                               playsInline loop muted
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                           </div>
                         ) : (
-                          /* 🔥 RENDER GAMBAR JIKA BUKAN VIDEO 🔥 */
                           photoList.map((url: string, i: number) => (
                             <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', overflow: 'hidden', position: 'relative' }}>
                               <img 
@@ -565,7 +546,6 @@ useEffect(() => {
                         )}
                       </div>
 
-                      {/* TITIK SLIDE (JIKA LEBIH DARI 1 FOTO) */}
                       {photoList.length > 1 && !isVideoPost && (
                         <div className={`carousel-dots dots-${post.id}`}>
                           {photoList.map((_: any, i: number) => (
@@ -574,19 +554,19 @@ useEffect(() => {
                         </div>
                       )}
 
-                      <div className="watermark-overlay"><img src="/asets/svg/watermark.svg" alt="watermark" /></div>
+                      <div className="watermark-overlay" style={{ zIndex: 0 }}>
+                        <img src="/asets/svg/watermark.svg" alt="watermark" />
+                      </div>
                     </div>
                     
                     <div className="overlay">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`} style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                             {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                           </h2>
                           {renderFollowButton(post.creator_id)}
                         </div>
-
                         <button 
                           className="options-btn" 
                           aria-label="Opsi Postingan" 
@@ -608,7 +588,6 @@ useEffect(() => {
                     </div>
                   </>
                 ) : (
-                  // 🔥 POSTINGAN FULL TEKS (TANPA GAMBAR/VIDEO) 🔥
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
@@ -642,7 +621,6 @@ useEffect(() => {
           })
         )}
 
-        {/* 🔥 TOMBOL LOAD MORE 🔥 */}
         {posts.length > 0 && hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 50px 0', width: '100%' }}>
             <button 

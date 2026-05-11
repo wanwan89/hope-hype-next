@@ -79,7 +79,7 @@
   border-radius: 10px;
 }
 
-/* 🔥 FIX 1: WATERMARK DI POJOK KIRI ATAS 🔥 */
+/* 🔥 WATERMARK (kiri atas) – z-index rendah agar tidak menutupi search bar */
 .watermark-overlay { 
   position: absolute; 
   top: 15px; 
@@ -87,7 +87,7 @@
   width: 70px; 
   opacity: 0.8;
   pointer-events: none; 
-  z-index: 50; /* Di bawah musik tapi di atas gambar */
+  z-index: 1; /* sebelumnya 50 */
 }
 .watermark-overlay img { 
   width: 100%; 
@@ -95,7 +95,7 @@
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* 🔥 FIX 2: ANIMASI MUSIK BERJALAN (MARQUEE) 🔥 */
+/* 🔥 MUSIK MARQUEE (kanan atas) – z-index rendah agar tidak menutupi search bar */
 .music-marquee-container {
   position: absolute;
   top: 12px;
@@ -105,9 +105,9 @@
   color: white;
   border-radius: 20px;
   padding: 6px 12px;
-  z-index: 60;
-  max-width: 140px; /* Batasi lebar container */
-  overflow: hidden; /* Sembunyikan teks yang keluar jalur */
+  z-index: 1; /* sebelumnya 60 */
+  max-width: 140px;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -118,7 +118,7 @@
   white-space: nowrap;
   font-size: 10px;
   font-weight: 700;
-  padding-left: 100%; /* Mulai teks dari luar container kanan */
+  padding-left: 100%;
   animation: marquee-play 10s linear infinite;
   will-change: transform;
 }
@@ -202,6 +202,11 @@
 .icon-btn.liked .icon { fill: #ff2e63; }
 .icon-btn.reposted .icon { fill: #1DA1F2; }
 
+/* ✨ ANGKA SAVE: ikuti warna tema (putih di dark, hitam di light) */
+.save-count {
+  color: var(--text-main);
+}
+
 /* ========================================== */
 /* 🔥 SKELETON 🔥                             */
 /* ========================================== */
@@ -216,12 +221,13 @@
 .image-preview-overlay.active { opacity: 1; pointer-events: auto; }
 .image-preview-content img { max-width: 95vw; max-height: 85vh; border-radius: 12px; transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .image-preview-overlay.active .image-preview-content img { transform: scale(1); }
-/* Gallery.css */
+
+/* Repost button (icon saja) tetap biru saat di-repost */
 .icon-btn.repost-btn.reposted {
   color: #1f3cff !important;
 }
 
-/* Opsional: Efek transisi biar halus pas berubah warna */
+/* Transisi halus pada ikon */
 .icon-btn svg {
   transition: color 0.2s ease, transform 0.2s ease;
 }
