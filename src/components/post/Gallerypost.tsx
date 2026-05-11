@@ -45,9 +45,10 @@ export default function Gallerypost() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
 
+  // 🔥 FIX 4: Pastikan ID ditangkap sebagai String biar nggak nyangkut
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
-      const { postId } = e.detail;
+      const postId = String(e.detail.postId);
       if (postId) {
         setCounts(prev => ({
           ...prev,
@@ -354,7 +355,7 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
-  // 🔥 FIX 1: UPDATE LOGIKA MUSIK BIAR MUNCUL DAN BERJALAN 🔥
+  // 🔥 FIX 1: UPDATE LOGIKA MUSIK MINIMALIS 🔥
   const getMusicHtml = (post: any, isOverlay = true) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
@@ -368,32 +369,32 @@ export default function Gallerypost() {
         className="music-marquee-container" 
         style={{ 
           position: isOverlay ? 'absolute' : 'relative',
-          top: isOverlay ? '15px' : 'auto',
-          left: isOverlay ? '15px' : 'auto',
-          maxWidth: isOverlay ? 'calc(100% - 100px)' : '100%',
+          top: isOverlay ? '12px' : 'auto',
+          left: isOverlay ? '12px' : 'auto',
+          maxWidth: isOverlay ? '130px' : '100%', // Dikecilin biar minimalis
           zIndex: 20, 
-          background: isOverlay ? 'rgba(0,0,0,0.6)' : 'var(--bg-secondary)',
-          backdropFilter: isOverlay ? 'blur(6px)' : 'none',
-          borderRadius: '12px',
-          padding: '4px 10px',
+          background: isOverlay ? 'rgba(0,0,0,0.5)' : 'var(--bg-secondary)',
+          backdropFilter: isOverlay ? 'blur(8px)' : 'none',
+          borderRadius: '16px',
+          padding: '4px 8px', // Padding lebih tipis
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '4px',
           overflow: 'hidden',
           border: isOverlay ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-card)'
         }}
       >
-        <span className="material-icons" style={{ fontSize: '14px', color: isOverlay ? '#fff' : 'var(--text-main)' }}>music_note</span>
+        <span className="material-icons" style={{ fontSize: '12px', color: isOverlay ? '#fff' : 'var(--text-main)' }}>music_note</span>
         <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', width: '100%', position: 'relative' }}>
           <div 
             className="marquee-text"
             style={{
               display: 'inline-block',
               color: isOverlay ? '#fff' : 'var(--text-main)',
-              fontSize: '11px',
+              fontSize: '10px', // Font lebih imut
               fontWeight: 'bold',
-              animation: 'marqueeMusic 8s linear infinite',
-              paddingLeft: '100%' // Biar mulai jalannya dari pojok kanan
+              animation: 'marqueeMusic 6s linear infinite', // Sedikit lebih cepat
+              paddingLeft: '100%' 
             }}
           >
             {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
@@ -506,7 +507,6 @@ export default function Gallerypost() {
 
   return (
     <section>
-      {/* 🔥 INJEKSI ANIMASI MARQUEE MUSIK 🔥 */}
       <style>{`
         @keyframes marqueeMusic {
           0% { transform: translateX(0); }
@@ -549,18 +549,19 @@ export default function Gallerypost() {
                 {(photoList.length > 0 || isVideoPost) ? (
                   <>
                     <div className="slider">
-                      {/* Panggil fungsi musik dengan parameter isOverlay = true */}
                       {getMusicHtml(post, true)}
                       
-                      <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10, display: 'flex', gap: '8px' }}>
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: '6px' }}>
                         {isVideoPost && (
-                          <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-                            <span className="material-icons" style={{ fontSize: '14px' }}>videocam</span> Video
+                          <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            <span className="material-icons" style={{ fontSize: '12px' }}>videocam</span> Video
                           </div>
                         )}
                         {photoList.length > 1 && !isVideoPost && (
-                          <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-                            <span className="material-icons" style={{ fontSize: '14px' }}>collections</span> 1/{photoList.length}
+                          <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            <span className="material-icons" style={{ fontSize: '12px' }}>collections</span> 
+                            {/* 🔥 FIX 2: COUNTER DENGAN ID KHUSUS 🔥 */}
+                            <span id={`slide-counter-${post.id}`}>1/{photoList.length}</span>
                           </div>
                         )}
                       </div>
@@ -570,6 +571,10 @@ export default function Gallerypost() {
                           const index = Math.round(target.scrollLeft / target.offsetWidth);
                           const dots = document.querySelectorAll(`.dots-${post.id} .dot`);
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
+                          
+                          // 🔥 FIX 2: UPDATE ANGKA COUNTER OTOMATIS SAAT DI-SLIDE 🔥
+                          const counterEl = document.getElementById(`slide-counter-${post.id}`);
+                          if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
                         {isVideoPost ? (
                           <div className="carousel-item" style={{ aspectRatio: '2 / 3', overflow: 'hidden', position: 'relative', background: '#000' }}>
@@ -605,8 +610,9 @@ export default function Gallerypost() {
                         </div>
                       )}
 
-                      <div className="watermark-overlay" style={{ zIndex: 0 }}>
-                        <img src="/asets/svg/watermark.svg" alt="watermark" />
+                      {/* 🔥 FIX 3: WATERMARK DIPINDAH KE KIRI BAWAH 🔥 */}
+                      <div className="watermark-overlay" style={{ position: 'absolute', bottom: '15px', left: '15px', zIndex: 5, opacity: 0.8, pointerEvents: 'none' }}>
+                        <img src="/asets/svg/watermark.svg" alt="watermark" style={{ height: '20px' }} />
                       </div>
                     </div>
                     

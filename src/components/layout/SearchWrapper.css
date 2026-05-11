@@ -1,7 +1,7 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
 .header-sticky-wrapper {
   position: relative; /* 🔥 FIX 1: Hapus sticky, ganti jadi relative biar bisa discroll */
-  z-index: 15000; 
+  z-index: 999999; 
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
