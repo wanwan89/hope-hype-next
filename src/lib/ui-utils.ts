@@ -10,23 +10,14 @@ export function getUserBadge(role: string): string {
   let badge = "";
   const roleLower = role.toLowerCase();
 
+  // 🛡️ 1. ADMIN / DEV BADGE (SVG)
   if (roleLower === "admin") {
     badge += `
       <span class="admin-badge" style="
         background: linear-gradient(135deg, #1f3cff, #bc13fe); 
-        color: white; 
-        padding: 2px 6px; 
-        border-radius: 6px; 
-        font-size: 10px; 
-        margin-left: 5px; 
-        display: inline-flex; 
-        align-items: center; 
-        vertical-align: middle; 
-        line-height: 1; 
-        font-weight: 800; 
-        box-shadow: 0 2px 5px rgba(31, 60, 255, 0.4);
-        border: 1px solid rgba(255,255,255,0.2);
-        letter-spacing: 0.5px;
+        color: white; padding: 2px 6px; border-radius: 6px; font-size: 10px; margin-left: 5px; 
+        display: inline-flex; align-items: center; vertical-align: middle; line-height: 1; font-weight: 800; 
+        box-shadow: 0 2px 5px rgba(31, 60, 255, 0.4); border: 1px solid rgba(255,255,255,0.2); letter-spacing: 0.5px;
       ">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px;">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -36,18 +27,39 @@ export function getUserBadge(role: string): string {
       </span>`;
   }
   
+  // ✅ 2. VERIFIED BADGE (SVG - Tetap dipertahankan)
   if (roleLower === "verified") {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
+
+  // 👑 3. CROWN SYSTEM (SEMUA GANTI KE SVG PREMIUM)
   
-  const crowBadges: Record<string, string> = { 
-    crown1: "/asets/png/crown1.png", 
-    crown2: "/asets/png/crown2.png", 
-    crown3: "/asets/png/crown3.png" 
-  };
-  
-  if (crowBadges[roleLower]) {
-    badge += `<img src="${crowBadges[roleLower]}" style="width:18px;height:18px;margin-left:5px;vertical-align:middle;object-fit:contain;display:inline-block;" alt="${role}">`;
+  // Style dasar buat semua mahkota agar sejajar
+  const crownBaseStyle = "width:16px; height:16px; margin-left:5px; vertical-align:middle; display:inline-block;";
+
+  // CROWN 1: BRONZE SULTAN
+  if (roleLower === "crown1") {
+    badge += `
+      <svg style="${crownBaseStyle} color: #cd7f32; filter: drop-shadow(0 0 2px rgba(205, 127, 50, 0.6));" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+      </svg>`;
+  }
+
+  // CROWN 2: SILVER SULTAN
+  if (roleLower === "crown2") {
+    badge += `
+      <svg style="${crownBaseStyle} color: #e2e8f0; filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2zm0 6l-1.5 3h3L12 8z"/>
+      </svg>`;
+  }
+
+  // CROWN 3: GOLD SULTAN (King)
+  if (roleLower === "crown3") {
+    badge += `
+      <svg style="${crownBaseStyle} color: #ffd700; filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.8));" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 15l-1.39-1.39a3 3 0 0 0-4.22 0L12 15l-1.39-1.39a3 3 0 0 0-4.22 0L5 15V6l3.5 3L12 2l3.5 7L19 6v9zm1 3H4v2h16v-2z"/>
+        <circle cx="12" cy="11" r="1.5" fill="#fff" />
+      </svg>`;
   }
   
   return badge;
