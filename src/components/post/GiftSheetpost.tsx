@@ -4,9 +4,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
+
+// 🔥 IMPORT RUMUS SAKTI DARI FILE BARU 🔥
+import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
+
 import './GiftSheet.css';
 
-// 🔥 FIX 1: UPDATE DAFTAR 10 GIFT (Disamain sama Voice Room) 🔥
+// 🔥 DAFTAR 10 GIFT (Sama dengan Voice Room) 🔥
 const GIFT_DATA = [
   { id: 1, name: 'Love', amount: 1, img: '/asets/png/gift1.png' },
   { id: 2, name: 'Daebak', amount: 10, img: '/asets/png/gift2.png' },
@@ -27,8 +31,24 @@ export default function GiftSheetpost() {
   const [userCoins, setUserCoins] = useState(0);
   const [selectedGift, setSelectedGift] = useState<any>(null);
   const [isSending, setIsSending] = useState(false);
+  const [myProfile, setMyProfile] = useState<any>(null);
+  const [coinsGiven, setCoinsGiven] = useState(0);
+  const [spamAnimId, setSpamAnimId] = useState<number | null>(null);
   
   const [targetPost, setTargetPost] = useState({ id: '', creatorId: '', creatorName: '' });
+
+  const fetchUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      // Tarik sekalian total_gift_sent buat ngitung progress
+      const { data: prof } = await supabase.from("profiles").select("username, avatar_url, coins, total_gift_sent").eq("id", session.user.id).single();
+      if (prof) {
+        setMyProfile(prof);
+        setUserCoins(prof.coins || 0);
+        setCoinsGiven(prof.total_gift_sent || 0);
+      }
+    }
+  };
 
   useEffect(() => {
     const handleGiftOpen = async (e: MouseEvent) => {
@@ -50,8 +70,7 @@ export default function GiftSheetpost() {
           creatorName: btn.dataset.name || t('creator_label')
         });
 
-        const { data: prof } = await supabase.from("profiles").select("coins").eq("id", session.user.id).single();
-        setUserCoins(prof?.coins || 0);
+        await fetchUser();
         setIsActive(true);
         document.body.style.overflow = "hidden";
       }
@@ -79,8 +98,7 @@ export default function GiftSheetpost() {
         creatorName: t('creator_label')
       });
 
-      const { data: prof } = await supabase.from("profiles").select("coins").eq("id", session.user.id).single();
-      setUserCoins(prof?.coins || 0);
+      await fetchUser();
       setIsActive(true);
       document.body.style.overflow = "hidden";
     };
@@ -95,13 +113,21 @@ export default function GiftSheetpost() {
     setSelectedGift(null);
   };
 
-  const handleSendGift = async () => {
-    if (!selectedGift || isSending) return;
+  const handleSendGift = async (gift?: any, e?: any) => {
+    if (e) e.stopPropagation();
     
-    if (selectedGift.amount > userCoins) {
+    // Support click direct or send button
+    const giftToSend = gift || selectedGift;
+    if (!giftToSend || isSending) return;
+
+    if (giftToSend.amount > userCoins) {
       if ((window as any).showNotif) (window as any).showNotif(t('insufficient_coins'), "error");
       return;
     }
+
+    // Trigger Animasi Spam
+    setSpamAnimId(giftToSend.id);
+    setTimeout(() => setSpamAnimId(null), 150); 
 
     setIsSending(true);
 
@@ -109,68 +135,68 @@ export default function GiftSheetpost() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // 1. RPC Transfer
       const { error: rpcErr } = await supabase.rpc("transfer_coins", { 
         sender_id: session.user.id, 
         receiver_id: targetPost.creatorId, 
-        amount: selectedGift.amount 
+        amount: giftToSend.amount 
       });
       if (rpcErr) throw rpcErr;
 
-      // 2. Insert Transactions & History
       await Promise.all([
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
           receiver_id: targetPost.creatorId, 
           post_id: parseInt(targetPost.id), 
-          amount: selectedGift.amount 
+          amount: giftToSend.amount 
         }),
         supabase.from("coin_history").insert([
           { 
             user_id: session.user.id, 
             type: "keluar", 
             transaction_type: "keluar", 
-            amount: selectedGift.amount, 
+            amount: giftToSend.amount, 
             description: t('history_send_desc', { name: targetPost.creatorName }) 
           },
           { 
             user_id: targetPost.creatorId, 
             type: "masuk", 
             transaction_type: "masuk", 
-            amount: selectedGift.amount, 
+            amount: giftToSend.amount, 
             description: t('history_receive_desc') 
           }
         ])
       ]);
 
-      // 3. Notifikasi
       const { data: sProf } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
       await supabase.from("notifications").insert({ 
         user_id: targetPost.creatorId, 
         actor_id: session.user.id, 
         post_id: parseInt(targetPost.id), 
         type: "gift", 
-        message: t('gift_notif_msg', { username: sProf?.username, amount: selectedGift.amount }) 
+        message: t('gift_notif_msg', { username: sProf?.username, amount: giftToSend.amount }) 
       });
 
-      // 4. TRIGGER INSERT KOMENTAR GIFT
       window.dispatchEvent(new CustomEvent('insertGiftComment', {
         detail: {
           postId: targetPost.id,
-          giftName: selectedGift.name,
-          giftImg: selectedGift.img,
+          giftName: giftToSend.name,
+          giftImg: giftToSend.img,
           creatorId: targetPost.creatorId
         }
       }));
 
-      // 5. Success UI
-      setUserCoins(prev => prev - selectedGift.amount);
+      setUserCoins(prev => prev - giftToSend.amount);
+      setCoinsGiven(prev => prev + giftToSend.amount);
+      
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
       
-      if ((window as any).showBigImage) (window as any).showBigImage(selectedGift.img);
+      if ((window as any).showBigImage) (window as any).showBigImage(giftToSend.img);
       if ((window as any).showNotif) (window as any).showNotif(t('gift_sent_success'), "success");
 
-      closeSheet();
+      setTimeout(() => {
+        closeSheet();
+      }, 250);
+
     } catch (err: any) {
       if ((window as any).showNotif) (window as any).showNotif("Gagal: " + err.message, "error");
     } finally {
@@ -178,106 +204,166 @@ export default function GiftSheetpost() {
     }
   };
 
+  // 🔥 KALKULASI LEVEL BERSAMA 🔥
+  const currentLevel = calculateLevel(coinsGiven);
+  
+  let targetKoin = currentLevel * 500;
+  let prevTarget = (currentLevel - 1) * 500;
+  let needed = targetKoin - coinsGiven;
+  let progressPercent = ((coinsGiven - prevTarget) / (targetKoin - prevTarget)) * 100;
+  if (progressPercent > 100) progressPercent = 100;
+
+  const fallbackAvatar = myProfile?.username ? `https://ui-avatars.com/api/?name=${myProfile.username}&background=1f3cff&color=fff&bold=true` : '/asets/png/profile.webp';
+
   return (
     <>
       <style>{`
-        /* 🔥 INJEKSI CSS UNTUK OVERRIDE WARNA TOMBOL & GRID 🔥 */
-        .gift-sheet-content .btn-send-gift {
-          background: linear-gradient(135deg, #1f3cff, #bc13fe) !important;
-          color: white !important;
-          border: none !important;
-          padding: 10px 24px !important;
-          border-radius: 20px !important;
-          font-weight: 800 !important;
-          font-size: 14px !important;
-          box-shadow: 0 4px 15px rgba(31, 60, 255, 0.4) !important;
-          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        /* 🔥 CSS SINKRON DENGAN GIFTDRAWER ROOM 🔥 */
+        .gift-sheet-content {
+          padding-bottom: 0 !important; max-height: 90vh;
+          display: flex; flex-direction: column;
         }
-        .gift-sheet-content .btn-send-gift:active:not(:disabled) {
-          transform: scale(0.9) !important;
-        }
-        .gift-sheet-content .btn-send-gift:disabled {
-          background: var(--bg-secondary) !important;
-          color: var(--text-muted) !important;
-          box-shadow: none !important;
+        .drawer-header {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 0 20px; margin-bottom: 15px;
         }
 
-        /* Rapihin List biar bisa nampung 10 kado enak */
-        .gift-sheet-content .gift-grid {
-          display: grid !important;
-          grid-template-columns: repeat(4, 1fr) !important;
-          gap: 12px !important;
-          max-height: 280px !important;
-          overflow-y: auto !important;
-          padding-bottom: 20px !important;
+        /* HEADER LEVEL BAR */
+        .drawer-top-level {
+          display: flex; align-items: center; gap: 12px; background: transparent;
+          padding: 12px 0px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
+          margin: 0 20px 15px 20px;
         }
-        .gift-sheet-content .gift-item {
-          display: flex; flex-direction: column; align-items: center;
-          padding: 10px 4px;
-          border-radius: 12px;
-          border: 2px solid transparent;
-          transition: 0.2s;
+        .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
+        .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; background: var(--bg-secondary); }
+        .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .level-text-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 800; color: var(--text-main); }
+        .progress-track { width: 100%; height: 8px; background: rgba(150,150,150,0.2); border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 10px; background: #1f3cff; transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        /* GRID KADO 3D (SCROLL HORIZONTAL) */
+        .gift-list-3d-wrapper {
+          padding: 15px 15px 25px 15px; display: flex; gap: 15px; overflow-x: auto; overflow-y: visible;
+          scroll-snap-type: x mandatory; scrollbar-width: none;
         }
-        .gift-sheet-content .gift-item.selected-gift {
-          background: rgba(31, 60, 255, 0.1);
-          border-color: #1f3cff;
-        }
-        .gift-sheet-content .img-gift {
-          width: 50px; height: 50px; object-fit: contain;
-          filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
-          transition: 0.3s;
-        }
-        .gift-sheet-content .gift-item.selected-gift .img-gift {
-          transform: scale(1.1) translateY(-4px);
-        }
-        .gift-sheet-content .gift-name {
-          font-size: 10px; font-weight: bold; margin-top: 6px; text-transform: uppercase;
-        }
+        .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
+        .gift-column { display: flex; flex-direction: column; gap: 25px; flex-shrink: 0; width: calc(33.333% - 10px); scroll-snap-align: start; }
+        
+        .gift-item-3d { position: relative; height: 100px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; -webkit-tap-highlight-color: transparent; z-index: 1; }
+        .gift-item-3d.active { z-index: 10; }
+        
+        .gift-img-3d { width: 85px; height: 85px; object-fit: contain; filter: none; position: absolute; top: -10px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 2; }
+        .gift-default-info { display: flex; flex-direction: column; align-items: center; margin-bottom: 5px; opacity: 1; transition: opacity 0.2s; }
+        .gift-label { font-size: 11px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
+        .gift-price-mini { font-size: 11px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 2px; }
+
+        .gift-active-bg { position: absolute; bottom: 0; left: 0; right: 0; height: 55px; background: transparent; border: 1.5px solid #1f3cff; border-radius: 12px; box-shadow: none; animation: popBox 0.2s ease forwards; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 6px; }
+        @keyframes popBox { from { transform: scale(0.8) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+
+        .gift-item-3d.active .gift-img-3d { width: 145px; height: 145px; top: -90px; filter: none; animation: floatActive 2s ease-in-out infinite; }
+        @keyframes floatActive { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        
+        .gift-item-3d.active .gift-default-info { opacity: 0; pointer-events: none; }
+        .gift-active-details { display: flex; flex-direction: column; align-items: center; gap: 4px; animation: fadeInDetails 0.3s ease forwards; z-index: 2; }
+        @keyframes fadeInDetails { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .gift-price-active { font-size: 11px; color: #1f3cff; font-weight: 800; display: flex; align-items: center; gap: 2px; }
+        .gift-send-btn { background: #1f3cff; color: white; border: none; border-radius: 8px; padding: 6px 22px; font-weight: 800; font-size: 11px; cursor: pointer; pointer-events: auto; }
+
+        .gift-item-3d.spam-anim .gift-active-bg { transform: scale(0.95); transition: 0.1s; background: rgba(31,60,255,0.1); }
+        .gift-item-3d.spam-anim .gift-img-3d { transform: scale(0.9) translateY(5px); transition: 0.1s; }
+
+        .drawer-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); background: var(--bg-base); border-top: 1px solid var(--border-color, rgba(255,255,255,0.05)); }
+        .footer-coin-box { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; color: var(--text-main); background: var(--bg-secondary, rgba(0,0,0,0.05)); padding: 8px 14px; border-radius: 12px; }
+        .topup-btn { display: flex; align-items: center; gap: 4px; background: #1f3cff; color: white; border: none; border-radius: 20px; padding: 10px 18px; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .topup-btn:active { transform: scale(0.9); }
       `}</style>
 
-      <div className={`gift-sheet ${isActive ? 'active' : ''}`}>
-        <div className="gift-sheet-overlay" onClick={closeSheet} />
+      <div className={`gift-sheet ${isActive ? 'active' : ''}`} onClick={closeSheet}>
+        <div className="gift-sheet-overlay" />
         
-        <div className="gift-sheet-content">
+        <div className="gift-sheet-content" onClick={(e) => e.stopPropagation()}>
           <div className="sheet-handle" />
 
-          <div className="gift-header">
+          <div className="drawer-header">
             <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
-            <span className="gift-close-x" onClick={closeSheet} style={{ fontSize: '24px', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</span>
+            <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
           </div>
 
-          <div className="gift-grid">
-            {GIFT_DATA.map((gift) => (
-              <div 
-                key={gift.id} 
-                className={`gift-item ${selectedGift?.id === gift.id ? 'selected-gift' : ''}`}
-                onClick={() => setSelectedGift(gift)}
-              >
-                <div className="gift-img-container">
-                  <img src={gift.img} className="img-gift" alt={gift.name} />
-                </div>
-                <span className="gift-name">{gift.name}</span>
-                <span className="gift-price" style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '2px', marginTop: '2px' }}>
-                  <span className="material-icons" style={{ fontSize: '11px' }}>toll</span> 
-                  {gift.amount.toLocaleString('id-ID')}
-                </span>
+          <div className="drawer-top-level">
+            <div className="level-avatar-box">
+              <img src={myProfile?.avatar_url || fallbackAvatar} className="level-avatar" alt="Avatar" />
+              
+              <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)' }}>
+                 <span dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
+              </div>
+
+            </div>
+            <div className="level-progress-info">
+              <div className="level-text-row">
+                <span style={{ marginLeft: '6px' }}>{myProfile?.username || 'User'}</span>
+                {currentLevel >= 50 ? (
+                  <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
+                ) : (
+                  <span style={{ color: '#1f3cff' }}>Butuh {needed} koin</span>
+                )}
+              </div>
+              <div className="progress-track" style={{ marginLeft: '6px' }}>
+                <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="gift-list-3d-wrapper">
+            {Array.from({ length: Math.ceil(GIFT_DATA.length / 2) }).map((_, colIndex) => (
+              <div key={colIndex} className="gift-column">
+                {GIFT_DATA.slice(colIndex * 2, colIndex * 2 + 2).map((gift) => {
+                  const isActiveGift = selectedGift?.id === gift.id;
+                  const isSpam = spamAnimId === gift.id;
+
+                  return (
+                    <div 
+                      key={gift.id}
+                      className={`gift-item-3d ${isActiveGift ? 'active' : ''} ${isSpam ? 'spam-anim' : ''}`} 
+                      onClick={() => setSelectedGift(gift)}
+                    >
+                      <img src={gift.img} className="gift-img-3d" alt={gift.name} />
+                      
+                      {!isActiveGift && (
+                        <div className="gift-default-info">
+                          <span className="gift-label">{gift.name}</span>
+                          <span className="gift-price-mini"><span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.amount}</span>
+                        </div>
+                      )}
+
+                      {isActiveGift && (
+                        <div className="gift-active-bg">
+                          <div className="gift-active-details">
+                            <span className="gift-price-active">
+                              <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
+                              {gift.amount.toLocaleString('id-ID')}
+                            </span>
+                            <button className="gift-send-btn" onClick={(e) => handleSendGift(gift, e)}>
+                              {isSending ? '...' : 'KIRIM'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
           
-          <div className="gift-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
-            <div className="user-coins-info" onClick={() => window.location.href='/topup'} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer' }}>
-              <span className="material-icons" style={{ color: '#f59e0b', fontSize: '16px' }}>toll</span>
-              <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '14px' }}>{userCoins.toLocaleString('id-ID')}</span>
-              <span style={{ color: '#f59e0b', opacity: 0.6, fontSize: '18px', marginLeft: '4px', lineHeight: 1 }}>&rsaquo;</span>
+          <div className="drawer-footer">
+            <div className="footer-coin-box">
+              <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
+              <span>{userCoins.toLocaleString('id-ID')}</span>
             </div>
-            
-            <button 
-              className="btn-send-gift" 
-              disabled={!selectedGift || isSending}
-              onClick={handleSendGift}
-            >
-              {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}
+            <button className="topup-btn" onClick={() => window.location.href='/topup'}>
+              <span className="material-icons" style={{ fontSize: '16px', fontWeight: 'bold' }}>add</span>
+              TOP UP
             </button>
           </div>
         </div>
