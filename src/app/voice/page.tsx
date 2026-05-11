@@ -7,6 +7,9 @@ import { supabase as sb } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 
+// 🔥 IMPORT RUMUS SAKTI DARI FILE BARU 🔥
+import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
+
 import Modals from '@/components/room/Modalsroom';
 import Stage from '@/components/room/Stageroom';
 import ChatBox from '@/components/room/ChatBoxroom';
@@ -143,46 +146,6 @@ function VoiceRoomContent() {
         setIsProfileOpen(true);
       } catch (err) { console.error(err); }
     };
-
-    // 🔥 FIX 4: SINKRONISASI LOGIKA LEVEL DENGAN GIFT DRAWER 🔥
-    function calculateLevel(giftSent: number) {
-      // Sama persis dengan logika di GiftDrawerroom.tsx
-      let exp = giftSent || 0;
-      let level = 1;
-      let expNeeded = 200;
-      while (exp >= expNeeded) {
-        exp -= expNeeded;
-        level++;
-        expNeeded = level * 200;
-      }
-      return level;
-    }
-
-    function getLevelColor(level: number) {
-      if (level >= 40) return ["#ff0844", "#ffb199"]; 
-      if (level >= 30) return ["#00c6ff", "#0072ff"]; 
-      if (level >= 20) return ["#f6d365", "#fda085"]; 
-      if (level >= 10) return ["#89f7fe", "#66a6ff"]; 
-      return ["#1f3cff", "#89f7fe"]; // Warna default Biru HypeTalk
-    }
-
-    function getLevelBadgeHTML(levelVal: string | number) {
-        const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
-        const [c1, c2] = getLevelColor(lvl);
-        return `
-        <span style="
-          display: inline-flex; align-items: center; justify-content: center; gap: 2px;
-          background: linear-gradient(135deg, ${c1}, ${c2});
-          color: #fff !important; font-size: 9px; font-weight: 900; 
-          padding: 2px 6px; border-radius: 12px; margin-left: 4px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3); vertical-align: middle;
-        ">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
-          </svg>
-          ${lvl}
-        </span>`;
-    }
 
     function playGiftAnimation(giftId: number | string, forcedCombo: number | null = null) {
         const id = typeof giftId === 'string' ? parseInt(giftId) : (giftId || 1);
@@ -443,7 +406,6 @@ function VoiceRoomContent() {
             const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
-                // 🔥 FIX 5: BADGE LEVEL TAMPIL DI STAGE 🔥
                 const calculatedUserLvl = calculateLevel(user.total_gift_sent || 0);
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
@@ -667,6 +629,7 @@ function VoiceRoomContent() {
       
       <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         
+        {/* 🔥 FIX 5 & 6: HEADER BARU DENGAN TAP COUNTER & TOP GIFTER 🔥 */}
         <div className="vr-custom-header">
            <div className="vr-header-left">
               <img 
@@ -707,6 +670,7 @@ function VoiceRoomContent() {
 
         <Stage />
         
+        {/* 🔥 FIX 1: CHAT BOX DI ATAS FOOTER DENGAN PADDING AMAN 🔥 */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingBottom: '90px', overflow: 'hidden' }}>
           <ChatBox messages={chatMessages} />
         </div>
@@ -716,14 +680,13 @@ function VoiceRoomContent() {
       
       <GiftDrawer /><GiftAnimOverlay />
 
+      {/* 🔥 FIX 2: SLIDE-UP MENU AKSI (TANPA TOMBOL GIFT) 🔥 */}
       <div className={`user-profile-sheet-overlay ${isActionMenuOpen ? 'active' : ''}`} onClick={() => setIsActionMenuOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
           <h3 style={{ color: '#fff', marginBottom: '20px', fontWeight: 800 }}>Aksi Ruangan</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             
-            {/* Tombol Gift Dihapus Sesuai Permintaan */}
-
             {!isOnStage ? (
               <button className="btn-action-sheet btn-gradient" onClick={() => { setIsActionMenuOpen(false); window.mintaNaik?.(); }}>
                 <span className="material-icons" style={{ fontSize: '20px' }}>front_hand</span> Minta Naik Panggung
@@ -749,6 +712,7 @@ function VoiceRoomContent() {
         </div>
       </div>
 
+      {/* MODAL PROFILE SLIDE-UP */}
       <div className={`user-profile-sheet-overlay ${isProfileOpen ? 'active' : ''}`} onClick={() => setIsProfileOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>

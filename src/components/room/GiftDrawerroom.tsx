@@ -4,6 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
+
+// 🔥 IMPORT RUMUS SAKTI DARI FILE BARU 🔥
+import { calculateLevel } from '@/lib/level-utils';
+
 import './GiftDrawerroom.css';
 
 declare global {
@@ -84,17 +88,15 @@ export default function GiftDrawerroom() {
     }
   };
 
-  // 🔥 FIX 4: SINKRONISASI LOGIKA LEVEL DENGAN PAGE.TSX 🔥
-  let level = Math.floor(coinsGiven / 500) + 1;
-  if (level > 50) level = 50;
+  // 🔥 PAKAI FUNGSI YANG UDAH KITA IMPORT DARI FILE UTILS 🔥
+  const currentLevel = calculateLevel(coinsGiven);
   
-  let targetKoin = level * 500;
-  let prevTarget = (level - 1) * 500;
+  let targetKoin = currentLevel * 500;
+  let prevTarget = (currentLevel - 1) * 500;
   let needed = targetKoin - coinsGiven;
   let progressPercent = ((coinsGiven - prevTarget) / (targetKoin - prevTarget)) * 100;
   if (progressPercent > 100) progressPercent = 100;
 
-  const currentLevel = level;
   const fallbackAvatar = myProfile?.username ? `https://ui-avatars.com/api/?name=${myProfile.username}&background=1f3cff&color=fff&bold=true` : '/asets/png/profile.webp';
 
   return (
