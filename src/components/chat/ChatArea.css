@@ -10,7 +10,7 @@
   --text-color: #111827;
   --text-muted: #64748b;
   --border-color: #e2e8f0;
-  --chat-self-bg: #dcf8c6;
+  --chat-self-bg: #1f3cff;   /* 🔥 UBAH KE BIRU */
   --primary-blue: #1DA1F2;
   --header-bg: #ffffff;
   --header-text: #111827;
@@ -24,7 +24,7 @@ html.dark .hype-chat-scope {
   --text-color: #e9edef;
   --text-muted: #8696a0;
   --border-color: rgba(255, 255, 255, 0.08);
-  --chat-self-bg: #005c4b;
+  --chat-self-bg: #1f3cff;   /* 🔥 UBAH KE BIRU */
   --header-bg: #202c33;
   --header-text: #e9edef;
   --input-box-bg: #2a3942;
@@ -404,17 +404,8 @@ html.dark .hype-chat-scope {
   -webkit-overflow-scrolling: touch;
 }
 
-.hype-chat-scope .chat-message.self .content {
-  background: var(--chat-self-bg) !important;
-  border-radius: 18px 18px 4px 18px;
-}
-
-.hype-chat-scope .chat-message.other .content {
-  background: var(--bg-panel) !important;
-  border: 1px solid var(--border-color);
-  border-radius: 18px 18px 18px 4px;
-}
-
+/* 🔥 HAPUS ATURAN .self .content & .other .content YANG BERTENTANGAN */
+/* Karena styling detail sudah diatur di MessageBubble.css dan inline style */
 .hype-chat-scope .chat-message .content {
   display: flex;
   flex-direction: column;

@@ -49,25 +49,31 @@
   min-width: 45px; /* Biar waktu tidak nabrak */
 }
 
-/* Radius Bubble Self (Kanan) */
+/* 🔥 BUBBLE SENDIRI (BIRU) 🔥 */
 .hype-chat-scope .chat-message.self .content { 
-  background: #dcf8c6 !important; 
-  color: #111b21; 
+  background: #1f3cff;  /* BIRU PREMIUM */
+  color: #ffffff; 
   border-radius: 12px 12px 2px 12px; 
 }
 
-/* Radius Bubble Other (Kiri) */
+/* 🔥 BUBBLE ORANG LAIN (PUTIH/ABU-ABU) 🔥 */
 .hype-chat-scope .chat-message.other .content { 
-  background: #ffffff !important; 
+  background: #ffffff; 
   color: #111b21; 
   border-radius: 12px 12px 12px 2px; 
 }
 
 /* DARK MODE BUBBLE */
 [data-theme='dark'] .hype-chat-scope .chat-message.self .content,
-html.dark .hype-chat-scope .chat-message.self .content { background: #005c4b !important; color: #e9edef; }
+html.dark .hype-chat-scope .chat-message.self .content { 
+  background: #1f3cff; 
+  color: #ffffff; 
+}
 [data-theme='dark'] .hype-chat-scope .chat-message.other .content,
-html.dark .hype-chat-scope .chat-message.other .content { background: #202c33 !important; color: #e9edef; }
+html.dark .hype-chat-scope .chat-message.other .content { 
+  background: #202c33; 
+  color: #e9edef; 
+}
 
 /* REPLY BOX DI DALAM BUBBLE */
 .hype-chat-scope .reply-preview-in-chat { 
