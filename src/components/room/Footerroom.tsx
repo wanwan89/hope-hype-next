@@ -6,9 +6,8 @@ import './Footerroom.css';
 
 declare global {
   interface Window {
-    toggleRoomGiftDrawer?: (e?: any) => void;
+    toggleActionMenu?: () => void;
     kirimKomentar?: () => void;
-    mintaNaik?: () => void;
     toast?: (title: string, msg: string, type: string) => void; 
     openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void; 
   }
@@ -18,26 +17,11 @@ export default function Footerroom() {
   const { t } = useTranslation();
 
   return (
-    <div className="footer-floating-wrapper" onClick={(e) => e.stopPropagation()}>
-      <footer className="footer-dock">
+    <div className="footer-floating-wrapper" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}>
+      <footer className="footer-dock" style={{ display: 'flex', gap: '10px', padding: '10px 15px', alignItems: 'center', background: 'rgba(11,20,26,0.85)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         
-        {/* 1. GIFT - Tombol Menyala Gradasi */}
-        <button 
-          type="button"
-          onClick={(e) => window.toggleRoomGiftDrawer && window.toggleRoomGiftDrawer(e)}
-          className="dock-btn gift-btn premium-glow"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 12 20 22 4 22 4 12"></polyline>
-            <rect x="2" y="7" width="20" height="5" rx="1.5"></rect>
-            <line x1="12" y1="22" x2="12" y2="7"></line>
-            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
-            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
-          </svg>
-        </button>
-
-        {/* 2. CHATBOX - Bentuk Pill Clean */}
-        <div className="input-container">
+        {/* 1. KOTAK INPUT KOMENTAR */}
+        <div className="input-container" style={{ flex: 1 }}>
           <input 
             type="text" 
             id="chat-input" 
@@ -50,49 +34,37 @@ export default function Footerroom() {
                 if (window.kirimKomentar) window.kirimKomentar();
               }
             }} 
+            style={{ width: '100%', padding: '12px 18px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', outline: 'none', fontSize: '14px' }}
           />
         </div>
 
-        {/* 3. MINTA NAIK - Icon Keren */}
+        {/* 2. TOMBOL AKSI PANGGUNG (PENGGANTI SIDEBAR) */}
         <button 
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (window.mintaNaik) window.mintaNaik();
-          }}
-          className="dock-btn hand-btn"
+          onClick={(e) => { e.stopPropagation(); window.toggleActionMenu?.(); }}
+          className="dock-btn action-btn premium-glow"
+          style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg, #1f3cff, #bc13fe)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 15px rgba(31, 60, 255, 0.4)' }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 11V6a2 2 0 0 0-4 0v4"/>
-            <path d="M14 10V4a2 2 0 0 0-4 0v6"/>
-            <path d="M10 10.5V3a2 2 0 0 0-4 0v9"/>
-            <path d="M6 14a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2.5a11 11 0 0 0 11 11h.5a8 8 0 0 0 8-8V11a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/>
-          </svg>
+          <span className="material-icons" style={{ fontSize: '22px' }}>rocket_launch</span>
         </button>
 
-        {/* 4. SHARE - Icon Share Node */}
+        {/* 3. TOMBOL SHARE KECIL */}
         <button 
           type="button"
           onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            e.preventDefault(); e.stopPropagation();
             if (window.openGlobalShare) {
-              window.openGlobalShare(window.location.href, 'Voice Room HypeTalk', t('share_room_text', 'Gabung panggung suara yuk!'));
+              window.openGlobalShare(window.location.href, 'Voice Room HypeTalk', 'Gabung panggung suara yuk!');
             } else {
               navigator.clipboard.writeText(window.location.href);
-              if (window.toast) window.toast('Sukses', t('link_copied', 'Link disalin!'), 'success');
-              else alert(t('link_copied', 'Link disalin!'));
+              if (window.toast) window.toast('Sukses', 'Link disalin!', 'success');
+              else alert('Link disalin!');
             }
           }}
           className="dock-btn share-btn"
+          style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3"/>
-            <circle cx="6" cy="12" r="3"/>
-            <circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
+          <span className="material-icons" style={{ fontSize: '20px' }}>share</span>
         </button>
 
       </footer>
