@@ -406,7 +406,9 @@ function VoiceRoomContent() {
             const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
-                const calculatedUserLvl = calculateLevel(user.total_gift_sent || 0);
+// Langsung tarik kolom level dari database lu!
+const userLvl = user.level || 1; 
+
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">

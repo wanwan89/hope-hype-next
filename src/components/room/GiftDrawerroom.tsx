@@ -44,7 +44,8 @@ export default function GiftDrawerroom() {
     const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data: prof } = await supabase.from('profiles').select('username, avatar_url, coins, total_gift_sent').eq('id', session.user.id).single();
+const { data: prof } = await supabase.from('profiles').select('username, avatar_url, coins, total_gift_sent, level').eq('id', session.user.id).single();
+
         if (prof) {
             setMyProfile(prof);
             setCoinsGiven(prof.total_gift_sent || 0);
@@ -88,8 +89,8 @@ export default function GiftDrawerroom() {
     }
   };
 
-  // 🔥 PAKAI FUNGSI YANG UDAH KITA IMPORT DARI FILE UTILS 🔥
-  const currentLevel = calculateLevel(coinsGiven);
+  // Langsung ambil level asli dari database
+  const currentLevel = myProfile?.level || 1;
   
   let targetKoin = currentLevel * 500;
   let prevTarget = (currentLevel - 1) * 500;
