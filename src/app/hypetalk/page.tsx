@@ -54,18 +54,15 @@ export default function HypetalkPage() {
       if (refs.audio.current.ring) refs.audio.current.ring.loop = true;
     }
     initUser();
-    // 🔥 FIX RINGTONE: bersihkan saat komponen unmount
     return () => {
       setIsSidebarOpen(false);
       setActiveModal(null);
       
-      // Hentikan nada dering kalau masih bunyi pas keluar halaman
       if (refs.audio.current?.ring) {
         refs.audio.current.ring.pause();
         refs.audio.current.ring.currentTime = 0;
       }
       
-      // Putus koneksi LiveKit dengan bersih
       if (refs.lkRoom.current) {
         refs.lkRoom.current.removeAllListeners();
         refs.lkRoom.current.disconnect();
@@ -101,11 +98,9 @@ export default function HypetalkPage() {
   const loadAllChats = async (userId: string, isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     try {
-      // 1. Ambil data Followers
       const { data: followerData } = await supabase.from('followers').select('follower_id').eq('following_id', userId);
       const followerIds = new Set(followerData?.map((f: any) => f.follower_id) || []);
 
-      // 2. Ambil Semua Pesan 24 Jam Terakhir
       const waktu24JamLalu = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: allMsgs } = await supabase.from("messages")
         .select("*")
@@ -129,7 +124,6 @@ export default function HypetalkPage() {
         }
       });
 
-      // --- CHAT GLOBAL ---
       const globalMsgs = allMsgs?.filter(m => m.room_id === 'room-1');
       const lastGlobalMsg = globalMsgs && globalMsgs.length > 0 ? globalMsgs[0] : null;
       
@@ -137,7 +131,6 @@ export default function HypetalkPage() {
       let globalUnread = unreadMap.get('room-1') || 0;
       if (lastGlobalMsg) {
         globalPreview = lastGlobalMsg.sticker_url ? "Mengirim Stiker" : (lastGlobalMsg.audio_url ? "Mengirim Voice Note" : lastGlobalMsg.message);
-        // 🔥 FIX: Teks 'Anda' & Reset Unread 🔥
         if (lastGlobalMsg.user_id === userId) {
           globalPreview = `Anda: ${globalPreview}`;
           globalUnread = 0; 
@@ -154,7 +147,6 @@ export default function HypetalkPage() {
         unread: globalUnread
       });
 
-      // --- CHAT PRIVATE & REQUESTS ---
       if (allMsgs) {
         const lastPvMap = new Map();
         allMsgs.filter(m => m.room_id.startsWith('pv_') && m.room_id.includes(userId)).forEach(msg => {
@@ -173,7 +165,6 @@ export default function HypetalkPage() {
             
             let currentUnread = unreadMap.get(p.id) || 0;
 
-            // 🔥 FIX: Kalau kita yang ngirim terakhir, unread harus 0 & tambah "Anda: " 🔥
             if (lastMsg.user_id === userId) {
               msgPreview = `Anda: ${msgPreview}`;
               currentUnread = 0;
@@ -209,7 +200,6 @@ export default function HypetalkPage() {
         }
       }
 
-      // --- CHAT GROUP ---
       const { data: myGroups } = await supabase.from('group_members').select('group_id, groups(name, photo_url)').eq('user_id', userId);
       if (myGroups) {
         myGroups.forEach((g: any) => {
@@ -222,7 +212,6 @@ export default function HypetalkPage() {
 
             if (lastGroupMsg) {
               grpPreview = lastGroupMsg.sticker_url ? "Mengirim Stiker" : (lastGroupMsg.audio_url ? "Mengirim Voice Note" : lastGroupMsg.message);
-              // 🔥 FIX: Teks 'Anda' & Reset Unread Grup 🔥
               if (lastGroupMsg.user_id === userId) {
                 grpPreview = `Anda: ${grpPreview}`;
                 grpUnread = 0;
@@ -468,7 +457,6 @@ export default function HypetalkPage() {
       await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `Sibuk, coba lagi nanti`, is_system: true }]);
       return;
     }
-    // 🔥 FIX RINGTONE: hentikan terlebih dahulu sebelum memutar yang baru
     if (refs.audio.current?.ring) {
       refs.audio.current.ring.pause();
       refs.audio.current.ring.currentTime = 0;
@@ -491,7 +479,6 @@ export default function HypetalkPage() {
   const connectLiveKit = async (rName: string, partnerId?: string) => {
     if (!currentUser) return;
     try {
-      // 🔥 FIX RINGTONE: hentikan nada dering karena panggilan dijawab/dimulai
       if (refs.audio.current?.ring) {
         refs.audio.current.ring.pause();
         refs.audio.current.ring.currentTime = 0;
@@ -553,16 +540,13 @@ export default function HypetalkPage() {
   };
 
   const endCall = (silent = false) => {
-    // 🔥 FIX RINGTONE: hentikan di setiap akhir panggilan
     if (refs.audio.current?.ring) { 
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
     }
     
-    // 🔥 PERBAIKAN PENTING DI SINI 🔥
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
-      // Pakai await (kalau di dalam fungsi async) atau pastikan disconnect jalan rapi
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
@@ -571,7 +555,6 @@ export default function HypetalkPage() {
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
     
-    // Hindari manggil setState kalau udah unmount
     if (!silent) {
        showNotif('Panggilan berakhir', "info");
     }
@@ -582,6 +565,68 @@ export default function HypetalkPage() {
   return (
     <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
       <style>{`
+        /* 🔥 FIX: SINKRONISASI WARNA DARK MODE KHUSUS HALAMAN HYPETALK 🔥 */
+        [data-theme='dark'] .telegram-wrapper,
+        html.dark .telegram-wrapper,
+        body.dark .telegram-wrapper {
+          background-color: #0B141A !important;
+          --tg-bg: #0B141A !important;
+          --tg-bg-secondary: rgba(255,255,255,0.05) !important;
+          --tg-text: #ffffff !important;
+          color: #ffffff !important;
+        }
+
+        [data-theme='dark'] .tg-header,
+        html.dark .tg-header {
+          background-color: rgba(11, 20, 26, 0.85) !important;
+          backdrop-filter: blur(12px) !important;
+          border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+        }
+
+        [data-theme='dark'] .tg-sidebar,
+        html.dark .tg-sidebar {
+          background-color: #0B141A !important;
+          border-right: 1px solid rgba(255,255,255,0.05) !important;
+        }
+
+        [data-theme='dark'] .tg-chat-item,
+        html.dark .tg-chat-item {
+          border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+        }
+        
+        [data-theme='dark'] .tg-chat-item:hover,
+        html.dark .tg-chat-item:hover {
+          background-color: rgba(255,255,255,0.05) !important;
+        }
+
+        [data-theme='dark'] .wa-profile-card,
+        html.dark .wa-profile-card,
+        [data-theme='dark'] .tg-modal-content,
+        html.dark .tg-modal-content {
+          background-color: #1A2228 !important; /* Warna modal premium dark */
+          border: 1px solid rgba(255,255,255,0.1) !important;
+          color: #ffffff !important;
+        }
+
+        [data-theme='dark'] .wa-profile-actions,
+        html.dark .wa-profile-actions {
+          background-color: #1A2228 !important;
+          border-top: 1px solid rgba(255,255,255,0.05) !important;
+        }
+
+        [data-theme='dark'] .input-group input,
+        html.dark .input-group input,
+        [data-theme='dark'] .input-group select,
+        html.dark .input-group select {
+          background-color: rgba(0,0,0,0.3) !important;
+          color: white !important;
+          border: 1px solid rgba(255,255,255,0.1) !important;
+        }
+
+        /* ------------------------------------- */
+        /* EXISTING STYLES                       */
+        /* ------------------------------------- */
+
         @keyframes pulseCall {
           0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
           70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
@@ -742,7 +787,6 @@ export default function HypetalkPage() {
           text-shadow: 0 0 15px rgba(29,161,242,0.8); letter-spacing: 1px;
         }
 
-        /* 🔥 CSS BANNER PERMINTAAN PESAN 🔥 */
         .message-request-banner {
           display: flex;
           align-items: center;

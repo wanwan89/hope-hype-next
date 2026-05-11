@@ -10,7 +10,7 @@ import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
 
 import './GiftSheet.css';
 
-// 🔥 DAFTAR 10 GIFT (Sama dengan Voice Room) 🔥
+// 🔥 DAFTAR 10 GIFT 🔥
 const GIFT_DATA = [
   { id: 1, name: 'Love', amount: 1, img: '/asets/png/gift1.png' },
   { id: 2, name: 'Daebak', amount: 10, img: '/asets/png/gift2.png' },
@@ -40,8 +40,7 @@ export default function GiftSheetpost() {
   const fetchUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Tarik sekalian total_gift_sent buat ngitung progress
-      const { data: prof } = await supabase.from("profiles").select("username, avatar_url, coins, total_gift_sent").eq("id", session.user.id).single();
+      const { data: prof } = await supabase.from("profiles").select("username, avatar_url, coins, total_gift_sent, level").eq("id", session.user.id).single();
       if (prof) {
         setMyProfile(prof);
         setUserCoins(prof.coins || 0);
@@ -60,7 +59,7 @@ export default function GiftSheetpost() {
         if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
         
         if (session.user.id === btn.dataset.creator) {
-          if ((window as any).showNotif) (window as any).showNotif(t('gift_self_error'), "warning");
+          if ((window as any).showNotif) (window as any).showNotif("Tidak bisa mengirim kado ke postingan sendiri!", "warning");
           return;
         }
 
@@ -82,20 +81,20 @@ export default function GiftSheetpost() {
 
   useEffect(() => {
     const handleOpenFromComment = async (e: any) => {
-      const { creatorId, postId } = e.detail;
+      const { creatorId, postId, creatorName } = e.detail; 
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       
       if (session.user.id === creatorId) {
-        if ((window as any).showNotif) (window as any).showNotif(t('gift_self_error'), "warning");
+        if ((window as any).showNotif) (window as any).showNotif("Tidak bisa mengirim kado ke postingan sendiri!", "warning");
         return;
       }
 
       setTargetPost({
         id: postId,
         creatorId: creatorId,
-        creatorName: t('creator_label')
+        creatorName: creatorName || t('creator_label')
       });
 
       await fetchUser();
@@ -116,16 +115,14 @@ export default function GiftSheetpost() {
   const handleSendGift = async (gift?: any, e?: any) => {
     if (e) e.stopPropagation();
     
-    // Support click direct or send button
     const giftToSend = gift || selectedGift;
     if (!giftToSend || isSending) return;
 
     if (giftToSend.amount > userCoins) {
-      if ((window as any).showNotif) (window as any).showNotif(t('insufficient_coins'), "error");
+      if ((window as any).showNotif) (window as any).showNotif("Koin tidak cukup!", "error");
       return;
     }
 
-    // Trigger Animasi Spam
     setSpamAnimId(giftToSend.id);
     setTimeout(() => setSpamAnimId(null), 150); 
 
@@ -133,7 +130,11 @@ export default function GiftSheetpost() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) throw new Error("Silakan login kembali.");
+
+      if (session.user.id === targetPost.creatorId) {
+          throw new Error("Tidak bisa mengirim kado ke diri sendiri.");
+      }
 
       const { error: rpcErr } = await supabase.rpc("transfer_coins", { 
         sender_id: session.user.id, 
@@ -155,14 +156,14 @@ export default function GiftSheetpost() {
             type: "keluar", 
             transaction_type: "keluar", 
             amount: giftToSend.amount, 
-            description: t('history_send_desc', { name: targetPost.creatorName }) 
+            description: `Kirim kado ke ${targetPost.creatorName}` 
           },
           { 
             user_id: targetPost.creatorId, 
             type: "masuk", 
             transaction_type: "masuk", 
             amount: giftToSend.amount, 
-            description: t('history_receive_desc') 
+            description: `Terima kado` 
           }
         ])
       ]);
@@ -173,7 +174,7 @@ export default function GiftSheetpost() {
         actor_id: session.user.id, 
         post_id: parseInt(targetPost.id), 
         type: "gift", 
-        message: t('gift_notif_msg', { username: sProf?.username, amount: giftToSend.amount }) 
+        message: `mengirimkan hadiah senilai ${giftToSend.amount} koin` 
       });
 
       window.dispatchEvent(new CustomEvent('insertGiftComment', {
@@ -191,21 +192,20 @@ export default function GiftSheetpost() {
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
       
       if ((window as any).showBigImage) (window as any).showBigImage(giftToSend.img);
-      if ((window as any).showNotif) (window as any).showNotif(t('gift_sent_success'), "success");
+      if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
 
       setTimeout(() => {
         closeSheet();
       }, 250);
 
     } catch (err: any) {
-      if ((window as any).showNotif) (window as any).showNotif("Gagal: " + err.message, "error");
+      if ((window as any).showNotif) (window as any).showNotif(err.message, "error");
     } finally {
       setIsSending(false);
     }
   };
 
-  // 🔥 KALKULASI LEVEL BERSAMA 🔥
-  const currentLevel = calculateLevel(coinsGiven);
+  const currentLevel = myProfile?.level || 1;
   
   let targetKoin = currentLevel * 500;
   let prevTarget = (currentLevel - 1) * 500;
@@ -218,7 +218,6 @@ export default function GiftSheetpost() {
   return (
     <>
       <style>{`
-        /* 🔥 CSS SINKRON DENGAN GIFTDRAWER ROOM 🔥 */
         .gift-sheet-content {
           padding-bottom: 0 !important; max-height: 90vh;
           display: flex; flex-direction: column;
@@ -227,8 +226,6 @@ export default function GiftSheetpost() {
           display: flex; justify-content: space-between; align-items: center;
           padding: 0 20px; margin-bottom: 15px;
         }
-
-        /* HEADER LEVEL BAR */
         .drawer-top-level {
           display: flex; align-items: center; gap: 12px; background: transparent;
           padding: 12px 0px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
@@ -241,7 +238,11 @@ export default function GiftSheetpost() {
         .progress-track { width: 100%; height: 8px; background: rgba(150,150,150,0.2); border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 10px; background: #1f3cff; transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
-        /* GRID KADO 3D (SCROLL HORIZONTAL) */
+        .target-selection-container { padding: 0 20px; margin-bottom: 0; }
+        .target-label { font-size: 11px; font-weight: 800; color: var(--text-muted); display: block; margin-bottom: 8px; }
+        .target-box { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 12px; border: 1px solid #1f3cff; width: fit-content; }
+        .target-box .material-icons { font-size: 16px; color: #1f3cff; }
+
         .gift-list-3d-wrapper {
           padding: 15px 15px 25px 15px; display: flex; gap: 15px; overflow-x: auto; overflow-y: visible;
           scroll-snap-type: x mandatory; scrollbar-width: none;
@@ -268,15 +269,26 @@ export default function GiftSheetpost() {
         @keyframes fadeInDetails { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
         .gift-price-active { font-size: 11px; color: #1f3cff; font-weight: 800; display: flex; align-items: center; gap: 2px; }
-        .gift-send-btn { background: #1f3cff; color: white; border: none; border-radius: 8px; padding: 6px 22px; font-weight: 800; font-size: 11px; cursor: pointer; pointer-events: auto; }
+        
+        .gift-send-btn { 
+          background: #1f3cff; color: white; border: none; border-radius: 8px; 
+          padding: 6px 22px; font-weight: 800; font-size: 11px; cursor: pointer; pointer-events: auto;
+          transition: background 0.3s;
+        }
+        
+        .btn-send-gift-footer {
+          background: linear-gradient(135deg, #1f3cff, #bc13fe); color: white; border: none;
+          padding: 10px 24px; border-radius: 20px; font-weight: 800; font-size: 14px;
+          box-shadow: 0 4px 15px rgba(31, 60, 255, 0.4); transition: 0.2s; cursor: pointer;
+        }
+        .btn-send-gift-footer:disabled { background: #333 !important; color: #888 !important; box-shadow: none !important; cursor: not-allowed; opacity: 0.7; }
+        .btn-send-gift-footer:active:not(:disabled) { transform: scale(0.9); }
 
         .gift-item-3d.spam-anim .gift-active-bg { transform: scale(0.95); transition: 0.1s; background: rgba(31,60,255,0.1); }
         .gift-item-3d.spam-anim .gift-img-3d { transform: scale(0.9) translateY(5px); transition: 0.1s; }
 
         .drawer-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); background: var(--bg-base); border-top: 1px solid var(--border-color, rgba(255,255,255,0.05)); }
         .footer-coin-box { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; color: var(--text-main); background: var(--bg-secondary, rgba(0,0,0,0.05)); padding: 8px 14px; border-radius: 12px; }
-        .topup-btn { display: flex; align-items: center; gap: 4px; background: #1f3cff; color: white; border: none; border-radius: 20px; padding: 10px 18px; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s; }
-        .topup-btn:active { transform: scale(0.9); }
       `}</style>
 
       <div className={`gift-sheet ${isActive ? 'active' : ''}`} onClick={closeSheet}>
@@ -293,11 +305,9 @@ export default function GiftSheetpost() {
           <div className="drawer-top-level">
             <div className="level-avatar-box">
               <img src={myProfile?.avatar_url || fallbackAvatar} className="level-avatar" alt="Avatar" />
-              
               <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)' }}>
                  <span dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
               </div>
-
             </div>
             <div className="level-progress-info">
               <div className="level-text-row">
@@ -311,6 +321,15 @@ export default function GiftSheetpost() {
               <div className="progress-track" style={{ marginLeft: '6px' }}>
                 <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
               </div>
+            </div>
+          </div>
+
+          {/* 🔥 INFO TARGET (Pemilik Postingan) 🔥 */}
+          <div className="target-selection-container">
+            <span className="target-label">{t('send_to_label', 'KIRIM KE:')}</span>
+            <div className="target-box">
+              <span className="material-icons">account_circle</span>
+              <span style={{ fontWeight: 800, fontSize: '12px' }}>{targetPost.creatorName}</span>
             </div>
           </div>
 
@@ -361,9 +380,12 @@ export default function GiftSheetpost() {
               <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
               <span>{userCoins.toLocaleString('id-ID')}</span>
             </div>
-            <button className="topup-btn" onClick={() => window.location.href='/topup'}>
-              <span className="material-icons" style={{ fontSize: '16px', fontWeight: 'bold' }}>add</span>
-              TOP UP
+            <button 
+              className="btn-send-gift-footer" 
+              onClick={() => handleSendGift()}
+              disabled={!selectedGift || isSending}
+            >
+              {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}
             </button>
           </div>
         </div>
