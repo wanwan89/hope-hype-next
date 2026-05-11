@@ -401,13 +401,25 @@ export default function Gallerypost() {
     );
   };
 
-  const renderEngagementButtons = (post: any, postIdStr: string) => (
+const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
-      <button className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} onClick={() => handleSave(postIdStr)} style={{ color: mySavedPosts.has(postIdStr) ? "#1DA1F2" : "inherit" }}>
-        <svg viewBox="0 0 24 24" className="icon" fill="currentColor">
+      
+      {/* 🔥 FIX 1: TOMBOL SAVE 🔥 */}
+      <button 
+        className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
+        onClick={() => handleSave(postIdStr)} 
+      >
+        <svg 
+          viewBox="0 0 24 24" 
+          className="icon" 
+          fill="currentColor"
+          style={{ color: mySavedPosts.has(postIdStr) ? "#1DA1F2" : "inherit" }} // Pindahin kesini
+        >
           {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
         </svg>
-        <span className="save-count" style={{ color: 'var(--text-main)' }}>{counts[postIdStr]?.saves || 0}</span>
+        <span className="save-count" style={{ color: 'var(--text-main)' }}>
+          {counts[postIdStr]?.saves || 0}
+        </span>
       </button>
 
       <button 
