@@ -8,7 +8,6 @@ export default function ChatBox({ messages = [] }: { messages?: any[] }) {
   const { t } = useTranslation();
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Auto Scroll instan ke bawah pas chat update
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -18,7 +17,7 @@ export default function ChatBox({ messages = [] }: { messages?: any[] }) {
     if (level >= 30) return ["#00c6ff", "#0072ff"]; 
     if (level >= 20) return ["#f6d365", "#fda085"]; 
     if (level >= 10) return ["#89f7fe", "#66a6ff"]; 
-    return ["#d4fc79", "#96e6a1"]; 
+    return ["#1f3cff", "#89f7fe"]; // Warna default Biru HypeTalk
   }
 
   function renderLevelBadge(lvl: number) {
@@ -29,7 +28,6 @@ export default function ChatBox({ messages = [] }: { messages?: any[] }) {
   return (
     <div id="chat-box" className="chat-display" style={{ flex: 1, overflowY: 'auto', padding: '10px 15px', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '20px' }}>
       
-      {/* Pesan Sistem Pembuka */}
       <div className="msg system" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '8px 14px', borderRadius: '16px', fontSize: '11px', textAlign: 'center', margin: '8px auto', width: 'fit-content' }}>
         {t('system_rule_msg', 'Selalu jawab dengan sopan, santai, dan tetap menghargai orang lain ya!')}
       </div>
@@ -54,8 +52,8 @@ export default function ChatBox({ messages = [] }: { messages?: any[] }) {
           );
         }
 
-        // 🔥 TAMPILAN KOMENTAR USER (TRANSPARAN TANPA BOX) 🔥
-        const userLvl = Math.floor((msgData.total_gift_sent || 0) / 500) + 1;
+        // 🔥 FIX 4: AMBIL LEVEL YANG UDAH SINKRON DARI DATABASE/STATE 🔥
+        const userLvl = msgData.level || 1;
 
         return (
           <div key={msgData.id || idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', width: '100%' }}>
@@ -80,8 +78,8 @@ export default function ChatBox({ messages = [] }: { messages?: any[] }) {
           </div>
         );
       })}
-      {/* Target auto-scroll */}
-      <div ref={endRef} />
+      
+      <div ref={endRef} style={{ height: '1px' }} />
     </div>
   );
 }

@@ -13,7 +13,6 @@ declare global {
   }
 }
 
-// 🔥 LIST KADO LENGKAP 10 ITEM (Siap Di-Scroll) 🔥
 const GIFTS = [
   { id: 1, name: 'Love', price: 1, img: '/asets/png/gift1.png' },
   { id: 2, name: 'Daebak', price: 10, img: '/asets/png/gift2.png' },
@@ -35,19 +34,17 @@ export default function GiftDrawerroom() {
   const [myProfile, setMyProfile] = useState<any>(null);
   const [coinsGiven, setCoinsGiven] = useState(0);
   
-  // 🔥 STATE LACI TOP UP 🔥
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data: prof } = await supabase.from('profiles').select('username, avatar_url, coins').eq('id', session.user.id).single();
-        if (prof) setMyProfile(prof);
-
-        const { data: giftData } = await supabase.from('gift_transactions').select('amount').eq('sender_id', session.user.id);
-        const totalGiven = giftData?.reduce((sum, g) => sum + (g.amount || 0), 0) || 0;
-        setCoinsGiven(totalGiven);
+        const { data: prof } = await supabase.from('profiles').select('username, avatar_url, coins, total_gift_sent').eq('id', session.user.id).single();
+        if (prof) {
+            setMyProfile(prof);
+            setCoinsGiven(prof.total_gift_sent || 0);
+        }
       }
     };
     fetchUser();
@@ -59,14 +56,12 @@ export default function GiftDrawerroom() {
   };
 
   const handleTopUpClick = () => {
-    setIsTopUpOpen(true); // Buka laci topup langsung di atas laci kado
+    setIsTopUpOpen(true); 
   };
 
   const handleGiftAction = (gift: any, e: any) => {
     e.stopPropagation();
     if (selectedGift?.id === gift.id) {
-      
-      // CEK KOIN: Kalau kurang, otomatis buka Top Up
       if (myProfile && myProfile.coins < gift.price) {
         showNotif("Koin tidak cukup! Silakan Top Up", "warning");
         handleTopUpClick(); 
@@ -89,21 +84,17 @@ export default function GiftDrawerroom() {
     }
   };
 
-  let level = 1;
-  let expNeeded = 200; 
-  let remainingExp = coinsGiven;
-
-  while (remainingExp >= expNeeded) {
-    remainingExp -= expNeeded;
-    level++;
-    expNeeded = level * 200; 
-  }
+  // 🔥 FIX 4: SINKRONISASI LOGIKA LEVEL DENGAN PAGE.TSX 🔥
+  let level = Math.floor(coinsGiven / 500) + 1;
+  if (level > 50) level = 50;
+  
+  let targetKoin = level * 500;
+  let prevTarget = (level - 1) * 500;
+  let needed = targetKoin - coinsGiven;
+  let progressPercent = ((coinsGiven - prevTarget) / (targetKoin - prevTarget)) * 100;
+  if (progressPercent > 100) progressPercent = 100;
 
   const currentLevel = level;
-  const currentExp = remainingExp;
-  const maxExp = expNeeded;
-  const progressPercent = Math.min(100, (currentExp / maxExp) * 100);
-
   const fallbackAvatar = myProfile?.username ? `https://ui-avatars.com/api/?name=${myProfile.username}&background=1f3cff&color=fff&bold=true` : '/asets/png/profile.webp';
 
   return (
@@ -113,13 +104,10 @@ export default function GiftDrawerroom() {
           display: flex; flex-direction: column;
           padding-bottom: 0 !important; max-height: 90vh;
         }
-        
         .drawer-header {
           display: flex; justify-content: space-between; align-items: center;
           padding: 0 20px; margin-bottom: 15px;
         }
-
-        /* HEADER LEVEL BAR */
         .drawer-top-level {
           display: flex; align-items: center; gap: 12px; background: transparent;
           padding: 12px 0px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
@@ -136,112 +124,40 @@ export default function GiftDrawerroom() {
         .level-text-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 800; color: var(--text-main); }
         .progress-track { width: 100%; height: 8px; background: rgba(150,150,150,0.2); border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 10px; background: #1f3cff; transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-
         .target-selection-container { padding: 0 20px; margin-bottom: 0; }
         #gift-targets { padding-top: 8px !important; padding-bottom: 8px !important; }
         #gift-targets .target-avatar { width: 44px !important; height: 44px !important; }
-
-        /* 🔥 GRID KADO (SCROLL HORIZONTAL 10 KADO) 🔥 */
         .gift-list-3d-wrapper {
-          padding: 15px 15px 25px 15px;
-          display: flex; gap: 15px; overflow-x: auto; overflow-y: visible;
+          padding: 15px 15px 25px 15px; display: flex; gap: 15px; overflow-x: auto; overflow-y: visible;
           scroll-snap-type: x mandatory; scrollbar-width: none;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
-
-        .gift-column {
-          display: flex; flex-direction: column; gap: 25px; flex-shrink: 0;
-          width: calc(33.333% - 10px); /* 3 Kolom per frame, sisanya scroll */
-          scroll-snap-align: start;
-        }
-
-        .gift-item-3d {
-          position: relative; height: 100px; width: 100%;
-          display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-          cursor: pointer; -webkit-tap-highlight-color: transparent; z-index: 1;
-        }
+        .gift-column { display: flex; flex-direction: column; gap: 25px; flex-shrink: 0; width: calc(33.333% - 10px); scroll-snap-align: start; }
+        .gift-item-3d { position: relative; height: 100px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; -webkit-tap-highlight-color: transparent; z-index: 1; }
         .gift-item-3d.active { z-index: 10; }
-
-        /* GAMBAR KADO DEFAULT (MEMBESAR) */
-        .gift-img-3d {
-          width: 85px; height: 85px; object-fit: contain; filter: none;
-          position: absolute; top: -10px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          z-index: 2;
-        }
-
-        .gift-default-info {
-          display: flex; flex-direction: column; align-items: center;
-          margin-bottom: 5px; opacity: 1; transition: opacity 0.2s;
-        }
+        .gift-img-3d { width: 85px; height: 85px; object-fit: contain; filter: none; position: absolute; top: -10px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 2; }
+        .gift-default-info { display: flex; flex-direction: column; align-items: center; margin-bottom: 5px; opacity: 1; transition: opacity 0.2s; }
         .gift-label { font-size: 11px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
         .gift-price-mini { font-size: 11px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 2px; }
-
-        /* 🔥 BOX AKTIF (KECIL) 🔥 */
-        .gift-active-bg {
-          position: absolute; bottom: 0; left: 0; right: 0;
-          height: 55px; /* SANGAT PENDEK BIAR GAMBAR KELUAR */
-          background: transparent; border: 1.5px solid #1f3cff; border-radius: 12px; box-shadow: none; 
-          animation: popBox 0.2s ease forwards;
-          display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-          padding-bottom: 6px;
-        }
-        @keyframes popBox {
-          from { transform: scale(0.8) translateY(10px); opacity: 0; }
-          to { transform: scale(1) translateY(0); opacity: 1; }
-        }
-
-        /* 🔥 GAMBAR POP OUT SUPER EKSTRIM 🔥 */
-        .gift-item-3d.active .gift-img-3d {
-          width: 145px; height: 145px; /* GILA BESARNYA */
-          top: -90px; /* TEMBUS KE ATAS JAUH */
-          filter: none; animation: floatActive 2s ease-in-out infinite;
-        }
-        @keyframes floatActive {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
-
+        .gift-active-bg { position: absolute; bottom: 0; left: 0; right: 0; height: 55px; background: transparent; border: 1.5px solid #1f3cff; border-radius: 12px; box-shadow: none; animation: popBox 0.2s ease forwards; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 6px; }
+        @keyframes popBox { from { transform: scale(0.8) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .gift-item-3d.active .gift-img-3d { width: 145px; height: 145px; top: -90px; filter: none; animation: floatActive 2s ease-in-out infinite; }
+        @keyframes floatActive { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
         .gift-item-3d.active .gift-default-info { opacity: 0; pointer-events: none; }
         .gift-active-details { display: flex; flex-direction: column; align-items: center; gap: 4px; animation: fadeInDetails 0.3s ease forwards; z-index: 2; }
         @keyframes fadeInDetails { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
         .gift-price-active { font-size: 11px; color: #1f3cff; font-weight: 800; display: flex; align-items: center; gap: 2px; }
-        .gift-send-btn {
-          background: #1f3cff; color: white; border: none; border-radius: 8px;
-          padding: 6px 22px; font-weight: 800; font-size: 11px; cursor: pointer; pointer-events: auto;
-        }
-
+        .gift-send-btn { background: #1f3cff; color: white; border: none; border-radius: 8px; padding: 6px 22px; font-weight: 800; font-size: 11px; cursor: pointer; pointer-events: auto; }
         .gift-item-3d.spam-anim .gift-active-bg { transform: scale(0.95); transition: 0.1s; background: rgba(31,60,255,0.1); }
         .gift-item-3d.spam-anim .gift-img-3d { transform: scale(0.9) translateY(5px); transition: 0.1s; }
-
-        /* 🔥 FOOTER BAWAH SOLID 🔥 */
-        .drawer-footer {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom));
-          background: var(--bg-base); border-top: 1px solid var(--border-color, rgba(255,255,255,0.05));
-        }
-        .footer-coin-box {
-          display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; color: var(--text-main);
-          background: var(--bg-secondary, rgba(0,0,0,0.05)); padding: 8px 14px; border-radius: 12px;
-        }
-        .topup-btn {
-          display: flex; align-items: center; gap: 4px;
-          background: #1f3cff; color: white; border: none; border-radius: 20px;
-          padding: 10px 18px; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s;
-        }
+        .drawer-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); background: var(--bg-base); border-top: 1px solid var(--border-color, rgba(255,255,255,0.05)); }
+        .footer-coin-box { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; color: var(--text-main); background: var(--bg-secondary, rgba(0,0,0,0.05)); padding: 8px 14px; border-radius: 12px; }
+        .topup-btn { display: flex; align-items: center; gap: 4px; background: #1f3cff; color: white; border: none; border-radius: 20px; padding: 10px 18px; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s; }
         .topup-btn:active { transform: scale(0.9); }
-
-        /* 🔥 SLIDE UP TOP UP DI DALAM REACT 🔥 */
-        .react-topup-sheet {
-          position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; z-index: 100005;
-          pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
-        }
+        .react-topup-sheet { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; z-index: 100005; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; }
         .react-topup-sheet.active { pointer-events: auto; opacity: 1; }
         .react-topup-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
-        .react-topup-content {
-          position: relative; background: #1b1b1f; padding: 20px; border-top-left-radius: 24px; border-top-right-radius: 24px;
-          transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-        }
+        .react-topup-content { position: relative; background: #1b1b1f; padding: 20px; border-top-left-radius: 24px; border-top-right-radius: 24px; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
         .react-topup-sheet.active .react-topup-content { transform: translateY(0); }
         .drag-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 10px; margin: 0 auto 15px; }
       `}</style>
@@ -264,7 +180,11 @@ export default function GiftDrawerroom() {
           <div className="level-progress-info">
             <div className="level-text-row">
               <span>{myProfile?.username || 'User'}</span>
-              <span style={{ color: '#1f3cff' }}>{currentExp} / {maxExp}</span>
+              {currentLevel >= 50 ? (
+                <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
+              ) : (
+                <span style={{ color: '#1f3cff' }}>Butuh {needed} koin</span>
+              )}
             </div>
             <div className="progress-track">
               <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
@@ -277,7 +197,6 @@ export default function GiftDrawerroom() {
           <div id="gift-targets" className="target-list" onClick={(e) => e.stopPropagation()}></div>
         </div>
 
-        {/* 🔥 DAFTAR KADO SCROLL HORIZONTAL (10 KADO, 5 KOLOM) 🔥 */}
         <div className="gift-list-3d-wrapper">
           {Array.from({ length: Math.ceil(GIFTS.length / 2) }).map((_, colIndex) => (
             <div key={colIndex} className="gift-column">
@@ -335,7 +254,6 @@ export default function GiftDrawerroom() {
         </div>
       </div>
 
-      {/* 🔥 SLIDE UP TOP UP DI DALAM COMPONENT (INTEGRASI ASTRO LOGIC) 🔥 */}
       <div className={`react-topup-sheet ${isTopUpOpen ? 'active' : ''}`}>
         <div className="react-topup-overlay" onClick={() => setIsTopUpOpen(false)}></div>
         <div className="react-topup-content">
