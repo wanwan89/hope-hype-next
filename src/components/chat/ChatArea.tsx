@@ -230,7 +230,7 @@ export default function ChatArea() {
     if (refs.audio.current?.ring) {
       refs.audio.current.ring.pause();
       refs.audio.current.ring.currentTime = 0;
-      refs.audio.current.ring = null;
+      // Baris "refs.audio.current.ring = null;" udah dihapus dari sini
     }
     if (refs.msgChannel.current) supabase.removeChannel(refs.msgChannel.current);
     if (refs.presenceChannel.current) supabase.removeChannel(refs.presenceChannel.current);
