@@ -528,8 +528,8 @@ export default function CommentModalpost() {
           onClick={() => handleLikeComment(String(comment.id))}
           style={{ 
             position: 'absolute',
-            top: '5px',
-            right: '0',
+            top: '8px',
+            right: '10px',
             width: '35px', 
             display: 'flex', 
             flexDirection: 'column', 
@@ -540,14 +540,20 @@ export default function CommentModalpost() {
           }}
         >
           <svg 
+            fill="currentColor"
             viewBox="0 0 24 24" 
             className={`heart-icon ${isCommentLiked ? 'active' : ''}`}
-            style={{ width: '15px', height: '15px', color: isCommentLiked ? '#ff4757' : '#9ca3af', transition: '0.2s' }}
+            style={{ 
+              width: '15px', 
+              height: '15px', 
+              color: isCommentLiked ? '#ff4757' : 'var(--text-main, #000)', 
+              transition: '0.2s' 
+            }}
           >
             <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z" />
           </svg>
           {(comment.likes_count > 0) && (
-            <span className="comment-like-count" style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600', marginTop: '2px' }}>
+            <span className="comment-like-count" style={{ fontSize: '11px', color: 'var(--text-muted, #9ca3af)', fontWeight: '600', marginTop: '2px' }}>
               {comment.likes_count}
             </span>
           )}
@@ -595,6 +601,11 @@ export default function CommentModalpost() {
         .c-action-btn.danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
         .c-action-btn.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
         .c-action-btn:active { transform: scale(0.96); }
+        
+        /* Pastikan heart-icon bisa transisi warna */
+        .heart-icon {
+          fill: currentColor;
+        }
       `}</style>
 
       {/* 🔥 FIX 5: OVERLAY KLIK TUTUP (KASIH ONCLICK DI PARENT LUAR) 🔥 */}
