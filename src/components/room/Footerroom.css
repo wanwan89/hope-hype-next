@@ -1,14 +1,14 @@
 /* src/components/room/Footerroom.css */
 
-/* --- BUNGKUSAN MELAYANG (FLOATING DOCK) --- */
+/* --- ANIMASI BUNGKUSAN MELAYANG DARI BAWAH --- */
 .footer-floating-wrapper {
-  position: absolute;
-  bottom: calc(20px + env(safe-area-inset-bottom));
+  position: fixed; 
+  bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 30px);
-  max-width: 460px;
-  z-index: 100;
+  width: 95%;
+  max-width: 480px;
+  z-index: 1000;
   animation: slideUpDock 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
@@ -17,97 +17,36 @@
   100% { transform: translate(-50%, 0); opacity: 1; }
 }
 
-/* --- KOTAK UTAMA DOCK (GLASSMORPHISM) --- */
-.footer-dock {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--header-bg, rgba(255, 255, 255, 0.85));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
-  border-radius: 100px; /* Bentuk Pill membulat sempurna */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-}
-
-[data-theme='dark'] .footer-dock,
-html.dark .footer-dock {
-  background: rgba(30, 41, 59, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-
-/* --- TOMBOL-TOMBOL IKON --- */
+/* --- EFEK KLIK (MENGECIL) UNTUK SEMUA TOMBOL --- */
 .dock-btn {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--text-main);
-  cursor: pointer;
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  flex-shrink: 0;
 }
 
 .dock-btn:active {
-  transform: scale(0.85);
+  transform: scale(0.85) !important;
 }
 
-/* --- IKON SHARE & HAND (SOFT BG) --- */
-.hand-btn, .share-btn {
-  background: var(--input-bg, rgba(0, 0, 0, 0.05));
-}
-.hand-btn:hover, .share-btn:hover {
-  background: var(--primary-soft, rgba(31, 60, 255, 0.1));
-  color: #1f3cff; /* Biru HypeTalk */
-}
-
-/* --- IKON KADO (PREMIUM GLOW) --- */
-.dock-btn.premium-glow {
-  background: linear-gradient(135deg, #f59e0b, #fbbf24); /* Gradasi Emas */
-  color: white;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); /* Efek Menyala */
-}
-.dock-btn.premium-glow:hover {
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+/* --- EFEK HOVER TOMBOL ROKET (GLOWING) --- */
+.action-btn:hover {
+  box-shadow: 0 6px 20px rgba(31, 60, 255, 0.6) !important;
   transform: scale(1.05);
 }
-.dock-btn.premium-glow:active {
-  transform: scale(0.9);
+
+/* --- EFEK HOVER TOMBOL SHARE --- */
+.share-btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
-/* --- CHAT INPUT PILL --- */
-.input-container {
-  flex: 1;
-}
-
+/* --- EFEK KETIKA INPUT CHAT DI-KLIK (FOKUS) --- */
 .floating-chat-input {
-  width: 100%;
-  height: 42px;
-  background: var(--input-bg, rgba(0, 0, 0, 0.05));
-  border: 1.5px solid transparent;
-  border-radius: 20px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-main);
-  outline: none;
   transition: all 0.3s ease;
-  font-family: inherit;
 }
 
 .floating-chat-input::placeholder {
-  color: var(--text-muted);
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .floating-chat-input:focus {
-  background: var(--panel-bg, #ffffff);
-  border-color: #1f3cff;
-  box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: #1f3cff !important;
 }

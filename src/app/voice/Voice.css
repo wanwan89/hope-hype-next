@@ -1,81 +1,35 @@
-/* src/components/room/Voice.css */
-
 /* ==================================================
-   1. THEME VARIABLES (DIKURUNG DALAM .in-voice-room)
+   1. THEME VARIABLES (DARK MODE LOCK)
 ================================================== */
-
 :root {
-    --radar-color: #1f3cff; /* 🔥 FIX: Warna default radar HypeTalk */
+    --radar-color: #1f3cff; /* Biru HypeTalk */
 }
 
+/* KARENA VOICE ROOM LU DARK MODE ONLY, VARIABEL LIGHT DIHAPUS. LANGSUNG PAKAI TEMA GELAP */
 .in-voice-room {
     --primary: #1f3cff;         
-    --primary-soft: rgba(31, 60, 255, 0.1);
-    --bg-base: #f8fafc;         
-    --panel-bg: #ffffff;        
-    --border: rgba(0, 0, 0, 0.05); 
-    --empty-slot: #f1f5f9;      
+    --primary-soft: rgba(31, 60, 255, 0.2);
+    --bg-base: #0B141A; /* Warna Background Chat Lu */        
+    --panel-bg: #1A2228;        
+    --border: rgba(255, 255, 255, 0.05); 
+    --empty-slot: rgba(255, 255, 255, 0.03);      
     --accent: #ff4757;          
-    --success: #10b981;         
-    --text-main: #0f172a;       
-    --text-muted: #64748b;      
-    --danger: #ef4444;
+    --success: #00ff88;         
+    --text-main: #ffffff;       
+    --text-muted: #888888;      
+    --danger: #ff4757;
     --vh: 1vh;
     
-    --msg-bg: rgba(255, 255, 255, 0.95);
-    --msg-border: rgba(0, 0, 0, 0.04);
-    --msg-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
-    --sys-bg: rgba(255, 71, 87, 0.08); /* 🔥 FIX: Theme system gift mengikuti HypeTalk */
-    --sys-border: rgba(255, 71, 87, 0.2);
-    --sys-gift-bg: linear-gradient(135deg, rgba(255, 71, 87, 0.15), rgba(31, 60, 255, 0.05));
-    --sys-gift-text: #ff4757; 
-    --input-bg: #f1f5f9; 
-    --footer-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03); 
-    --overlay-bg: rgba(255, 255, 255, 0.3);
-    --gift-spotlight: radial-gradient(circle, rgba(255, 71, 87, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
-    --header-bg: rgba(255, 255, 255, 0.85); 
-    --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-    --modal-bg: #ffffff;
-    --modal-overlay: rgba(0, 0, 0, 0.4);
-    --sidebar-shadow: -10px 0 40px rgba(0, 0, 0, 0.08);
-
+    --msg-bg: transparent; /* Karena kita mau chatnya transparan */
+    --sys-bg: rgba(255, 255, 255, 0.1);
+    --sys-border: rgba(255, 255, 255, 0.05);
+    --sys-gift-bg: linear-gradient(135deg, #ff4757, #1f3cff);
+    
     background-color: var(--bg-base); 
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--text-main);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-}
-
-[data-theme='dark'] .in-voice-room,
-html.dark .in-voice-room {
-    --primary: #1f3cff;         
-    --primary-soft: rgba(31, 60, 255, 0.2);
-    --bg-base: #0f172a;         
-    --panel-bg: #1e293b;        
-    --border: rgba(255, 255, 255, 0.06); 
-    --empty-slot: #0f172a;      
-    --accent: #ff4757;          
-    --success: #00ff88;         
-    --text-main: #f8fafc;       
-    --text-muted: #94a3b8;      
-    --danger: #ff4d4d;
-
-    --msg-bg: rgba(30, 41, 59, 0.85); 
-    --msg-border: rgba(255, 255, 255, 0.05);
-    --msg-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    --sys-bg: rgba(255, 71, 87, 0.1);
-    --sys-border: rgba(255, 71, 87, 0.15);
-    --sys-gift-bg: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(31, 60, 255, 0.05));
-    --sys-gift-text: #ff6b81; 
-    --input-bg: rgba(255, 255, 255, 0.05); 
-    --footer-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
-    --overlay-bg: rgba(15, 23, 42, 0.4); 
-    --gift-spotlight: radial-gradient(circle, rgba(255, 71, 87, 0.25) 0%, rgba(15, 23, 42, 0) 60%);
-    --header-bg: rgba(30, 41, 59, 0.85); 
-    --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    --modal-bg: #1e293b;
-    --modal-overlay: rgba(15, 23, 42, 0.6);
-    --sidebar-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
 }
 
 /* ==================================================
@@ -104,64 +58,5 @@ html.dark .in-voice-room {
     overscroll-behavior: none; 
     z-index: 10;
 }
-.in-voice-room h1, 
-.in-voice-room h2, 
-.in-voice-room h3, 
-.in-voice-room .room-title { letter-spacing: -0.02em; }
+.in-voice-room h1, .in-voice-room h2, .in-voice-room h3, .in-voice-room .room-title { letter-spacing: -0.02em; }
 .in-voice-room ::-webkit-scrollbar { width: 0px; background: transparent; }
-
-/* ==================================================
-   3. PANGGUNG (STAGE) & ANIMASI RADAR (DYNAMIC SLOT FIX)
-================================================== */
-.in-voice-room .stage-container {
-    flex-shrink: 0; 
-    display: grid; 
-    /* Center grid & max 3 kolom buat nampung 2, 4, atau 6 slot dengan rapi */
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); 
-    justify-content: center;
-    gap: 24px 12px; 
-    padding: 24px 16px; 
-    background: var(--panel-bg);
-    border-radius: 0 0 32px 32px; 
-    border-bottom: 1px solid var(--border); 
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    z-index: 90;
-    transition: all 0.3s ease-in-out; 
-}
-
-/* Jika cuma ada 2 atau 4 elemen, paksa grid buat ke tengah biar gak timpang */
-.in-voice-room .stage-container:has(> .speaker-item:nth-last-child(-n+4):first-child) {
-    grid-template-columns: repeat(2, minmax(90px, 120px));
-}
-
-.in-voice-room .speaker-item { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.in-voice-room .avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--empty-slot); position: relative; border: 3px solid var(--panel-bg); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 15px rgba(0,0,0,0.08); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; }
-.in-voice-room .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-.in-voice-room .speaker-item.empty .avatar { background: var(--empty-slot); border: 2px dashed var(--border); box-shadow: inset 0 2px 8px rgba(0,0,0,0.06); }
-.in-voice-room .speaker-item.empty .avatar .material-icons { color: var(--text-muted); font-size: 32px; opacity: 0.5; }
-.in-voice-room .avatar:active { transform: scale(0.9); }
-
-.in-voice-room .avatar.speaking { 
-    border-color: var(--radar-color) !important; 
-    animation: sonar-premium 1.5s infinite ease-out; 
-}
-
-body.radar-rgb .in-voice-room .avatar.speaking {
-    animation: rgbRadar 2s infinite linear;
-}
-
-.in-voice-room .name-label { margin-top: 12px; font-size: 13px; font-weight: 800; color: var(--text-main); display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
-.in-voice-room .speaker-item.empty .name-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
-
-@keyframes sonar-premium { 
-  0% { box-shadow: 0 0 0 0 var(--radar-color), 0 6px 15px rgba(0,0,0,0.08); } 
-  70% { box-shadow: 0 0 0 15px transparent, 0 6px 15px rgba(0,0,0,0.08); } 
-  100% { box-shadow: 0 0 0 0 transparent, 0 6px 15px rgba(0,0,0,0.08); } 
-}
-
-@keyframes rgbRadar { 
-  0% { box-shadow: 0 0 10px red; border-color: red !important; } 
-  33% { box-shadow: 0 0 10px green; border-color: green !important; } 
-  66% { box-shadow: 0 0 10px blue; border-color: blue !important; } 
-  100% { box-shadow: 0 0 10px red; border-color: red !important; } 
-}

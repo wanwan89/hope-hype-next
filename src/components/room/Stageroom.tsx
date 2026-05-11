@@ -15,12 +15,12 @@ export default function Stageroom() {
 
   return (
     // Wadah id="stage-grid" ini bakal diisi dinamis oleh fetchStage() di page.tsx.
-    // Default kita kasih 6 slot kosong sebagai Skeleton/Loading state awal.
+    // Skeleton ini sekarang didesain lebih premium buat loading state awal (Dark Mode).
     <section id="stage-grid" className="stage-container">
       {Array.from({ length: 6 }).map((_, index) => (
         <div key={index} className="speaker-item empty">
           <div 
-            className="avatar" 
+            className="avatar empty-avatar-glass" 
             onClick={() => window.naikKeStage && window.naikKeStage(index)}
           >
             <span className="material-icons">add</span>

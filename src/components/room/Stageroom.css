@@ -1,105 +1,111 @@
-/* src/components/room/Stageroom.css */
-
-.in-voice-room .stage-container {
-    flex-shrink: 0; 
-    display: grid; 
-    /* 🔥 Grid Dinamis: Otomatis ngisi layar & nengah 🔥 */
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); 
-    justify-content: center;
-    gap: 24px 12px; 
-    padding: 24px 16px; 
-    background: var(--panel-bg, #ffffff);
-    border-radius: 0 0 32px 32px; 
-    border-bottom: 1px solid var(--border, rgba(0,0,0,0.05)); 
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    z-index: 90;
-    transition: all 0.3s ease-in-out; 
+/* =========================================
+   🔥 STAGE & AVATAR PREMIUM (DARK MODE) 🔥
+   ========================================= */
+.stage-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  justify-content: center;
+  gap: 24px 10px;
+  padding: 15px 20px 25px;
+  background: transparent;
+  z-index: 10;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* 🔥 Trik CSS: Kalau slotnya di-set 2 atau 4, paksa jadi 2 Kolom rata tengah 🔥 */
-.in-voice-room .stage-container:has(> .speaker-item:nth-last-child(-n+4):first-child) {
-    grid-template-columns: repeat(2, minmax(90px, 120px));
+.stage-container:has(> .speaker-item:nth-last-child(-n+4):first-child) {
+  grid-template-columns: repeat(2, minmax(90px, 120px));
 }
 
-.in-voice-room .speaker-item { 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    width: 100%; 
+.speaker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
 }
 
-.in-voice-room .avatar { 
-    width: 72px; 
-    height: 72px; 
-    border-radius: 50%; 
-    background: var(--empty-slot, #f1f5f9); 
-    position: relative; 
-    border: 3px solid var(--panel-bg, #ffffff); 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    box-shadow: 0 6px 15px rgba(0,0,0,0.08); 
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
-    cursor: pointer; 
+.speaker-item .avatar {
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
 }
 
-.in-voice-room .avatar img { 
-    width: 100%; 
-    height: 100%; 
-    border-radius: 50%; 
-    object-fit: cover; 
+.speaker-item .avatar:active {
+  transform: scale(0.85);
 }
 
-/* --- Tampilan Slot Kosong --- */
-.in-voice-room .speaker-item.empty .avatar { 
-    background: var(--empty-slot, #f1f5f9); 
-    border: 2px dashed var(--border, rgba(0,0,0,0.05)); 
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.06); 
+.speaker-item .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid transparent;
+  background-clip: padding-box, border-box;
+  background-origin: padding-box, border-box;
+  background-image: linear-gradient(#0B141A, #0B141A), linear-gradient(135deg, #ff4757, #1f3cff);
 }
 
-.in-voice-room .speaker-item.empty .avatar .material-icons { 
-    color: var(--text-muted, #64748b); 
-    font-size: 32px; 
-    opacity: 0.5; 
+.speaker-item.empty .avatar,
+.empty-avatar-glass {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px dashed rgba(255, 255, 255, 0.2) !important;
+  opacity: 1 !important; 
 }
 
-.in-voice-room .avatar:active { 
-    transform: scale(0.9); 
+.speaker-item.empty .avatar:hover,
+.empty-avatar-glass:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px dashed rgba(255, 255, 255, 0.4) !important;
 }
 
-/* 🔥 Animasi Mic Nyala (Radar Dinamis) 🔥 */
-.in-voice-room .avatar.speaking { 
-    border-color: var(--radar-color, #3b82f6) !important; 
-    animation: sonar-premium 1.5s infinite ease-out; 
+.speaker-item.empty .avatar .material-icons,
+.empty-avatar-glass .material-icons {
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 28px !important;
 }
 
-body.radar-rgb .in-voice-room .avatar.speaking {
-    animation: rgbRadar 2s infinite linear;
+.speaker-item .name-label {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+  max-width: 90px;
 }
 
-.in-voice-room .name-label { 
-    margin-top: 12px; 
-    font-size: 13px; 
-    font-weight: 800; 
-    color: var(--text-main, #0f172a); 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    gap: 4px; 
-    text-align: center; 
+.speaker-item.empty .name-label {
+  color: rgba(255, 255, 255, 0.3) !important;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 1px;
 }
 
-.in-voice-room .speaker-item.empty .name-label { 
-    color: var(--text-muted, #64748b); 
-    font-size: 11px; 
-    text-transform: uppercase; 
-    letter-spacing: 1px; 
-    opacity: 0.6; 
+/* Badge Mute (Mic Off) */
+.mute-badge {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+  transition: opacity 0.3s;
 }
 
-/* --- KEYFRAMES --- */
+.avatar.speaking { 
+  border-color: var(--radar-color, #1f3cff) !important; 
+  animation: sonar-premium 1.5s infinite ease-out; 
+}
+
+body.radar-rgb .avatar.speaking {
+  animation: rgbRadar 2s infinite linear;
+}
+
 @keyframes sonar-premium { 
-  0% { box-shadow: 0 0 0 0 var(--radar-color, #3b82f6), 0 6px 15px rgba(0,0,0,0.08); } 
+  0% { box-shadow: 0 0 0 0 var(--radar-color), 0 6px 15px rgba(0,0,0,0.08); } 
   70% { box-shadow: 0 0 0 15px transparent, 0 6px 15px rgba(0,0,0,0.08); } 
   100% { box-shadow: 0 0 0 0 transparent, 0 6px 15px rgba(0,0,0,0.08); } 
 }
