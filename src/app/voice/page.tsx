@@ -67,7 +67,7 @@ function VoiceRoomContent() {
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isOnStage, setIsOnStage] = useState(false);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [isMicActive, setIsMicActive] = useState(false); // 🔥 STATE MIC UI
+  const [isMicActive, setIsMicActive] = useState(false); 
   
   const myTotalGiftSent = useRef(0);
   const myLevel = useRef(1);
@@ -78,7 +78,7 @@ function VoiceRoomContent() {
   const activeCombos = useRef<Record<string, any>>({});
   
   const myUsername = useRef("Guest");
-  const myAvatar = useRef("/asets/png/profile.webp"); // Simpan avatar buat chat instan
+  const myAvatar = useRef("/asets/png/profile.webp"); 
   const myRole = useRef("user");
   const MY_USER_ID = useRef<string | null>(null);
   const IS_OWNER = useRef(false);
@@ -97,7 +97,6 @@ function VoiceRoomContent() {
 
     window.toggleActionMenu = () => setIsActionMenuOpen(prev => !prev);
      
-    // 🔥 FIX 7: SINKRONISASI WARNA RADAR DARI MODAL 🔥
     window.updateRadarColor = (color: string) => {
         if (color === 'rgb') {
             document.body.classList.add('radar-rgb');
@@ -145,9 +144,44 @@ function VoiceRoomContent() {
       } catch (err) { console.error(err); }
     };
 
+    // 🔥 FIX 4: SINKRONISASI LOGIKA LEVEL DENGAN GIFT DRAWER 🔥
     function calculateLevel(giftSent: number) {
-      let lvl = Math.floor(giftSent / 500) + 1; 
-      if (lvl > 50) lvl = 50; return lvl;
+      // Sama persis dengan logika di GiftDrawerroom.tsx
+      let exp = giftSent || 0;
+      let level = 1;
+      let expNeeded = 200;
+      while (exp >= expNeeded) {
+        exp -= expNeeded;
+        level++;
+        expNeeded = level * 200;
+      }
+      return level;
+    }
+
+    function getLevelColor(level: number) {
+      if (level >= 40) return ["#ff0844", "#ffb199"]; 
+      if (level >= 30) return ["#00c6ff", "#0072ff"]; 
+      if (level >= 20) return ["#f6d365", "#fda085"]; 
+      if (level >= 10) return ["#89f7fe", "#66a6ff"]; 
+      return ["#1f3cff", "#89f7fe"]; // Warna default Biru HypeTalk
+    }
+
+    function getLevelBadgeHTML(levelVal: string | number) {
+        const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
+        const [c1, c2] = getLevelColor(lvl);
+        return `
+        <span style="
+          display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+          background: linear-gradient(135deg, ${c1}, ${c2});
+          color: #fff !important; font-size: 9px; font-weight: 900; 
+          padding: 2px 6px; border-radius: 12px; margin-left: 4px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3); vertical-align: middle;
+        ">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+          </svg>
+          ${lvl}
+        </span>`;
     }
 
     function playGiftAnimation(giftId: number | string, forcedCombo: number | null = null) {
@@ -195,7 +229,6 @@ function VoiceRoomContent() {
         } catch (e) { return []; }
     }
 
-    // 🔥 FIX 6: TAMPILKAN TOP GIFTERS MENGAMBANG DI KANAN HEADER 🔥
     async function fetchTopGifters() {
         const topData = await getRoomLeaderboard();
         const container = document.getElementById('top-gifters-container');
@@ -226,7 +259,6 @@ function VoiceRoomContent() {
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages', filter: `room_id=eq.${CURRENT_ROOM_ID}` }, async (p: any) => {
             const newMsg = p.new;
-            // Cegah duplikat karena fitur Optimistic Update
             setChatMessages((prev) => {
                 if (prev.find(m => m.id === newMsg.id || m.id === `temp-${newMsg.text}`)) return prev;
                 if (newMsg.user_id && !newMsg.avatar_url) {
@@ -283,7 +315,6 @@ function VoiceRoomContent() {
             }
         });
 
-        // Tarik Riwayat Pesan Awal
         sb.from('room_messages').select('*, profiles:user_id(avatar_url, level)').eq('room_id', CURRENT_ROOM_ID).order('created_at', { ascending: false }).limit(25).then(({ data }) => {
             if (data) {
                 const formattedData = data.reverse().map(m => ({ 
@@ -394,32 +425,6 @@ function VoiceRoomContent() {
         listenRealtime(); fetchTopGifters();
     }
 
-    function getLevelColor(level: number) {
-      if (level >= 40) return ["#ff0844", "#ffb199"]; 
-      if (level >= 30) return ["#00c6ff", "#0072ff"]; 
-      if (level >= 20) return ["#f6d365", "#fda085"]; 
-      if (level >= 10) return ["#89f7fe", "#66a6ff"]; 
-      return ["#d4fc79", "#96e6a1"]; 
-    }
-
-    function getLevelBadgeHTML(levelVal: string | number) {
-        const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
-        const [c1, c2] = getLevelColor(lvl);
-        return `
-        <span style="
-          display: inline-flex; align-items: center; justify-content: center; gap: 2px;
-          background: linear-gradient(135deg, ${c1}, ${c2});
-          color: #fff !important; font-size: 9px; font-weight: 900; 
-          padding: 2px 6px; border-radius: 12px; margin-left: 4px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3); vertical-align: middle;
-        ">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
-          </svg>
-          ${lvl}
-        </span>`;
-    }
-
     async function fetchStage(overrideCount?: number) {
         if (!CURRENT_ROOM_ID) return;
         const targetCount = overrideCount || roomSlotCount;
@@ -438,7 +443,8 @@ function VoiceRoomContent() {
             const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
             const item = document.createElement('div'); item.className = 'speaker-item';
             if (user) {
-                const calculatedUserLvl = Math.floor((user.total_gift_sent || 0) / 500) + 1;
+                // 🔥 FIX 5: BADGE LEVEL TAMPIL DI STAGE 🔥
+                const calculatedUserLvl = calculateLevel(user.total_gift_sent || 0);
                 item.innerHTML = `
                     <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
                         <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
@@ -448,7 +454,7 @@ function VoiceRoomContent() {
                     </div>
                     <span class="name-label" style="color: #ffffff; font-weight: 600; text-shadow: none;">
                         <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
-                            ${user.username}
+                            ${user.username} ${getLevelBadgeHTML(calculatedUserLvl)}
                         </div>
                     </span>`;
             } else {
@@ -458,7 +464,6 @@ function VoiceRoomContent() {
         });
     }
 
-    // 🔥 FIX 4: KIRIM KOMENTAR LANGSUNG MUNCUL TANPA REFRESH (OPTIMISTIC UPDATE) 🔥
     window.kirimKomentar = async () => {
         const inputEl = document.getElementById('chat-input') as HTMLInputElement;
         const text = inputEl?.value.trim();
@@ -467,7 +472,6 @@ function VoiceRoomContent() {
         inputEl.value = ''; 
         inputEl.focus(); 
         
-        // Optimistic Update: Langsung tampilin di UI detik ini juga
         const tempId = 'temp-' + Date.now();
         const tempMsg = {
             id: tempId,
@@ -516,7 +520,6 @@ function VoiceRoomContent() {
         window.location.href = '/lobby'; 
     };
 
-    // 🔥 FIX 3: LOGIKA MIC ON/OFF ANTI ERROR (RE-RENDER AMAN) 🔥
     window.toggleMicSidebar = async (e: any) => {
         e?.preventDefault();
         if (!roomRef.current) return showNotif('Koneksi suara belum siap', "warning");
@@ -528,7 +531,7 @@ function VoiceRoomContent() {
             await roomRef.current.localParticipant.setMicrophoneEnabled(nextMicState);
             await sb.from('profiles').update({ mic_off: !nextMicState }).eq('id', MY_USER_ID.current);
             isMicOn.current = nextMicState;
-            setIsMicActive(nextMicState); // Trigger Update Tombol
+            setIsMicActive(nextMicState); 
             fetchStage();
             showNotif(nextMicState ? 'Mic dinyalakan' : 'Mic dimatikan', 'info');
         } catch (err) {
@@ -595,30 +598,6 @@ function VoiceRoomContent() {
         const modal = document.getElementById('setting-modal');
         if (modal) {
             modal.classList.add('show');
-            const body = modal.querySelector('.modal-body');
-            
-            if (body && !body.querySelector('.slot-settings')) {
-                const slotDiv = document.createElement('div');
-                slotDiv.className = 'slot-settings';
-                const slotLabel = document.createElement('label');
-                slotLabel.style.cssText = 'margin-top:20px; display:block; font-size: 13px; font-weight: 700; color: #888; margin-bottom: 8px;';
-                slotLabel.innerText = 'Jumlah Kursi Panggung';
-                slotDiv.appendChild(slotLabel);
-
-                const slotSelect = document.createElement('select');
-                slotSelect.id = 'edit-room-slots';
-                slotSelect.style.cssText = 'width: 100%; padding: 12px; background: rgba(0,0,0,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-weight: bold; margin-bottom: 15px; outline:none;';
-                
-                [2, 4, 6].forEach(num => {
-                    const opt = document.createElement('option');
-                    opt.value = String(num); opt.text = `${num} Kursi`;
-                    if (num === roomSlotCount) opt.selected = true;
-                    slotSelect.appendChild(opt);
-                });
-                slotDiv.appendChild(slotSelect);
-                const saveBtn = body.querySelector('.btn-save-setting');
-                if (saveBtn) body.insertBefore(slotDiv, saveBtn); else body.appendChild(slotDiv);
-            }
         }
     };
     
@@ -627,10 +606,9 @@ function VoiceRoomContent() {
     window.saveRoomSetting = async () => {
         const newName = (document.getElementById('edit-room-name') as HTMLInputElement).value;
         const sysMsg = (document.getElementById('system-message') as HTMLInputElement).value;
-        const slotSelect = document.getElementById('edit-room-slots') as HTMLSelectElement;
         
         let newSlotCount = roomSlotCount;
-        if (slotSelect) newSlotCount = parseInt(slotSelect.value) || 6;
+
         if (!newName) return showNotif(t('room_name_empty'), "warning");
         
         try {
@@ -643,7 +621,7 @@ function VoiceRoomContent() {
             const titleEl = document.querySelector('.vr-room-name') as HTMLElement;
             if(titleEl) titleEl.innerText = newName.toUpperCase();
             
-            showNotif(`Pengaturan tersimpan (${newSlotCount} Kursi)`, "success");
+            showNotif(`Pengaturan tersimpan`, "success");
             window.closeRoomSetting?.();
             fetchStage(newSlotCount);
         } catch (e: any) { showNotif("Gagal simpan", "error"); }
@@ -689,7 +667,6 @@ function VoiceRoomContent() {
       
       <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         
-        {/* 🔥 FIX 5 & 6: HEADER BARU DENGAN TAP COUNTER & TOP GIFTER 🔥 */}
         <div className="vr-custom-header">
            <div className="vr-header-left">
               <img 
@@ -730,7 +707,6 @@ function VoiceRoomContent() {
 
         <Stage />
         
-        {/* 🔥 FIX 1: CHAT BOX DI ATAS FOOTER DENGAN PADDING AMAN 🔥 */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingBottom: '90px', overflow: 'hidden' }}>
           <ChatBox messages={chatMessages} />
         </div>
@@ -740,13 +716,14 @@ function VoiceRoomContent() {
       
       <GiftDrawer /><GiftAnimOverlay />
 
-      {/* 🔥 FIX 2: SLIDE-UP MENU AKSI (TANPA TOMBOL GIFT) 🔥 */}
       <div className={`user-profile-sheet-overlay ${isActionMenuOpen ? 'active' : ''}`} onClick={() => setIsActionMenuOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
           <h3 style={{ color: '#fff', marginBottom: '20px', fontWeight: 800 }}>Aksi Ruangan</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             
+            {/* Tombol Gift Dihapus Sesuai Permintaan */}
+
             {!isOnStage ? (
               <button className="btn-action-sheet btn-gradient" onClick={() => { setIsActionMenuOpen(false); window.mintaNaik?.(); }}>
                 <span className="material-icons" style={{ fontSize: '20px' }}>front_hand</span> Minta Naik Panggung
@@ -772,7 +749,6 @@ function VoiceRoomContent() {
         </div>
       </div>
 
-      {/* MODAL PROFILE SLIDE-UP */}
       <div className={`user-profile-sheet-overlay ${isProfileOpen ? 'active' : ''}`} onClick={() => setIsProfileOpen(false)}>
         <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
           <div className="sheet-handle"></div>
@@ -841,7 +817,7 @@ function VoiceRoomContent() {
         .vr-owner-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; cursor: pointer; }
         .vr-room-name { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 2px 0; text-transform: uppercase; }
         .vr-room-stats { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #1da1f2; font-weight: 600; }
-        .vr-btn-follow { background: linear-gradient(135deg, #ff4757, #1f3cff); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .vr-btn-follow { background: linear-gradient(135deg, #1f3cff, #bc13fe); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; cursor: pointer; }
 
         .tap-emoji-fly { position: fixed; pointer-events: none; z-index: 999999; font-size: 28px; user-select: none; animation: flyUpAnim 1s ease-out forwards; }
         @keyframes flyUpAnim { 0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; } 100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; } }
@@ -854,12 +830,12 @@ function VoiceRoomContent() {
         }
         .user-profile-sheet-overlay.active .user-profile-sheet { transform: translateY(0); }
         .sheet-handle { width: 40px; height: 5px; background: #444; border-radius: 10px; margin: 0 auto 20px; }
-        .profile-sheet-avatar { width: 95px; height: 95px; border-radius: 50%; border: 3px solid transparent; background-clip: padding-box, border-box; background-origin: padding-box, border-box; background-image: linear-gradient(#1A2228, #1A2228), linear-gradient(135deg, #ff4757, #1f3cff); object-fit: cover; }
+        .profile-sheet-avatar { width: 95px; height: 95px; border-radius: 50%; border: 3px solid transparent; background-clip: padding-box, border-box; background-origin: padding-box, border-box; background-image: linear-gradient(#1A2228, #1A2228), linear-gradient(135deg, #1f3cff, #bc13fe); object-fit: cover; }
         .profile-sheet-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
         
         .btn-action-sheet { width: 100%; padding: 14px; border: none; border-radius: 14px; font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s, opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-action-sheet.danger { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255,71,87,0.2); }
-        .btn-action-sheet.btn-gradient { background: linear-gradient(135deg, #ff4757, #1f3cff); color: #fff; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3); }
+        .btn-action-sheet.btn-gradient { background: linear-gradient(135deg, #1f3cff, #bc13fe); color: #fff; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3); }
         .btn-action-sheet:active { transform: scale(0.96); opacity: 0.9; }
 
         .avatar.speaking { box-shadow: 0 0 0 3px var(--radar-color); animation: pulseRadar 1.5s infinite; }

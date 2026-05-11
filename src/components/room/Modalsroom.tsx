@@ -4,7 +4,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import './Modalsroom.css';
 
-// Daftarin semua fungsi modal yang nempel di window
 declare global {
   interface Window {
     closeRoomSetting?: () => void;
@@ -12,7 +11,7 @@ declare global {
     closeConfirmModal?: () => void;
     prosesTurunMic?: () => void;
     closeTopGiftersModal?: () => void;
-    updateRadarColor?: (color: string) => void; // 🔥 FIX: Daftarin fungsi ganti warna
+    updateRadarColor?: (color: string) => void;
   }
 }
 
@@ -21,12 +20,20 @@ export default function Modalsroom() {
 
   return (
     <>
-      {/* 1. MODAL SETTING ROOM */}
-      <div id="setting-modal" className="modal-overlay">
-        <div className="modal-box">
+      {/* 1. MODAL SETTING ROOM (SLIDE UP) */}
+      <div 
+        id="setting-modal" 
+        className="modal-overlay"
+        onClick={(e) => {
+          if (e.target === e.currentTarget && window.closeRoomSetting) {
+            window.closeRoomSetting();
+          }
+        }}
+      >
+        <div className="modal-box modal-slideup">
+          <div className="sheet-handle"></div>
           <div className="modal-header">
-            {/* 🔥 FIX: Hapus emoji bawaan biar bersih 🔥 */}
-            <h3>{t('room_settings', 'Room Settings').replace(/⚙️\s?/g, '')}</h3>
+            <h3>{t('room_settings', 'Pengaturan Room')}</h3>
             <button className="close-modal" onClick={() => window.closeRoomSetting && window.closeRoomSetting()}>
               <span className="material-icons">close</span>
             </button>
@@ -35,17 +42,16 @@ export default function Modalsroom() {
             <label>{t('new_room_name', 'Nama Room Baru')}</label>
             <input type="text" id="edit-room-name" placeholder={t('room_name_placeholder', 'Contoh: Klasikan Galau...')} />
             
-            <label>{t('system_message_label', 'Pesan Sistem (Broadcast ke Chat)')}</label>
-            <textarea id="system-message" placeholder={t('system_message_placeholder', 'Tulis pesan pengumuman...')}></textarea>
+            <label>{t('system_message_label', 'Pesan Pengumuman')}</label>
+            <textarea id="system-message" placeholder={t('system_message_placeholder', 'Tulis pesan pengumuman untuk chat...')}></textarea>
             
-            {/* 🔥 FIX: UI Ganti Warna Radar Native React 🔥 */}
             <div className="radar-settings">
               <label style={{ marginTop: '8px', display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>
                 Warna Radar Mic
               </label>
               <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
                 <button type="button" onClick={() => window.updateRadarColor && window.updateRadarColor('#ef4444')} style={{ background: '#ef4444', width: '36px', height: '36px', borderRadius: '50%', border: '2px solid transparent', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.8)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}></button>
-                <button type="button" onClick={() => window.updateRadarColor && window.updateRadarColor('#3b82f6')} style={{ background: '#3b82f6', width: '36px', height: '36px', borderRadius: '50%', border: '2px solid transparent', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.8)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}></button>
+                <button type="button" onClick={() => window.updateRadarColor && window.updateRadarColor('#1f3cff')} style={{ background: '#1f3cff', width: '36px', height: '36px', borderRadius: '50%', border: '2px solid transparent', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.8)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}></button>
                 <button type="button" onClick={() => window.updateRadarColor && window.updateRadarColor('#22c55e')} style={{ background: '#22c55e', width: '36px', height: '36px', borderRadius: '50%', border: '2px solid transparent', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.8)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}></button>
                 <button type="button" onClick={() => window.updateRadarColor && window.updateRadarColor('rgb')} style={{ background: 'linear-gradient(45deg, red, blue, green)', width: '36px', height: '36px', borderRadius: '50%', border: '2px solid transparent', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.8)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}></button>
               </div>
@@ -88,7 +94,7 @@ export default function Modalsroom() {
           }
         }}
       >
-        <div className="modal-box modal-leaderboard">
+        <div className="modal-box modal-slideup">
           <div className="sheet-handle"></div>
           <div className="modal-header">
             <h3 className="gold-title">{t('the_sultan', '🏆 THE SULTAN')}</h3>
