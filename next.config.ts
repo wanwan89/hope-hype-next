@@ -17,4 +17,4 @@ const nextConfig: NextConfig = {
   turbopack: {}, // 🔥 Tetap biarin ini biar Turbopack gak ngambek
 };
 
-export default withPWA(nextConfig)
+export default withPWA(nextConfig);
