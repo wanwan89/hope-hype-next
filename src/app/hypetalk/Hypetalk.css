@@ -3,7 +3,12 @@
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes badgeBounce { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
 @keyframes pulseCall { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 🔥 SKELETON PULSE (ganti shimmer) */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 
 /* 🔥 JURUS ISOLASI VARIABEL 🔥 */
 .telegram-wrapper {
@@ -15,7 +20,6 @@
   --tg-primary: #1f3cff; 
   --tg-hover: #f9fafb;
 
-  /* FIX: Pake fixed biar kebal dari gangguan keyboard & PWA safe */
   position: fixed; 
   inset: 0;
   margin: 0 auto; 
@@ -31,12 +35,10 @@
   z-index: 10;
 }
 
-/* 🔥 FIX: Optimasi Transisi (Hanya pada elemen yang butuh, bukan semuanya '*') 🔥 */
 .tg-header, .tg-chat-item, .tg-sidebar, .tg-modal-content, .tg-search-box {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 🔥 Dark mode */
 [data-theme='dark'] .telegram-wrapper, 
 html.dark .telegram-wrapper {
   --tg-bg: #15171a;
@@ -79,7 +81,6 @@ html.dark .telegram-wrapper {
   overflow-y: auto; 
   padding-bottom: 110px; 
   -webkit-overflow-scrolling: touch;
-  /* FIX: Biar scroll super smooth di HP */
   overscroll-behavior-y: contain;
   scroll-behavior: smooth;
   will-change: scroll-position;
@@ -102,18 +103,25 @@ html.dark .telegram-wrapper {
 .tg-unread-badge { background: var(--tg-primary); color: white; font-size: 11px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 6px; flex-shrink: 0; }
 .tg-unread-badge.bump { animation: badgeBounce 0.4s ease; }
 
-/* ========== MODAL UMUM ========== */
+/* ========== MODAL UMUM (ditingkatkan) ========== */
 .tg-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.85) !important; /* Kurangi dikit biar ga terlalu pekat */
-  backdrop-filter: blur(4px) !important; /* Tambahin blur dikit biar premium */
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
   z-index: 100000;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  animation: fadeIn 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
+.tg-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
 .tg-modal-content {
   background: var(--tg-bg);
   width: 100%;
@@ -122,19 +130,24 @@ html.dark .telegram-wrapper {
   border-top-right-radius: 24px;
   padding: 24px;
   padding-bottom: max(24px, env(safe-area-inset-bottom) + 24px);
-  animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
   display: flex;
   flex-direction: column;
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+  overflow-y: auto;
+  max-height: 90vh;
+  color: var(--tg-text);
 }
 
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.modal-header h3 { color: var(--tg-text); font-size: 18px; font-weight: 700; margin: 0; }
+.tg-modal-overlay.active .tg-modal-content {
+  transform: translateY(0);
+}
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h3 { font-size: 18px; font-weight: 700; margin: 0; }
 .close-modal-btn { background: var(--tg-bg-secondary); border: none; color: var(--tg-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
 .close-modal-btn:active { transform: scale(0.9); }
+
 .input-group { display: flex; align-items: center; background: var(--tg-bg-secondary); border-radius: 12px; padding: 12px 16px; gap: 12px; border: 1px solid var(--tg-border); width: 100%; margin-bottom: 16px; box-sizing: border-box; }
 .input-group input, .input-group select { flex: 1; border: none; background: transparent; outline: none; font-size: 14px; color: var(--tg-text); width: 100%; }
 .input-group .material-icons { color: var(--tg-text-muted); font-size: 18px; }
@@ -145,19 +158,200 @@ html.dark .telegram-wrapper {
 .action-btn:active { transform: scale(0.98); }
 .love-btn { background: linear-gradient(135deg, #1f3cff, #007bb5); border-radius: 15px; }
 
-/* DOi Card */
-.doi-result-card { align-items: center; text-align: center; }
-.doi-profile-box { margin-bottom: 20px; width: 100%; }
-.doi-profile-box img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid var(--tg-bg-secondary); margin-bottom: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
-.doi-profile-box h2 { font-size: 20px; color: var(--tg-text); margin-bottom: 16px; font-weight: 800; }
-.doi-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.d-tag { background: var(--tg-bg-secondary); color: var(--tg-text); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
+/* ========== PROFILE CARD (User Profile) ========== */
+.profile-card {
+  padding: 0 !important;
+  overflow: hidden;
+}
+.profile-image-section {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #000;
+}
+.profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-name-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  color: white;
+}
+.profile-name-overlay h2 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0;
+}
+.profile-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px;
+  background: var(--tg-bg-secondary);
+  color: var(--tg-primary);
+}
+.profile-actions button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+.profile-actions button:nth-child(2) { color: #25d366; }
+.profile-actions button:nth-child(3) { color: #ef4444; }
 
-/* ========== FAB BUTTON ========== */
+/* ========== FORM BIODATA (Edit Bio) ========== */
+.bio-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bio-form input, .bio-form select {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--tg-border);
+  background: var(--tg-bg-secondary);
+  color: var(--tg-text);
+  font-size: 14px;
+}
+.bio-form .save-btn {
+  margin-top: 8px;
+  background: var(--tg-primary);
+  color: white;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+/* ========== DOI CARD (Hasil Temuan) ========== */
+.doi-card {
+  text-align: center;
+  align-items: center;
+}
+.doi-image-section {
+  margin-bottom: 16px;
+}
+.doi-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--tg-primary);
+  box-shadow: 0 0 20px rgba(31, 60, 255, 0.2);
+  margin-bottom: 12px;
+}
+.doi-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--tg-text);
+  margin-bottom: 8px;
+}
+.doi-bio {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  padding: 0 16px 20px;
+}
+.tag {
+  background: var(--tg-bg-secondary);
+  color: var(--tg-text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+.chat-now-btn {
+  width: 100%;
+  background: var(--tg-primary);
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 0 0 20px 20px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ========== RADAR ANIMATION (Mencari Doi) ========== */
+.doi-search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100001;
+}
+.radar-container {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin-bottom: 24px;
+}
+.radar-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(31, 60, 255, 0.4);
+  animation: radarPulse 2s infinite ease-out;
+}
+.radar-ring.delay-1 {
+  animation-delay: 0.7s;
+}
+.radar-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--tg-primary);
+  font-size: 64px;
+}
+@keyframes radarPulse {
+  0% { transform: scale(0.3); opacity: 1; }
+  100% { transform: scale(1.2); opacity: 0; }
+}
+.search-title {
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+  animation: fadeIn 0.8s ease;
+}
+
+/* ========== SKELETON LOADING (Gaya Baru) ========== */
+.skeleton-chat { pointer-events: none; border-bottom: 1px solid var(--tg-border); }
+.skeleton-chat .tg-avatar {
+  background: var(--tg-bg-secondary);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+  border-radius: 50%;
+}
+.skeleton-line {
+  background: var(--tg-bg-secondary);
+  border-radius: 6px;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+/* ========== FAB & SIDEBAR (Tidak berubah) ========== */
 .tg-fab { 
   position: fixed; 
   bottom: calc(95px + env(safe-area-inset-bottom)); 
-  right: max(20px, calc(50% - 220px)); /* Sesuaiin posisi kalau layar lebar */
+  right: max(20px, calc(50% - 220px));
   width: 56px; height: 56px; border-radius: 50%; background: var(--tg-primary); border: none; color: white; 
   box-shadow: 0 4px 14px rgba(31, 60, 255, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; 
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50; 
@@ -165,7 +359,6 @@ html.dark .telegram-wrapper {
 }
 .tg-fab:active { transform: scale(0.9); }
 
-/* ========== SIDEBAR ========== */
 .tg-sidebar-overlay { 
   position: fixed; 
   inset: 0; 
@@ -203,7 +396,6 @@ html.dark .telegram-wrapper {
   .tg-sidebar.open { transform: translateX(0); }
 }
 
-/* Sidebar header */
 .sidebar-header { padding: 40px 20px 20px; background: var(--tg-bg-secondary); border-bottom: 1px solid var(--tg-border); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .side-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tg-primary); }
 .sidebar-user-info { display: flex; flex-direction: column; gap: 2px; }
@@ -213,7 +405,6 @@ html.dark .telegram-wrapper {
 .btn-edit-bio { background: var(--tg-primary); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 5px; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
 .btn-edit-bio:active { transform: scale(0.95); }
 
-/* Sidebar menu */
 .sidebar-menu { display: flex; flex-direction: column; padding: 10px 0; overflow-y: auto; }
 .menu-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: transparent; border: none; font-size: 15px; font-weight: 600; color: var(--tg-text); cursor: pointer; text-align: left; outline: none; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s ease; }
 .menu-item:active { background: var(--tg-bg-secondary); }
@@ -222,18 +413,3 @@ html.dark .telegram-wrapper {
 .btn-cari-doi .material-icons { color: var(--tg-primary) !important; }
 .limit-badge { background: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
 [data-theme='dark'] .limit-badge { background: rgba(239,68,68,0.15); }
-
-/* Skeleton loading */
-.skeleton-shimmer {
-  background: linear-gradient(90deg, var(--tg-bg-secondary) 25%, var(--tg-border) 50%, var(--tg-bg-secondary) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
-  border-radius: 8px;
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.skeleton-chat { pointer-events: none; border-bottom: 1px solid var(--tg-border); }
-.skeleton-chat .tg-avatar { background: var(--tg-bg-secondary); border-radius: 50%; }
-.skeleton-line { background: var(--tg-bg-secondary); border-radius: 4px; }

@@ -441,3 +441,20 @@
   50% { opacity: 0.4; }
   100% { opacity: 1; }
 }
+/* Tombol VN berdenyut saat merekam */
+#action-btn.recording {
+  background: #ef4444 !important;
+  transform: scale(1.05);
+  animation: micPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Animasi slide reply dari dalam input */
+.reply-preview {
+  transform-origin: bottom;
+}

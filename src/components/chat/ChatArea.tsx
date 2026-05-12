@@ -90,6 +90,9 @@ export default function ChatArea() {
       receive: new Audio('/asets/sound/receive.mp3'),
     };
 
+    // Load stickers
+    fetchStickers();
+
     let currentRoom = 'room-1';
     if (groupId) {
       currentRoom = `group_${groupId}`;
@@ -100,11 +103,14 @@ export default function ChatArea() {
       const ids = [session.user.id, fromId].sort();
       currentRoom = `pv_${ids[0]}_${ids[1]}`;
       setTargetId(fromId);
+
+      // Query both id and short_id to always find the profile
       const { data: pTarget } = await supabase
         .from('profiles')
-        .select('username, short_id, avatar_url, role, last_seen')
-        .eq('id', fromId)
-        .single();
+        .select('id, username, short_id, avatar_url, role, last_seen')
+        .or(`id.eq.${fromId},short_id.eq.${fromId}`)
+        .maybeSingle();
+
       if (pTarget) {
         setHeaderInfo({
           title: pTarget.username,
@@ -138,6 +144,32 @@ export default function ChatArea() {
     if (refs.audioCtx.current) refs.audioCtx.current.close();
     if (refs.animFrame.current) cancelAnimationFrame(refs.animFrame.current);
     clearInterval(refs.recordTimer.current);
+  };
+
+  // Fetch stickers from DB or use default ones
+  const fetchStickers = async () => {
+    try {
+      const { data } = await supabase.from('stickers').select('url').limit(20);
+      if (data && data.length > 0) {
+        setStickers(data.map((s: any) => s.url));
+      } else {
+        // Default sticker set (contoh)
+        setStickers([
+          'https://i.ibb.co/0jV9zL8/sticker1.png',
+          'https://i.ibb.co/5rL8vQ4/sticker2.png',
+          'https://i.ibb.co/dbG9Y7d/sticker3.png',
+          'https://i.ibb.co/8cBwvMg/sticker4.png',
+        ]);
+      }
+    } catch (error) {
+      // fallback default jika gagal
+      setStickers([
+        'https://i.ibb.co/0jV9zL8/sticker1.png',
+        'https://i.ibb.co/5rL8vQ4/sticker2.png',
+        'https://i.ibb.co/dbG9Y7d/sticker3.png',
+        'https://i.ibb.co/8cBwvMg/sticker4.png',
+      ]);
+    }
   };
 
   const fetchMessages = async (room: string) => {
@@ -253,16 +285,71 @@ export default function ChatArea() {
     }
   };
 
-  const startCall = () => {
-    // ... (tidak diubah)
-  };
-
+  // Voice Note Start
   const startVN = async () => {
-    // ... (tidak diubah, sesuai kode awal)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioContext();
+      const analyser = audioCtx.createAnalyser();
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      refs.audioCtx.current = audioCtx;
+
+      const updateWave = () => {
+        if (!isRecordingRef.current) return;
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        setAudioLevel(average);
+        refs.animFrame.current = requestAnimationFrame(updateWave);
+      };
+      updateWave();
+
+      refs.mediaRecorder.current = new MediaRecorder(stream);
+      refs.audioChunks.current = [];
+      refs.mediaRecorder.current.ondataavailable = (e) => refs.audioChunks.current.push(e.data);
+      refs.mediaRecorder.current.onstop = async () => {
+        if (refs.audioCtx.current) refs.audioCtx.current.close();
+        if (refs.animFrame.current) cancelAnimationFrame(refs.animFrame.current);
+        if (vnIsCanceled.current) {
+          vnIsCanceled.current = false;
+          return;
+        }
+
+        const blob = new Blob(refs.audioChunks.current, { type: 'audio/mpeg' });
+        const fd = new FormData();
+        fd.append("file", blob);
+        fd.append("upload_preset", "hopehype_preset");
+        fd.append("resource_type", "video");
+        const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
+        const d = await res.json();
+        if (d.secure_url) sendMessage(undefined, undefined, d.secure_url, undefined);
+      };
+
+      refs.mediaRecorder.current.start();
+      setIsRecording(true);
+      isRecordingRef.current = true;
+      setRecordTime(0);
+      refs.recordTimer.current = setInterval(() => setRecordTime(p => p + 1), 1000);
+    } catch (e) {
+      showNotif("Izin mikrofon ditolak", "error");
+    }
   };
 
   const stopVN = (isCanceledByUser = false) => {
-    // ... (tidak diubah)
+    setSlideOffset(0);
+    if (!isRecordingRef.current) return;
+    setIsRecording(false);
+    isRecordingRef.current = false;
+    clearInterval(refs.recordTimer.current);
+
+    if (isCanceledByUser) {
+      vnIsCanceled.current = true;
+    }
+    refs.mediaRecorder.current?.stop();
   };
 
   const handleTouchStart = (e: any) => {
@@ -425,21 +512,15 @@ export default function ChatArea() {
               className="sticker-panel"
             >
               <div className="sticker-grid">
-                {stickers.length > 0 ? (
-                  stickers.map((s, i) => (
-                    <img
-                      key={i}
-                      src={s}
-                      alt="sticker"
-                      className="sticker-item"
-                      onClick={() => sendMessage(undefined, s)}
-                    />
-                  ))
-                ) : (
-                  <p className="col-span-full text-center text-gray-400 text-xs py-6">
-                    Belum ada stiker tersedia.
-                  </p>
-                )}
+                {stickers.map((s, i) => (
+                  <img
+                    key={i}
+                    src={s}
+                    alt="sticker"
+                    className="sticker-item"
+                    onClick={() => sendMessage(undefined, s)}
+                  />
+                ))}
               </div>
             </motion.div>
           )}
@@ -450,9 +531,9 @@ export default function ChatArea() {
             <AnimatePresence>
               {replyTo && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
+                  initial={{ opacity: 0, y: '100%' }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: '100%' }}
                   className="reply-preview"
                 >
                   <div className="reply-content">
