@@ -1,7 +1,7 @@
-Name: Build HypeTalk APK
+name: Build HypeTalk APK
 on:
   push:
-    branches: [main] # Ganti 'main' kalau nama branch lu beda
+    branches: [main]
 
 jobs:
   build:
