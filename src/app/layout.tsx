@@ -74,20 +74,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP NOTIFIKASI CAPACITOR (ANDROID & WEB SEPARATE) 🔥 ---
+  // --- 🔥 SETUP NATIVE FEATURES (NOTIF & MIC) 🔥 ---
   useEffect(() => {
-    const initNativePush = async () => {
+    const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
 
       try {
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android') {
-          console.log("📱 Jalan di Android: Mengaktifkan Native Push...");
+          console.log("📱 Android Detected: Meminta akses kunci (Notif, Mic)...");
           
+          // 1. MINTA IZIN NOTIFIKASI
           let permStatus = await PushNotifications.checkPermissions();
           if (permStatus.receive === 'prompt') {
             permStatus = await PushNotifications.requestPermissions();
+          }
+
+          // 2. MINTA IZIN MIC (Biar langsung dapet pas awal buka app)
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log("✅ Izin Mic diberikan");
+            // Langsung matikan stream biar icon mic di HP ga nyala terus
+            stream.getTracks().forEach(track => track.stop());
+          } catch (err) {
+            console.warn("⚠️ User menolak izin Mic atau device tidak mendukung");
           }
 
           if (permStatus.receive !== 'granted') {
@@ -95,12 +106,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             return;
           }
 
+          // Daftarkan notifikasi jika diizinkan
           await PushNotifications.register();
 
-          // 🔥 KODE YANG DIUBAH: OTOMATIS SIMPAN TOKEN KE SUPABASE 🔥
+          // Simpan Token ke Supabase
           PushNotifications.addListener('registration', async (token) => {
             console.log('✅ Push registration success, token: ' + token.value);
-            
             try {
               const { data: { session } } = await supabase.auth.getSession();
               if (session?.user?.id) {
@@ -124,28 +135,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.error('❌ Error on registration: ' + JSON.stringify(error));
           });
 
-// 🔥 KODE TAMBAHAN BUAT NANGANIN KLIK TOMBOL NOTIFIKASI 🔥
-PushNotifications.addListener('actionPerformed', (action) => {
-  const { actionId, notification } = action;
-  const { data } = notification;
+          // Action pas Notif Diklik
+          PushNotifications.addListener('actionPerformed', (action) => {
+            const { actionId, notification } = action;
+            const { data } = notification;
 
-  console.log("🎯 Aksi Notif Diklik:", actionId, "Data:", data);
+            console.log("🎯 Aksi Notif Diklik:", actionId, "Data:", data);
 
-  if (actionId === 'accept') {
-    // Kalau tombol 'Angkat' diklik
-    if (data?.callerId) {
-      // 🔥 GANTI: dari /hypetalk/chat jadi /hypetalk/room 🔥
-      router.push(`/hypetalk/room?from=${data.callerId}`);
-    }
-  } else if (actionId === 'reject') {
-    // Kalau tombol 'Tolak' diklik
-    handleTolakGlobal();
-  }
-});
+            if (actionId === 'accept') {
+              if (data?.callerId) {
+                router.push(`/hypetalk/room?from=${data.callerId}`);
+              }
+            } else if (actionId === 'reject') {
+              handleTolakGlobal();
+            }
+          });
 
           PushNotifications.addListener('pushNotificationReceived', (notification) => {
             console.log('📬 Notif masuk pas app dibuka:', notification);
-            // Bisa tampilin toast kustom di sini kalau mau
           });
 
         } else {
@@ -156,7 +163,7 @@ PushNotifications.addListener('actionPerformed', (action) => {
       }
     };
 
-    initNativePush();
+    initNativeFeatures();
 
     return () => {
       if (typeof window !== 'undefined') {
@@ -169,7 +176,7 @@ PushNotifications.addListener('actionPerformed', (action) => {
         }
       }
     };
-  }, []);
+  }, [router]); // 🔥 Tambahin router di dependency array
   // --- END SETUP NOTIFIKASI ---
 
   // --- 🔥 FIX BENTROK NADA DERING: MATIKAN PAKSA KALAU MASUK HYPETALK 🔥 ---
@@ -320,7 +327,6 @@ PushNotifications.addListener('actionPerformed', (action) => {
       ringtoneRef.current.pause();
       ringtoneRef.current.currentTime = 0;
     }
-    // 🔥 GANTI DI SINI (dari /chat jadi /room)
     router.push(`/hypetalk/room?from=${cid}`);
   };
 
@@ -328,7 +334,6 @@ PushNotifications.addListener('actionPerformed', (action) => {
     if (!globalMessageNotif) return;
     const cid = globalMessageNotif.senderId;
     setGlobalMessageNotif(null);
-    // 🔥 GANTI DI SINI (dari /chat jadi /room)
     router.push(`/hypetalk/room?from=${cid}`);
   };
 
@@ -416,10 +421,7 @@ PushNotifications.addListener('actionPerformed', (action) => {
         <meta name="twitter:image" content="/asets/png/og-image.png" />
 
         {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
-        {/* 🔥 FIX: Ganti swap jadi block khusus untuk Icon biar teksnya nggak bocor pas refresh 🔥 */}
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
-        
-        {/* Untuk font Poppins biarin tetap swap biar load text-nya cepet */}
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
         <link rel="manifest" href="/manifest.json" />
@@ -593,7 +595,7 @@ PushNotifications.addListener('actionPerformed', (action) => {
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
         
-        {/* 🔥 ERUDA SCRIPT (Gunakan atribut lazyOnload biar nggak nge-block page speed) 🔥 */}
+        {/* 🔥 ERUDA SCRIPT 🔥 */}
         <Script 
           src="https://cdn.jsdelivr.net/npm/eruda" 
           strategy="lazyOnload" 
