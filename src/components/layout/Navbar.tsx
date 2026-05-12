@@ -2,14 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-// 🔥 GANTI: Mic2 dihapus, AudioLines ditambah (ini ikon bar suara)
 import { Home, Bell, MessageCircle, User, AudioLines, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function NavbarContent() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   
   const [isVisible, setIsVisible] = useState(true);
   const [isManualHidden, setIsManualHidden] = useState(false);
@@ -18,9 +17,12 @@ function NavbarContent() {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   
   const [clickedItem, setClickedItem] = useState<string | null>(null);
+  
+  // 🔥 STATE BARU BUAT ANIMASI ULAR (REFRESH) 🔥
+  const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
+
   const lastScrollY = useRef(0);
 
-  // --- CEK HALAMAN YANG NAVBARNYA HARUS ILANG ---
   const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
   const isVoiceRoom = pathname?.includes('/voice-room') && pathname !== '/voice-room'; 
   const isDailyCekPage = pathname?.includes('/dailycek');
@@ -132,7 +134,6 @@ function NavbarContent() {
     return null;
   }
 
-  // 🔥 FIX: Pakai AudioLines buat Voice 🔥
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
@@ -143,43 +144,56 @@ function NavbarContent() {
 
   const showNavbar = isVisible && !isManualHidden;
 
+  // 🔥 FUNGSI BUAT NANGANIN KLIK & REFRESH ANIMASI 🔥
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, item: typeof navItems[0], isActive: boolean) => {
+    if (isActive) {
+      // Mencegah link pindah (karena udah di halaman yang sama)
+      e.preventDefault(); 
+      
+      // Memicu animasi ular (draw path)
+      setAnimatingIcon(item.name);
+
+      // Setelah 800ms (animasi selesai), refresh halamannya
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    }
+    
+    setClickedItem(item.name);
+    setTimeout(() => setClickedItem(null), 300);
+  };
+
   return (
     <>
-      {/* Tombol Toggle Navbar dengan Safe Area */}
-<button
-  onClick={() => setIsManualHidden(!isManualHidden)}
-  
-  // 🔥 FIX: Google & Screen Reader jadi tau fungsi tombol ini pas lagi sembunyi atau muncul 🔥
-  aria-label={isManualHidden ? "Tampilkan Menu Navigasi" : "Sembunyikan Menu Navigasi"}
-  
-  style={{
-    position: 'fixed',
-    bottom: isManualHidden ? 'max(20px, env(safe-area-inset-bottom))' : 'max(95px, calc(95px + env(safe-area-inset-bottom)))', 
-    right: '20px',
-    zIndex: 9001,
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-    border: '1px solid rgba(0,0,0,0.05)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    cursor: 'pointer',
-    color: '#333',
-    transform: isVisible ? 'translateY(0)' : 'translateY(150px)',
-    transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
-    outline: 'none'
-  }}
->
-  {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-</button>
+      <button
+        onClick={() => setIsManualHidden(!isManualHidden)}
+        aria-label={isManualHidden ? "Tampilkan Menu Navigasi" : "Sembunyikan Menu Navigasi"}
+        style={{
+          position: 'fixed',
+          bottom: isManualHidden ? 'max(20px, env(safe-area-inset-bottom))' : 'max(95px, calc(95px + env(safe-area-inset-bottom)))', 
+          right: '20px',
+          zIndex: 9001,
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid rgba(0,0,0,0.05)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+          cursor: 'pointer',
+          color: '#333',
+          transform: isVisible ? 'translateY(0)' : 'translateY(150px)',
+          transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+          outline: 'none'
+        }}
+      >
+        {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+      </button>
 
-
-      {/* Container Navbar Utama dengan Safe Area */}
       <div style={{
         position: 'fixed', 
         bottom: 'max(20px, env(safe-area-inset-bottom))', 
@@ -214,22 +228,17 @@ function NavbarContent() {
             const isVoice = item.name === 'Voice'; 
             const Icon = item.icon;
             const isClicked = clickedItem === item.name;
+            const isAnimating = animatingIcon === item.name; // Cek apakah ikon ini lagi proses refresh ular
+
+            // Warna Ikon Normal
+            const normalColor = isVoice ? '#ffffff' : (isActive ? '#00a2ff' : '#666666');
 
             return (
               <Link 
                 key={item.name} 
                 href={item.path}
-                aria-label={item.name} /* 🔥 TARUH DI SINI BREE! 🔥 */
-                onPointerDown={(e) => {
-                  setClickedItem(item.name);
-                  setTimeout(() => setClickedItem(null), 300); 
-                  const target = e.currentTarget;
-                  try {
-                    if (target.hasPointerCapture(e.pointerId)) {
-                      target.releasePointerCapture(e.pointerId);
-                    }
-                  } catch (err) {}
-                }}
+                aria-label={item.name}
+                onClick={(e) => handleNavClick(e, item, isActive)} // 🔥 Pasang Interceptor Di Sini 🔥
                 style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
@@ -248,7 +257,6 @@ function NavbarContent() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  // 🔥 FIX: Upgrade Tampilan & Animasi Voice 🔥
                   ...(isVoice ? {
                     width: '56px',
                     height: '56px',
@@ -256,38 +264,74 @@ function NavbarContent() {
                     background: 'linear-gradient(135deg, #00a2ff, #bc13fe)', 
                     border: '4px solid white', 
                     marginTop: '-35px', 
-                    // Base Shadow
                     boxShadow: isActive ? '0 0 20px rgba(188, 19, 254, 0.6)' : '0 8px 15px rgba(0, 162, 255, 0.3)',
-                    
-                    // 🔥 Animasi Ditekan: Sedikit Melesap ke bawah + Mengecil (Native Feel) 🔥
                     transform: isClicked 
-                      ? 'scale(0.85) translateY(10px)' // Pressed state (lebih "dalam")
+                      ? 'scale(0.85) translateY(10px)' 
                       : isActive 
-                      ? 'scale(1.1) translateY(-8px)' // Elevated active state
+                      ? 'scale(1.1) translateY(-8px)' 
                       : 'scale(1)', 
-                      
-                    // Shadow berubah pas ditekan
-                    ...(isClicked ? {
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)' 
-                    } : {}),
-
-                    // Transisi lebih lambat dikit (0.5s) tapi kurva lebih "snap" ala iOS spring
+                    ...(isClicked ? { boxShadow: '0 2px 5px rgba(0,0,0,0.2)' } : {}),
                     transition: 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)' 
                   } : {
-                    // Item Standar Pas Ditekan
                     transform: isClicked ? 'scale(0.8)' : isActive ? 'scale(1.15)' : 'scale(1)',
                     transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                   })
                 }}>
-                  <Icon 
-                    // 🔥 FIX: Sedikit lebih besar ikonnya 🔥
-                    size={isVoice ? 28 : 24} 
-                    color={isVoice ? '#ffffff' : (isActive ? '#00a2ff' : '#666666')} 
-                    strokeWidth={isActive || isVoice ? 2.5 : 2}
-                    style={{ 
-                      filter: isActive && !isVoice ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none',
-                    }}
-                  />
+                  
+                  {/* 🔥 ANIMASI ULAR MENGGUNAKAN FRAMER MOTION 🔥 */}
+                  <AnimatePresence mode="wait">
+                    {isAnimating ? (
+                      <motion.div
+                        key="animating"
+                        initial={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{ position: 'absolute' }}
+                      >
+                        {/* Kita render SVG kosongan, lalu Framer Motion narik garisnya 
+                          Lucide-react melempar path-nya otomatis. 
+                          Kita manipulasi agar path-nya punya animasi 'draw'
+                        */}
+                        <motion.svg
+                           width={isVoice ? 28 : 24} 
+                           height={isVoice ? 28 : 24}
+                           viewBox="0 0 24 24"
+                           fill="none"
+                           stroke={normalColor}
+                           strokeWidth={isActive || isVoice ? 2.5 : 2}
+                           strokeLinecap="round"
+                           strokeLinejoin="round"
+                           style={{
+                             filter: isActive && !isVoice ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none',
+                           }}
+                        >
+                          <motion.g
+                             initial={{ pathLength: 0, opacity: 0 }}
+                             animate={{ pathLength: 1, opacity: 1 }}
+                             transition={{ duration: 0.6, ease: "easeInOut" }}
+                          >
+                             <Icon />
+                          </motion.g>
+                        </motion.svg>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="static"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Icon 
+                          size={isVoice ? 28 : 24} 
+                          color={normalColor} 
+                          strokeWidth={isActive || isVoice ? 2.5 : 2}
+                          style={{ 
+                            filter: isActive && !isVoice ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))' : 'none',
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   
                   {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                     <div style={{ 

@@ -326,7 +326,7 @@ export default function ChatArea() {
     const { error } = await supabase.from('messages').insert([{
       room_id: roomId, 
       user_id: currentUser.id, 
-      message: image && !content ? "📸 Mengirim Foto" : audio ? "🎤 Voice Note" : (sticker ? "🎨 Stiker" : content),
+      message: image && !content ? " Mengirim Foto" : audio ? " Voice Note" : (sticker ? "Stiker" : content),
       sticker_url: sticker || null, 
       audio_url: audio || null, 
       image_url: image || null, 

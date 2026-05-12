@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // 🔥 IMPORT RUMUS SAKTI DARI FILE BARU 🔥
 import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
@@ -33,7 +34,6 @@ export default function GiftSheetpost() {
   const [isSending, setIsSending] = useState(false);
   const [myProfile, setMyProfile] = useState<any>(null);
   const [coinsGiven, setCoinsGiven] = useState(0);
-  const [spamAnimId, setSpamAnimId] = useState<number | null>(null);
   
   const [targetPost, setTargetPost] = useState({ id: '', creatorId: '', creatorName: '' });
 
@@ -123,9 +123,6 @@ export default function GiftSheetpost() {
       return;
     }
 
-    setSpamAnimId(giftToSend.id);
-    setTimeout(() => setSpamAnimId(null), 150); 
-
     setIsSending(true);
 
     try {
@@ -168,7 +165,6 @@ export default function GiftSheetpost() {
         ])
       ]);
 
-      const { data: sProf } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
       await supabase.from("notifications").insert({ 
         user_id: targetPost.creatorId, 
         actor_id: session.user.id, 
@@ -196,7 +192,7 @@ export default function GiftSheetpost() {
 
       setTimeout(() => {
         closeSheet();
-      }, 250);
+      }, 300);
 
     } catch (err: any) {
       if ((window as any).showNotif) (window as any).showNotif(err.message, "error");
@@ -206,7 +202,6 @@ export default function GiftSheetpost() {
   };
 
   const currentLevel = myProfile?.level || 1;
-  
   let targetKoin = currentLevel * 500;
   let prevTarget = (currentLevel - 1) * 500;
   let needed = targetKoin - coinsGiven;
@@ -218,178 +213,222 @@ export default function GiftSheetpost() {
   return (
     <>
       <style>{`
-        .gift-sheet-content {
-          padding-bottom: 0 !important; max-height: 90vh;
-          display: flex; flex-direction: column;
+        /* 🔥 FIX OVERFLOW BIAR UI LEVEL NGGAK KEPOTONG 🔥 */
+        .gift-sheet-content-framer {
+          background: var(--bg-base, #121212);
+          border-top-left-radius: 24px;
+          border-top-right-radius: 24px;
+          padding-top: 15px;
+          display: flex;
+          flex-direction: column;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          max-height: 90vh;
+          z-index: 100000; /* Z-Index Tinggi */
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+          overflow: visible; /* Biar avatar level yang nongol ke atas gak kepotong */
         }
-        .drawer-header {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 0 20px; margin-bottom: 15px;
-        }
-        .drawer-top-level {
-          display: flex; align-items: center; gap: 12px; background: transparent;
-          padding: 12px 0px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
-          margin: 0 20px 15px 20px;
-        }
-        .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
-        .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; background: var(--bg-secondary); }
+        
+        .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; margin-bottom: 15px; }
+        
+        /* 🔥 LEVEL SECTION FIX 🔥 */
+        .drawer-top-level { display: flex; align-items: center; gap: 12px; background: transparent; padding: 12px 0px; margin: 0 20px 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; z-index: 10; }
+        .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; }
         .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-        .level-text-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 800; color: var(--text-main); }
+        .level-text-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--text-main); }
         .progress-track { width: 100%; height: 8px; background: rgba(150,150,150,0.2); border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 10px; background: #1f3cff; transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .progress-fill { height: 100%; background: #1f3cff; transition: width 0.5s ease; }
 
-        .target-selection-container { padding: 0 20px; margin-bottom: 0; }
-        .target-label { font-size: 11px; font-weight: 800; color: var(--text-muted); display: block; margin-bottom: 8px; }
-        .target-box { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 12px; border: 1px solid #1f3cff; width: fit-content; }
-        .target-box .material-icons { font-size: 16px; color: #1f3cff; }
+        .target-selection-container { padding: 0 20px; margin-bottom: 10px; }
+        .target-box { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 12px; border: 1px solid #1f3cff; }
 
+        /* 🔥 FIX SCROLL LIST GIFT 🔥 */
         .gift-list-3d-wrapper {
-          padding: 15px 15px 25px 15px; display: flex; gap: 15px; overflow-x: auto; overflow-y: visible;
-          scroll-snap-type: x mandatory; scrollbar-width: none;
+          padding: 20px 15px 40px 15px; /* Bottom padding dilebarin biar kado bawah gak kepotong footer */
+          display: flex; gap: 15px; overflow-x: auto; overflow-y: visible; /* Harus visible biar kado 3D bisa naik */
+          scrollbar-width: none;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
-        .gift-column { display: flex; flex-direction: column; gap: 25px; flex-shrink: 0; width: calc(33.333% - 10px); scroll-snap-align: start; }
+        .gift-column { display: flex; flex-direction: column; gap: 30px; flex-shrink: 0; width: calc(33.333% - 10px); }
         
-        .gift-item-3d { position: relative; height: 100px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; -webkit-tap-highlight-color: transparent; z-index: 1; }
-        .gift-item-3d.active { z-index: 10; }
-        
-        .gift-img-3d { width: 85px; height: 85px; object-fit: contain; filter: none; position: absolute; top: -10px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 2; }
-        .gift-default-info { display: flex; flex-direction: column; align-items: center; margin-bottom: 5px; opacity: 1; transition: opacity 0.2s; }
-        .gift-label { font-size: 11px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
-        .gift-price-mini { font-size: 11px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 2px; }
-
-        .gift-active-bg { position: absolute; bottom: 0; left: 0; right: 0; height: 55px; background: transparent; border: 1.5px solid #1f3cff; border-radius: 12px; box-shadow: none; animation: popBox 0.2s ease forwards; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 6px; }
-        @keyframes popBox { from { transform: scale(0.8) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-
-        .gift-item-3d.active .gift-img-3d { width: 145px; height: 145px; top: -90px; filter: none; animation: floatActive 2s ease-in-out infinite; }
-        @keyframes floatActive { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-        
-        .gift-item-3d.active .gift-default-info { opacity: 0; pointer-events: none; }
-        .gift-active-details { display: flex; flex-direction: column; align-items: center; gap: 4px; animation: fadeInDetails 0.3s ease forwards; z-index: 2; }
-        @keyframes fadeInDetails { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .gift-price-active { font-size: 11px; color: #1f3cff; font-weight: 800; display: flex; align-items: center; gap: 2px; }
-        
-        .gift-send-btn { 
-          background: #1f3cff; color: white; border: none; border-radius: 8px; 
-          padding: 6px 22px; font-weight: 800; font-size: 11px; cursor: pointer; pointer-events: auto;
-          transition: background 0.3s;
+        .drawer-footer { 
+          display: flex; justify-content: space-between; align-items: center; 
+          padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); 
+          background: var(--bg-base, #121212); border-top: 1px solid rgba(255,255,255,0.05); 
+          position: sticky; bottom: 0; z-index: 50; 
         }
-        
-        .btn-send-gift-footer {
-          background: linear-gradient(135deg, #1f3cff, #bc13fe); color: white; border: none;
-          padding: 10px 24px; border-radius: 20px; font-weight: 800; font-size: 14px;
-          box-shadow: 0 4px 15px rgba(31, 60, 255, 0.4); transition: 0.2s; cursor: pointer;
-        }
-        .btn-send-gift-footer:disabled { background: #333 !important; color: #888 !important; box-shadow: none !important; cursor: not-allowed; opacity: 0.7; }
-        .btn-send-gift-footer:active:not(:disabled) { transform: scale(0.9); }
-
-        .gift-item-3d.spam-anim .gift-active-bg { transform: scale(0.95); transition: 0.1s; background: rgba(31,60,255,0.1); }
-        .gift-item-3d.spam-anim .gift-img-3d { transform: scale(0.9) translateY(5px); transition: 0.1s; }
-
-        .drawer-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); background: var(--bg-base); border-top: 1px solid var(--border-color, rgba(255,255,255,0.05)); }
-        .footer-coin-box { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; color: var(--text-main); background: var(--bg-secondary, rgba(0,0,0,0.05)); padding: 8px 14px; border-radius: 12px; }
       `}</style>
 
-      <div className={`gift-sheet ${isActive ? 'active' : ''}`} onClick={closeSheet}>
-        <div className="gift-sheet-overlay" />
-        
-        <div className="gift-sheet-content" onClick={(e) => e.stopPropagation()}>
-          <div className="sheet-handle" />
+      <AnimatePresence>
+        {isActive && (
+          <>
+            {/* OVERLAY HITAM */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="gift-sheet-overlay" 
+              onClick={closeSheet} 
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99999 }}
+            />
 
-          <div className="drawer-header">
-            <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
-            <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
-          </div>
-
-          <div className="drawer-top-level">
-            <div className="level-avatar-box">
-              <img src={myProfile?.avatar_url || fallbackAvatar} className="level-avatar" alt="Avatar" />
-              <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)' }}>
-                 <span dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
-              </div>
-            </div>
-            <div className="level-progress-info">
-              <div className="level-text-row">
-                <span style={{ marginLeft: '6px' }}>{myProfile?.username || 'User'}</span>
-                {currentLevel >= 50 ? (
-                  <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
-                ) : (
-                  <span style={{ color: '#1f3cff' }}>Butuh {needed} koin</span>
-                )}
-              </div>
-              <div className="progress-track" style={{ marginLeft: '6px' }}>
-                <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
-              </div>
-            </div>
-          </div>
-
-          {/* 🔥 INFO TARGET (Pemilik Postingan) 🔥 */}
-          <div className="target-selection-container">
-            <span className="target-label">{t('send_to_label', 'KIRIM KE:')}</span>
-            <div className="target-box">
-              <span className="material-icons">account_circle</span>
-              <span style={{ fontWeight: 800, fontSize: '12px' }}>{targetPost.creatorName}</span>
-            </div>
-          </div>
-
-          <div className="gift-list-3d-wrapper">
-            {Array.from({ length: Math.ceil(GIFT_DATA.length / 2) }).map((_, colIndex) => (
-              <div key={colIndex} className="gift-column">
-                {GIFT_DATA.slice(colIndex * 2, colIndex * 2 + 2).map((gift) => {
-                  const isActiveGift = selectedGift?.id === gift.id;
-                  const isSpam = spamAnimId === gift.id;
-
-                  return (
-                    <div 
-                      key={gift.id}
-                      className={`gift-item-3d ${isActiveGift ? 'active' : ''} ${isSpam ? 'spam-anim' : ''}`} 
-                      onClick={() => setSelectedGift(gift)}
-                    >
-                      <img src={gift.img} className="gift-img-3d" alt={gift.name} />
-                      
-                      {!isActiveGift && (
-                        <div className="gift-default-info">
-                          <span className="gift-label">{gift.name}</span>
-                          <span className="gift-price-mini"><span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.amount}</span>
-                        </div>
-                      )}
-
-                      {isActiveGift && (
-                        <div className="gift-active-bg">
-                          <div className="gift-active-details">
-                            <span className="gift-price-active">
-                              <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
-                              {gift.amount.toLocaleString('id-ID')}
-                            </span>
-                            <button className="gift-send-btn" onClick={(e) => handleSendGift(gift, e)}>
-                              {isSending ? '...' : 'KIRIM'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-          
-          <div className="drawer-footer">
-            <div className="footer-coin-box">
-              <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
-              <span>{userCoins.toLocaleString('id-ID')}</span>
-            </div>
-            <button 
-              className="btn-send-gift-footer" 
-              onClick={() => handleSendGift()}
-              disabled={!selectedGift || isSending}
+            {/* KONTEN SLIDE UP DARI BAWAH */}
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }} // 🔥 Fisika Membal Mulus 🔥
+              className="gift-sheet-content-framer"
+              onClick={(e) => e.stopPropagation()}
             >
-              {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}
-            </button>
-          </div>
-        </div>
-      </div>
+              <div className="sheet-handle" style={{ width: '40px', height: '4px', background: '#555', borderRadius: '4px', margin: '0 auto 15px auto' }} />
+
+              <div className="drawer-header">
+                <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
+                <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
+              </div>
+
+              <div className="drawer-top-level">
+                <div className="level-avatar-box">
+                  <img src={myProfile?.avatar_url || fallbackAvatar} className="level-avatar" alt="Avatar" />
+                  <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
+                     <span dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
+                  </div>
+                </div>
+                <div className="level-progress-info">
+                  <div className="level-text-row">
+                    <span style={{ marginLeft: '6px' }}>{myProfile?.username || 'User'}</span>
+                    {currentLevel >= 50 ? (
+                      <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
+                    ) : (
+                      <span style={{ color: '#1f3cff' }}>Butuh {needed} koin</span>
+                    )}
+                  </div>
+                  <div className="progress-track" style={{ marginLeft: '6px' }}>
+                    <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="target-selection-container">
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                  {t('send_to_label', 'KIRIM KE:')}
+                </span>
+                <div className="target-box">
+                  <span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>account_circle</span>
+                  <span style={{ fontWeight: 800, fontSize: '12px' }}>{targetPost.creatorName}</span>
+                </div>
+              </div>
+
+              {/* BUNGKUSAN LIST KADO */}
+              <div className="gift-list-3d-wrapper">
+                {Array.from({ length: Math.ceil(GIFT_DATA.length / 2) }).map((_, colIndex) => (
+                  <div key={colIndex} className="gift-column">
+                    {GIFT_DATA.slice(colIndex * 2, colIndex * 2 + 2).map((gift) => {
+                      const isActiveGift = selectedGift?.id === gift.id;
+
+                      return (
+                        // 🔥 ANIMASI 3D KADO MENGGUNAKAN FRAMER MOTION 🔥
+                        <motion.div 
+                          key={gift.id}
+                          onClick={() => setSelectedGift(gift)}
+                          style={{ 
+                            position: 'relative', height: '100px', width: '100%', 
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', 
+                            justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
+                          }}
+                        >
+                          {/* Gambar Kadonya */}
+                          <motion.img 
+                            src={gift.img} 
+                            alt={gift.name} 
+                            animate={{
+                              width: isActiveGift ? 130 : 85,
+                              height: isActiveGift ? 130 : 85,
+                              y: isActiveGift ? -60 : -10, // Naik ke atas kalau diklik
+                            }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            style={{ position: 'absolute', zIndex: 2, objectFit: 'contain' }}
+                            // Efek ngambang pas lagi aktif
+                            {...(isActiveGift && {
+                              animate: { width: 130, height: 130, y: [-60, -70, -60] },
+                              transition: { y: { repeat: Infinity, duration: 2, ease: "easeInOut" } }
+                            })}
+                          />
+
+                          {/* Kotak Latar Belakang Pas Aktif */}
+                          <AnimatePresence>
+                            {isActiveGift && (
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                style={{
+                                  position: 'absolute', bottom: 0, left: 0, right: 0, height: '60px',
+                                  border: '1.5px solid #1f3cff', borderRadius: '12px', background: 'rgba(0,0,0,0.3)',
+                                  display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', 
+                                  alignItems: 'center', paddingBottom: '6px'
+                                }}
+                              >
+                                <span style={{ fontSize: '11px', color: '#1f3cff', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '2px', marginBottom: '4px' }}>
+                                  <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
+                                  {gift.amount.toLocaleString('id-ID')}
+                                </span>
+                                <motion.button 
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => handleSendGift(gift, e)}
+                                  style={{ background: '#1f3cff', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 22px', fontWeight: 800, fontSize: '11px' }}
+                                >
+                                  {isSending ? '...' : 'KIRIM'}
+                                </motion.button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Info Default (Nama & Harga) */}
+                          <motion.div 
+                            animate={{ opacity: isActiveGift ? 0 : 1, y: isActiveGift ? 10 : 0 }}
+                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px' }}
+                          >
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>{gift.name}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                              <span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.amount}
+                            </span>
+                          </motion.div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="drawer-footer">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '12px' }}>
+                  <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
+                  <span>{userCoins.toLocaleString('id-ID')}</span>
+                </div>
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleSendGift()}
+                  disabled={!selectedGift || isSending}
+                  style={{
+                    background: 'linear-gradient(135deg, #1f3cff, #bc13fe)', color: 'white', border: 'none',
+                    padding: '10px 24px', borderRadius: '20px', fontWeight: 800, fontSize: '14px',
+                    opacity: (!selectedGift || isSending) ? 0.5 : 1
+                  }}
+                >
+                  {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}
+                </motion.button>
+              </div>
+
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

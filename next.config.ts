@@ -12,16 +12,16 @@ const withPWA = withPWAInit({
   },
 });
 
-// 🔥 UPDATE CSP: Izin Audio Apple/iTunes ditambahkan ke media-src
+// 🔥 UPDATE CSP: Izin Audio Apple & Stiker (Tenor/Giphy) ditambahkan
 const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://app.sandbox.midtrans.com https://app.midtrans.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' blob: data: https://*.supabase.co https://ui-avatars.com https://res.cloudinary.com https://*.mzstatic.com https://*.apple.com;
+    img-src 'self' blob: data: https://*.supabase.co https://ui-avatars.com https://res.cloudinary.com https://*.mzstatic.com https://*.apple.com https://*.tenor.com https://*.giphy.com;
     font-src 'self' https://fonts.gstatic.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.livekit.cloud wss://*.livekit.cloud https://app.sandbox.midtrans.com https://app.midtrans.com https://itunes.apple.com https://*.apple.com;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.livekit.cloud wss://*.livekit.cloud https://app.sandbox.midtrans.com https://app.midtrans.com https://itunes.apple.com https://*.apple.com https://*.tenor.com https://tenor.googleapis.com https://*.giphy.com;
     frame-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com;
-    media-src 'self' https://*.supabase.co https://res.cloudinary.com https://*.mzstatic.com https://*.apple.com blob: data:;
+    media-src 'self' https://*.supabase.co https://res.cloudinary.com https://*.mzstatic.com https://*.apple.com https://*.tenor.com https://*.giphy.com blob: data:;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
