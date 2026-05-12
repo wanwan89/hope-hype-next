@@ -35,6 +35,7 @@ export default function NotificationsPage() {
         supabase.removeChannel(channelRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -278,18 +279,6 @@ export default function NotificationsPage() {
     if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
   };
 
-  const handlePwaInstall = async () => {
-    const promptEvent = (window as any).pwaPrompt;
-    if (promptEvent) {
-      promptEvent.prompt();
-      const { outcome } = await promptEvent.userChoice;
-      if (outcome === 'accepted') console.log('User menginstal HopeHype!');
-      (window as any).pwaPrompt = null;
-    } else {
-      showNotif(t('pwa_installed', 'PWA sudah terinstal atau browser tidak mendukung.'), "info");
-    }
-  };
-
   const loadMidtransForce = () => {
     return new Promise((resolve) => {
       if ((window as any).snap) return resolve(true);
@@ -339,8 +328,8 @@ export default function NotificationsPage() {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
       case 'comment': return { icon: 'chat_bubble', color: '#10b981' };
-      case 'reply': return { icon: 'reply', color: '#10b981' }; // Hijau Tosca
-      case 'comment_like': return { icon: 'favorite', color: '#ff2e63' }; // Pink 
+      case 'reply': return { icon: 'reply', color: '#10b981' }; 
+      case 'comment_like': return { icon: 'favorite', color: '#ff2e63' };  
       case 'repost': return { icon: 'repeat', color: '#1DA1F2' }; 
       case 'save': return { icon: 'bookmark', color: '#f59e0b' }; 
       case 'story_like': return { icon: 'favorite', color: '#ff2e63' }; 
@@ -403,7 +392,19 @@ export default function NotificationsPage() {
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan1.webm" type="video/webm" /></video>
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan2.webm" type="video/webm" /></video>
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan3.webm" type="video/webm" /></video>
-            <video autoPlay loop muted playsInline className="ad-slide" onClick={handlePwaInstall} style={{ cursor: 'pointer' }}><source src="/asets/gif/iklan4.webm" type="video/webm" /></video>
+            
+            {/* 🔥 IKLAN KE-4 DIUBAH ARAHNYA KE HALAMAN DOWNLOAD 🔥 */}
+            <video 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="ad-slide" 
+              onClick={() => router.push('/download')} 
+              style={{ cursor: 'pointer' }}
+            >
+              <source src="/asets/gif/iklan4.webm" type="video/webm" />
+            </video>
           </div>
         </div>
 

@@ -107,7 +107,6 @@ export default function ChatArea() {
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
     setMyProfile(prof);
 
-    // 🔥 HENTIKAN RINGTONE LAMA SEBELUM INISIALISASI BARU
     if (refs.audio.current?.ring) {
       refs.audio.current.ring.pause();
       refs.audio.current.ring.currentTime = 0;
@@ -226,11 +225,9 @@ export default function ChatArea() {
   };
 
   const cleanup = () => {
-    // 🔥 FIX RINGTONE: hentikan dan lepaskan referensi
     if (refs.audio.current?.ring) {
       refs.audio.current.ring.pause();
       refs.audio.current.ring.currentTime = 0;
-      // Baris "refs.audio.current.ring = null;" udah dihapus dari sini
     }
     if (refs.msgChannel.current) supabase.removeChannel(refs.msgChannel.current);
     if (refs.presenceChannel.current) supabase.removeChannel(refs.presenceChannel.current);
@@ -297,19 +294,48 @@ export default function ChatArea() {
       .subscribe(async (s) => { if (s === 'SUBSCRIBED') await refs.presenceChannel.current.track({ user_id: user.id, online: true }); });
   };
 
-  // 🔥 FIX 1: Tambah opsi buat scroll instan atau mulus 🔥
   const scrollToBottom = (isSmooth = true) => {
     setTimeout(() => {
       refs.scroll.current?.scrollIntoView({ behavior: isSmooth ? 'smooth' : 'auto' });
-    }, 150); // Jeda dinaikin dikit biar gambar/bubble selesai kerender
+    }, 150);
   };
 
-  // 🔥 FIX 2: Trigger otomatis lompat ke bawah pas chat selesai di-load 🔥
   useEffect(() => {
     if (!isLoading) {
-      scrollToBottom(false); // false = langsung lompat tanpa animasi (auto)
+      scrollToBottom(false); 
     }
   }, [isLoading]);
+
+  // 🔥 FUNGSI BARU UNTUK TRIGGER PUSH NOTIFIKASI 🔥
+  const triggerPushNotification = async (type: string, title: string, message: string) => {
+    if (!targetId || !myProfile) return;
+
+    try {
+      const { data: targetUser } = await supabase
+        .from('profiles')
+        .select('fcm_token')
+        .eq('id', targetId)
+        .single();
+
+      if (targetUser?.fcm_token) {
+        await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetToken: targetUser.fcm_token,
+            type: type,
+            title: title,
+            message: message,
+            callerId: currentUser.id,
+            callerName: myProfile.username,
+            roomId: roomId
+          }),
+        });
+      }
+    } catch (error) {
+      console.error("Gagal trigger push notif:", error);
+    }
+  };
 
   const sendMessage = async (text?: string, sticker?: string, audio?: string, image?: string) => {
     const content = text || inputValue;
@@ -323,10 +349,12 @@ export default function ChatArea() {
       return;
     }
 
+    const messagePreview = image && !content ? "Mengirim Foto" : audio ? "Voice Note" : (sticker ? "Stiker" : content);
+
     const { error } = await supabase.from('messages').insert([{
       room_id: roomId, 
       user_id: currentUser.id, 
-      message: image && !content ? " Mengirim Foto" : audio ? " Voice Note" : (sticker ? "Stiker" : content),
+      message: messagePreview,
       sticker_url: sticker || null, 
       audio_url: audio || null, 
       image_url: image || null, 
@@ -334,7 +362,18 @@ export default function ChatArea() {
       status: 'sent'
     }]);
     
-    if (!error) { setInputValue(''); setReplyTo(null); setIsStickerOpen(false); }
+    if (!error) { 
+      setInputValue(''); 
+      setReplyTo(null); 
+      setIsStickerOpen(false); 
+      
+      // 🔥 TRIGGER PUSH NOTIFIKASI CHAT MASUK 🔥
+      if (targetId) {
+         triggerPushNotification('chat', myProfile?.username || 'Pesan Baru', messagePreview);
+      }
+    }
+    
+    // Notifikasi sistem bawaan (Supabase Functions lama) biarin aja, aman.
     if (targetId && !sticker && !audio && !image) {
       supabase.functions.invoke('send-chat-notif', { body: { record: { sender_id: currentUser.id, receiver_id: targetId, content } } });
     }
@@ -455,7 +494,6 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FUNGSI PILIH FOTO (PREVIEW DULU) 🔥
   const handlePhotoClick = () => {
     const allowedRoles = ['verified', 'vip', 'admin', 'developer', 'creator'];
     const userRole = myProfile?.role?.toLowerCase() || 'user';
@@ -472,10 +510,9 @@ export default function ChatArea() {
     if (!file) return;
     setPendingImage(file);
     setPendingImagePreview(URL.createObjectURL(file));
-    if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = ''; 
   };
 
-  // 🔥 FUNGSI KIRIM SEMUA (TEKS + FOTO) 🔥
   const handleSendClick = async () => {
     if (pendingImage) {
       setIsUploadingImg(true);
@@ -519,6 +556,9 @@ export default function ChatArea() {
     
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: `Memanggil ${headerInfo.title}...`, is_system: true }]);
     
+    // 🔥 TRIGGER PUSH NOTIFIKASI PANGGILAN MASUK 🔥
+    triggerPushNotification('incoming_call', 'Panggilan Masuk 📞', `${myProfile?.username || 'Seseorang'} sedang memanggilmu...`);
+
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
       if (callStatusRef.current === 'calling') {
@@ -535,7 +575,6 @@ export default function ChatArea() {
       await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `Sibuk, coba lagi nanti`, is_system: true }]);
       return;
     }
-    // 🔥 FIX RINGTONE: hentikan terlebih dahulu sebelum membuat nada dering baru
     if (refs.audio.current?.ring) {
       refs.audio.current.ring.pause();
       refs.audio.current.ring.currentTime = 0;
@@ -552,7 +591,6 @@ export default function ChatArea() {
 
   const connectLiveKit = async (rName: string) => {
     try {
-      // 🔥 FIX RINGTONE: hentikan nada dering karena panggilan sudah dijawab/dimulai
       if (refs.audio.current?.ring) {
         refs.audio.current.ring.pause();
         refs.audio.current.ring.currentTime = 0;
@@ -614,7 +652,6 @@ export default function ChatArea() {
   };
 
   const endCall = (silent = false) => {
-    // 🔥 FIX RINGTONE: pastikan nada dering dihentikan di setiap akhir panggilan
     if (refs.audio.current?.ring) { 
       refs.audio.current.ring.pause(); 
       refs.audio.current.ring.currentTime = 0; 
@@ -664,7 +701,6 @@ export default function ChatArea() {
     displayStatus = `${onlineCount} hopers sedang online`;
   }
 
-  // Apakah tombol kanan jadi Send atau Mic?
   const canSend = inputValue.trim() || editMessageId || pendingImagePreview;
 
   return (
@@ -1019,7 +1055,9 @@ export default function ChatArea() {
                         disabled={isUploadingImg} 
                         style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer', position: 'relative' }}
                       >
-                        <span className="material-icons">image</span>
+                        <span className="material-icons" style={{ animation: isUploadingImg ? 'hypeSpin 1s linear infinite' : 'none' }}>
+                          {isUploadingImg ? 'refresh' : 'image'}
+                        </span>
                         {(!myProfile || !['verified', 'vip', 'admin', 'developer', 'creator'].includes(myProfile?.role?.toLowerCase())) && (
                           <span className="material-icons" style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '10px', background: '#ff4757', color: 'white', borderRadius: '50%', padding: '2px' }}>lock</span>
                         )}

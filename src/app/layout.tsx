@@ -8,6 +8,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'; 
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; // 🔥 IMPORT NEXT SCRIPT BUAT ERUDA
+
+// 🔥 IMPORT CAPACITOR BUAT NOTIFIKASI ANDROID 🔥
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
+
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -68,6 +73,104 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // --- 🔥 SETUP NOTIFIKASI CAPACITOR (ANDROID & WEB SEPARATE) 🔥 ---
+  useEffect(() => {
+    const initNativePush = async () => {
+      if (typeof window === 'undefined') return;
+
+      try {
+        const platform = Capacitor.getPlatform();
+
+        if (platform === 'android') {
+          console.log("📱 Jalan di Android: Mengaktifkan Native Push...");
+          
+          let permStatus = await PushNotifications.checkPermissions();
+          if (permStatus.receive === 'prompt') {
+            permStatus = await PushNotifications.requestPermissions();
+          }
+
+          if (permStatus.receive !== 'granted') {
+            console.log("❌ User menolak izin notifikasi di Android");
+            return;
+          }
+
+          await PushNotifications.register();
+
+          // 🔥 KODE YANG DIUBAH: OTOMATIS SIMPAN TOKEN KE SUPABASE 🔥
+          PushNotifications.addListener('registration', async (token) => {
+            console.log('✅ Push registration success, token: ' + token.value);
+            
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user?.id) {
+                const { error } = await supabase
+                  .from('profiles')
+                  .update({ fcm_token: token.value })
+                  .eq('id', session.user.id);
+                  
+                if (error) {
+                  console.error('❌ Gagal nyimpen token ke Supabase:', error);
+                } else {
+                  console.log('✅ Token FCM berhasil diamankan di database!');
+                }
+              }
+            } catch (err) {
+              console.error('❌ Error saat ngecek session buat token:', err);
+            }
+          });
+
+          PushNotifications.addListener('registrationError', (error) => {
+            console.error('❌ Error on registration: ' + JSON.stringify(error));
+          });
+
+// 🔥 KODE TAMBAHAN BUAT NANGANIN KLIK TOMBOL NOTIFIKASI 🔥
+PushNotifications.addListener('actionPerformed', (action) => {
+  const { actionId, notification } = action;
+  const { data } = notification;
+
+  console.log("🎯 Aksi Notif Diklik:", actionId, "Data:", data);
+
+  if (actionId === 'accept') {
+    // Kalau tombol 'Angkat' diklik
+    if (data?.callerId) {
+      // 🔥 GANTI: dari /hypetalk/chat jadi /hypetalk/room 🔥
+      router.push(`/hypetalk/room?from=${data.callerId}`);
+    }
+  } else if (actionId === 'reject') {
+    // Kalau tombol 'Tolak' diklik
+    handleTolakGlobal();
+  }
+});
+
+          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            console.log('📬 Notif masuk pas app dibuka:', notification);
+            // Bisa tampilin toast kustom di sini kalau mau
+          });
+
+        } else {
+          console.log("🌐 Jalan di Web: Pakai sistem notifikasi bawaan browser.");
+        }
+      } catch (error) {
+        console.warn("⚠️ Capacitor Push API belum tersedia di env ini:", error);
+      }
+    };
+
+    initNativePush();
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        try {
+          if (Capacitor.getPlatform() === 'android') {
+            PushNotifications.removeAllListeners();
+          }
+        } catch (e) {
+          // ignore cleanup errors
+        }
+      }
+    };
+  }, []);
+  // --- END SETUP NOTIFIKASI ---
 
   // --- 🔥 FIX BENTROK NADA DERING: MATIKAN PAKSA KALAU MASUK HYPETALK 🔥 ---
   useEffect(() => {
@@ -217,14 +320,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       ringtoneRef.current.pause();
       ringtoneRef.current.currentTime = 0;
     }
-    router.push(`/hypetalk/chat?from=${cid}`);
+    // 🔥 GANTI DI SINI (dari /chat jadi /room)
+    router.push(`/hypetalk/room?from=${cid}`);
   };
 
   const handleMessageClick = () => {
     if (!globalMessageNotif) return;
     const cid = globalMessageNotif.senderId;
     setGlobalMessageNotif(null);
-    router.push(`/hypetalk/chat?from=${cid}`);
+    // 🔥 GANTI DI SINI (dari /chat jadi /room)
+    router.push(`/hypetalk/room?from=${cid}`);
   };
 
   // --- 1. SISTEM ANTI-DOWNLOAD FOTO ---

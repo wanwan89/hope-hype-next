@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "921665662048",
+    "project_id": "hypetalk-glob",
+    "storage_bucket": "hypetalk-glob.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:921665662048:android:947215276db1fb91cde705",
+        "android_client_info": {
+          "package_name": "com.hopecreative.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXxHr0A7wj774nU5Y0nzwKBW3WVUSxGC0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

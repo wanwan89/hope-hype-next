@@ -342,9 +342,9 @@ export default function HypetalkPage() {
     if (!searchUserId) return;
     const cleanId = searchUserId.replace('#', '').toUpperCase();
     const { data: target } = await supabase.from('profiles').select('id').eq('short_id', cleanId).maybeSingle();
-// GANTI BAGIAN INI:
-if (target) router.push(`/hypetalk/room?from=${target.id}`); // Pastikan ke /room
-
+    
+    // SESUAI REQUEST: Arahkan ke /room
+    if (target) router.push(`/hypetalk/room?from=${target.id}`); 
     else showNotif("ID tidak ditemukan", "error");
   };
 
@@ -356,37 +356,35 @@ if (target) router.push(`/hypetalk/room?from=${target.id}`); // Pastikan ke /roo
       await supabase.from('group_members').insert([{ group_id: newGroup.id, user_id: currentUser.id }]);
       showNotif("Grup berhasil dibuat!", "success");
       closeModal();
-// GANTI BAGIAN INI:
-router.push(`/hypetalk/room?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
-
+      
+      // SESUAI REQUEST: Arahkan ke /room
+      router.push(`/hypetalk/room?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
     } catch (err) { showNotif("Gagal membuat grup", "error"); }
   };
 
-// GANTI TOTAL ISI FUNGSINYA JADI GINI:
-const handleOpenChat = async (chat: any) => {
-  setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
-  
-  let roomIdToRead = '';
-  if (chat.type === 'global') roomIdToRead = 'room-1';
-  else if (chat.type === 'group') roomIdToRead = `group_${chat.id}`;
-  else {
-    const ids = [currentUser.id, chat.id].sort();
-    roomIdToRead = `pv_${ids[0]}_${ids[1]}`;
-  }
+  const handleOpenChat = async (chat: any) => {
+    setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
+    
+    let roomIdToRead = '';
+    if (chat.type === 'global') roomIdToRead = 'room-1';
+    else if (chat.type === 'group') roomIdToRead = `group_${chat.id}`;
+    else {
+      const ids = [currentUser.id, chat.id].sort();
+      roomIdToRead = `pv_${ids[0]}_${ids[1]}`;
+    }
 
-  supabase.from('messages')
-    .update({ status: 'read' })
-    .eq('room_id', roomIdToRead)
-    .neq('user_id', currentUser.id)
-    .neq('status', 'read')
-    .then();
+    supabase.from('messages')
+      .update({ status: 'read' })
+      .eq('room_id', roomIdToRead)
+      .neq('user_id', currentUser.id)
+      .neq('status', 'read')
+      .then();
 
-  // NAVIGASI BARU:
-  if (chat.type === 'global') router.push('/hypetalk/room?id=room-1');
-  else if (chat.type === 'group') router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
-  else router.push(`/hypetalk/room?from=${chat.id}`);
-};
-
+    // SESUAI REQUEST: Navigasi BARU
+    if (chat.type === 'global') router.push('/hypetalk/room?id=room-1');
+    else if (chat.type === 'group') router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
+    else router.push(`/hypetalk/room?from=${chat.id}`);
+  };
 
   const handleAvatarClick = async (e: React.MouseEvent, chatId: string, chatType: string) => {
     e.stopPropagation();
@@ -422,6 +420,7 @@ const handleOpenChat = async (chat: any) => {
     }
   };
 
+  // 🔥 UPDATE: NAMBAHIN TRIGGER PUSH NOTIFIKASI DI SINI 🔥
   const startCallFromLobby = async (targetProfile: any) => {
     if (!currentUser) return;
     if (callStatus !== 'idle') {
@@ -438,12 +437,35 @@ const handleOpenChat = async (chat: any) => {
       seconds: 0,
       roomId: callRoomId
     });
+    
     await supabase.from('messages').insert([{ 
       room_id: callRoomId, 
       user_id: currentUser.id, 
       message: `📞 Memanggil ${targetProfile.username}...`, 
       is_system: true 
     }]);
+
+    // TRIGGER PUSH NOTIF KE FIREBASE
+    try {
+      const { data: targetUser } = await supabase.from('profiles').select('fcm_token').eq('id', targetProfile.id).single();
+      if (targetUser?.fcm_token) {
+        await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetToken: targetUser.fcm_token,
+            type: 'incoming_call',
+            title: 'Panggilan Masuk 📞',
+            message: `${currentUser.username} sedang memanggilmu...`,
+            callerId: currentUser.id,
+            callerName: currentUser.username,
+            roomId: callRoomId
+          }),
+        });
+      }
+    } catch (err) {
+      console.error("Gagal trigger push call:", err);
+    }
     
     clearTimeout(refs.callTimeout.current);
     refs.callTimeout.current = setTimeout(async () => {
@@ -995,8 +1017,7 @@ const handleOpenChat = async (chat: any) => {
               </div>
             </div>
             <div className="wa-profile-actions">
-<button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
-
+              <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
                 <span className="material-icons" style={{ fontSize: '24px' }}>chat</span> Chat
               </button>
               <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="wa-action-btn" style={{ color: '#2ecc71' }}>
@@ -1025,9 +1046,9 @@ const handleOpenChat = async (chat: any) => {
                 {!foundDoi.pekerjaan && !foundDoi.hobi && !foundDoi.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Belum mengisi bio lengkap</span>}
               </div>
             </div>
-<button 
-  className="action-btn love-btn" 
-  onClick={() => router.push(`/hypetalk/room?from=${foundDoi.id}`)}  style={{ width: '100%', background: 'linear-gradient(135deg, #1DA1F2, #1f3cff)', borderRadius: '15px', fontWeight: '800', color: 'white', padding: '14px', border: 'none' }}>Chat Sekarang </button>
+            <button 
+              className="action-btn love-btn" 
+              onClick={() => router.push(`/hypetalk/room?from=${foundDoi.id}`)}  style={{ width: '100%', background: 'linear-gradient(135deg, #1DA1F2, #1f3cff)', borderRadius: '15px', fontWeight: '800', color: 'white', padding: '14px', border: 'none' }}>Chat Sekarang </button>
           </div>
         </div>
       )}
