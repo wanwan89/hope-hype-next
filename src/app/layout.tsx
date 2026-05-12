@@ -7,6 +7,7 @@ import { I18nextProvider } from 'react-i18next';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'; 
 import { supabase } from '@/lib/supabase';
+import Script from 'next/script'; // 🔥 IMPORT NEXT SCRIPT BUAT ERUDA
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -54,14 +55,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   // --- 🔥 EFEK UNTUK DETEKSI INTERNET 🔥 ---
   useEffect(() => {
-    // Set status awal pas web dibuka
     setIsOnline(navigator.onLine);
 
-    // Bikin fungsi penangkap sinyal
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
-    // Pasang kuping buat dengerin perubahan sinyal
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -100,7 +98,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ringtoneRef.current.currentTime = 0; 
       }
     }
-    // 🔥 FIX RINGTONE: cleanup saat komponen unmount
     return () => {
       ringtoneRef.current?.pause();
       ringtoneRef.current = null;
@@ -182,7 +179,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     return () => {
       if (channel) supabase.removeChannel(channel);
-      // 🔥 FIX RINGTONE: hentikan juga saat listener dilepas
       if (ringtoneRef.current) {
         ringtoneRef.current.pause();
         ringtoneRef.current.currentTime = 0;
@@ -217,7 +213,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const cid = globalIncomingCall.callerId;
     
     setGlobalIncomingCall(null);
-    // 🔥 FIX RINGTONE: hentikan saat angkat
     if (ringtoneRef.current) {
       ringtoneRef.current.pause();
       ringtoneRef.current.currentTime = 0;
@@ -283,7 +278,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
       body.style.overscrollBehaviorY = 'auto'; 
       
-      // 🔥 FIX: HANYA MENGHAPUS ELEMEN INJEKSI VANILLA JS (BUKAN KOMPONEN REACT)
       const vanillaJsTrash = ['vip-entrance-overlay', 'vip-anim-styles-clean'];
       vanillaJsTrash.forEach(id => {
         const el = document.getElementById(id);
@@ -316,7 +310,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="twitter:description" content="Platform sosial untuk berbagi karya seni dan ngobrol seru bareng kreator lain." />
         <meta name="twitter:image" content="/asets/png/og-image.png" />
 
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet" />
+        {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
+        {/* 🔥 FIX: Ganti swap jadi block khusus untuk Icon biar teksnya nggak bocor pas refresh 🔥 */}
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
+        
+        {/* Untuk font Poppins biarin tetap swap biar load text-nya cepet */}
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
         <link rel="manifest" href="/manifest.json" />
@@ -489,6 +487,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
+        
+        {/* 🔥 ERUDA SCRIPT (Gunakan atribut lazyOnload biar nggak nge-block page speed) 🔥 */}
+        <Script 
+          src="https://cdn.jsdelivr.net/npm/eruda" 
+          strategy="lazyOnload" 
+          onLoad={() => {
+            if (typeof window !== 'undefined' && (window as any).eruda) {
+              (window as any).eruda.init();
+            }
+          }} 
+        />
+
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
             <GlobalShareModal />
@@ -589,11 +599,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
-
-        {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
-        {/* 🔥 FIX: Ganti swap jadi block khusus untuk Icon biar teksnya nggak bocor pas refresh 🔥 */}
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
-        
-        {/* Untuk font Poppins biarin tetap swap biar load text-nya cepet */}
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />

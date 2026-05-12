@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion'; // 🔥 Tambah ini biar tombolnya membal
 import './Footerroom.css';
 
 declare global {
@@ -17,10 +18,25 @@ declare global {
 export default function Footerroom() {
   const { t } = useTranslation();
 
+  // 🔥 FUNGSI SAKTI BUAT BUKA KADO 🔥
+  const handleGiftClick = (e: React.MouseEvent) => {
+    // Sengaja e.stopPropagation() GAK DIPAKE di sini kalau sistem lu pake event listener di body
+    
+    // Jalur 1: Coba panggil fungsi global kalau ada
+    if (typeof window.toggleRoomGiftDrawer === 'function') {
+      window.toggleRoomGiftDrawer(e);
+    } 
+    // Jalur 2: BACKUP! Lempar sinyal CustomEvent (Sistem ini lebih aman di Next.js)
+    else {
+      window.dispatchEvent(new CustomEvent('openRoomGift'));
+      console.log("Sinyal kado dikirim via CustomEvent!");
+    }
+  };
+
   return (
     <div 
       className="footer-floating-wrapper" 
-      onClick={(e) => e.stopPropagation()} 
+      // Hapus e.stopPropagation() di sini kalau bikin komen lu juga nge-bug
       style={{ 
         position: 'fixed',
         bottom: '15px',
@@ -28,16 +44,16 @@ export default function Footerroom() {
         transform: 'translateX(-50%)',
         width: '95%',
         maxWidth: '480px',
-        zIndex: 1000 
+        zIndex: 1000,
+        pointerEvents: 'auto' // 🔥 Pastikan elemen ini bisa diklik
       }}
     >
-      {/* 🔥 CONTAINER GLASSMORPHISM 🔥 */}
       <footer style={{ 
         display: 'flex', 
         gap: '8px', 
         padding: '8px', 
         alignItems: 'center', 
-        background: 'rgba(15, 20, 25, 0.55)', 
+        background: 'rgba(15, 20, 25, 0.65)', 
         backdropFilter: 'blur(16px) saturate(180%)', 
         WebkitBackdropFilter: 'blur(16px) saturate(180%)',
         border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -63,7 +79,7 @@ export default function Footerroom() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault(); 
-                if (window.kirimKomentar) window.kirimKomentar();
+                if (typeof window.kirimKomentar === 'function') window.kirimKomentar();
               }
             }} 
             style={{ 
@@ -78,44 +94,49 @@ export default function Footerroom() {
           />
         </div>
 
-        {/* 2. ICON GIFT (KADO) */}
-        <button 
+        {/* 2. ICON GIFT (KADO) - DIUPGRADE PAKE FRAMER MOTION */}
+        <motion.button 
           type="button"
-          onClick={(e) => { e.stopPropagation(); window.toggleRoomGiftDrawer?.(); }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.85 }} // 🔥 Kalau diklik tombolnya bakal menciut ke dalem
+          onClick={handleGiftClick}
+          className="room-gift-trigger-btn" // 🔥 Kasih class khusus buat ditangkap sama modal kado lu
           style={{ 
             width: '40px', height: '40px', borderRadius: '50%', 
             background: 'linear-gradient(135deg, #f6d365, #fda085)', 
             color: '#000', border: 'none', display: 'flex', alignItems: 'center', 
             justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-            boxShadow: '0 4px 10px rgba(246, 211, 101, 0.3)'
+            boxShadow: '0 4px 10px rgba(246, 211, 101, 0.4)'
           }}
         >
           <span className="material-icons" style={{ fontSize: '20px' }}>card_giftcard</span>
-        </button>
+        </motion.button>
 
-        {/* 3. ICON MINTA NAIK PANGGUNG (Buka Action Menu) */}
-        <button 
+        {/* 3. ICON MINTA NAIK PANGGUNG */}
+        <motion.button 
           type="button"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.85 }}
           onClick={(e) => { e.stopPropagation(); window.toggleActionMenu?.(); }}
           style={{ 
             width: '40px', height: '40px', borderRadius: '50%', 
             background: 'rgba(255,255,255,0.15)', 
             color: '#fff', border: '1px solid rgba(255,255,255,0.1)', 
             display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            cursor: 'pointer', flexShrink: 0, transition: '0.2s'
+            cursor: 'pointer', flexShrink: 0
           }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
-          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           <span className="material-icons" style={{ fontSize: '20px' }}>front_hand</span>
-        </button>
+        </motion.button>
 
         {/* 4. ICON SHARE */}
-        <button 
+        <motion.button 
           type="button"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.85 }}
           onClick={(e) => {
             e.preventDefault(); e.stopPropagation();
-            if (window.openGlobalShare) {
+            if (typeof window.openGlobalShare === 'function') {
               window.openGlobalShare(window.location.href, 'Voice Room HypeTalk', 'Gabung panggung suara yuk!');
             } else {
               navigator.clipboard.writeText(window.location.href);
@@ -128,13 +149,11 @@ export default function Footerroom() {
             background: 'rgba(255,255,255,0.15)', 
             color: '#fff', border: '1px solid rgba(255,255,255,0.1)', 
             display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            cursor: 'pointer', flexShrink: 0, transition: '0.2s'
+            cursor: 'pointer', flexShrink: 0
           }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
-          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           <span className="material-icons" style={{ fontSize: '20px' }}>ios_share</span>
-        </button>
+        </motion.button>
 
       </footer>
     </div>

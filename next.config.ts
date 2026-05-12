@@ -12,15 +12,15 @@ const withPWA = withPWAInit({
   },
 });
 
-// 🔥 UPDATE CSP: Izin Audio Apple & Stiker (Tenor/Giphy) ditambahkan
+// 🔥 UPDATE CSP SULTAN: Apple, Stiker, & Cloudflare (Turnstile/Analytics) siap tempur!
 const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://app.sandbox.midtrans.com https://app.midtrans.com;
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://app.sandbox.midtrans.com https://app.midtrans.com https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdnjs.cloudflare.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' blob: data: https://*.supabase.co https://ui-avatars.com https://res.cloudinary.com https://*.mzstatic.com https://*.apple.com https://*.tenor.com https://*.giphy.com;
+    img-src 'self' blob: data: https://*.supabase.co https://ui-avatars.com https://res.cloudinary.com https://*.mzstatic.com https://*.apple.com https://*.tenor.com https://*.giphy.com https://imagedelivery.net;
     font-src 'self' https://fonts.gstatic.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.livekit.cloud wss://*.livekit.cloud https://app.sandbox.midtrans.com https://app.midtrans.com https://itunes.apple.com https://*.apple.com https://*.tenor.com https://tenor.googleapis.com https://*.giphy.com;
-    frame-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.livekit.cloud wss://*.livekit.cloud https://app.sandbox.midtrans.com https://app.midtrans.com https://itunes.apple.com https://*.apple.com https://*.tenor.com https://tenor.googleapis.com https://*.giphy.com https://cloudflareinsights.com https://challenges.cloudflare.com;
+    frame-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com https://challenges.cloudflare.com;
     media-src 'self' https://*.supabase.co https://res.cloudinary.com https://*.mzstatic.com https://*.apple.com https://*.tenor.com https://*.giphy.com blob: data:;
     object-src 'none';
     base-uri 'self';
