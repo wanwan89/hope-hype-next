@@ -12,20 +12,20 @@
   
   /* 🔥 SINKRONISASI WARNA HIJAU WHATSAPP SULTAN 🔥 */
   --chat-self-bg: #00a884;   
-  --primary-color: #00a884; /* Ubah nama biar lebih universal, bukan biru lagi */
+  --primary-color: #00a884; 
   
   --header-bg: rgba(17, 17, 17, 0.9);
   --header-text: #ffffff;
   --input-box-bg: #1a1a1a;
 }
 
-/* Auto-adapt untuk mode terang (kalau lu pakai theme picker) */
+/* Auto-adapt untuk mode terang */
 [data-theme='light'] .hype-chat-scope {
-  --bg-main: #e5ddd5; /* Warna background khas WA Light */
+  --bg-main: #e5ddd5; 
   --bg-panel: #ffffff;
   --text-color: #111827;
   --border-color: #e2e8f0;
-  --chat-self-bg: #d9fdd3; /* Hijau muda WA Light */
+  --chat-self-bg: #d9fdd3; 
   --primary-color: #008069; 
   --header-bg: rgba(255, 255, 255, 0.95);
   --header-text: #111827;
@@ -35,6 +35,18 @@
 .hype-chat-scope * {
   font-family: 'Inter', sans-serif;
   box-sizing: border-box;
+}
+
+/* =========================================
+   🔥 ANTI-BOCOR BUTTON RESET 🔥
+   (Membunuh kotak putih dari CSS Global bawaan web lu)
+   ========================================= */
+.hype-chat-scope button {
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent; /* Hilangkan kotak biru pas ditap di HP */
 }
 
 /* =========================================
@@ -65,7 +77,6 @@
 .hype-chat-scope .chat-messages {
   flex: 1 1 auto !important;
   padding: 12px;
-  /* Kasih padding bottom lebih biar pesan terakhir gak ketutup input VN */
   padding-bottom: 140px !important; 
   overflow-y: auto;
   display: flex;
@@ -73,11 +84,11 @@
   gap: 10px;
   background: var(--bg-main);
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Hide scrollbar Firefox */
+  scrollbar-width: none; 
 }
 
 .hype-chat-scope .chat-messages::-webkit-scrollbar {
-  display: none; /* Hide scrollbar Chrome/Safari */
+  display: none; 
 }
 
 /* =========================================
@@ -103,15 +114,15 @@
 }
 
 /* =========================================
-   🔥 FIX TOMBOL SEND/MIC MENGHINDARI KONFLIK FRAMER
+   🔥 FIX TOMBOL SEND/MIC (MEMAKSA WARNA HIJAU)
    ========================================= */
 .hype-chat-scope #action-btn {
-  /* Hapus animasi CSS murni karena sudah pakai Framer Motion */
+  background-color: var(--primary-color) !important; /* Paksa warna Hijau WA */
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .hype-chat-scope #action-btn:active {
-  transform: scale(0.9) !important; /* Efek pencet hardware */
+  transform: scale(0.9) !important; 
 }
 
 /* =========================================
