@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-// 🔥 IMPORT SKELETON YANG UDAH KITA BUAT DI MESSAGEBUBBLE 🔥
 import MessageBubble, { ChatSkeleton } from './MessageBubble';
 import './ChatArea.css';
 
@@ -43,11 +42,11 @@ export default function ChatArea() {
   const [editMessageId, setEditMessageId] = useState<any>(null);
   const [relation, setRelation] = useState({ iFollowThem: false, theyFollowMe: false });
 
-  // --- VN STATES (DENGAN INDIKATOR BARU) ---
+  // --- VN STATES ---
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0); 
-  const [slideOffset, setSlideOffset] = useState(0); // Posisi geser tombol
+  const [slideOffset, setSlideOffset] = useState(0); 
   
   const isRecordingRef = useRef(false);
   const vnTouchStartX = useRef(0);
@@ -94,7 +93,6 @@ export default function ChatArea() {
       const ids = [session.user.id, fromId].sort();
       currentRoom = `pv_${ids[0]}_${ids[1]}`;
       setTargetId(fromId);
-      // Fetch target data + last_seen
       const { data: pTarget } = await supabase.from('profiles').select('username, short_id, avatar_url, role, last_seen').eq('id', fromId).single();
       if (pTarget) {
         setHeaderInfo({ title: pTarget.username, sub: `#${pTarget.short_id}`, avatar: pTarget.avatar_url, role: pTarget.role });
@@ -197,12 +195,11 @@ export default function ChatArea() {
     }));
   };
 
-  // --- 🔥 VN LOGIC & REALTIME AUDIO WAVE 🔥 ---
+  // --- VN LOGIC ---
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Setup Audio Analyzer untuk Waveform
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioContext();
       const analyser = audioCtx.createAnalyser();
@@ -257,7 +254,6 @@ export default function ChatArea() {
     refs.mediaRecorder.current?.stop();
   };
 
-  // Slide to cancel logic
   const handleTouchStart = (e: any) => { 
     if (!inputValue.trim() && !editMessageId && !pendingImagePreview) { 
       vnIsCanceled.current = false; 
@@ -272,9 +268,9 @@ export default function ChatArea() {
     const currentX = e.touches ? e.touches[0].clientX : e.clientX;
     const diff = vnTouchStartX.current - currentX;
     
-    if (diff > 0) { // Geser ke kiri
+    if (diff > 0) {
       setSlideOffset(-diff);
-      if (diff > 100) { // Threshold Batal
+      if (diff > 100) {
         vnIsCanceled.current = true;
         stopVN(true);
       }
@@ -283,7 +279,6 @@ export default function ChatArea() {
 
   const handleTouchEnd = () => stopVN(false);
 
-  // --- UI FORMATTER ---
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
@@ -307,7 +302,6 @@ export default function ChatArea() {
     else if (myRawMsgs.length > 0 && partnerRawMsgs.length === 0 && !relation.theyFollowMe) chatState = 'i_am_blocked_by_request';
   }
 
-  // --- FIX 6: Indikator Online/Last Seen ---
   let displayStatus = "";
   if (typingUser) {
     displayStatus = `${typingUser.username} mengetik...`;
@@ -321,11 +315,12 @@ export default function ChatArea() {
     <div className="flex flex-col h-[100dvh] bg-[#050505]">
       {lightboxSticker && <div className="sticker-lightbox z-[9999] fixed inset-0 bg-black/80 flex items-center justify-center" onClick={() => setLightboxSticker(null)}><img src={lightboxSticker} alt="s" className="max-w-[80%] max-h-[80%]" /></div>}
 
-      {/* --- FIX 5 & 7: HEADER RAPIH + TOMBOL KEMBALI FIX --- */}
       <header className="flex items-center justify-between px-4 py-3 bg-[#111111]/90 backdrop-blur-md border-b border-white/5 z-50 sticky top-0">
         <div className="flex items-center gap-3 w-full">
+          {/* 🔥 FIX: TOMBOL KEMBALI KEBENARANNYA (TANPA KOTAK PUTIH) 🔥 */}
           <button 
-            className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1" 
+            className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1 flex items-center justify-center" 
+            style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
             onClick={() => router.push('/hypetalk')}
           >
             <span className="material-icons text-2xl">arrow_back</span>
@@ -349,11 +344,11 @@ export default function ChatArea() {
             </span>
           </div>
           
-          {/* --- FIX 1: TOMBOL TELPON --- */}
+          {/* 🔥 FIX: TOMBOL CALL (TANPA KOTAK PUTIH) 🔥 */}
           {targetId && (
             <button 
-              className="p-2 bg-white/5 rounded-full text-gray-300 hover:text-green-400 hover:bg-white/10 transition-all cursor-pointer relative z-50 flex-shrink-0" 
-              style={{ opacity: chatState === 'normal' ? 1 : 0.3, pointerEvents: chatState === 'normal' ? 'auto' : 'none' }} 
+              className="p-2 rounded-full text-gray-300 hover:text-green-400 hover:bg-white/10 transition-all cursor-pointer relative z-50 flex-shrink-0 flex items-center justify-center" 
+              style={{ background: 'rgba(255, 255, 255, 0.05)', border: 'none', boxShadow: 'none', outline: 'none', opacity: chatState === 'normal' ? 1 : 0.3, pointerEvents: chatState === 'normal' ? 'auto' : 'none' }} 
               onClick={startCall}
             >
               <span className="material-icons text-xl">call</span>
@@ -363,7 +358,6 @@ export default function ChatArea() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 bg-[#050505]">
-        {/* 🔥 FIX PANGGIL CHATSKELETON DI SINI SAAT LOADING 🔥 */}
         {isLoading ? (
           <ChatSkeleton />
         ) : (
@@ -377,10 +371,7 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
-      {/* --- FIX 8: CHAT INPUT AREA (MODERN PILL) --- */}
       <footer className="relative bg-[#0b0c10] border-t border-white/5 p-2 px-3 z-50">
-        
-        {/* --- FIX 2: STICKER PANEL CSS --- */}
         <AnimatePresence>
           {isStickerOpen && (
             <motion.div 
@@ -404,8 +395,6 @@ export default function ChatArea() {
 
         {chatState === 'normal' ? (
           <div className="w-full flex flex-col relative">
-            
-            {/* --- FIX 3: REPLY BOX CSS --- */}
             <AnimatePresence>
               {replyTo && (
                 <motion.div 
@@ -418,7 +407,7 @@ export default function ChatArea() {
                     <span className="text-[#1f3cff] font-bold text-[11px] mb-1">Membalas {replyTo.profiles?.username || 'User'}</span>
                     <span className="text-gray-300 truncate text-xs">{replyTo.message || (replyTo.image_url ? 'Foto' : replyTo.audio_url ? 'Voice Note' : 'Stiker')}</span>
                   </div>
-                  <button onClick={() => setReplyTo(null)} className="text-gray-500 hover:text-white bg-white/5 rounded-full p-1 w-6 h-6 flex items-center justify-center">
+                  <button onClick={() => setReplyTo(null)} className="text-gray-500 hover:text-white bg-white/5 rounded-full p-1 w-6 h-6 flex items-center justify-center" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
                     <span className="material-icons text-sm">close</span>
                   </button>
                 </motion.div>
@@ -426,19 +415,14 @@ export default function ChatArea() {
             </AnimatePresence>
 
             <div className="flex items-end gap-2 w-full">
-              
-              {/* --- FIX 4: INPUT AREA & VN INDICATOR --- */}
               <div className="flex-1 bg-[#1a1a1a] rounded-[24px] flex items-center overflow-hidden border border-white/5 min-h-[48px] relative">
-                 
-                 {/* PREVIEW GAMBAR */}
                  {pendingImagePreview && (
                    <div className="p-2 relative">
                      <img src={pendingImagePreview} alt="p" className="w-16 h-16 object-cover rounded-xl border border-white/10" />
-                     <button onClick={() => setPendingImagePreview(null)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">&times;</button>
+                     <button onClick={() => setPendingImagePreview(null)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" style={{ border: 'none' }}>&times;</button>
                    </div>
                  )}
                  
-                 {/* STATE SAAT MEREKAM VN */}
                  <AnimatePresence>
                    {isRecording ? (
                      <motion.div 
@@ -451,8 +435,6 @@ export default function ChatArea() {
                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
                            <span className="text-sm font-bold tracking-widest">{formatTime(recordTime)}</span>
                         </div>
-
-                        {/* WAVEFORM ANIMATION */}
                         <div className="flex items-end gap-1 h-6">
                            {[1,2,3,4,5,6].map((i) => (
                               <motion.div 
@@ -463,7 +445,6 @@ export default function ChatArea() {
                               />
                            ))}
                         </div>
-
                         <div className="flex items-center text-gray-400 text-[11px] animate-pulse">
                            <span className="material-icons text-[14px]">keyboard_double_arrow_left</span>
                            Geser batal
@@ -471,12 +452,15 @@ export default function ChatArea() {
                      </motion.div>
                    ) : (
                      <div className="flex w-full items-center">
-                       {/* TOMBOL STIKER */}
-                       <button onClick={() => setIsStickerOpen(!isStickerOpen)} className="p-3 text-gray-400 hover:text-white transition-colors focus:outline-none">
+                       {/* 🔥 FIX: TOMBOL STIKER (TANPA KOTAK PUTIH) 🔥 */}
+                       <button 
+                         onClick={() => setIsStickerOpen(!isStickerOpen)} 
+                         className="p-3 text-gray-400 hover:text-white transition-colors focus:outline-none flex items-center justify-center"
+                         style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
+                       >
                          <span className="material-icons">sentiment_satisfied_alt</span>
                        </button>
                        
-                       {/* TEXTAREA */}
                        <textarea 
                          placeholder={t('write_message')} 
                          value={inputValue} 
@@ -486,8 +470,12 @@ export default function ChatArea() {
                          style={{ maxHeight: '100px' }}
                        />
                        
-                       {/* TOMBOL GAMBAR */}
-                       <button onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-white transition-colors focus:outline-none">
+                       {/* 🔥 FIX: TOMBOL GAMBAR (TANPA KOTAK PUTIH) 🔥 */}
+                       <button 
+                         onClick={() => fileInputRef.current?.click()} 
+                         className="p-3 text-gray-400 hover:text-white transition-colors focus:outline-none flex items-center justify-center"
+                         style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
+                       >
                          <span className="material-icons">image</span>
                        </button>
                        <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e:any) => setPendingImagePreview(URL.createObjectURL(e.target.files[0]))} />
@@ -496,11 +484,11 @@ export default function ChatArea() {
                  </AnimatePresence>
               </div>
               
-              {/* --- TOMBOL MIC / SEND (DENGAN DRAG TO CANCEL) --- */}
               <motion.button 
                 id="action-btn" 
                 animate={{ x: slideOffset }}
-                className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-lg relative border-none outline-none z-50 ${isRecording ? 'bg-red-500 scale-110' : 'bg-[#1f3cff]'}`}
+                className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-lg relative z-50 ${isRecording ? 'bg-red-500 scale-110' : 'bg-[#1f3cff]'}`}
+                style={{ border: 'none', outline: 'none' }}
                 onTouchStart={handleTouchStart} 
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -536,7 +524,6 @@ export default function ChatArea() {
                   )}
                 </AnimatePresence>
               </motion.button>
-              
             </div>
           </div>
         ) : (
