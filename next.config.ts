@@ -7,14 +7,56 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  // 🔥 FIX: swcMinify udah dihapus dari sini karena bukan properti PWA
   workboxOptions: {
     disableDevLogs: true,
   },
 });
 
+// 🔥 KONFIGURASI CSP KHUSUS SULTAN (Sesuai fitur lu)
+const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://app.sandbox.midtrans.com https://app.midtrans.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' blob: data: https://*.supabase.co https://ui-avatars.com;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.livekit.cloud wss://*.livekit.cloud https://app.sandbox.midtrans.com https://app.midtrans.com;
+    frame-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com;
+    media-src 'self' https://*.supabase.co blob: data:;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+    frame-ancestors 'none';
+    upgrade-insecure-requests;
+`.replace(/\n/g, "");
+
 const nextConfig: NextConfig = {
-  turbopack: {}, // 🔥 Tetap biarin ini biar Turbopack gak ngambek
+  turbopack: {}, 
+  // 🔥 TAMBAHKAN HEADERS DI SINI
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: cspHeader,
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains; preload",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);

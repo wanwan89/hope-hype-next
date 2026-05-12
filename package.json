@@ -13,6 +13,7 @@
     "@fingerprintjs/fingerprintjs": "^5.2.0",
     "@supabase/supabase-js": "^2.48.1",
     "canvas-confetti": "^1.9.4",
+    "framer-motion": "^12.38.0",
     "i18next": "^26.0.10",
     "i18next-browser-languagedetector": "^8.2.1",
     "livekit-client": "^2.18.9",
