@@ -3,6 +3,7 @@
 ================================================== */
 :root {
     --radar-color: #1f3cff; /* Biru HypeTalk */
+    --vh: 1vh; /* 🔥 FIX: Fallback buat JS pengukur tinggi layar */
 }
 
 /* KARENA VOICE ROOM LU DARK MODE ONLY, VARIABEL LIGHT DIHAPUS. LANGSUNG PAKAI TEMA GELAP */
@@ -18,7 +19,6 @@
     --text-main: #ffffff;       
     --text-muted: #888888;      
     --danger: #ff4757;
-    --vh: 1vh;
     
     --msg-bg: transparent; /* Karena kita mau chatnya transparan */
     --sys-bg: rgba(255, 255, 255, 0.1);
@@ -30,6 +30,11 @@
     color: var(--text-main);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    
+    /* 🔥 Kunci Container Utama agar 100% responsif */
+    width: 100%;
+    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
 }
 
 /* ==================================================
@@ -39,24 +44,54 @@
     -webkit-tap-highlight-color: transparent !important;
     outline: none !important; 
     user-select: none; 
+    box-sizing: border-box; /* 🔥 FIX: Mencegah elemen meluber keluar padding */
 }
+
 .in-voice-room input, 
 .in-voice-room textarea, 
-.in-voice-room .msg span { 
-    user-select: text; 
+.in-voice-room .msg span,
+.in-voice-room p { 
+    user-select: text; /* Biar user masih bisa copy teks chat */
 }
+
 .in-voice-room .app-container {
     display: flex;
     flex-direction: column;
     position: fixed; 
-    top: 0; left: 0; right: 0; bottom: 0; 
+    
+    /* 🔥 FIX: Bikin posisinya selalu di tengah walaupun dibuka di layar lebar (Laptop/Tablet) */
+    top: 0; 
+    left: 50%; 
+    transform: translateX(-50%);
+    
     width: 100%;
     max-width: 500px; 
-    margin: 0 auto;
     background-color: var(--bg-base);
+    
+    /* 🔥 FIX TINGGI: Pake dynamic viewport height biar gak kepotong address bar browser */
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+    
+    /* 🔥 SAFE AREA: Lindungin konten lu dari poni HP (Notch) & Home Indicator */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    
     overflow: hidden; 
-    overscroll-behavior: none; 
+    overscroll-behavior: none; /* Matiin efek narik-narik layar (pull-to-refresh) yang ganggu */
     z-index: 10;
 }
-.in-voice-room h1, .in-voice-room h2, .in-voice-room h3, .in-voice-room .room-title { letter-spacing: -0.02em; }
-.in-voice-room ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+.in-voice-room h1, 
+.in-voice-room h2, 
+.in-voice-room h3, 
+.in-voice-room .room-title { 
+    letter-spacing: -0.02em; 
+    margin: 0;
+}
+
+/* Sembunyikan scrollbar tapi tetep bisa di-scroll */
+.in-voice-room ::-webkit-scrollbar { 
+    width: 0px; 
+    background: transparent; 
+    display: none;
+}
