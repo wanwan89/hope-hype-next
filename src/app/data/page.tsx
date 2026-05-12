@@ -259,13 +259,14 @@ function ProfileContent() {
     router.push(`/post?id=${postId}#post-${postId}`);
   };
 
-  const handleAvatarClick = () => {
-    if (hasStory && storyIdToGo) {
-      router.push(`/story/${storyIdToGo}`); 
-    } else {
-      showNotif("Belum ada story terbaru", "info");
-    }
-  };
+const handleAvatarClick = () => {
+  if (hasStory && storyIdToGo) {
+    router.push(`/story/view?id=${storyIdToGo}`); // 🔥 GANTI JADI GINI 🔥
+  } else {
+    showNotif("Belum ada story terbaru", "info");
+  }
+};
+
 
 // GANTI ISI FUNGSINYA JADI GINI:
 const handleGoToChat = () => {

@@ -16,7 +16,9 @@ export default function SearchWrapperpost() {
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
 
-  const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/');
+// 🔥 GANTI JADI GINI 🔥
+const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/view');
+
 
   useEffect(() => {
     setMounted(true);
@@ -47,14 +49,15 @@ export default function SearchWrapperpost() {
     }
   };
 
-  const handleStoryClick = (sId: string) => {
-    setAnimatingStoryId(sId);
-    setClickedStoryId(sId); 
-    setTimeout(() => {
-      router.push(`/story/${sId}`);
-      setTimeout(() => setAnimatingStoryId(null), 100);
-    }, 500); 
-  };
+// 🔥 GANTI JADI GINI 🔥
+const handleStoryClick = (sId: string) => {
+  setAnimatingStoryId(sId);
+  setClickedStoryId(sId); 
+  setTimeout(() => {
+    router.push(`/story/view?id=${sId}`); // ✨ ALAMAT BARU YANG AMAN BUAT APK ✨
+    setTimeout(() => setAnimatingStoryId(null), 100);
+  }, 500); 
+};
 
   if (!mounted || isHidden) return null;
 
