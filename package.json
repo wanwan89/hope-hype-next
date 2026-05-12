@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor/core": "^8.3.3",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@fingerprintjs/fingerprintjs": "^5.2.0",
     "@supabase/supabase-js": "^2.48.1",
@@ -26,6 +27,7 @@
     "react-i18next": "^17.0.7"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.3",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
