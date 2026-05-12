@@ -1,66 +1,50 @@
 import { NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
-// 1. Inisialisasi Firebase Admin (Biar Server Lu Punya Kunci Brankas)
+// 🔥 Cegah Inisialisasi Ganda (Error umum di Next.js) 🔥
 if (!admin.apps.length) {
   try {
-    const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (serviceAccountStr) {
-      const serviceAccount = JSON.parse(serviceAccountStr);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-    }
+    // Pastikan lu udah masukin FIREBASE_SERVICE_ACCOUNT di env Vercel
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
   } catch (error) {
     console.error('Gagal inisialisasi Firebase Admin:', error);
   }
 }
 
-export async function POST(req: Request) {
+// Handler untuk metode POST (saat aplikasi nembak fetch POST)
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    const { targetToken, title, message, type, callerId, roomId, callerName } = body;
+    // Ambil data yang dikirim dari aplikasi lu
+    const body = await request.json();
+    const { token, title, body: messageBody, data } = body;
 
-    // Kalau token HP tujuan nggak ada, tolak!
-    if (!targetToken) {
-      return NextResponse.json({ error: 'Token tujuan tidak ditemukan' }, { status: 400 });
+    // Kalau token penerimanya kosong, tolak mentah-mentah
+    if (!token) {
+      return NextResponse.json({ error: 'Token tujuan (FCM) tidak ditemukan' }, { status: 400 });
     }
 
-    // 2. Rakit Isi "Surat" (Notifikasi)
-    const payload: any = {
-      token: targetToken,
+    // 📦 Bungkus "Paket" Notifikasinya
+    const message = {
+      token: token,
       notification: {
-        title: title || 'HypeTalk Globe',
-        body: message || 'Ada pesan baru!',
+        title: title || 'HypeTalk',
+        body: messageBody || 'Ada notifikasi baru buat lu, Bree!',
       },
-      data: {
-        type: type || 'room',
-        callerId: callerId || '',
-        roomId: roomId || '',
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          channelId: type === 'incoming_call' ? 'calls_channel' : 'default',
-          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-        }
-      }
+      // Data tersembunyi buat ngasih tau HP mau navigasi ke mana
+      data: data || {}, 
     };
 
-    // 3. Tambahin Tombol Khusus Kalau Ini Telpon Masuk
-    if (type === 'incoming_call') {
-      payload.android.notification.actions = [
-        { action: 'accept', title: 'Angkat 📞' },
-        { action: 'reject', title: 'Tolak ❌' }
-      ];
-    }
-
-    // 4. Kirim via Firebase
-    const response = await admin.messaging().send(payload);
+    // 🚀 Tembak ke Google Firebase!
+    const response = await admin.messaging().send(message);
     
-    return NextResponse.json({ success: true, messageId: response });
+    console.log('✅ Notif Sukses Dikirim! ID:', response);
+    return NextResponse.json({ success: true, messageId: response }, { status: 200 });
+
   } catch (error: any) {
-    console.error('Error kirim notif:', error);
+    console.error('❌ Gagal ngirim push notif:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
