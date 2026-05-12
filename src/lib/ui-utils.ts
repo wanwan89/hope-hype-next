@@ -12,6 +12,28 @@ export function getUserBadge(role: string): string {
 
   if (roleLower === "admin") {
     badge += `
+      <style>
+        @keyframes typingPencil {
+          from { width: 0 }
+          to { width: 3ch } /* 3ch karena teksnya "DEV" (3 karakter) */
+        }
+        @keyframes blinkCursor {
+          from, to { border-color: transparent }
+          50% { border-color: rgba(255,255,255,0.8) }
+        }
+        .pencil-text {
+          display: inline-block;
+          overflow: hidden;
+          white-space: nowrap;
+          border-right: 2px solid white; /* Ini kursor pensilnya */
+          width: 0;
+          animation: 
+            typingPencil 2s steps(3, end) infinite alternate,
+            blinkCursor 0.5s step-end infinite;
+          vertical-align: bottom;
+          letter-spacing: 1px;
+        }
+      </style>
       <span class="admin-badge" style="
         background: linear-gradient(135deg, #1f3cff, #bc13fe); 
         color: white; 
@@ -23,7 +45,7 @@ export function getUserBadge(role: string): string {
         align-items: center; 
         vertical-align: middle; 
         line-height: 1; 
-        font-weight: 800; 
+        font-weight: 900; 
         box-shadow: 0 2px 5px rgba(31, 60, 255, 0.4);
         border: 1px solid rgba(255,255,255,0.2);
         letter-spacing: 0.5px;
@@ -32,10 +54,10 @@ export function getUserBadge(role: string): string {
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           <polyline points="8 12 10 14 16 8"></polyline>
         </svg>
-        DEV
+        <span class="pencil-text">DEV</span>
       </span>`;
   }
-  
+
   if (roleLower === "verified") {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
