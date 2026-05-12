@@ -31,6 +31,74 @@ export default function HypetalkPage() {
     inboxChannel: useRef<any>(null),
   };
 
+  // ----------------------------------------------
+  //  FUNCTIONS
+  // ----------------------------------------------
+  const loadAllChats = async (userId: string, showLoading = true) => {
+    if (showLoading) setIsLoading(true);
+    try {
+      // Ambil obrolan pribadi (dua arah)
+      const { data: directChats, error: directError } = await supabase
+        .from('chats')
+        .select('*')
+        .or(`from.eq.${userId},to.eq.${userId}`)
+        .order('last_message_at', { ascending: false });
+
+      if (directError) throw directError;
+      setChats(directChats || []);
+
+      // Request chat (jika ada)
+      const { data: requests, error: reqError } = await supabase
+        .from('chat_requests')
+        .select('*')
+        .eq('to', userId)
+        .eq('status', 'pending');
+
+      if (!reqError) setRequestChats(requests || []);
+    } catch (err) {
+      console.error('Gagal load chat:', err);
+    } finally {
+      if (showLoading) setIsLoading(false);
+    }
+  };
+
+  const subscribeToInbox = (userId: string) => {
+    const channel = supabase
+      .channel(`inbox-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chats', filter: `to=eq.${userId}` },
+        () => {
+          loadAllChats(userId, false);
+        }
+      )
+      .subscribe();
+
+    refs.inboxChannel.current = channel;
+  };
+
+  const initUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return router.push('/login');
+
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const fullUser = { ...user, ...profile };
+    setCurrentUser(fullUser);
+
+    if (profile) {
+      setBioForm({
+        umur: profile.umur || '',
+        gender: profile.gender || 'Pria',
+        zodiak: profile.zodiak || '',
+        pekerjaan: profile.pekerjaan || '',
+        hobi: profile.hobi || '',
+      });
+    }
+
+    await loadAllChats(user.id, false);
+    subscribeToInbox(user.id);
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLimit = localStorage.getItem('doi_limit');
@@ -47,31 +115,10 @@ export default function HypetalkPage() {
     };
   }, []);
 
-  const initUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return router.push('/login');
-
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    setCurrentUser({ ...user, ...profile });
-
-    if (profile) {
-      setBioForm({
-        umur: profile.umur || '',
-        gender: profile.gender || 'Pria',
-        zodiak: profile.zodiak || '',
-        pekerjaan: profile.pekerjaan || '',
-        hobi: profile.hobi || '',
-      });
-    }
-
-    await loadAllChats(user.id, false);
-    subscribeToInbox(user.id);
+  const openModal = (modalName: string) => {
+    setActiveModal(modalName);
+    setIsSidebarOpen(false);
   };
-
-  // Semua fungsi loadAllChats, subscribeToInbox, dsb. sama seperti sebelumnya – tidak diubah.
-  // ... (kode asli loadAllChats, subscribeToInbox, dll - biarkan seperti di atas)
-
-  const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
   const closeModal = () => setActiveModal(null);
 
   const handleSaveBio = async () => {
@@ -111,6 +158,7 @@ export default function HypetalkPage() {
         openModal('doi-card');
       } catch (err) {
         setIsSearchingDoi(false);
+        showNotif("Gagal mencari, coba lagi.", "error");
       }
     }, 4000);
   };
@@ -144,14 +192,157 @@ export default function HypetalkPage() {
     }
   };
 
-  // ... fungsi handleOpenChat, handleAvatarClick, startCallFromLobby tidak berubah
+  const handleOpenChat = (chat: any) => {
+    // chat bisa punya from/to; tentukan partner id
+    const partnerId = chat.from === currentUser.id ? chat.to : chat.from;
+    router.push(`/hypetalk/room?from=${partnerId}`);
+  };
 
+  const handleAvatarClick = (profile: any) => {
+    setSelectedProfile(profile);
+    openModal('user-profile');
+  };
+
+  const startCallFromLobby = (target: any) => {
+    // Implementasi panggilan sederhana: arahkan ke room dengan flag call
+    router.push(`/hypetalk/room?from=${target.id}&call=true`);
+  };
+
+  // ----------------------------------------------
+  //  FILTER CHATS UNTUK TAMPILAN
+  // ----------------------------------------------
+  const filteredChats = chats.filter(chat => {
+    if (!searchQuery) return true;
+    const partnerId = chat.from === currentUser?.id ? chat.to : chat.from;
+    // Sederhana: filter berdasarkan id partner (short_id atau username nanti bisa ditambah)
+    return partnerId?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  // ----------------------------------------------
+  //  JIKA LOADING TAMPILKAN LOADING
+  // ----------------------------------------------
+  if (isLoading || !currentUser) {
+    return (
+      <div className="telegram-wrapper loading-screen">
+        <div className="spinner"></div>
+        <p>Memuat Hypetalk...</p>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------
+  //  RENDER UTAMA
+  // ----------------------------------------------
   return (
     <div className="telegram-wrapper">
-      {/* HEADER & LIST SAMA PERSIS, TIDAK DIUBAH */}
-      {/* ... header, main chat list, fab, sidebar ... */}
+      {/* ---------- HEADER ---------- */}
+      <div className="header">
+        <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
+          <span className="material-icons">menu</span>
+        </button>
+        <div className="header-title">
+          <h2>Hypetalk</h2>
+          {requestChats.length > 0 && (
+            <span className="badge">{requestChats.length}</span>
+          )}
+        </div>
+        <div className="header-actions">
+          <button onClick={() => openModal('search')}>
+            <span className="material-icons">search</span>
+          </button>
+        </div>
+      </div>
 
-      {/* ========= MODAL USER PROFILE (FIX) ========= */}
+      {/* ---------- SEARCH BAR (opsional) ---------- */}
+      <div className="search-bar">
+        <span className="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Cari obrolan..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* ---------- CHAT LIST ---------- */}
+      <div className="chat-list">
+        {filteredChats.length === 0 ? (
+          <div className="empty-chat">Belum ada obrolan. Cari teman baru!</div>
+        ) : (
+          filteredChats.map(chat => {
+            const partnerId = chat.from === currentUser.id ? chat.to : chat.from;
+            return (
+              <div
+                key={chat.id}
+                className="chat-item"
+                onClick={() => handleOpenChat(chat)}
+              >
+                <div className="avatar" onClick={(e) => {
+                  e.stopPropagation();
+                  handleAvatarClick({ id: partnerId, username: partnerId });
+                }}>
+                  <img
+                    src="/asets/png/profile.webp"
+                    alt="avatar"
+                    onError={e => (e.currentTarget.src = '/asets/png/profile.webp')}
+                  />
+                </div>
+                <div className="chat-info">
+                  <div className="name">{partnerId}</div>
+                  <div className="last-msg">
+                    {chat.last_message || 'Klik untuk mulai chat'}
+                  </div>
+                </div>
+                <div className="chat-meta">
+                  <span className="time">{chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ---------- FAB (Floating Action Button) ---------- */}
+      <button className="fab" onClick={() => openModal('search')}>
+        <span className="material-icons">edit</span>
+      </button>
+
+      {/* ---------- SIDEBAR (Overlay) ---------- */}
+      {isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}>
+          <div className="sidebar" onClick={e => e.stopPropagation()}>
+            <div className="sidebar-header">
+              <h3>Menu</h3>
+              <button onClick={() => setIsSidebarOpen(false)}>
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+            <ul>
+              <li onClick={() => openModal('search')}>
+                <span className="material-icons">person_add</span> Chat by ID
+              </li>
+              <li onClick={() => handleCariDoi()}>
+                <span className="material-icons">whatshot</span> Cari Doi ({sisaLimitDoi})
+              </li>
+              <li onClick={() => openModal('bio')}>
+                <span className="material-icons">edit</span> Edit Bio
+              </li>
+              <li onClick={() => openModal('group')}>
+                <span className="material-icons">group_add</span> Buat Grup
+              </li>
+              <li onClick={() => router.push('/profile')}>
+                <span className="material-icons">person</span> Profil Saya
+              </li>
+              <li onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}>
+                <span className="material-icons">logout</span> Keluar
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- MODALS ---------- */}
+      {/* Profile User */}
       {activeModal === 'user-profile' && selectedProfile && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
           <div className="tg-modal-content profile-card" onClick={e => e.stopPropagation()}>
@@ -174,8 +365,7 @@ export default function HypetalkPage() {
               </button>
               <button onClick={() => {
                 if (confirm("Blokir user ini?")) {
-                  supabase.from('blocked_users').insert({ blocker_id: currentUser.id, blocked_id: selectedProfile.id });
-                  closeModal();
+                  supabase.from('blocked_users').insert({ blocker_id: currentUser.id, blocked_id: selectedProfile.id }).then(() => closeModal());
                 }
               }}>
                 <span className="material-icons">block</span> Blokir
@@ -185,7 +375,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* ========= MODAL EDIT BIODATA (FIX + SLIDE UP) ========= */}
+      {/* Edit Bio Modal */}
       {activeModal === 'bio' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
           <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
@@ -210,7 +400,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* ========= MODAL BUAT GRUP (FIX + SLIDE UP) ========= */}
+      {/* Buat Grup Modal */}
       {activeModal === 'group' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
           <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
@@ -232,7 +422,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* ========= MODAL SEARCH ID (TETAP) ========= */}
+      {/* Search ID Modal */}
       {activeModal === 'search' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
           <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
@@ -249,7 +439,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* ========= MODAL DOI CARD (FIX) ========= */}
+      {/* Doi Card Modal */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
           <div className="tg-modal-content doi-card" onClick={e => e.stopPropagation()}>
@@ -275,7 +465,18 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* ========= ANIMASI RADAR CARI DOI (FIX) ========= */}
+      {/* Limit Doi Modal (opsional) */}
+      {activeModal === 'limit-doi' && (
+        <div className="tg-modal-overlay active" onClick={closeModal}>
+          <div className="tg-modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Limit Harian Habis</h3>
+            <p>Kamu sudah mencapai batas pencarian hari ini. Tunggu besok ya!</p>
+            <button onClick={closeModal}>OK</button>
+          </div>
+        </div>
+      )}
+
+      {/* Radar Searching Overlay */}
       {isSearchingDoi && (
         <div className="doi-search-overlay">
           <div className="radar-container">
