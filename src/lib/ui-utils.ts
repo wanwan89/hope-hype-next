@@ -13,31 +13,40 @@ export function getUserBadge(role: string): string {
   if (roleLower === "admin") {
     badge += `
       <style>
-        @keyframes typingPencil {
-          from { width: 0 }
-          to { width: 3ch } /* 3ch karena teksnya "DEV" (3 karakter) */
+        /* Animasi gambar garis (coretan) */
+        @keyframes drawScribble {
+          to { stroke-dashoffset: 0; }
         }
-        @keyframes blinkCursor {
-          from, to { border-color: transparent }
-          50% { border-color: rgba(255,255,255,0.8) }
+        /* Efek getar halus biar kayak coretan tangan beneran */
+        @keyframes jitterSketch {
+          0% { transform: translate(0,0) rotate(0deg); }
+          25% { transform: translate(0.5px, -0.5px) rotate(0.2deg); }
+          50% { transform: translate(-0.5px, 0.5px) rotate(-0.2deg); }
+          75% { transform: translate(0.3px, 0.3px) rotate(0.1deg); }
+          100% { transform: translate(0,0) rotate(0deg); }
         }
-        .pencil-text {
-          display: inline-block;
-          overflow: hidden;
-          white-space: nowrap;
-          border-right: 2px solid white; /* Ini kursor pensilnya */
-          width: 0;
-          animation: 
-            typingPencil 2s steps(3, end) infinite alternate,
-            blinkCursor 0.5s step-end infinite;
-          vertical-align: bottom;
-          letter-spacing: 1px;
+        .scribble-svg {
+          width: 32px; 
+          height: 12px; 
+          margin-left: 2px;
+          vertical-align: middle;
+          animation: jitterSketch 0.2s infinite;
+        }
+        .scribble-path {
+          stroke: white;
+          stroke-width: 2.5;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          fill: none;
+          stroke-dasharray: 50;
+          stroke-dashoffset: 50;
+          animation: drawScribble 1.5s ease-out forwards;
         }
       </style>
       <span class="admin-badge" style="
         background: linear-gradient(135deg, #1f3cff, #bc13fe); 
         color: white; 
-        padding: 2px 6px; 
+        padding: 2px 8px; 
         border-radius: 6px; 
         font-size: 10px; 
         margin-left: 5px; 
@@ -46,15 +55,20 @@ export function getUserBadge(role: string): string {
         vertical-align: middle; 
         line-height: 1; 
         font-weight: 900; 
-        box-shadow: 0 2px 5px rgba(31, 60, 255, 0.4);
+        box-shadow: 0 2px 8px rgba(31, 60, 255, 0.5);
         border: 1px solid rgba(255,255,255,0.2);
         letter-spacing: 0.5px;
       ">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           <polyline points="8 12 10 14 16 8"></polyline>
         </svg>
-        <span class="pencil-text">DEV</span>
+        
+        <svg class="scribble-svg" viewBox="0 0 60 20">
+          <path class="scribble-path" d="M5 4v12 M5 4c8 0 10 3 10 6s-2 6-10 6" />
+          <path class="scribble-path" style="animation-delay: 0.4s" d="M22 4v12 M22 4h8 M22 10h6 M22 16h8" />
+          <path class="scribble-path" style="animation-delay: 0.8s" d="M38 4l5 12 5-12" />
+        </svg>
       </span>`;
   }
 
