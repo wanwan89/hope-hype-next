@@ -15,11 +15,9 @@
   --tg-primary: #1f3cff; 
   --tg-hover: #f9fafb;
 
-  position: absolute; 
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* FIX: Pake fixed biar kebal dari gangguan keyboard & PWA safe */
+  position: fixed; 
+  inset: 0;
   margin: 0 auto; 
   width: 100%; 
   max-width: 480px; 
@@ -28,13 +26,14 @@
   flex-direction: column; 
   background: var(--tg-bg); 
   box-shadow: 0 0 20px rgba(0,0,0,0.05); 
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; 
+  transition: background-color 0.3s ease; 
   overflow: hidden; 
+  z-index: 10;
 }
 
-/* 🔥 FIX: Transisi Global Biar Semua Elemen Smooth Saat Ganti Tema 🔥 */
-.telegram-wrapper * {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, box-shadow 0.3s ease;
+/* 🔥 FIX: Optimasi Transisi (Hanya pada elemen yang butuh, bukan semuanya '*') 🔥 */
+.tg-header, .tg-chat-item, .tg-sidebar, .tg-modal-content, .tg-search-box {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* 🔥 Dark mode */
@@ -62,8 +61,8 @@ html.dark .telegram-wrapper {
 .tg-header-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
 .tg-header-left { display: flex; align-items: center; gap: 16px; }
 .tg-header-left h2 { font-size: 20px; font-weight: 700; color: var(--tg-text); margin: 0; }
-.icon-btn { background: none; border: none; color: var(--tg-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: transform 0.2s ease, background-color 0.3s ease, color 0.3s ease; -webkit-tap-highlight-color: transparent; }
-.icon-btn:active { background: transparent; transform: scale(0.95); }
+.icon-btn { background: none; border: none; color: var(--tg-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: transform 0.2s ease; -webkit-tap-highlight-color: transparent; }
+.icon-btn:active { transform: scale(0.95); }
 
 /* SEARCH */
 .tg-search-container { padding: 4px 16px 12px; }
@@ -79,11 +78,15 @@ html.dark .telegram-wrapper {
   flex: 1; 
   overflow-y: auto; 
   padding-bottom: 110px; 
-  -webkit-overflow-scrolling: touch; 
+  -webkit-overflow-scrolling: touch;
+  /* FIX: Biar scroll super smooth di HP */
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+  will-change: scroll-position;
 }
 .tg-chat-list::-webkit-scrollbar { width: 0; display: none; } 
 
-.tg-chat-item { display: flex; align-items: center; gap: 14px; padding: 10px 16px; cursor: pointer; user-select: none; position: relative; animation: fadeIn 0.3s ease forwards; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s ease; }
+.tg-chat-item { display: flex; align-items: center; gap: 14px; padding: 10px 16px; cursor: pointer; user-select: none; position: relative; animation: fadeIn 0.3s ease forwards; -webkit-tap-highlight-color: transparent; }
 .tg-chat-item:active { background: var(--tg-hover); }
 .tg-avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: none !important; }
 .global-avatar { background: linear-gradient(135deg, #1f3cff, #007bb5); display: flex; align-items: center; justify-content: center; color: white; }
@@ -103,9 +106,9 @@ html.dark .telegram-wrapper {
 .tg-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.9) !important;
-  backdrop-filter: none !important;
-  z-index: 99990;
+  background: rgba(0,0,0,0.85) !important; /* Kurangi dikit biar ga terlalu pekat */
+  backdrop-filter: blur(4px) !important; /* Tambahin blur dikit biar premium */
+  z-index: 100000;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -122,7 +125,6 @@ html.dark .telegram-wrapper {
   animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
   flex-direction: column;
-  z-index: 99991;
 }
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(30px); }
@@ -153,9 +155,9 @@ html.dark .telegram-wrapper {
 
 /* ========== FAB BUTTON ========== */
 .tg-fab { 
-  position: absolute; 
+  position: fixed; 
   bottom: calc(95px + env(safe-area-inset-bottom)); 
-  right: 20px; 
+  right: max(20px, calc(50% - 220px)); /* Sesuaiin posisi kalau layar lebar */
   width: 56px; height: 56px; border-radius: 50%; background: var(--tg-primary); border: none; color: white; 
   box-shadow: 0 4px 14px rgba(31, 60, 255, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; 
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50; 
@@ -169,7 +171,7 @@ html.dark .telegram-wrapper {
   inset: 0; 
   background: rgba(0,0,0,0.6); 
   backdrop-filter: blur(4px); 
-  z-index: 99990; 
+  z-index: 100010; 
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -189,10 +191,10 @@ html.dark .telegram-wrapper {
   max-width: 320px; 
   background: var(--tg-bg); 
   transform: translateX(calc(-50% - 100vw)); 
-  z-index: 99991; 
+  z-index: 100011; 
   display: flex; 
   flex-direction: column; 
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1), background-color 0.3s ease, border-color 0.3s ease; 
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1), background-color 0.3s ease; 
   box-shadow: 5px 0 25px rgba(0,0,0,0.2);
 }
 .tg-sidebar.open { transform: translateX(-50%); } 
@@ -213,8 +215,8 @@ html.dark .telegram-wrapper {
 
 /* Sidebar menu */
 .sidebar-menu { display: flex; flex-direction: column; padding: 10px 0; overflow-y: auto; }
-.menu-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: transparent; border: none; font-size: 15px; font-weight: 600; color: var(--tg-text); cursor: pointer; text-align: left; outline: none; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s ease, transform 0.1s ease; }
-.menu-item:active { background: transparent; transform: scale(0.98); }
+.menu-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: transparent; border: none; font-size: 15px; font-weight: 600; color: var(--tg-text); cursor: pointer; text-align: left; outline: none; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s ease; }
+.menu-item:active { background: var(--tg-bg-secondary); }
 .menu-item .material-icons { color: var(--tg-text-muted); }
 .btn-cari-doi { color: var(--tg-primary) !important; justify-content: space-between; }
 .btn-cari-doi .material-icons { color: var(--tg-primary) !important; }

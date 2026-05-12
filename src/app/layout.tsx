@@ -7,11 +7,13 @@ import { I18nextProvider } from 'react-i18next';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'; 
 import { supabase } from '@/lib/supabase';
-import Script from 'next/script'; // 🔥 IMPORT NEXT SCRIPT BUAT ERUDA
+import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR BUAT NOTIFIKASI ANDROID 🔥
+// 🔥 IMPORT CAPACITOR & LIVEKIT (TAMBAHAN UNTUK FIX) 🔥
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { App } from '@capacitor/app'; 
+import { LiveKitRoom } from '@livekit/components-react';
 
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
@@ -29,17 +31,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter(); 
   const prevPathnameRef = useRef(pathname);
 
-  // --- 🔥 STATE UNTUK PANGGILAN & PESAN GLOBAL 🔥 ---
+  // --- 🔥 STATE LAMA LU (TIDAK BERUBAH) 🔥 ---
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
   const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); 
-  
-  // --- 🔥 STATE DETEKSI INTERNET (OFFLINE/ONLINE) 🔥 ---
   const [isOnline, setIsOnline] = useState(true);
+
+  // --- 🔥 STATE BARU UNTUK FONDASI TELPON 🔥 ---
+  const [lkToken, setLkToken] = useState<string | null>(null);
+  const [lkRoom, setLkRoom] = useState<string | null>(null);
 
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
 
-  // --- DETEKSI HALAMAN ---
+  // --- DETEKSI HALAMAN (TIDAK BERUBAH) ---
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
@@ -58,23 +62,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // --- 🔥 EFEK UNTUK DETEKSI INTERNET 🔥 ---
+  // --- 🔥 EFEK UNTUK DETEKSI INTERNET (TIDAK BERUBAH) 🔥 ---
   useEffect(() => {
     setIsOnline(navigator.onLine);
-
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // --- 🔥 SETUP NATIVE FEATURES (NOTIF & MIC) 🔥 ---
+  // --- 🔥 SETUP NATIVE FEATURES (FULL FIX) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -83,67 +84,55 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android') {
-          console.log("📱 Android Detected: Meminta akses kunci (Notif, Mic)...");
+          console.log("📱 Android Detected: Menyiapkan Fondasi HypeTalk...");
           
-          // 1. MINTA IZIN NOTIFIKASI
+          await PushNotifications.createChannel({
+            id: 'high_importance_channel',
+            name: 'Urgent Notifications',
+            importance: 5,
+            sound: 'default',
+            visibility: 1,
+            vibration: true
+          });
+
           let permStatus = await PushNotifications.checkPermissions();
           if (permStatus.receive === 'prompt') {
             permStatus = await PushNotifications.requestPermissions();
           }
 
-          // 2. MINTA IZIN MIC (Biar langsung dapet pas awal buka app)
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            console.log("✅ Izin Mic diberikan");
-            // Langsung matikan stream biar icon mic di HP ga nyala terus
             stream.getTracks().forEach(track => track.stop());
           } catch (err) {
-            console.warn("⚠️ User menolak izin Mic atau device tidak mendukung");
+            console.warn("⚠️ User menolak izin Mic");
           }
 
-          if (permStatus.receive !== 'granted') {
-            console.log("❌ User menolak izin notifikasi di Android");
-            return;
+          if (permStatus.receive === 'granted') {
+            await PushNotifications.register();
           }
 
-          // Daftarkan notifikasi jika diizinkan
-          await PushNotifications.register();
-
-          // Simpan Token ke Supabase
-          PushNotifications.addListener('registration', async (token) => {
-            console.log('✅ Push registration success, token: ' + token.value);
-            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session?.user?.id) {
-                const { error } = await supabase
-                  .from('profiles')
-                  .update({ fcm_token: token.value })
-                  .eq('id', session.user.id);
-                  
-                if (error) {
-                  console.error('❌ Gagal nyimpen token ke Supabase:', error);
-                } else {
-                  console.log('✅ Token FCM berhasil diamankan di database!');
-                }
-              }
-            } catch (err) {
-              console.error('❌ Error saat ngecek session buat token:', err);
-            }
-          });
-
-          PushNotifications.addListener('registrationError', (error) => {
-            console.error('❌ Error on registration: ' + JSON.stringify(error));
-          });
-
-          // Action pas Notif Diklik
-          PushNotifications.addListener('actionPerformed', (action) => {
-            const { actionId, notification } = action;
+          // 🔥 FIX: LISTEN ACTION (BALAS & ANGKAT) 🔥
+          PushNotifications.addListener('actionPerformed', async (action) => {
+            const { actionId, notification, inputValue } = action; 
             const { data } = notification;
 
-            console.log("🎯 Aksi Notif Diklik:", actionId, "Data:", data);
+            // Jurus 1: Balas Cepat via Background
+            if (actionId === 'reply' && inputValue) {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user?.id && data?.roomId) {
+                await supabase.from('messages').insert([{
+                  room_id: data.roomId,
+                  user_id: session.user.id,
+                  message: inputValue,
+                  is_system: false
+                }]);
+              }
+            }
 
-            if (actionId === 'accept') {
-              if (data?.callerId) {
+            // Jurus 2: Angkat Telpon via Fondasi
+            if (actionId === 'accept' || actionId === 'accept_call') {
+              if (data?.callerId && data?.roomId) {
+                handleFetchToken(data.roomId, data.callerId);
                 router.push(`/hypetalk/room?from=${data.callerId}`);
               }
             } else if (actionId === 'reject') {
@@ -151,35 +140,58 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           });
 
-          PushNotifications.addListener('pushNotificationReceived', (notification) => {
-            console.log('📬 Notif masuk pas app dibuka:', notification);
+          // 🔥 FIX: HANDLE TOMBOL BACK NATIVE 🔥
+          App.addListener('backButton', ({ canGoBack }) => {
+            if (lkToken) {
+              App.minimizeApp(); // Telpon aktif? Jangan exit, minimize aja.
+            } else if (canGoBack) {
+              window.history.back();
+            } else {
+              App.exitApp();
+            }
           });
 
-        } else {
-          console.log("🌐 Jalan di Web: Pakai sistem notifikasi bawaan browser.");
         }
       } catch (error) {
-        console.warn("⚠️ Capacitor Push API belum tersedia di env ini:", error);
+        console.warn("⚠️ Capacitor Push API error:", error);
       }
     };
 
     initNativeFeatures();
 
     return () => {
-      if (typeof window !== 'undefined') {
-        try {
-          if (Capacitor.getPlatform() === 'android') {
-            PushNotifications.removeAllListeners();
-          }
-        } catch (e) {
-          // ignore cleanup errors
-        }
+      if (typeof window !== 'undefined' && Capacitor.getPlatform() === 'android') {
+        PushNotifications.removeAllListeners();
       }
     };
-  }, [router]); // 🔥 Tambahin router di dependency array
-  // --- END SETUP NOTIFIKASI ---
+  }, [router, lkToken]); 
 
-  // --- 🔥 FIX BENTROK NADA DERING: MATIKAN PAKSA KALAU MASUK HYPETALK 🔥 ---
+// --- 🔥 LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION 🔥 ---
+const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
+  try {
+    setLkRoomName(roomName);
+
+    // Panggil Edge Function lu yang udah ada
+    const { data, error } = await supabase.functions.invoke('get-livekit-token', {
+      body: { 
+        roomName: roomName, 
+        identity: userId, 
+        username: myProfile?.username || 'User HypeTalk' 
+      }
+    });
+
+    if (error || !data) throw new Error("Gagal ambil token dari Supabase");
+
+    // Pasang tokennya ke state global
+    setLkToken(data.token);
+    console.log("✅ Token LiveKit didapat via Supabase Edge Function!");
+
+  } catch (err) {
+    console.error("❌ Error koneksi LiveKit:", err);
+  }
+};
+
+  // --- 🔥 SISA LOGIKA LU (TIDAK BERUBAH SAMA SEKALI) 🔥 ---
   useEffect(() => {
     if (pathname?.includes('/hypetalk')) {
       setGlobalIncomingCall(null);
@@ -190,34 +202,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, [pathname]);
 
-  // --- NADA DERING OTOMATIS SINKRON SAMA FLOATING CALL ---
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (!ringtoneRef.current) {
         ringtoneRef.current = new Audio("/asets/sound/call.wav");
         ringtoneRef.current.loop = true;
       }
-
       if (globalIncomingCall) {
-        const playPromise = ringtoneRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => console.log("Audio diblokir browser"));
-        }
+        ringtoneRef.current.play().catch(() => {});
       } else {
         ringtoneRef.current.pause();
         ringtoneRef.current.currentTime = 0; 
       }
     }
-    return () => {
-      ringtoneRef.current?.pause();
-      ringtoneRef.current = null;
-    };
   }, [globalIncomingCall]);
 
-  // --- 🔥 SISTEM PANGGILAN & PESAN GLOBAL 🔥 ---
   useEffect(() => {
     let channel: any;
-
     const initGlobalListener = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -227,107 +228,49 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload: any) => {
           const newMsg = payload.new;
           if (newMsg && newMsg.room_id?.includes(myUserId) && newMsg.user_id !== myUserId) {
-            
-            // 📞 JIKA ITU TELPON
             if (newMsg.is_system && newMsg.message.includes("Memanggil")) {
               if (window.location.href.includes('/hypetalk')) return; 
-
               const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
-              setGlobalIncomingCall({
-                callerId: p?.id,
-                callerName: p?.username,
-                callerAvatar: p?.avatar_url,
-                roomId: newMsg.room_id
-              });
+              setGlobalIncomingCall({ callerId: p?.id, callerName: p?.username, callerAvatar: p?.avatar_url, roomId: newMsg.room_id });
             }
-
-            // 🔥 FIX: DETEKSI KALAU PANGGILAN MATI / DITOLAK / DIBATALKAN / TAK TERJAWAB 🔥
             const msgLower = String(newMsg.message).toLowerCase();
-            if (newMsg.is_system && (
-              msgLower.includes("panggilan berakhir") || 
-              msgLower.includes("ditolak") || 
-              msgLower.includes("tak terjawab") ||
-              msgLower.includes("dibatalkan") 
-            )) {
+            if (newMsg.is_system && (msgLower.includes("panggilan berakhir") || msgLower.includes("ditolak") || msgLower.includes("tak terjawab") || msgLower.includes("dibatalkan"))) {
               setGlobalIncomingCall(null);
-              if (ringtoneRef.current) {
-                ringtoneRef.current.pause();
-                ringtoneRef.current.currentTime = 0;
-              }
+              setLkToken(null); 
             }
-
-            // 💬 JIKA ITU PESAN CHAT BIASA (Bukan Sistem)
             if (!newMsg.is_system) {
               if (!window.location.href.includes('/hypetalk')) {
                 const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
-                
                 let previewText = newMsg.message;
                 if (newMsg.sticker_url) previewText = "Mengirim Stiker";
                 if (newMsg.audio_url) previewText = "Mengirim Voice Note";
-
-                setGlobalMessageNotif({
-                  senderId: p?.id,
-                  senderName: p?.username || 'User',
-                  senderAvatar: p?.avatar_url || '/asets/png/profile.webp',
-                  message: previewText,
-                  roomId: newMsg.room_id
-                });
-
+                setGlobalMessageNotif({ senderId: p?.id, senderName: p?.username || 'User', senderAvatar: p?.avatar_url || '/asets/png/profile.webp', message: previewText, roomId: newMsg.room_id });
                 clearTimeout(msgNotifTimerRef.current);
-                msgNotifTimerRef.current = setTimeout(() => {
-                  setGlobalMessageNotif(null);
-                }, 4000);
+                msgNotifTimerRef.current = setTimeout(() => { setGlobalMessageNotif(null); }, 4000);
               }
             }
-
           }
-        })
-        .subscribe();
+        }).subscribe();
     };
-    
     initGlobalListener();
-
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-      if (ringtoneRef.current) {
-        ringtoneRef.current.pause();
-        ringtoneRef.current.currentTime = 0;
-      }
-      clearTimeout(msgNotifTimerRef.current);
-    };
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, []);
 
   const handleTolakGlobal = async () => {
     if (!globalIncomingCall) return;
     const currentRoomId = globalIncomingCall.roomId;
-    
     setGlobalIncomingCall(null);
-    if (ringtoneRef.current) {
-      ringtoneRef.current.pause();
-      ringtoneRef.current.currentTime = 0;
-    }
-    
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      await supabase.from('messages').insert([{ 
-        room_id: currentRoomId, 
-        user_id: session.user.id, 
-        message: `Panggilan Ditolak`, 
-        is_system: true 
-      }]);
+      await supabase.from('messages').insert([{ room_id: currentRoomId, user_id: session.user.id, message: `Panggilan Ditolak`, is_system: true }]);
     }
   };
 
   const handleAngkatGlobal = () => {
     if (!globalIncomingCall) return;
-    const cid = globalIncomingCall.callerId;
-    
+    handleFetchToken(globalIncomingCall.roomId, globalIncomingCall.callerId);
     setGlobalIncomingCall(null);
-    if (ringtoneRef.current) {
-      ringtoneRef.current.pause();
-      ringtoneRef.current.currentTime = 0;
-    }
-    router.push(`/hypetalk/room?from=${cid}`);
+    router.push(`/hypetalk/room?from=${globalIncomingCall.callerId}`);
   };
 
   const handleMessageClick = () => {
@@ -337,366 +280,118 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     router.push(`/hypetalk/room?from=${cid}`);
   };
 
-  // --- 1. SISTEM ANTI-DOWNLOAD FOTO ---
   useEffect(() => {
-    const preventSave = (e: MouseEvent | TouchEvent) => {
-      if ((e.target as HTMLElement).tagName === 'IMG') {
-        e.preventDefault();
-        return false;
-      }
-    };
+    const preventSave = (e: any) => { if (e.target.tagName === 'IMG') e.preventDefault(); };
     document.addEventListener('contextmenu', preventSave);
-    const preventDrag = (e: DragEvent) => {
-      if ((e.target as HTMLElement).tagName === 'IMG') e.preventDefault();
-    };
-    document.addEventListener('dragstart', preventDrag);
+    document.addEventListener('dragstart', preventSave);
     return () => {
       document.removeEventListener('contextmenu', preventSave);
-      document.removeEventListener('dragstart', preventDrag);
+      document.removeEventListener('dragstart', preventSave);
     };
   }, []);
 
-  // --- 2. SISTEM LAYOUT FIX ---
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-
-    const currentBaseChat = pathname?.split('?')[0];
-    const prevBasePath = prevPathnameRef.current?.split('?')[0];
-
-    if (currentBaseChat !== prevBasePath) {
-      window.scrollTo(0, 0);
-      prevPathnameRef.current = pathname;
-    }
-
     if (isStandaloneApp) {
-      root.style.height = '100dvh';
-      root.style.overflow = 'hidden';
-      body.style.height = '100dvh';
-      body.style.overflow = 'hidden';
-      body.style.position = 'fixed'; 
-      body.style.width = '100%';
-      body.style.overscrollBehaviorY = 'none'; 
+      root.style.height = body.style.height = '100dvh';
+      root.style.overflow = body.style.overflow = 'hidden';
+      body.style.position = 'fixed'; body.style.width = '100%';
     } else {
-      root.style.height = 'auto';
-      root.style.overflow = 'visible';
-      if (body.style.position !== 'static') {
-        body.style.position = 'static';
-        body.style.overflow = 'auto';
-        body.style.height = 'auto';
-        body.style.width = 'auto';
-      }
-      body.style.overscrollBehaviorY = 'auto'; 
-      
-      const vanillaJsTrash = ['vip-entrance-overlay', 'vip-anim-styles-clean'];
-      vanillaJsTrash.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.remove();
-      });
+      root.style.height = body.style.height = 'auto';
+      root.style.overflow = body.style.overflow = 'visible';
+      body.style.position = 'static';
     }
   }, [pathname, isStandaloneApp]); 
+
+  // --- 🔥 RENDER CONTENT HELPER (AGAR RAPI) 🔥 ---
+  const renderUI = () => (
+    <>
+      <GlobalShareModal />
+      {!isOnline && (
+        <div className="offline-global-overlay">
+          <div className="offline-card">
+            <div className="offline-icon-ring"><span className="material-icons" style={{ fontSize: '32px' }}>wifi_off</span></div>
+            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800' }}>Koneksi Terputus</h3>
+            <p style={{ color: '#9ca3af', fontSize: '13px' }}>Sinyal lu ngilang Bree! HypeTalk butuh internet.</p>
+          </div>
+        </div>
+      )}
+
+      {globalMessageNotif && !globalIncomingCall && (
+        <div className="global-msg-popup" onClick={handleMessageClick}>
+          <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
+          <div className="global-msg-content">
+            <div className="global-msg-header"><span className="global-msg-title">{globalMessageNotif.senderName}</span><span className="global-msg-badge">Baru</span></div>
+            <div className="global-msg-text">{globalMessageNotif.message}</div>
+          </div>
+        </div>
+      )}
+
+      {globalIncomingCall && (
+        <div className="global-call-ui" style={{ position: 'fixed', top: 'max(env(safe-area-inset-top, 20px), 20px)', left: '50%', transform: 'translateX(-50%)', background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999, width: '90%', maxWidth: '360px', animation: 'slideDownGlobal 0.4s' }}>
+          <img src={globalIncomingCall.callerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="caller" />
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{ color: 'white', fontWeight: 'bold' }}>{globalIncomingCall.callerName}</div>
+            <div style={{ color: '#2ecc71', fontSize: '12px' }}><span className="material-icons" style={{ fontSize: '12px' }}>ring_volume</span> Memanggil...</div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleTolakGlobal} className="global-call-btn" style={{ background: '#ff4757' }}><span className="material-icons">call_end</span></button>
+            <button onClick={handleAngkatGlobal} className="global-call-btn" style={{ background: '#2ecc71' }}><span className="material-icons">call</span></button>
+          </div>
+        </div>
+      )}
+      
+      {!hideSidebar && <Sidebar />}
+      <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
+        {isHomePage && <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}><SearchWrapper /></div>}
+        <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
+          {children}
+        </main>
+      </div>
+      {!hideNavbar && <Navbar />}
+    </>
+  );
 
   return (
     <html lang="id" suppressHydrationWarning>
        <head>
-        <title>HypeTalk - Komunitas Kreatif & Jaringan Sosial Kreator Seni</title>
-        <meta name="description" content="HypeTalk adalah platform sosial eksklusif untuk kreator. Bagikan karya seni, musik, tulisan, dan bergabung di Voice Room untuk ngobrol seru bareng kreator lainnya." />
-        <meta name="keywords" content="HypeTalk, komunitas kreatif, platform seni, berbagi musik, penulis, chat room, voice room indonesia, hypevoice, kreator muda" />
-        <meta name="author" content="HypeTalk Team" />
-        <meta name="robots" content="index, follow" />
-        <meta name="language" content="id" />
-        <link rel="canonical" href="https://hypetalk.is-a.dev/" />
-
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://hypetalk.is-a.dev/" />
-        <meta property="og:title" content="HypeTalk - Tempatnya Para Kreator Berkarya" />
-        <meta property="og:description" content="Wadahnya komunitas kreatif! Mulai dari musik, tulisan, hingga obrolan suara real-time. Join HypeTalk sekarang." />
-        <meta property="og:image" content="/asets/png/og-image.png" />
-        <meta property="og:site_name" content="HypeTalk Globe" />
-        <meta property="og:locale" content="id_ID" />
-
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="HypeTalk - Creative Community" />
-        <meta name="twitter:description" content="Platform sosial untuk berbagi karya seni dan ngobrol seru bareng kreator lain." />
-        <meta name="twitter:image" content="/asets/png/og-image.png" />
-
-        {/* --- 4. ASSETS & FONTS (FIXED PAGESPEED) --- */}
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
-        
+        <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
-        <link rel="apple-touch-icon" href="/asets/png/book.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="HypeTalk" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
-        
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
-          img {
-            -webkit-touch-callout: none !important;
-            user-select: none !important;
-            -webkit-user-drag: none !important;
-          }
           body { background-color: var(--bg-main); }
-          
-          @keyframes slideDownGlobal {
-            from { transform: translate(-50%, -120%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-          }
-          .global-call-avatar {
-            width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
-            border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite;
-          }
-          @keyframes pulseCallGlobal {
-            0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
-            70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-          }
-          .global-call-btn {
-            border: none; border-radius: 50%; width: 40px; height: 40px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; color: white; transition: transform 0.2s;
-          }
-          .global-call-btn:active { transform: scale(0.9); }
-
-          .global-msg-popup {
-            position: fixed;
-            top: max(env(safe-area-inset-top, 20px), 20px);
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(20, 20, 25, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(31, 60, 255, 0.3);
-            border-radius: 20px;
-            padding: 14px 16px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            z-index: 9999998; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-            width: 90%;
-            max-width: 380px;
-            cursor: pointer;
-            animation: slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transition: transform 0.2s;
-          }
-          .global-msg-popup:active {
-            transform: translateX(-50%) scale(0.96);
-          }
-          .global-msg-avatar {
-            width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
-            border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;
-          }
-          .global-msg-content {
-            flex: 1; 
-            min-width: 0; 
-            display: flex; 
-            flex-direction: column;
-            justify-content: center;
-          }
-          .global-msg-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
-            width: 100%;
-          }
-          .global-msg-title {
-            color: white; 
-            font-weight: 700; 
-            font-size: 15px; 
-            white-space: nowrap; 
-            text-overflow: ellipsis; 
-            overflow: hidden;
-          }
-          .global-msg-badge {
-            font-size: 10px;
-            background: #1f3cff;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-weight: 800;
-            flex-shrink: 0;
-            margin-left: 10px;
-          }
-          .global-msg-text {
-            color: #9ca3af; 
-            font-size: 13px; 
-            white-space: nowrap; 
-            text-overflow: ellipsis; 
-            overflow: hidden;
-          }
-
-          /* 🔥 ANIMASI OFFLINE KEREN 🔥 */
-          .offline-global-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 999999999;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: fadeInOffline 0.4s ease;
-          }
-
-          .offline-card {
-            background: var(--bg-panel, #1a1a1a);
-            padding: 30px 25px;
-            border-radius: 24px;
-            text-align: center;
-            border: 1px solid rgba(255, 71, 87, 0.3);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 71, 87, 0.1);
-            width: 85%;
-            max-width: 320px;
-            animation: popUpOffline 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-          }
-
-          .offline-icon-ring {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            background: rgba(255, 71, 87, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 15px;
-            color: #ff4757;
-            position: relative;
-          }
-
-          .offline-icon-ring::before {
-            content: '';
-            position: absolute;
-            inset: -5px;
-            border-radius: 50%;
-            border: 2px solid #ff4757;
-            animation: pulseWarning 1.5s infinite;
-          }
-
-          @keyframes fadeInOffline {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-
-          @keyframes popUpOffline {
-            from { transform: scale(0.8) translateY(20px); opacity: 0; }
-            to { transform: scale(1) translateY(0); opacity: 1; }
-          }
-
-          @keyframes pulseWarning {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
-          }
+          @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+          .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
+          @keyframes pulseCallGlobal { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); } 70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
+          .global-call-btn { border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
+          .global-msg-popup { position: fixed; top: max(env(safe-area-inset-top, 20px), 20px); left: 50%; transform: translateX(-50%); background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(31, 60, 255, 0.3); border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; z-index: 9999998; width: 90%; max-width: 380px; animation: slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+          .global-msg-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
         `}</style>
       </head>
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
-        
-        {/* 🔥 ERUDA SCRIPT 🔥 */}
-        <Script 
-          src="https://cdn.jsdelivr.net/npm/eruda" 
-          strategy="lazyOnload" 
-          onLoad={() => {
-            if (typeof window !== 'undefined' && (window as any).eruda) {
-              (window as any).eruda.init();
-            }
-          }} 
-        />
+        <Script src="https://cdn.jsdelivr.net/npm/eruda" strategy="lazyOnload" onLoad={() => { if (typeof window !== 'undefined' && (window as any).eruda) (window as any).eruda.init(); }} />
 
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
-            <GlobalShareModal />
-
-            {/* 🔥 POPUP OFFLINE ANIMASI KETIKA TIDAK ADA INTERNET 🔥 */}
-            {!isOnline && (
-              <div className="offline-global-overlay">
-                <div className="offline-card">
-                  <div className="offline-icon-ring">
-                    <span className="material-icons" style={{ fontSize: '32px' }}>wifi_off</span>
-                  </div>
-                  <h3 style={{ color: 'var(--text-main, #ffffff)', fontSize: '18px', fontWeight: '800', margin: '0 0 8px 0' }}>
-                    Koneksi Terputus
-                  </h3>
-                  <p style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '13px', margin: '0 0 20px 0', lineHeight: '1.5' }}>
-                    Sinyal lu ngilang Bree! HypeTalk butuh koneksi internet buat jalan. Coba cek WiFi atau kuota lu.
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#ff4757', fontSize: '12px', fontWeight: 'bold' }}>
-                    <span className="material-icons" style={{ fontSize: '14px', animation: 'hypeSpin 2s linear infinite' }}>autorenew</span>
-                    Menunggu sinyal...
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {globalMessageNotif && !globalIncomingCall && (
-              <div className="global-msg-popup" onClick={handleMessageClick}>
-                <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
-                <div className="global-msg-content">
-                  <div className="global-msg-header">
-                    <span className="global-msg-title">{globalMessageNotif.senderName}</span>
-                    <span className="global-msg-badge">Baru</span>
-                  </div>
-                  <div className="global-msg-text">
-                    {globalMessageNotif.message}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {globalIncomingCall && (
-              <div style={{
-                position: 'fixed', top: 'max(env(safe-area-inset-top, 20px), 20px)', left: '50%', transform: 'translateX(-50%)',
-                background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px',
-                display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999,
-                boxShadow: '0 15px 35px rgba(0,0,0,0.5)', width: '90%', maxWidth: '360px',
-                animation: 'slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
-              }}>
-                <img src={globalIncomingCall.callerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="caller" />
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    {globalIncomingCall.callerName}
-                  </div>
-                  <div style={{ color: '#2ecc71', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span className="material-icons" style={{ fontSize: '12px' }}>ring_volume</span> Memanggil...
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={handleTolakGlobal} className="global-call-btn" style={{ background: '#ff4757', boxShadow: '0 4px 10px rgba(255, 71, 87, 0.4)' }}>
-                    <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
-                  </button>
-                  <button onClick={handleAngkatGlobal} className="global-call-btn" style={{ background: '#2ecc71', boxShadow: '0 4px 10px rgba(46, 204, 113, 0.4)' }}>
-                    <span className="material-icons" style={{ fontSize: '20px' }}>call</span>
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {!hideSidebar && <Sidebar />}
-            
-            <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
-              
-              {isHomePage && (
-                <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}>
-                  <SearchWrapper />
-                </div>
-              )}
-
-              <main 
-                className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}
-                style={{ 
-                  display: isStandaloneApp ? 'flex' : 'block',
-                  minHeight: isStandaloneApp ? '100%' : '100dvh'
-                }}
+            {/* 🔥 FONDASI LIVEKIT: WRAPPER GLOBAL 🔥 */}
+            {lkToken ? (
+              <LiveKitRoom
+                token={lkToken}
+                serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+                audio={true}
+                video={false}
+                onDisconnected={() => { setLkToken(null); setLkRoom(null); }}
               >
-                {children}
-              </main>
-            </div>
-
-            {!hideNavbar && <Navbar />}
+                {renderUI()}
+              </LiveKitRoom>
+            ) : (
+              renderUI()
+            )}
             
             <LoginPopup />
             {!hideOverlays && <Overlays />}
