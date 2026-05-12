@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 
-// 🔥 FIX WAJIB 1: Paksa route ini agar tidak di-scan secara statis saat build
-export const dynamic = 'force-dynamic';
+// 🛑 HAPUS 'export const dynamic = force-dynamic' KARENA LU PAKE OUTPUT: EXPORT
+// Next.js bakal otomatis nanggepin route API ini sebagai dinamis di Vercel
 
 export async function POST(request: Request) {
   try {
-    // --- 🛠️ 1. INISIALISASI FIREBASE (DI DALAM FUNGSI) ---
+    // --- 🛠️ 1. INISIALISASI FIREBASE ---
     if (!admin.apps.length) {
       const fbServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
       if (fbServiceAccount) {
@@ -17,23 +17,25 @@ export async function POST(request: Request) {
             credential: admin.credential.cert(serviceAccount),
           });
         } catch (e) {
-          console.error("🚨 Gagal parse Firebase Service Account");
+          console.error("🚨 Gagal parse Firebase");
         }
       }
     }
 
-    // --- 🛠️ 2. INISIALISASI SUPABASE (DI DALAM FUNGSI) ---
-    // Ini rahasianya biar build APK lu nggak "Failed to collect page data"
+    // --- 🛠️ 2. INISIALISASI SUPABASE ---
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    // Tambahkan pengaman: Kalau variabel kosong, jangan paksakan error, 
+    // biar proses build statis (APK) tetep lanjut
     if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({ error: 'Konfigurasi Server Belum Lengkap' }, { status: 500 });
+      console.warn("⚠️ Env vars missing, API Push mungkin tidak jalan di mode build statis");
+      return NextResponse.json({ error: 'Config missing' }, { status: 500 });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // --- 📦 3. LOGIKA NOTIFIKASI (TIDAK BERUBAH) ---
+    // --- 📦 3. LOGIKA NOTIFIKASI ---
     const body = await request.json();
     const { targetToken, callerId, type, message, roomId, postId } = body;
 
@@ -51,43 +53,37 @@ export async function POST(request: Request) {
     const senderName = profile?.username || 'User HypeTalk';
     const senderPhoto = profile?.avatar_url || 'https://hypetalk.is-a.dev/default-avatar.png';
 
-    // Logika Agregasi (Mila dan X lainnya)
     let dynamicTitle = senderName;
     let dynamicBody = message || 'Ada interaksi baru.';
 
     if ((type === 'like' || type === 'comment') && postId) {
-      const { count, error: countError } = await supabase
+      const { count } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', postId)
         .eq('type', type)
         .eq('is_read', false);
 
-      if (!countError && count && count > 0) {
+      if (count && count > 0) {
         dynamicTitle = `${senderName} dan ${count} lainnya`;
       }
     }
 
-    // Logika Kalimat Clean
     if (type === 'like') dynamicBody = `menyukai postingan Anda.`;
     else if (type === 'comment') dynamicBody = `mengomentari: "${message}"`;
     else if (type === 'follow') dynamicBody = `mulai mengikuti Anda.`;
     else if (type === 'call') dynamicBody = `Memanggil Anda di HypeTalk...`;
 
-    // --- 🚀 4. KIRIM PAYLOAD KE FCM ---
+    // --- 🚀 4. PAYLOAD FCM ---
     const messagePayload: any = {
       token: targetToken,
-      notification: {
-        title: dynamicTitle,
-        body: dynamicBody,
-        image: senderPhoto,
-      },
+      notification: { title: dynamicTitle, body: dynamicBody, image: senderPhoto },
       android: {
-        priority: 'high' as const,
+        priority: 'high',
         notification: {
           channelId: 'high_importance_channel',
-          priority: 'high' as const,
-          importance: 'high' as const,
+          priority: 'high',
+          importance: 'high',
           sound: 'default',
           largeIcon: senderPhoto,
           color: '#1f3cff',
@@ -103,7 +99,6 @@ export async function POST(request: Request) {
       },
     };
 
-    // Tombol Aksi Native
     if (type === 'call') {
       messagePayload.android.notification.actions = [
         { action: 'accept_call', title: 'Angkat' },
@@ -116,11 +111,9 @@ export async function POST(request: Request) {
     }
 
     const response = await admin.messaging().send(messagePayload);
-    
     return NextResponse.json({ success: true, messageId: response }, { status: 200 });
 
   } catch (error: any) {
-    console.error('❌ [SERVER ERROR]:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

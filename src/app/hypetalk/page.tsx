@@ -28,9 +28,10 @@ export default function HypetalkPage() {
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [isBlocking, setIsBlocking] = useState(false);
 
-  // --- REFS (HANYA UNTUK LOGIKA NON-CALL) ---
+  // --- 🔥 REFS FIX: Menambahkan inboxChannel untuk cleanup channel ---
   const refs = {
-    callTimeout: useRef<any>(null)
+    callTimeout: useRef<any>(null),
+    inboxChannel: useRef<any>(null)
   };
 
   useEffect(() => {
@@ -39,9 +40,14 @@ export default function HypetalkPage() {
       if (savedLimit) setSisaLimitDoi(parseInt(savedLimit));
     }
     initUser();
+    
+    // --- 🔥 FIX: Cleanup channel saat keluar dari halaman Hypetalk ---
     return () => {
       setIsSidebarOpen(false);
       setActiveModal(null);
+      if (refs.inboxChannel.current) {
+        supabase.removeChannel(refs.inboxChannel.current);
+      }
     };
   }, []);
 
@@ -175,8 +181,14 @@ export default function HypetalkPage() {
     } catch (err) { console.error(err); } finally { if (!isBackground) setIsLoading(false); }
   };
 
+  // --- 🔥 FIX: LOGIKA SUBSCRIBE YANG BERSIH ---
   const subscribeToInbox = (userId: string) => {
-    supabase.channel(`inbox-lobby-${userId}`)
+    // Hapus channel lama jika ada untuk mencegah error 'cannot add callbacks after subscribe'
+    if (refs.inboxChannel.current) {
+      supabase.removeChannel(refs.inboxChannel.current);
+    }
+    
+    refs.inboxChannel.current = supabase.channel(`inbox-lobby-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadAllChats(userId, true))
       .subscribe();
   };
@@ -305,7 +317,9 @@ export default function HypetalkPage() {
         )) : filteredChats.map(chat => (
           <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
             <div className="tg-avatar global-avatar" onClick={(e) => handleAvatarClick(e, chat.id, chat.type)}>
-              {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
+              {/* 🔥 FIX 1: Jaga ukuran avatar di list biar gak mbleber 🔥 */}
+              {chat.type === 'global' ? <span className="material-icons">public</span> : 
+              <img src={chat.avatar || "/asets/png/profile.webp"} className="w-12 h-12 rounded-full object-cover flex-shrink-0" style={{ width: '48px', height: '48px', minWidth: '48px' }} alt="av" />}
             </div>
             <div className="tg-chat-info" style={{ flex: 1, minWidth: 0 }}>
               <div className="tg-chat-top">
@@ -326,7 +340,8 @@ export default function HypetalkPage() {
       <div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
       <aside className={`tg-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <img className="side-avatar" src={currentUser?.avatar_url || "/asets/png/profile.webp"} alt="me" />
+          {/* 🔥 FIX 2: Kunci avatar sidebar 🔥 */}
+          <img className="side-avatar w-16 h-16 rounded-full object-cover mx-auto border-2 border-white/20" style={{width: '64px', height: '64px'}} src={currentUser?.avatar_url || "/asets/png/profile.webp"} alt="me" />
           <div className="sidebar-user-info"><h3 className="side-username">{currentUser?.username || "User"}</h3><p className="side-id">#{currentUser?.short_id || "0000"}</p></div>
           <button className="btn-edit-bio" onClick={() => openModal('bio')}>Edit Biodata</button>
         </div>
@@ -336,18 +351,37 @@ export default function HypetalkPage() {
         </div>
       </aside>
 
-      {/* MODAL USER PROFILE (WA STYLE) */}
+      {/* 🔥 FIX 3: MODAL USER PROFILE (WA STYLE) YANG TIDAK AKAN MELEDAK 🔥 */}
       {activeModal === 'user-profile' && selectedProfile && (
-        <div className="tg-modal-overlay flex items-center justify-center" onClick={closeModal}>
-          <div className="wa-profile-card" onClick={e => e.stopPropagation()}>
-            <div className="wa-profile-img-container">
-              <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} className="wa-profile-img" alt="p" />
-              <div className="wa-profile-name-bar"><h2 className="text-white text-lg font-bold">{selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}</h2></div>
+        <div className="tg-modal-overlay flex items-center justify-center fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm" onClick={closeModal}>
+          <div className="wa-profile-card bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-2xl w-[280px] sm:w-[320px] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="wa-profile-img-container relative w-full aspect-square bg-gray-800">
+              
+              <img 
+                src={selectedProfile.avatar_url || "/asets/png/profile.webp"} 
+                className="wa-profile-img w-full h-full object-cover block" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                alt="p" 
+              />
+              
+              <div className="wa-profile-name-bar absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+                <h2 className="text-white text-xl font-bold drop-shadow-md">{selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}</h2>
+              </div>
             </div>
-            <div className="wa-profile-actions">
-              <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }} className="wa-action-btn text-blue-400"><span className="material-icons">chat</span>Chat</button>
-              <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="wa-action-btn text-green-400"><span className="material-icons">call</span>Telpon</button>
-              <button onClick={() => { if(confirm("Blokir user?")) supabase.from('blocked_users').insert({ blocker_id: currentUser.id, blocked_id: selectedProfile.id }).then(()=>closeModal()); }} className="wa-action-btn text-red-400"><span className="material-icons">block</span>Blokir</button>
+            
+            <div className="wa-profile-actions flex justify-around p-4 bg-[#232323]">
+              <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }} className="wa-action-btn flex flex-col items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors">
+                <span className="material-icons text-2xl">chat</span>
+                <span className="text-[10px] font-semibold uppercase">Chat</span>
+              </button>
+              <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="wa-action-btn flex flex-col items-center gap-1 text-green-400 hover:text-green-300 transition-colors">
+                <span className="material-icons text-2xl">call</span>
+                <span className="text-[10px] font-semibold uppercase">Telpon</span>
+              </button>
+              <button onClick={() => { if(confirm("Blokir user?")) supabase.from('blocked_users').insert({ blocker_id: currentUser.id, blocked_id: selectedProfile.id }).then(()=>closeModal()); }} className="wa-action-btn flex flex-col items-center gap-1 text-red-400 hover:text-red-300 transition-colors">
+                <span className="material-icons text-2xl">block</span>
+                <span className="text-[10px] font-semibold uppercase">Blokir</span>
+              </button>
             </div>
           </div>
         </div>
@@ -359,7 +393,7 @@ export default function HypetalkPage() {
           <div className="tg-modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header"><h3>Kecocokan Ditemukan!</h3><button onClick={closeModal}><span className="material-icons">close</span></button></div>
             <div className="text-center p-4">
-              <img src={foundDoi.avatar_url || "/asets/png/profile.webp"} className="w-24 h-24 rounded-full mx-auto border-4 border-blue-500 shadow-lg" alt="d" />
+              <img src={foundDoi.avatar_url || "/asets/png/profile.webp"} className="w-24 h-24 rounded-full mx-auto border-4 border-blue-500 shadow-lg object-cover" style={{width: '96px', height: '96px'}} alt="d" />
               <h2 className="text-xl font-bold mt-4">{foundDoi.username}, {foundDoi.umur || '??'}</h2>
               <div className="flex flex-wrap justify-center gap-2 mt-4">
                 {foundDoi.pekerjaan && <span className="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold">{foundDoi.pekerjaan}</span>}

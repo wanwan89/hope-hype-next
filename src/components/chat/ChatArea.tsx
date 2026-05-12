@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 TAMBAHAN FRAMER MOTION
 import MessageBubble from './MessageBubble';
 import './ChatArea.css';
 
@@ -31,7 +32,7 @@ export default function ChatArea() {
 
   const [replyTo, setReplyTo] = useState<any>(null);
   const [isStickerOpen, setIsStickerOpen] = useState(false);
-  const [stickers, setStickers] = useState<any[]>([]);
+  const [stickers, setStickers] = useState<any[]>([]); // Array stiker lu (bisa diisi URL gambar)
   
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
@@ -177,20 +178,19 @@ export default function ChatArea() {
     const { error } = await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: messagePreview, sticker_url: sticker || null, audio_url: audio || null, image_url: image || null, reply_to: replyTo?.id || null, status: 'sent' }]);
     
     if (!error) { 
-      setInputValue(''); setReplyTo(null); setIsStickerOpen(false); 
+      setInputValue(''); setReplyTo(null); setIsStickerOpen(false); setPendingImagePreview(null);
       if (targetId) triggerPushNotification('chat', myProfile?.username || 'Pesan Baru', messagePreview);
     }
   };
 
   const startCall = () => {
     if (!targetId) return;
-    // 🔥 TRIGGER EVENT KE LAYOUT.TSX 🔥
     window.dispatchEvent(new CustomEvent('init-global-call', { 
       detail: { roomId, targetId, partnerName: headerInfo.title, partnerAvatar: headerInfo.avatar } 
     }));
   };
 
-  // --- VN LOGIC (Keep Local) ---
+  // --- VN LOGIC ---
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -221,7 +221,7 @@ export default function ChatArea() {
     refs.mediaRecorder.current?.stop();
   };
 
-  const handleMicTouchStart = (e: any) => { if (!inputValue.trim() && !editMessageId && !pendingImage) { setIsMicPressed(true); vnIsCanceled.current = false; startVN(); } };
+  const handleMicTouchStart = (e: any) => { if (!inputValue.trim() && !editMessageId && !pendingImagePreview) { setIsMicPressed(true); vnIsCanceled.current = false; startVN(); } };
 
   // --- UI HELPERS ---
   let chatState = 'normal';
@@ -239,12 +239,21 @@ export default function ChatArea() {
       {lightboxSticker && <div className="sticker-lightbox" onClick={() => setLightboxSticker(null)}><img src={lightboxSticker} alt="s" /></div>}
 
       <header className="chat-header">
-        <div className="header-left">
+        <div className="header-left flex items-center gap-3">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
-          {targetId && <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" className="header-avatar" />}
-          <div className="header-info">
-            <h3 className="flex items-center gap-1">{headerInfo.title} {targetId && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}</h3>
-            <span className={typingUser ? "status-typing" : "status-online"}>{displayStatus}</span>
+          
+          {targetId && (
+            <img 
+              src={headerInfo.avatar || '/asets/png/profile.webp'} 
+              alt="avatar" 
+              className="header-avatar w-10 h-10 rounded-full object-cover flex-shrink-0 border border-white/10 shadow-sm" 
+              style={{ width: '40px', height: '40px', minWidth: '40px' }} 
+            />
+          )}
+          
+          <div className="header-info overflow-hidden">
+            <h3 className="flex items-center gap-1 font-semibold truncate text-white">{headerInfo.title} {targetId && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}</h3>
+            <span className={`text-xs ${typingUser ? "status-typing text-[#1f3cff] font-medium" : "status-online text-gray-400"}`}>{displayStatus}</span>
           </div>
         </div>
         <div className="header-right">
@@ -264,23 +273,133 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
-      <footer className="chat-input-container">
+      {/* 🔥 CONTAINER BAWAH: Menggunakan relative agar panel stiker & reply bisa menumpang sempurna 🔥 */}
+      <footer className="chat-input-container relative z-10">
+        
+        {/* --- 1. FIX UI STICKER PANEL --- */}
+        <AnimatePresence>
+          {isStickerOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-full mb-3 left-4 right-4 bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 shadow-xl max-h-48 overflow-y-auto z-50 backdrop-blur-md"
+            >
+              <div className="grid grid-cols-4 gap-3">
+                {stickers.length > 0 ? (
+                  stickers.map((s, i) => (
+                    <img key={i} src={s} alt="sticker" className="w-full h-auto cursor-pointer hover:scale-110 transition-transform" onClick={() => sendMessage(undefined, s)} />
+                  ))
+                ) : (
+                  <p className="col-span-4 text-center text-gray-500 text-xs py-4">Belum ada stiker tersedia.</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {chatState === 'normal' ? (
-          <div className="input-row">
-            <div className="input-group-wrapper">
-               {pendingImagePreview && <div className="preview-box"><img src={pendingImagePreview} alt="p" /><span onClick={() => setPendingImagePreview(null)}>&times;</span></div>}
-               <div className="flex w-full items-center">
-                 <button onClick={() => { setIsStickerOpen(!isStickerOpen); }} className="p-2"><span className="material-icons">sentiment_satisfied_alt</span></button>
-                 <textarea placeholder={t('write_message')} value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="flex-1 bg-transparent border-none outline-none p-2" />
-                 <button onClick={() => fileInputRef.current?.click()} className="p-2"><span className="material-icons">image</span></button>
-                 <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e:any) => setPendingImagePreview(URL.createObjectURL(e.target.files[0]))} />
-               </div>
+          <div className="w-full flex flex-col">
+            
+            {/* --- 2. FIX UI REPLY BOX --- */}
+            <AnimatePresence>
+              {replyTo && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center justify-between bg-white/5 border-l-4 border-[#1f3cff] p-3 mb-2 mx-2 rounded-lg text-sm backdrop-blur-sm"
+                >
+                  <div className="flex flex-col truncate pr-2">
+                    <span className="text-[#1f3cff] font-bold text-xs mb-0.5">Membalas {replyTo.profiles?.username || 'User'}</span>
+                    <span className="text-gray-300 truncate text-xs">{replyTo.message || (replyTo.image_url ? 'Foto' : replyTo.audio_url ? 'Voice Note' : 'Stiker')}</span>
+                  </div>
+                  <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white p-1">
+                    <span className="material-icons text-sm">close</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* --- BAGIAN INPUT UTAMA --- */}
+            <div className="input-row flex items-end gap-2 w-full">
+              <div className="input-group-wrapper flex-1 bg-white/5 rounded-3xl flex flex-col overflow-hidden border border-white/10">
+                 
+                 {pendingImagePreview && (
+                   <div className="preview-box p-2 relative">
+                     <img src={pendingImagePreview} alt="p" className="w-20 h-20 object-cover rounded-xl" />
+                     <button onClick={() => setPendingImagePreview(null)} className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs translate-x-1 -translate-y-1">&times;</button>
+                   </div>
+                 )}
+                 
+                 <div className="flex w-full items-center min-h-[48px]">
+                   <button 
+                     onClick={() => setIsStickerOpen(!isStickerOpen)} 
+                     className="p-3 flex items-center justify-center text-gray-400 hover:text-white transition-colors outline-none border-none bg-transparent"
+                   >
+                     <span className="material-icons">sentiment_satisfied_alt</span>
+                   </button>
+                   
+                   <textarea 
+                     placeholder={t('write_message')} 
+                     value={inputValue} 
+                     onChange={(e) => setInputValue(e.target.value)} 
+                     className="flex-1 bg-transparent border-none outline-none py-3 text-white resize-none text-sm" 
+                     rows={1}
+                     style={{ maxHeight: '100px' }}
+                   />
+                   
+                   <button 
+                     onClick={() => fileInputRef.current?.click()} 
+                     className="p-3 flex items-center justify-center text-gray-400 hover:text-white transition-colors outline-none border-none bg-transparent"
+                   >
+                     <span className="material-icons">image</span>
+                   </button>
+                   
+                   <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e:any) => setPendingImagePreview(URL.createObjectURL(e.target.files[0]))} />
+                 </div>
+              </div>
+              
+              {/* --- 3. FIX ANIMASI FRAMER MOTION PADA TOMBOL ACTION --- */}
+              <button 
+                id="action-btn" 
+                className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-[#1f3cff] text-white shadow-lg overflow-hidden relative border-none outline-none"
+                onMouseDown={handleMicTouchStart} 
+                onMouseUp={() => stopVN(false)} 
+                onClick={() => (inputValue || pendingImagePreview) && sendMessage()}
+              >
+                <AnimatePresence mode="wait">
+                  {(inputValue || pendingImagePreview) ? (
+                    <motion.span
+                      key="send"
+                      initial={{ scale: 0, rotate: -45, opacity: 0 }}
+                      animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                      exit={{ scale: 0, rotate: 45, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      className="material-icons absolute"
+                    >
+                      send
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="mic"
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      className="material-icons absolute"
+                    >
+                      mic
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+              
             </div>
-            <button id="action-btn" onMouseDown={handleMicTouchStart} onMouseUp={() => stopVN(false)} onClick={() => (inputValue || pendingImagePreview) && sendMessage()}>
-               <span className="material-icons">{ (inputValue || pendingImagePreview) ? 'send' : 'mic' }</span>
-            </button>
           </div>
-        ) : <div className="p-4 text-center text-sm text-gray-500">Selesaikan permintaan pesan untuk mengobrol.</div>}
+        ) : (
+          <div className="p-4 text-center text-sm text-gray-500 w-full">Selesaikan permintaan pesan untuk mengobrol.</div>
+        )}
       </footer>
     </div>
   );
