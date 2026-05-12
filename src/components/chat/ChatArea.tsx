@@ -195,7 +195,6 @@ export default function ChatArea() {
     }));
   };
 
-  // --- VN LOGIC ---
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -306,63 +305,68 @@ export default function ChatArea() {
   if (typingUser) {
     displayStatus = `${typingUser.username} mengetik...`;
   } else if (groupId) {
-    displayStatus = `${onlineCount} member online`;
+    displayStatus = `${onlineCount} hopers sedang online`;
   } else if (targetId) {
     displayStatus = onlineCount >= 2 ? 'Online' : `Terakhir dilihat: ${formatLastSeen(targetLastSeen)}`;
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#050505]">
+    <div className="flex flex-col h-[100dvh] bg-[#0b141a]">
       {lightboxSticker && <div className="sticker-lightbox z-[9999] fixed inset-0 bg-black/80 flex items-center justify-center" onClick={() => setLightboxSticker(null)}><img src={lightboxSticker} alt="s" className="max-w-[80%] max-h-[80%]" /></div>}
 
-      <header className="flex items-center justify-between px-4 py-3 bg-[#111111]/90 backdrop-blur-md border-b border-white/5 z-50 sticky top-0">
+      <header className="flex items-center justify-between px-4 py-2.5 bg-[#1f2c34] z-50 sticky top-0 shadow-sm">
         <div className="flex items-center gap-3 w-full">
-          {/* 🔥 FIX: TOMBOL KEMBALI KEBENARANNYA (TANPA KOTAK PUTIH) 🔥 */}
           <button 
-            className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1 flex items-center justify-center" 
+            className="text-gray-300 hover:text-white transition-colors cursor-pointer p-1 flex items-center justify-center" 
             style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
             onClick={() => router.push('/hypetalk')}
           >
-            <span className="material-icons text-2xl">arrow_back</span>
+            <span className="material-icons text-[26px]">arrow_back</span>
           </button>
           
           {targetId && (
             <img 
               src={headerInfo.avatar || '/asets/png/profile.webp'} 
               alt="avatar" 
-              className="rounded-full object-cover border border-white/10 shadow-sm" 
-              style={{ width: '42px', height: '42px', minWidth: '42px' }} 
+              className="rounded-full object-cover border border-transparent shadow-sm" 
+              style={{ width: '40px', height: '40px', minWidth: '40px' }} 
             />
           )}
           
           <div className="flex flex-col overflow-hidden flex-1">
-            <h3 className="flex items-center gap-1 font-semibold truncate text-white text-[15px]">
+            <h3 className="flex items-center gap-1 font-medium truncate text-white text-[17px]">
               {headerInfo.title} {targetId && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
-            <span className={`text-[11px] truncate ${typingUser ? "text-[#1f3cff] font-medium" : onlineCount >= 2 ? "text-[#2ecc71]" : "text-gray-500"}`}>
+            <span className={`text-[12px] truncate ${typingUser ? "text-[#1da1f2]" : "text-[#8696a0]"}`}>
               {displayStatus}
             </span>
           </div>
           
-          {/* 🔥 FIX: TOMBOL CALL (TANPA KOTAK PUTIH) 🔥 */}
           {targetId && (
             <button 
-              className="p-2 rounded-full text-gray-300 hover:text-green-400 hover:bg-white/10 transition-all cursor-pointer relative z-50 flex-shrink-0 flex items-center justify-center" 
-              style={{ background: 'rgba(255, 255, 255, 0.05)', border: 'none', boxShadow: 'none', outline: 'none', opacity: chatState === 'normal' ? 1 : 0.3, pointerEvents: chatState === 'normal' ? 'auto' : 'none' }} 
+              className="p-1 rounded-full text-white transition-all cursor-pointer relative z-50 flex-shrink-0 flex items-center justify-center" 
+              style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none', opacity: chatState === 'normal' ? 1 : 0.3, pointerEvents: chatState === 'normal' ? 'auto' : 'none' }} 
               onClick={startCall}
             >
-              <span className="material-icons text-xl">call</span>
+              <span className="material-icons text-[24px]">call</span>
             </button>
           )}
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 bg-[#050505]">
+      <main className="flex-1 overflow-y-auto p-4 bg-[#0b141a]">
         {isLoading ? (
           <ChatSkeleton />
         ) : (
           <>
-            <div className="text-center mb-6"><span className="inline-flex items-center gap-1 text-[10px] bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-full"><span className="material-icons text-[12px]">lock</span> Pesan terenkripsi end-to-end</span></div>
+            {/* 🔥 KOTAK KUNING ENKRIPSI ORIGINAL 🔥 */}
+            <div className="flex justify-center mb-6 mt-2">
+               <div className="bg-[#ffeebd] text-[#544336] rounded-lg p-3 text-[11.5px] leading-[1.4] text-center shadow-sm flex items-start gap-2 max-w-[85%] font-medium">
+                 <span className="material-icons text-[14px] mt-[1px]">lock</span>
+                 <p>Pesan dan panggilan dienkripsi secara end-to-end. Tidak ada orang di luar chat ini yang dapat membaca atau mendengarkannya.</p>
+               </div>
+            </div>
+            
             {messages.map((msg) => (
               <MessageBubble key={msg.id} msg={msg} currentUser={currentUser} isMe={msg.user_id === currentUser?.id} onReply={setReplyTo} roomId={roomId} />
             ))}
@@ -371,14 +375,14 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
-      <footer className="relative bg-[#0b0c10] border-t border-white/5 p-2 px-3 z-50">
+      <footer className="relative bg-[#0b141a] p-2 px-3 pb-3 z-50">
         <AnimatePresence>
           {isStickerOpen && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-full left-3 right-3 mb-3 bg-[#151515] border border-white/10 rounded-2xl p-4 shadow-2xl max-h-60 overflow-y-auto z-[60]"
+              className="absolute bottom-full left-3 right-3 mb-3 bg-[#1f2c34] border border-white/10 rounded-2xl p-4 shadow-2xl max-h-60 overflow-y-auto z-[60]"
             >
               <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
                 {stickers.length > 0 ? (
@@ -386,7 +390,7 @@ export default function ChatArea() {
                     <img key={i} src={s} alt="sticker" className="w-full h-auto cursor-pointer hover:scale-110 transition-transform bg-white/5 rounded-lg p-1" onClick={() => sendMessage(undefined, s)} />
                   ))
                 ) : (
-                  <p className="col-span-full text-center text-gray-500 text-xs py-6 font-medium">Belum ada stiker tersedia.</p>
+                  <p className="col-span-full text-center text-gray-400 text-xs py-6 font-medium">Belum ada stiker tersedia.</p>
                 )}
               </div>
             </motion.div>
@@ -401,13 +405,13 @@ export default function ChatArea() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-[#1a1a1a] border-l-4 border-[#1f3cff] rounded-xl p-3 mb-2 flex items-center justify-between shadow-md"
+                  className="bg-[#1f2c34] border-l-4 border-[#1da1f2] rounded-xl p-3 mb-2 flex items-center justify-between shadow-md"
                 >
                   <div className="flex flex-col truncate pr-4">
-                    <span className="text-[#1f3cff] font-bold text-[11px] mb-1">Membalas {replyTo.profiles?.username || 'User'}</span>
+                    <span className="text-[#1da1f2] font-bold text-[11px] mb-1">Membalas {replyTo.profiles?.username || 'User'}</span>
                     <span className="text-gray-300 truncate text-xs">{replyTo.message || (replyTo.image_url ? 'Foto' : replyTo.audio_url ? 'Voice Note' : 'Stiker')}</span>
                   </div>
-                  <button onClick={() => setReplyTo(null)} className="text-gray-500 hover:text-white bg-white/5 rounded-full p-1 w-6 h-6 flex items-center justify-center" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                  <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white bg-white/5 rounded-full p-1 w-6 h-6 flex items-center justify-center" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
                     <span className="material-icons text-sm">close</span>
                   </button>
                 </motion.div>
@@ -415,7 +419,7 @@ export default function ChatArea() {
             </AnimatePresence>
 
             <div className="flex items-end gap-2 w-full">
-              <div className="flex-1 bg-[#1a1a1a] rounded-[24px] flex items-center overflow-hidden border border-white/5 min-h-[48px] relative">
+              <div className="flex-1 bg-[#1f2c34] rounded-[24px] flex items-center overflow-hidden min-h-[48px] relative shadow-sm">
                  {pendingImagePreview && (
                    <div className="p-2 relative">
                      <img src={pendingImagePreview} alt="p" className="w-16 h-16 object-cover rounded-xl border border-white/10" />
@@ -452,10 +456,9 @@ export default function ChatArea() {
                      </motion.div>
                    ) : (
                      <div className="flex w-full items-center">
-                       {/* 🔥 FIX: TOMBOL STIKER (TANPA KOTAK PUTIH) 🔥 */}
                        <button 
                          onClick={() => setIsStickerOpen(!isStickerOpen)} 
-                         className="p-3 text-gray-400 hover:text-white transition-colors focus:outline-none flex items-center justify-center"
+                         className="p-3 text-[#8696a0] hover:text-white transition-colors focus:outline-none flex items-center justify-center"
                          style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
                        >
                          <span className="material-icons">sentiment_satisfied_alt</span>
@@ -465,15 +468,14 @@ export default function ChatArea() {
                          placeholder={t('write_message')} 
                          value={inputValue} 
                          onChange={(e) => setInputValue(e.target.value)} 
-                         className="flex-1 bg-transparent border-none outline-none py-3 text-white resize-none text-[14px]" 
+                         className="flex-1 bg-transparent border-none outline-none py-3 text-white resize-none text-[15px]" 
                          rows={1}
                          style={{ maxHeight: '100px' }}
                        />
                        
-                       {/* 🔥 FIX: TOMBOL GAMBAR (TANPA KOTAK PUTIH) 🔥 */}
                        <button 
                          onClick={() => fileInputRef.current?.click()} 
-                         className="p-3 text-gray-400 hover:text-white transition-colors focus:outline-none flex items-center justify-center"
+                         className="p-3 text-[#8696a0] hover:text-white transition-colors focus:outline-none flex items-center justify-center"
                          style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
                        >
                          <span className="material-icons">image</span>
@@ -487,7 +489,7 @@ export default function ChatArea() {
               <motion.button 
                 id="action-btn" 
                 animate={{ x: slideOffset }}
-                className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-lg relative z-50 ${isRecording ? 'bg-red-500 scale-110' : 'bg-[#1f3cff]'}`}
+                className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-md relative z-50 ${isRecording ? 'bg-red-500 scale-110' : 'bg-[#1da1f2]'}`}
                 style={{ border: 'none', outline: 'none' }}
                 onTouchStart={handleTouchStart} 
                 onTouchMove={handleTouchMove}
@@ -527,7 +529,7 @@ export default function ChatArea() {
             </div>
           </div>
         ) : (
-          <div className="p-4 text-center text-sm text-gray-500 w-full bg-[#1a1a1a] rounded-xl">Menunggu persetujuan chat...</div>
+          <div className="p-4 text-center text-sm text-gray-500 w-full bg-[#1f2c34] rounded-xl">Menunggu persetujuan chat...</div>
         )}
       </footer>
     </div>

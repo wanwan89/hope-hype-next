@@ -1,35 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* =========================================
-   🔥 SUNTIKAN WARNA UTAMA (WRAPPER SCOPE) 🔥
-   ========================================= */
 .hype-chat-scope {
-  --bg-main: #050505;
-  --bg-panel: #111111;
-  --text-color: #ffffff;
-  --text-muted: #64748b;
+  --bg-main: #0b141a;
+  --bg-panel: #1f2c34;
+  --text-color: #e9edef;
+  --text-muted: #8696a0;
   --border-color: rgba(255, 255, 255, 0.05);
-  
-  /* 🔥 SINKRONISASI WARNA HIJAU WHATSAPP SULTAN 🔥 */
-  --chat-self-bg: #00a884;   
-  --primary-color: #00a884; 
-  
-  --header-bg: rgba(17, 17, 17, 0.9);
-  --header-text: #ffffff;
-  --input-box-bg: #1a1a1a;
-}
-
-/* Auto-adapt untuk mode terang */
-[data-theme='light'] .hype-chat-scope {
-  --bg-main: #e5ddd5; 
-  --bg-panel: #ffffff;
-  --text-color: #111827;
-  --border-color: #e2e8f0;
-  --chat-self-bg: #d9fdd3; 
-  --primary-color: #008069; 
-  --header-bg: rgba(255, 255, 255, 0.95);
-  --header-text: #111827;
-  --input-box-bg: #ffffff;
+  --chat-self-bg: #1da1f2;   
+  --primary-color: #1da1f2; 
+  --header-bg: #1f2c34;
+  --header-text: #e9edef;
+  --input-box-bg: #1f2c34;
 }
 
 .hype-chat-scope * {
@@ -37,21 +18,14 @@
   box-sizing: border-box;
 }
 
-/* =========================================
-   🔥 ANTI-BOCOR BUTTON RESET 🔥
-   (Membunuh kotak putih dari CSS Global bawaan web lu)
-   ========================================= */
 .hype-chat-scope button {
   background: transparent;
   border: none;
   outline: none;
   box-shadow: none;
-  -webkit-tap-highlight-color: transparent; /* Hilangkan kotak biru pas ditap di HP */
+  -webkit-tap-highlight-color: transparent; 
 }
 
-/* =========================================
-   LAYOUT UTAMA PENGUNCI LAYAR
-   ========================================= */
 .hype-chat-scope.telegram-chat {
   display: flex;
   flex-direction: column;
@@ -68,12 +42,9 @@
   touch-action: pan-x pan-y;
   color: var(--text-color);
   overscroll-behavior: none;
-  padding-bottom: env(safe-area-inset-bottom); /* Fix HP berponi bawah */
+  padding-bottom: env(safe-area-inset-bottom); 
 }
 
-/* =========================================
-   🔥 CHAT BUBBLE & MESSAGES AREA
-   ========================================= */
 .hype-chat-scope .chat-messages {
   flex: 1 1 auto !important;
   padding: 12px;
@@ -91,108 +62,22 @@
   display: none; 
 }
 
-/* =========================================
-   🔥 TEXTAREA CUSTOM SCROLL & PLACEHOLDER
-   ========================================= */
 .hype-chat-scope .input-group-wrapper textarea {
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
 }
+.hype-chat-scope .input-group-wrapper textarea::-webkit-scrollbar { width: 4px; }
+.hype-chat-scope .input-group-wrapper textarea::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.hype-chat-scope .input-group-wrapper textarea::placeholder { color: var(--text-muted); opacity: 0.7; }
 
-.hype-chat-scope .input-group-wrapper textarea::-webkit-scrollbar {
-  width: 4px;
-}
-
-.hype-chat-scope .input-group-wrapper textarea::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-.hype-chat-scope .input-group-wrapper textarea::placeholder {
-  color: var(--text-muted);
-  opacity: 0.7;
-}
-
-/* =========================================
-   🔥 FIX TOMBOL SEND/MIC (MEMAKSA WARNA HIJAU)
-   ========================================= */
 .hype-chat-scope #action-btn {
-  background-color: var(--primary-color) !important; /* Paksa warna Hijau WA */
+  background-color: var(--primary-color) !important; 
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+.hype-chat-scope #action-btn:active { transform: scale(0.9) !important; }
 
-.hype-chat-scope #action-btn:active {
-  transform: scale(0.9) !important; 
-}
-
-/* =========================================
-   🔥 SKELETON LOADING
-   ========================================= */
-.hype-chat-scope .chat-loading-screen {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 20px;
-  background: var(--bg-main);
-  height: 100%;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-weight: 500;
-  animation: hype-pulse-fade 1.5s infinite;
-}
-
-@keyframes hype-pulse-fade {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-/* =========================================
-   🔥 LIGHTBOX STIKER FULL SCREEN
-   ========================================= */
 .hype-chat-scope .sticker-lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(5px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 30000;
-  cursor: pointer;
-  animation: fadeIn 0.2s ease;
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center; z-index: 30000; cursor: pointer;
 }
-
-.hype-chat-scope .sticker-lightbox img {
-  max-width: 90vw;
-  max-height: 90vh;
-  object-fit: contain;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* =========================================
-   🔥 ENCRYPTION NOTICE
-   ========================================= */
-.hype-chat-scope .encryption-notice {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted);
-  font-size: 10px;
-  padding: 8px 12px;
-  border-radius: 20px;
-  margin: 8px auto;
-  width: fit-content;
-  max-width: 90%;
-  text-align: center;
-  border: 1px solid var(--border-color);
-}
+.hype-chat-scope .sticker-lightbox img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); }

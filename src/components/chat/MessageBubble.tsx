@@ -50,7 +50,6 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
   const [liveReply, setLiveReply] = useState<any>(msg?.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
 
-  // --- STATE & REF UNTUK VOICE NOTE SINKRONISASI ---
   const [isPlaying, setIsPlaying] = useState(false);
   const isPlayingRef = useRef(false);
   const [waveData, setWaveData] = useState<number[]>(new Array(15).fill(15));
@@ -67,7 +66,6 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
     }
   }, [msg?.reply_to]);
 
-  // Cleanup audio dan animasi saat komponen di-unmount
   useEffect(() => {
     return () => {
       if (audioRef.current) audioRef.current.pause();
@@ -80,7 +78,7 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
     return (
       <div className="chat-message other typing-container" style={{ display: 'flex', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
         {(roomId === 'room-1' || roomId?.startsWith('group_')) && <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="av" className="typing-avatar" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />}
-        <div className="content typing-bubble-box" style={{ background: 'var(--bg-panel)', padding: '10px 16px', borderRadius: '15px 15px 15px 5px', border: '1px solid var(--border-color)' }}>
+        <div className="content typing-bubble-box" style={{ background: '#1f2c34', padding: '10px 16px', borderRadius: '15px 15px 15px 5px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <div className="typing-dots"><span className="dot"></span><span className="dot"></span><span className="dot"></span></div>
         </div>
       </div>
@@ -127,18 +125,17 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
     setShowReactions(false);
   };
 
-  // --- 🔥 LOGIKA AUDIO WAVEFORM REAL-TIME 🔥 ---
   const toggleVN = () => {
     if (isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
       isPlayingRef.current = false;
       cancelAnimationFrame(reqFrameRef.current);
-      setWaveData(new Array(15).fill(15)); // Reset garis wave
+      setWaveData(new Array(15).fill(15)); 
     } else {
       if (!audioRef.current) {
         const audio = new Audio(msg.audio_url);
-        audio.crossOrigin = "anonymous"; // Bypass CORS Cloudinary agar bisa di-analisis
+        audio.crossOrigin = "anonymous"; 
         
         audio.onended = () => {
           setIsPlaying(false);
@@ -148,7 +145,6 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
         };
         audioRef.current = audio;
 
-        // Inisialisasi Penganalisis Suara
         try {
           const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
           const ctx = new AudioContext();
@@ -164,13 +160,11 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
         }
       }
 
-      // Mulai mainkan suara
       audioRef.current.play().catch(e => console.error("Gagal play audio", e));
       setIsPlaying(true);
       isPlayingRef.current = true;
       if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
 
-      // Loop Animasi Gelombang
       const updateWave = () => {
         if (!isPlayingRef.current) return;
         
@@ -181,12 +175,11 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
           const newWave = [];
           for (let i = 0; i < 15; i++) {
             const val = dataArray[i];
-            newWave.push(Math.max(15, (val / 255) * 100)); // Minimal tinggi 15%
+            newWave.push(Math.max(15, (val / 255) * 100)); 
           }
           setWaveData(newWave);
           reqFrameRef.current = requestAnimationFrame(updateWave);
         } else {
-          // 🛡️ FALLBACK: Animasi Fake jika Web Audio API terblokir CORS
           setWaveData(Array.from({length: 15}, () => Math.random() * 80 + 20));
           setTimeout(() => {
             if (isPlayingRef.current) reqFrameRef.current = requestAnimationFrame(updateWave);
@@ -199,10 +192,8 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
 
   return (
     <div className="hype-chat-scope" style={{ position: 'relative' }}>
-      
-      {/* REACTION MENU */}
       {showReactions && (
-        <div className="reaction-popover" style={{ position: 'absolute', top: '-50px', [isMe ? 'right' : 'left']: '0', zIndex: 1000, background: 'var(--bg-panel)', padding: '8px 12px', borderRadius: '30px', display: 'flex', gap: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', animation: 'pop 0.2s ease-out' }}>
+        <div className="reaction-popover" style={{ position: 'absolute', top: '-50px', [isMe ? 'right' : 'left']: '0', zIndex: 1000, background: '#1f2c34', padding: '8px 12px', borderRadius: '30px', display: 'flex', gap: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', animation: 'pop 0.2s ease-out' }}>
           {['👍','❤️','😂','😮','😢','🔥'].map(e => <span key={e} onClick={() => handleReactionSelect(e)} style={{ fontSize: '22px', cursor: 'pointer' }}>{e}</span>)}
         </div>
       )}
@@ -214,19 +205,18 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
         onDoubleClick={() => !msg.is_system && setShowReactions(true)}
       >
         {msg.is_system ? (
-          <div className="system-text-clean">{msg.message.replace(/📞|🎤/g, '').trim()}</div>
+          <div className="system-text-clean" style={{ background: 'rgba(31, 44, 52, 0.5)', border: '1px solid rgba(255, 255, 255, 0.05)', color: '#8696a0', fontSize: '11px', padding: '6px 14px', borderRadius: '20px', fontWeight: '500' }}>{msg.message.replace(/📞|🎤/g, '').trim()}</div>
         ) : (
           <>
             {showUserDetail && <img src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="av" className="msg-avatar" />}
             
-            {/* 🔥 WARNA BUBBLE DIUBAH KE HIJAU SULTAN KHUSUS UNTUK USER (isMe) 🔥 */}
-            <div className="content" style={{ background: isMe ? '#00a884' : 'var(--bg-panel)', color: isMe ? 'white' : 'var(--text-color)' }}>
+            <div className="content" style={{ background: isMe ? '#1da1f2' : '#1f2c34', color: isMe ? 'white' : '#e9edef' }}>
               
               {showUserDetail && <div className="username-label">{msg.profiles?.username} <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role)}} /></div>}
               
               {liveReply && (
-                <div className="reply-box" style={{ background: isMe ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.05)' }} onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}>
-                  <b style={{ color: isMe ? '#e0f2f1' : 'var(--primary-blue)' }}>{liveReply.username}</b>: {liveReply.message || 'Media'}
+                <div className="reply-box" style={{ background: isMe ? 'rgba(0,0,0,0.1)' : 'rgba(29, 161, 242, 0.1)', borderLeftColor: isMe ? '#ffffff' : '#1da1f2' }} onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}>
+                  <b style={{ color: isMe ? '#ffffff' : '#1da1f2' }}>{liveReply.username}</b>: <span style={{ color: isMe ? '#ffffff' : '#e9edef' }}>{liveReply.message || 'Media'}</span>
                 </div>
               )}
 
@@ -238,34 +228,31 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
                 <div className="text-body">{renderTextWithLinks(msg.message.replace("Membalas ceritamu", "").trim())}</div>
               )}
 
-              {isDeleted && <div className="text-deleted" style={{ color: isMe ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>🚫 {t('msg_deleted')}</div>}
+              {isDeleted && <div className="text-deleted" style={{ color: isMe ? 'rgba(255,255,255,0.7)' : '#8696a0' }}>🚫 {t('msg_deleted')}</div>}
 
-              {/* 🔥 VN UI PREMIUM & SINKRON 🔥 */}
               {msg.audio_url && !isDeleted && (
                 <div className={`vn-player ${isPlaying ? 'playing' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', minWidth: '160px' }}>
-                  <button onClick={toggleVN} className="vn-btn" style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,168,132,0.1)', color: isMe ? '#fff' : '#00a884', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  <button onClick={toggleVN} className="vn-btn" style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: isMe ? '#ffffff' : '#1da1f2', color: isMe ? '#1da1f2' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                     {isPlaying ? <span className="material-icons text-lg">pause</span> : <span className="material-icons text-lg">play_arrow</span>}
                   </button>
                   
-                  {/* Waveform Sinkron Suara */}
                   <div className="vn-wave" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '24px', flex: 1 }}>
                     {waveData.map((h, i) => (
-                      <span key={i} className="v-bar" style={{ width: '3px', borderRadius: '2px', height: `${h}%`, background: isMe ? 'rgba(255,255,255,0.9)' : '#00a884', transition: 'height 0.1s linear' }}></span>
+                      <span key={i} className="v-bar" style={{ width: '3px', borderRadius: '2px', height: `${h}%`, background: isMe ? 'rgba(255,255,255,0.9)' : '#1da1f2', transition: 'height 0.1s linear' }}></span>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* REACTION BADGE */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                <div className="reaction-badge" style={{ background: isMe ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)' }}>
+                <div className="reaction-badge" style={{ background: '#1f2c34', border: '1px solid rgba(255,255,255,0.1)' }}>
                   {Object.values(msg.reactions).slice(0, 3).join('')}
                   {Object.keys(msg.reactions).length > 1 && <span>{Object.keys(msg.reactions).length}</span>}
                 </div>
               )}
               
               <div className="msg-footer">
-                <span className="time" style={{ color: isMe ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                <span className="time" style={{ color: isMe ? 'rgba(255,255,255,0.7)' : '#8696a0' }}>{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 {isMe && getStatusIcon(msg.status)}
               </div>
             </div>
@@ -276,33 +263,32 @@ export default function MessageBubble({ msg = {}, isMe, onReply, onDelete, curre
   );
 }
 
-/* ==================================================
-   🔥 KOMPONEN BARU: SKELETON LOADING UNTUK CHAT 🔥
-   ================================================== */
+/* 🔥 SKELETON "MENYAMBUNGKAN OBROLAN..." ORIGINAL 🔥 */
 export const ChatSkeleton = () => {
-  // Array dummy untuk ngebentuk pola chat (kiri-kiri-kanan-kiri-kanan)
   const dummyChats = [false, false, true, false, true]; 
   
   return (
-    <div className="flex flex-col gap-5 p-2 w-full mt-2">
-      {dummyChats.map((isMe, index) => (
-        <div key={index} className={`flex items-end gap-2 w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-          
-          {/* Avatar Skeleton untuk orang lain */}
-          {!isMe && (
-            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse flex-shrink-0" />
-          )}
-          
-          {/* Bubble Chat Skeleton */}
-          <div 
-            className={`bg-white/10 animate-pulse ${isMe ? 'rounded-[16px_16px_4px_16px]' : 'rounded-[16px_16px_16px_4px]'}`}
-            style={{ 
-              height: index % 3 === 0 ? '60px' : '44px', // Tinggi random
-              width: index % 2 === 0 ? '65%' : '45%'     // Lebar random
-            }}
-          />
-        </div>
-      ))}
+    <div className="flex flex-col h-full w-full justify-between">
+      <div className="flex flex-col gap-5 w-full mt-4">
+        {dummyChats.map((isMe, index) => (
+          <div key={index} className={`flex items-end gap-2 w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+            {!isMe && (
+              <div className="w-8 h-8 rounded-full bg-[#1f2c34] animate-pulse flex-shrink-0" />
+            )}
+            <div 
+              className={`bg-[#1f2c34] animate-pulse ${isMe ? 'rounded-[16px_16px_4px_16px]' : 'rounded-[16px_16px_16px_4px]'}`}
+              style={{ 
+                height: index % 3 === 0 ? '60px' : '44px',
+                width: index % 2 === 0 ? '65%' : '45%' 
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      
+      <div className="mt-10 mb-10 text-center text-[13px] text-[#8696a0] font-medium">
+        Menyambungkan obrolan...
+      </div>
     </div>
   );
 };
