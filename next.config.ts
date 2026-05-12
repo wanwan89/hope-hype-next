@@ -13,21 +13,23 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  // 🔥 FIX API 404: Mati di Vercel (API nyala), Hidup di Termux (Buat APK) 🔥
+  // 🔥 FIX API 404: Mati di Vercel (API nyala), Hidup di Termux (Buat APK)
   output: process.env.VERCEL ? undefined : "export",
   
   images: { unoptimized: true },
 
-  // 🔥 OBAT KUAT BUAT TERMUX BIAR GAK CRASH 🔥
-  eslint: { ignoreDuringBuilds: true },
+  // 🔥 OBAT KUAT: Next.js 16 sekarang minta ignore lewat sini kalau mau lewat config
   typescript: { ignoreBuildErrors: true },
   
-  // 🔥 TAMBAHAN BARU: MATIIN FITUR KOMPRES BIAR RAM HP LEGA 🔥
-  swcMinify: false, 
-
-  webpack: (config) => {
-    config.cache = false; // Bungkam error cache
-    config.optimization.minimize = false; // 🔥 BUNGKAM TERSER BIAR GAK PINGSAN!
+  // Catatan: 'eslint' & 'swcMinify' dihapus karena Next.js 16 sudah tidak mendukung kunci ini di config
+  
+  webpack: (config, { isServer }) => {
+    config.cache = false; // Bungkam error cache di lingkungan terbatas (Termux)
+    
+    if (!isServer) {
+      config.optimization.minimize = false; // 🔥 BUNGKAM TERSER BIAR RAM HP GAK PINGSAN
+    }
+    
     return config;
   },
 };

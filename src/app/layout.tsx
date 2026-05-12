@@ -35,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
   const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); 
   const [isOnline, setIsOnline] = useState(true);
+  const [myProfile, setMyProfile] = useState<any>(null); // Tambahan: Biar username lkRoom gak 'User HypeTalk' terus
 
   // --- 🔥 STATE BARU UNTUK FONDASI TELPON 🔥 ---
   const [lkToken, setLkToken] = useState<string | null>(null);
@@ -61,6 +62,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
+
+  // --- 🔥 FETCH PROFILE (TAMBAHAN FIX) 🔥 ---
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+        if (data) setMyProfile(data);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   // --- 🔥 EFEK UNTUK DETEKSI INTERNET (TIDAK BERUBAH) 🔥 ---
   useEffect(() => {
@@ -116,7 +129,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             const { actionId, notification, inputValue } = action; 
             const { data } = notification;
 
-            // Jurus 1: Balas Cepat via Background
             if (actionId === 'reply' && inputValue) {
               const { data: { session } } = await supabase.auth.getSession();
               if (session?.user?.id && data?.roomId) {
@@ -129,10 +141,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               }
             }
 
-            // Jurus 2: Angkat Telpon via Fondasi
             if (actionId === 'accept' || actionId === 'accept_call') {
               if (data?.callerId && data?.roomId) {
-                handleFetchToken(data.roomId, data.callerId);
+                // FIX: Gunakan handleFetchLiveKitToken sesuai definisi
+                handleFetchLiveKitToken(data.roomId, data.callerId); 
                 router.push(`/hypetalk/room?from=${data.callerId}`);
               }
             } else if (actionId === 'reject') {
@@ -140,10 +152,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           });
 
-          // 🔥 FIX: HANDLE TOMBOL BACK NATIVE 🔥
           App.addListener('backButton', ({ canGoBack }) => {
             if (lkToken) {
-              App.minimizeApp(); // Telpon aktif? Jangan exit, minimize aja.
+              App.minimizeApp(); 
             } else if (canGoBack) {
               window.history.back();
             } else {
@@ -164,32 +175,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         PushNotifications.removeAllListeners();
       }
     };
-  }, [router, lkToken]); 
+  }, [router, lkToken, myProfile]); 
 
-// --- 🔥 LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION 🔥 ---
-const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
-  try {
-    setLkRoomName(roomName);
+  // --- 🔥 LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION (FULL FIX) 🔥 ---
+  const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
+    try {
+      setLkRoom(roomName); // FIX: Gunakan setLkRoom sesuai nama state lu
 
-    // Panggil Edge Function lu yang udah ada
-    const { data, error } = await supabase.functions.invoke('get-livekit-token', {
-      body: { 
-        roomName: roomName, 
-        identity: userId, 
-        username: myProfile?.username || 'User HypeTalk' 
-      }
-    });
+      const { data, error } = await supabase.functions.invoke('get-livekit-token', {
+        body: { 
+          roomName: roomName, 
+          identity: userId, 
+          username: myProfile?.username || 'User HypeTalk' 
+        }
+      });
 
-    if (error || !data) throw new Error("Gagal ambil token dari Supabase");
+      if (error || !data) throw new Error("Gagal ambil token dari Supabase");
 
-    // Pasang tokennya ke state global
-    setLkToken(data.token);
-    console.log("✅ Token LiveKit didapat via Supabase Edge Function!");
+      setLkToken(data.token);
+      console.log("✅ Token LiveKit didapat via Supabase Edge Function!");
 
-  } catch (err) {
-    console.error("❌ Error koneksi LiveKit:", err);
-  }
-};
+    } catch (err) {
+      console.error("❌ Error koneksi LiveKit:", err);
+    }
+  };
 
   // --- 🔥 SISA LOGIKA LU (TIDAK BERUBAH SAMA SEKALI) 🔥 ---
   useEffect(() => {
@@ -268,7 +277,8 @@ const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
 
   const handleAngkatGlobal = () => {
     if (!globalIncomingCall) return;
-    handleFetchToken(globalIncomingCall.roomId, globalIncomingCall.callerId);
+    // FIX: Gunakan handleFetchLiveKitToken agar sinkron dengan yang lain
+    handleFetchLiveKitToken(globalIncomingCall.roomId, globalIncomingCall.callerId);
     setGlobalIncomingCall(null);
     router.push(`/hypetalk/room?from=${globalIncomingCall.callerId}`);
   };
