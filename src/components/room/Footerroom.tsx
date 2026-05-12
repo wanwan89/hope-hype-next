@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion'; // 🔥 Tambah ini biar tombolnya membal
+import { motion } from 'framer-motion';
 import './Footerroom.css';
 
 declare global {
@@ -18,25 +18,22 @@ declare global {
 export default function Footerroom() {
   const { t } = useTranslation();
 
-  // 🔥 FUNGSI SAKTI BUAT BUKA KADO 🔥
+  // 🔥 FUNGSI SAKTI BUAT BUKA KADO (ANTI GAGAL) 🔥
   const handleGiftClick = (e: React.MouseEvent) => {
-    // Sengaja e.stopPropagation() GAK DIPAKE di sini kalau sistem lu pake event listener di body
+    // 1. Tahan klik biar nggak tembus ke belakang layar (bikin nge-bug)
+    e.preventDefault();
+    e.stopPropagation(); 
     
-    // Jalur 1: Coba panggil fungsi global kalau ada
-    if (typeof window.toggleRoomGiftDrawer === 'function') {
-      window.toggleRoomGiftDrawer(e);
-    } 
-    // Jalur 2: BACKUP! Lempar sinyal CustomEvent (Sistem ini lebih aman di Next.js)
-    else {
-      window.dispatchEvent(new CustomEvent('openRoomGift'));
-      console.log("Sinyal kado dikirim via CustomEvent!");
-    }
+    // 2. Langsung tembak sinyal CustomEvent (Cara paling aman di Next.js)
+    window.dispatchEvent(new CustomEvent('openRoomGift'));
+    
+    // 3. Cek di Console (F12). Kalau tulisan ini muncul, tombol 100% jalan!
+    console.log("🔥 Sinyal Buka Kado Ditembak dari Footer!");
   };
 
   return (
     <div 
       className="footer-floating-wrapper" 
-      // Hapus e.stopPropagation() di sini kalau bikin komen lu juga nge-bug
       style={{ 
         position: 'fixed',
         bottom: '15px',
@@ -44,8 +41,9 @@ export default function Footerroom() {
         transform: 'translateX(-50%)',
         width: '95%',
         maxWidth: '480px',
-        zIndex: 1000,
-        pointerEvents: 'auto' // 🔥 Pastikan elemen ini bisa diklik
+        // 🔥 Z-INDEX DEWA: Biar nggak ada yang berani nutupin footer ini
+        zIndex: 90000, 
+        pointerEvents: 'auto' 
       }}
     >
       <footer style={{ 
@@ -94,19 +92,20 @@ export default function Footerroom() {
           />
         </div>
 
-        {/* 2. ICON GIFT (KADO) - DIUPGRADE PAKE FRAMER MOTION */}
+        {/* 2. ICON GIFT (KADO) */}
         <motion.button 
           type="button"
           whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.85 }} // 🔥 Kalau diklik tombolnya bakal menciut ke dalem
+          whileTap={{ scale: 0.85 }} 
           onClick={handleGiftClick}
-          className="room-gift-trigger-btn" // 🔥 Kasih class khusus buat ditangkap sama modal kado lu
           style={{ 
             width: '40px', height: '40px', borderRadius: '50%', 
             background: 'linear-gradient(135deg, #f6d365, #fda085)', 
             color: '#000', border: 'none', display: 'flex', alignItems: 'center', 
             justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-            boxShadow: '0 4px 10px rgba(246, 211, 101, 0.4)'
+            boxShadow: '0 4px 10px rgba(246, 211, 101, 0.4)',
+            position: 'relative', // Perkuat posisi tombol
+            zIndex: 90001
           }}
         >
           <span className="material-icons" style={{ fontSize: '20px' }}>card_giftcard</span>
