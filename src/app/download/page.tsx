@@ -1,3 +1,4 @@
+'use client';
 export default function DownloadApp() {
   return (
     <div className="bg-[#0b0c10] text-white font-sans min-h-screen flex items-center justify-center relative overflow-hidden selection:bg-[#1f3cff] selection:text-white">
