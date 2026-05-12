@@ -37,13 +37,12 @@ export default function HypetalkPage() {
   const loadAllChats = async (userId: string, showLoading = true) => {
     if (showLoading) setIsLoading(true);
     try {
-      // Ambil semua pesan pribadi (group_id IS NULL) yang melibatkan userId
-      // baik sebagai pengirim (user_id) maupun penerima (room_id mengandung userId)
+      // Ambil pesan pribadi ATAU pesan global (room-1)
       const { data: privateMessages, error } = await supabase
         .from('messages')
         .select('id, user_id, room_id, message, created_at')
         .is('group_id', null)
-        .or(`user_id.eq.${userId},room_id.ilike.%${userId}%`)
+        .or(`user_id.eq.${userId},room_id.ilike.%${userId}%,room_id.eq.room-1`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -51,29 +50,50 @@ export default function HypetalkPage() {
       const partnerMap = new Map<string, any>();
 
       (privateMessages || []).forEach((msg) => {
-        // Asumsi room_id format: userA_userB (UUID dipisah underscore)
-        const parts = msg.room_id.split('_');
-        const partnerId = parts.find((p) => p !== userId) || 'unknown';
+        if (!msg.room_id) return;
 
-        if (!partnerMap.has(partnerId) || new Date(msg.created_at) > new Date(partnerMap.get(partnerId).last_message_at)) {
-          partnerMap.set(partnerId, {
-            id: msg.id,
-            room_id: msg.room_id,
-            partnerId,
-            last_message: msg.message || '',
-            last_message_at: msg.created_at,
-            from: msg.user_id,
-            to: partnerId,
-          });
+        // 🔥 FIX 1: Handle Room Global
+        if (msg.room_id === 'room-1') {
+           if (!partnerMap.has('room-1') || new Date(msg.created_at) > new Date(partnerMap.get('room-1').last_message_at)) {
+             partnerMap.set('room-1', {
+                id: msg.id,
+                room_id: 'room-1',
+                partnerId: 'room-1',
+                last_message: msg.message || 'Mengirim media',
+                last_message_at: msg.created_at,
+                from: msg.user_id,
+                to: 'room-1',
+                partnerProfile: { username: 'HopeTalk Globe', avatar_url: '/asets/png/profile.webp', role: 'system' }
+             });
+           }
+        } 
+        // 🔥 FIX 2: Parse "pv_userA_userB" dengan benar (Hilangkan kata 'pv')
+        else if (msg.room_id.startsWith('pv_')) {
+           const partnerId = msg.room_id.replace('pv_', '').split('_').find((p) => p !== userId);
+           
+           if (partnerId) {
+             if (!partnerMap.has(partnerId) || new Date(msg.created_at) > new Date(partnerMap.get(partnerId).last_message_at)) {
+               partnerMap.set(partnerId, {
+                 id: msg.id,
+                 room_id: msg.room_id,
+                 partnerId,
+                 last_message: msg.message || 'Mengirim media',
+                 last_message_at: msg.created_at,
+                 from: msg.user_id,
+                 to: partnerId,
+               });
+             }
+           }
         }
       });
 
-      // Ambil profil semua partner sekaligus
-      const partnerIds = Array.from(partnerMap.keys());
+      // Ambil profil hanya untuk user (ID yang formatnya UUID / panjang > 20)
+      const partnerIds = Array.from(partnerMap.keys()).filter(id => id.length > 20);
+      
       if (partnerIds.length > 0) {
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url, umur')
+          .select('id, username, avatar_url, umur, role')
           .in('id', partnerIds);
 
         if (profilesData) {
@@ -85,7 +105,12 @@ export default function HypetalkPage() {
         }
       }
 
-      setChats(Array.from(partnerMap.values()));
+      // Convert ke array & sorting dari yang paling baru
+      const finalChats = Array.from(partnerMap.values()).sort((a, b) => 
+        new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+      );
+
+      setChats(finalChats);
       setRequestChats([]);
     } catch (err) {
       console.error('Gagal load chat:', err);
@@ -98,6 +123,10 @@ export default function HypetalkPage() {
   //  REALTIME SUBSCRIPTION
   // ----------------------------------------------
   const subscribeToInbox = (userId: string) => {
+    if (refs.inboxChannel.current) {
+       supabase.removeChannel(refs.inboxChannel.current);
+    }
+
     const channel = supabase
       .channel(`inbox-${userId}`)
       .on(
@@ -105,10 +134,10 @@ export default function HypetalkPage() {
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
           const msg = payload.new;
-          // Cek apakah user terlibat di pesan baru ini
           if (
             msg.user_id === userId ||
-            (msg.room_id && msg.room_id.includes(userId))
+            (msg.room_id && msg.room_id.includes(userId)) ||
+            msg.room_id === 'room-1'
           ) {
             loadAllChats(userId, false);
           }
@@ -254,16 +283,20 @@ export default function HypetalkPage() {
   };
 
   const handleOpenChat = (chat: any) => {
-    const partnerId = chat.from === currentUser.id ? chat.to : chat.from;
-    router.push(`/hypetalk/room?from=${partnerId}`);
+    if (chat.room_id === 'room-1') {
+      router.push('/hypetalk/room?id=room-1');
+    } else {
+      const partnerId = chat.from === currentUser.id ? chat.to : chat.from;
+      router.push(`/hypetalk/room?from=${partnerId}`);
+    }
   };
 
   const handleAvatarClick = (chat: any) => {
+    if (chat.room_id === 'room-1') return; // Jangan buka profil kalau ini grup global
     if (chat.partnerProfile) {
       setSelectedProfile(chat.partnerProfile);
       openModal('user-profile');
     } else {
-      // fallback jika profil belum termuat
       setSelectedProfile({ id: chat.partnerId, username: chat.partnerId });
       openModal('user-profile');
     }
@@ -340,14 +373,21 @@ export default function HypetalkPage() {
                   handleAvatarClick(chat);
                 }}
               >
-                <img
-                  src={chat.partnerProfile?.avatar_url || '/asets/png/profile.webp'}
-                  alt="avatar"
-                  onError={(e) => (e.currentTarget.src = '/asets/png/profile.webp')}
-                />
+                {chat.room_id === 'room-1' ? (
+                   <span className="material-icons" style={{ fontSize: '32px', color: '#1da1f2' }}>public</span>
+                ) : (
+                  <img
+                    src={chat.partnerProfile?.avatar_url || '/asets/png/profile.webp'}
+                    alt="avatar"
+                    onError={(e) => (e.currentTarget.src = '/asets/png/profile.webp')}
+                  />
+                )}
               </div>
               <div className="chat-info">
-                <div className="name">{chat.partnerProfile?.username || chat.partnerId}</div>
+                <div className="name flex items-center gap-1">
+                   {chat.partnerProfile?.username || chat.partnerId} 
+                   {chat.partnerProfile?.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.partnerProfile.role) }} />}
+                </div>
                 <div className="last-msg">{chat.last_message || 'Klik untuk mulai chat'}</div>
               </div>
               <div className="chat-meta">
