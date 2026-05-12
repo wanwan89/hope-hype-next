@@ -2,19 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Script from 'next/script'; // 🔥 Tambahin import Script dari next
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Login.css';
-
-// 🔥 Deklarasi global biar TypeScript nggak rewel soal Turnstile
-declare global {
-  interface Window {
-    turnstile: any;
-    onTurnstileSuccess: (token: string) => void;
-  }
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,9 +16,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // 🔥 State buat Cloudflare Turnstile
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  
   // --- Form Data ---
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,13 +23,6 @@ export default function LoginPage() {
   const [role, setRole] = useState('user');
   const [creatorType, setCreatorType] = useState('karya');
   const [agreed, setAgreed] = useState(false);
-
-  // Tangkap callback sukses dari Turnstile
-  useEffect(() => {
-    window.onTurnstileSuccess = (token: string) => {
-      setCaptchaToken(token);
-    };
-  }, []);
 
   // Cek sesi login
   useEffect(() => {
@@ -85,19 +66,15 @@ export default function LoginPage() {
   const handleForgotPassword = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!email) return showNotif(t('forgot_pass_error', 'Silakan masukkan email Anda terlebih dahulu!'), "warning");
-    if (!captchaToken) return showNotif('Silakan selesaikan verifikasi keamanan (Captcha)!', 'warning');
 
     setIsLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password",
-      captchaToken: captchaToken // 🔥 Kirim token captcha
+      redirectTo: window.location.origin + "/reset-password"
     });
 
     setIsLoading(false);
     if (error) {
       showNotif(error.message, "error");
-      if (window.turnstile) window.turnstile.reset(); // Reset captcha jika gagal
-      setCaptchaToken(null);
     } else {
       showNotif(t('forgot_pass_success', 'Berhasil! Silakan periksa email Anda untuk mengatur ulang kata sandi.'), "success");
     }
@@ -105,27 +82,18 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 🔥 Validasi Captcha sebelum hit Supabase
-    if (!captchaToken) {
-      return showNotif('Silakan selesaikan verifikasi keamanan (Captcha) terlebih dahulu!', 'warning');
-    }
-
     setIsLoading(true);
 
     if (!isSignUpMode) {
       // --- LOGIN LOGIC ---
       const { error } = await supabase.auth.signInWithPassword({ 
         email, 
-        password,
-        options: { captchaToken: captchaToken } // 🔥 Kirim token captcha
+        password
       });
       
       if (error) {
         showNotif(error.message, "error");
         setIsLoading(false);
-        if (window.turnstile) window.turnstile.reset(); // Reset captcha jika gagal
-        setCaptchaToken(null);
       } else {
         showNotif(t('login_success_notif', 'Selamat datang kembali!'), "success");
       }
@@ -148,30 +116,22 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          data: { username: safeUsername, avatar_url: avatar, role: finalRole },
-          captchaToken: captchaToken // 🔥 Kirim token captcha
+          data: { username: safeUsername, avatar_url: avatar, role: finalRole }
         }
       });
 
       setIsLoading(false);
       if (error) {
         showNotif(error.message, "error");
-        if (window.turnstile) window.turnstile.reset(); // Reset captcha jika gagal
-        setCaptchaToken(null);
       } else {
         showNotif(t('signup_success_notif', 'Pendaftaran berhasil! Silakan periksa email Anda untuk aktivasi.'), "success");
         setIsSignUpMode(false); 
-        if (window.turnstile) window.turnstile.reset();
-        setCaptchaToken(null);
       }
     }
   };
 
   return (
     <div className="auth-wrapper">
-      {/* 🔥 Load Script Cloudflare Turnstile */}
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
-
       <div className="auth-container">
         
         {/* Header Logo/Title */}
@@ -272,16 +232,6 @@ export default function LoginPage() {
             </a>
           )}
 
-          {/* 🔥 Widget Cloudflare Turnstile 🔥 */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', marginBottom: '10px' }}>
-            <div 
-              className="cf-turnstile" 
-              data-sitekey="0x4AAAAAADMQo0LrMVDZvwKy" 
-              data-callback="onTurnstileSuccess"
-              data-theme="auto" 
-            ></div>
-          </div>
-
           {/* Submit Button */}
           <button type="submit" className="btn-auth-main" disabled={isLoading}>
             {isLoading ? t('loading', 'Memproses...') : (
@@ -306,11 +256,7 @@ export default function LoginPage() {
 
         <p className="footer-auth">
           {isSignUpMode ? 'Sudah punya akun?' : 'Belum punya akun?'} 
-          <span onClick={() => {
-            setIsSignUpMode(!isSignUpMode);
-            if (window.turnstile) window.turnstile.reset(); // Reset captcha saat pindah mode
-            setCaptchaToken(null);
-          }}>
+          <span onClick={() => setIsSignUpMode(!isSignUpMode)}>
             {isSignUpMode ? ' Masuk' : ' Daftar'}
           </span>
         </p>
