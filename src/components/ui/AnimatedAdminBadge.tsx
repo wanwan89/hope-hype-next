@@ -1,41 +1,42 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 
 const AnimatedAdminBadge = () => {
-  // Variabel Animasi untuk Staggering (Muncul bergantian)
-  const containerVariants = {
+  // 🔥 FIX: Tambahkan tipe : Variants agar TypeScript tidak marah
+  const containerVariants: Variants = {
     hidden: { opacity: 0, scale: 0.9 },
     visible: {
       opacity: 1,
       scale: 1,
       transition: {
         delayChildren: 0.3,
-        staggerChildren: 0.4, // Jeda antar huruf
+        staggerChildren: 0.4,
         duration: 0.5,
-        ease: "easeOut"
+        ease: "easeOut" 
       }
     }
   };
 
-  const pathVariants = {
+  const pathVariants: Variants = {
     hidden: { pathLength: 0, opacity: 0 },
     visible: {
       pathLength: 1,
       opacity: 1,
       transition: {
         duration: 1.2,
-        ease: [0.43, 0.13, 0.23, 0.96], // Custom cinematic easing
+        // 🔥 FIX: Pakai as const agar array cubic-bezier terbaca dengan benar
+        ease: [0.43, 0.13, 0.23, 0.96] as const, 
       }
     }
   };
 
-  const fillVariants = {
+  const fillVariants: Variants = {
     hidden: { fill: "rgba(255, 255, 255, 0)" },
     visible: {
       fill: "rgba(255, 255, 255, 1)",
-      transition: { delay: 2, duration: 0.8 } // Muncul setelah garis selesai
+      transition: { delay: 2, duration: 0.8 }
     }
   };
 
@@ -63,7 +64,6 @@ const AnimatedAdminBadge = () => {
         overflow: 'hidden'
       }}
     >
-      {/* Ikon Perisai dengan Animasi Rotasi Halus */}
       <motion.svg
         width="12"
         height="12"
@@ -83,7 +83,6 @@ const AnimatedAdminBadge = () => {
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </motion.svg>
 
-      {/* SVG Tulisan "DEV" yang Digambar */}
       <svg width="28" height="12" viewBox="0 0 60 20" style={{ overflow: 'visible' }}>
         <defs>
           <filter id="glow">
@@ -96,7 +95,6 @@ const AnimatedAdminBadge = () => {
         </defs>
 
         <g filter="url(#glow)">
-          {/* Huruf D */}
           <motion.path
             variants={pathVariants}
             fill="none"
@@ -105,7 +103,6 @@ const AnimatedAdminBadge = () => {
             strokeLinecap="round"
             d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6"
           />
-          {/* Huruf E */}
           <motion.path
             variants={pathVariants}
             fill="none"
@@ -114,7 +111,6 @@ const AnimatedAdminBadge = () => {
             strokeLinecap="round"
             d="M28 4v12 M28 4h10 M28 10h8 M28 16h10"
           />
-          {/* Huruf V */}
           <motion.path
             variants={pathVariants}
             fill="none"
