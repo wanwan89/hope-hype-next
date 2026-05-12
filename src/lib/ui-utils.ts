@@ -10,72 +10,55 @@ export function getUserBadge(role: string): string {
   let badge = "";
   const roleLower = role.toLowerCase();
 
-  if (roleLower === "admin") {
-    badge += `
-      <style>
-        /* Animasi Menggambar Garis */
-        @keyframes drawAdminPath {
-          0% { stroke-dashoffset: 100; opacity: 0; }
-          10% { opacity: 1; }
-          100% { stroke-dashoffset: 0; }
-        }
+if (roleLower === "admin") {
+  badge += `
+    <style>
+      @keyframes drawAndErase {
+        0%   { stroke-dashoffset: 1; opacity: 0; }
+        20%  { opacity: 1; }
+        50%  { stroke-dashoffset: 0; }
+        100% { stroke-dashoffset: 1; }
+      }
 
-        /* Animasi Munculnya Warna Isi (Fill) */
-        @keyframes fillAdminText {
-          0% { fill: rgba(255, 255, 255, 0); }
-          100% { fill: rgba(255, 255, 255, 1); }
-        }
+      .admin-badge-container {
+        background: linear-gradient(135deg, #1f3cff, #bc13fe);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        margin-left: 5px;
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
+        font-weight: 500;
+        box-shadow: none;
+        border: none;
+      }
 
-        /* Efek Berdenyut / Glowing Premium */
-        @keyframes adminGlowPulse {
-          0%, 100% { filter: drop-shadow(0 0 2px rgba(255,255,255,0.4)); transform: scale(1); }
-          50% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.8)); transform: scale(1.02); }
-        }
+      .scribble-path-admin {
+        stroke: white;
+        stroke-width: 1.5;            /* Tipis seperti tanda tangan */
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+        stroke-dasharray: 1;
+        stroke-dashoffset: 1;
+        animation: drawAndErase 2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      }
+    </style>
 
-        .admin-badge-container {
-          background: linear-gradient(135deg, #1f3cff, #bc13fe);
-          color: white;
-          padding: 2px 8px;
-          border-radius: 6px;
-          font-size: 10px;
-          margin-left: 5px;
-          display: inline-flex;
-          align-items: center;
-          vertical-align: middle;
-          font-weight: 900;
-          box-shadow: 0 4px 12px rgba(31, 60, 255, 0.4);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          animation: adminGlowPulse 3s infinite ease-in-out;
-        }
-
-        .scribble-path-admin {
-          stroke: white;
-          stroke-width: 3;
-          stroke-linecap: round;
-          stroke-linejoin: round;
-          fill: none;
-          stroke-dasharray: 100;
-          stroke-dashoffset: 100;
-          animation: 
-            drawAdminPath 1.5s cubic-bezier(0.45, 0, 0.55, 1) forwards,
-            fillAdminText 0.8s ease-in forwards 1.8s;
-        }
-      </style>
-
-      <span class="admin-badge-container">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          <polyline points="8 12 10 14 16 8"></polyline>
-        </svg>
-        
-        <svg width="30" height="12" viewBox="0 0 60 20" style="overflow: visible;">
-          <path class="scribble-path-admin" d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6" style="animation-delay: 0.2s;" />
-          <path class="scribble-path-admin" d="M28 4v12 M28 4h10 M28 10h8 M28 16h10" style="animation-delay: 0.7s;" />
-          <path class="scribble-path-admin" d="M45 4l5 12 5-12" style="animation-delay: 1.2s;" />
-        </svg>
-      </span>`;
-  }
-
+    <span class="admin-badge-container">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      
+      <svg width="26" height="12" viewBox="0 0 60 20" style="overflow: visible;">
+        <path class="scribble-path-admin" d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6" pathLength="1" />
+        <path class="scribble-path-admin" d="M28 4v12 M28 4h8 M28 10h6 M28 16h8" pathLength="1" />
+        <path class="scribble-path-admin" d="M45 4l5 12 5-12" pathLength="1" />
+      </svg>
+    </span>`;
+}
   if (roleLower === "verified") {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }

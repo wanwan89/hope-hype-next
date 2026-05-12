@@ -4,23 +4,22 @@ import React from 'react';
 import { motion, Variants } from 'framer-motion';
 
 const AnimatedAdminBadge = () => {
-  // Variabel Animasi Utama
   const pathVariants: Variants = {
-    hidden: { 
-      pathLength: 0, 
-      opacity: 0 
+    hidden: {
+      pathLength: 0,
+      opacity: 0,
     },
     visible: {
       pathLength: 1,
       opacity: 1,
       transition: {
         duration: 2,
-        ease: [0.45, 0, 0.55, 1], // Cinematic smooth easing
-        repeat: Infinity, // 🔥 Loop Berulang
-        repeatType: "loop",
-        repeatDelay: 1.5, // Jeda sebelum nulis ulang
-      }
-    }
+        ease: [0.45, 0, 0.55, 1],
+        repeat: Infinity,
+        repeatType: 'mirror',    // 💫 tulis → hapus → tulis …
+        repeatDelay: 0,         // 🚫 tanpa jeda
+      },
+    },
   };
 
   return (
@@ -32,20 +31,20 @@ const AnimatedAdminBadge = () => {
         background: 'linear-gradient(135deg, #1f3cff, #bc13fe)',
         color: 'white',
         padding: '2px 10px',
-        borderRadius: '4px', // Lebih kotak dikit biar tegas
+        borderRadius: '4px',
         fontSize: '10px',
         marginLeft: '5px',
         display: 'inline-flex',
         alignItems: 'center',
         verticalAlign: 'middle',
         lineHeight: '1',
-        fontWeight: '500', // Gak terlalu tebal
-        border: '1px solid rgba(255, 255, 255, 0.3)', // Border halus gantiin shadow
+        fontWeight: '500',
+        border: 'none',              // ❌ hilangkan efek shadow
         overflow: 'hidden',
-        boxShadow: 'none' // 🔥 Hapus Shadow total
+        boxShadow: 'none',
       }}
     >
-      {/* Ikon Perisai Minimalis */}
+      {/* Ikon perisai */}
       <motion.svg
         width="11"
         height="11"
@@ -62,33 +61,39 @@ const AnimatedAdminBadge = () => {
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </motion.svg>
 
-      {/* SVG Signature "DEV" */}
+      {/* Tanda tangan "DEV" */}
       <svg width="26" height="12" viewBox="0 0 60 20" style={{ overflow: 'visible' }}>
         <g>
-          {/* Huruf D */}
+          {/* D */}
           <motion.path
             variants={pathVariants}
+            initial="hidden"
+            animate="visible"
             fill="none"
             stroke="white"
-            strokeWidth="2" // 🔥 Lebih tipis biar clean
+            strokeWidth="1.5"       // ✒️ tipis seperti pulpen
             strokeLinecap="round"
             d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6"
           />
-          {/* Huruf E */}
+          {/* E */}
           <motion.path
             variants={pathVariants}
+            initial="hidden"
+            animate="visible"
             fill="none"
             stroke="white"
-            strokeWidth="2" // 🔥 Stroke tipis ala pulpen
+            strokeWidth="1.5"
             strokeLinecap="round"
             d="M28 4v12 M28 4h8 M28 10h6 M28 16h8"
           />
-          {/* Huruf V */}
+          {/* V */}
           <motion.path
             variants={pathVariants}
+            initial="hidden"
+            animate="visible"
             fill="none"
             stroke="white"
-            strokeWidth="2"
+            strokeWidth="1.5"
             strokeLinecap="round"
             d="M45 4l5 12 5-12"
           />
