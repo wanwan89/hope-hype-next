@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.3",
     "@capacitor/core": "^8.3.3",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@fingerprintjs/fingerprintjs": "^5.2.0",
