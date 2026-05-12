@@ -32,29 +32,61 @@ export default function HypetalkPage() {
   };
 
   // ----------------------------------------------
-  //  FUNCTIONS
+  //  LOAD CHATS DARI TABEL messages (ROOM-BASED)
   // ----------------------------------------------
   const loadAllChats = async (userId: string, showLoading = true) => {
     if (showLoading) setIsLoading(true);
     try {
-      // Ambil obrolan pribadi (dua arah)
-      const { data: directChats, error: directError } = await supabase
-        .from('chats')
-        .select('*')
-        .or(`from.eq.${userId},to.eq.${userId}`)
-        .order('last_message_at', { ascending: false });
+      // Ambil semua pesan pribadi (group_id IS NULL) yang melibatkan userId
+      // baik sebagai pengirim (user_id) maupun penerima (room_id mengandung userId)
+      const { data: privateMessages, error } = await supabase
+        .from('messages')
+        .select('id, user_id, room_id, message, created_at')
+        .is('group_id', null)
+        .or(`user_id.eq.${userId},room_id.ilike.%${userId}%`)
+        .order('created_at', { ascending: false });
 
-      if (directError) throw directError;
-      setChats(directChats || []);
+      if (error) throw error;
 
-      // Request chat (jika ada)
-      const { data: requests, error: reqError } = await supabase
-        .from('chat_requests')
-        .select('*')
-        .eq('to', userId)
-        .eq('status', 'pending');
+      const partnerMap = new Map<string, any>();
 
-      if (!reqError) setRequestChats(requests || []);
+      (privateMessages || []).forEach((msg) => {
+        // Asumsi room_id format: userA_userB (UUID dipisah underscore)
+        const parts = msg.room_id.split('_');
+        const partnerId = parts.find((p) => p !== userId) || 'unknown';
+
+        if (!partnerMap.has(partnerId) || new Date(msg.created_at) > new Date(partnerMap.get(partnerId).last_message_at)) {
+          partnerMap.set(partnerId, {
+            id: msg.id,
+            room_id: msg.room_id,
+            partnerId,
+            last_message: msg.message || '',
+            last_message_at: msg.created_at,
+            from: msg.user_id,
+            to: partnerId,
+          });
+        }
+      });
+
+      // Ambil profil semua partner sekaligus
+      const partnerIds = Array.from(partnerMap.keys());
+      if (partnerIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url, umur')
+          .in('id', partnerIds);
+
+        if (profilesData) {
+          profilesData.forEach((profile) => {
+            if (partnerMap.has(profile.id)) {
+              partnerMap.get(profile.id).partnerProfile = profile;
+            }
+          });
+        }
+      }
+
+      setChats(Array.from(partnerMap.values()));
+      setRequestChats([]);
     } catch (err) {
       console.error('Gagal load chat:', err);
     } finally {
@@ -62,14 +94,24 @@ export default function HypetalkPage() {
     }
   };
 
+  // ----------------------------------------------
+  //  REALTIME SUBSCRIPTION
+  // ----------------------------------------------
   const subscribeToInbox = (userId: string) => {
     const channel = supabase
       .channel(`inbox-${userId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'chats', filter: `to=eq.${userId}` },
-        () => {
-          loadAllChats(userId, false);
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const msg = payload.new;
+          // Cek apakah user terlibat di pesan baru ini
+          if (
+            msg.user_id === userId ||
+            (msg.room_id && msg.room_id.includes(userId))
+          ) {
+            loadAllChats(userId, false);
+          }
         }
       )
       .subscribe();
@@ -77,11 +119,21 @@ export default function HypetalkPage() {
     refs.inboxChannel.current = channel;
   };
 
+  // ----------------------------------------------
+  //  INIT
+  // ----------------------------------------------
   const initUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return router.push('/login');
 
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
     const fullUser = { ...user, ...profile };
     setCurrentUser(fullUser);
 
@@ -115,6 +167,9 @@ export default function HypetalkPage() {
     };
   }, []);
 
+  // ----------------------------------------------
+  //  HANDLERS
+  // ----------------------------------------------
   const openModal = (modalName: string) => {
     setActiveModal(modalName);
     setIsSidebarOpen(false);
@@ -125,12 +180,12 @@ export default function HypetalkPage() {
     setIsSavingBio(true);
     try {
       const updateData = { ...bioForm, umur: Number(bioForm.umur) || null };
-      await supabase.from("profiles").update(updateData).eq("id", currentUser.id);
-      showNotif("Profil tersimpan!", "success");
+      await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
+      showNotif('Profil tersimpan!', 'success');
       setCurrentUser((prev: any) => ({ ...prev, ...updateData }));
       closeModal();
     } catch (err) {
-      showNotif("Gagal simpan.", "error");
+      showNotif('Gagal simpan.', 'error');
     } finally {
       setIsSavingBio(false);
     }
@@ -144,21 +199,22 @@ export default function HypetalkPage() {
     localStorage.setItem('doi_limit', String(newLimit));
     setIsSidebarOpen(false);
     setIsSearchingDoi(true);
-    const lawanJenis = currentUser.gender === "Pria" ? "Wanita" : "Pria";
+    const lawanJenis = currentUser.gender === 'Pria' ? 'Wanita' : 'Pria';
 
     setTimeout(async () => {
       try {
-        const { data: users } = await supabase.from("profiles")
-          .select("*")
-          .neq("id", currentUser.id)
-          .eq("gender", lawanJenis);
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('*')
+          .neq('id', currentUser.id)
+          .eq('gender', lawanJenis);
         setIsSearchingDoi(false);
-        if (!users || users.length === 0) return showNotif("Belum ada kecocokan saat ini.", "info");
+        if (!users || users.length === 0) return showNotif('Belum ada kecocokan saat ini.', 'info');
         setFoundDoi(users[Math.floor(Math.random() * users.length)]);
         openModal('doi-card');
       } catch (err) {
         setIsSearchingDoi(false);
-        showNotif("Gagal mencari, coba lagi.", "error");
+        showNotif('Gagal mencari, coba lagi.', 'error');
       }
     }, 4000);
   };
@@ -166,60 +222,68 @@ export default function HypetalkPage() {
   const handleSearchAndChat = async () => {
     if (!searchUserId) return;
     const cleanId = searchUserId.replace('#', '').toUpperCase();
-    const { data: target } = await supabase.from('profiles').select('id').eq('short_id', cleanId).maybeSingle();
+    const { data: target } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('short_id', cleanId)
+      .maybeSingle();
     if (target) {
       router.push(`/hypetalk/room?from=${target.id}`);
       closeModal();
     } else {
-      showNotif("ID tidak ditemukan", "error");
+      showNotif('ID tidak ditemukan', 'error');
     }
   };
 
   const handleCreateGroup = async () => {
-    if (!groupName.trim()) return showNotif("Nama grup tidak boleh kosong", "error");
+    if (!groupName.trim()) return showNotif('Nama grup tidak boleh kosong', 'error');
     try {
-      const { data: newGroup, error } = await supabase.from('groups')
+      const { data: newGroup, error } = await supabase
+        .from('groups')
         .insert([{ name: groupName, created_by: currentUser.id }])
         .select()
         .single();
       if (error) throw error;
       await supabase.from('group_members').insert([{ group_id: newGroup.id, user_id: currentUser.id }]);
-      showNotif("Grup berhasil dibuat!", "success");
+      showNotif('Grup berhasil dibuat!', 'success');
       closeModal();
       router.push(`/hypetalk/room?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
     } catch (err) {
-      showNotif("Gagal membuat grup", "error");
+      showNotif('Gagal membuat grup', 'error');
     }
   };
 
   const handleOpenChat = (chat: any) => {
-    // chat bisa punya from/to; tentukan partner id
     const partnerId = chat.from === currentUser.id ? chat.to : chat.from;
     router.push(`/hypetalk/room?from=${partnerId}`);
   };
 
-  const handleAvatarClick = (profile: any) => {
-    setSelectedProfile(profile);
-    openModal('user-profile');
+  const handleAvatarClick = (chat: any) => {
+    if (chat.partnerProfile) {
+      setSelectedProfile(chat.partnerProfile);
+      openModal('user-profile');
+    } else {
+      // fallback jika profil belum termuat
+      setSelectedProfile({ id: chat.partnerId, username: chat.partnerId });
+      openModal('user-profile');
+    }
   };
 
   const startCallFromLobby = (target: any) => {
-    // Implementasi panggilan sederhana: arahkan ke room dengan flag call
     router.push(`/hypetalk/room?from=${target.id}&call=true`);
   };
 
   // ----------------------------------------------
-  //  FILTER CHATS UNTUK TAMPILAN
+  //  FILTER
   // ----------------------------------------------
-  const filteredChats = chats.filter(chat => {
+  const filteredChats = chats.filter((chat) => {
     if (!searchQuery) return true;
-    const partnerId = chat.from === currentUser?.id ? chat.to : chat.from;
-    // Sederhana: filter berdasarkan id partner (short_id atau username nanti bisa ditambah)
-    return partnerId?.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = chat.partnerProfile?.username || chat.partnerId || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   // ----------------------------------------------
-  //  JIKA LOADING TAMPILKAN LOADING
+  //  LOADING / EMPTY STATE
   // ----------------------------------------------
   if (isLoading || !currentUser) {
     return (
@@ -230,21 +294,19 @@ export default function HypetalkPage() {
     );
   }
 
-  // ----------------------------------------------
-  //  RENDER UTAMA
-  // ----------------------------------------------
+  // ==============================================
+  //  RENDER
+  // ==============================================
   return (
     <div className="telegram-wrapper">
-      {/* ---------- HEADER ---------- */}
+      {/* HEADER */}
       <div className="header">
         <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
           <span className="material-icons">menu</span>
         </button>
         <div className="header-title">
           <h2>Hypetalk</h2>
-          {requestChats.length > 0 && (
-            <span className="badge">{requestChats.length}</span>
-          )}
+          {requestChats.length > 0 && <span className="badge">{requestChats.length}</span>}
         </div>
         <div className="header-actions">
           <button onClick={() => openModal('search')}>
@@ -253,64 +315,65 @@ export default function HypetalkPage() {
         </div>
       </div>
 
-      {/* ---------- SEARCH BAR (opsional) ---------- */}
+      {/* SEARCH BAR */}
       <div className="search-bar">
         <span className="material-icons">search</span>
         <input
           type="text"
           placeholder="Cari obrolan..."
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      {/* ---------- CHAT LIST ---------- */}
+      {/* CHAT LIST */}
       <div className="chat-list">
         {filteredChats.length === 0 ? (
           <div className="empty-chat">Belum ada obrolan. Cari teman baru!</div>
         ) : (
-          filteredChats.map(chat => {
-            const partnerId = chat.from === currentUser.id ? chat.to : chat.from;
-            return (
+          filteredChats.map((chat) => (
+            <div key={chat.id} className="chat-item" onClick={() => handleOpenChat(chat)}>
               <div
-                key={chat.id}
-                className="chat-item"
-                onClick={() => handleOpenChat(chat)}
-              >
-                <div className="avatar" onClick={(e) => {
+                className="avatar"
+                onClick={(e) => {
                   e.stopPropagation();
-                  handleAvatarClick({ id: partnerId, username: partnerId });
-                }}>
-                  <img
-                    src="/asets/png/profile.webp"
-                    alt="avatar"
-                    onError={e => (e.currentTarget.src = '/asets/png/profile.webp')}
-                  />
-                </div>
-                <div className="chat-info">
-                  <div className="name">{partnerId}</div>
-                  <div className="last-msg">
-                    {chat.last_message || 'Klik untuk mulai chat'}
-                  </div>
-                </div>
-                <div className="chat-meta">
-                  <span className="time">{chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                </div>
+                  handleAvatarClick(chat);
+                }}
+              >
+                <img
+                  src={chat.partnerProfile?.avatar_url || '/asets/png/profile.webp'}
+                  alt="avatar"
+                  onError={(e) => (e.currentTarget.src = '/asets/png/profile.webp')}
+                />
               </div>
-            );
-          })
+              <div className="chat-info">
+                <div className="name">{chat.partnerProfile?.username || chat.partnerId}</div>
+                <div className="last-msg">{chat.last_message || 'Klik untuk mulai chat'}</div>
+              </div>
+              <div className="chat-meta">
+                <span className="time">
+                  {chat.last_message_at
+                    ? new Date(chat.last_message_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : ''}
+                </span>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
-      {/* ---------- FAB (Floating Action Button) ---------- */}
+      {/* FAB */}
       <button className="fab" onClick={() => openModal('search')}>
         <span className="material-icons">edit</span>
       </button>
 
-      {/* ---------- SIDEBAR (Overlay) ---------- */}
+      {/* SIDEBAR */}
       {isSidebarOpen && (
         <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}>
-          <div className="sidebar" onClick={e => e.stopPropagation()}>
+          <div className="sidebar" onClick={(e) => e.stopPropagation()}>
             <div className="sidebar-header">
               <h3>Menu</h3>
               <button onClick={() => setIsSidebarOpen(false)}>
@@ -341,33 +404,51 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* ---------- MODALS ---------- */}
-      {/* Profile User */}
+      {/* ========= MODALS ========= */}
+      {/* USER PROFILE */}
       {activeModal === 'user-profile' && selectedProfile && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content profile-card" onClick={e => e.stopPropagation()}>
+          <div className="tg-modal-content profile-card" onClick={(e) => e.stopPropagation()}>
             <div className="profile-image-section">
               <img
-                src={selectedProfile.avatar_url || "/asets/png/profile.webp"}
+                src={selectedProfile.avatar_url || '/asets/png/profile.webp'}
                 alt="profile"
                 className="profile-img"
               />
               <div className="profile-name-overlay">
-                <h2>{selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}</h2>
+                <h2>
+                  {selectedProfile.username}
+                  {selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}
+                </h2>
               </div>
             </div>
             <div className="profile-actions">
-              <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }}>
+              <button
+                onClick={() => {
+                  closeModal();
+                  router.push(`/hypetalk/room?from=${selectedProfile.id}`);
+                }}
+              >
                 <span className="material-icons">chat</span> Chat
               </button>
-              <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }}>
+              <button
+                onClick={() => {
+                  closeModal();
+                  startCallFromLobby(selectedProfile);
+                }}
+              >
                 <span className="material-icons">call</span> Telpon
               </button>
-              <button onClick={() => {
-                if (confirm("Blokir user ini?")) {
-                  supabase.from('blocked_users').insert({ blocker_id: currentUser.id, blocked_id: selectedProfile.id }).then(() => closeModal());
-                }
-              }}>
+              <button
+                onClick={() => {
+                  if (confirm('Blokir user ini?')) {
+                    supabase
+                      .from('blocked_users')
+                      .insert({ blocker_id: currentUser.id, blocked_id: selectedProfile.id })
+                      .then(() => closeModal());
+                  }
+                }}
+              >
                 <span className="material-icons">block</span> Blokir
               </button>
             </div>
@@ -375,23 +456,45 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* Edit Bio Modal */}
+      {/* EDIT BIO */}
       {activeModal === 'bio' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
+          <div className="tg-modal-content slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Edit Biodata</h3>
-              <button onClick={closeModal}><span className="material-icons">close</span></button>
+              <button onClick={closeModal}>
+                <span className="material-icons">close</span>
+              </button>
             </div>
             <div className="bio-form">
-              <input type="number" placeholder="Umur" value={bioForm.umur} onChange={e => setBioForm({ ...bioForm, umur: e.target.value })} />
-              <select value={bioForm.gender} onChange={e => setBioForm({ ...bioForm, gender: e.target.value })}>
+              <input
+                type="number"
+                placeholder="Umur"
+                value={bioForm.umur}
+                onChange={(e) => setBioForm({ ...bioForm, umur: e.target.value })}
+              />
+              <select
+                value={bioForm.gender}
+                onChange={(e) => setBioForm({ ...bioForm, gender: e.target.value })}
+              >
                 <option>Pria</option>
                 <option>Wanita</option>
               </select>
-              <input placeholder="Zodiak" value={bioForm.zodiak} onChange={e => setBioForm({ ...bioForm, zodiak: e.target.value })} />
-              <input placeholder="Pekerjaan" value={bioForm.pekerjaan} onChange={e => setBioForm({ ...bioForm, pekerjaan: e.target.value })} />
-              <input placeholder="Hobi" value={bioForm.hobi} onChange={e => setBioForm({ ...bioForm, hobi: e.target.value })} />
+              <input
+                placeholder="Zodiak"
+                value={bioForm.zodiak}
+                onChange={(e) => setBioForm({ ...bioForm, zodiak: e.target.value })}
+              />
+              <input
+                placeholder="Pekerjaan"
+                value={bioForm.pekerjaan}
+                onChange={(e) => setBioForm({ ...bioForm, pekerjaan: e.target.value })}
+              />
+              <input
+                placeholder="Hobi"
+                value={bioForm.hobi}
+                onChange={(e) => setBioForm({ ...bioForm, hobi: e.target.value })}
+              />
               <button className="save-btn" onClick={handleSaveBio} disabled={isSavingBio}>
                 {isSavingBio ? 'Menyimpan...' : 'Simpan'}
               </button>
@@ -400,13 +503,15 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* Buat Grup Modal */}
+      {/* BUAT GRUP */}
       {activeModal === 'group' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
+          <div className="tg-modal-content slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Buat Grup Baru</h3>
-              <button onClick={closeModal}><span className="material-icons">close</span></button>
+              <button onClick={closeModal}>
+                <span className="material-icons">close</span>
+              </button>
             </div>
             <div className="input-group">
               <span className="material-icons">group</span>
@@ -414,61 +519,77 @@ export default function HypetalkPage() {
                 type="text"
                 placeholder="Nama grup"
                 value={groupName}
-                onChange={e => setGroupName(e.target.value)}
+                onChange={(e) => setGroupName(e.target.value)}
               />
             </div>
-            <button className="action-btn" onClick={handleCreateGroup}>Buat Grup</button>
+            <button className="action-btn" onClick={handleCreateGroup}>
+              Buat Grup
+            </button>
           </div>
         </div>
       )}
 
-      {/* Search ID Modal */}
+      {/* SEARCH ID */}
       {activeModal === 'search' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
+          <div className="tg-modal-content slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Mulai Chat Baru</h3>
-              <button onClick={closeModal}><span className="material-icons">close</span></button>
+              <button onClick={closeModal}>
+                <span className="material-icons">close</span>
+              </button>
             </div>
             <div className="input-group">
               <span className="material-icons">tag</span>
-              <input type="text" placeholder="ID teman (ABCD)" value={searchUserId} onChange={e => setSearchUserId(e.target.value)} />
+              <input
+                type="text"
+                placeholder="ID teman (ABCD)"
+                value={searchUserId}
+                onChange={(e) => setSearchUserId(e.target.value)}
+              />
             </div>
-            <button className="action-btn" onClick={handleSearchAndChat}>Cari dan Chat</button>
+            <button className="action-btn" onClick={handleSearchAndChat}>
+              Cari dan Chat
+            </button>
           </div>
         </div>
       )}
 
-      {/* Doi Card Modal */}
+      {/* DOI CARD */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content doi-card" onClick={e => e.stopPropagation()}>
+          <div className="tg-modal-content doi-card" onClick={(e) => e.stopPropagation()}>
             <div className="doi-image-section">
               <img
-                src={foundDoi.avatar_url || "/asets/png/profile.webp"}
+                src={foundDoi.avatar_url || '/asets/png/profile.webp'}
                 alt="doi"
                 className="doi-avatar"
               />
-              <h2 className="doi-name">{foundDoi.username}, {foundDoi.umur || '??'}</h2>
+              <h2 className="doi-name">
+                {foundDoi.username}, {foundDoi.umur || '??'}
+              </h2>
             </div>
             <div className="doi-bio">
               {foundDoi.pekerjaan && <span className="tag">{foundDoi.pekerjaan}</span>}
               {foundDoi.hobi && <span className="tag">{foundDoi.hobi}</span>}
             </div>
-            <button className="chat-now-btn" onClick={() => {
-              closeModal();
-              router.push(`/hypetalk/room?from=${foundDoi.id}`);
-            }}>
+            <button
+              className="chat-now-btn"
+              onClick={() => {
+                closeModal();
+                router.push(`/hypetalk/room?from=${foundDoi.id}`);
+              }}
+            >
               Chat Sekarang
             </button>
           </div>
         </div>
       )}
 
-      {/* Limit Doi Modal (opsional) */}
+      {/* LIMIT DOI */}
       {activeModal === 'limit-doi' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content" onClick={e => e.stopPropagation()}>
+          <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Limit Harian Habis</h3>
             <p>Kamu sudah mencapai batas pencarian hari ini. Tunggu besok ya!</p>
             <button onClick={closeModal}>OK</button>
@@ -476,7 +597,7 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* Radar Searching Overlay */}
+      {/* RADAR SEARCHING OVERLAY */}
       {isSearchingDoi && (
         <div className="doi-search-overlay">
           <div className="radar-container">
