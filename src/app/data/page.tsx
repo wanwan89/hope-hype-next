@@ -267,10 +267,11 @@ function ProfileContent() {
     }
   };
 
-  const handleGoToChat = () => {
-    if (!profile?.id) return;
-    router.push(`/hypetalk/chat?from=${profile.id}`);
-  };
+// GANTI ISI FUNGSINYA JADI GINI:
+const handleGoToChat = () => {
+  if (!profile?.id) return;
+  router.push(`/hypetalk/room?from=${profile.id}`); // Pastikan tujuannya /hypetalk/room
+};
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
     setFollowModalType(type);
