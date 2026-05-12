@@ -16,16 +16,17 @@ const AnimatedAdminBadge = () => {
         duration: 2,
         ease: [0.45, 0, 0.55, 1],
         repeat: Infinity,
-        repeatType: 'mirror',    // 💫 tulis → hapus → tulis …
-        repeatDelay: 0,         // 🚫 tanpa jeda
+        repeatType: 'loop',      // tulis → reset → tulis lagi (dari kiri ke kanan)
+        repeatDelay: 0.5,       // jeda sebentar sebelum mengulang
       },
     },
   };
 
   return (
     <motion.span
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.5 }}
       className="admin-badge-clean"
       style={{
         background: 'linear-gradient(135deg, #1f3cff, #bc13fe)',
@@ -39,7 +40,7 @@ const AnimatedAdminBadge = () => {
         verticalAlign: 'middle',
         lineHeight: '1',
         fontWeight: '500',
-        border: 'none',              // ❌ hilangkan efek shadow
+        border: 'none',
         overflow: 'hidden',
         boxShadow: 'none',
       }}
@@ -71,7 +72,7 @@ const AnimatedAdminBadge = () => {
             animate="visible"
             fill="none"
             stroke="white"
-            strokeWidth="1.5"       // ✒️ tipis seperti pulpen
+            strokeWidth="3"        // 🔥 Tebal agar jelas
             strokeLinecap="round"
             d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6"
           />
@@ -82,7 +83,7 @@ const AnimatedAdminBadge = () => {
             animate="visible"
             fill="none"
             stroke="white"
-            strokeWidth="1.5"
+            strokeWidth="3"
             strokeLinecap="round"
             d="M28 4v12 M28 4h8 M28 10h6 M28 16h8"
           />
@@ -93,7 +94,7 @@ const AnimatedAdminBadge = () => {
             animate="visible"
             fill="none"
             stroke="white"
-            strokeWidth="1.5"
+            strokeWidth="3"
             strokeLinecap="round"
             d="M45 4l5 12 5-12"
           />

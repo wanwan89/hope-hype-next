@@ -13,11 +13,12 @@ export function getUserBadge(role: string): string {
 if (roleLower === "admin") {
   badge += `
     <style>
-      @keyframes drawAndErase {
+      @keyframes drawLeftToRight {
         0%   { stroke-dashoffset: 1; opacity: 0; }
-        20%  { opacity: 1; }
-        50%  { stroke-dashoffset: 0; }
-        100% { stroke-dashoffset: 1; }
+        15%  { opacity: 1; }
+        50%  { stroke-dashoffset: 0; opacity: 1; }
+        70%  { opacity: 0; }
+        100% { stroke-dashoffset: 1; opacity: 0; }
       }
 
       .admin-badge-container {
@@ -37,13 +38,13 @@ if (roleLower === "admin") {
 
       .scribble-path-admin {
         stroke: white;
-        stroke-width: 1.5;            /* Tipis seperti tanda tangan */
+        stroke-width: 3;                 /* Tebal dan jelas */
         stroke-linecap: round;
         stroke-linejoin: round;
         fill: none;
         stroke-dasharray: 1;
         stroke-dashoffset: 1;
-        animation: drawAndErase 2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        animation: drawLeftToRight 2.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
       }
     </style>
 
@@ -59,7 +60,7 @@ if (roleLower === "admin") {
       </svg>
     </span>`;
 }
-  if (roleLower === "verified") {
+if (roleLower === "verified") {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
   
