@@ -13,7 +13,9 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  output: "export",
+  // 🔥 FIX API 404: Mati di Vercel (API nyala), Hidup di Termux (Buat APK) 🔥
+  output: process.env.VERCEL ? undefined : "export",
+  
   images: { unoptimized: true },
 
   // 🔥 OBAT KUAT BUAT TERMUX BIAR GAK CRASH 🔥
