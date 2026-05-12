@@ -17,28 +17,35 @@ if (!admin.apps.length) {
 // Handler untuk metode POST (saat aplikasi nembak fetch POST)
 export async function POST(request: Request) {
   try {
-    // Ambil data yang dikirim dari aplikasi lu
+    // Ambil data yang dikirim dari aplikasi frontend lu
     const body = await request.json();
-    const { token, title, body: messageBody, data } = body;
+    
+    // 🔥 SAMAIN PERSIS KAYAK REQUEST DARI FRONTEND 🔥
+    const { targetToken, type, title, message, callerId, callerName, roomId } = body;
 
     // Kalau token penerimanya kosong, tolak mentah-mentah
-    if (!token) {
-      return NextResponse.json({ error: 'Token tujuan (FCM) tidak ditemukan' }, { status: 400 });
+    if (!targetToken) {
+      return NextResponse.json({ error: 'Token tujuan (FCM) tidak ditemukan!' }, { status: 400 });
     }
 
     // 📦 Bungkus "Paket" Notifikasinya
-    const message = {
-      token: token,
+    const messagePayload = {
+      token: targetToken, // Pake targetToken dari frontend
       notification: {
         title: title || 'HypeTalk',
-        body: messageBody || 'Ada notifikasi baru buat lu, Bree!',
+        body: message || 'Ada notifikasi baru buat lu, Bree!', // Pake message, bukan body
       },
-      // Data tersembunyi buat ngasih tau HP mau navigasi ke mana
-      data: data || {}, 
+      // 🔥 PENTING: Firebase wajibin semua value di 'data' berbentuk STRING 🔥
+      data: {
+        type: type ? String(type) : '',
+        callerId: callerId ? String(callerId) : '',
+        callerName: callerName ? String(callerName) : '',
+        roomId: roomId ? String(roomId) : ''
+      }, 
     };
 
     // 🚀 Tembak ke Google Firebase!
-    const response = await admin.messaging().send(message);
+    const response = await admin.messaging().send(messagePayload);
     
     console.log('✅ Notif Sukses Dikirim! ID:', response);
     return NextResponse.json({ success: true, messageId: response }, { status: 200 });
