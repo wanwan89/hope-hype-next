@@ -46,9 +46,9 @@
   transition: background 0.3s ease;
 }
 
-/* BUBBLE SENDIRI (BLUE PREMIUM) */
+/* BUBBLE SENDIRI (HIJAU SULTAN) */
 .hype-chat-scope .chat-message.self .content { 
-  background: #1f3cff; 
+  background: #00a884; 
   color: #ffffff; 
   border-radius: 18px 18px 4px 18px; 
   margin-left: 40px; /* Jarak agar tidak mepet kiri saat panjang */
@@ -85,8 +85,8 @@ html.dark .hype-chat-scope .chat-message.other .content {
   white-space: nowrap; 
 }
 .hype-chat-scope .chat-message.other .reply-box {
-  background: rgba(31, 60, 255, 0.05);
-  border-left-color: #1f3cff;
+  background: rgba(0, 168, 132, 0.05); /* Hijau transparan */
+  border-left-color: #00a884;
   color: var(--text-muted);
 }
 
@@ -94,13 +94,13 @@ html.dark .hype-chat-scope .chat-message.other .content {
 .hype-chat-scope .username-label { 
   font-weight: 800; 
   font-size: 11px; 
-  color: #1f3cff; 
+  color: #00a884; 
   margin-bottom: 3px; 
   display: flex; 
   align-items: center; 
   gap: 4px; 
 }
-[data-theme='dark'] .hype-chat-scope .username-label { color: #4facfe; }
+[data-theme='dark'] .hype-chat-scope .username-label { color: #2ecc71; } /* Hijau lebih terang untuk dark mode */
 
 /* TEXT STYLING */
 .hype-chat-scope .text-body { 
@@ -128,12 +128,12 @@ html.dark .hype-chat-scope .chat-message.other .content {
   width: 34px; height: 34px; 
   border-radius: 50%; 
   background: #ffffff !important; 
-  color: #1f3cff !important;
+  color: #00a884 !important;
   display: flex; align-items: center; justify-content: center;
   border: none; cursor: pointer; flex-shrink: 0;
 }
 .hype-chat-scope .chat-message.other .vn-btn {
-  background: #1f3cff !important;
+  background: #00a884 !important;
   color: #ffffff !important;
 }
 
@@ -147,7 +147,7 @@ html.dark .hype-chat-scope .chat-message.other .content {
   background: rgba(255,255,255,0.4);
 }
 .hype-chat-scope .chat-message.other .v-bar {
-  background: rgba(31, 60, 255, 0.2);
+  background: rgba(0, 168, 132, 0.2);
 }
 
 .hype-chat-scope .playing .v-bar { 
@@ -155,7 +155,7 @@ html.dark .hype-chat-scope .chat-message.other .content {
   background: #ffffff !important;
 }
 .hype-chat-scope .chat-message.other.playing .v-bar {
-  background: #1f3cff !important;
+  background: #00a884 !important;
 }
 
 /* REACTION BADGE */

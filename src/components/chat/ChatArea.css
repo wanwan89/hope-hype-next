@@ -1,43 +1,44 @@
-/* src/app/hypetalk/chat/ChatArea.css */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* =========================================
    🔥 SUNTIKAN WARNA UTAMA (WRAPPER SCOPE) 🔥
    ========================================= */
 .hype-chat-scope {
-  --bg-main: #ffffff;
+  --bg-main: #050505;
+  --bg-panel: #111111;
+  --text-color: #ffffff;
+  --text-muted: #64748b;
+  --border-color: rgba(255, 255, 255, 0.05);
+  
+  /* 🔥 SINKRONISASI WARNA HIJAU WHATSAPP SULTAN 🔥 */
+  --chat-self-bg: #00a884;   
+  --primary-color: #00a884; /* Ubah nama biar lebih universal, bukan biru lagi */
+  
+  --header-bg: rgba(17, 17, 17, 0.9);
+  --header-text: #ffffff;
+  --input-box-bg: #1a1a1a;
+}
+
+/* Auto-adapt untuk mode terang (kalau lu pakai theme picker) */
+[data-theme='light'] .hype-chat-scope {
+  --bg-main: #e5ddd5; /* Warna background khas WA Light */
   --bg-panel: #ffffff;
   --text-color: #111827;
-  --text-muted: #64748b;
   --border-color: #e2e8f0;
-  --chat-self-bg: #1f3cff;   /* 🔥 UBAH KE BIRU */
-  --primary-blue: #1DA1F2;
-  --header-bg: #ffffff;
+  --chat-self-bg: #d9fdd3; /* Hijau muda WA Light */
+  --primary-color: #008069; 
+  --header-bg: rgba(255, 255, 255, 0.95);
   --header-text: #111827;
   --input-box-bg: #ffffff;
 }
 
-[data-theme='dark'] .hype-chat-scope,
-html.dark .hype-chat-scope {
-  --bg-main: #0b141a;
-  --bg-panel: #202c33;
-  --text-color: #e9edef;
-  --text-muted: #8696a0;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --chat-self-bg: #1f3cff;   /* 🔥 UBAH KE BIRU */
-  --header-bg: #202c33;
-  --header-text: #e9edef;
-  --input-box-bg: #2a3942;
-}
-
 .hype-chat-scope * {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
   font-family: 'Inter', sans-serif;
   box-sizing: border-box;
 }
 
 /* =========================================
-   LAYOUT UTAMA
+   LAYOUT UTAMA PENGUNCI LAYAR
    ========================================= */
 .hype-chat-scope.telegram-chat {
   display: flex;
@@ -55,103 +56,62 @@ html.dark .hype-chat-scope {
   touch-action: pan-x pan-y;
   color: var(--text-color);
   overscroll-behavior: none;
+  padding-bottom: env(safe-area-inset-bottom); /* Fix HP berponi bawah */
 }
 
 /* =========================================
-   🔥 HEADER
+   🔥 CHAT BUBBLE & MESSAGES AREA
    ========================================= */
-.hype-chat-scope .chat-header {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 15px;
-  padding-top: env(safe-area-inset-top);
-  background: var(--header-bg) !important;
-  color: var(--header-text);
-  height: calc(65px + env(safe-area-inset-top));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-  z-index: 10002;
-}
-
-.hype-chat-scope .header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-}
-
-.hype-chat-scope .menu-btn {
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: inherit;
-}
-
-.hype-chat-scope .header-info {
+.hype-chat-scope .chat-messages {
+  flex: 1 1 auto !important;
+  padding: 12px;
+  /* Kasih padding bottom lebih biar pesan terakhir gak ketutup input VN */
+  padding-bottom: 140px !important; 
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  flex: 1;
-  min-width: 0;
+  gap: 10px;
+  background: var(--bg-main);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
 }
 
-.hype-chat-scope .header-info h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--header-text);
+.hype-chat-scope .chat-messages::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
 }
 
-.hype-chat-scope .status-container {
-  font-size: 10px;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* =========================================
+   🔥 TEXTAREA CUSTOM SCROLL & PLACEHOLDER
+   ========================================= */
+.hype-chat-scope .input-group-wrapper textarea {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
 }
 
-.hype-chat-scope .status-online {
-  opacity: 0.85;
-  color: var(--header-text);
+.hype-chat-scope .input-group-wrapper textarea::-webkit-scrollbar {
+  width: 4px;
 }
 
-.hype-chat-scope .status-typing {
-  color: #e0eaff;
-  font-weight: 600;
-  font-style: italic;
+.hype-chat-scope .input-group-wrapper textarea::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
 }
 
-.hype-chat-scope .header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  flex-shrink: 0;
-  margin-left: 10px;
+.hype-chat-scope .input-group-wrapper textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
 }
 
-.hype-chat-scope .btn-call {
-  background: transparent !important;
-  border: none !important;
-  outline: none !important;
-  padding: 8px !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--header-text);
-  border-radius: 50%;
+/* =========================================
+   🔥 FIX TOMBOL SEND/MIC MENGHINDARI KONFLIK FRAMER
+   ========================================= */
+.hype-chat-scope #action-btn {
+  /* Hapus animasi CSS murni karena sudah pakai Framer Motion */
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.hype-chat-scope #action-btn:active {
+  transform: scale(0.9) !important; /* Efek pencet hardware */
 }
 
 /* =========================================
@@ -165,214 +125,26 @@ html.dark .hype-chat-scope {
   background: var(--bg-main);
   height: 100%;
   width: 100%;
-}
-
-.hype-chat-scope .skeleton-msg {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-  max-width: 85%;
-}
-
-.hype-chat-scope .skeleton-msg.right {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-}
-
-.hype-chat-scope .skeleton-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--border-color);
-  flex-shrink: 0;
-}
-
-.hype-chat-scope .skeleton-bubble {
-  height: 48px;
-  min-width: 140px;
-  border-radius: 18px;
-  background: var(--border-color);
-  position: relative;
-  overflow: hidden;
-}
-
-.hype-chat-scope .skeleton-bubble::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  animation: hype-shimmer 1.6s infinite;
-}
-
-@keyframes hype-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.hype-chat-scope .loading-chat-hint {
-  text-align: center;
-  font-size: 12px;
+  align-items: center;
+  justify-content: center;
   color: var(--text-muted);
-  margin-top: 10px;
   font-weight: 500;
+  animation: hype-pulse-fade 1.5s infinite;
+}
+
+@keyframes hype-pulse-fade {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 /* =========================================
-   🔥 FULLSCREEN CALL OVERLAY (CALLING / INCOMING)
-   ========================================= */
-.hype-chat-scope .call-fullscreen-overlay {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  background: rgba(0, 0, 0, 0.85) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  z-index: 20000 !important;
-  animation: fadeIn 0.3s ease !important;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.hype-chat-scope .call-fullscreen-content {
-  text-align: center;
-  color: white;
-}
-
-.hype-chat-scope .call-fullscreen-avatar {
-  width: 120px !important;
-  height: 120px !important;
-  border-radius: 50% !important;
-  object-fit: cover !important;
-  border: 3px solid #2ecc71 !important;
-  margin-bottom: 20px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
-}
-
-.hype-chat-scope .anim-calling-avatar {
-  animation: pulseCall 1.2s infinite !important;
-}
-
-@keyframes pulseCall {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-}
-
-.hype-chat-scope .call-fullscreen-name {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 8px;
-}
-
-.hype-chat-scope .call-fullscreen-status {
-  font-size: 14px;
-  opacity: 0.8;
-  margin-bottom: 40px;
-}
-
-.hype-chat-scope .call-fullscreen-buttons {
-  display: flex;
-  gap: 30px;
-}
-
-.hype-chat-scope .call-fullscreen-btn {
-  padding: 12px 32px;
-  border: none;
-  border-radius: 40px;
-  font-weight: bold;
-  font-size: 16px;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.hype-chat-scope .call-fullscreen-btn:active {
-  transform: scale(0.95);
-}
-
-.hype-chat-scope .btn-answer {
-  background: #2ecc71;
-  color: white;
-}
-
-.hype-chat-scope .btn-decline {
-  background: #ff4757;
-  color: white;
-}
-
-/* =========================================
-   🔥 FLOATING CALL BOX (SAAT CONNECTED)
-   ========================================= */
-.hype-chat-scope .floating-call-box {
-  position: fixed;
-  top: 80px;
-  left: 20px;
-  right: 20px;
-  background: var(--bg-panel);
-  backdrop-filter: blur(12px);
-  border-radius: 28px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  z-index: 10000;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.hype-chat-scope .floating-call-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.hype-chat-scope .floating-call-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #2ecc71;
-}
-
-.hype-chat-scope .floating-call-duration {
-  font-family: monospace;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.hype-chat-scope .floating-call-end {
-  background: #ff4757;
-  border: none;
-  border-radius: 40px;
-  padding: 6px 16px;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* =========================================
-   🔥 LIGHTBOX STIKER FULL SCREEN TRANSPARAN
+   🔥 LIGHTBOX STIKER FULL SCREEN
    ========================================= */
 .hype-chat-scope .sticker-lightbox {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -386,351 +158,12 @@ html.dark .hype-chat-scope {
   max-height: 90vh;
   object-fit: contain;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
 }
 
-/* =========================================
-   🔥 CHAT BUBBLE & MESSAGES
-   ========================================= */
-.hype-chat-scope .chat-messages {
-  flex: 1 1 auto !important;
-  padding: 12px;
-  padding-bottom: 110px !important;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--bg-main);
-  -webkit-overflow-scrolling: touch;
-}
-
-/* 🔥 HAPUS ATURAN .self .content & .other .content YANG BERTENTANGAN */
-/* Karena styling detail sudah diatur di MessageBubble.css dan inline style */
-.hype-chat-scope .chat-message .content {
-  display: flex;
-  flex-direction: column;
-  max-width: 78%;
-  padding: 10px 14px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-/* =========================================
-   🔥 REACTION MENU (TIDAK AUTO-CLOSE)
-   ========================================= */
-.hype-chat-scope .reaction-menu {
-  position: absolute;
-  background: var(--bg-panel);
-  padding: 8px 12px;
-  border-radius: 30px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  display: flex;
-  gap: 12px;
-  border: 1px solid var(--border-color);
-  z-index: 100000;
-}
-
-.hype-chat-scope .reaction-menu span {
-  font-size: 24px;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.hype-chat-scope .reaction-menu span:active {
-  transform: scale(1.2);
-}
-
-/* =========================================
-   🔥 CHAT INPUT LAYER
-   ========================================= */
-.hype-chat-scope .chat-input-container {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 10000 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  background: transparent !important;
-  padding: 8px 12px !important;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
-  pointer-events: none !important;
-}
-
-.hype-chat-scope .chat-input-container > * {
-  pointer-events: auto !important;
-}
-
-.hype-chat-scope .input-row {
-  display: flex;
-  width: 100%;
-  align-items: flex-end;
-  gap: 8px;
-  position: relative;
-  z-index: 100;
-}
-
-.hype-chat-scope .input-group-wrapper {
-  flex: 1 1 auto;
-  min-width: 0;
-  background: var(--input-box-bg) !important;
-  border: 1px solid var(--border-color);
-  border-radius: 28px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  display: flex;
-  align-items: center;
-  min-height: 50px;
-}
-
-.hype-chat-scope #chat-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent !important;
-  resize: none;
-  font-family: 'Inter', sans-serif;
-  color: var(--text-color);
-  overflow-y: auto;
-  padding: 12px 14px;
-}
-
-/* =========================================
-   🔥 GAYA RECORDING PREMIUM (VN)
-   ========================================= */
-.hype-chat-scope .online-dot {
-  width: 12px !important;
-  height: 12px !important;
-  border-radius: 50% !important;
-  background-color: #ff4757 !important;
-  box-shadow: 0 0 8px rgba(255, 71, 87, 0.6) !important;
-  animation: hype-record-blink 0.8s infinite alternate !important;
-}
-
-@keyframes hype-record-blink {
-  0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0.3; transform: scale(0.7); }
-}
-
-/* =========================================
-   🔥 TOMBOL MIC / KIRIM
-   ========================================= */
-.hype-chat-scope #action-btn {
-  width: 50px;
-  height: 50px;
-  min-width: 50px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  background-color: var(--primary-blue) !important;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 4px 10px rgba(29, 161, 242, 0.3) !important;
-}
-
-.hype-chat-scope #action-btn:active {
-  transform: scale(0.85) !important;
-  box-shadow: 0 2px 5px rgba(29, 161, 242, 0.4) !important;
-}
-
-.hype-chat-scope #action-btn.is-recording {
-  background-color: #ff4757 !important;
-  transform: scale(1.15) !important;
-  animation: hype-pulse-record 1.5s infinite !important;
-}
-
-@keyframes hype-pulse-record {
-  0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.5); }
-  70% { box-shadow: 0 0 0 15px rgba(255, 71, 87, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
-}
-
-/* =========================================
-   🔥 STIKER MENU
-   ========================================= */
-.hype-chat-scope #sticker-menu {
-  position: absolute !important;
-  bottom: calc(100% + 10px) !important;
-  left: 12px !important;
-  right: 12px !important;
-  z-index: 10010 !important;
-  background: var(--bg-panel) !important;
-  border: 1px solid var(--border-color) !important;
-  border-radius: 20px !important;
-  padding: 15px !important;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15) !important;
-  animation: hype-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
-  display: flex !important;
-  flex-direction: column !important;
-  max-width: 350px !important;
-  margin: 0 auto !important;
-}
-
-.hype-chat-scope .sticker-search-wrapper {
-  margin-bottom: 15px !important;
-  display: block !important;
-  width: 100% !important;
-}
-
-.hype-chat-scope .sticker-search-wrapper input {
-  width: 100% !important;
-  box-sizing: border-box !important;
-  background: var(--bg-main) !important;
-  border: 1px solid var(--border-color) !important;
-  color: var(--text-color) !important;
-  padding: 12px 14px !important;
-  border-radius: 14px !important;
-  outline: none !important;
-}
-
-.hype-chat-scope #sticker-list {
-  display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
-  gap: 16px !important;
-  max-height: 280px !important;
-  overflow-y: auto !important;
-  padding-right: 5px !important;
-}
-
-.hype-chat-scope #sticker-list img {
-  width: 100% !important;
-  aspect-ratio: 1 / 1 !important;
-  object-fit: contain !important;
-  border-radius: 8px !important;
-  cursor: pointer !important;
-  transition: transform 0.2s !important;
-}
-
-.hype-chat-scope #sticker-list img:active {
-  transform: scale(0.9);
-}
-
-@keyframes hype-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* =========================================
-   🔥 VOICE NOTE PLAYER & REPLY BOX
-   ========================================= */
-.hype-chat-scope .vn-custom-player {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 180px;
-}
-
-.hype-chat-scope .vn-play-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--primary-blue) !important;
-  border: none;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.hype-chat-scope #reply-preview-box {
-  display: flex !important;
-  background: var(--input-box-bg) !important;
-  border-left: 4px solid var(--primary-blue) !important;
-  border-radius: 14px;
-  padding: 10px 14px;
-  margin-bottom: 10px;
-  animation: hype-pop 0.3s forwards;
-}
-
-/* =========================================
-   🔥 CUSTOM MODAL (BOTTOM SHEET)
-   ========================================= */
-.hype-chat-scope .custom-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
-  z-index: 100005;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.hype-chat-scope .custom-modal-content {
-  background: var(--bg-panel);
-  width: 100%;
-  border-radius: 32px 32px 0 0;
-  padding: 16px 24px 40px;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
-  animation: hype-slide-up 0.4s cubic-bezier(0.33, 1, 0.68, 1);
-  position: relative;
-}
-
-.hype-chat-scope .custom-modal-content::before {
-  content: "";
-  display: block;
-  width: 42px;
-  height: 5px;
-  background: var(--border-color);
-  border-radius: 10px;
-  margin: 0 auto 20px;
-}
-
-@keyframes hype-slide-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-/* =========================================
-   🔥 FOTO GRUP SETTING
-   ========================================= */
-.hype-chat-scope .custom-modal-content label {
-  display: inline-block !important;
-  width: 90px !important;
-  height: 90px !important;
-  position: relative !important;
-  cursor: pointer;
-  margin-bottom: 5px;
-}
-
-.hype-chat-scope .custom-modal-content label img {
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 50% !important;
-  object-fit: cover !important;
-  border: 3px solid var(--primary-blue) !important;
-  background-color: var(--border-color) !important;
-  display: block !important;
-}
-
-.hype-chat-scope .custom-modal-content label div {
-  position: absolute !important;
-  bottom: -2px !important;
-  right: -2px !important;
-  background: var(--primary-blue) !important;
-  border-radius: 50% !important;
-  width: 32px !important;
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border: 3px solid var(--bg-panel) !important;
-  padding: 0 !important;
-  box-sizing: content-box !important;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* =========================================
@@ -741,7 +174,7 @@ html.dark .hype-chat-scope {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
   font-size: 10px;
   padding: 8px 12px;
@@ -750,8 +183,5 @@ html.dark .hype-chat-scope {
   width: fit-content;
   max-width: 90%;
   text-align: center;
-}
-
-[data-theme='dark'] .hype-chat-scope .encryption-notice {
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
 }
