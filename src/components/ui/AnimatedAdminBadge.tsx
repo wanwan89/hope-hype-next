@@ -4,118 +4,91 @@ import React from 'react';
 import { motion, Variants } from 'framer-motion';
 
 const AnimatedAdminBadge = () => {
-  // 🔥 FIX: Tambahkan tipe : Variants agar TypeScript tidak marah
-  const containerVariants: Variants = {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        delayChildren: 0.3,
-        staggerChildren: 0.4,
-        duration: 0.5,
-        ease: "easeOut" 
-      }
-    }
-  };
-
+  // Variabel Animasi Utama
   const pathVariants: Variants = {
-    hidden: { pathLength: 0, opacity: 0 },
+    hidden: { 
+      pathLength: 0, 
+      opacity: 0 
+    },
     visible: {
       pathLength: 1,
       opacity: 1,
       transition: {
-        duration: 1.2,
-        // 🔥 FIX: Pakai as const agar array cubic-bezier terbaca dengan benar
-        ease: [0.43, 0.13, 0.23, 0.96] as const, 
+        duration: 2,
+        ease: [0.45, 0, 0.55, 1], // Cinematic smooth easing
+        repeat: Infinity, // 🔥 Loop Berulang
+        repeatType: "loop",
+        repeatDelay: 1.5, // Jeda sebelum nulis ulang
       }
-    }
-  };
-
-  const fillVariants: Variants = {
-    hidden: { fill: "rgba(255, 255, 255, 0)" },
-    visible: {
-      fill: "rgba(255, 255, 255, 1)",
-      transition: { delay: 2, duration: 0.8 }
     }
   };
 
   return (
     <motion.span
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="admin-badge-premium"
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="admin-badge-clean"
       style={{
         background: 'linear-gradient(135deg, #1f3cff, #bc13fe)',
         color: 'white',
-        padding: '2px 8px',
-        borderRadius: '6px',
+        padding: '2px 10px',
+        borderRadius: '4px', // Lebih kotak dikit biar tegas
         fontSize: '10px',
         marginLeft: '5px',
         display: 'inline-flex',
         alignItems: 'center',
         verticalAlign: 'middle',
         lineHeight: '1',
-        fontWeight: '900',
-        boxShadow: '0 0 15px rgba(31, 60, 255, 0.4)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        letterSpacing: '0.5px',
-        overflow: 'hidden'
+        fontWeight: '500', // Gak terlalu tebal
+        border: '1px solid rgba(255, 255, 255, 0.3)', // Border halus gantiin shadow
+        overflow: 'hidden',
+        boxShadow: 'none' // 🔥 Hapus Shadow total
       }}
     >
+      {/* Ikon Perisai Minimalis */}
       <motion.svg
-        width="12"
-        height="12"
+        width="11"
+        height="11"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ marginRight: '4px' }}
-        animate={{ 
-          rotateY: [0, 180, 360],
-          filter: ["drop-shadow(0 0 0px blue)", "drop-shadow(0 0 4px white)", "drop-shadow(0 0 0px blue)"]
-        }}
-        transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+        style={{ marginRight: '5px' }}
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 3, repeat: Infinity }}
       >
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </motion.svg>
 
-      <svg width="28" height="12" viewBox="0 0 60 20" style={{ overflow: 'visible' }}>
-        <defs>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        <g filter="url(#glow)">
+      {/* SVG Signature "DEV" */}
+      <svg width="26" height="12" viewBox="0 0 60 20" style={{ overflow: 'visible' }}>
+        <g>
+          {/* Huruf D */}
           <motion.path
             variants={pathVariants}
             fill="none"
             stroke="white"
-            strokeWidth="4"
+            strokeWidth="2" // 🔥 Lebih tipis biar clean
             strokeLinecap="round"
             d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6"
           />
+          {/* Huruf E */}
           <motion.path
             variants={pathVariants}
             fill="none"
             stroke="white"
-            strokeWidth="4"
+            strokeWidth="2" // 🔥 Stroke tipis ala pulpen
             strokeLinecap="round"
-            d="M28 4v12 M28 4h10 M28 10h8 M28 16h10"
+            d="M28 4v12 M28 4h8 M28 10h6 M28 16h8"
           />
+          {/* Huruf V */}
           <motion.path
             variants={pathVariants}
             fill="none"
             stroke="white"
-            strokeWidth="4"
+            strokeWidth="2"
             strokeLinecap="round"
             d="M45 4l5 12 5-12"
           />
