@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 
+// 🔥 FIX 1: Paksa route ini menjadi Dynamic agar tidak di-scan statis saat build
+export const dynamic = 'force-dynamic';
+
 // 1. Inisialisasi Firebase Admin
 if (!admin.apps.length) {
   try {
@@ -14,11 +17,12 @@ if (!admin.apps.length) {
   }
 }
 
-// 2. Inisialisasi Supabase (Service Role untuk bypass RLS agar agregasi akurat)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '' 
-);
+// 2. Inisialisasi Supabase (Service Role)
+// 🔥 FIX 2: Tambahkan fallback string agar createClient tidak crash saat build
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key-agar-build-aman';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request: Request) {
   try {
@@ -44,7 +48,6 @@ export async function POST(request: Request) {
     let dynamicBody = message || 'Ada interaksi baru.';
 
     if ((type === 'like' || type === 'comment') && postId) {
-      // Hitung notifikasi serupa yang belum dibaca untuk postingan ini
       const { count, error: countError } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
@@ -53,12 +56,11 @@ export async function POST(request: Request) {
         .eq('is_read', false);
 
       if (!countError && count && count > 0) {
-        // Format: "Mila dan 7 lainnya"
         dynamicTitle = `${senderName} dan ${count} lainnya`;
       }
     }
 
-    // 🔥 3. LOGIKA KALIMAT CLEAN (Tanpa Icon/Emoji Sesuai Request)
+    // 🔥 3. LOGIKA KALIMAT CLEAN (Tanpa Icon/Emoji)
     if (type === 'like') {
       dynamicBody = `menyukai postingan Anda.`;
     } else if (type === 'comment') {
@@ -75,18 +77,17 @@ export async function POST(request: Request) {
       notification: {
         title: dynamicTitle,
         body: dynamicBody,
-        image: senderPhoto, // Tampil sebagai gambar besar saat ditarik ke bawah
+        image: senderPhoto,
       },
       android: {
-        priority: 'high' as const, // WAJIB untuk memicu Slide Down
+        priority: 'high' as const,
         notification: {
-          channelId: 'high_importance_channel', // Harus MATCH dengan yang kita buat di layout.tsx
+          channelId: 'high_importance_channel',
           priority: 'high' as const,
           importance: 'high' as const,
           sound: 'default',
-          largeIcon: senderPhoto, // Foto profil bulat di samping teks
-          color: '#1f3cff', // Branding warna Biru Premium HypeTalk
-          // Tag berguna agar notifikasi dari orang/postingan yang sama menumpuk rapi
+          largeIcon: senderPhoto,
+          color: '#1f3cff',
           tag: type === 'call' ? `call_${callerId}` : `${type}_${postId || 'general'}`,
         },
       },
@@ -102,28 +103,16 @@ export async function POST(request: Request) {
     // 🛠️ 5. TAMBAHKAN TOMBOL AKSI NATIVE (BALAS & ANGKAT)
     if (type === 'call') {
       messagePayload.android.notification.actions = [
-        { 
-          action: 'accept_call', 
-          title: 'Angkat' 
-        },
-        { 
-          action: 'decline_call', 
-          title: 'Tolak' 
-        }
+        { action: 'accept_call', title: 'Angkat' },
+        { action: 'decline_call', title: 'Tolak' }
       ];
     } else if (type === 'comment' || type === 'chat') {
       messagePayload.android.notification.actions = [
-        { 
-          action: 'reply', 
-          title: 'Balas Cepat',
-          // Tipe 'text' memicu kotak input teks di bilah notifikasi Android
-          type: 'text' 
-        }
+        { action: 'reply', title: 'Balas Cepat', type: 'text' }
       ];
     }
 
     const response = await admin.messaging().send(messagePayload);
-    console.log('✅ Notif Premium Berhasil Dikirim ke Google!');
     
     return NextResponse.json({ 
       success: true, 
