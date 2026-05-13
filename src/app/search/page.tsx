@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-export default function SearchPage() {
+// 1. PISAHKAN LOGIKA UTAMA KE KOMPONEN INI
+function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const query = searchParams.get('q') || '';
@@ -131,5 +132,14 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// 🔥 2. EXPORT DEFAULT KOMPONEN YANG UDAH DIBUNGKUS SUSPENSE 🔥
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>Memuat halaman pencarian...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }
