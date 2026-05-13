@@ -12,7 +12,10 @@ export default function HypetalkPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [chats, setChats] = useState<any[]>([]);
   const [requestChats, setRequestChats] = useState<any[]>([]);
+  
+  // State utama yang bikin layar nyangkut kemaren
   const [isLoading, setIsLoading] = useState(true);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -37,7 +40,6 @@ export default function HypetalkPage() {
   const loadAllChats = async (userId: string, showLoading = true) => {
     if (showLoading) setIsLoading(true);
     try {
-      // Ambil pesan pribadi ATAU pesan global (room-1)
       const { data: privateMessages, error } = await supabase
         .from('messages')
         .select('id, user_id, room_id, message, created_at')
@@ -52,7 +54,6 @@ export default function HypetalkPage() {
       (privateMessages || []).forEach((msg) => {
         if (!msg.room_id) return;
 
-        // 🔥 FIX 1: Handle Room Global
         if (msg.room_id === 'room-1') {
            if (!partnerMap.has('room-1') || new Date(msg.created_at) > new Date(partnerMap.get('room-1').last_message_at)) {
              partnerMap.set('room-1', {
@@ -67,7 +68,6 @@ export default function HypetalkPage() {
              });
            }
         } 
-        // 🔥 FIX 2: Parse "pv_userA_userB" dengan benar (Hilangkan kata 'pv')
         else if (msg.room_id.startsWith('pv_')) {
            const partnerId = msg.room_id.replace('pv_', '').split('_').find((p) => p !== userId);
            
@@ -87,7 +87,6 @@ export default function HypetalkPage() {
         }
       });
 
-      // Ambil profil hanya untuk user (ID yang formatnya UUID / panjang > 20)
       const partnerIds = Array.from(partnerMap.keys()).filter(id => id.length > 20);
       
       if (partnerIds.length > 0) {
@@ -105,7 +104,6 @@ export default function HypetalkPage() {
         }
       }
 
-      // Convert ke array & sorting dari yang paling baru
       const finalChats = Array.from(partnerMap.values()).sort((a, b) => 
         new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
       );
@@ -115,6 +113,7 @@ export default function HypetalkPage() {
     } catch (err) {
       console.error('Gagal load chat:', err);
     } finally {
+      // 🔥 FIX 1: Pastikan loading mati kalau showLoading true
       if (showLoading) setIsLoading(false);
     }
   };
@@ -149,35 +148,42 @@ export default function HypetalkPage() {
   };
 
   // ----------------------------------------------
-  //  INIT
+  //  INIT USER
   // ----------------------------------------------
   const initUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return router.push('/login');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return router.push('/login');
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    const fullUser = { ...user, ...profile };
-    setCurrentUser(fullUser);
+      const fullUser = { ...user, ...profile };
+      setCurrentUser(fullUser);
 
-    if (profile) {
-      setBioForm({
-        umur: profile.umur || '',
-        gender: profile.gender || 'Pria',
-        zodiak: profile.zodiak || '',
-        pekerjaan: profile.pekerjaan || '',
-        hobi: profile.hobi || '',
-      });
+      if (profile) {
+        setBioForm({
+          umur: profile.umur || '',
+          gender: profile.gender || 'Pria',
+          zodiak: profile.zodiak || '',
+          pekerjaan: profile.pekerjaan || '',
+          hobi: profile.hobi || '',
+        });
+      }
+
+      // 🔥 FIX 2: Kita set `true` biar pas pertama buka layar loadingnya dimatikan secara otomatis oleh fungsi ini!
+      await loadAllChats(user.id, true);
+      subscribeToInbox(user.id);
+      
+    } catch (error) {
+      console.error("Gagal inisialisasi:", error);
+    } finally {
+      // 🔥 FIX 3: Safety net paling ampuh. Apapun yang terjadi (sukses/gagal/error sinyal), layarnya PASTI kebuka.
+      setIsLoading(false); 
     }
-
-    await loadAllChats(user.id, false);
-    subscribeToInbox(user.id);
   };
 
   useEffect(() => {
@@ -185,6 +191,7 @@ export default function HypetalkPage() {
       const savedLimit = localStorage.getItem('doi_limit');
       if (savedLimit) setSisaLimitDoi(parseInt(savedLimit));
     }
+    
     initUser();
 
     return () => {
@@ -320,9 +327,12 @@ export default function HypetalkPage() {
   // ----------------------------------------------
   if (isLoading || !currentUser) {
     return (
-      <div className="telegram-wrapper loading-screen">
-        <div className="spinner"></div>
-        <p>Memuat Hypetalk...</p>
+      <div className="telegram-wrapper loading-screen" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#ffffff', color: '#666' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid #f3f3f3', borderTop: '3px solid #1f3cff', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ marginTop: '15px', fontWeight: '500' }}>Memuat Hypetalk...</p>
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        `}} />
       </div>
     );
   }
