@@ -16,26 +16,22 @@ export default function NotificationsPage() {
   const [rawNotifs, setRawNotifs] = useState<any[]>([]);
   const [groupedNotifs, setGroupedNotifs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 🔥 STATE BARU: Jumlah postingan pending 🔥
+  const [pendingCount, setPendingCount] = useState(0);
 
-  // --- REFS UNTUK SLIDER ---
   const sliderRef = useRef<HTMLDivElement>(null);
   const autoSlideTimer = useRef<NodeJS.Timeout | null>(null);
-
-  // --- REF UNTUK REALTIME CHANNEL ---
   const channelRef = useRef<any>(null);
 
-  // --- INIT DATA ---
   useEffect(() => {
     initUserAndNotifs();
     startAutoSlide();
 
     return () => {
       stopAutoSlide();
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -55,7 +51,16 @@ export default function NotificationsPage() {
 
   const loadNotifications = async (userId: string) => {
     try {
-      // 1. Ambil Notifikasi Standar
+      // 1. Ambil Jumlah Postingan Pending (Belum di ACC)
+      const { count: pendingPosts } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('creator_id', userId)
+        .eq('status', 'pending');
+      
+      setPendingCount(pendingPosts || 0);
+
+      // 2. Ambil Notifikasi Standar
       const { data: dbNotifs, error } = await supabase
         .from('notifications')
         .select('*')
@@ -69,15 +74,17 @@ export default function NotificationsPage() {
       let formattedSaves: any[] = [];
       let formattedStoryLikes: any[] = [];
 
-      // 2. Ambil data Repost & Save (Ini udah handle Repost dari dulu Bree!)
+      // 3. Ambil data Repost & Save
       const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
       
       if (myPosts && myPosts.length > 0) {
         const postIds = myPosts.map(p => p.id);
         
+        // 🔥 FIX: Repost (Kecuali nge-repost sendiri) 🔥
         const { data: repostsData } = await supabase.from('reposts')
           .select('id, post_id, created_at, profiles(username)')
           .in('post_id', postIds)
+          .neq('user_id', userId) 
           .order('created_at', { ascending: false })
           .limit(30);
         
@@ -94,9 +101,11 @@ export default function NotificationsPage() {
           }));
         }
 
+        // 🔥 FIX: Save (Kecuali nge-save sendiri) 🔥
         const { data: savesData } = await supabase.from('bookmarks')
           .select('id, post_id, created_at, profiles(username)')
           .in('post_id', postIds)
+          .neq('user_id', userId) 
           .order('created_at', { ascending: false })
           .limit(30);
         
@@ -114,7 +123,7 @@ export default function NotificationsPage() {
         }
       }
 
-      // 3. Ambil data Story Likes
+      // 4. Ambil data Story Likes (Kecuali like sendiri)
       const { data: myStories } = await supabase.from('stories').select('id').eq('creator_id', userId);
       
       if (myStories && myStories.length > 0) {
@@ -122,6 +131,7 @@ export default function NotificationsPage() {
         const { data: storyLikesData } = await supabase.from('story_likes')
           .select('id, story_id, created_at, profiles(username)')
           .in('story_id', storyIds)
+          .neq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(30);
         
@@ -144,9 +154,7 @@ export default function NotificationsPage() {
         ...formattedReposts, 
         ...formattedSaves, 
         ...formattedStoryLikes
-      ].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setRawNotifs(allRaw);
     } catch (err) {
@@ -156,7 +164,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // --- 🔥 PENGELOMPOKAN DIPERBARUI BUAT BALASAN & LIKE KOMENTAR 🔥 ---
   const applyGrouping = (notifs: any[]) => {
     const grouped: any[] = [];
     const seenLikes = new Set();
@@ -219,7 +226,6 @@ export default function NotificationsPage() {
         seenStoryLikes.add(n.story_id);
         grouped.push(notifObj);
       }
-      // 🔥 GRUP BALASAN KOMENTAR
       else if (type === 'reply' && n.post_id) {
         if (seenReplies.has(n.post_id)) {
            const parent = grouped.find(g => g.type === 'reply' && g.post_id === n.post_id);
@@ -229,7 +235,6 @@ export default function NotificationsPage() {
         seenReplies.add(n.post_id);
         grouped.push(notifObj);
       }
-      // 🔥 GRUP LIKE KOMENTAR
       else if (type === 'comment_like' && n.post_id) {
         if (seenCommentLikes.has(n.post_id)) {
            const parent = grouped.find(g => g.type === 'comment_like' && g.post_id === n.post_id);
@@ -279,18 +284,6 @@ export default function NotificationsPage() {
     if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
   };
 
-  const loadMidtransForce = () => {
-    return new Promise((resolve) => {
-      if ((window as any).snap) return resolve(true);
-      const script = document.createElement("script");
-      script.src = "https://app.sandbox.midtrans.com/snap/snap.js"; 
-      script.setAttribute("data-client-key", "SB-Mid-client-0T6dD0H1HkQvBf8G"); 
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.head.appendChild(script);
-    });
-  };
-
   const handleNotifClick = async (notif: any) => {
     const isManualFormat = notif.id.toString().startsWith('repost-') || 
                            notif.id.toString().startsWith('save-') || 
@@ -301,20 +294,7 @@ export default function NotificationsPage() {
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
 
-    if (notif.type === "payment_pending" && notif.token) {
-      try {
-        showNotif(t('preparing_pay', 'Menyiapkan pembayaran...'), "info");
-        const isLoaded = await loadMidtransForce();
-        if (isLoaded && (window as any).snap) {
-          (window as any).snap.pay(notif.token, {
-            onSuccess: () => { showNotif(t('pay_success', "Pembayaran Sukses!"), "success"); loadNotifications(currentUser.id); },
-            onPending: () => { showNotif(t('pay_pending', "Menunggu pembayaran"), "warning"); },
-            onError: () => { showNotif(t('pay_failed', "Pembayaran gagal"), "error"); },
-            onClose: () => { showNotif(t('pay_closed', "Popup ditutup"), "info"); }
-          });
-        }
-      } catch (err) { console.error(err); }
-    } else if (notif.type === 'story_like' && notif.story_id) {
+    if (notif.type === 'story_like' && notif.story_id) {
       router.push(`/story/${notif.story_id}`);
     } else if (notif.post_id) {
       router.push(`/#post-${notif.post_id}`);
@@ -323,7 +303,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // 🔥 TAMBAH ICON REPLY DAN COMMENT_LIKE 🔥
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
@@ -350,14 +329,13 @@ export default function NotificationsPage() {
       : dateObj.toLocaleDateString("id-ID", { month: "short", day: "numeric", hour: "2-digit", minute:"2-digit" });
   };
 
-  // 🔥 UPDATE TEKS BIAR RAPIH 🔥
   const getDisplayText = (notif: any) => {
     if (notif.groupedCount > 0) {
-      if (notif.type === 'like') return t('notif_grouped_like', `<b>{{name}}</b> dan {{count}} lainnya menyukai postinganmu.`, { name: notif.actorName, count: notif.groupedCount });
-      if (notif.type === 'repost') return t('notif_grouped_repost', `<b>{{name}}</b> dan {{count}} lainnya membagikan ulang karyamu.`, { name: notif.actorName, count: notif.groupedCount });
-      if (notif.type === 'save') return t('notif_grouped_save', `<b>{{name}}</b> dan {{count}} lainnya menyimpan postinganmu.`, { name: notif.actorName, count: notif.groupedCount });
-      if (notif.type === 'story_like') return t('notif_grouped_story_like', `<b>{{name}}</b> dan {{count}} lainnya menyukai ceritamu.`, { name: notif.actorName, count: notif.groupedCount });
-      if (notif.type === 'follow') return t('notif_grouped_follow', `<b>{{name}}</b> dan {{count}} lainnya mulai mengikuti kamu.`, { name: notif.actorName, count: notif.groupedCount });
+      if (notif.type === 'like') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya menyukai postinganmu.`;
+      if (notif.type === 'repost') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya membagikan ulang karyamu.`;
+      if (notif.type === 'save') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya menyimpan postinganmu.`;
+      if (notif.type === 'story_like') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya menyukai ceritamu.`;
+      if (notif.type === 'follow') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya mulai mengikuti kamu.`;
       if (notif.type === 'reply') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya membalas komentarmu.`;
       if (notif.type === 'comment_like') return `<b>${notif.actorName}</b> dan ${notif.groupedCount} lainnya menyukai komentarmu.`;
     }
@@ -372,8 +350,10 @@ export default function NotificationsPage() {
        if (!msg.includes('<b>')) msg = `<b>${notif.actorName}</b> ${msg.replace(notif.actorName, '').trim()}`;
        return msg;
     }
+    
+    // 🔥 FIX: Format text untuk post_approved 🔥
     if (notif.type === 'post_approved') {
-       return `Selamat! Postinganmu telah <b>disetujui</b> dan sekarang tampil di publik.`;
+       return `Selamat! Karyamu telah <b>disetujui</b> dan sekarang sudah tampil di publik.`;
     }
     
     return notif.message; 
@@ -392,21 +372,23 @@ export default function NotificationsPage() {
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan1.webm" type="video/webm" /></video>
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan2.webm" type="video/webm" /></video>
             <video autoPlay loop muted playsInline className="ad-slide"><source src="/asets/gif/iklan3.webm" type="video/webm" /></video>
-            
-            {/* 🔥 IKLAN KE-4 DIUBAH ARAHNYA KE HALAMAN DOWNLOAD 🔥 */}
-            <video 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
-              className="ad-slide" 
-              onClick={() => router.push('/download')} 
-              style={{ cursor: 'pointer' }}
-            >
-              <source src="/asets/gif/iklan4.webm" type="video/webm" />
-            </video>
+            <video autoPlay loop muted playsInline className="ad-slide" onClick={() => router.push('/download')} style={{ cursor: 'pointer' }}><source src="/asets/gif/iklan4.webm" type="video/webm" /></video>
           </div>
         </div>
+
+        {/* 🔥 FIX: BOX JUMLAH POSTINGAN PENDING 🔥 */}
+        {pendingCount > 0 && (
+          <div className="pending-alert-box" onClick={() => router.push('/pending')}>
+            <div className="pending-alert-left">
+              <span className="material-icons pending-icon">hourglass_empty</span>
+              <div className="pending-text">
+                <span className="pending-title">Menunggu Persetujuan</span>
+                <span className="pending-desc">{pendingCount} karyamu sedang direview tim kami.</span>
+              </div>
+            </div>
+            <span className="material-icons" style={{ color: '#f59e0b' }}>chevron_right</span>
+          </div>
+        )}
 
       </header>
 

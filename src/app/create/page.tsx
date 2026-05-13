@@ -6,7 +6,7 @@ import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion'; 
+import { motion } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION UNTUK GELOMBANG
 import './Create.css'; 
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
@@ -57,6 +57,7 @@ export default function CreatePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [videoPos, setVideoPos] = useState(50);
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('pick');
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
@@ -266,19 +267,18 @@ export default function CreatePostPage() {
     video.pause();
     setIsVideoPlaying(false);
 
-    // KARENA KITA MENGHAPUS FITUR GESER KANAN/KIRI, KITA AMBIL CENTER CROP DEFAULT
     const targetRatio = 2 / 3;
     const videoRatio = video.videoWidth / video.videoHeight;
     let cw, ch, sx, sy;
 
     if (videoRatio > targetRatio) {
       ch = video.videoHeight; cw = ch * targetRatio;
-      sx = (video.videoWidth - cw) / 2; // Center horizontal
+      sx = (video.videoWidth - cw) / 2; 
       sy = 0;
     } else {
       cw = video.videoWidth; ch = cw / targetRatio;
       sx = 0; 
-      sy = (video.videoHeight - ch) / 2; // Center vertical
+      sy = (video.videoHeight - ch) / 2; 
     }
 
     canvas.width = cw; canvas.height = ch;
@@ -360,11 +360,9 @@ export default function CreatePostPage() {
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       const myUserId = session.user.id;
 
-      // 🔥 FIX 4: HASHTAG INSERT PAKSA 🔥
       const extractedTags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
       if (extractedTags.length > 0) {
         for (const tg of extractedTags) {
-          // Abaikan error (biar tetep ngesave tag lainnya)
           await supabase.from('hashtags').insert({ tag: tg }).then(); 
         }
       }
@@ -387,7 +385,6 @@ export default function CreatePostPage() {
         const uploadedVidUrl = videoRes.secure_url;
         const endSegment = Math.min(videoDuration, videoStart + 15);
         
-        // 🔥 FIX 1: Hapus g_auto, gunakan c_fill biasa agar video 100% jalan di semua perangkat 🔥
         finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
       }
 
@@ -443,7 +440,6 @@ export default function CreatePostPage() {
     finally { setIsSubmitting(false); setUploadProgress(0); }
   };
 
-  // 🔥 FIX 2: TAMPILAN EDITOR DIPERMUDAH DAN GAK TENGGELAM 🔥
   const renderEditorScreen = () => {
     if (step !== 'edit') return null;
     
@@ -820,7 +816,7 @@ export default function CreatePostPage() {
                   marginTop: '30px', 
                   width: '100%', 
                   padding: '16px', 
-                  color: isSubmitting ? '#fff' : '#fff', 
+                  color: '#fff', 
                   border: isSubmitting ? '1px solid #1f3cff' : 'none', 
                   borderRadius: '14px', 
                   fontSize: '16px', 
@@ -828,31 +824,40 @@ export default function CreatePostPage() {
                   cursor: isSubmitting ? 'not-allowed' : 'pointer', 
                   position: 'relative',
                   overflow: 'hidden',
-                  background: isSubmitting ? 'var(--bg-input)' : '#1f3cff'
+                  background: isSubmitting ? 'var(--bg-input)' : '#1f3cff',
+                  transform: 'translateZ(0)',
                 }}
               >
                 {isSubmitting && (
                   <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
-                    height: `${uploadProgress}%`, 
+                    height: `${Math.max(uploadProgress, 5)}%`, 
                     background: '#1f3cff',
-                    transition: 'height 0.4s ease-out', zIndex: 1
+                    transition: 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)', 
+                    zIndex: 1
                   }}>
-                    {uploadProgress > 0 && uploadProgress < 100 && (
-                      <motion.div
-                        animate={{ x: ["0%", "-50%"] }}
-                        transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
-                        style={{
-                          position: 'absolute', top: '-12px', left: 0, width: '200%', height: '12px',
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,50 250,0 400,25 C550,50 650,0 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
-                          backgroundSize: '50% 100%'
-                        }}
-                      />
-                    )}
+                    <motion.div
+                      animate={{ x: ["0%", "-50%"] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                      style={{
+                        position: 'absolute', top: '-18px', left: 0, width: '200%', height: '20px',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,50 250,0 400,25 C550,50 650,0 800,25 L800,50 L0,50 Z' fill='rgba(31,60,255,0.4)'/%3E%3C/svg%3E")`,
+                        backgroundSize: '50% 100%'
+                      }}
+                    />
+                    <motion.div
+                      animate={{ x: ["-50%", "0%"] }}
+                      transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                      style={{
+                        position: 'absolute', top: '-14px', left: 0, width: '200%', height: '15px',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,0 250,50 400,25 C550,0 650,50 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
+                        backgroundSize: '50% 100%'
+                      }}
+                    />
                   </div>
                 )}
                 
-                <span style={{ position: 'relative', zIndex: 2 }}>
+                <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>
                   {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : t('btn_submit_post')}
                 </span>
               </button>
