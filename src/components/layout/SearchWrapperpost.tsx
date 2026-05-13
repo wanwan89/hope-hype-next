@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
-// 🔥 FIX: Framer Motion dihapus total biar Vercel nggak error 🔥
 import './SearchWrapper.css';
 
 export default function SearchWrapperpost() {
@@ -16,6 +15,9 @@ export default function SearchWrapperpost() {
   const [stories, setStories] = useState<any[]>([]);
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
+  
+  // 🔥 STATE BARU BUAT NANGKEP KETIKAN SEARCH 🔥
+  const [searchQuery, setSearchQuery] = useState("");
 
   const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/view');
 
@@ -57,6 +59,14 @@ export default function SearchWrapperpost() {
     }, 500); 
   };
 
+  // 🔥 FUNGSI BARU BUAT PINDAH HALAMAN PAS ENTER 🔥
+  const handleSearchEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim() !== "") {
+      // Hilangkan spasi berlebih dan pindah halaman
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   if (!mounted || isHidden) return null;
 
   return (
@@ -77,12 +87,9 @@ export default function SearchWrapperpost() {
             type="text"
             placeholder={t('search_placeholder')}
             className="brutal-input"
-            onChange={(e) => {
-              const val = e.target.value.toLowerCase();
-              document.querySelectorAll(".card").forEach((card: any) => {
-                card.style.display = card.innerText.toLowerCase().includes(val) ? "flex" : "none";
-              });
-            }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchEnter} // Panggil fungsi pas enter dipencet
           />
         </div>
 
@@ -103,7 +110,6 @@ export default function SearchWrapperpost() {
               className="story-item" 
               onClick={() => handleStoryClick(story.id)} 
               style={{
-                /* 🔥 FIX: Animasi "Spring" diganti jadi CSS Native (Super Ringan) 🔥 */
                 transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)',
                 transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
               }}
