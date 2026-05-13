@@ -60,11 +60,11 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
 
-  // 🔥 FIX 5: STATE VISUALIZER PLAYBACK VN 🔥
+  // 🔥 FIX 5: STATE VISUALIZER PLAYBACK VN (UDAH DIBENERIN TYPENYA) 🔥
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement null |>(null);
-  const audioCtxRef = useRef<AudioContext null |>(null);
-  const analyserRef = useRef<AnalyserNode null |>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const requestFrameRef = useRef<number>(0);
   
   // Default wave (12 bar)
@@ -251,7 +251,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   return (
     <div className="hype-chat-scope" style={{ position: 'relative' }}>
       
-      
+      {/* OVERLAY REACTION */}
       {showReactions && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 99998 }} onClick={() => setShowReactions(false)} />
@@ -341,7 +341,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
-              
+              {/* 🔥 VN DENGAN GELOMBANG SINKRON 🔥 */}
               {msg.audio_url && !isDeleted && (
                 <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
                   <button onClick={toggleVN} className="vn-play-btn">
