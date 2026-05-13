@@ -14,17 +14,16 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- 4. IZIN BACKGROUND SERVICE (Agar Telpon Tetap Nyala Pas Di-minimize) -->
+    <!-- 4. IZIN BACKGROUND SERVICE -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- Khusus Android 14+, wajib spesifik menyebutkan type microphone -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
 
-    <!-- 5. IZIN MEDIA & GALERI (Android 13+) -->
+    <!-- 5. IZIN MEDIA & GALERI -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-    <!-- 6. IZIN MEDIA (Android 12 kebawah) -->
+    <!-- 6. IZIN MEDIA (Lama) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
@@ -35,7 +34,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true"> <!-- Izinkan koneksi HTTP jika perlu testing lokal -->
+        android:usesCleartextTraffic="true">
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
@@ -44,13 +43,11 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize"> <!-- FIX: Biar input chat ga ketutup keyboard -->
-
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
         <provider
@@ -63,11 +60,18 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- Tambahkan Metadata FCM jika lu pake Firebase Push -->
+        <!-- 🔥 FIX PENTING: DAFTARKAN SERVICE FIREBASE 🔥 -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="high_importance_channel" />
 
     </application>
-
 </manifest>
