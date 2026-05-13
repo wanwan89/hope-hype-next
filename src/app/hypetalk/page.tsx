@@ -357,7 +357,7 @@ export default function HypetalkPage() {
     if (!searchUserId) return;
     const cleanId = searchUserId.replace('#', '').toUpperCase();
     const { data: target } = await supabase.from('profiles').select('id').eq('short_id', cleanId).maybeSingle();
-    if (target) router.push(`/hypetalk/chat?from=${target.id}`);
+    if (target) router.push(`/hypetalk/room?from=${target.id}`);
     else showNotif("ID tidak ditemukan", "error");
   };
 
@@ -369,7 +369,7 @@ export default function HypetalkPage() {
       await supabase.from('group_members').insert([{ group_id: newGroup.id, user_id: currentUser.id }]);
       showNotif("Grup berhasil dibuat!", "success");
       closeModal();
-      router.push(`/hypetalk/chat?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
+      router.push(`/hypetalk/room?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
     } catch (err) { showNotif("Gagal membuat grup", "error"); }
   };
 
@@ -389,9 +389,10 @@ export default function HypetalkPage() {
       .neq('status', 'read')
       .then();
 
-    if (chat.type === 'global') router.push('/hypetalk/room-1');
-    else if (chat.type === 'group') router.push(`/hypetalk/chat?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
-    else router.push(`/hypetalk/chat?from=${chat.id}`);
+    if (chat.type === 'global') router.push('/hypetalk/room');
+    else if (chat.type === 'group') router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
+    else router.push(`/hypetalk/room?from=${chat.id}`);
+
   };
 
   const handleAvatarClick = async (e: React.MouseEvent, chatId: string, chatType: string) => {
@@ -550,10 +551,8 @@ export default function HypetalkPage() {
       refs.audio.current.ring.currentTime = 0; 
     }
     
-    // 🔥 PERBAIKAN PENTING DI SINI 🔥
     if (refs.lkRoom.current) {
       refs.lkRoom.current.removeAllListeners();
-      // Pakai await (kalau di dalam fungsi async) atau pastikan disconnect jalan rapi
       refs.lkRoom.current.disconnect();
       refs.lkRoom.current = null;
     }
@@ -562,7 +561,6 @@ export default function HypetalkPage() {
     clearTimeout(refs.callTimeout.current);
     clearInterval(refs.callInterval.current);
     
-    // Hindari manggil setState kalau udah unmount
     if (!silent) {
        showNotif('Panggilan berakhir', "info");
     }
@@ -934,7 +932,7 @@ const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((s
               </div>
             </div>
             <div className="wa-profile-actions">
-              <button onClick={() => { closeModal(); router.push(`/hypetalk/chat?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
+              <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
                 <span className="material-icons" style={{ fontSize: '24px' }}>chat</span> Chat
               </button>
               <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="wa-action-btn" style={{ color: '#2ecc71' }}>
@@ -963,7 +961,7 @@ const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((s
                 {!foundDoi.pekerjaan && !foundDoi.hobi && !foundDoi.zodiak && <span style={{ color: 'var(--tg-text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Belum mengisi bio lengkap</span>}
               </div>
             </div>
-            <button className="action-btn love-btn" onClick={() => router.push(`/hypetalk/chat?from=${foundDoi.id}`)} style={{ width: '100%', background: 'linear-gradient(135deg, #1DA1F2, #1f3cff)', borderRadius: '15px', fontWeight: '800', color: 'white', padding: '14px', border: 'none' }}>Chat Sekarang </button>
+            <button className="action-btn love-btn" onClick={() => router.push(`/hypetalk/room?from=${foundDoi.id}`)} style={{ width: '100%', background: 'linear-gradient(135deg, #1DA1F2, #1f3cff)', borderRadius: '15px', fontWeight: '800', color: 'white', padding: '14px', border: 'none' }}>Chat Sekarang </button>
           </div>
         </div>
       )}

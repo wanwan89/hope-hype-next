@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
+import { motion, AnimatePresence } from 'framer-motion';
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -265,7 +266,7 @@ export default function Gallerypost() {
       const newSet = new Set(prev);
       newSet.delete(postId);
       return newSet;
-    }), 400);
+    }), 500);
 
     setMyRepostedPosts(prev => {
       const newSet = new Set(prev);
@@ -449,47 +450,72 @@ export default function Gallerypost() {
 
   const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
-      <button 
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
         className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
         onClick={() => handleSave(postIdStr)} 
       >
-        <svg 
+        <motion.svg 
           viewBox="0 0 24 24" 
           className="icon" 
           fill="currentColor"
           style={{ color: mySavedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} 
+          initial={false}
+          animate={mySavedPosts.has(postIdStr) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+          transition={{ duration: 0.3 }}
         >
           {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
-        </svg>
+        </motion.svg>
         <span className="save-count" style={{ color: 'var(--text-main)' }}>
           {counts[postIdStr]?.saves || 0}
         </span>
-      </button>
+      </motion.button>
 
-      <button 
-        className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''} ${animatingReposts.has(postIdStr) ? 'animating' : ''}`} 
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
+        className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''}`} 
         onClick={() => handleRepost(postIdStr)}
       >
-        <svg 
+        <motion.svg 
           viewBox="0 0 24 24" 
           className="icon" 
           fill="currentColor"
           style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }}
+          animate={animatingReposts.has(postIdStr) ? { rotate: 360 } : { rotate: 0 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
         >
           <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
-        </svg>
+        </motion.svg>
         <span className="repost-count" style={{ color: 'var(--text-main)' }}>{counts[postIdStr]?.reposts || 0}</span>
-      </button>
+      </motion.button>
 
-      <button className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} onClick={() => handleLike(postIdStr, post.creator_id)}>
-        <svg viewBox="0 0 24 24" className="icon heart" fill="currentColor"><path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/></svg>
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
+        className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} 
+        onClick={() => handleLike(postIdStr, post.creator_id)}
+      >
+        <motion.svg 
+          viewBox="0 0 24 24" 
+          className="icon heart" 
+          fill="currentColor"
+          initial={false}
+          animate={myLikedPosts.has(postIdStr) ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
+        </motion.svg>
         <span className="like-count">{counts[postIdStr]?.likes || 0}</span>
-      </button>
+      </motion.button>
       
-      <button className="icon-btn comment-toggle" data-post={post.id} data-creator={post.creator_id}>
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
+        className="icon-btn comment-toggle" 
+        data-post={post.id} 
+        data-creator={post.creator_id}
+      >
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
         <span className="comment-count">{counts[postIdStr]?.comments || 0}</span>
-      </button>
+      </motion.button>
     </div>
   );
 
@@ -586,7 +612,7 @@ export default function Gallerypost() {
                             position: 'absolute',
                             bottom: '12px',
                             left: '12px',
-                            zIndex: 15,
+                            zIndex: 10,
                             background: 'rgba(0,0,0,0.6)',
                             backdropFilter: 'blur(10px)',
                             border: '1px solid rgba(255,255,255,0.1)',
@@ -646,7 +672,7 @@ export default function Gallerypost() {
                       </div>
 
                       {photoList.length > 1 && !isVideoPost && (
-                        <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 10 }}>
+                        <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 10, position: 'relative' }}>
                           {photoList.map((_: any, i: number) => (
                             <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
                           ))}
@@ -721,7 +747,8 @@ export default function Gallerypost() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            transition: 'transform 0.2s'
+                            transition: 'transform 0.2s',
+                            zIndex: 10
                           }}
                           onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
                           onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -746,7 +773,9 @@ export default function Gallerypost() {
 
         {posts.length > 0 && hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 50px 0', width: '100%' }}>
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleLoadMore} 
               disabled={isLoadingMore}
               style={{
@@ -756,11 +785,29 @@ export default function Gallerypost() {
                 cursor: isLoadingMore ? 'not-allowed' : 'pointer',
                 opacity: isLoadingMore ? 0.7 : 1,
                 boxShadow: '0 4px 15px rgba(31, 60, 255, 0.3)',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
               }}
             >
-              {isLoadingMore ? "Sedang Mengambil Data..." : "Muat Lebih Banyak Karya"}
-            </button>
+              {isLoadingMore ? (
+                <>
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    className="material-icons"
+                    style={{ fontSize: '18px' }}
+                  >
+                    autorenew
+                  </motion.span>
+                  Sedang Mengambil Data...
+                </>
+              ) : (
+                "Muat Lebih Banyak Karya"
+              )}
+            </motion.button>
           </div>
         )}
       </div>

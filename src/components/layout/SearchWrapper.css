@@ -1,35 +1,45 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
 .header-sticky-wrapper {
-  position: relative; /* 🔥 FIX 1: Hapus sticky, ganti jadi relative biar bisa discroll */
-  z-index: 999999; 
+  position: relative; 
+  z-index: 100; /* Jangan terlalu over (999999) biar ga nabrak modal/popup di masa depan */
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
-  padding-top: 63px; /* 🔥 FIX 2: Kasih bantalan atas setinggi Search Bar biar Story gak ketiban di awal */
+  padding-top: 64px; /* Bantalan biar Story ga nyungsep di bawah Search Bar */
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* --- SEARCH AREA (TETAP DIAM) --- */
+/* --- SEARCH AREA (MELAYANG / FIXED) --- */
 .search-wrapper {
   padding: 12px 18px;
   display: flex;
   align-items: center; 
   gap: 15px; 
-  background: var(--bg-main, #ffffff);
   
-  position: fixed; /* 🔥 FIX 3: Ubah jadi fixed biar melayang abadi di layar */
+  /* 🔥 FIX: Efek Kaca (Glassmorphism) biar elegan pas story di-scroll ke bawahnya */
+  background: rgba(255, 255, 255, 0.85); /* Kalau dark mode, pastikan var(--glass-bg) lu ada opasitasnya */
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  
+  position: fixed; 
   top: 0; 
   left: 50%;
-  transform: translateX(-50%); /* Biar posisinya tetep di tengah ngikutin layout */
+  transform: translateX(-50%); 
   width: 100%;
-  max-width: 600px; /* Sesuai dengan ukuran maksimal layout Home lu */
+  max-width: 600px; 
   
-  z-index: 15001; 
+  z-index: 1000; /* Cukup 1000, di bawah z-index Modal/Sidebar */
   border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* --- INPUT PENCARIAN (TETAP SAMA) --- */
+/* Dark Mode Override untuk Search Bar */
+[data-theme='dark'] .search-wrapper,
+html.dark .search-wrapper {
+  background: rgba(21, 23, 26, 0.85); /* Warna gelap transparan */
+}
+
+/* --- INPUT PENCARIAN --- */
 .brutal-input-container {
   position: relative;
   flex: 1; 
@@ -37,10 +47,10 @@
 
 .brutal-input {
   width: 100%;
-  height: 38px;
-  padding: 8px 16px;
+  height: 40px;
+  padding: 8px 18px;
   font-size: 14px;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', 'Poppins', sans-serif;
   color: var(--text-main, #1a1a1a);
   background: var(--bg-secondary, #f0f2f5); 
   border: 1px solid transparent;
@@ -51,17 +61,17 @@
 
 .brutal-input:focus {
   background: var(--bg-main, #fff);
-  border-color: #1f3cff; /* 🔥 FIX: Pakai warna biru utama HypeTalk */
-  box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.1); 
+  border-color: #1f3cff; 
+  box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.15); 
 }
 
-/* --- TOMBOL TAMBAH --- */
+/* --- TOMBOL TAMBAH (+) --- */
 .add-post-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
   background-color: var(--text-main, #1a1a1a); 
@@ -69,29 +79,30 @@
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
-  z-index: 16000;
-  pointer-events: auto !important; 
-  transition: transform 0.1s ease, background-color 0.3s ease, color 0.3s ease;
+  z-index: 10;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 
 .add-post-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.85);
 }
 
 /* --- STORY SECTION (BISA DI-SCROLL) --- */
 .stories-container {
   display: flex;
-  gap: 15px;
-  padding: 12px 15px 15px 15px;
-  overflow-x: auto; /* 🔥 Ini yang bikin story bisa digeser ke samping */
+  gap: 16px;
+  padding: 16px 16px 16px 16px;
+  overflow-x: auto; 
   background: var(--bg-main, #ffffff);
   scrollbar-width: none; 
   -ms-overflow-style: none;
   position: relative;
-  z-index: 14000; 
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
-  -webkit-overflow-scrolling: touch; /* Biar smooth di HP */
+  z-index: 1; 
+  transition: background-color 0.3s ease;
+  -webkit-overflow-scrolling: touch; 
 }
 
 .stories-container::-webkit-scrollbar { display: none; }
@@ -100,7 +111,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -111,18 +122,15 @@
   transform: scale(0.92);
 }
 
-/* --- 🔥 ANIMASI POP & SPIN ALA IG STORY (FIXED) 🔥 --- */
+/* --- 🔥 ANIMASI CINCIN IG STORY 🔥 --- */
 .story-circle {
   position: relative;
-  width: 66px;
-  height: 66px;
+  width: 68px; /* Diperbesar dikit biar mirip IG asli */
+  height: 68px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Memotong background biar tetep bulat */
-  overflow: hidden; 
-  background: var(--border-color, #e4e6eb);
 }
 
 /* Pseudo-element ini yang dikasih gradient warna IG */
@@ -135,9 +143,19 @@
   z-index: 0;
 }
 
-/* Kalau lagi loading diklik, CUMA pseudo-element ini yang muter! */
+/* Kalau lagi diklik, background gradientnya muter */
 .story-circle.animating::before {
   animation: spinIG 1s linear infinite;
+}
+
+/* Kalau udah dilihat (opsional: bisa lu tambahin class .seen di React lu nanti) */
+.story-circle.seen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--border-color, #e4e6eb);
+  border-radius: 50%;
+  z-index: 0;
 }
 
 @keyframes spinIG {
@@ -147,14 +165,13 @@
 
 .story-circle img {
   position: relative;
-  z-index: 1; /* Harus di atas gradient */
-  width: 61px;
-  height: 61px;
+  z-index: 1; 
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-secondary);
-  /* Border warna background bikin ilusi ada jarak/gap antara ring dan gambar */
-  border: 2.5px solid var(--bg-main, #ffffff);
+  border: 3px solid var(--bg-main, #ffffff); /* Jarak pemisah antara foto dan cincin warna */
   transition: border-color 0.3s ease;
 }
 
@@ -163,7 +180,7 @@
   font-size: 11px; 
   color: var(--text-main); 
   font-weight: 600; 
-  max-width: 65px; 
+  max-width: 68px; 
   overflow: hidden; 
   text-overflow: ellipsis; 
   white-space: nowrap;

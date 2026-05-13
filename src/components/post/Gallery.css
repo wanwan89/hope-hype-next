@@ -64,13 +64,14 @@
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
-  z-index: 10; /* 🔥 Pastikan angka ini 10 agar ada di bawah Search Bar 🔥 */
+  z-index: 10; /* 🔥 FIX Z-INDEX: Aman di bawah Search Bar 🔥 */
 }
 
 .dot {
   width: 6px; height: 6px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.4);
+  transition: all 0.3s ease; /* Transisi smooth buat perpindahan dot */
 }
 
 .dot.active {
@@ -79,16 +80,15 @@
   border-radius: 10px;
 }
 
-/* 🔥 WATERMARK (kiri atas) – z-index rendah agar tidak menutupi search bar */
+/* 🔥 WATERMARK (Kiri Bawah) */
 .watermark-overlay { 
   position: absolute; 
-  /* FIX: Pindah ke kiri bawah sesuai file .tsx */
   bottom: 15px; 
   left: 15px; 
   width: 70px; 
   opacity: 0.8;
   pointer-events: none; 
-  z-index: 5; /* FIX: Sinkron dengan file .tsx */
+  z-index: 5; 
 }
 .watermark-overlay img { 
   width: 100%; 
@@ -96,19 +96,18 @@
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* 🔥 MUSIK MARQUEE (kanan atas) – z-index rendah agar tidak menutupi search bar */
-/* NOTE: Styling ini akan ditimpa oleh inline-style di getMusicHtml, tapi bagus sebagai fallback */
+/* 🔥 MUSIK MARQUEE */
 .music-marquee-container {
   position: absolute;
   top: 12px;
-  right: 12px; /* FIX: Kemaren lu minta ini di kiri atas, kalau mau di kanan atas biarin right */
+  left: 12px; 
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   color: white;
   border-radius: 20px;
   padding: 6px 12px;
-  z-index: 5; /* FIX: Sinkron dengan file .tsx */
-  max-width: 130px; /* FIX: Minimalisir lebar */
+  z-index: 10; /* 🔥 FIX Z-INDEX: Sama kayak dot & speaker 🔥 */
+  max-width: 130px; 
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
@@ -118,10 +117,10 @@
 .marquee-text {
   display: inline-block;
   white-space: nowrap;
-  font-size: 10px; /* FIX: Minimalisir ukuran font */
+  font-size: 10px; 
   font-weight: 700;
   padding-left: 100%;
-  animation: marquee-play 6s linear infinite; /* FIX: Sedikit dicepetin */
+  animation: marquee-play 6s linear infinite; 
   will-change: transform;
 }
 
@@ -200,20 +199,24 @@
   border-radius: 50%;
 }
 
-.icon { width: 22px; height: 22px; fill: var(--text-main); transition: fill 0.2s ease, transform 0.2s ease; }
-.icon-btn.liked .icon { fill: #ff2e63; }
-.icon-btn.reposted .icon { fill: #1f3cff; } /* FIX: Gunakan warna biru HypeTalk */
-.icon-btn.active .icon { fill: #1f3cff; } /* Khusus untuk save/bookmark */
-
-/* ✨ ANGKA ENGAGEMENT: ikuti warna tema (putih di dark, hitam di light) */
-/* FIX: Gabungin semua jenis hitungan biar konsisten */
-.save-count, .repost-count, .like-count, .comment-count {
-  color: var(--text-main);
+/* Base icon styling */
+.icon { 
+  width: 22px; 
+  height: 22px; 
+  fill: var(--text-main); 
+  transition: fill 0.2s ease; 
 }
 
-/* Transisi halus pada ikon */
-.icon-btn svg {
-  transition: color 0.2s ease, transform 0.2s ease;
+/* Hover/Active states (Opsional jika ingin warna statis CSS sbg fallback) */
+.icon-btn.liked .icon { fill: #ff2e63; }
+.icon-btn.reposted .icon { fill: #1f3cff; } 
+.icon-btn.active .icon { fill: #1f3cff; } 
+
+/* ✨ ANGKA ENGAGEMENT */
+.save-count, .repost-count, .like-count, .comment-count {
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* ========================================== */
@@ -225,8 +228,10 @@
 .gallery-skeleton-shimmer { position: absolute; inset: 0; transform: translateX(-100%); background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 20%, rgba(255, 255, 255, 0.08) 60%, transparent 100%); animation: gallery-shimmer 1.5s infinite; z-index: 2; }
 @keyframes gallery-shimmer { 100% { transform: translateX(100%); } }
 
-/* PREVIEW MODAL */
-.image-preview-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+/* ========================================== */
+/* PREVIEW MODAL                              */
+/* ========================================== */
+.image-preview-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .image-preview-overlay.active { opacity: 1; pointer-events: auto; }
 .image-preview-content img { max-width: 95vw; max-height: 85vh; border-radius: 12px; transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .image-preview-overlay.active .image-preview-content img { transform: scale(1); }

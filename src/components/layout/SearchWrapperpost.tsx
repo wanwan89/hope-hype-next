@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION 🔥
 import './SearchWrapper.css';
 
 export default function SearchWrapperpost() {
@@ -16,9 +17,7 @@ export default function SearchWrapperpost() {
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
 
-// 🔥 GANTI JADI GINI 🔥
-const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/view');
-
+  const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/view');
 
   useEffect(() => {
     setMounted(true);
@@ -49,15 +48,14 @@ const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') ||
     }
   };
 
-// 🔥 GANTI JADI GINI 🔥
-const handleStoryClick = (sId: string) => {
-  setAnimatingStoryId(sId);
-  setClickedStoryId(sId); 
-  setTimeout(() => {
-    router.push(`/story/view?id=${sId}`); // ✨ ALAMAT BARU YANG AMAN BUAT APK ✨
-    setTimeout(() => setAnimatingStoryId(null), 100);
-  }, 500); 
-};
+  const handleStoryClick = (sId: string) => {
+    setAnimatingStoryId(sId);
+    setClickedStoryId(sId); 
+    setTimeout(() => {
+      router.push(`/story/view?id=${sId}`);
+      setTimeout(() => setAnimatingStoryId(null), 100);
+    }, 500); 
+  };
 
   if (!mounted || isHidden) return null;
 
@@ -66,18 +64,10 @@ const handleStoryClick = (sId: string) => {
       className="header-sticky-wrapper" 
       style={{ 
         width: '100%',
-        position: 'relative', // Wrapper ngikutin scroll biasa
+        position: 'relative', 
         zIndex: 999999 
       }}
     >
-      <style>{`
-        @keyframes igSpin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-
-      {/* 🔥 FIX: SEARCH BAR DIAM ABADI (FIXED) 🔥 */}
       <div 
         className="search-wrapper glass-effect" 
         style={{ 
@@ -86,8 +76,8 @@ const handleStoryClick = (sId: string) => {
           left: '50%',
           transform: 'translateX(-50%)',
           width: '100%',
-          maxWidth: '600px', // Sesuaikan lebar layout HP lu
-          zIndex: 1000000, // Paling mentok atas
+          maxWidth: '600px', 
+          zIndex: 1000000, 
           backgroundColor: 'var(--glass-bg)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
@@ -134,12 +124,11 @@ const handleStoryClick = (sId: string) => {
         </button>
       </div>
 
-      {/* 🔥 FIX: STORY IKUT KE-SCROLL (Dikasih jarak atas biar gak ketiban Search Bar pas awal) 🔥 */}
       {stories.length > 0 && (
         <div 
           className="stories-container"
           style={{
-            padding: '70px 15px 15px 15px', // 70px ini bantalan biar aman dari Search Bar yang fixed
+            padding: '70px 15px 15px 15px', 
             backgroundColor: 'var(--bg-main)', 
             display: 'flex', gap: '15px', overflowX: 'auto',
             borderBottom: '1px solid var(--border-color)',
@@ -147,20 +136,41 @@ const handleStoryClick = (sId: string) => {
           }}
         >
           {stories.map((story) => (
-            <div 
+            <motion.div 
               key={story.id} 
               className="story-item" 
               onClick={() => handleStoryClick(story.id)} 
-              style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}
+              animate={{ scale: animatingStoryId === story.id ? 0.9 : 1 }} // 🔥 Animasi Klik Memantul 🔥
+              transition={{ duration: 0.2, type: "spring", stiffness: 300, damping: 20 }}
+              style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
             >
               <div style={{ position: 'relative', width: '66px', height: '66px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: clickedStoryId === story.id && animatingStoryId !== story.id ? 'var(--border-color)' : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', animation: animatingStoryId === story.id ? 'igSpin 1s linear infinite' : 'none', zIndex: 1 }} />
+                
+                {/* 🔥 Cincin Animasi Framer Motion 🔥 */}
+                <motion.div 
+                  animate={{ rotate: animatingStoryId === story.id ? 360 : 0 }}
+                  transition={{ 
+                    repeat: animatingStoryId === story.id ? Infinity : 0, 
+                    duration: 0.8, 
+                    ease: "linear" 
+                  }}
+                  style={{ 
+                    position: 'absolute', 
+                    inset: 0, 
+                    borderRadius: '50%', 
+                    background: clickedStoryId === story.id && animatingStoryId !== story.id 
+                      ? 'var(--border-color)' 
+                      : 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', 
+                    zIndex: 1 
+                  }} 
+                />
+                
                 <img src={story.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${story.profiles?.username}`} alt="avatar" style={{ width: '61px', height: '61px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid var(--bg-main)', position: 'relative', zIndex: 2 }} />
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: '600', maxWidth: '65px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {story.profiles?.username}
               </span>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
