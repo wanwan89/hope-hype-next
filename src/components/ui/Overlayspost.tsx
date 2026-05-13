@@ -7,12 +7,10 @@ import { supabase } from '@/lib/supabase';
  * IMPORT SEMUA MODAL SECARA GLOBAL
  * Pastikan nama file sesuai (Case Sensitive)
  */
-// 🔥 FIX: Hapus import PostModal karena sudah jadi halaman /create
 import CommentModal from '@/components/post/CommentModalpost';
 import GiftSheet from '@/components/post/GiftSheetpost';
 import './Overlays.css';
 
-// 🔥 FIX UTAMA: Deklarasi TypeScript yang rapi biar Vercel senyum 🔥
 declare global {
   interface Window {
     openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void;
@@ -27,14 +25,11 @@ declare global {
 
 export default function Overlayspost() {
   const [bigImgSrc, setBigImgSrc] = useState<string | null>(null);
-  
-  // 🔥 FIX: Hapus state isPostOpen karena sudah dipindah ke halaman /create
 
   useEffect(() => {
-    // --- 1. SENSOR SINYAL BUKA MODAL POST (TIDAK DIPAKAI LAGI TAPI DIBIARKAN KOSONG DEMI KEAMANAN) ---
+    // --- 1. SENSOR SINYAL BUKA MODAL POST (DIBIARKAN KOSONG DEMI KEAMANAN) ---
     const handleOpenPost = () => {
       console.log("Sinyal Open Post diterima! Arahkan ke /create lewat router di tempat lain.");
-      // Redirect sekarang dihandle di tombol Add (+), ini biar ga ada sisa listener yg nyangkut
     };
     window.addEventListener('openPostModal', handleOpenPost);
 
@@ -109,11 +104,10 @@ export default function Overlayspost() {
       document.getElementById('postOptionsSheet')?.classList.remove('active');
     };
 
-    // 🔥 FIX: HUBUNGKAN KE GLOBAL SHARE MODAL 🔥
+    // --- 5. HUBUNGKAN KE GLOBAL SHARE MODAL ---
     window.sharePost = (postId: string) => {
       const url = window.location.origin + '/post?id=' + postId;
       
-      // Tutup menu opsi sebelum buka modal share
       if (window.closePostOptions) window.closePostOptions();
 
       if (window.openGlobalShare) {
@@ -121,10 +115,9 @@ export default function Overlayspost() {
           url,
           'Karya di HypeTalk',
           'Cek karya keren ini di HypeTalk!',
-          undefined // Parameter name opsional
+          undefined 
         );
       } else {
-        // Fallback kalo misal ada error load modal
         navigator.clipboard.writeText(url);
         if (window.showNotif) window.showNotif('Link disalin!', 'success');
       }
@@ -160,14 +153,9 @@ export default function Overlayspost() {
 
   return (
     <>
-      {/* RENDER MODAL-MODAL UTAMA */}
-      {/* 🔥 FIX: Hapus render <PostModal /> karena sudah dipindah ke halaman /create */}
-      
-      {/* Comment & Gift dirender di sini agar listener internalnya jalan */}
       <CommentModal />
       <GiftSheet />
 
-      {/* ELEMENT UI LAINNYA */}
       <div id="toast" style={{ zIndex: 30000 }}></div>
 
       <div id="bigImageContainer" className="overlay-container" style={{ zIndex: 25000 }}>
@@ -181,7 +169,6 @@ export default function Overlayspost() {
             style={{ 
               transition: 'transform 0.3s ease', 
               transform: 'scale(0.9)',
-              // 🔥 FIX TAMBAHAN: Anti-Download buat gambar gede 🔥
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
               userSelect: 'none'

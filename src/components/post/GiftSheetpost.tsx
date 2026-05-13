@@ -125,7 +125,6 @@ export default function GiftSheetpost() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Silakan login kembali.");
 
-      // 1. Eksekusi transfer koin (Ini yang paling penting)
       const { error: rpcErr } = await supabase.rpc("transfer_coins", { 
         sender_id: session.user.id, 
         receiver_id: targetPost.creatorId, 
@@ -133,8 +132,6 @@ export default function GiftSheetpost() {
       });
       if (rpcErr) throw rpcErr;
 
-      // 🔥 FIX 3: RLS ERROR BYPASS 🔥
-      // Pencatatan histori dipisah biar kalau RLS error, aplikasinya nggak nge-crash
       supabase.from("gift_transactions").insert({ 
         sender_id: session.user.id, 
         receiver_id: targetPost.creatorId, 
@@ -152,7 +149,6 @@ export default function GiftSheetpost() {
         message: `mengirimkan hadiah senilai ${giftToSend.amount} koin` 
       }).then();
 
-      // Memicu trigger kado di layar
       window.dispatchEvent(new CustomEvent('insertGiftComment', {
         detail: {
           postId: targetPost.id,
@@ -162,7 +158,6 @@ export default function GiftSheetpost() {
         }
       }));
 
-      // Update UI Koin lokal
       setUserCoins(prev => prev - giftToSend.amount);
       setCoinsGiven(prev => prev + giftToSend.amount);
       
@@ -195,7 +190,8 @@ export default function GiftSheetpost() {
     <>
       <style>{`
         .gift-sheet-content-framer {
-          background: var(--bg-base, #121212);
+          /* 🔥 FIX 2: SINKRON TEMA DARK/LIGHT MODE 🔥 */
+          background: var(--bg-card, #ffffff);
           border-top-left-radius: 24px;
           border-top-right-radius: 24px;
           padding-top: 15px;
@@ -207,38 +203,38 @@ export default function GiftSheetpost() {
           right: 0;
           max-height: 95vh;
           z-index: 100000;
-          box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
           overflow: visible; 
         }
         
         .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; margin-bottom: 15px; }
         
-        .drawer-top-level { display: flex; align-items: center; gap: 12px; background: transparent; padding: 12px 0px; margin: 0 20px 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .drawer-top-level { display: flex; align-items: center; gap: 12px; background: transparent; padding: 12px 0px; margin: 0 20px 15px 20px; border-bottom: 1px solid var(--border-card); }
         .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; z-index: 10; }
         .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; }
         .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
         .level-text-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--text-main); }
-        .progress-track { width: 100%; height: 8px; background: rgba(150,150,150,0.2); border-radius: 10px; overflow: hidden; }
+        .progress-track { width: 100%; height: 8px; background: var(--bg-secondary); border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; background: #1f3cff; transition: width 0.5s ease; }
 
         .target-selection-container { padding: 0 20px; margin-bottom: 10px; }
-        .target-box { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 12px; border: 1px solid #1f3cff; }
+        .target-box { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(31, 60, 255, 0.3); }
 
-        /* 🔥 FIX 1: PADDING ATAS 80px BIAR GAMBAR NGGAK KEPOTONG 🔥 */
         .gift-list-3d-wrapper {
           padding: 80px 15px 40px 15px; 
           display: flex; gap: 15px; 
           overflow-x: auto; 
-          overflow-y: hidden; /* Scroll samping nyala, scroll vertikal mati */
+          overflow-y: hidden; 
           scrollbar-width: none;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
-        .gift-column { display: flex; flex-direction: column; gap: 30px; flex-shrink: 0; width: calc(33.333% - 10px); }
+        .gift-column { display: flex; flex-direction: column; gap: 40px; flex-shrink: 0; width: calc(33.333% - 10px); } /* 🔥 FIX 1: GAP DITAMBAH BIAR KADO GEDE GAK NABRAK 🔥 */
         
         .drawer-footer { 
           display: flex; justify-content: space-between; align-items: center; 
           padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); 
-          background: var(--bg-base, #121212); border-top: 1px solid rgba(255,255,255,0.05); 
+          /* 🔥 FIX 2: SINKRON TEMA 🔥 */
+          background: var(--bg-card, #ffffff); border-top: 1px solid var(--border-card); 
           position: sticky; bottom: 0; z-index: 50; 
         }
       `}</style>
@@ -246,7 +242,6 @@ export default function GiftSheetpost() {
       <AnimatePresence>
         {isActive && (
           <>
-            {/* 🔥 FIX 5: OVERLAY HITAM TANPA BLUR 🔥 */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -264,10 +259,11 @@ export default function GiftSheetpost() {
               className="gift-sheet-content-framer"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sheet-handle" style={{ width: '40px', height: '4px', background: '#555', borderRadius: '4px', margin: '0 auto 15px auto' }} />
+              <div className="sheet-handle" style={{ width: '40px', height: '4px', background: 'var(--border-card)', borderRadius: '4px', margin: '0 auto 15px auto' }} />
 
               <div className="drawer-header">
-                <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
+                {/* 🔥 FIX 2: WARNA TEKS DIBUAT DINAMIS VAR(--TEXT-MAIN) 🔥 */}
+                <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-main)' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
                 <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
               </div>
 
@@ -280,7 +276,7 @@ export default function GiftSheetpost() {
                 </div>
                 <div className="level-progress-info">
                   <div className="level-text-row">
-                    <span style={{ marginLeft: '6px' }}>{myProfile?.username || 'User'}</span>
+                    <span style={{ marginLeft: '6px', color: 'var(--text-main)' }}>{myProfile?.username || 'User'}</span>
                     {currentLevel >= 50 ? (
                       <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
                     ) : (
@@ -299,7 +295,8 @@ export default function GiftSheetpost() {
                 </span>
                 <div className="target-box">
                   <span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>account_circle</span>
-                  <span style={{ fontWeight: 800, fontSize: '12px' }}>{targetPost.creatorName}</span>
+                  {/* 🔥 FIX 2: NAMA KREATOR DI WARNA TEXT-MAIN 🔥 */}
+                  <span style={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-main)' }}>{targetPost.creatorName}</span>
                 </div>
               </div>
 
@@ -314,24 +311,25 @@ export default function GiftSheetpost() {
                           key={gift.id}
                           onClick={() => setSelectedGift(gift)}
                           style={{ 
-                            position: 'relative', height: '100px', width: '100%', 
+                            /* 🔥 FIX 1: TINGGI CONTAINER KADO DITAMBAH JADI 120px BIAR GAMBAR LEBIH BESAR 🔥 */
+                            position: 'relative', height: '120px', width: '100%', 
                             display: 'flex', flexDirection: 'column', alignItems: 'center', 
                             justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
                           }}
                         >
-                          {/* 🔥 FIX 2: ANIMASI LEBIH ENTENG MENGGUNAKAN SCALE & Y (Bukan Width/Height) 🔥 */}
                           <motion.div
                             animate={{
-                              y: isActiveGift ? -35 : 0, // Gambar naik pas dipilih
-                              scale: isActiveGift ? 1.4 : 1, // Gambar membesar tanpa merubah layout
+                              y: isActiveGift ? -40 : 0, 
+                              scale: isActiveGift ? 1.3 : 1, 
                             }}
                             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            style={{ position: 'absolute', zIndex: 2, bottom: '25px', pointerEvents: 'none' }}
+                            style={{ position: 'absolute', zIndex: 2, bottom: '30px', pointerEvents: 'none' }}
                           >
                             <motion.img 
                               src={gift.img} 
                               alt={gift.name} 
-                              style={{ width: '70px', height: '70px', objectFit: 'contain', filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.4))' }}
+                              /* 🔥 FIX 1: UKURAN GAMBAR KADO NAIK JADI 90px 🔥 */
+                              style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.4))' }}
                               animate={isActiveGift ? { y: [-5, 5, -5] } : { y: 0 }}
                               transition={isActiveGift ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : {}}
                             />
@@ -385,7 +383,7 @@ export default function GiftSheetpost() {
               </div>
               
               <div className="drawer-footer">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'var(--bg-secondary)', padding: '8px 14px', borderRadius: '12px', color: 'var(--text-main)' }}>
                   <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
                   <span>{userCoins.toLocaleString('id-ID')}</span>
                 </div>

@@ -95,7 +95,6 @@
 .overlay-bg {
   position: absolute;
   inset: 0;
-  /* Warna background overlay ini tetep hitam transparan di kedua mode */
   background: rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(8px);
 }
@@ -191,30 +190,4 @@
   padding: 10px;
   border: none;
   transition: color 0.3s ease;
-}
-
-/* =========================================
-   5. GIFT ANIMATION
-   ========================================= */
-#giftAnimationContainer {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 110000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.gift-main-img {
-  width: 250px;
-  filter: drop-shadow(0 0 40px rgba(255,215,0,0.5));
-  animation: giftPop 1.5s forwards;
-}
-
-@keyframes giftPop {
-  0% { transform: scale(0) rotate(-20deg); opacity: 0; }
-  20% { transform: scale(1.2) rotate(10deg); opacity: 1; }
-  80% { transform: scale(1) rotate(0deg); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
 }

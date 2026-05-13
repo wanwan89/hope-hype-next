@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION 🔥
+import { motion, AnimatePresence } from 'framer-motion'; 
 import './CommentModal.css';
 
 const getOptimizedImage = (url: string) => {
@@ -32,7 +32,7 @@ export default function CommentModalpost() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set()); // 🔥 STATE DISLIKE 🔥
+  const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set()); 
   const [commentLikesCount, setCommentLikesCount] = useState<Record<string, number>>({});
   
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
@@ -340,7 +340,6 @@ export default function CommentModalpost() {
     const isLiked = likedComments.has(commentIdStr);
     const commentId = parseInt(commentIdStr);
 
-    // Kalau disukai, hapus dari list dislike
     if (!isLiked && dislikedComments.has(commentIdStr)) {
       setDislikedComments(prev => {
         const newSet = new Set(prev);
@@ -369,14 +368,12 @@ export default function CommentModalpost() {
     } catch (err) { console.error("Like error", err); }
   };
 
-  // 🔥 FUNGSI DISLIKE KOMENTAR 🔥
   const handleDislikeComment = async (commentIdStr: string) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!requireLogin(session?.user)) return;
 
     const isDisliked = dislikedComments.has(commentIdStr);
 
-    // Kalau di-dislike, cabut likenya jika ada
     if (!isDisliked && likedComments.has(commentIdStr)) {
       setLikedComments(prev => {
         const newSet = new Set(prev);
@@ -387,7 +384,6 @@ export default function CommentModalpost() {
         ...prev,
         [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) - 1)
       }));
-      // Cabut dari database like
       supabase.from("comment_likes").delete().match({ comment_id: parseInt(commentIdStr), user_id: session!.user.id }).then();
     }
 
@@ -539,9 +535,7 @@ export default function CommentModalpost() {
           </div>
         </div>
 
-        {/* 🔥 FIX 1: ACTIONS (LIKE & DISLIKE) RATA KANAN SEMPURNA 🔥 */}
         <div className="comment-right-actions">
-          {/* TOMBOL LIKE DENGAN ANIMASI PECAH (PARTICLE BURST) */}
           <div className="action-button-wrapper" onClick={() => handleLikeComment(String(comment.id))}>
             <div style={{ position: 'relative' }}>
               <AnimatePresence>
@@ -571,7 +565,6 @@ export default function CommentModalpost() {
             {currentLikeCount > 0 && <span className="action-count">{currentLikeCount}</span>}
           </div>
 
-          {/* TOMBOL DISLIKE */}
           <div className="action-button-wrapper" onClick={() => handleDislikeComment(String(comment.id))}>
             <motion.svg 
               viewBox="0 0 24 24" 
@@ -603,7 +596,6 @@ export default function CommentModalpost() {
           
           <div className="comment-header">
             {t('comments_title')}
-            {/* 🔥 FIX 2: Tombol (X) Dihapus, user cukup narik/klik luar area untuk tutup 🔥 */}
           </div>
           
           <div className="comment-list" id="commentListContainer">
@@ -708,11 +700,14 @@ export default function CommentModalpost() {
       <div className={`c-action-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)}></div>
       <div className={`c-action-sheet ${isActionSheetOpen ? 'open' : ''}`}>
         <div className="c-drag-handle"></div>
-        {actionSheetComment && actionSheetComment.user_id === myUserId && (
+        
+        {/* 🔥 FIX: TOMBOL HAPUS MUNCUL KALAU DIA PENULIS KOMENTAR ATAU PEMILIK POSTINGAN 🔥 */}
+        {actionSheetComment && (actionSheetComment.user_id === myUserId || currentCreatorId === myUserId) && (
           <button className="c-action-btn danger" onClick={handleDeleteComment}>
             <span className="material-icons">delete_outline</span> Hapus Komentar
           </button>
         )}
+        
         <button className="c-action-btn warning" onClick={handleReportComment}>
           <span className="material-icons">report_problem</span> Laporkan Komentar
         </button>

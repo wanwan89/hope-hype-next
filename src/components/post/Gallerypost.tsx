@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
-import { motion, AnimatePresence } from 'framer-motion';
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -47,7 +46,6 @@ export default function Gallerypost() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
 
-  // 🔥 STATE & REF UNTUK MUTE/UNMUTE GLOBAL 🔥
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
 
@@ -400,7 +398,7 @@ export default function Gallerypost() {
           left: isOverlay ? '12px' : 'auto',
           maxWidth: isOverlay ? '130px' : '220px', 
           width: isOverlay ? 'auto' : 'fit-content',
-          zIndex: 2, /* 🔥 FIX: Z-Index aman di bawah Search Bar 🔥 */
+          zIndex: 2, 
           background: isOverlay ? 'rgba(0,0,0,0.5)' : 'var(--bg-secondary)',
           backdropFilter: isOverlay ? 'blur(8px)' : 'none',
           borderRadius: '16px',
@@ -441,9 +439,9 @@ export default function Gallerypost() {
     const isAnimating = animatingFollows.has(creatorId);
 
     return (
-      <motion.button
-        whileTap={{ scale: 0.9 }}
+      <button
         onClick={(e) => handleFollowToggle(e, creatorId)}
+        className="btn-press"
         style={{
           background: isFollowing ? 'var(--bg-secondary)' : '#1f3cff',
           color: isFollowing ? 'var(--text-main)' : '#ffffff',
@@ -456,92 +454,64 @@ export default function Gallerypost() {
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          gap: '4px'
+          gap: '4px',
+          transform: isAnimating ? 'scale(0.85)' : 'scale(1)',
+          transition: 'all 0.2s ease-in-out'
         }}
       >
         {isFollowing && (
-          <motion.span 
-            initial={{ scale: 0, opacity: 0 }} 
-            animate={{ scale: 1, opacity: 1 }} 
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="material-icons" style={{ fontSize: '13px', color: '#1da1f2' }}
+          <span 
+            className="material-icons check-pop" 
+            style={{ fontSize: '13px', color: 'var(--text-main)' }}
           >
-            check_circle
-          </motion.span>
+            check
+          </span>
         )}
         {isFollowing ? t('following', 'Mengikuti') : t('follow', 'Ikuti')}
-      </motion.button>
+      </button>
     );
   };
 
   const renderEngagementButtons = (post: any, postIdStr: string) => (
     <div className="engagement-group">
-      <motion.button 
-        whileTap={{ scale: 0.8 }}
-        className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
+      <button 
+        className={`icon-btn save-btn btn-press ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
         onClick={() => handleSave(postIdStr)} 
       >
-        <motion.svg 
-          viewBox="0 0 24 24" 
-          className="icon" 
-          fill="currentColor"
-          style={{ color: mySavedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} 
-          initial={false}
-          animate={mySavedPosts.has(postIdStr) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-          transition={{ duration: 0.3 }}
-        >
+        <svg viewBox="0 0 24 24" className="icon" fill="currentColor" style={{ color: mySavedPosts.has(postIdStr) ? "#1f3cff" : "inherit", transition: '0.2s' }}>
           {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
-        </motion.svg>
-        <span className="save-count" style={{ color: 'var(--text-main)' }}>
-          {counts[postIdStr]?.saves || 0}
-        </span>
-      </motion.button>
+        </svg>
+        <span className="save-count" style={{ color: 'var(--text-main)' }}>{counts[postIdStr]?.saves || 0}</span>
+      </button>
 
-      <motion.button 
-        whileTap={{ scale: 0.8 }}
-        className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''}`} 
+      <button 
+        className={`icon-btn repost-btn btn-press ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''}`} 
         onClick={() => handleRepost(postIdStr)}
       >
-        <motion.svg 
-          viewBox="0 0 24 24" 
-          className="icon" 
-          fill="currentColor"
-          style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }}
-          animate={animatingReposts.has(postIdStr) ? { rotate: 360 } : { rotate: 0 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-        >
+        <svg viewBox="0 0 24 24" className={`icon ${animatingReposts.has(postIdStr) ? 'spin-anim' : ''}`} fill="currentColor" style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit", transition: '0.2s' }}>
           <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
-        </motion.svg>
+        </svg>
         <span className="repost-count" style={{ color: 'var(--text-main)' }}>{counts[postIdStr]?.reposts || 0}</span>
-      </motion.button>
+      </button>
 
-      <motion.button 
-        whileTap={{ scale: 0.8 }}
-        className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} 
+      <button 
+        className={`icon-btn like-btn btn-press ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} 
         onClick={() => handleLike(postIdStr, post.creator_id)}
       >
-        <motion.svg 
-          viewBox="0 0 24 24" 
-          className="icon heart" 
-          fill="currentColor"
-          initial={false}
-          animate={myLikedPosts.has(postIdStr) ? { scale: [1, 1.4, 1] } : { scale: 1 }}
-          transition={{ duration: 0.3 }}
-        >
+        <svg viewBox="0 0 24 24" className={`icon heart ${myLikedPosts.has(postIdStr) ? 'heart-pop active' : ''}`} fill="currentColor" style={{ transition: '0.2s' }}>
           <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
-        </motion.svg>
+        </svg>
         <span className="like-count">{counts[postIdStr]?.likes || 0}</span>
-      </motion.button>
+      </button>
       
-      <motion.button 
-        whileTap={{ scale: 0.8 }}
-        className="icon-btn comment-toggle" 
+      <button 
+        className="icon-btn comment-toggle btn-press" 
         data-post={post.id} 
         data-creator={post.creator_id}
       >
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
         <span className="comment-count">{counts[postIdStr]?.comments || 0}</span>
-      </motion.button>
+      </button>
     </div>
   );
 
@@ -578,11 +548,30 @@ export default function Gallerypost() {
 
   return (
     <section>
+      {/* 🔥 PURE CSS ANIMATIONS (SUPER LIGHTWEIGHT) 🔥 */}
       <style>{`
         @keyframes marqueeMusic {
           0% { transform: translateX(0); }
           100% { transform: translateX(-100%); }
         }
+        .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .btn-press:active { transform: scale(0.85); }
+        
+        .check-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        .heart-pop.active { animation: heartPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); fill: #ff2e63; }
+        @keyframes heartPop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+        
+        .spin-anim { animation: spinRep 0.5s ease-in-out; }
+        @keyframes spinRep { 100% { transform: rotate(360deg); } }
+
+        .pure-spinner {
+          width: 30px; height: 30px; border: 3px solid var(--border-card); 
+          border-top-color: #1f3cff; border-radius: 50%;
+          animation: pureSpin 1s linear infinite;
+        }
+        @keyframes pureSpin { 100% { transform: rotate(360deg); } }
       `}</style>
 
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
@@ -636,37 +625,32 @@ export default function Gallerypost() {
                         )}
                       </div>
 
-                      {/* 🔥 FIX 1: TOMBOL MUTE Z-INDEX 2 (Di Bawah Search Bar) 🔥 */}
-                      {(post.audio_src || isVideoPost) && (
-                        <button
-                          onClick={toggleMute}
-                          style={{
-                            position: 'absolute',
-                            bottom: '12px',
-                            left: '12px',
-                            zIndex: 2, 
-                            background: 'rgba(0,0,0,0.6)',
-                            backdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            color: 'white',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-                            transition: 'transform 0.2s'
-                          }}
-                          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
-                          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        >
-                          <span className="material-icons" style={{ fontSize: '18px' }}>
-                            {isGloballyMuted ? 'volume_off' : 'volume_up'}
-                          </span>
-                        </button>
-                      )}
+                      <button
+                        className="btn-press"
+                        onClick={toggleMute}
+                        style={{
+                          position: 'absolute',
+                          bottom: '12px',
+                          left: '12px',
+                          zIndex: 2, 
+                          background: 'rgba(0,0,0,0.6)',
+                          backdropFilter: 'blur(10px)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          color: 'white',
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+                        }}
+                      >
+                        <span className="material-icons" style={{ fontSize: '18px' }}>
+                          {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                        </span>
+                      </button>
 
                       <div className="photo-carousel" onScroll={(e) => {
                           const target = e.target as HTMLDivElement;
@@ -677,35 +661,32 @@ export default function Gallerypost() {
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
-                        {/* 🔥 FIX 3: RASIO VIDEO 2/3 🔥 */}
                         {isVideoPost ? (
-                          <div className="carousel-item" style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                          <div className="carousel-item" style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
                             <video 
                               src={post.video_url} 
                               className="post-video-element"
                               poster={getOptimizedImage(post.image_url)}
                               playsInline loop muted
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
                             />
                           </div>
                         ) : (
                           photoList.map((url: string, i: number) => (
-                            /* 🔥 FIX 3: RASIO GAMBAR 3/4 🔥 */
-                            <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                            <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
                               <img 
                                 src={getOptimizedImage(url)} 
                                 className="active" 
                                 loading={i === 0 ? "eager" : "lazy"} 
                                 alt={`Postingan Galeri ${i + 1}`} 
                                 onClick={(e) => handleImageDoubleTap(e, getOptimizedImage(url), postIdStr)} 
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
                               />
                             </div>
                           ))
                         )}
                       </div>
 
-                      {/* 🔥 FIX 2: DOT SLIDER Z-INDEX 2 TANPA POSITION RELATIVE 🔥 */}
                       {photoList.length > 1 && !isVideoPost && (
                         <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 2 }}>
                           {photoList.map((_: any, i: number) => (
@@ -724,7 +705,7 @@ export default function Gallerypost() {
                           {renderFollowButton(post.creator_id)}
                         </div>
                         <button 
-                          className="options-btn" 
+                          className="options-btn btn-press" 
                           aria-label="Opsi Postingan" 
                           onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}
                         >
@@ -738,7 +719,7 @@ export default function Gallerypost() {
 
                       <div className="post-date-wrapper">{t('uploaded_on')} {formattedDate}</div>
                       <div className="actions">
-                        <a href={`/data?id=${post.creator_id}`} className="primary">{t('view_detail')}</a>
+                        <a href={`/data?id=${post.creator_id}`} className="primary btn-press" style={{ display: 'inline-block' }}>{t('view_detail')}</a>
                         {renderEngagementButtons(post, postIdStr)}
                       </div>
                     </div>
@@ -756,7 +737,7 @@ export default function Gallerypost() {
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
                         </div>
                       </div>
-                      <button aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); (window as any).openPostOptions?.(post.id, isOwner, post.creator_id); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); (window as any).openPostOptions?.(post.id, isOwner, post.creator_id); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
                     </div>
@@ -768,8 +749,8 @@ export default function Gallerypost() {
                     {post.audio_src && (
                       <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         {getMusicHtml(post, false)}
-                        {/* 🔥 TOMBOL SPEAKER TEKS Z-INDEX AMAN 🔥 */}
                         <button
+                          className="btn-press"
                           onClick={toggleMute}
                           style={{
                             background: 'var(--bg-secondary)',
@@ -782,11 +763,8 @@ export default function Gallerypost() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            transition: 'transform 0.2s',
                             zIndex: 2
                           }}
-                          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
-                          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                         >
                           <span className="material-icons" style={{ fontSize: '18px' }}>
                             {isGloballyMuted ? 'volume_off' : 'volume_up'}
@@ -796,7 +774,7 @@ export default function Gallerypost() {
                     )}
 
                     <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
-                      <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_detail')}</a>
+                      <a href={`/data?id=${post.creator_id}`} className="btn-press" style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>{t('view_detail')}</a>
                       {renderEngagementButtons(post, postIdStr)}
                     </div>
                   </>
@@ -806,13 +784,18 @@ export default function Gallerypost() {
           })
         )}
 
-        {/* 🔥 AUTO LOAD MORE (INFINITE SCROLL) 🔥 */}
-        {posts.length > 0 && hasMore && (
+        {/* 🔥 INFO END OF LIST (TIDAK ADA POSTINGAN LAGI) 🔥 */}
+        {posts.length > 0 && (
           <div ref={observerTarget} style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
             {isLoadingMore ? (
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} style={{ width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%' }} />
-            ) : (
+              <div className="pure-spinner"></div>
+            ) : hasMore ? (
               <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
+            ) : (
+              <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>
+                Tidak ada postingan lagi
+              </span>
             )}
           </div>
         )}
