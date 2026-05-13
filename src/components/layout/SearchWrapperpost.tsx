@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion'; 
+// 🔥 FIX: Framer Motion dihapus total biar Vercel nggak error 🔥
 import './SearchWrapper.css';
 
 export default function SearchWrapperpost() {
@@ -98,12 +98,15 @@ export default function SearchWrapperpost() {
       {stories.length > 0 && (
         <div className="stories-container">
           {stories.map((story) => (
-            <motion.div 
+            <div 
               key={story.id} 
               className="story-item" 
               onClick={() => handleStoryClick(story.id)} 
-              animate={{ scale: animatingStoryId === story.id ? 0.92 : 1 }} 
-              transition={{ duration: 0.2, type: "spring", stiffness: 300, damping: 20 }}
+              style={{
+                /* 🔥 FIX: Animasi "Spring" diganti jadi CSS Native (Super Ringan) 🔥 */
+                transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)',
+                transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+              }}
             >
               <div className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}>
                 <img 
@@ -114,7 +117,7 @@ export default function SearchWrapperpost() {
               <span className="story-name">
                 {story.profiles?.username}
               </span>
-            </motion.div>
+            </div>
           ))}
         </div>
       )}

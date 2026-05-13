@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-// 🔥 FIX 1: Ganti useParams jadi useSearchParams 🔥
-import { useSearchParams, useRouter } from 'next/navigation';
+// 🔥 FIX: Import Suspense dari react 🔥
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils'; 
+import { useSearchParams, useRouter } from 'next/navigation';
 import './Story.css';
 
 interface Story {
@@ -22,8 +22,8 @@ interface Story {
   };
 }
 
-export default function StoryViewerPage() {
-  // 🔥 FIX 2: Tangkap ID dari URL query string (?id=...) 🔥
+// 🔥 FIX: Pisahkan logika utama ke komponen Child (StoryViewerContent) 🔥
+function StoryViewerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -52,7 +52,6 @@ export default function StoryViewerPage() {
   const STORY_DURATION = 7000;
 
   useEffect(() => {
-    // Kalau storyId ada, baru jalanin fetch datanya
     if (storyId) initMultiStory();
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [storyId]);
@@ -465,3 +464,13 @@ export default function StoryViewerPage() {
     </div>
   );
 }
+
+// 🔥 FIX 3: INI ADALAH KOMPONEN UTAMA YANG DIEKSPORT 🔥
+export default function StoryViewerPage() {
+  return (
+    <Suspense fallback={<div className="story-full-viewer dark-bg">Memuat...</div>}>
+      <StoryViewerContent />
+    </Suspense>
+  );
+}
+
