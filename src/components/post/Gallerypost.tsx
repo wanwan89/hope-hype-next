@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
+// 🔥 FIX: Framer Motion DIHAPUS TOTAL biar scroll super ringan 🔥
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -34,6 +35,7 @@ export default function Gallerypost() {
   
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
+  
   const observerRef = useRef<IntersectionObserver | null>(null);
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
@@ -223,20 +225,20 @@ export default function Gallerypost() {
       if (isFollowing) {
         await supabase.from("followers").delete().match({ follower_id: currentUser.id, following_id: creatorId });
       } else {
-        await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
+        const { error } = await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
+        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
         
-        const { data: myProf } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
-        await supabase.from("notifications").insert({
-          user_id: creatorId,
-          actor_id: currentUser.id,
-          type: "follow",
-          message: `<b>${myProf?.username}</b> mulai mengikuti Anda.`
-        });
+        if (!error) {
+          const { data: myProf } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
+          await supabase.from("notifications").insert({
+            user_id: creatorId,
+            actor_id: currentUser.id,
+            type: "follow",
+            message: `<b>${myProf?.username}</b> mulai mengikuti Anda.`
+          });
+        }
       }
-    } catch (err) {
-      console.error("Follow error", err);
-      showNotif("Gagal mengikuti pengguna", "error");
-    }
+    } catch (err) { console.error("Follow error", err); }
   };
 
   const handleLike = async (postId: string, creatorId: string) => {
@@ -259,8 +261,10 @@ export default function Gallerypost() {
       if (isLiked) {
         await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
       } else {
-        await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
-        if (creatorId !== currentUser.id) {
+        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
+        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
+        
+        if (!error && creatorId !== currentUser.id) {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
           await supabase.from("notifications").insert({
             user_id: creatorId, actor_id: currentUser.id, post_id: numericPostId, type: "like",
@@ -268,7 +272,7 @@ export default function Gallerypost() {
           });
         }
       }
-    } catch (err) { showNotif(t('like_save_error'), "error"); }
+    } catch (err) { console.error("Like error", err); }
   };
 
   const handleRepost = async (postId: string) => {
@@ -295,9 +299,13 @@ export default function Gallerypost() {
     }));
 
     try {
-      if (isReposted) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
-      else await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
-    } catch (err) { console.error(err); }
+      if (isReposted) {
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      } else {
+        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
+        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
+      }
+    } catch (err) { console.error("Repost error", err); }
   };
 
   const handleSave = async (postId: string) => {
@@ -317,9 +325,13 @@ export default function Gallerypost() {
     }));
 
     try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
-      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
-    } catch (err) { console.error(err); }
+      if (isSaved) {
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      } else {
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
+        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
+      }
+    } catch (err) { console.error("Save error", err); }
   };
 
   const handleImageDoubleTap = (e: any, imageUrl: string, postId: string) => {
@@ -661,6 +673,7 @@ export default function Gallerypost() {
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
+                        {/* 🔥 FIX: OBJECT FIT COVER DITAMBAHKAN DI SINI 🔥 */}
                         {isVideoPost ? (
                           <div className="carousel-item" style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
                             <video 

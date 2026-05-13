@@ -394,12 +394,14 @@ export default function CommentModalpost() {
     });
   };
 
+  // 🔥 FIX 1: TANGKAP TOUCH EVENT UNTUK HP BIAR RESPONSIVE 🔥
   const handleTouchStart = (comment: any) => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(50);
       setActionSheetComment(comment);
       setIsActionSheetOpen(true);
-    }, 500); 
+    }, 450); // Sensitivitas dipercepat sedikit
   };
 
   const handleTouchEnd = () => {
@@ -489,9 +491,14 @@ export default function CommentModalpost() {
       <div 
         className="comment-item" 
         key={comment.id} 
-        onPointerDown={() => handleTouchStart(comment)} 
-        onPointerUp={handleTouchEnd}
-        onPointerLeave={handleTouchEnd}
+        /* 🔥 FIX 1: EVENT LISTENER HP & MOUSE LENGKAP 🔥 */
+        onTouchStart={() => handleTouchStart(comment)} 
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchEnd} /* Batalin popup kalo layar di-scroll */
+        onMouseDown={() => handleTouchStart(comment)}
+        onMouseUp={handleTouchEnd}
+        onMouseLeave={handleTouchEnd}
+        onContextMenu={(e) => { e.preventDefault(); }} /* Blokir default popup browser biar gampang klik lama */
       >
         <div className="comment-left">
           <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
@@ -536,7 +543,7 @@ export default function CommentModalpost() {
         </div>
 
         <div className="comment-right-actions">
-          <div className="action-button-wrapper" onClick={() => handleLikeComment(String(comment.id))}>
+          <div className="action-button-wrapper" onClick={(e) => { e.stopPropagation(); handleLikeComment(String(comment.id)); }}>
             <div style={{ position: 'relative' }}>
               <AnimatePresence>
                 {isCommentLiked && (
@@ -565,7 +572,7 @@ export default function CommentModalpost() {
             {currentLikeCount > 0 && <span className="action-count">{currentLikeCount}</span>}
           </div>
 
-          <div className="action-button-wrapper" onClick={() => handleDislikeComment(String(comment.id))}>
+          <div className="action-button-wrapper" onClick={(e) => { e.stopPropagation(); handleDislikeComment(String(comment.id)); }}>
             <motion.svg 
               viewBox="0 0 24 24" 
               className={`dislike-icon ${isCommentDisliked ? 'active' : ''}`}
@@ -697,11 +704,11 @@ export default function CommentModalpost() {
         </div>
       </div>
 
+      {/* 🔥 FIX 2: STRUKTUR ACTION SHEET (LAPORKAN KOMENTAR) 🔥 */}
       <div className={`c-action-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)}></div>
       <div className={`c-action-sheet ${isActionSheetOpen ? 'open' : ''}`}>
         <div className="c-drag-handle"></div>
         
-        {/* 🔥 FIX: TOMBOL HAPUS MUNCUL KALAU DIA PENULIS KOMENTAR ATAU PEMILIK POSTINGAN 🔥 */}
         {actionSheetComment && (actionSheetComment.user_id === myUserId || currentCreatorId === myUserId) && (
           <button className="c-action-btn danger" onClick={handleDeleteComment}>
             <span className="material-icons">delete_outline</span> Hapus Komentar

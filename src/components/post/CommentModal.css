@@ -1,7 +1,7 @@
 /* --- OVERLAY MODAL --- */
 #commentModal {
   position: fixed; inset: 0; 
-  background: rgba(0,0,0,0.7); /* 🔥 FIX 3: Gak pake blur lagi, transparan bersih */
+  background: rgba(0,0,0,0.7); 
   display: flex; align-items: flex-end; justify-content: center;
   z-index: 99999; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -43,16 +43,15 @@
 }
 .comment-list::-webkit-scrollbar { display: none; }
 
-/* --- 🔥 FIX 1: STRUKTUR ITEM KOMENTAR (RATA KANAN SEMPURNA) 🔥 --- */
+/* --- STRUKTUR ITEM KOMENTAR --- */
 .comment-thread { 
   margin-bottom: 24px; 
   position: relative;
   width: 100%;
 }
 
-/* Biar balasan nggak ngerusak layout tombol like di kanan */
 .replies-container {
-  padding-left: 42px; /* Geser konten balasan ke dalam */
+  padding-left: 42px; 
   position: relative;
   width: 100%;
   box-sizing: border-box;
@@ -70,6 +69,8 @@
   position: relative;
   width: 100%;
   box-sizing: border-box;
+  -webkit-touch-callout: none; /* Blokir popup default browser (kayak save image) biar long press lancar */
+  user-select: none;
 }
 
 .comment-left { 
@@ -86,8 +87,8 @@
 /* KONTEN TENGAH */
 .comment-main-content {
   flex: 1; 
-  min-width: 0; /* Biar text overflow jalan */
-  padding-right: 12px; /* Jarak dari area tombol like */
+  min-width: 0; 
+  padding-right: 12px; 
 }
 
 .comment-topline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
@@ -98,15 +99,15 @@
 .mention-tag-link { color: #1f3cff !important; font-weight: 700; cursor: pointer; }
 .creator-tag { background: #1f3cff; color: white; padding: 1px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px; font-weight: 800; letter-spacing: 0.5px; }
 
-/* 🔥 FIX 4: PREMIUM GIFT BUBBLE (ELEGAN TANPA ANIMASI) 🔥 */
+/* PREMIUM GIFT BUBBLE */
 .gift-comment-bubble {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(245, 158, 11, 0.08); /* Latar belakang tipis premium */
+  background: rgba(245, 158, 11, 0.08);
   padding: 6px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(245, 158, 11, 0.3); /* Border emas tipis */
+  border: 1px solid rgba(245, 158, 11, 0.3);
   margin-top: 6px;
 }
 .gift-comment-bubble span { color: #f59e0b; font-size: 13px; font-weight: 700; }
@@ -146,9 +147,8 @@
   color: #ff4757;
 }
 
-/* FIX: Warna dislike pas diklik */
 .dislike-icon.active {
-  color: #a8a29e; /* Abu-abu agak gelap */
+  color: #a8a29e; 
 }
 
 .action-count {
@@ -214,3 +214,35 @@
 
 /* --- UTILS --- */
 .loading-text, .empty-text { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; font-weight: 500; }
+
+/* 🔥 FIX 2: CSS ACTION SHEET (SLIDE UP HAPUS/LAPORKAN KOMENTAR) YANG HILANG 🔥 */
+.c-action-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 100002; opacity: 0; visibility: hidden; transition: 0.3s;
+}
+.c-action-overlay.active { opacity: 1; visibility: visible; }
+
+.c-action-sheet {
+  position: fixed; bottom: 0; left: 0; width: 100%;
+  background: var(--bg-modal, #1a1a1a); border-radius: 20px 20px 0 0;
+  padding: 20px 20px 30px; transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  z-index: 100003; border-top: 1px solid rgba(255,255,255,0.05);
+}
+.c-action-sheet.open {
+  transform: translateY(0);
+}
+
+.c-drag-handle { 
+  width: 40px; height: 5px; background: var(--border-card, #333); 
+  border-radius: 10px; margin: 0 auto 20px; 
+}
+
+.c-action-btn {
+  width: 100%; padding: 16px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: 0.2s;
+  margin-bottom: 10px;
+}
+.c-action-btn.danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.c-action-btn.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+.c-action-btn:active { transform: scale(0.96); }
