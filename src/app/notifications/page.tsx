@@ -348,7 +348,7 @@ export default function NotificationsPage() {
        return `Selamat! Karyamu telah <b>disetujui</b> dan sekarang sudah tampil di publik.`;
     }
     
-    return notif.message; 
+    return notif.message || `Notifikasi dari ${notif.actorName}`; 
   };
 
   return (
@@ -368,7 +368,6 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        {/* 🔥 FIX: BOX JUMLAH POSTINGAN PENDING DENGAN DESAIN BARU 🔥 */}
         {pendingCount > 0 && (
           <div className="pending-alert-box" onClick={() => router.push('/pending')}>
             <div className="pending-alert-left">

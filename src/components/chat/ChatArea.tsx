@@ -159,7 +159,7 @@ export default function ChatArea() {
       setRelation({ iFollowThem: !!f1, theyFollowMe: !!f2 });
     }
     setRoomId(currentRoom);
-    await fetchMessages(currentRoom);
+    await fetchMessages(currentRoom, session.user.id); 
     setupRealtime(currentRoom, session.user, prof);
   };
 
@@ -256,10 +256,36 @@ export default function ChatArea() {
     clearInterval(refs.recordTimer.current);
   };
 
-  const fetchMessages = async (room: string) => {
+  const fetchMessages = async (room: string, userId: string) => {
     setIsLoading(true);
-    const { data } = await supabase.from('messages').select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)').eq('room_id', room).order('created_at', { ascending: true }).limit(50);
-    if (data) setMessages(data);
+    
+    const { data, error } = await supabase.from('messages')
+      .select('*, reply_to_msg:reply_to(id, username, message)')
+      .eq('room_id', room)
+      .order('created_at', { ascending: true })
+      .limit(50);
+      
+    if (data) {
+      const userIds = [...new Set(data.map(m => m.user_id))];
+      const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', userIds);
+      const profMap = profs?.reduce((acc: any, p: any) => ({ ...acc, [p.id]: p }), {}) || {};
+      
+      const enrichedData = data.map(m => ({ ...m, profiles: profMap[m.user_id] }));
+      setMessages(enrichedData);
+
+      if (room.startsWith('pv_')) {
+        const unreadIds = enrichedData
+          .filter(m => m.user_id !== userId && m.status !== 'read')
+          .map(m => m.id);
+          
+        if (unreadIds.length > 0) {
+          await supabase.from('messages').update({ status: 'read' }).in('id', unreadIds);
+        }
+      }
+    } else if (error) {
+      console.error("Gagal load pesan:", error);
+    }
+    
     setIsLoading(false);
     scrollToBottom();
   };
@@ -272,7 +298,6 @@ export default function ChatArea() {
           if (newMsg.user_id === user.id) return;
 
           const msgTextLower = String(newMsg.message).toLowerCase();
-          
           if (newMsg.is_system && msgTextLower.includes("memanggil") && newMsg.user_id !== user.id) {
              handleIncomingCall(newMsg);
           }
@@ -290,7 +315,10 @@ export default function ChatArea() {
           setMessages(prev => [...prev, newMsg]);
           
           refs.audio.current?.receive.play().catch(()=>{});
-          if (newMsg.status !== 'read') await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
+          
+          if (room.startsWith('pv_') && newMsg.status !== 'read') {
+             await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
+          }
           scrollToBottom();
         } else if (payload.eventType === 'UPDATE') {
           setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
@@ -353,16 +381,22 @@ export default function ChatArea() {
       image_url: image || null, 
       reply_to: tempMsg.reply_to, 
       status: 'sent'
-    }]).select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)').single();
+    }]).select('*, reply_to_msg:reply_to(id, username, message)').single();
     
     if (!error && data) {
+      data.profiles = myProfile; 
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+      
+      // 🔥 FIX 1: UPDATE PAYLOAD EDGE FUNCTION BUAT CHAT 🔥
       if (targetId && !sticker && !audio && !image) {
-        supabase.functions.invoke('send-chat-notif', { body: { record: { sender_id: currentUser.id, receiver_id: targetId, content } } });
+        supabase.functions.invoke('send-chat-notif', { 
+          body: { record: { sender_id: currentUser.id, receiver_id: targetId, content: content, type: 'chat', room_id: roomId } } 
+        });
       }
     } else {
+      console.error("Gagal ngirim pesan detail:", error);
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      showNotif("Gagal mengirim pesan", "error");
+      showNotif("Gagal mengirim pesan, cek koneksi", "error");
     }
   };
 
@@ -436,8 +470,12 @@ export default function ChatArea() {
         if (d.secure_url) {
            const { data } = await supabase.from('messages').insert([{
               room_id: roomId, user_id: currentUser.id, message: "🎤 Voice Note", audio_url: d.secure_url, status: 'sent'
-           }]).select('*, profiles:user_id(*)').single();
-           if(data) setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+           }]).select('*, reply_to_msg:reply_to(id, username, message)').single();
+           
+           if(data) {
+             data.profiles = myProfile;
+             setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+           }
         }
       };
       refs.mediaRecorder.current.start();
@@ -554,6 +592,13 @@ export default function ChatArea() {
     
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0, room: roomId });
+
+    // 🔥 FIX 2: TRIGGER NOTIFIKASI PANGGILAN (CALL) KE HP TARGET 🔥
+    if (targetId) {
+      supabase.functions.invoke('send-chat-notif', { 
+        body: { record: { sender_id: currentUser.id, receiver_id: targetId, content: "📞 Memanggil...", type: 'call', room_id: roomId } } 
+      });
+    }
     
     await supabase.from('messages').insert([{ room_id: roomId, user_id: currentUser.id, message: ` Memanggil ${headerInfo.title}...`, is_system: true }]);
     
@@ -856,7 +901,6 @@ export default function ChatArea() {
           </div>
         ) : (
           <>
-            {/* 🔥 FIX 1: KEMBALIKAN FITUR STIKER DAN TAMBAHKAN ANIMASI MUNCUL/HILANG 🔥 */}
             <AnimatePresence>
               {isStickerOpen && (
                 <motion.div 
@@ -905,7 +949,6 @@ export default function ChatArea() {
                   )}
                 </AnimatePresence>
 
-                {/* 🔥 FIX 2: KEMBALIKAN FITUR PREVIEW FOTO DAN TAMBAHKAN ANIMASI MUNCUL/HILANG 🔥 */}
                 <AnimatePresence>
                   {pendingImagePreview && (
                     <motion.div 

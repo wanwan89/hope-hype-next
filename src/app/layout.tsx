@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR & LIVEKIT (TAMBAHAN UNTUK FIX) 🔥
+// 🔥 IMPORT CAPACITOR & LIVEKIT 🔥
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { App } from '@capacitor/app'; 
@@ -31,20 +31,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter(); 
   const prevPathnameRef = useRef(pathname);
 
-  // --- 🔥 STATE LAMA LU (TIDAK BERUBAH) 🔥 ---
+  // --- STATE LAMA ---
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
   const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); 
   const [isOnline, setIsOnline] = useState(true);
-  const [myProfile, setMyProfile] = useState<any>(null); // Tambahan: Biar username lkRoom gak 'User HypeTalk' terus
+  const [myProfile, setMyProfile] = useState<any>(null);
 
-  // --- 🔥 STATE BARU UNTUK FONDASI TELPON 🔥 ---
+  // --- STATE BARU UNTUK FONDASI TELPON ---
   const [lkToken, setLkToken] = useState<string | null>(null);
   const [lkRoom, setLkRoom] = useState<string | null>(null);
 
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
 
-  // --- DETEKSI HALAMAN (TIDAK BERUBAH) ---
+  // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
   const isHomePage = pathname === '/' || pathname === '/home';
   const isDataPage = pathname?.includes('/data');
@@ -63,7 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // --- 🔥 FETCH PROFILE (TAMBAHAN FIX) 🔥 ---
+  // --- FETCH PROFILE ---
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -75,7 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     fetchProfile();
   }, []);
 
-  // --- 🔥 EFEK UNTUK DETEKSI INTERNET (TIDAK BERUBAH) 🔥 ---
+  // --- EFEK UNTUK DETEKSI INTERNET ---
   useEffect(() => {
     setIsOnline(navigator.onLine);
     const handleOnline = () => setIsOnline(true);
@@ -88,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP NATIVE FEATURES (FULL FIX) 🔥 ---
+  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FULL FIX) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -120,14 +120,69 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.warn("⚠️ User menolak izin Mic");
           }
 
+          // 🔥 DAFTARIN TOMBOL INTERAKTIF SEBELUM REGISTER 🔥
+          await PushNotifications.registerActionTypes({
+            types: [
+              {
+                id: 'chat_actions',
+                actions: [
+                  { 
+                    id: 'reply', 
+                    title: 'Balas Pesan', 
+                    input: true, 
+                    inputButtonTitle: 'Kirim', 
+                    inputPlaceholder: 'Ketik balasan...' 
+                  }
+                ]
+              },
+              {
+                id: 'call_actions',
+                actions: [
+                  { id: 'accept_call', title: '📞 Angkat', foreground: true },
+                  { id: 'reject', title: '❌ Tolak', foreground: false, destructive: true }
+                ]
+              }
+            ]
+          });
+
           if (permStatus.receive === 'granted') {
             await PushNotifications.register();
           }
 
-          // 🔥 FIX: LISTEN ACTION (BALAS & ANGKAT) 🔥
+          // 🔥 TANGKAP TOKEN FIREBASE & SIMPAN KE DB 🔥
+          PushNotifications.addListener('registration', async (token) => {
+            console.log('✅ FCM Token HP ini:', token.value);
+            
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              const { error } = await supabase
+                .from('profiles')
+                .update({ push_token: token.value })
+                .eq('id', session.user.id);
+                
+              if (error) console.error("❌ Gagal simpan token ke DB:", error);
+              else console.log("✅ Token FCM berhasil disimpen ke database!");
+            }
+          });
+
+          PushNotifications.addListener('registrationError', (error) => {
+            console.error('❌ Error registrasi push notif:', error);
+          });
+
+          // 🔥 LISTEN ACTION (TAP, BALAS & ANGKAT) 🔥
           PushNotifications.addListener('actionPerformed', async (action) => {
             const { actionId, notification, inputValue } = action; 
             const { data } = notification;
+
+            // 🔥 FIX: LOGIKA TAP UNTUK LIKE & COMMENT 🔥
+            // actionId 'tap' artinya user klik area notifikasi (bukan klik tombol)
+            if (actionId === 'tap' && (data?.type === 'like' || data?.type === 'comment')) {
+              if (data.postId) {
+                // Arahin langsung ke halaman detail post
+                router.push(`/post/${data.postId}`);
+              }
+              return; // Stop eksekusi di sini biar nggak nabrak bawahnya
+            }
 
             if (actionId === 'reply' && inputValue) {
               const { data: { session } } = await supabase.auth.getSession();
@@ -143,7 +198,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             if (actionId === 'accept' || actionId === 'accept_call') {
               if (data?.callerId && data?.roomId) {
-                // FIX: Gunakan handleFetchLiveKitToken sesuai definisi
                 handleFetchLiveKitToken(data.roomId, data.callerId); 
                 router.push(`/hypetalk/room?from=${data.callerId}`);
               }
@@ -177,10 +231,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [router, lkToken, myProfile]); 
 
-  // --- 🔥 LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION (FULL FIX) 🔥 ---
+  // --- LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION ---
   const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
     try {
-      setLkRoom(roomName); // FIX: Gunakan setLkRoom sesuai nama state lu
+      setLkRoom(roomName); 
 
       const { data, error } = await supabase.functions.invoke('get-livekit-token', {
         body: { 
@@ -200,7 +254,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   };
 
-  // --- 🔥 SISA LOGIKA LU (TIDAK BERUBAH SAMA SEKALI) 🔥 ---
+  // --- LOGIKA HALAMAN & RINGTONE ---
   useEffect(() => {
     if (pathname?.includes('/hypetalk')) {
       setGlobalIncomingCall(null);
@@ -226,6 +280,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, [globalIncomingCall]);
 
+  // --- REALTIME CHAT / CALL GLOBAL LISTENER ---
   useEffect(() => {
     let channel: any;
     const initGlobalListener = async () => {
@@ -277,7 +332,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const handleAngkatGlobal = () => {
     if (!globalIncomingCall) return;
-    // FIX: Gunakan handleFetchLiveKitToken agar sinkron dengan yang lain
     handleFetchLiveKitToken(globalIncomingCall.roomId, globalIncomingCall.callerId);
     setGlobalIncomingCall(null);
     router.push(`/hypetalk/room?from=${globalIncomingCall.callerId}`);
@@ -314,7 +368,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, [pathname, isStandaloneApp]); 
 
-  // --- 🔥 RENDER CONTENT HELPER (AGAR RAPI) 🔥 ---
+  // --- RENDER CONTENT HELPER ---
   const renderUI = () => (
     <>
       <GlobalShareModal />

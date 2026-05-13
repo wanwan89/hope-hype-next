@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
-// 🔥 FIX: Framer Motion DIHAPUS TOTAL biar scroll super ringan 🔥
+import { sendPushAndAppNotif } from '@/lib/notif'; // 🔥 IMPORT HELPER NOTIFIKASI 🔥
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -199,6 +199,7 @@ export default function Gallerypost() {
     }
   };
 
+  // 🔥 UPDATE: Nembak Notif Pas Komen / Follow 🔥
   const handleFollowToggle = async (e: any, creatorId: string) => {
     e.stopPropagation(); 
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
@@ -226,21 +227,21 @@ export default function Gallerypost() {
         await supabase.from("followers").delete().match({ follower_id: currentUser.id, following_id: creatorId });
       } else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
-        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
+        if (error && error.code !== '23505') throw error; 
         
         if (!error) {
-          const { data: myProf } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
-          await supabase.from("notifications").insert({
-            user_id: creatorId,
-            actor_id: currentUser.id,
-            type: "follow",
-            message: `<b>${myProf?.username}</b> mulai mengikuti Anda.`
+          // 🚀 TEMBAK PUSH NOTIFIKASI FOLLOW 🚀
+          await sendPushAndAppNotif({
+            senderId: currentUser.id,
+            receiverId: creatorId,
+            type: 'follow',
           });
         }
       }
     } catch (err) { console.error("Follow error", err); }
   };
 
+  // 🔥 UPDATE: Nembak Notif Pas Like 🔥
   const handleLike = async (postId: string, creatorId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isLiked = myLikedPosts.has(postId);
@@ -262,20 +263,22 @@ export default function Gallerypost() {
         await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
       } else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
-        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
+        if (error && error.code !== '23505') throw error; 
         
         if (!error && creatorId !== currentUser.id) {
-          const { data: prof } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
-          await supabase.from("notifications").insert({
-            user_id: creatorId, actor_id: currentUser.id, post_id: numericPostId, type: "like",
-            message: t('notif_commented', { username: prof?.username }) 
+          // 🚀 TEMBAK PUSH NOTIFIKASI LIKE 🚀
+          await sendPushAndAppNotif({
+            senderId: currentUser.id,
+            receiverId: creatorId,
+            type: 'like',
+            postId: postId
           });
         }
       }
     } catch (err) { console.error("Like error", err); }
   };
 
-  const handleRepost = async (postId: string) => {
+  const handleRepost = async (postId: string, creatorId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isReposted = myRepostedPosts.has(postId);
     const numericPostId = parseInt(postId);
@@ -303,7 +306,19 @@ export default function Gallerypost() {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
       } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
-        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
+        if (error && error.code !== '23505') throw error;
+        
+        // Repost Notif (kalau lu mau muncul notif pas direpost, uncomment di bawah)
+        /*
+        if (!error && creatorId !== currentUser.id) {
+          await sendPushAndAppNotif({
+            senderId: currentUser.id,
+            receiverId: creatorId,
+            type: 'repost',
+            postId: postId
+          });
+        }
+        */
       }
     } catch (err) { console.error("Repost error", err); }
   };
@@ -329,7 +344,7 @@ export default function Gallerypost() {
         await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
       } else {
         const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
-        if (error && error.code !== '23505') throw error; // 🔥 PENANGKAL ERROR DUPLIKAT
+        if (error && error.code !== '23505') throw error; 
       }
     } catch (err) { console.error("Save error", err); }
   };
@@ -498,7 +513,7 @@ export default function Gallerypost() {
 
       <button 
         className={`icon-btn repost-btn btn-press ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''}`} 
-        onClick={() => handleRepost(postIdStr)}
+        onClick={() => handleRepost(postIdStr, post.creator_id)}
       >
         <svg viewBox="0 0 24 24" className={`icon ${animatingReposts.has(postIdStr) ? 'spin-anim' : ''}`} fill="currentColor" style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit", transition: '0.2s' }}>
           <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
@@ -560,7 +575,6 @@ export default function Gallerypost() {
 
   return (
     <section>
-      {/* 🔥 PURE CSS ANIMATIONS (SUPER LIGHTWEIGHT) 🔥 */}
       <style>{`
         @keyframes marqueeMusic {
           0% { transform: translateX(0); }
@@ -673,7 +687,6 @@ export default function Gallerypost() {
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
-                        {/* 🔥 FIX: OBJECT FIT COVER DITAMBAHKAN DI SINI 🔥 */}
                         {isVideoPost ? (
                           <div className="carousel-item" style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
                             <video 
@@ -797,7 +810,6 @@ export default function Gallerypost() {
           })
         )}
 
-        {/* 🔥 INFO END OF LIST (TIDAK ADA POSTINGAN LAGI) 🔥 */}
         {posts.length > 0 && (
           <div ref={observerTarget} style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
             {isLoadingMore ? (

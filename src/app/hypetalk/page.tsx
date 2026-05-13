@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; 
+import { useState, useEffect } from 'react'; 
 import { useRouter } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
-import * as LiveKit from 'livekit-client'; 
 import './Hypetalk.css';
 
 export default function HypetalkPage() {
@@ -31,55 +30,20 @@ export default function HypetalkPage() {
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [isBlocking, setIsBlocking] = useState(false);
 
-  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
-  const [callData, setCallData] = useState<any>({ seconds: 0, partnerId: null, partnerName: '', partnerAvatar: '', roomId: '' });
-  
-  const refs = {
-    audio: useRef<{ ring: HTMLAudioElement } | null>(null),
-    lkRoom: useRef<LiveKit.Room | null>(null),
-    callTimeout: useRef<any>(null),
-    callInterval: useRef<any>(null)
-  };
-
-  const callStatusRef = useRef(callStatus);
-  useEffect(() => {
-    callStatusRef.current = callStatus;
-  }, [callStatus]);
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLimit = localStorage.getItem('doi_limit');
       if (savedLimit) setSisaLimitDoi(parseInt(savedLimit));
-      refs.audio.current = { ring: new Audio("/asets/sound/call.wav") };
-      if (refs.audio.current.ring) refs.audio.current.ring.loop = true;
     }
     initUser();
   }, []);
 
   useEffect(() => {
-    // Component unmount / cleanup
     return () => {
       setIsSidebarOpen(false);
       setActiveModal(null);
-      
-      // Hentikan nada dering kalau masih bunyi pas keluar halaman
-      if (refs.audio.current?.ring) {
-        refs.audio.current.ring.pause();
-        refs.audio.current.ring.currentTime = 0;
-      }
-      
-      // Putus koneksi LiveKit dengan bersih
-      if (refs.lkRoom.current) {
-        refs.lkRoom.current.removeAllListeners();
-        refs.lkRoom.current.disconnect();
-        refs.lkRoom.current = null;
-      }
-
-      clearTimeout(refs.callTimeout.current);
-      clearInterval(refs.callInterval.current);
     };
   }, []);
-
 
   const initUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -105,11 +69,9 @@ export default function HypetalkPage() {
   const loadAllChats = async (userId: string, isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     try {
-      // 1. Ambil data Followers
       const { data: followerData } = await supabase.from('followers').select('follower_id').eq('following_id', userId);
       const followerIds = new Set(followerData?.map((f: any) => f.follower_id) || []);
 
-      // 2. Ambil Semua Pesan 24 Jam Terakhir
       const waktu24JamLalu = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: allMsgs } = await supabase.from("messages")
         .select("*")
@@ -141,7 +103,6 @@ export default function HypetalkPage() {
       let globalUnread = unreadMap.get('room-1') || 0;
       if (lastGlobalMsg) {
         globalPreview = lastGlobalMsg.sticker_url ? "Mengirim Stiker" : (lastGlobalMsg.audio_url ? "Mengirim Voice Note" : lastGlobalMsg.message);
-        // 🔥 FIX: Teks 'Anda' & Reset Unread 🔥
         if (lastGlobalMsg.user_id === userId) {
           globalPreview = `Anda: ${globalPreview}`;
           globalUnread = 0; 
@@ -177,7 +138,6 @@ export default function HypetalkPage() {
             
             let currentUnread = unreadMap.get(p.id) || 0;
 
-            // 🔥 FIX: Kalau kita yang ngirim terakhir, unread harus 0 & tambah "Anda: " 🔥
             if (lastMsg.user_id === userId) {
               msgPreview = `Anda: ${msgPreview}`;
               currentUnread = 0;
@@ -226,7 +186,6 @@ export default function HypetalkPage() {
 
             if (lastGroupMsg) {
               grpPreview = lastGroupMsg.sticker_url ? "Mengirim Stiker" : (lastGroupMsg.audio_url ? "Mengirim Voice Note" : lastGroupMsg.message);
-              // 🔥 FIX: Teks 'Anda' & Reset Unread Grup 🔥
               if (lastGroupMsg.user_id === userId) {
                 grpPreview = `Anda: ${grpPreview}`;
                 grpUnread = 0;
@@ -259,24 +218,7 @@ export default function HypetalkPage() {
   const subscribeToInbox = (userId: string) => {
     const channelName = `inbox-lobby-user-${userId}-${Date.now()}`;
     supabase.channel(channelName)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload: any) => {
-        const newMsg = payload.new;
-        if (newMsg && newMsg.room_id?.includes(userId)) {
-          
-          if (newMsg.is_system && newMsg.message.includes("Memanggil") && newMsg.user_id !== userId) {
-            handleIncomingCall(newMsg);
-          }
-          
-          const msgLower = String(newMsg.message).toLowerCase();
-          if (newMsg.is_system && (
-              msgLower.includes("panggilan berakhir") || 
-              msgLower.includes("ditolak") || 
-              msgLower.includes("tak terjawab") ||
-              msgLower.includes("dibatalkan")
-          )) {
-            endCall(true);
-          }
-        }
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
         loadAllChats(userId, true);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => {
@@ -392,7 +334,6 @@ export default function HypetalkPage() {
     if (chat.type === 'global') router.push('/hypetalk/room');
     else if (chat.type === 'group') router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
     else router.push(`/hypetalk/room?from=${chat.id}`);
-
   };
 
   const handleAvatarClick = async (e: React.MouseEvent, chatId: string, chatType: string) => {
@@ -429,218 +370,38 @@ export default function HypetalkPage() {
     }
   };
 
+  // 🔥 FIX UTAMA: Start Call tanpa bentrok LiveKit 🔥
   const startCallFromLobby = async (targetProfile: any) => {
     if (!currentUser) return;
-    if (callStatus !== 'idle') {
-      showNotif("Panggilan sedang berlangsung", "warning");
-      return;
-    }
+    
     const ids = [currentUser.id, targetProfile.id].sort();
     const callRoomId = `pv_${ids[0]}_${ids[1]}`;
-    setCallStatus('calling');
-    setCallData({
-      partnerId: targetProfile.id,
-      partnerName: targetProfile.username,
-      partnerAvatar: targetProfile.avatar_url,
-      seconds: 0,
-      roomId: callRoomId
+    
+    closeModal(); // Tutup popup profile
+    showNotif("Memanggil " + targetProfile.username, "info");
+
+    // 1. Tembak Notif Push (APK Android)
+    supabase.functions.invoke('send-chat-notif', { 
+      body: { record: { sender_id: currentUser.id, receiver_id: targetProfile.id, content: "📞 Memanggil...", type: 'call', room_id: callRoomId } } 
     });
+
+    // 2. Masukin log ke Database
     await supabase.from('messages').insert([{ 
       room_id: callRoomId, 
       user_id: currentUser.id, 
       message: `📞 Memanggil ${targetProfile.username}...`, 
       is_system: true 
     }]);
-    
-    clearTimeout(refs.callTimeout.current);
-    refs.callTimeout.current = setTimeout(async () => {
-      if (callStatusRef.current === 'calling') {
-        endCall(true);
-        await supabase.from('messages').insert([{ 
-          room_id: callRoomId, 
-          user_id: currentUser.id, 
-          message: `☎️ Panggilan tak terjawab`, 
-          is_system: true 
-        }]);
-      }
-    }, 30000);
-    
-    connectLiveKit(callRoomId, targetProfile.id);
+
+    // 3. Pindah halaman, serahkan urusan UI telpon ke ChatArea.tsx
+    router.push(`/hypetalk/room?from=${targetProfile.id}`);
   };
 
-  const handleIncomingCall = async (msg: any) => {
-    if (callStatus !== 'idle') {
-      await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `Sibuk, coba lagi nanti`, is_system: true }]);
-      return;
-    }
-    const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', msg.user_id).single();
-    setCallStatus('incoming'); 
-    setCallData({ 
-      partnerId: p?.id,
-      partnerName: p?.username, 
-      partnerAvatar: p?.avatar_url, 
-      roomId: msg.room_id, 
-      seconds: 0 
-    });
-    if (refs.audio.current?.ring) {
-      refs.audio.current.ring.play().catch(() => console.log("Audio diblokir browser"));
-    }
-  };
-
-  const connectLiveKit = async (rName: string, partnerId?: string) => {
-    if (!currentUser) return;
-    try {
-      if (refs.lkRoom.current) {
-        refs.lkRoom.current.removeAllListeners();
-        await refs.lkRoom.current.disconnect();
-        refs.lkRoom.current = null;
-      }
-      const { data, error } = await supabase.functions.invoke('get-livekit-token', {
-        body: { username: currentUser.username, identity: currentUser.id, roomName: rName }
-      });
-      if (error || !data) throw new Error("Gagal ambil token");
-      
-      refs.lkRoom.current = new LiveKit.Room({ adaptiveStream: true, dynacast: true });
-      
-      const handleCallConnected = () => {
-        if (callStatusRef.current === 'connected') return;
-        setCallStatus('connected');
-        clearTimeout(refs.callTimeout.current);
-        clearInterval(refs.callInterval.current);
-        refs.callInterval.current = setInterval(() => {
-          setCallData((p: any) => ({ ...p, seconds: p.seconds + 1 }));
-        }, 1000);
-      };
-
-      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, handleCallConnected);
-      refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantDisconnected, (participant) => {
-        if (participant.identity !== currentUser.id && callStatusRef.current === 'connected') {
-          endCall(true);
-        }
-      });
-      refs.lkRoom.current.on(LiveKit.RoomEvent.Disconnected, () => {
-        if (callStatusRef.current !== 'idle' && callStatusRef.current !== 'calling') {
-          endCall(true);
-        }
-      });
-      refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (track) => {
-        if (track.kind === LiveKit.Track.Kind.Audio) {
-          const audioElement = document.createElement('audio');
-          audioElement.autoplay = true;
-          track.attach(audioElement);
-        }
-      });
-      
-      await refs.lkRoom.current.connect("wss://voicegrup-zxmeibkn.livekit.cloud", data.token);
-      try {
-        await refs.lkRoom.current.localParticipant.setMicrophoneEnabled(true);
-      } catch (micErr) {
-        showNotif("Harap izinkan akses Mikrofon!", "warning");
-      }
-      if (refs.lkRoom.current.remoteParticipants.size > 0) handleCallConnected();
-    } catch (e: any) {
-      console.error("ConnectLiveKit error:", e);
-      showNotif("Panggilan gagal tersambung", "error");
-      endCall();
-    }
-  };
-
-  const endCall = (silent = false) => {
-    if (refs.audio.current?.ring) { 
-      refs.audio.current.ring.pause(); 
-      refs.audio.current.ring.currentTime = 0; 
-    }
-    
-    if (refs.lkRoom.current) {
-      refs.lkRoom.current.removeAllListeners();
-      refs.lkRoom.current.disconnect();
-      refs.lkRoom.current = null;
-    }
-    
-    setCallStatus('idle');
-    clearTimeout(refs.callTimeout.current);
-    clearInterval(refs.callInterval.current);
-    
-    if (!silent) {
-       showNotif('Panggilan berakhir', "info");
-    }
-  };
-
-const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
-
+  const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
 
   return (
     <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
       <style>{`
-        @keyframes pulseCall {
-          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-          70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
-          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-        }
-        .call-overlay {
-          position: fixed;
-          top: max(env(safe-area-inset-top, 20px), 20px);
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(20, 20, 20, 0.95);
-          backdrop-filter: blur(10px);
-          border-radius: 24px;
-          padding: 12px 20px;
-          display: flex;
-          align-items: center;
-          gap: 15px;
-          z-index: 9999999;
-          border: 1px solid rgba(46, 204, 113, 0.4);
-          box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-          width: 90%;
-          max-width: 360px;
-          animation: slideDownCall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        @keyframes slideDownCall {
-          from { transform: translate(-50%, -120%); opacity: 0; }
-          to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        .call-overlay .call-info {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex: 1;
-          overflow: hidden;
-        }
-        .call-overlay .call-avatar {
-          width: 45px;
-          height: 45px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 2px solid #2ecc71;
-        }
-        .anim-calling-avatar {
-          animation: pulseCall 1.2s infinite;
-        }
-        .call-duration {
-          font-family: monospace;
-          font-size: 16px;
-          font-weight: bold;
-        }
-        .call-actions {
-          display: flex;
-          gap: 12px;
-        }
-        .call-btn-end, .call-btn-accept {
-          border: none;
-          border-radius: 50%;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          cursor: pointer;
-          transition: transform 0.2s;
-        }
-        .call-btn-end { background: #ff4757; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.4); }
-        .call-btn-accept { background: #2ecc71; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4); }
-
         .tg-modal-overlay {
           background: rgba(0,0,0,0.85) !important;
           backdrop-filter: blur(5px) !important;
@@ -732,7 +493,6 @@ const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((s
           text-shadow: 0 0 15px rgba(29,161,242,0.8); letter-spacing: 1px;
         }
 
-        /* 🔥 CSS BANNER PERMINTAAN PESAN 🔥 */
         .message-request-banner {
           display: flex;
           align-items: center;
@@ -751,71 +511,6 @@ const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((s
         .req-text p { margin: 0; font-size: 12px; color: var(--tg-text-muted); }
         .message-request-banner .arrow { color: var(--tg-text-muted); }
       `}</style>
-
-      {/* TAMPILAN PANGGILAN CALLING / INCOMING */}
-      {(callStatus === 'calling' || callStatus === 'incoming') && (
-        <div className="call-overlay">
-          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className={`call-avatar ${callStatus === 'calling' ? 'anim-calling-avatar' : ''}`} alt="avatar" />
-          <div className="call-info">
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{callData.partnerName}</div>
-              <div style={{ color: '#2ecc71', fontSize: '12px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span className="material-icons" style={{ fontSize: '12px' }}>ring_volume</span> 
-                {callStatus === 'calling' ? 'Memanggil...' : 'Menghubungi...'}
-              </div>
-            </div>
-          </div>
-          <div className="call-actions">
-            {callStatus === 'incoming' && (
-              <button className="call-btn-accept" onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.roomId, callData.partnerId); }}>
-                <span className="material-icons" style={{ fontSize: '20px' }}>call</span>
-              </button>
-            )}
-            <button className="call-btn-end" onClick={async () => {
-              const rId = callData.roomId;
-              const isIncoming = callStatus === 'incoming';
-              endCall(); 
-              
-              if (isIncoming) {
-                await supabase.from('messages').insert([{ room_id: rId, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
-              } else {
-                await supabase.from('messages').insert([{ room_id: rId, user_id: currentUser.id, message: `Panggilan dibatalkan`, is_system: true }]);
-              }
-            }}>
-              <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* FLOATING CALL SAAT SUDAH TERHUBUNG */}
-      {callStatus === 'connected' && (
-        <div className="call-overlay">
-          <div style={{ width: 10, height: 10, background: '#2ecc71', borderRadius: '50%', animation: 'pulseCall 1.5s infinite' }}></div>
-          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="call-avatar" alt="partner" />
-          <div className="call-info">
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{callData.partnerName}</div>
-              <div className="call-duration" style={{ color: '#888', fontSize: '12px' }}>
-                {Math.floor(callData.seconds / 60)}:{String(callData.seconds % 60).padStart(2, '0')}
-              </div>
-            </div>
-          </div>
-          <button className="call-btn-end" onClick={() => {
-            endCall();
-            const ids = [currentUser.id, callData.partnerId].sort();
-            const room = `pv_${ids[0]}_${ids[1]}`;
-            supabase.from('messages').insert([{ 
-              room_id: room, 
-              user_id: currentUser.id, 
-              message: `Panggilan berakhir (${Math.floor(callData.seconds / 60)}:${String(callData.seconds % 60).padStart(2, '0')})`, 
-              is_system: true 
-            }]);
-          }}>
-            <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
-          </button>
-        </div>
-      )}
 
       <header className="tg-header">
         <div className="tg-header-top">
@@ -836,7 +531,6 @@ const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((s
 
       <main className="tg-chat-list">
         
-        {/* 🔥 BANNER PERMINTAAN PESAN 🔥 */}
         {!isLoading && requestChats.length > 0 && !searchQuery && (
           <div className="message-request-banner" onClick={() => router.push('/hypetalk/requests')}>
             <div className="req-left">
@@ -935,7 +629,7 @@ const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((s
               <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
                 <span className="material-icons" style={{ fontSize: '24px' }}>chat</span> Chat
               </button>
-              <button onClick={() => { closeModal(); startCallFromLobby(selectedProfile); }} className="wa-action-btn" style={{ color: '#2ecc71' }}>
+              <button onClick={() => startCallFromLobby(selectedProfile)} className="wa-action-btn" style={{ color: '#2ecc71' }}>
                 <span className="material-icons" style={{ fontSize: '24px' }}>call</span> Telpon
               </button>
               <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} className="wa-action-btn" style={{ color: '#ff4757', opacity: isBlocking ? 0.5 : 1 }}>
