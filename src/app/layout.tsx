@@ -12,6 +12,7 @@ import Script from 'next/script';
 // 🔥 IMPORT CAPACITOR & LIVEKIT 🔥
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app'; 
 import { LiveKitRoom } from '@livekit/components-react';
 
@@ -41,6 +42,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [lkToken, setLkToken] = useState<string | null>(null);
   const [lkRoom, setLkRoom] = useState<string | null>(null);
 
+  // 🔥 FONDASI TOKEN: Penampung sementara buat ngatasi Race Condition
+  const fcmTokenRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
 
@@ -63,13 +66,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
+  // 🔥 FUNGSI UPDATE TOKEN KE DATABASE 🔥
+  const updatePushToken = async (userId: string, token: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ push_token: token })
+        .eq('id', userId);
+        
+      if (error) throw error;
+      console.log("✅ Token FCM berhasil disimpen ke database!");
+    } catch (err: any) {
+      console.error("❌ Gagal simpan token ke DB:", err.message);
+    }
+  };
+
   // --- FETCH PROFILE ---
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-        if (data) setMyProfile(data);
+        if (data) {
+          setMyProfile(data);
+          // 🔥 CEK CADANGAN: Jika token dapet duluan sebelum profil kelar, hajar sekarang
+          if (fcmTokenRef.current) {
+            updatePushToken(session.user.id, fcmTokenRef.current);
+          }
+        }
       }
     };
     fetchProfile();
@@ -88,7 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FIX UNIMPLEMENTED) 🔥 ---
+  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FIX UNIMPLEMENTED & PREMIUM UI) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -98,6 +122,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         if (platform === 'android') {
           console.log("📱 Android Detected: Menyiapkan Fondasi HypeTalk...");
+
+          // 1. DAFTARKAN TIPE TOMBOL (BALAS & ANGKAT)
+          await LocalNotifications.registerActionTypes({
+            types: [
+              {
+                id: 'CHAT_ACTIONS',
+                actions: [
+                  { id: 'reply', title: 'Balas', input: true, inputPlaceholder: 'Ketik balasan...' },
+                  { id: 'read', title: 'Tandai Dibaca' }
+                ]
+              },
+              {
+                id: 'CALL_ACTIONS',
+                actions: [
+                  { id: 'accept', title: '📞 Angkat', foreground: true },
+                  { id: 'reject', title: '❌ Tolak', destructive: true }
+                ]
+              }
+            ]
+          });
           
           await PushNotifications.createChannel({
             id: 'high_importance_channel',
@@ -120,8 +164,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.warn("⚠️ User menolak izin Mic");
           }
 
-          // 🔥 FIX: Blok registerActionTypes DIHAPUS biar nggak crash di Android 🔥
-
           if (permStatus.receive === 'granted') {
             await PushNotifications.register();
           }
@@ -129,16 +171,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           // 🔥 TANGKAP TOKEN FIREBASE & SIMPAN KE DB 🔥
           PushNotifications.addListener('registration', async (token) => {
             console.log('✅ FCM Token HP ini:', token.value);
-            
+            fcmTokenRef.current = token.value; // Simpan ke penampung (Ref)
+
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-              const { error } = await supabase
-                .from('profiles')
-                .update({ push_token: token.value })
-                .eq('id', session.user.id);
-                
-              if (error) console.error("❌ Gagal simpan token ke DB:", error);
-              else console.log("✅ Token FCM berhasil disimpen ke database!");
+              updatePushToken(session.user.id, token.value);
             }
           });
 
@@ -146,21 +183,50 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.error('❌ Error registrasi push notif:', error);
           });
 
-          // 🔥 LISTEN ACTION (TAP NOTIFIKASI) 🔥
-          PushNotifications.addListener('actionPerformed', async (action) => {
-            const { actionId, notification } = action; 
+          // 🔥 RAKIT NOTIFIKASI LOKAL (AVATAR & TOMBOL) 🔥
+          PushNotifications.addListener('pushNotificationReceived', async (notification) => {
             const { data } = notification;
+            
+            await LocalNotifications.schedule({
+              notifications: [
+                {
+                  title: data.title || "HypeTalk",
+                  body: data.body || "Pesan baru masuk",
+                  id: Math.floor(Math.random() * 10000),
+                  largeIcon: data.image, // 🔥 FOTO PROFIL PENGIRIM
+                  actionTypeId: data.type === 'call' ? 'CALL_ACTIONS' : 'CHAT_ACTIONS',
+                  extra: data, 
+                  schedule: { at: new Date(Date.now() + 100) }
+                }
+              ]
+            });
+          });
 
-            // actionId 'tap' artinya user klik area notifikasi (bukan klik tombol)
-            if (actionId === 'tap') {
+          // 🔥 HANDLE KLIK TOMBOL BALAS / ANGKAT / TAP 🔥
+          LocalNotifications.addListener('localNotificationActionPerformed', async (action) => {
+            const { actionId, notification, inputValue } = action;
+            const data = notification.extra;
+
+            if (actionId === 'accept') {
+              if (data?.callerId && data?.roomId) {
+                handleFetchLiveKitToken(data.roomId, data.callerId);
+                router.push(`/hypetalk/room?from=${data.callerId}`);
+              }
+            } else if (actionId === 'reply' && inputValue) {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user?.id && data?.roomId) {
+                await supabase.from('messages').insert([{
+                  room_id: data.roomId,
+                  user_id: session.user.id,
+                  message: inputValue,
+                  is_system: false
+                }]);
+              }
+            } else if (actionId === 'tap') {
               if (data?.type === 'like' || data?.type === 'comment') {
-                if (data.postId) {
-                  router.push(`/post/${data.postId}`);
-                }
+                if (data.postId) router.push(`/post/${data.postId}`);
               } else if (data?.type === 'chat' || data?.type === 'call') {
-                if (data.callerId) {
-                  router.push(`/hypetalk/room?from=${data.callerId}`);
-                }
+                if (data.callerId) router.push(`/hypetalk/room?from=${data.callerId}`);
               }
             }
           });
@@ -186,6 +252,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => {
       if (typeof window !== 'undefined' && Capacitor.getPlatform() === 'android') {
         PushNotifications.removeAllListeners();
+        LocalNotifications.removeAllListeners();
       }
     };
   }, [router, lkToken, myProfile]); 
