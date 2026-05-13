@@ -6,11 +6,10 @@ import { supabase } from '@/lib/supabase';
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 import * as LiveKit from 'livekit-client';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION 🔥
+import { motion, AnimatePresence } from 'framer-motion'; 
 import MessageBubble from './MessageBubble';
 import './ChatArea.css';
 
-// Helper format Last Seen
 const formatLastSeen = (dateStr: string) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
@@ -75,7 +74,7 @@ export default function ChatArea() {
   const [cancelAnim, setCancelAnim] = useState(false); 
   const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
-  const [audioLevel, setAudioLevel] = useState(0); // Buat sinkronisasi visualizer
+  const [audioLevel, setAudioLevel] = useState(0); 
   const vnTouchStartX = useRef(0);
   const vnIsCanceled = useRef(false);
 
@@ -110,7 +109,6 @@ export default function ChatArea() {
   useEffect(() => {
     initApp();
     return () => cleanup();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromId, groupId]);
 
   const initApp = async () => {
@@ -118,7 +116,6 @@ export default function ChatArea() {
     if (!session) return router.push('/login');
     setCurrentUser(session.user);
 
-    // Update last_seen saat ini
     await supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id);
 
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
@@ -146,7 +143,6 @@ export default function ChatArea() {
       currentRoom = `pv_${ids[0]}_${ids[1]}`;
       setTargetId(fromId);
       
-      // 🔥 FIX 1: AMBIL LAST SEEN TARGET 🔥
       const { data: pTarget } = await supabase.from('profiles').select('username, short_id, avatar_url, role, last_seen').eq('id', fromId).single();
       if (pTarget) {
         setHeaderInfo({ 
@@ -273,7 +269,6 @@ export default function ChatArea() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${room}` }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as any;
-          // Cek kalau ini pesan dari kita yang tadi cuma temp
           if (newMsg.user_id === user.id) return;
 
           const msgTextLower = String(newMsg.message).toLowerCase();
@@ -313,7 +308,6 @@ export default function ChatArea() {
 
   const scrollToBottom = () => setTimeout(() => refs.scroll.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
-  // 🔥 FIX 6: OPTIMISTIC UI (PESAN TERKIRIM DULU) 🔥
   const sendMessage = async (text?: string, sticker?: string, audio?: string, image?: string) => {
     const content = text || inputValue;
     if (!content && !sticker && !audio && !image) return;
@@ -321,7 +315,6 @@ export default function ChatArea() {
     refs.audio.current?.send.play().catch(()=>{});
 
     if (editMessageId) {
-      // Optimistic update for edit
       setMessages(prev => prev.map(m => m.id === editMessageId ? { ...m, message: content } : m));
       await supabase.from('messages').update({ message: content }).eq('id', editMessageId);
       setEditMessageId(null);
@@ -329,7 +322,6 @@ export default function ChatArea() {
       return;
     }
 
-    // 1. BUAT PESAN SEMENTARA DENGAN STATUS SENDING
     const tempId = `temp-${Date.now()}`;
     const tempMsg = {
       id: tempId,
@@ -352,7 +344,6 @@ export default function ChatArea() {
     setIsStickerOpen(false);
     scrollToBottom();
 
-    // 2. KIRIM KE SUPABASE
     const { data, error } = await supabase.from('messages').insert([{
       room_id: roomId, 
       user_id: currentUser.id, 
@@ -365,13 +356,11 @@ export default function ChatArea() {
     }]).select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)').single();
     
     if (!error && data) {
-      // 3. GANTI PESAN SEMENTARA DENGAN YANG ASLI
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
       if (targetId && !sticker && !audio && !image) {
         supabase.functions.invoke('send-chat-notif', { body: { record: { sender_id: currentUser.id, receiver_id: targetId, content } } });
       }
     } else {
-      // Revert if failed
       setMessages(prev => prev.filter(m => m.id !== tempId));
       showNotif("Gagal mengirim pesan", "error");
     }
@@ -397,7 +386,6 @@ export default function ChatArea() {
     router.back();
   };
 
-  // 🔥 FIX 4: EFEK GELOMBANG SINKRON SAAT MEREKAM 🔥
   const startVisualizer = (stream: MediaStream) => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     refs.audioCtx.current = audioContext;
@@ -413,7 +401,7 @@ export default function ChatArea() {
       analyser.getByteFrequencyData(dataArray);
       let sum = 0;
       for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-      setAudioLevel(sum / bufferLength); // Range roughly 0-255
+      setAudioLevel(sum / bufferLength); 
       requestAnimationFrame(update);
     };
     update();
@@ -436,7 +424,6 @@ export default function ChatArea() {
         const blob = new Blob(refs.audioChunks.current, { type: 'audio/mpeg' });
         const fd = new FormData(); fd.append("file", blob); fd.append("upload_preset", "hopehype_preset"); fd.append("resource_type", "video");
         
-        // Buat temp audio
         const localUrl = URL.createObjectURL(blob);
         const tempId = `temp-${Date.now()}`;
         setMessages(prev => [...prev, {
@@ -447,8 +434,6 @@ export default function ChatArea() {
         const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
         const d = await res.json();
         if (d.secure_url) {
-           // Ganti tempMsg di atas lewat logic sendMessage yang dirombak.
-           // Karena kita udah nambahin temp manual, kita panggil insert langsung aja
            const { data } = await supabase.from('messages').insert([{
               room_id: roomId, user_id: currentUser.id, message: "🎤 Voice Note", audio_url: d.secure_url, status: 'sent'
            }]).select('*, profiles:user_id(*)').single();
@@ -688,7 +673,6 @@ export default function ChatArea() {
     }
   }
 
-  // 🔥 FIX 1: UPDATE LOGIKA LAST SEEN 🔥
   let displayStatus = 'Offline';
   if (typingUser) {
     displayStatus = `${typingUser.username} sedang mengetik...`;
@@ -872,10 +856,36 @@ export default function ChatArea() {
           </div>
         ) : (
           <>
+            {/* 🔥 FIX 1: KEMBALIKAN FITUR STIKER DAN TAMBAHKAN ANIMASI MUNCUL/HILANG 🔥 */}
+            <AnimatePresence>
+              {isStickerOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  id="sticker-menu"
+                >
+                  <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
+                  <div id="sticker-list">
+                    {stickers.map((s, idx) => (
+                      <img 
+                        key={idx} 
+                        src={s.images.fixed_width_small.url} 
+                        alt="sticker" 
+                        onClick={() => {
+                          sendMessage(undefined, s.images.fixed_width.url);
+                          setIsStickerOpen(false); 
+                        }} 
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="input-row">
               <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId || pendingImagePreview ? '16px' : '28px' }}>
                 
-                {/* 🔥 FIX 2: ANIMASI MUNCUL BOX REPLY 🔥 */}
                 <AnimatePresence>
                   {replyTo && (
                     <motion.div 
@@ -895,10 +905,29 @@ export default function ChatArea() {
                   )}
                 </AnimatePresence>
 
+                {/* 🔥 FIX 2: KEMBALIKAN FITUR PREVIEW FOTO DAN TAMBAHKAN ANIMASI MUNCUL/HILANG 🔥 */}
+                <AnimatePresence>
+                  {pendingImagePreview && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      style={{ padding: '10px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', position: 'relative', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'center' }}
+                    >
+                      <img src={pendingImagePreview} style={{ maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--border-color)' }} alt="preview" />
+                      <button 
+                        onClick={() => { setPendingImage(null); setPendingImagePreview(null); }} 
+                        style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <span className="material-icons" style={{fontSize: '18px'}}>close</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
                   
                   {isRecording ? (
-                    // 🔥 FIX 4: EFEK GELOMBANG SUARA SAAT VN (LIVE) 🔥
                     <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
                       <span className="online-dot" style={{ background: '#ff4757' }}></span>
                       <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
@@ -939,7 +968,6 @@ export default function ChatArea() {
                 onTouchMove={!canSend ? handleMicTouchMove : undefined} 
                 onClick={() => canSend && handleSendClick()}
               >
-                {/* 🔥 FIX 3: TRANSISI ANIMASI ICON SEND/MIC 🔥 */}
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={isUploadingImg ? 'load' : editMessageId ? 'edit' : canSend ? 'send' : 'mic'}

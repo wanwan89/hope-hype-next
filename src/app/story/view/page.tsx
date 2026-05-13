@@ -22,7 +22,6 @@ interface Story {
   };
 }
 
-// 🔥 FIX: Pisahkan logika utama ke komponen Child (StoryViewerContent) 🔥
 function StoryViewerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -83,11 +82,12 @@ function StoryViewerContent() {
     const { data: { session } } = await supabase.auth.getSession();
     setCurrentUserId(session?.user?.id || null);
 
+    // 🔥 FIX 1: single() diganti jadi maybeSingle() 🔥
     const { data: initStory } = await supabase
       .from('stories')
       .select('creator_id')
       .eq('id', storyId)
-      .single();
+      .maybeSingle();
 
     if (!initStory) return router.back();
 
@@ -107,9 +107,6 @@ function StoryViewerContent() {
     setLoading(false);
   }
 
-  // ==========================================
-  // 🔥 FUNGSI VIEWERS (DIPERBAIKI) 🔥
-  // ==========================================
   async function recordView(sId: string) {
     if (!currentUserId) return;
     const currentStory = allUserStories[currentIndex];
@@ -186,11 +183,14 @@ function StoryViewerContent() {
 
   async function checkIfLiked(sId: string) {
     if (!currentUserId) return;
+    
+    // 🔥 FIX 2: single() diganti jadi maybeSingle() 🔥
     const { data } = await supabase
       .from('story_likes')
       .select('id')
       .match({ story_id: sId, user_id: currentUserId })
-      .single();
+      .maybeSingle();
+      
     setIsLiked(!!data);
   }
 
@@ -465,7 +465,7 @@ function StoryViewerContent() {
   );
 }
 
-// 🔥 FIX 3: INI ADALAH KOMPONEN UTAMA YANG DIEKSPORT 🔥
+// 🔥 INI KOMPONEN UTAMA YANG DIEKSPORT 🔥
 export default function StoryViewerPage() {
   return (
     <Suspense fallback={<div className="story-full-viewer dark-bg">Memuat...</div>}>
@@ -473,4 +473,3 @@ export default function StoryViewerPage() {
     </Suspense>
   );
 }
-

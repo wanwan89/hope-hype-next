@@ -2,13 +2,12 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; 
-import { getUserBadge } from '@/lib/ui-utils';
+import { getUserBadge, showNotif } from '@/lib/ui-utils'; // 🔥 FIX: Import showNotif ditambahin
 import { useTranslation } from 'react-i18next'; 
 import { useRouter } from 'next/navigation'; 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 FIX: Import AnimatePresence
 import './MessageBubble.css';
 
-// 🔥 FIX 6: ICON OPTIMISTIC UI UNTUK "SENDING" 🔥
 export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{color: '#8e8e93'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>;
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
@@ -59,15 +58,16 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
 
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
+  
+  // 🔥 FIX: STATE UNTUK PREVIEW FOTO 🔥
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // 🔥 FIX 5: STATE VISUALIZER PLAYBACK VN (UDAH DIBENERIN TYPENYA) 🔥
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const requestFrameRef = useRef<number>(0);
   
-  // Default wave (12 bar)
   const [waveData, setWaveData] = useState<number[]>(Array(12).fill(20));
 
   useEffect(() => {
@@ -84,7 +84,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     }
   }, [msg.reply_to, msg.reply_to_msg, liveReply]);
 
-  // Clean up audio
   useEffect(() => {
     return () => {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -164,7 +163,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     setShowReactions(false);
   };
 
-  // 🔥 FIX 5: LOGIKA VISUALIZER PLAYBACK VN 🔥
   const startPlaybackVisualizer = () => {
     const updateWave = () => {
       if (!audioRef.current || audioRef.current.paused) return;
@@ -185,7 +183,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
             newLevels.push(Math.max(15, (val / 255) * 100)); 
         }
         
-        // CORS Fallback: Kalau array kosong (diblokir Cloudinary) tapi audio jalan, bikin gelombang dummy yang natural
         if (!hasData) {
             setWaveData(Array.from({length: 12}, () => Math.max(20, Math.random() * 90)));
         } else {
@@ -204,18 +201,17 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
       audioRef.current?.pause();
       setIsPlaying(false);
       cancelAnimationFrame(requestFrameRef.current);
-      setWaveData(Array(12).fill(20)); // Reset wave
+      setWaveData(Array(12).fill(20)); 
     } else {
       if (!audioRef.current) {
         audioRef.current = new Audio(msg.audio_url);
-        audioRef.current.crossOrigin = "anonymous"; // Penting buat Web Audio API
+        audioRef.current.crossOrigin = "anonymous"; 
         audioRef.current.onended = () => { 
           setIsPlaying(false); 
           cancelAnimationFrame(requestFrameRef.current);
           setWaveData(Array(12).fill(20));
         };
         
-        // Setup AudioContext (Gagal kalau CORS ketat, tapi kita udah punya fallback)
         try {
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             const src = ctx.createMediaElementSource(audioRef.current);
@@ -240,6 +236,31 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     } catch (err) { console.error(err); }
   };
 
+  // 🔥 FIX: FUNGSI DOWNLOAD FOTO 🔥
+  const handleDownloadImage = async (url: string) => {
+    try {
+      showNotif("Mengunduh foto...", "info");
+      // Menggunakan fetch blob agar paksa browser untuk mendownload, bukan membuka tab baru
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = `HopeTalk_${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+      showNotif("Foto berhasil disimpan!", "success");
+    } catch (err) {
+      console.error(err);
+      showNotif("Gagal mengunduh foto", "error");
+    }
+  };
+
   let cleanMsg = msg.message || "";
   if (isStoryReply) {
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
@@ -251,6 +272,48 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   return (
     <div className="hype-chat-scope" style={{ position: 'relative' }}>
       
+      {/* 🔥 FIX: FULLSCREEN LIGHTBOX PREVIEW FOTO 🔥 */}
+      <AnimatePresence>
+        {previewImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.95)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+            }}
+            onClick={() => setPreviewImage(null)}
+          >
+            {/* Header Toolbar */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', zIndex: 1000000, background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setPreviewImage(null); }} 
+                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '5px' }}
+              >
+                <span className="material-icons" style={{fontSize: '32px'}}>arrow_back</span>
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleDownloadImage(previewImage); }} 
+                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '5px' }}
+              >
+                <span className="material-icons" style={{fontSize: '32px'}}>download</span>
+              </button>
+            </div>
+            
+            {/* Image Content */}
+            <motion.img
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={previewImage}
+              style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain' }}
+              onClick={(e) => e.stopPropagation()} // Supaya kalau klik foto gak langsung nutup
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* OVERLAY REACTION */}
       {showReactions && (
         <>
@@ -314,9 +377,15 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
+              {/* 🔥 FIX: FOTO BISA DIKLIK BUAT PREVIEW 🔥 */}
               {msg.image_url && !isDeleted && (
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: shouldShowText ? '6px' : '0' }}>
-                  <img src={getOptimizedImage(msg.image_url)} alt="Foto Kiriman" style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: 'auto', objectFit: 'cover', opacity: msg.status === 'sending' ? 0.6 : 1 }} />
+                  <img 
+                    src={getOptimizedImage(msg.image_url)} 
+                    alt="Foto Kiriman" 
+                    onClick={() => setPreviewImage(msg.image_url)} // Fungsi memunculkan lightbox
+                    style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: 'auto', objectFit: 'cover', opacity: msg.status === 'sending' ? 0.6 : 1, cursor: 'pointer' }} 
+                  />
                 </div>
               )}
 
@@ -341,7 +410,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
-              {/* 🔥 VN DENGAN GELOMBANG SINKRON 🔥 */}
               {msg.audio_url && !isDeleted && (
                 <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
                   <button onClick={toggleVN} className="vn-play-btn">
