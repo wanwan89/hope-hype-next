@@ -72,70 +72,71 @@ export default function ChatArea() {
   }, [fromId, groupId]);
 
   const initApp = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return router.push('/login');
-    setCurrentUser(session.user);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return router.push('/login');
+      setCurrentUser(session.user);
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
-    setMyProfile(prof);
-
-    refs.audio.current = {
-      send: new Audio('/asets/sound/send.mp3'),
-      receive: new Audio('/asets/sound/receive.mp3'),
-    };
-
-    // Load stickers
-    fetchStickers();
-
-    let currentRoom = 'room-1';
-    if (groupId) {
-      currentRoom = `group_${groupId}`;
-      const { data: gData } = await supabase.from('groups').select('*').eq('id', groupId).single();
-      if (gData)
-        setHeaderInfo({ title: gData.name, sub: 'Grup', avatar: gData.photo_url, role: 'user' });
-    } else if (fromId) {
-      const ids = [session.user.id, fromId].sort();
-      currentRoom = `pv_${ids[0]}_${ids[1]}`;
-      setTargetId(fromId);
-
-      // Query both id and short_id to always find the profile
-      const { data: pTarget } = await supabase
+      const { data: prof } = await supabase
         .from('profiles')
-        .select('id, username, short_id, avatar_url, role, last_seen')
-        .or(`id.eq.${fromId},short_id.eq.${fromId}`)
-        .maybeSingle();
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      setMyProfile(prof);
 
-      if (pTarget) {
-        setHeaderInfo({
-          title: pTarget.username,
-          sub: `#${pTarget.short_id}`,
-          avatar: pTarget.avatar_url,
-          role: pTarget.role,
-        });
-        setTargetLastSeen(pTarget.last_seen);
+      refs.audio.current = {
+        send: new Audio('/asets/sound/send.mp3'),
+        receive: new Audio('/asets/sound/receive.mp3'),
+      };
+
+      fetchStickers();
+
+      let currentRoom = 'room-1';
+      if (groupId) {
+        currentRoom = `group_${groupId}`;
+        const { data: gData } = await supabase.from('groups').select('*').eq('id', groupId).single();
+        if (gData)
+          setHeaderInfo({ title: gData.name, sub: 'Grup', avatar: gData.photo_url, role: 'user' });
+      } else if (fromId) {
+        const ids = [session.user.id, fromId].sort();
+        currentRoom = `pv_${ids[0]}_${ids[1]}`;
+        setTargetId(fromId);
+
+        const { data: pTarget } = await supabase
+          .from('profiles')
+          .select('id, username, short_id, avatar_url, role, last_seen')
+          .or(`id.eq.${fromId},short_id.eq.${fromId}`)
+          .maybeSingle();
+
+        if (pTarget) {
+          setHeaderInfo({
+            title: pTarget.username,
+            sub: `#${pTarget.short_id}`,
+            avatar: pTarget.avatar_url,
+            role: pTarget.role,
+          });
+          setTargetLastSeen(pTarget.last_seen);
+        }
+
+        const { data: f1 } = await supabase
+          .from('followers')
+          .select('id')
+          .match({ follower_id: session.user.id, following_id: fromId })
+          .maybeSingle();
+        const { data: f2 } = await supabase
+          .from('followers')
+          .select('id')
+          .match({ follower_id: fromId, following_id: session.user.id })
+          .maybeSingle();
+        setRelation({ iFollowThem: !!f1, theyFollowMe: !!f2 });
       }
-
-      const { data: f1 } = await supabase
-        .from('followers')
-        .select('id')
-        .match({ follower_id: session.user.id, following_id: fromId })
-        .maybeSingle();
-      const { data: f2 } = await supabase
-        .from('followers')
-        .select('id')
-        .match({ follower_id: fromId, following_id: session.user.id })
-        .maybeSingle();
-      setRelation({ iFollowThem: !!f1, theyFollowMe: !!f2 });
+      setRoomId(currentRoom);
+      await fetchMessages(currentRoom);
+      setupRealtime(currentRoom, session.user);
+    } catch (e) {
+      console.error(e);
+      setIsLoading(false); // Safety net
     }
-    setRoomId(currentRoom);
-    await fetchMessages(currentRoom);
-    setupRealtime(currentRoom, session.user);
   };
 
   const cleanup = () => {
@@ -146,14 +147,12 @@ export default function ChatArea() {
     clearInterval(refs.recordTimer.current);
   };
 
-  // Fetch stickers from DB or use default ones
   const fetchStickers = async () => {
     try {
       const { data } = await supabase.from('stickers').select('url').limit(20);
       if (data && data.length > 0) {
         setStickers(data.map((s: any) => s.url));
       } else {
-        // Default sticker set (contoh)
         setStickers([
           'https://i.ibb.co/0jV9zL8/sticker1.png',
           'https://i.ibb.co/5rL8vQ4/sticker2.png',
@@ -162,7 +161,6 @@ export default function ChatArea() {
         ]);
       }
     } catch (error) {
-      // fallback default jika gagal
       setStickers([
         'https://i.ibb.co/0jV9zL8/sticker1.png',
         'https://i.ibb.co/5rL8vQ4/sticker2.png',
@@ -172,20 +170,30 @@ export default function ChatArea() {
     }
   };
 
+  // 🔥 FIX 1: Jaminan Layar Loading PASTI Berhenti 🔥
   const fetchMessages = async (room: string) => {
     setIsLoading(true);
-    const { data } = await supabase
-      .from('messages')
-      .select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)')
-      .eq('room_id', room)
-      .order('created_at', { ascending: true })
-      .limit(50);
-    if (data) setMessages(data);
-    setIsLoading(false);
-    scrollToBottom();
+    try {
+      const { data } = await supabase
+        .from('messages')
+        .select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)')
+        .eq('room_id', room)
+        .order('created_at', { ascending: true })
+        .limit(50);
+      if (data) setMessages(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+      scrollToBottom();
+    }
   };
 
+  // 🔥 FIX 2: Hapus Channel Lama Biar Gak Kena Error 'cannot add postgres_changes' 🔥
   const setupRealtime = (room: string, user: any) => {
+    if (refs.msgChannel.current) supabase.removeChannel(refs.msgChannel.current);
+    if (refs.presenceChannel.current) supabase.removeChannel(refs.presenceChannel.current);
+
     refs.msgChannel.current = supabase
       .channel(`msg-${room}`)
       .on(
@@ -240,7 +248,17 @@ export default function ChatArea() {
   };
 
   const triggerPushNotification = async (type: string, title: string, message: string) => {
-    // ... (tidak diubah)
+    if (!targetId || !myProfile) return;
+    try {
+      const { data: targetUser } = await supabase.from('profiles').select('fcm_token').eq('id', targetId).single();
+      if (targetUser?.fcm_token) {
+        await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetToken: targetUser.fcm_token, type, title, message, callerId: currentUser.id, roomId })
+        });
+      }
+    } catch (e) { console.error(e); }
   };
 
   const sendMessage = async (text?: string, sticker?: string, audio?: string, image?: string) => {
@@ -255,41 +273,29 @@ export default function ChatArea() {
       return;
     }
 
-    const messagePreview = image && !content
-      ? 'Mengirim Foto'
-      : audio
-      ? 'Voice Note'
-      : sticker
-      ? 'Stiker'
-      : content;
+    const messagePreview = image && !content ? 'Mengirim Foto' : audio ? 'Voice Note' : sticker ? 'Stiker' : content;
     const { error } = await supabase.from('messages').insert([
       {
-        room_id: roomId,
-        user_id: currentUser.id,
-        message: messagePreview,
-        sticker_url: sticker || null,
-        audio_url: audio || null,
-        image_url: image || null,
-        reply_to: replyTo?.id || null,
-        status: 'sent',
+        room_id: roomId, user_id: currentUser.id, message: messagePreview, sticker_url: sticker || null, audio_url: audio || null, image_url: image || null, reply_to: replyTo?.id || null, status: 'sent',
       },
     ]);
 
     if (!error) {
-      setInputValue('');
-      setReplyTo(null);
-      setIsStickerOpen(false);
-      setPendingImagePreview(null);
-      if (targetId)
-        triggerPushNotification('chat', myProfile?.username || 'Pesan Baru', messagePreview);
+      setInputValue(''); setReplyTo(null); setIsStickerOpen(false); setPendingImagePreview(null);
+      if (targetId) triggerPushNotification('chat', myProfile?.username || 'Pesan Baru', messagePreview);
     }
   };
 
-  // Voice Note Start
+  const startCall = () => {
+    if (!targetId) return;
+    window.dispatchEvent(new CustomEvent('init-global-call', { 
+      detail: { roomId, targetId, partnerName: headerInfo.title, partnerAvatar: headerInfo.avatar } 
+    }));
+  };
+
   const startVN = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioContext();
       const analyser = audioCtx.createAnalyser();
@@ -314,64 +320,47 @@ export default function ChatArea() {
       refs.mediaRecorder.current.onstop = async () => {
         if (refs.audioCtx.current) refs.audioCtx.current.close();
         if (refs.animFrame.current) cancelAnimationFrame(refs.animFrame.current);
-        if (vnIsCanceled.current) {
-          vnIsCanceled.current = false;
-          return;
-        }
+        if (vnIsCanceled.current) { vnIsCanceled.current = false; return; }
 
         const blob = new Blob(refs.audioChunks.current, { type: 'audio/mpeg' });
-        const fd = new FormData();
-        fd.append("file", blob);
-        fd.append("upload_preset", "hopehype_preset");
-        fd.append("resource_type", "video");
+        const fd = new FormData(); fd.append("file", blob); fd.append("upload_preset", "hopehype_preset"); fd.append("resource_type", "video");
         const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
         const d = await res.json();
         if (d.secure_url) sendMessage(undefined, undefined, d.secure_url, undefined);
       };
 
       refs.mediaRecorder.current.start();
-      setIsRecording(true);
-      isRecordingRef.current = true;
+      setIsRecording(true); isRecordingRef.current = true;
       setRecordTime(0);
       refs.recordTimer.current = setInterval(() => setRecordTime(p => p + 1), 1000);
-    } catch (e) {
-      showNotif("Izin mikrofon ditolak", "error");
-    }
+    } catch (e) { showNotif("Izin mikrofon ditolak", "error"); }
   };
 
   const stopVN = (isCanceledByUser = false) => {
     setSlideOffset(0);
     if (!isRecordingRef.current) return;
-    setIsRecording(false);
-    isRecordingRef.current = false;
+    setIsRecording(false); isRecordingRef.current = false;
     clearInterval(refs.recordTimer.current);
 
-    if (isCanceledByUser) {
-      vnIsCanceled.current = true;
-    }
+    if (isCanceledByUser) vnIsCanceled.current = true; 
     refs.mediaRecorder.current?.stop();
   };
 
-  const handleTouchStart = (e: any) => {
-    if (!inputValue.trim() && !editMessageId && !pendingImagePreview) {
-      vnIsCanceled.current = false;
-      setSlideOffset(0);
+  const handleTouchStart = (e: any) => { 
+    if (!inputValue.trim() && !editMessageId && !pendingImagePreview) { 
+      vnIsCanceled.current = false; setSlideOffset(0);
       vnTouchStartX.current = e.touches ? e.touches[0].clientX : e.clientX;
-      startVN();
-    }
+      startVN(); 
+    } 
   };
 
   const handleTouchMove = (e: any) => {
     if (!isRecordingRef.current) return;
     const currentX = e.touches ? e.touches[0].clientX : e.clientX;
     const diff = vnTouchStartX.current - currentX;
-
     if (diff > 0) {
       setSlideOffset(-diff);
-      if (diff > 100) {
-        vnIsCanceled.current = true;
-        stopVN(true);
-      }
+      if (diff > 100) { vnIsCanceled.current = true; stopVN(true); }
     }
   };
 
@@ -387,10 +376,7 @@ export default function ChatArea() {
     if (!dateString) return 'Tidak diketahui';
     const date = new Date(dateString);
     const now = new Date();
-    const isToday =
-      date.getDate() === now.getDate() &&
-      date.getMonth() === now.getMonth() &&
-      date.getFullYear() === now.getFullYear();
+    const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     return isToday ? `Hari ini ${timeStr}` : `${date.toLocaleDateString('id-ID')} ${timeStr}`;
   };
@@ -399,10 +385,8 @@ export default function ChatArea() {
   if (targetId && currentUser) {
     const myRawMsgs = messages.filter((m) => m.user_id === currentUser.id);
     const partnerRawMsgs = messages.filter((m) => m.user_id === targetId);
-    if (partnerRawMsgs.length > 0 && myRawMsgs.length === 0 && !relation.iFollowThem)
-      chatState = 'i_must_approve';
-    else if (myRawMsgs.length > 0 && partnerRawMsgs.length === 0 && !relation.theyFollowMe)
-      chatState = 'i_am_blocked_by_request';
+    if (partnerRawMsgs.length > 0 && myRawMsgs.length === 0 && !relation.iFollowThem) chatState = 'i_must_approve';
+    else if (myRawMsgs.length > 0 && partnerRawMsgs.length === 0 && !relation.theyFollowMe) chatState = 'i_am_blocked_by_request';
   }
 
   let displayStatus = '';
@@ -416,32 +400,20 @@ export default function ChatArea() {
 
   return (
     <div className="hype-chat-scope telegram-chat">
-      {/* Lightbox sticker */}
       {lightboxSticker && (
-        <div
-          className="sticker-lightbox"
-          onClick={() => setLightboxSticker(null)}
-        >
+        <div className="sticker-lightbox" onClick={() => setLightboxSticker(null)}>
           <img src={lightboxSticker} alt="s" />
         </div>
       )}
 
-      {/* Header */}
       <header className="chat-header">
         <div className="header-inner">
-          <button
-            className="back-btn"
-            onClick={() => router.push('/hypetalk')}
-          >
+          <button className="back-btn" onClick={() => router.push('/hypetalk')}>
             <span className="material-icons">arrow_back</span>
           </button>
 
           {targetId && (
-            <img
-              src={headerInfo.avatar || '/asets/png/profile.webp'}
-              alt="avatar"
-              className="avatar"
-            />
+            <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" className="avatar" />
           )}
 
           <div className="header-text">
@@ -457,10 +429,7 @@ export default function ChatArea() {
           {targetId && (
             <button
               className="call-btn"
-              style={{
-                opacity: chatState === 'normal' ? 1 : 0.3,
-                pointerEvents: chatState === 'normal' ? 'auto' : 'none',
-              }}
+              style={{ opacity: chatState === 'normal' ? 1 : 0.3, pointerEvents: chatState === 'normal' ? 'auto' : 'none' }}
               onClick={startCall}
             >
               <span className="material-icons">call</span>
@@ -469,13 +438,11 @@ export default function ChatArea() {
         </div>
       </header>
 
-      {/* Main chat messages */}
       <main className="chat-messages">
         {isLoading ? (
           <ChatSkeleton />
         ) : (
           <>
-            {/* Encryption notice */}
             <div className="encryption-notice">
               <div className="notice-box">
                 <span className="material-icons">lock</span>
@@ -487,39 +454,20 @@ export default function ChatArea() {
             </div>
 
             {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                msg={msg}
-                currentUser={currentUser}
-                isMe={msg.user_id === currentUser?.id}
-                onReply={setReplyTo}
-                roomId={roomId}
-              />
+              <MessageBubble key={msg.id} msg={msg} currentUser={currentUser} isMe={msg.user_id === currentUser?.id} onReply={setReplyTo} roomId={roomId} />
             ))}
           </>
         )}
         <div ref={refs.scroll} />
       </main>
 
-      {/* Footer input */}
       <footer className="chat-footer">
         <AnimatePresence>
           {isStickerOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="sticker-panel"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="sticker-panel">
               <div className="sticker-grid">
                 {stickers.map((s, i) => (
-                  <img
-                    key={i}
-                    src={s}
-                    alt="sticker"
-                    className="sticker-item"
-                    onClick={() => sendMessage(undefined, s)}
-                  />
+                  <img key={i} src={s} alt="sticker" className="sticker-item" onClick={() => sendMessage(undefined, s)} />
                 ))}
               </div>
             </motion.div>
@@ -530,28 +478,12 @@ export default function ChatArea() {
           <div className="input-container">
             <AnimatePresence>
               {replyTo && (
-                <motion.div
-                  initial={{ opacity: 0, y: '100%' }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: '100%' }}
-                  className="reply-preview"
-                >
+                <motion.div initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }} className="reply-preview">
                   <div className="reply-content">
-                    <span className="reply-username">
-                      Membalas {replyTo.profiles?.username || 'User'}
-                    </span>
-                    <span className="reply-text">
-                      {replyTo.message ||
-                        (replyTo.image_url
-                          ? 'Foto'
-                          : replyTo.audio_url
-                          ? 'Voice Note'
-                          : 'Stiker')}
-                    </span>
+                    <span className="reply-username">Membalas {replyTo.profiles?.username || 'User'}</span>
+                    <span className="reply-text">{replyTo.message || (replyTo.image_url ? 'Foto' : replyTo.audio_url ? 'Voice Note' : 'Stiker')}</span>
                   </div>
-                  <button onClick={() => setReplyTo(null)} className="close-reply">
-                    <span className="material-icons text-sm">close</span>
-                  </button>
+                  <button onClick={() => setReplyTo(null)} className="close-reply"><span className="material-icons text-sm">close</span></button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -567,29 +499,14 @@ export default function ChatArea() {
 
                 <AnimatePresence>
                   {isRecording ? (
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="recording-bar"
-                    >
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="recording-bar">
                       <div className="record-info">
                         <div className="record-dot" />
                         <span className="record-time">{formatTime(recordTime)}</span>
                       </div>
                       <div className="record-wave">
                         {[1, 2, 3, 4, 5, 6].map((i) => (
-                          <motion.div
-                            key={i}
-                            className="wave-bar"
-                            animate={{
-                              height: `${Math.max(
-                                4,
-                                (audioLevel / 255) * 24 * (Math.random() * 0.5 + 0.5)
-                              )}px`,
-                            }}
-                            transition={{ type: 'tween', duration: 0.1 }}
-                          />
+                          <motion.div key={i} className="wave-bar" animate={{ height: `${Math.max(4, (audioLevel / 255) * 24 * (Math.random() * 0.5 + 0.5))}px` }} transition={{ type: 'tween', duration: 0.1 }} />
                         ))}
                       </div>
                       <div className="slide-cancel">
@@ -599,36 +516,10 @@ export default function ChatArea() {
                     </motion.div>
                   ) : (
                     <div className="input-actions">
-                      <button
-                        onClick={() => setIsStickerOpen(!isStickerOpen)}
-                        className="sticker-toggle"
-                      >
-                        <span className="material-icons">sentiment_satisfied_alt</span>
-                      </button>
-
-                      <textarea
-                        placeholder={t('write_message')}
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        className="message-input"
-                        rows={1}
-                      />
-
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="attach-btn"
-                      >
-                        <span className="material-icons">image</span>
-                      </button>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        hidden
-                        accept="image/*"
-                        onChange={(e: any) =>
-                          setPendingImagePreview(URL.createObjectURL(e.target.files[0]))
-                        }
-                      />
+                      <button onClick={() => setIsStickerOpen(!isStickerOpen)} className="sticker-toggle"><span className="material-icons">sentiment_satisfied_alt</span></button>
+                      <textarea placeholder={t('write_message')} value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="message-input" rows={1} />
+                      <button onClick={() => fileInputRef.current?.click()} className="attach-btn"><span className="material-icons">image</span></button>
+                      <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e: any) => setPendingImagePreview(URL.createObjectURL(e.target.files[0]))} />
                     </div>
                   )}
                 </AnimatePresence>
@@ -638,47 +529,20 @@ export default function ChatArea() {
                 id="action-btn"
                 animate={{ x: slideOffset }}
                 className={`send-btn ${isRecording ? 'recording' : ''}`}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                onMouseDown={handleTouchStart}
-                onMouseMove={(e) => isRecording && handleTouchMove(e)}
-                onMouseUp={handleTouchEnd}
-                onMouseLeave={() => isRecording && handleTouchEnd()}
-                onClick={() => (inputValue || pendingImagePreview) && sendMessage()}
+                onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onMouseDown={handleTouchStart} onMouseMove={(e) => isRecording && handleTouchMove(e)} onMouseUp={handleTouchEnd} onMouseLeave={() => isRecording && handleTouchEnd()} onClick={() => (inputValue || pendingImagePreview) && sendMessage()}
               >
                 <AnimatePresence mode="wait">
                   {inputValue || pendingImagePreview ? (
-                    <motion.span
-                      key="send"
-                      initial={{ scale: 0, rotate: -45, opacity: 0 }}
-                      animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                      exit={{ scale: 0, rotate: 45, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="material-icons"
-                    >
-                      send
-                    </motion.span>
+                    <motion.span key="send" initial={{ scale: 0, rotate: -45, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} exit={{ scale: 0, rotate: 45, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="material-icons">send</motion.span>
                   ) : (
-                    <motion.span
-                      key="mic"
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="material-icons"
-                    >
-                      mic
-                    </motion.span>
+                    <motion.span key="mic" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="material-icons">mic</motion.span>
                   )}
                 </AnimatePresence>
               </motion.button>
             </div>
           </div>
         ) : (
-          <div className="pending-chat">
-            Menunggu persetujuan chat...
-          </div>
+          <div className="pending-chat">Menunggu persetujuan chat...</div>
         )}
       </footer>
     </div>
