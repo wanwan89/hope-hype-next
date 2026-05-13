@@ -17,7 +17,6 @@ export default function NotificationsPage() {
   const [groupedNotifs, setGroupedNotifs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // 🔥 STATE BARU: Jumlah postingan pending 🔥
   const [pendingCount, setPendingCount] = useState(0);
 
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -51,7 +50,6 @@ export default function NotificationsPage() {
 
   const loadNotifications = async (userId: string) => {
     try {
-      // 1. Ambil Jumlah Postingan Pending (Belum di ACC)
       const { count: pendingPosts } = await supabase
         .from('posts')
         .select('*', { count: 'exact', head: true })
@@ -60,7 +58,6 @@ export default function NotificationsPage() {
       
       setPendingCount(pendingPosts || 0);
 
-      // 2. Ambil Notifikasi Standar
       const { data: dbNotifs, error } = await supabase
         .from('notifications')
         .select('*')
@@ -74,13 +71,11 @@ export default function NotificationsPage() {
       let formattedSaves: any[] = [];
       let formattedStoryLikes: any[] = [];
 
-      // 3. Ambil data Repost & Save
       const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
       
       if (myPosts && myPosts.length > 0) {
         const postIds = myPosts.map(p => p.id);
         
-        // 🔥 FIX: Repost (Kecuali nge-repost sendiri) 🔥
         const { data: repostsData } = await supabase.from('reposts')
           .select('id, post_id, created_at, profiles(username)')
           .in('post_id', postIds)
@@ -101,7 +96,6 @@ export default function NotificationsPage() {
           }));
         }
 
-        // 🔥 FIX: Save (Kecuali nge-save sendiri) 🔥
         const { data: savesData } = await supabase.from('bookmarks')
           .select('id, post_id, created_at, profiles(username)')
           .in('post_id', postIds)
@@ -123,7 +117,6 @@ export default function NotificationsPage() {
         }
       }
 
-      // 4. Ambil data Story Likes (Kecuali like sendiri)
       const { data: myStories } = await supabase.from('stories').select('id').eq('creator_id', userId);
       
       if (myStories && myStories.length > 0) {
@@ -351,7 +344,6 @@ export default function NotificationsPage() {
        return msg;
     }
     
-    // 🔥 FIX: Format text untuk post_approved 🔥
     if (notif.type === 'post_approved') {
        return `Selamat! Karyamu telah <b>disetujui</b> dan sekarang sudah tampil di publik.`;
     }
@@ -376,17 +368,19 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        {/* 🔥 FIX: BOX JUMLAH POSTINGAN PENDING 🔥 */}
+        {/* 🔥 FIX: BOX JUMLAH POSTINGAN PENDING DENGAN DESAIN BARU 🔥 */}
         {pendingCount > 0 && (
           <div className="pending-alert-box" onClick={() => router.push('/pending')}>
             <div className="pending-alert-left">
-              <span className="material-icons pending-icon">hourglass_empty</span>
+              <div className="pending-icon-wrap">
+                <span className="material-icons" style={{ fontSize: '20px' }}>pending_actions</span>
+              </div>
               <div className="pending-text">
-                <span className="pending-title">Menunggu Persetujuan</span>
-                <span className="pending-desc">{pendingCount} karyamu sedang direview tim kami.</span>
+                <span className="pending-title">Menunggu Review <span>({pendingCount})</span></span>
+                <span className="pending-desc">Karyamu sedang dalam antrean pengecekan.</span>
               </div>
             </div>
-            <span className="material-icons" style={{ color: '#f59e0b' }}>chevron_right</span>
+            <span className="material-icons pending-chevron">chevron_right</span>
           </div>
         )}
 
