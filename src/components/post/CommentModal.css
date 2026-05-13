@@ -1,12 +1,10 @@
-/* src/components/post/CommentModal.css */
-
 /* --- OVERLAY MODAL --- */
 #commentModal {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  position: fixed; inset: 0; 
+  background: rgba(0,0,0,0.7); /* 🔥 FIX 3: Gak pake blur lagi, transparan bersih */
   display: flex; align-items: flex-end; justify-content: center;
   z-index: 99999; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity 0.3s ease, visibility 0.3s ease;
-  backdrop-filter: blur(4px);
 }
 #commentModal.active {
   opacity: 1; visibility: visible; pointer-events: auto;
@@ -14,32 +12,29 @@
 
 /* --- KOTAK KOMENTAR (SLIDE UP) --- */
 .comment-box {
-  width: 100%; max-width: 600px; height: 85vh; /* Tambah tinggi dikit biar lega */
-  background: var(--bg-modal); border-radius: 24px 24px 0 0;
+  width: 100%; max-width: 600px; height: 80vh; 
+  background: var(--bg-modal, #1a1a1a); 
+  border-radius: 20px 20px 0 0;
   overflow: hidden; display: flex; flex-direction: column;
-  transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1);
-  box-shadow: 0 -15px 40px rgba(0,0,0,0.4);
-  border: 1px solid rgba(255,255,255,0.05);
-  pointer-events: auto; /* Penting biar area ini bisa diklik tanpa nutup overlay */
+  transform: translateY(100%); 
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  box-shadow: 0 -5px 25px rgba(0,0,0,0.3);
+  pointer-events: auto; 
 }
 #commentModal.active .comment-box { transform: translateY(0); }
 
-.comment-box::before {
-  content: ""; width: 40px; height: 4px; background: rgba(255,255,255,0.2);
-  border-radius: 10px; margin: 12px auto 8px; display: block;
+/* GARIS DRAG DI ATAS MODAL */
+.modal-drag-indicator {
+  width: 40px; height: 4px; 
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px; margin: 12px auto 4px;
 }
 
 /* --- HEADER --- */
 .comment-header {
   color: var(--text-main); text-align: center; font-weight: 800; font-size: 16px;
-  padding: 5px 16px 15px; border-bottom: 1px solid var(--border-card); position: relative;
+  padding: 8px 16px 15px; border-bottom: 1px solid var(--border-card);
 }
-.comment-close {
-  position: absolute; right: 15px; top: -5px; background: var(--bg-input);
-  border: none; color: var(--text-main); width: 32px; height: 32px; border-radius: 50%;
-  font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
-}
-.comment-close:hover, .comment-close:active { background: #ff4757; color: white; transform: rotate(90deg); }
 
 /* --- LIST KOMENTAR --- */
 .comment-list {
@@ -48,293 +43,174 @@
 }
 .comment-list::-webkit-scrollbar { display: none; }
 
-/* --- THREAD & ITEM STYLE --- */
+/* --- 🔥 FIX 1: STRUKTUR ITEM KOMENTAR (RATA KANAN SEMPURNA) 🔥 --- */
 .comment-thread { 
   margin-bottom: 24px; 
   position: relative;
+  width: 100%;
+}
+
+/* Biar balasan nggak ngerusak layout tombol like di kanan */
+.replies-container {
+  padding-left: 42px; /* Geser konten balasan ke dalam */
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.comment-item-wrap {
+  position: relative;
+  width: 100%;
 }
 
 .comment-item { 
   display: flex; 
-  gap: 12px; 
-  margin-bottom: 8px; 
+  margin-bottom: 12px; 
   align-items: flex-start; 
   position: relative;
-  z-index: 2;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.comment-left { flex-shrink: 0; position: relative; z-index: 5; }
+.comment-left { 
+  flex-shrink: 0; 
+  margin-right: 12px;
+}
 .comment-avatar { 
-  width: 38px; height: 38px; border-radius: 50%; object-fit: cover; 
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover; 
   cursor: pointer; background: var(--bg-secondary); 
-  border: 1.5px solid var(--border-card); 
-  transition: transform 0.2s;
+  border: 1px solid var(--border-card); 
 }
-.comment-avatar:active { transform: scale(0.9); }
+.reply .comment-avatar { width: 28px; height: 28px; }
 
-.comment-item.reply .comment-avatar { width: 28px; height: 28px; }
+/* KONTEN TENGAH */
+.comment-main-content {
+  flex: 1; 
+  min-width: 0; /* Biar text overflow jalan */
+  padding-right: 12px; /* Jarak dari area tombol like */
+}
 
-/* Wadah Teks yang udah dilimit width-nya buat nyisain ruang Like */
-.comment-right { flex: 1; min-width: 0; padding-top: 2px; padding-right: 40px; }
-.comment-topline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
+.comment-topline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
 .comment-username { color: var(--text-main); font-weight: 700; font-size: 13px; cursor: pointer; }
-.comment-text { color: var(--text-main); font-size: 14px; line-height: 1.5; word-break: break-word; }
+.comment-text { color: var(--text-main); font-size: 14px; line-height: 1.4; word-break: break-word; }
 
-/* 🔥 FIX TAGGING: BEDA WARNA BALASAN & MENTION 🔥 */
 .reply-tag { color: var(--text-muted, #9ca3af); font-weight: 600; margin-right: 4px; font-size: 13.5px; }
 .mention-tag-link { color: #1f3cff !important; font-weight: 700; cursor: pointer; }
-
 .creator-tag { background: #1f3cff; color: white; padding: 1px 6px; border-radius: 4px; font-size: 9px; margin-left: 4px; font-weight: 800; letter-spacing: 0.5px; }
 
-/* 🔥 PREMIUM GIFT BUBBLE UI 🔥 */
+/* 🔥 FIX 4: PREMIUM GIFT BUBBLE (ELEGAN TANPA ANIMASI) 🔥 */
 .gift-comment-bubble {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(245, 158, 11, 0.05) 100%);
-  padding: 8px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  margin-top: 8px;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.15);
-  max-width: 95%;
-  animation: giftPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.08); /* Latar belakang tipis premium */
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.3); /* Border emas tipis */
+  margin-top: 6px;
 }
-
-@keyframes giftPop {
-  0% { transform: scale(0.8); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.gift-comment-bubble span {
-  color: #f59e0b;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.gift-comment-bubble img {
-  width: 30px; height: 30px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-}
+.gift-comment-bubble span { color: #f59e0b; font-size: 13px; font-weight: 700; }
+.gift-comment-bubble img { width: 26px; height: 26px; object-fit: contain; }
 
 /* WAKTU DAN TOMBOL BALAS */
-.comment-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-}
+.comment-actions { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.comment-time { font-size: 11px; color: var(--text-muted, #9ca3af); font-weight: 500; }
+.reply-btn { font-size: 11px; color: var(--text-muted, #9ca3af); font-weight: 600; cursor: pointer; }
 
-.comment-time {
-  font-size: 11px;
-  color: var(--text-muted, #9ca3af);
-  font-weight: 500;
-}
-
-.reply-btn {
-  font-size: 11px;
-  color: var(--text-muted, #9ca3af);
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.2s;
-  padding: 4px 0;
-}
-
-.reply-btn:active {
-  color: var(--text-main, #1a1a1a);
-}
-
-
-/* --- SISTEM GARIS (THREAD LINES) --- */
-.replies-container {
-  margin-left: 19px;
-  position: relative;
-}
-
-.view-replies-btn {
-  display: flex; align-items: center; gap: 12px;
-  margin-left: 32px; margin-top: 8px; margin-bottom: 12px;
-  color: var(--text-muted); font-size: 12px; font-weight: 800; 
-  cursor: pointer; user-select: none;
-}
-.btn-line {
-  width: 20px; height: 1.5px; background: var(--border-card);
-  display: inline-block;
-}
-
-.reply-group {
-  position: relative;
-  margin-left: 19px;
-  padding-top: 2px;
-}
-
-.thread-line {
-  position: absolute;
-  left: 0; top: -18px; bottom: 20px;
-  width: 1.5px;
-  background: var(--border-card);
-  opacity: 0.5;
-  z-index: 1;
-}
-
-.comment-item.reply {
-  position: relative;
-  padding-left: 20px;
-  margin-top: 14px;
-}
-
-.reply-curve {
-  position: absolute;
-  left: 0; top: 14px;
-  width: 16px; height: 1.5px;
-  background: var(--border-card);
-  opacity: 0.5;
-  z-index: 1;
-}
-
-/* --- 🔥 FIX AREA INPUT BAWAH (RAPI PREMIUM) --- */
-.comment-input-wrap {
+/* --- AREA KANAN (LIKE & DISLIKE) --- */
+.comment-right-actions {
   display: flex;
   flex-direction: column;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border-card);
-  background: var(--bg-modal);
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
-}
-
-.input-container {
-  position: relative;
-  display: flex;
   align-items: center;
-  width: 100%;
+  gap: 8px;
+  width: 30px;
+  flex-shrink: 0;
 }
 
-.comment-input {
-  width: 100%;
-  border: 1.5px solid var(--border-card);
-  outline: none;
-  background: var(--bg-input);
-  color: var(--text-main);
-  padding: 10px 50px 10px 16px; /* Sisa 50px di kanan untuk tombol Kado */
-  border-radius: 25px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  font-family: inherit;
-}
-
-.comment-input:focus {
-  border-color: #1f3cff; /* Ganti ke warna solid HypeTalk */
-  background: var(--bg-modal);
-  box-shadow: 0 0 0 4px rgba(31, 60, 255, 0.1);
-}
-
-/* 🔥 IKON GIFT (DINAMIS TEMA) 🔥 */
-.modal-gift-btn {
-  position: absolute;
-  right: 6px; 
-  background: none;
-  border: none;
-  cursor: pointer;
+.action-button-wrapper {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  transition: background 0.2s, transform 0.2s;
-  padding: 0;
-}
-
-.modal-gift-btn:hover {
-  background: var(--bg-secondary);
-}
-
-.modal-gift-btn:active {
-  transform: scale(0.85);
-}
-
-.modal-gift-btn svg {
-  width: 22px;
-  height: 22px;
-  color: var(--text-main); /* FIX 6: Ganti otomatis hitam/putih sesuai tema */
-}
-
-/* --- UTILS --- */
-.loading-text, .empty-text {
-  text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; font-weight: 500;
-}
-
-
-/* 🔥 MENTIONS POPUP CSS 🔥 */
-.mention-popup {
-  position: absolute;
-  bottom: 100%;
-  left: 16px;
-  width: calc(100% - 32px);
-  max-height: 180px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
-  overflow-y: auto;
-  z-index: 10;
-  margin-bottom: 8px;
-}
-
-.mention-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  gap: 12px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  transition: background 0.2s;
-}
-.mention-item:hover, .mention-item:active {
-  background: var(--bg-input);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mention-item img {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
+.heart-icon, .dislike-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted, #9ca3af);
 }
 
-.mention-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.mention-empty {
-  padding: 12px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-/* --- 🔥 TOMBOL LIKE & HEART (SESUAIKAN DENGAN INLINE STYLE DI JSX) --- */
-.comment-like-box {
-  /* Inline style utama: position absolute, top, right, width, dll. */
-  /* Tambahan hover opsional agar interaktif */
-  transition: transform 0.2s;
-}
-.comment-like-box:active {
-  transform: scale(0.9);
-}
-
-.heart-icon {
-  fill: currentColor; /* memastikan warna ikon mengikuti properti color inline */
-  transition: color 0.2s ease, transform 0.2s;
-}
-
-/* Jika suatu saat tidak pakai inline untuk warna aktif, bisa pakai class .active */
 .heart-icon.active {
   color: #ff4757;
 }
 
-.comment-like-count {
-  transition: color 0.2s;
+/* FIX: Warna dislike pas diklik */
+.dislike-icon.active {
+  color: #a8a29e; /* Abu-abu agak gelap */
 }
+
+.action-count {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+
+/* --- SISTEM GARIS (THREAD LINES) --- */
+.view-replies-btn {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px;
+  color: var(--text-muted); font-size: 12px; font-weight: 800; 
+  cursor: pointer; user-select: none;
+}
+.btn-line { width: 24px; height: 1.5px; background: var(--border-card); display: inline-block; }
+
+.reply-group { position: relative; }
+.thread-line {
+  position: absolute; left: -24px; top: -15px; bottom: 15px;
+  width: 1.5px; background: var(--border-card); opacity: 0.5; z-index: 1;
+}
+
+.comment-item-wrap.reply { position: relative; margin-top: 14px; }
+.reply-curve {
+  position: absolute; left: -24px; top: 16px;
+  width: 16px; height: 1.5px; background: var(--border-card); opacity: 0.5; z-index: 1;
+}
+
+/* --- AREA INPUT BAWAH --- */
+.comment-input-wrap {
+  display: flex; flex-direction: column; padding: 12px 16px;
+  border-top: 1px solid var(--border-card); background: var(--bg-modal);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+.input-container { position: relative; display: flex; align-items: center; width: 100%; }
+
+.comment-input {
+  width: 100%; border: 1.5px solid var(--border-card); outline: none; background: var(--bg-input); color: var(--text-main);
+  padding: 10px 50px 10px 16px; border-radius: 25px; font-size: 14px; transition: all 0.3s ease; font-family: inherit;
+}
+.comment-input:focus {
+  border-color: #1f3cff; background: var(--bg-modal); box-shadow: 0 0 0 4px rgba(31, 60, 255, 0.1);
+}
+
+.modal-gift-btn {
+  position: absolute; right: 6px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; padding: 0;
+}
+.modal-gift-btn svg { width: 22px; height: 22px; color: var(--text-main); }
+
+/* --- MENTIONS POPUP --- */
+.mention-popup {
+  position: absolute; bottom: 100%; left: 16px; width: calc(100% - 32px); max-height: 180px;
+  background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px;
+  box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; margin-bottom: 8px;
+}
+.mention-item { display: flex; align-items: center; padding: 10px 14px; gap: 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.mention-item img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.mention-name { font-size: 13px; font-weight: 700; color: var(--text-main); }
+.mention-empty { padding: 12px; text-align: center; font-size: 12px; color: var(--text-muted); }
+
+/* --- UTILS --- */
+.loading-text, .empty-text { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; font-weight: 500; }

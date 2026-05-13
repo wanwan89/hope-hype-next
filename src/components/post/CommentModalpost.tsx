@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION 🔥
 import './CommentModal.css';
 
 const getOptimizedImage = (url: string) => {
@@ -31,7 +32,7 @@ export default function CommentModalpost() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  // 🔥 FIX 1: State untuk nampung jumlah like aktual tiap komentar
+  const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set()); // 🔥 STATE DISLIKE 🔥
   const [commentLikesCount, setCommentLikesCount] = useState<Record<string, number>>({});
   
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
@@ -148,7 +149,6 @@ export default function CommentModalpost() {
 
   const loadComments = async (postId: string, userId?: string) => {
     setIsLoading(true);
-    // 🔥 FIX 1: Hapus ekspektasi likes_count dari tabel utama, biar kita hitung sendiri real-time
     const { data: commsData } = await supabase.from("comments")
       .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
       .eq("post_id", postId)
@@ -159,7 +159,6 @@ export default function CommentModalpost() {
     if (commsData && commsData.length > 0) {
       const commentIds = commsData.map(c => c.id);
       
-      // Mengambil total like dari tabel relasi untuk setiap komentar
       const { data: allLikesData } = await supabase.from("comment_likes").select("comment_id").in("comment_id", commentIds);
       
       const newCounts: Record<string, number> = {};
@@ -171,7 +170,6 @@ export default function CommentModalpost() {
       
       setCommentLikesCount(newCounts);
 
-      // Cek apakah user yang lagi login nge-like komentar tsb
       if (userId) {
         const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
         const likedSet = new Set<string>();
@@ -251,11 +249,9 @@ export default function CommentModalpost() {
 
   const handleSelectMention = (username: string) => {
     if (!inputRef.current) return;
-    
     const cursor = inputRef.current.selectionStart || 0;
     const textBeforeCursor = inputValue.slice(0, cursor);
     const textAfterCursor = inputValue.slice(cursor);
-    
     const newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${username} `);
     
     setInputValue(newTextBefore + textAfterCursor);
@@ -307,48 +303,20 @@ export default function CommentModalpost() {
 
         if (targetUserId && targetUserId !== userId) {
           await supabase.from("notifications").insert({
-            user_id: targetUserId,
-            actor_id: userId,
-            post_id: pid,
-            type: "reply",
+            user_id: targetUserId, actor_id: userId, post_id: pid, type: "reply",
             message: `${myProf?.username} membalas komentar Anda.`
           });
         }
 
         if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
           await supabase.from("notifications").insert({
-            user_id: currentCreatorId,
-            actor_id: userId,
-            post_id: pid,
-            type: "comment",
+            user_id: currentCreatorId, actor_id: userId, post_id: pid, type: "comment",
             message: t('notif_commented', { username: myProf?.username })
           });
         }
 
-        const mentionedUsernames = [...new Set((finalContent.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
-        const pureMentions = mentionedUsernames.filter(u => u !== targetUser); 
-        
-        if (pureMentions.length > 0) {
-          const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', pureMentions);
-          
-          if (taggedUsers) {
-            const notifInserts = taggedUsers
-              .filter(u => u.id !== userId && u.id !== targetUserId) 
-              .map(u => ({
-                user_id: u.id,
-                actor_id: userId,
-                post_id: pid,
-                type: "mention", 
-                message: `${myProf?.username} menyebut Anda dalam komentar.`
-              }));
-            
-            if (notifInserts.length > 0) await supabase.from("notifications").insert(notifInserts);
-          }
-        }
-
         if (newComment) {
           setComments(prev => [...prev, newComment]);
-          // Jangan lupa set state count jadi 0 buat komentar baru biar nggak undefined
           setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
         }
 
@@ -372,13 +340,21 @@ export default function CommentModalpost() {
     const isLiked = likedComments.has(commentIdStr);
     const commentId = parseInt(commentIdStr);
 
+    // Kalau disukai, hapus dari list dislike
+    if (!isLiked && dislikedComments.has(commentIdStr)) {
+      setDislikedComments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(commentIdStr);
+        return newSet;
+      });
+    }
+
     setLikedComments(prev => {
       const newSet = new Set(prev);
       isLiked ? newSet.delete(commentIdStr) : newSet.add(commentIdStr);
       return newSet;
     });
 
-    // Update angkanya di state terpisah yang kita buat tadi
     setCommentLikesCount(prev => ({
       ...prev,
       [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) + (isLiked ? -1 : 1))
@@ -391,6 +367,35 @@ export default function CommentModalpost() {
         await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: session!.user.id });
       }
     } catch (err) { console.error("Like error", err); }
+  };
+
+  // 🔥 FUNGSI DISLIKE KOMENTAR 🔥
+  const handleDislikeComment = async (commentIdStr: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!requireLogin(session?.user)) return;
+
+    const isDisliked = dislikedComments.has(commentIdStr);
+
+    // Kalau di-dislike, cabut likenya jika ada
+    if (!isDisliked && likedComments.has(commentIdStr)) {
+      setLikedComments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(commentIdStr);
+        return newSet;
+      });
+      setCommentLikesCount(prev => ({
+        ...prev,
+        [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) - 1)
+      }));
+      // Cabut dari database like
+      supabase.from("comment_likes").delete().match({ comment_id: parseInt(commentIdStr), user_id: session!.user.id }).then();
+    }
+
+    setDislikedComments(prev => {
+      const newSet = new Set(prev);
+      isDisliked ? newSet.delete(commentIdStr) : newSet.add(commentIdStr);
+      return newSet;
+    });
   };
 
   const handleTouchStart = (comment: any) => {
@@ -419,10 +424,8 @@ export default function CommentModalpost() {
       const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", currentPostId);
       const countBadge = document.querySelector(`.comment-toggle[data-post="${currentPostId}"] .comment-count`);
       if (countBadge) countBadge.textContent = String(count || 0);
-
     } catch (err) {
       showNotif("Gagal menghapus komentar", "error");
-      if (currentPostId) loadComments(currentPostId, myUserId || undefined);
     }
   };
 
@@ -463,6 +466,7 @@ export default function CommentModalpost() {
     }
 
     const isCommentLiked = likedComments.has(String(comment.id));
+    const isCommentDisliked = dislikedComments.has(String(comment.id));
     const currentLikeCount = commentLikesCount[String(comment.id)] || 0;
     
     const highlightMentions = (text: string) => {
@@ -489,7 +493,6 @@ export default function CommentModalpost() {
       <div 
         className="comment-item" 
         key={comment.id} 
-        style={isReply ? { marginBottom: '8px', marginLeft: '-20px', position: 'relative' } : { position: 'relative' }}
         onPointerDown={() => handleTouchStart(comment)} 
         onPointerUp={handleTouchEnd}
         onPointerLeave={handleTouchEnd}
@@ -498,7 +501,7 @@ export default function CommentModalpost() {
           <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
         </div>
         
-        <div className="comment-right" style={{ flex: 1, minWidth: 0, paddingRight: '40px' }}>
+        <div className="comment-main-content">
           <div className="comment-topline">
             <span className="comment-username" onClick={() => window.location.href = `/data?id=${p?.id}`}>
               {p?.username} 
@@ -507,8 +510,8 @@ export default function CommentModalpost() {
             </span>
           </div>
           
-          <div className="comment-text" style={{ wordBreak: 'break-word', marginTop: '2px' }}>
-            {comment.reply_to_username && <span className="reply-tag" style={{ color: '#8e8e93', fontWeight: '600' }}>@{comment.reply_to_username}</span>}
+          <div className="comment-text">
+            {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
             {isGift ? (
               <div className="gift-comment-bubble">
@@ -520,7 +523,7 @@ export default function CommentModalpost() {
             )}
           </div>
 
-          <div className="comment-actions" style={{ marginTop: '4px' }}>
+          <div className="comment-actions">
             <span className="comment-time">{formatTimeAgo(comment.created_at)}</span>
             {!isGift && (
               <span className="reply-btn" onClick={() => {
@@ -536,40 +539,48 @@ export default function CommentModalpost() {
           </div>
         </div>
 
-        {/* 🔥 FIX 2: ICON LOVE OUTLINE (KOSONG) & SOLID (MERAH) 🔥 */}
-        <div 
-          className="comment-like-box" 
-          onClick={() => handleLikeComment(String(comment.id))}
-          style={{ 
-            position: 'absolute',
-            top: '8px',
-            right: '10px',
-            width: '35px', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'flex-start',
-            gap: '2px',
-            cursor: 'pointer'
-          }}
-        >
-          {isCommentLiked ? (
-            /* Icon Hati Merah (Solid) saat dilike */
-            <svg viewBox="0 0 24 24" className="heart-icon active" fill="#ff4757" style={{ width: '15px', height: '15px', transition: '0.2s transform', transform: 'scale(1.1)' }}>
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
-          ) : (
-            /* Icon Hati Outline (Kosong) saat belum dilike */
-            <svg viewBox="0 0 24 24" className="heart-icon" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '15px', height: '15px', color: 'var(--text-muted, #9ca3af)', transition: '0.2s' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
-          )}
+        {/* 🔥 FIX 1: ACTIONS (LIKE & DISLIKE) RATA KANAN SEMPURNA 🔥 */}
+        <div className="comment-right-actions">
+          {/* TOMBOL LIKE DENGAN ANIMASI PECAH (PARTICLE BURST) */}
+          <div className="action-button-wrapper" onClick={() => handleLikeComment(String(comment.id))}>
+            <div style={{ position: 'relative' }}>
+              <AnimatePresence>
+                {isCommentLiked && (
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 1 }}
+                    animate={{ scale: 2, opacity: 0 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    style={{ position: 'absolute', top: '-4px', left: '-4px', right: '-4px', bottom: '-4px', borderRadius: '50%', border: '2px solid #ff4757', pointerEvents: 'none' }}
+                  />
+                )}
+              </AnimatePresence>
+              <motion.svg 
+                viewBox="0 0 24 24" 
+                className={`heart-icon ${isCommentLiked ? 'active' : ''}`} 
+                whileTap={{ scale: 0.8 }}
+                animate={isCommentLiked ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {isCommentLiked ? (
+                  <path fill="#ff4757" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                ) : (
+                  <path fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                )}
+              </motion.svg>
+            </div>
+            {currentLikeCount > 0 && <span className="action-count">{currentLikeCount}</span>}
+          </div>
 
-          {(currentLikeCount > 0) && (
-            <span className="comment-like-count" style={{ fontSize: '11px', color: 'var(--text-muted, #9ca3af)', fontWeight: '600', marginTop: '2px' }}>
-              {currentLikeCount}
-            </span>
-          )}
+          {/* TOMBOL DISLIKE */}
+          <div className="action-button-wrapper" onClick={() => handleDislikeComment(String(comment.id))}>
+            <motion.svg 
+              viewBox="0 0 24 24" 
+              className={`dislike-icon ${isCommentDisliked ? 'active' : ''}`}
+              whileTap={{ scale: 0.8 }}
+            >
+              <path fill={isCommentDisliked ? "#a8a29e" : "none"} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05C1.04 11.54 1 11.77 1 12v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/>
+            </motion.svg>
+          </div>
         </div>
 
       </div>
@@ -586,41 +597,13 @@ export default function CommentModalpost() {
 
   return (
     <>
-      <style>{`
-        .c-action-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-          z-index: 100000; opacity: 0; visibility: hidden; transition: 0.3s;
-        }
-        .c-action-overlay.active { opacity: 1; visibility: visible; }
-        
-        .c-action-sheet {
-          position: fixed; bottom: 0; left: 0; width: 100%;
-          background: var(--bg-modal, #1a1a1a); border-radius: 20px 20px 0 0;
-          padding: 20px 20px 30px; transform: translateY(100%);
-          transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
-          z-index: 100001; border-top: 1px solid rgba(255,255,255,0.05);
-        }
-        .c-action-overlay.active + .c-action-sheet, .c-action-sheet.open {
-          transform: translateY(0);
-        }
-        
-        .c-drag-handle { width: 40px; height: 5px; background: var(--border-card, #333); border-radius: 10px; margin: 0 auto 20px; }
-        
-        .c-action-btn {
-          width: 100%; padding: 16px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700;
-          display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: 0.2s;
-          margin-bottom: 10px;
-        }
-        .c-action-btn.danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .c-action-btn.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .c-action-btn:active { transform: scale(0.96); }
-      `}</style>
-
       <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick}>
         <div className="comment-box" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-drag-indicator"></div>
+          
           <div className="comment-header">
             {t('comments_title')}
-            <button className="comment-close" aria-label="Tutup Komentar" onClick={closeModal}>&times;</button>
+            {/* 🔥 FIX 2: Tombol (X) Dihapus, user cukup narik/klik luar area untuk tutup 🔥 */}
           </div>
           
           <div className="comment-list" id="commentListContainer">
@@ -643,7 +626,7 @@ export default function CommentModalpost() {
                       <div className="replies-container">
                         <div className="reply-group">
                           <div className="thread-line" style={{ height: 'calc(100% - 10px)', top: '10px' }}></div>
-                          <div className="comment-item reply">
+                          <div className="comment-item-wrap reply">
                             <span className="reply-curve" style={{ top: '15px' }}></span>
                             {renderComment(firstCreatorReply, true)}
                           </div>
@@ -662,7 +645,7 @@ export default function CommentModalpost() {
                           <div className="reply-group">
                             <div className="thread-line"></div>
                             {remainingChilds.map(c => (
-                              <div className="comment-item reply" key={c.id}>
+                              <div className="comment-item-wrap reply" key={c.id}>
                                 <span className="reply-curve"></span>
                                 {renderComment(c, true)}
                               </div>
@@ -677,8 +660,7 @@ export default function CommentModalpost() {
             )}
           </div>
 
-          <div className="comment-input-wrap" style={{ position: 'relative' }}>
-            
+          <div className="comment-input-wrap">
             {showMentions && (
               <div className="mention-popup">
                 {mentionResults.length > 0 ? (

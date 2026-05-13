@@ -2,14 +2,15 @@
 
 .gift-sheet {
   position: fixed; inset: 0; z-index: 100000;
-  display: flex; align-items: flex-end; /* 🔥 Fix: Jangan pake display: none kalau pake Framer Motion */
-  pointer-events: none; /* Biar kalau gak aktif gak nutupin klik */
+  display: flex; align-items: flex-end; 
+  pointer-events: none; 
 }
 .gift-sheet.active { pointer-events: auto; }
 
 .gift-sheet-overlay {
-  position: absolute; inset: 0; background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(2px); cursor: pointer;
+  position: absolute; inset: 0; 
+  background: rgba(0,0,0,0.85); /* 🔥 FIX 5: Nggak ada blur sama sekali, cuma gelap */
+  cursor: pointer;
 }
 
 .gift-sheet-content {
@@ -18,7 +19,7 @@
   padding: 15px 20px 30px; 
   box-shadow: 0 -10px 40px rgba(0,0,0,0.4); 
   z-index: 100001;
-  overflow: visible; /* 🔥 FIX: Biar elemen yang keluar dari modal (kayak avatar) gak kepotong */
+  overflow: visible; 
 }
 
 .sheet-handle {
@@ -33,69 +34,8 @@
 .gift-close-x { font-size: 24px; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
 .gift-close-x:hover { color: #ff4757; }
 
-/* 🔥 GRID KADO (Bisa Scroll, 4 Kolom) 🔥 */
-.gift-grid {
-  display: grid; 
-  grid-template-columns: repeat(4, 1fr); 
-  gap: 12px;
-  max-height: 280px; 
-  overflow-y: auto; 
-  /* 🔥 FIX UTAMA: Kasih padding atas-bawah yang gede biar pas kado ngambang 3D gak nabrak batas overflow */
-  padding-top: 15px;
-  padding-bottom: 25px; 
-  padding-left: 5px; /* Jaga-jaga glow pinggir gak kepotong */
-  padding-right: 5px;
-  scrollbar-width: none; /* Firefox */
-}
-.gift-grid::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-
-/* 🔥 ITEM KADO 3D 🔥 */
-.gift-item {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 12px 5px; border-radius: 16px; 
-  border: 2px solid transparent;
-  background: var(--bg-input, rgba(255, 255, 255, 0.03)); 
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  position: relative; /* Penting biar z-index anaknya jalan */
-}
-
-/* EFEK KETIKA DIPILIH (GLOW BIRU) */
-.gift-item.selected-gift {
-  background: rgba(31, 60, 255, 0.1); 
-  border-color: #1f3cff;
-  transform: translateY(-4px); 
-  box-shadow: 0 10px 25px rgba(31, 60, 255, 0.2);
-  z-index: 10; /* 🔥 FIX: Biar kado yang dipilih ada di lapisan paling atas, gak ketindih sebelahnya */
-}
-.gift-item:active { transform: scale(0.92); }
-
-/* GAMBAR KADO DENGAN SHADOW 3D */
-.gift-img-container { width: 50px; height: 50px; margin-bottom: 8px; position: relative; }
-.img-gift { 
-  width: 100%; height: 100%; object-fit: contain; 
-  filter: drop-shadow(0 6px 6px rgba(0,0,0,0.3));
-  transition: transform 0.3s ease, filter 0.3s ease;
-}
-
-/* ANIMASI MELAYANG SAAT DIPILIH */
-.gift-item.selected-gift .img-gift { 
-  animation: float3D 2s ease-in-out infinite; 
-  filter: drop-shadow(0 12px 10px rgba(0,0,0,0.5));
-}
-
-@keyframes float3D { 
-  0%, 100% { transform: translateY(0) scale(1.1); } /* Tambah scale dikit biar makin pop-out */
-  50% { transform: translateY(-8px) scale(1.1); } 
-}
-
-/* TEXT KADO */
-.gift-name { font-size: 10px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
-.gift-price { font-size: 11px; color: #f59e0b; display: flex; align-items: center; gap: 2px; font-weight: 800; margin-top: 4px; }
-.img-coin-inline { width: 12px; height: 12px; }
-
-/* 🔥 FOOTER & TOMBOL KIRIM 🔥 */
+/* Grid dihapus, karena sekarang kita pakai wrapper X-scroll 3 kolom di tsx */
+/* Style footer */
 .gift-footer {
   margin-top: 5px; display: flex; justify-content: space-between; align-items: center;
   padding-top: 15px; border-top: 1px solid var(--border-card);

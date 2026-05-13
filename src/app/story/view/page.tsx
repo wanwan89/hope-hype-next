@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+// 🔥 FIX 1: Ganti useParams jadi useSearchParams 🔥
+import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils'; 
 import './Story.css';
@@ -22,10 +23,11 @@ interface Story {
 }
 
 export default function StoryViewerPage() {
-  const params = useParams();
+  // 🔥 FIX 2: Tangkap ID dari URL query string (?id=...) 🔥
+  const searchParams = useSearchParams();
   const router = useRouter();
   
-  const storyId = params?.id as string;
+  const storyId = searchParams?.get('id') as string;
 
   const [allUserStories, setAllUserStories] = useState<Story[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -50,6 +52,7 @@ export default function StoryViewerPage() {
   const STORY_DURATION = 7000;
 
   useEffect(() => {
+    // Kalau storyId ada, baru jalanin fetch datanya
     if (storyId) initMultiStory();
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [storyId]);
@@ -125,7 +128,6 @@ export default function StoryViewerPage() {
     const currentStory = allUserStories[currentIndex];
     if (currentStory && currentStory.creator_id !== currentUserId) return;
 
-    // 🔥 FIX QUERY: Ambil data profile melalui user_id
     const { data, error } = await supabase
       .from('story_views')
       .select('id, user_id, profiles:user_id(id, username, avatar_url)') 
@@ -133,7 +135,6 @@ export default function StoryViewerPage() {
       .order('created_at', { ascending: false });
 
     if (data && !error) {
-      // Ekstrak data profil dari hasil join
       const uniqueViewers = data.map((d: any) => d.profiles).filter(Boolean);
       setViewers(uniqueViewers);
     } else {
@@ -343,7 +344,6 @@ export default function StoryViewerPage() {
               <span className="material-icons" style={{ fontSize: '26px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>more_vert</span>
             </button>
           )}
-          {/* 🔥 TOMBOL X DIHAPUS DI SINI 🔥 */}
         </div>
       </div>
 
@@ -389,7 +389,6 @@ export default function StoryViewerPage() {
                 </button>
               </form>
             ) : (
-              // 🔥 FIX: TOMBOL TAYANGAN MINIMALIS 🔥
               <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsViewersModalOpen(true); }}

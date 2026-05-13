@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Gallery.css';
 
+// Kompres Gambar Cloudinary
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -30,11 +31,11 @@ export default function Gallerypost() {
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
-  const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
+  const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   
+  const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const observerTarget = useRef<HTMLDivElement | null>(null);
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({}); 
@@ -45,35 +46,24 @@ export default function Gallerypost() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const POSTS_PER_PAGE = 15;
 
+  // 🔥 STATE & REF UNTUK MUTE/UNMUTE GLOBAL 🔥
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
-
-  // 🔥 3. AUTO LOAD MORE (INFINITE SCROLL) 🔥
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
-          handleLoadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, isLoading, page, currentCategory]);
 
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
       const postId = String(e.detail.postId);
       if (postId) {
         setCounts(prev => ({
-          ...prev, [postId]: { ...prev[postId], comments: (prev[postId]?.comments || 0) + 1 }
+          ...prev,
+          [postId]: { 
+            ...prev[postId], 
+            comments: (prev[postId]?.comments || 0) + 1 
+          }
         }));
       }
     };
+
     window.addEventListener('commentAdded', handleCommentRefresh);
     return () => window.removeEventListener('commentAdded', handleCommentRefresh);
   }, []);
@@ -91,6 +81,19 @@ export default function Gallerypost() {
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, [currentUser]);
 
+  useEffect(() => {
+    const hash = window.location.hash; 
+    if (hash && posts.length > 0 && !isLoading) {
+      const timer = setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 800); 
+      return () => clearTimeout(timer);
+    }
+  }, [posts, isLoading]);
+
   const initGallery = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user || null;
@@ -98,8 +101,11 @@ export default function Gallerypost() {
 
     if (user) {
       const { data: follows } = await supabase.from('followers').select('following_id').eq('follower_id', user.id);
-      if (follows) setFollowedUsers(new Set(follows.map(f => String(f.following_id))));
+      if (follows) {
+        setFollowedUsers(new Set(follows.map(f => String(f.following_id))));
+      }
     }
+
     await fetchPosts("all", user, 1, false);
   };
 
@@ -117,12 +123,15 @@ export default function Gallerypost() {
         .order("created_at", { ascending: false })
         .range(from, to); 
 
-      if (category && category !== "all") query = query.ilike("category", `%${category.trim()}%`);
+      if (category && category !== "all") {
+        query = query.ilike("category", `%${category.trim()}%`);
+      }
 
       const { data: rawPosts, error } = await query;
       if (error) throw error;
 
       let fetchedPosts = rawPosts || [];
+      
       setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
 
       if (category === "all" && !isLoadMore) fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
@@ -147,29 +156,30 @@ export default function Gallerypost() {
         setCounts(prev => isLoadMore ? { ...prev, ...newCounts } : newCounts);
 
         if (userObj) {
-          const [myLikes, myReposts, mySaves] = await Promise.all([
-            supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
-            supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
-            supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds)
-          ]);
+          const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
+          const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
+          const { data: mySaves } = await supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           
-          setMyLikedPosts(prev => isLoadMore ? new Set([...prev, ...(myLikes.data?.map(l => String(l.post_id)) || [])]) : new Set(myLikes.data?.map(l => String(l.post_id))));
-          setMyRepostedPosts(prev => isLoadMore ? new Set([...prev, ...(myReposts.data?.map(r => String(r.post_id)) || [])]) : new Set(myReposts.data?.map(r => String(r.post_id))));
-          setMySavedPosts(prev => isLoadMore ? new Set([...prev, ...(mySaves.data?.map(s => String(s.post_id)) || [])]) : new Set(mySaves.data?.map(s => String(s.post_id))));
+          setMyLikedPosts(prev => isLoadMore ? new Set([...prev, ...(myLikes?.map(l => String(l.post_id)) || [])]) : new Set(myLikes?.map(l => String(l.post_id))));
+          setMyRepostedPosts(prev => isLoadMore ? new Set([...prev, ...(myReposts?.map(r => String(r.post_id)) || [])]) : new Set(myReposts?.map(r => String(r.post_id))));
+          setMySavedPosts(prev => isLoadMore ? new Set([...prev, ...(mySaves?.map(s => String(s.post_id)) || [])]) : new Set(mySaves?.map(s => String(s.post_id))));
         }
       }
 
-      setPosts(prev => isLoadMore ? [...prev, ...fetchedPosts] : fetchedPosts);
+      if (isLoadMore) setPosts(prev => [...prev, ...fetchedPosts]);
+      else setPosts(fetchedPosts);
+
       setTimeout(initAutoPlayObserver, 500);
 
-    } catch (err) { console.error(err); } 
-    finally { setIsLoading(false); setIsLoadingMore(false); }
+    } catch (err) { console.error(err); } finally { setIsLoading(false); setIsLoadingMore(false); }
   };
 
   const handleLoadMore = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchPosts(currentCategory, currentUser, nextPage, true);
+    if (!isLoadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPosts(currentCategory, currentUser, nextPage, true);
+    }
   };
 
   const handleFollowToggle = async (e: any, creatorId: string) => {
@@ -178,6 +188,15 @@ export default function Gallerypost() {
     if (currentUser.id === creatorId) return; 
 
     const isFollowing = followedUsers.has(creatorId);
+
+    setAnimatingFollows(prev => new Set(prev).add(creatorId));
+    setTimeout(() => {
+      setAnimatingFollows(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(creatorId);
+        return newSet;
+      });
+    }, 200);
 
     setFollowedUsers(prev => {
       const newSet = new Set(prev);
@@ -190,18 +209,25 @@ export default function Gallerypost() {
         await supabase.from("followers").delete().match({ follower_id: currentUser.id, following_id: creatorId });
       } else {
         await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
+        
         const { data: myProf } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
         await supabase.from("notifications").insert({
-          user_id: creatorId, actor_id: currentUser.id, type: "follow",
+          user_id: creatorId,
+          actor_id: currentUser.id,
+          type: "follow",
           message: `<b>${myProf?.username}</b> mulai mengikuti Anda.`
         });
       }
-    } catch (err) { showNotif("Gagal mengikuti pengguna", "error"); }
+    } catch (err) {
+      console.error("Follow error", err);
+      showNotif("Gagal mengikuti pengguna", "error");
+    }
   };
 
   const handleLike = async (postId: string, creatorId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isLiked = myLikedPosts.has(postId);
+    const numericPostId = parseInt(postId);
     
     setMyLikedPosts(prev => {
       const newSet = new Set(prev);
@@ -209,16 +235,20 @@ export default function Gallerypost() {
       return newSet;
     });
 
-    setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
+    setCounts(prev => ({
+      ...prev,
+      [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) }
+    }));
 
     try {
-      if (isLiked) await supabase.from("likes").delete().match({ post_id: parseInt(postId), user_id: currentUser.id });
-      else {
-        await supabase.from("likes").insert({ post_id: parseInt(postId), user_id: currentUser.id });
+      if (isLiked) {
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      } else {
+        await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
         if (creatorId !== currentUser.id) {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", currentUser.id).single();
           await supabase.from("notifications").insert({
-            user_id: creatorId, actor_id: currentUser.id, post_id: parseInt(postId), type: "like",
+            user_id: creatorId, actor_id: currentUser.id, post_id: numericPostId, type: "like",
             message: t('notif_commented', { username: prof?.username }) 
           });
         }
@@ -229,9 +259,14 @@ export default function Gallerypost() {
   const handleRepost = async (postId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isReposted = myRepostedPosts.has(postId);
+    const numericPostId = parseInt(postId);
 
     setAnimatingReposts(prev => new Set(prev).add(postId));
-    setTimeout(() => setAnimatingReposts(prev => { const newSet = new Set(prev); newSet.delete(postId); return newSet; }), 500);
+    setTimeout(() => setAnimatingReposts(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(postId);
+      return newSet;
+    }), 500);
 
     setMyRepostedPosts(prev => {
       const newSet = new Set(prev);
@@ -239,17 +274,21 @@ export default function Gallerypost() {
       return newSet;
     });
 
-    setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isReposted ? -1 : 1)) } }));
+    setCounts(prev => ({
+      ...prev,
+      [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isReposted ? -1 : 1)) }
+    }));
 
     try {
-      if (isReposted) await supabase.from("reposts").delete().match({ post_id: parseInt(postId), user_id: currentUser.id });
-      else await supabase.from("reposts").insert({ post_id: parseInt(postId), user_id: currentUser.id });
+      if (isReposted) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      else await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
     } catch (err) { console.error(err); }
   };
 
   const handleSave = async (postId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isSaved = mySavedPosts.has(postId);
+    const numericPostId = parseInt(postId);
 
     setMySavedPosts(prev => {
       const newSet = new Set(prev);
@@ -257,28 +296,39 @@ export default function Gallerypost() {
       return newSet;
     });
 
-    setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+    setCounts(prev => ({
+      ...prev,
+      [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) }
+    }));
 
     try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: parseInt(postId), user_id: currentUser.id });
-      else await supabase.from("bookmarks").insert({ post_id: parseInt(postId), user_id: currentUser.id });
+      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
     } catch (err) { console.error(err); }
   };
 
   const handleImageDoubleTap = (e: any, imageUrl: string, postId: string) => {
     const now = Date.now();
-    if (now - (lastTapRef.current[postId] || 0) < 400) {
+    const lastTapTime = lastTapRef.current[postId] || 0;
+    if (now - lastTapTime < 400) {
       setActivePreviewImage(imageUrl);
       lastTapRef.current[postId] = 0;
-    } else lastTapRef.current[postId] = now;
+    } else {
+      lastTapRef.current[postId] = now;
+    }
   };
 
+  // 🔥 FUNGSI ON/OFF SUARA GLOBAL 🔥
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     const nextMuted = !isGloballyMuted;
     setIsGloballyMuted(nextMuted);
     isMutedRef.current = nextMuted;
-    document.querySelectorAll('.post-audio-element, .post-video-element').forEach((el: any) => { el.muted = nextMuted; });
+
+    // Terapkan ke semua elemen audio & video yang lagi jalan
+    document.querySelectorAll('.post-audio-element, .post-video-element').forEach((el: any) => {
+      el.muted = nextMuted;
+    });
   };
 
   const initAutoPlayObserver = () => {
@@ -291,15 +341,23 @@ export default function Gallerypost() {
 
         if (entry.isIntersecting) {
           if (audio) {
-            document.querySelectorAll('.post-audio-element').forEach(el => { if (el !== audio) (el as HTMLAudioElement).pause(); });
-            audio.currentTime = 0; audio.volume = 1.0; audio.muted = isMutedRef.current;
+            document.querySelectorAll('.post-audio-element').forEach(el => { 
+              if (el !== audio) { (el as HTMLAudioElement).pause(); }
+            });
+            audio.currentTime = 0;
+            audio.volume = 1.0;
+            audio.muted = isMutedRef.current; 
             audio.play().catch(() => {});
           }
+
           if (video) {
-            document.querySelectorAll('.post-video-element').forEach(el => { if (el !== video) (el as HTMLVideoElement).pause(); });
-            video.muted = isMutedRef.current;
+            document.querySelectorAll('.post-video-element').forEach(el => { 
+              if (el !== video) { (el as HTMLVideoElement).pause(); }
+            });
+            video.muted = isMutedRef.current; 
             video.play().catch(() => {});
           }
+
         } else {
           if (audio) audio.pause();
           if (video) video.pause();
@@ -330,27 +388,42 @@ export default function Gallerypost() {
           zIndex: 5, 
           background: isOverlay ? 'rgba(0,0,0,0.5)' : 'var(--bg-secondary)',
           backdropFilter: isOverlay ? 'blur(8px)' : 'none',
-          borderRadius: '16px', padding: '4px 8px',
-          display: 'flex', alignItems: 'center', gap: '4px',
+          borderRadius: '16px',
+          padding: '4px 8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
           overflow: 'hidden',
           border: isOverlay ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-card)'
         }}
       >
         <span className="material-icons" style={{ fontSize: '12px', color: isOverlay ? '#fff' : 'var(--text-main)' }}>music_note</span>
         <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', width: '100%', position: 'relative' }}>
-          <div className="marquee-text" style={{ display: 'inline-block', color: isOverlay ? '#fff' : 'var(--text-main)', fontSize: '10px', fontWeight: 'bold', animation: 'marqueeMusic 6s linear infinite', paddingLeft: '100%' }}>
+          <div 
+            className="marquee-text"
+            style={{
+              display: 'inline-block',
+              color: isOverlay ? '#fff' : 'var(--text-main)',
+              fontSize: '10px', 
+              fontWeight: 'bold',
+              animation: 'marqueeMusic 6s linear infinite', 
+              paddingLeft: '100%' 
+            }}
+          >
             {post.title || t('untitled')} — {post.artist || t('unknown_artist')}
           </div>
         </div>
-        <audio className="post-audio-element" loop preload="none" playsInline style={{ display: 'none' }}><source src={finalAudio} type="audio/mpeg" /></audio>
+        <audio className="post-audio-element" loop preload="none" playsInline style={{ display: 'none' }}>
+          <source src={finalAudio} type="audio/mpeg" />
+        </audio>
       </div>
     );
   };
 
-  // 🔥 5. FOLLOW BUTTON MOTION CEKLIS 🔥
   const renderFollowButton = (creatorId: string) => {
     if (!currentUser || currentUser.id === creatorId) return null; 
     const isFollowing = followedUsers.has(creatorId);
+    const isAnimating = animatingFollows.has(creatorId);
 
     return (
       <motion.button
@@ -360,8 +433,15 @@ export default function Gallerypost() {
           background: isFollowing ? 'var(--bg-secondary)' : '#1f3cff',
           color: isFollowing ? 'var(--text-main)' : '#ffffff',
           border: isFollowing ? '1px solid var(--border-card)' : 'none',
-          padding: '4px 12px', borderRadius: '16px', fontSize: '11px', fontWeight: 700, marginLeft: '6px',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+          padding: '4px 12px',
+          borderRadius: '16px',
+          fontSize: '11px',
+          fontWeight: 700,
+          marginLeft: '6px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
         }}
       >
         {isFollowing && (
@@ -374,21 +454,108 @@ export default function Gallerypost() {
             check_circle
           </motion.span>
         )}
-        {isFollowing ? 'Mengikuti' : 'Ikuti'}
+        {isFollowing ? t('following', 'Mengikuti') : t('follow', 'Ikuti')}
       </motion.button>
     );
   };
 
-  // 🔥 6. HASHTAG ABU-ABU & TIPIS 🔥
+  const renderEngagementButtons = (post: any, postIdStr: string) => (
+    <div className="engagement-group">
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
+        className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} 
+        onClick={() => handleSave(postIdStr)} 
+      >
+        <motion.svg 
+          viewBox="0 0 24 24" 
+          className="icon" 
+          fill="currentColor"
+          style={{ color: mySavedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} 
+          initial={false}
+          animate={mySavedPosts.has(postIdStr) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
+        </motion.svg>
+        <span className="save-count" style={{ color: 'var(--text-main)' }}>
+          {counts[postIdStr]?.saves || 0}
+        </span>
+      </motion.button>
+
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
+        className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''}`} 
+        onClick={() => handleRepost(postIdStr)}
+      >
+        <motion.svg 
+          viewBox="0 0 24 24" 
+          className="icon" 
+          fill="currentColor"
+          style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }}
+          animate={animatingReposts.has(postIdStr) ? { rotate: 360 } : { rotate: 0 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        >
+          <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
+        </motion.svg>
+        <span className="repost-count" style={{ color: 'var(--text-main)' }}>{counts[postIdStr]?.reposts || 0}</span>
+      </motion.button>
+
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
+        className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} 
+        onClick={() => handleLike(postIdStr, post.creator_id)}
+      >
+        <motion.svg 
+          viewBox="0 0 24 24" 
+          className="icon heart" 
+          fill="currentColor"
+          initial={false}
+          animate={myLikedPosts.has(postIdStr) ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
+        </motion.svg>
+        <span className="like-count">{counts[postIdStr]?.likes || 0}</span>
+      </motion.button>
+      
+      <motion.button 
+        whileTap={{ scale: 0.8 }}
+        className="icon-btn comment-toggle" 
+        data-post={post.id} 
+        data-creator={post.creator_id}
+      >
+        <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+        <span className="comment-count">{counts[postIdStr]?.comments || 0}</span>
+      </motion.button>
+    </div>
+  );
+
+  const handleMentionClick = async (e: React.MouseEvent, username: string) => {
+    e.stopPropagation(); 
+    try {
+      const { data } = await supabase.from('profiles').select('id').eq('username', username).single();
+      if (data && data.id) { router.push(`/data?id=${data.id}`); } 
+      else { showNotif(`User @${username} tidak ditemukan`, "warning"); }
+    } catch (err) { console.error(err); }
+  };
+
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(@\w+|#\w+)/g); 
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
         const usernameOnly = part.substring(1); 
-        return <span key={i} onClick={(e) => handleMentionClick(e, usernameOnly)} style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}>{part}</span>;
+        return (
+          <span key={i} onClick={(e) => handleMentionClick(e, usernameOnly)} style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}>
+            {part}
+          </span>
+        );
       } else if (part.startsWith('#')) {
-        return <span key={i} style={{ color: 'var(--text-muted, #8696a0)', fontWeight: 400 }}>{part}</span>;
+        return (
+          <span key={i} style={{ color: 'var(--text-muted, #8696a0)', fontWeight: 400 }}>
+            {part}
+          </span>
+        );
       }
       return <span key={i}>{part}</span>;
     });
@@ -396,6 +563,13 @@ export default function Gallerypost() {
 
   return (
     <section>
+      <style>{`
+        @keyframes marqueeMusic {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
+
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
           {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
@@ -414,10 +588,12 @@ export default function Gallerypost() {
           posts.map(post => {
             const badge = getUserBadge(post.profiles?.role);
             const avatarUrl = post.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + post.profiles?.username;
+            
             let optimizedAvatar = avatarUrl;
             if (optimizedAvatar && optimizedAvatar.includes('res.cloudinary.com') && !optimizedAvatar.includes('f_auto')) {
               optimizedAvatar = optimizedAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
             }
+
             const formattedDate = new Date(post.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short" });
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
@@ -445,10 +621,35 @@ export default function Gallerypost() {
                         )}
                       </div>
 
-                      {/* 🔥 2. TOMBOL SUARA Z-INDEX AMAN 🔥 */}
+                      {/* 🔥 TOMBOL MUTE / UNMUTE 🔥 */}
                       {(post.audio_src || isVideoPost) && (
-                        <button onClick={toggleMute} style={{ position: 'absolute', bottom: '15px', left: '15px', zIndex: 5, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                          <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
+                        <button
+                          onClick={toggleMute}
+                          style={{
+                            position: 'absolute',
+                            bottom: '12px',
+                            left: '12px',
+                            zIndex: 10,
+                            background: 'rgba(0,0,0,0.6)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'white',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <span className="material-icons" style={{ fontSize: '18px' }}>
+                            {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                          </span>
                         </button>
                       )}
 
@@ -457,26 +658,40 @@ export default function Gallerypost() {
                           const index = Math.round(target.scrollLeft / target.offsetWidth);
                           const dots = document.querySelectorAll(`.dots-${post.id} .dot`);
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
+                          
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
-                        {/* 🔥 4. FIX FOTO KEPOTONG (objectFit: contain & ratio 4/5) 🔥 */}
+                        {/* 🔥 FIX 1: RASIO VIDEO 2/3 🔥 */}
                         {isVideoPost ? (
-                          <div className="carousel-item" style={{ aspectRatio: '4 / 5', overflow: 'hidden', position: 'relative', background: '#000' }}>
-                            <video src={post.video_url} className="post-video-element" poster={getOptimizedImage(post.image_url)} playsInline loop muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          <div className="carousel-item" style={{ aspectRatio: '2 / 3', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                            <video 
+                              src={post.video_url} 
+                              className="post-video-element"
+                              poster={getOptimizedImage(post.image_url)}
+                              playsInline loop muted
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            />
                           </div>
                         ) : (
                           photoList.map((url: string, i: number) => (
-                            <div key={i} className="carousel-item" style={{ aspectRatio: '4 / 5', overflow: 'hidden', position: 'relative', background: '#000' }}>
-                              <img src={getOptimizedImage(url)} className="active" loading={i === 0 ? "eager" : "lazy"} alt={`Postingan Galeri ${i + 1}`} onClick={(e) => handleImageDoubleTap(e, getOptimizedImage(url), postIdStr)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            /* 🔥 FIX 1: RASIO GAMBAR 3/4 🔥 */
+                            <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                              <img 
+                                src={getOptimizedImage(url)} 
+                                className="active" 
+                                loading={i === 0 ? "eager" : "lazy"} 
+                                alt={`Postingan Galeri ${i + 1}`} 
+                                onClick={(e) => handleImageDoubleTap(e, getOptimizedImage(url), postIdStr)} 
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
                             </div>
                           ))
                         )}
                       </div>
 
-                      {/* 🔥 1. & 2. Z-INDEX DOT SLIDER 🔥 */}
                       {photoList.length > 1 && !isVideoPost && (
-                        <div className={`carousel-dots dots-${post.id}`}>
+                        <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 10, position: 'relative' }}>
                           {photoList.map((_: any, i: number) => (
                             <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
                           ))}
@@ -492,7 +707,11 @@ export default function Gallerypost() {
                           </h2>
                           {renderFollowButton(post.creator_id)}
                         </div>
-                        <button className="options-btn" onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}>
+                        <button 
+                          className="options-btn" 
+                          aria-label="Opsi Postingan" 
+                          onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}
+                        >
                           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
                       </div>
@@ -504,33 +723,7 @@ export default function Gallerypost() {
                       <div className="post-date-wrapper">{t('uploaded_on')} {formattedDate}</div>
                       <div className="actions">
                         <a href={`/data?id=${post.creator_id}`} className="primary">{t('view_detail')}</a>
-                        <div className="engagement-group">
-                          <motion.button whileTap={{ scale: 0.8 }} className={`icon-btn save-btn ${mySavedPosts.has(postIdStr) ? 'active' : ''}`} onClick={() => handleSave(postIdStr)}>
-                            <motion.svg viewBox="0 0 24 24" className="icon" fill="currentColor" style={{ color: mySavedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} initial={false} animate={mySavedPosts.has(postIdStr) ? { scale: [1, 1.3, 1] } : { scale: 1 }} transition={{ duration: 0.3 }}>
-                              {mySavedPosts.has(postIdStr) ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" /> : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
-                            </motion.svg>
-                            <span className="save-count">{counts[postIdStr]?.saves || 0}</span>
-                          </motion.button>
-                          
-                          <motion.button whileTap={{ scale: 0.8 }} className={`icon-btn repost-btn ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''}`} onClick={() => handleRepost(postIdStr)}>
-                            <motion.svg viewBox="0 0 24 24" className="icon" fill="currentColor" style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit" }} animate={animatingReposts.has(postIdStr) ? { rotate: 360 } : { rotate: 0 }} transition={{ duration: 0.5, ease: "easeInOut" }}>
-                              <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
-                            </motion.svg>
-                            <span className="repost-count">{counts[postIdStr]?.reposts || 0}</span>
-                          </motion.button>
-
-                          <motion.button whileTap={{ scale: 0.8 }} className={`icon-btn like-btn ${myLikedPosts.has(postIdStr) ? 'liked' : ''}`} onClick={() => handleLike(postIdStr, post.creator_id)}>
-                            <motion.svg viewBox="0 0 24 24" className="icon heart" fill="currentColor" initial={false} animate={myLikedPosts.has(postIdStr) ? { scale: [1, 1.4, 1] } : { scale: 1 }} transition={{ duration: 0.3 }}>
-                              <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
-                            </motion.svg>
-                            <span className="like-count">{counts[postIdStr]?.likes || 0}</span>
-                          </motion.button>
-                          
-                          <motion.button whileTap={{ scale: 0.8 }} className="icon-btn comment-toggle" data-post={post.id} data-creator={post.creator_id}>
-                            <svg viewBox="0 0 24 24" className="icon" fill="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
-                            <span className="comment-count">{counts[postIdStr]?.comments || 0}</span>
-                          </motion.button>
-                        </div>
+                        {renderEngagementButtons(post, postIdStr)}
                       </div>
                     </div>
                   </>
@@ -547,9 +740,49 @@ export default function Gallerypost() {
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
                         </div>
                       </div>
+                      <button aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); (window as any).openPostOptions?.(post.id, isOwner, post.creator_id); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                      </button>
                     </div>
+
                     <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px', wordBreak: 'break-word' }}>
                       {renderBioWithMentions(post.bio?.trim())}
+                    </div>
+                    
+                    {/* 🔥 FIX 2: MUSIK UNTUK POSTINGAN TEKS 🔥 */}
+                    {post.audio_src && (
+                      <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {getMusicHtml(post, false)}
+                        <button
+                          onClick={toggleMute}
+                          style={{
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-card)',
+                            color: 'var(--text-main)',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s',
+                            zIndex: 10
+                          }}
+                          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <span className="material-icons" style={{ fontSize: '18px' }}>
+                            {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* 🔥 FIX 2: ENGAGEMENT BUTTONS UNTUK POSTINGAN TEKS 🔥 */}
+                    <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
+                      <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_detail')}</a>
+                      {renderEngagementButtons(post, postIdStr)}
                     </div>
                   </>
                 )}
@@ -558,11 +791,14 @@ export default function Gallerypost() {
           })
         )}
 
-        {/* 🔥 3. EFEK LOADING INFINITE SCROLL 🔥 */}
         {posts.length > 0 && hasMore && (
           <div ref={observerTarget} style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
             {isLoadingMore ? (
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} style={{ width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%' }} />
+              <motion.div 
+                animate={{ rotate: 360 }} 
+                transition={{ repeat: Infinity, duration: 1, ease: "linear" }} 
+                style={{ width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%' }} 
+              />
             ) : (
               <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
             )}
