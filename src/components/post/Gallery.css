@@ -1,5 +1,3 @@
-/* src/components/post/Gallery.css */
-
 .gallery { 
   width: 100%;
   max-width: 480px; 
@@ -31,7 +29,6 @@
   width: 100%; 
   background: #1a1a1a;
   overflow: hidden;
-  min-height: 300px;
   display: flex;
   align-items: center;
 }
@@ -52,26 +49,28 @@
 
 .carousel-item img {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain; /* 🔥 FIX FOTO GAK KEPOTONG 🔥 */
 }
 
+/* 🔥 FIX Z-INDEX DOTS 🔥 */
 .carousel-dots {
   position: absolute;
-  bottom: 12px;
+  bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
-  z-index: 10; /* 🔥 FIX Z-INDEX: Aman di bawah Search Bar 🔥 */
+  z-index: 5; 
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)); /* Biar kelihatan jelas di foto putih */
 }
 
 .dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
-  transition: all 0.3s ease; /* Transisi smooth buat perpindahan dot */
+  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease; 
 }
 
 .dot.active {
@@ -80,7 +79,6 @@
   border-radius: 10px;
 }
 
-/* 🔥 WATERMARK (Kiri Bawah) */
 .watermark-overlay { 
   position: absolute; 
   bottom: 15px; 
@@ -96,7 +94,6 @@
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* 🔥 MUSIK MARQUEE */
 .music-marquee-container {
   position: absolute;
   top: 12px;
@@ -106,7 +103,7 @@
   color: white;
   border-radius: 20px;
   padding: 6px 12px;
-  z-index: 10; /* 🔥 FIX Z-INDEX: Sama kayak dot & speaker 🔥 */
+  z-index: 5; /* 🔥 AMAN DI BAWAH SEARCH BAR 🔥 */
   max-width: 130px; 
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -199,24 +196,17 @@
   border-radius: 50%;
 }
 
-/* Base icon styling */
-.icon { 
-  width: 22px; 
-  height: 22px; 
-  fill: var(--text-main); 
-  transition: fill 0.2s ease; 
-}
-
-/* Hover/Active states (Opsional jika ingin warna statis CSS sbg fallback) */
+.icon { width: 22px; height: 22px; fill: var(--text-main); transition: fill 0.2s ease, transform 0.2s ease; }
 .icon-btn.liked .icon { fill: #ff2e63; }
 .icon-btn.reposted .icon { fill: #1f3cff; } 
 .icon-btn.active .icon { fill: #1f3cff; } 
 
-/* ✨ ANGKA ENGAGEMENT */
 .save-count, .repost-count, .like-count, .comment-count {
   color: var(--text-main);
-  font-size: 13px;
-  font-weight: 500;
+}
+
+.icon-btn svg {
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
 /* ========================================== */
@@ -228,10 +218,7 @@
 .gallery-skeleton-shimmer { position: absolute; inset: 0; transform: translateX(-100%); background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 20%, rgba(255, 255, 255, 0.08) 60%, transparent 100%); animation: gallery-shimmer 1.5s infinite; z-index: 2; }
 @keyframes gallery-shimmer { 100% { transform: translateX(100%); } }
 
-/* ========================================== */
-/* PREVIEW MODAL                              */
-/* ========================================== */
-.image-preview-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.image-preview-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .image-preview-overlay.active { opacity: 1; pointer-events: auto; }
 .image-preview-content img { max-width: 95vw; max-height: 85vh; border-radius: 12px; transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .image-preview-overlay.active .image-preview-content img { transform: scale(1); }

@@ -1,11 +1,11 @@
 /* --- CONTAINER UTAMA (HEADER) --- */
 .header-sticky-wrapper {
   position: relative; 
-  z-index: 100; /* Jangan terlalu over (999999) biar ga nabrak modal/popup di masa depan */
+  z-index: 100; 
   background-color: var(--bg-main, #ffffff);
   width: 100%;
   border-bottom: none; 
-  padding-top: 64px; /* Bantalan biar Story ga nyungsep di bawah Search Bar */
+  padding-top: 65px; /* Jarak aman biar search bar gak numpuk */
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -15,20 +15,16 @@
   display: flex;
   align-items: center; 
   gap: 15px; 
-  
-  /* 🔥 FIX: Efek Kaca (Glassmorphism) biar elegan pas story di-scroll ke bawahnya */
-  background: rgba(255, 255, 255, 0.85); /* Kalau dark mode, pastikan var(--glass-bg) lu ada opasitasnya */
+  background: rgba(255, 255, 255, 0.85); 
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
-  
   position: fixed; 
   top: 0; 
   left: 50%;
   transform: translateX(-50%); 
   width: 100%;
   max-width: 600px; 
-  
-  z-index: 1000; /* Cukup 1000, di bawah z-index Modal/Sidebar */
+  z-index: 1000; 
   border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.05));
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
@@ -36,7 +32,7 @@
 /* Dark Mode Override untuk Search Bar */
 [data-theme='dark'] .search-wrapper,
 html.dark .search-wrapper {
-  background: rgba(21, 23, 26, 0.85); /* Warna gelap transparan */
+  background: rgba(21, 23, 26, 0.85); 
 }
 
 /* --- INPUT PENCARIAN --- */
@@ -94,7 +90,8 @@ html.dark .search-wrapper {
 .stories-container {
   display: flex;
   gap: 16px;
-  padding: 16px 16px 16px 16px;
+  /* Jarak mepet search bar */
+  padding: 8px 16px 16px 16px;
   overflow-x: auto; 
   background: var(--bg-main, #ffffff);
   scrollbar-width: none; 
@@ -115,17 +112,12 @@ html.dark .search-wrapper {
   flex-shrink: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.story-item:active {
-  transform: scale(0.92);
 }
 
 /* --- 🔥 ANIMASI CINCIN IG STORY 🔥 --- */
 .story-circle {
   position: relative;
-  width: 68px; /* Diperbesar dikit biar mirip IG asli */
+  width: 68px; 
   height: 68px;
   border-radius: 50%;
   display: flex;
@@ -133,7 +125,7 @@ html.dark .search-wrapper {
   justify-content: center;
 }
 
-/* Pseudo-element ini yang dikasih gradient warna IG */
+/* Pseudo-element gradient IG */
 .story-circle.unseen::before {
   content: '';
   position: absolute;
@@ -143,19 +135,9 @@ html.dark .search-wrapper {
   z-index: 0;
 }
 
-/* Kalau lagi diklik, background gradientnya muter */
+/* Pas diklik muter */
 .story-circle.animating::before {
   animation: spinIG 1s linear infinite;
-}
-
-/* Kalau udah dilihat (opsional: bisa lu tambahin class .seen di React lu nanti) */
-.story-circle.seen::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--border-color, #e4e6eb);
-  border-radius: 50%;
-  z-index: 0;
 }
 
 @keyframes spinIG {
@@ -171,7 +153,7 @@ html.dark .search-wrapper {
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-secondary);
-  border: 3px solid var(--bg-main, #ffffff); /* Jarak pemisah antara foto dan cincin warna */
+  border: 3px solid var(--bg-main, #ffffff); 
   transition: border-color 0.3s ease;
 }
 
