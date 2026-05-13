@@ -131,23 +131,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-wrapper">
+    <div className="auth-wrapper fade-in-scale">
       <div className="auth-container">
         
-        {/* Header Logo/Title */}
+        {/* Header Ala Sosmed Besar (Left Aligned) */}
         <div className="auth-header">
-          <div className="auth-logo-box">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="36" height="36">
-              <rect x="6" y="14" width="8" height="12" rx="4" fill="#3b82f6" />
-              <rect x="26" y="14" width="8" height="12" rx="4" fill="#1e3a8a" />
-              <path d="M10 20 H30" stroke="#3b82f6" strokeWidth="4" strokeLinecap="round" />
+          <div className="auth-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="45" height="45">
+              <rect x="6" y="14" width="8" height="12" rx="4" fill="var(--primary)" />
+              <rect x="26" y="14" width="8" height="12" rx="4" fill="var(--text-main)" />
+              <path d="M10 20 H30" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" />
             </svg>
           </div>
-          <h1>HypeTalk</h1>
-          <p id="subTitle">
+          <h1>{isSignUpMode ? 'Bergabung sekarang.' : 'Sedang terjadi.'}</h1>
+          <p>
             {isSignUpMode 
               ? t('signup_subtitle', 'Buat akun untuk membagikan karya Anda') 
-              : t('login_subtitle', 'Masuk untuk melanjutkan ke HypeTalk')}
+              : t('login_subtitle', 'Masuk ke HypeTalk hari ini.')}
           </p>
         </div>
 
@@ -165,7 +165,7 @@ export default function LoginPage() {
 
           {isSignUpMode && (
             <div className="input-group-auth slide-down">
-              <span className="material-icons">person_outline</span>
+              <span className="material-icons">alternate_email</span>
               <input 
                 type="text" 
                 placeholder="Username (tanpa spasi)" 
@@ -220,16 +220,10 @@ export default function LoginPage() {
                     checked={agreed} 
                     onChange={(e) => setAgreed(e.target.checked)} 
                   />
-                  Saya menyetujui syarat dan ketentuan yang berlaku.
+                  <span>Saya menyetujui syarat dan ketentuan yang berlaku.</span>
                 </label>
               </div>
             </div>
-          )}
-
-          {!isSignUpMode && (
-            <a href="#" className="forgot-link" onClick={handleForgotPassword}>
-              {t('forgot_password', 'Lupa kata sandi?')}
-            </a>
           )}
 
           {/* Submit Button */}
@@ -238,20 +232,26 @@ export default function LoginPage() {
               isSignUpMode ? t('signup_btn', 'Daftar Akun') : t('login_btn', 'Masuk')
             )}
           </button>
+
+          {!isSignUpMode && (
+            <button type="button" className="btn-forgot-pass" onClick={handleForgotPassword}>
+              {t('forgot_password', 'Lupa kata sandi?')}
+            </button>
+          )}
         </form>
 
         <div className="divider-auth">
-          <span>{t('or_divider', 'Atau masuk dengan')}</span>
+          <span>{t('or_divider', 'atau')}</span>
         </div>
 
         <button type="button" onClick={handleGoogleLogin} className="btn-google" disabled={isLoading}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22px" height="22px">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
             <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
           </svg>
-          Google
+          Masuk dengan Google
         </button>
 
         <p className="footer-auth">

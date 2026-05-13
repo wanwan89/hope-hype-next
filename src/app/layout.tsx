@@ -88,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FULL FIX) 🔥 ---
+  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FIX UNIMPLEMENTED) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -120,30 +120,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.warn("⚠️ User menolak izin Mic");
           }
 
-          // 🔥 DAFTARIN TOMBOL INTERAKTIF SEBELUM REGISTER 🔥
-          await PushNotifications.registerActionTypes({
-            types: [
-              {
-                id: 'chat_actions',
-                actions: [
-                  { 
-                    id: 'reply', 
-                    title: 'Balas Pesan', 
-                    input: true, 
-                    inputButtonTitle: 'Kirim', 
-                    inputPlaceholder: 'Ketik balasan...' 
-                  }
-                ]
-              },
-              {
-                id: 'call_actions',
-                actions: [
-                  { id: 'accept_call', title: '📞 Angkat', foreground: true },
-                  { id: 'reject', title: '❌ Tolak', foreground: false, destructive: true }
-                ]
-              }
-            ]
-          });
+          // 🔥 FIX: Blok registerActionTypes DIHAPUS biar nggak crash di Android 🔥
 
           if (permStatus.receive === 'granted') {
             await PushNotifications.register();
@@ -169,40 +146,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.error('❌ Error registrasi push notif:', error);
           });
 
-          // 🔥 LISTEN ACTION (TAP, BALAS & ANGKAT) 🔥
+          // 🔥 LISTEN ACTION (TAP NOTIFIKASI) 🔥
           PushNotifications.addListener('actionPerformed', async (action) => {
-            const { actionId, notification, inputValue } = action; 
+            const { actionId, notification } = action; 
             const { data } = notification;
 
-            // 🔥 FIX: LOGIKA TAP UNTUK LIKE & COMMENT 🔥
             // actionId 'tap' artinya user klik area notifikasi (bukan klik tombol)
-            if (actionId === 'tap' && (data?.type === 'like' || data?.type === 'comment')) {
-              if (data.postId) {
-                // Arahin langsung ke halaman detail post
-                router.push(`/post/${data.postId}`);
+            if (actionId === 'tap') {
+              if (data?.type === 'like' || data?.type === 'comment') {
+                if (data.postId) {
+                  router.push(`/post/${data.postId}`);
+                }
+              } else if (data?.type === 'chat' || data?.type === 'call') {
+                if (data.callerId) {
+                  router.push(`/hypetalk/room?from=${data.callerId}`);
+                }
               }
-              return; // Stop eksekusi di sini biar nggak nabrak bawahnya
-            }
-
-            if (actionId === 'reply' && inputValue) {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session?.user?.id && data?.roomId) {
-                await supabase.from('messages').insert([{
-                  room_id: data.roomId,
-                  user_id: session.user.id,
-                  message: inputValue,
-                  is_system: false
-                }]);
-              }
-            }
-
-            if (actionId === 'accept' || actionId === 'accept_call') {
-              if (data?.callerId && data?.roomId) {
-                handleFetchLiveKitToken(data.roomId, data.callerId); 
-                router.push(`/hypetalk/room?from=${data.callerId}`);
-              }
-            } else if (actionId === 'reject') {
-              handleTolakGlobal();
             }
           });
 
