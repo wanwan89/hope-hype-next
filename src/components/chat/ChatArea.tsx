@@ -23,7 +23,6 @@ export default function ChatArea() {
 
   const [headerInfo, setHeaderInfo] = useState({ title: 'HopeTalk Globe', sub: '', avatar: '', role: 'user' });
   const [targetId, setTargetId] = useState<string | null>(null);
-  const [targetLastSeen, setTargetLastSeen] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +88,7 @@ export default function ChatArea() {
         receive: new Audio('/asets/sound/receive.mp3'),
       };
 
+      // 🔥 FIX 2: Giphy API Integration
       fetchStickers();
 
       let currentRoom = 'room-1';
@@ -102,11 +102,17 @@ export default function ChatArea() {
         currentRoom = `pv_${ids[0]}_${ids[1]}`;
         setTargetId(fromId);
 
-        const { data: pTarget } = await supabase
-          .from('profiles')
-          .select('id, username, short_id, avatar_url, role, last_seen')
-          .or(`id.eq.${fromId},short_id.eq.${fromId}`)
-          .maybeSingle();
+        // 🔥 FIX 4: Safety Check biar ga error invalid UUID pas ngecek profil
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fromId || '');
+        let profileQuery = supabase.from('profiles').select('id, username, short_id, avatar_url, role'); // HAPUS last_seen
+        
+        if (isUUID) {
+          profileQuery = profileQuery.eq('id', fromId);
+        } else {
+          profileQuery = profileQuery.eq('short_id', fromId);
+        }
+
+        const { data: pTarget } = await profileQuery.maybeSingle();
 
         if (pTarget) {
           setHeaderInfo({
@@ -115,7 +121,6 @@ export default function ChatArea() {
             avatar: pTarget.avatar_url,
             role: pTarget.role,
           });
-          setTargetLastSeen(pTarget.last_seen);
         }
 
         const { data: f1 } = await supabase
@@ -135,7 +140,7 @@ export default function ChatArea() {
       setupRealtime(currentRoom, session.user);
     } catch (e) {
       console.error(e);
-      setIsLoading(false); // Safety net
+      setIsLoading(false); 
     }
   };
 
@@ -147,30 +152,19 @@ export default function ChatArea() {
     clearInterval(refs.recordTimer.current);
   };
 
+  // 🔥 FIX 2: Giphy API Logic 🔥
   const fetchStickers = async () => {
     try {
-      const { data } = await supabase.from('stickers').select('url').limit(20);
-      if (data && data.length > 0) {
-        setStickers(data.map((s: any) => s.url));
-      } else {
-        setStickers([
-          'https://i.ibb.co/0jV9zL8/sticker1.png',
-          'https://i.ibb.co/5rL8vQ4/sticker2.png',
-          'https://i.ibb.co/dbG9Y7d/sticker3.png',
-          'https://i.ibb.co/8cBwvMg/sticker4.png',
-        ]);
+      const res = await fetch('https://api.giphy.com/v1/stickers/trending?api_key=vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08&limit=20');
+      const json = await res.json();
+      if (json && json.data) {
+        setStickers(json.data.map((s: any) => s.images.fixed_height.url));
       }
     } catch (error) {
-      setStickers([
-        'https://i.ibb.co/0jV9zL8/sticker1.png',
-        'https://i.ibb.co/5rL8vQ4/sticker2.png',
-        'https://i.ibb.co/dbG9Y7d/sticker3.png',
-        'https://i.ibb.co/8cBwvMg/sticker4.png',
-      ]);
+      console.error("Giphy API Error:", error);
     }
   };
 
-  // 🔥 FIX 1: Jaminan Layar Loading PASTI Berhenti 🔥
   const fetchMessages = async (room: string) => {
     setIsLoading(true);
     try {
@@ -189,7 +183,6 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FIX 2: Hapus Channel Lama Biar Gak Kena Error 'cannot add postgres_changes' 🔥
   const setupRealtime = (room: string, user: any) => {
     if (refs.msgChannel.current) supabase.removeChannel(refs.msgChannel.current);
     if (refs.presenceChannel.current) supabase.removeChannel(refs.presenceChannel.current);
@@ -372,15 +365,6 @@ export default function ChatArea() {
     return `${m}:${s}`;
   };
 
-  const formatLastSeen = (dateString: string | null) => {
-    if (!dateString) return 'Tidak diketahui';
-    const date = new Date(dateString);
-    const now = new Date();
-    const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    return isToday ? `Hari ini ${timeStr}` : `${date.toLocaleDateString('id-ID')} ${timeStr}`;
-  };
-
   let chatState = 'normal';
   if (targetId && currentUser) {
     const myRawMsgs = messages.filter((m) => m.user_id === currentUser.id);
@@ -395,64 +379,65 @@ export default function ChatArea() {
   } else if (groupId) {
     displayStatus = `${onlineCount} hopers sedang online`;
   } else if (targetId) {
-    displayStatus = onlineCount >= 2 ? 'Online' : `Terakhir dilihat: ${formatLastSeen(targetLastSeen)}`;
+    displayStatus = onlineCount >= 2 ? 'Online' : `Offline`;
   }
 
   return (
-    <div className="hype-chat-scope telegram-chat">
-      {lightboxSticker && (
-        <div className="sticker-lightbox" onClick={() => setLightboxSticker(null)}>
-          <img src={lightboxSticker} alt="s" />
-        </div>
-      )}
+    <div className="flex flex-col h-[100dvh] bg-[#0b141a]">
+      {lightboxSticker && <div className="sticker-lightbox z-[9999] fixed inset-0 bg-black/80 flex items-center justify-center" onClick={() => setLightboxSticker(null)}><img src={lightboxSticker} alt="s" className="max-w-[80%] max-h-[80%]" /></div>}
 
-      <header className="chat-header">
-        <div className="header-inner">
-          <button className="back-btn" onClick={() => router.push('/hypetalk')}>
-            <span className="material-icons">arrow_back</span>
+      <header className="flex items-center justify-between px-4 py-2.5 bg-[#1f2c34] z-50 sticky top-0 shadow-sm">
+        <div className="flex items-center gap-3 w-full">
+          <button 
+            className="text-gray-300 hover:text-white transition-colors cursor-pointer p-1 flex items-center justify-center" 
+            style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
+            onClick={() => router.push('/hypetalk')}
+          >
+            <span className="material-icons text-[26px]">arrow_back</span>
           </button>
-
+          
           {targetId && (
-            <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" className="avatar" />
+            <img 
+              src={headerInfo.avatar || '/asets/png/profile.webp'} 
+              alt="avatar" 
+              className="rounded-full object-cover border border-transparent shadow-sm" 
+              style={{ width: '40px', height: '40px', minWidth: '40px' }} 
+            />
           )}
-
-          <div className="header-text">
-            <h3 className="title">
-              {headerInfo.title}{' '}
-              {targetId && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
+          
+          <div className="flex flex-col overflow-hidden flex-1">
+            <h3 className="flex items-center gap-1 font-medium truncate text-white text-[17px]">
+              {headerInfo.title} {targetId && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
-            <span className={`status ${typingUser ? 'typing' : ''}`}>
+            <span className={`text-[12px] truncate ${typingUser ? "text-[#1da1f2]" : "text-[#8696a0]"}`}>
               {displayStatus}
             </span>
           </div>
-
+          
           {targetId && (
-            <button
-              className="call-btn"
-              style={{ opacity: chatState === 'normal' ? 1 : 0.3, pointerEvents: chatState === 'normal' ? 'auto' : 'none' }}
+            <button 
+              className="p-1 rounded-full text-white transition-all cursor-pointer relative z-50 flex-shrink-0 flex items-center justify-center" 
+              style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none', opacity: chatState === 'normal' ? 1 : 0.3, pointerEvents: chatState === 'normal' ? 'auto' : 'none' }} 
               onClick={startCall}
             >
-              <span className="material-icons">call</span>
+              <span className="material-icons text-[24px]">call</span>
             </button>
           )}
         </div>
       </header>
 
-      <main className="chat-messages">
+      <main className="flex-1 overflow-y-auto p-4 bg-[#0b141a]">
         {isLoading ? (
           <ChatSkeleton />
         ) : (
           <>
-            <div className="encryption-notice">
-              <div className="notice-box">
-                <span className="material-icons">lock</span>
-                <p>
-                  Pesan dan panggilan dienkripsi secara end-to-end. Tidak ada orang di luar chat ini
-                  yang dapat membaca atau mendengarkannya.
-                </p>
-              </div>
+            <div className="flex justify-center mb-6 mt-2">
+               <div className="bg-[#ffeebd] text-[#544336] rounded-lg p-3 text-[11.5px] leading-[1.4] text-center shadow-sm flex items-start gap-2 max-w-[85%] font-medium">
+                 <span className="material-icons text-[14px] mt-[1px]">lock</span>
+                 <p>Pesan dan panggilan dienkripsi secara end-to-end. Tidak ada orang di luar chat ini yang dapat membaca atau mendengarkannya.</p>
+               </div>
             </div>
-
+            
             {messages.map((msg) => (
               <MessageBubble key={msg.id} msg={msg} currentUser={currentUser} isMe={msg.user_id === currentUser?.id} onReply={setReplyTo} roomId={roomId} />
             ))}
@@ -461,88 +446,172 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
-      <footer className="chat-footer">
+      <footer className="relative bg-[#0b141a] p-2 px-3 pb-3 z-50">
         <AnimatePresence>
           {isStickerOpen && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="sticker-panel">
-              <div className="sticker-grid">
-                {stickers.map((s, i) => (
-                  <img key={i} src={s} alt="sticker" className="sticker-item" onClick={() => sendMessage(undefined, s)} />
-                ))}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-full left-3 right-3 mb-2 bg-[#1f2c34] border border-white/10 rounded-2xl p-4 shadow-2xl max-h-60 overflow-y-auto z-[60]"
+            >
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                {stickers.length > 0 ? (
+                  stickers.map((s, i) => (
+                    <img key={i} src={s} alt="sticker" className="w-full h-auto cursor-pointer hover:scale-110 transition-transform bg-white/5 rounded-lg p-1" onClick={() => sendMessage(undefined, s)} />
+                  ))
+                ) : (
+                  <p className="col-span-full text-center text-gray-400 text-xs py-6 font-medium">Memuat stiker...</p>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {chatState === 'normal' ? (
-          <div className="input-container">
-            <AnimatePresence>
-              {replyTo && (
-                <motion.div initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }} className="reply-preview">
-                  <div className="reply-content">
-                    <span className="reply-username">Membalas {replyTo.profiles?.username || 'User'}</span>
-                    <span className="reply-text">{replyTo.message || (replyTo.image_url ? 'Foto' : replyTo.audio_url ? 'Voice Note' : 'Stiker')}</span>
-                  </div>
-                  <button onClick={() => setReplyTo(null)} className="close-reply"><span className="material-icons text-sm">close</span></button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="input-row">
-              <div className="input-box">
-                {pendingImagePreview && (
-                  <div className="image-preview">
-                    <img src={pendingImagePreview} alt="p" />
-                    <button onClick={() => setPendingImagePreview(null)}>&times;</button>
-                  </div>
-                )}
-
-                <AnimatePresence>
-                  {isRecording ? (
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="recording-bar">
-                      <div className="record-info">
-                        <div className="record-dot" />
-                        <span className="record-time">{formatTime(recordTime)}</span>
-                      </div>
-                      <div className="record-wave">
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                          <motion.div key={i} className="wave-bar" animate={{ height: `${Math.max(4, (audioLevel / 255) * 24 * (Math.random() * 0.5 + 0.5))}px` }} transition={{ type: 'tween', duration: 0.1 }} />
-                        ))}
-                      </div>
-                      <div className="slide-cancel">
-                        <span className="material-icons">keyboard_double_arrow_left</span>
-                        Geser batal
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <div className="input-actions">
-                      <button onClick={() => setIsStickerOpen(!isStickerOpen)} className="sticker-toggle"><span className="material-icons">sentiment_satisfied_alt</span></button>
-                      <textarea placeholder={t('write_message')} value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="message-input" rows={1} />
-                      <button onClick={() => fileInputRef.current?.click()} className="attach-btn"><span className="material-icons">image</span></button>
-                      <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e: any) => setPendingImagePreview(URL.createObjectURL(e.target.files[0]))} />
+          <div className="w-full flex items-end gap-2 px-1 relative">
+            
+            {/* 🔥 FIX 1 & 3: BUNGKUS INPUT & REPLY DALAM SATU PILL BULET BIAR KUNCI & MENYATU 🔥 */}
+            <div className="flex-1 bg-[#1f2c34] rounded-[24px] flex flex-col overflow-hidden min-h-[48px] shadow-sm relative">
+              
+              {/* REPLY PREVIEW MENYATU DI DALAM BOX */}
+              <AnimatePresence>
+                {replyTo && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="bg-[#1f2c34] border-l-4 border-[#1da1f2] flex items-center justify-between border-b border-white/5 mx-2 mt-2 px-2 py-1.5 rounded-lg overflow-hidden"
+                  >
+                    <div className="flex flex-col truncate pr-4">
+                      <span className="text-[#1da1f2] font-bold text-[12px] mb-0.5">Membalas {replyTo.profiles?.username || 'User'}</span>
+                      <span className="text-[#8696a0] truncate text-[12px]">{replyTo.message || (replyTo.image_url ? 'Foto' : replyTo.audio_url ? 'Voice Note' : 'Stiker')}</span>
                     </div>
-                  )}
-                </AnimatePresence>
-              </div>
+                    <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white flex-shrink-0 p-1 flex items-center justify-center" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                      <span className="material-icons text-lg">close</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              <motion.button
-                id="action-btn"
-                animate={{ x: slideOffset }}
-                className={`send-btn ${isRecording ? 'recording' : ''}`}
-                onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onMouseDown={handleTouchStart} onMouseMove={(e) => isRecording && handleTouchMove(e)} onMouseUp={handleTouchEnd} onMouseLeave={() => isRecording && handleTouchEnd()} onClick={() => (inputValue || pendingImagePreview) && sendMessage()}
-              >
-                <AnimatePresence mode="wait">
-                  {inputValue || pendingImagePreview ? (
-                    <motion.span key="send" initial={{ scale: 0, rotate: -45, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} exit={{ scale: 0, rotate: 45, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="material-icons">send</motion.span>
-                  ) : (
-                    <motion.span key="mic" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="material-icons">mic</motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
+              {/* INPUT AREA (TEXTAREA / VN) */}
+              <div className="flex items-center min-h-[48px] w-full relative">
+                 {pendingImagePreview && (
+                   <div className="p-2 relative z-10">
+                     <img src={pendingImagePreview} alt="p" className="w-12 h-12 object-cover rounded-xl border border-white/10" />
+                     <button onClick={() => setPendingImagePreview(null)} className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" style={{ border: 'none' }}>&times;</button>
+                   </div>
+                 )}
+                 
+                 <AnimatePresence>
+                   {isRecording ? (
+                     <motion.div 
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex-1 flex items-center justify-between px-4 py-3 bg-[#1f2c34] absolute inset-0 w-full h-full z-20"
+                     >
+                        <div className="flex items-center gap-2">
+                           <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+                           <span className="text-[#e9edef] text-sm font-bold tracking-widest">{formatTime(recordTime)}</span>
+                        </div>
+                        <div className="flex items-end gap-1 h-6">
+                           {[1,2,3,4,5,6].map((i) => (
+                              <motion.div 
+                                key={i}
+                                className="w-1 bg-red-400 rounded-full"
+                                animate={{ height: Math.max(4, (audioLevel / 255) * 24 * (Math.random() * 0.5 + 0.5)) + 'px' }}
+                                transition={{ type: "tween", duration: 0.1 }}
+                              />
+                           ))}
+                        </div>
+                        <div className="flex items-center text-[#8696a0] text-[12px] animate-pulse">
+                           <span className="material-icons text-[16px] mr-1">keyboard_double_arrow_left</span>
+                           Geser batal
+                        </div>
+                     </motion.div>
+                   ) : (
+                     <div className="flex w-full items-end min-h-[48px] z-10">
+                       <button 
+                         onClick={() => setIsStickerOpen(!isStickerOpen)} 
+                         className="p-3 mb-0.5 text-[#8696a0] hover:text-white transition-colors focus:outline-none flex items-center justify-center flex-shrink-0"
+                         style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
+                       >
+                         <span className="material-icons">sentiment_satisfied_alt</span>
+                       </button>
+                       
+                       <textarea 
+                         placeholder={t('write_message')} 
+                         value={inputValue} 
+                         onChange={(e) => setInputValue(e.target.value)} 
+                         className="flex-1 bg-transparent border-none outline-none py-3 text-white resize-none text-[15px]" 
+                         rows={1}
+                         style={{ maxHeight: '100px', minHeight: '48px' }}
+                       />
+                       
+                       <button 
+                         onClick={() => fileInputRef.current?.click()} 
+                         className="p-3 mb-0.5 text-[#8696a0] hover:text-white transition-colors focus:outline-none flex items-center justify-center flex-shrink-0"
+                         style={{ background: 'transparent', border: 'none', boxShadow: 'none', outline: 'none' }}
+                       >
+                         <span className="material-icons">image</span>
+                       </button>
+                       <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e:any) => setPendingImagePreview(URL.createObjectURL(e.target.files[0]))} />
+                     </div>
+                   )}
+                 </AnimatePresence>
+              </div>
             </div>
+            
+            {/* Tombol Mic/Send */}
+            <motion.button 
+              animate={{ x: slideOffset }}
+              className={`w-[48px] h-[48px] flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-md relative z-50`}
+              style={{ 
+                 backgroundColor: isRecording ? '#ef4444' : '#1da1f2', 
+                 border: 'none', 
+                 outline: 'none',
+                 transform: isRecording ? 'scale(1.15)' : 'scale(1)'
+              }}
+              onTouchStart={handleTouchStart} 
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onMouseDown={handleTouchStart}
+              onMouseMove={(e) => isRecording && handleTouchMove(e)}
+              onMouseUp={handleTouchEnd}
+              onMouseLeave={() => isRecording && handleTouchEnd()}
+              onClick={() => (inputValue || pendingImagePreview) && sendMessage()}
+            >
+              <AnimatePresence mode="wait">
+                {(inputValue || pendingImagePreview) ? (
+                  <motion.span
+                    key="send"
+                    initial={{ scale: 0, rotate: -45, opacity: 0 }}
+                    animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                    exit={{ scale: 0, rotate: 45, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="material-icons absolute"
+                  >
+                    send
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="mic"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="material-icons absolute"
+                  >
+                    mic
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
+
           </div>
         ) : (
-          <div className="pending-chat">Menunggu persetujuan chat...</div>
+          <div className="p-4 text-center text-sm text-[#8696a0] w-full bg-[#1f2c34] rounded-xl">Menunggu persetujuan chat...</div>
         )}
       </footer>
     </div>

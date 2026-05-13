@@ -12,10 +12,7 @@ export default function HypetalkPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [chats, setChats] = useState<any[]>([]);
   const [requestChats, setRequestChats] = useState<any[]>([]);
-  
-  // State utama yang bikin layar nyangkut kemaren
   const [isLoading, setIsLoading] = useState(true);
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -26,638 +23,310 @@ export default function HypetalkPage() {
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
   const [groupName, setGroupName] = useState('');
-  const [typingStatus, setTypingStatus] = useState<Record<string, string>>({});
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
 
   const refs = {
-    callTimeout: useRef<any>(null),
     inboxChannel: useRef<any>(null),
   };
 
   // ----------------------------------------------
-  //  LOAD CHATS DARI TABEL messages (ROOM-BASED)
+  //  LOAD CHATS (GLOBAL, GRUP, PRIVATE)
   // ----------------------------------------------
-  const loadAllChats = async (userId: string, showLoading = true) => {
-    if (showLoading) setIsLoading(true);
+  const loadAllChats = async (userId: string, silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
-      const { data: privateMessages, error } = await supabase
+      // 1. Ambil Chat Private & Global dari tabel messages
+      const { data: msgs, error: msgError } = await supabase
         .from('messages')
         .select('id, user_id, room_id, message, created_at')
-        .is('group_id', null)
         .or(`user_id.eq.${userId},room_id.ilike.%${userId}%,room_id.eq.room-1`)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (msgError) throw msgError;
 
-      const partnerMap = new Map<string, any>();
+      const chatMap = new Map<string, any>();
 
-      (privateMessages || []).forEach((msg) => {
-        if (!msg.room_id) return;
+      // 2. Ambil Daftar Grup User
+      const { data: myGroups } = await supabase
+        .from('group_members')
+        .select('group_id, groups(id, name, photo_url)')
+        .eq('user_id', userId);
+
+      (msgs || []).forEach((msg) => {
+        let chatKey = '';
+        let chatType = '';
+        let partnerId = '';
 
         if (msg.room_id === 'room-1') {
-           if (!partnerMap.has('room-1') || new Date(msg.created_at) > new Date(partnerMap.get('room-1').last_message_at)) {
-             partnerMap.set('room-1', {
-                id: msg.id,
-                room_id: 'room-1',
-                partnerId: 'room-1',
-                last_message: msg.message || 'Mengirim media',
-                last_message_at: msg.created_at,
-                from: msg.user_id,
-                to: 'room-1',
-                partnerProfile: { username: 'HopeTalk Globe', avatar_url: '/asets/png/profile.webp', role: 'system' }
-             });
-           }
-        } 
-        else if (msg.room_id.startsWith('pv_')) {
-           const partnerId = msg.room_id.replace('pv_', '').split('_').find((p) => p !== userId);
-           
-           if (partnerId) {
-             if (!partnerMap.has(partnerId) || new Date(msg.created_at) > new Date(partnerMap.get(partnerId).last_message_at)) {
-               partnerMap.set(partnerId, {
-                 id: msg.id,
-                 room_id: msg.room_id,
-                 partnerId,
-                 last_message: msg.message || 'Mengirim media',
-                 last_message_at: msg.created_at,
-                 from: msg.user_id,
-                 to: partnerId,
-               });
-             }
-           }
+          chatKey = 'room-1';
+          chatType = 'global';
+        } else if (msg.room_id.startsWith('pv_')) {
+          partnerId = msg.room_id.replace('pv_', '').split('_').find((p) => p !== userId) || '';
+          chatKey = partnerId;
+          chatType = 'private';
+        } else if (msg.room_id.startsWith('group_')) {
+          chatKey = msg.room_id;
+          chatType = 'group';
+        }
+
+        if (chatKey && (!chatMap.has(chatKey) || new Date(msg.created_at) > new Date(chatMap.get(chatKey).sortTime))) {
+          chatMap.set(chatKey, {
+            id: msg.id,
+            type: chatType,
+            roomId: msg.room_id,
+            partnerId: partnerId,
+            lastMsg: msg.message || 'Media',
+            sortTime: msg.created_at,
+          });
         }
       });
 
-      const partnerIds = Array.from(partnerMap.keys()).filter(id => id.length > 20);
-      
-      if (partnerIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url, umur, role')
-          .in('id', partnerIds);
+      // 3. Gabungkan Data Profile (Private) & Data Grup
+      const chatList = Array.from(chatMap.values());
+      const privatePartnerIds = chatList.filter(c => c.type === 'private').map(c => c.partnerId);
 
-        if (profilesData) {
-          profilesData.forEach((profile) => {
-            if (partnerMap.has(profile.id)) {
-              partnerMap.get(profile.id).partnerProfile = profile;
-            }
-          });
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, role, umur')
+        .in('id', privatePartnerIds);
+
+      const finalChats = chatList.map(chat => {
+        if (chat.type === 'global') {
+          return { ...chat, name: 'HopeTalk Globe', avatar: '/asets/png/profile.webp' };
         }
-      }
-
-      const finalChats = Array.from(partnerMap.values()).sort((a, b) => 
-        new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
-      );
+        if (chat.type === 'private') {
+          const p = profiles?.find(p => p.id === chat.partnerId);
+          return { ...chat, name: p?.username || 'User', avatar: p?.avatar_url, role: p?.role, umur: p?.umur };
+        }
+        if (chat.type === 'group') {
+          const gid = chat.roomId.replace('group_', '');
+          const gInfo = myGroups?.find(g => g.group_id === gid)?.groups;
+          return { ...chat, name: (gInfo as any)?.name || 'Grup Chat', avatar: (gInfo as any)?.photo_url };
+        }
+        return chat;
+      }).sort((a, b) => new Date(b.sortTime).getTime() - new Date(a.sortTime).getTime());
 
       setChats(finalChats);
-      setRequestChats([]);
     } catch (err) {
-      console.error('Gagal load chat:', err);
+      console.error('Load chat failed:', err);
     } finally {
-      // 🔥 FIX 1: Pastikan loading mati kalau showLoading true
-      if (showLoading) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // ----------------------------------------------
-  //  REALTIME SUBSCRIPTION
-  // ----------------------------------------------
   const subscribeToInbox = (userId: string) => {
-    if (refs.inboxChannel.current) {
-       supabase.removeChannel(refs.inboxChannel.current);
-    }
-
-    const channel = supabase
-      .channel(`inbox-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const msg = payload.new;
-          if (
-            msg.user_id === userId ||
-            (msg.room_id && msg.room_id.includes(userId)) ||
-            msg.room_id === 'room-1'
-          ) {
-            loadAllChats(userId, false);
-          }
-        }
-      )
+    if (refs.inboxChannel.current) supabase.removeChannel(refs.inboxChannel.current);
+    refs.inboxChannel.current = supabase
+      .channel(`lobby-${userId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => loadAllChats(userId, true))
       .subscribe();
-
-    refs.inboxChannel.current = channel;
   };
 
-  // ----------------------------------------------
-  //  INIT USER
-  // ----------------------------------------------
   const initUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return router.push('/login');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return router.push('/login');
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    setCurrentUser({ ...user, ...profile });
 
-      const fullUser = { ...user, ...profile };
-      setCurrentUser(fullUser);
-
-      if (profile) {
-        setBioForm({
-          umur: profile.umur || '',
-          gender: profile.gender || 'Pria',
-          zodiak: profile.zodiak || '',
-          pekerjaan: profile.pekerjaan || '',
-          hobi: profile.hobi || '',
-        });
-      }
-
-      // 🔥 FIX 2: Kita set `true` biar pas pertama buka layar loadingnya dimatikan secara otomatis oleh fungsi ini!
-      await loadAllChats(user.id, true);
-      subscribeToInbox(user.id);
-      
-    } catch (error) {
-      console.error("Gagal inisialisasi:", error);
-    } finally {
-      // 🔥 FIX 3: Safety net paling ampuh. Apapun yang terjadi (sukses/gagal/error sinyal), layarnya PASTI kebuka.
-      setIsLoading(false); 
+    if (profile) {
+      setBioForm({
+        umur: profile.umur || '',
+        gender: profile.gender || 'Pria',
+        zodiak: profile.zodiak || '',
+        pekerjaan: profile.pekerjaan || '',
+        hobi: profile.hobi || '',
+      });
     }
+    await loadAllChats(user.id);
+    subscribeToInbox(user.id);
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedLimit = localStorage.getItem('doi_limit');
-      if (savedLimit) setSisaLimitDoi(parseInt(savedLimit));
-    }
-    
     initUser();
-
-    return () => {
-      setIsSidebarOpen(false);
-      setActiveModal(null);
-      if (refs.inboxChannel.current) {
-        supabase.removeChannel(refs.inboxChannel.current);
-      }
-    };
+    return () => { if (refs.inboxChannel.current) supabase.removeChannel(refs.inboxChannel.current); };
   }, []);
 
   // ----------------------------------------------
   //  HANDLERS
   // ----------------------------------------------
-  const openModal = (modalName: string) => {
-    setActiveModal(modalName);
-    setIsSidebarOpen(false);
-  };
+  const openModal = (name: string) => { setActiveModal(name); setIsSidebarOpen(false); };
   const closeModal = () => setActiveModal(null);
 
-  const handleSaveBio = async () => {
-    setIsSavingBio(true);
-    try {
-      const updateData = { ...bioForm, umur: Number(bioForm.umur) || null };
-      await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
-      showNotif('Profil tersimpan!', 'success');
-      setCurrentUser((prev: any) => ({ ...prev, ...updateData }));
-      closeModal();
-    } catch (err) {
-      showNotif('Gagal simpan.', 'error');
-    } finally {
-      setIsSavingBio(false);
+  const handleOpenChat = (chat: any) => {
+    if (chat.type === 'global') router.push('/hypetalk/room?id=room-1');
+    else if (chat.type === 'group') {
+      const gid = chat.roomId.replace('group_', '');
+      router.push(`/hypetalk/room?group=${gid}&gname=${encodeURIComponent(chat.name)}`);
+    } else {
+      router.push(`/hypetalk/room?from=${chat.partnerId}`);
     }
+  };
+
+  const handleAvatarClick = (e: React.MouseEvent, chat: any) => {
+    e.stopPropagation();
+    if (chat.type !== 'private') return;
+    setSelectedProfile({ id: chat.partnerId, username: chat.name, avatar_url: chat.avatar, role: chat.role, umur: chat.umur });
+    openModal('user-profile');
   };
 
   const handleCariDoi = async () => {
     if (sisaLimitDoi <= 0) return openModal('limit-doi');
     if (!currentUser?.gender) return openModal('bio');
-    const newLimit = sisaLimitDoi - 1;
-    setSisaLimitDoi(newLimit);
-    localStorage.setItem('doi_limit', String(newLimit));
     setIsSidebarOpen(false);
     setIsSearchingDoi(true);
-    const lawanJenis = currentUser.gender === 'Pria' ? 'Wanita' : 'Pria';
+    const targetGender = currentUser.gender === 'Pria' ? 'Wanita' : 'Pria';
 
     setTimeout(async () => {
       try {
-        const { data: users } = await supabase
-          .from('profiles')
-          .select('*')
-          .neq('id', currentUser.id)
-          .eq('gender', lawanJenis);
+        const { data: users } = await supabase.from('profiles').select('*').neq('id', currentUser.id).eq('gender', targetGender);
         setIsSearchingDoi(false);
-        if (!users || users.length === 0) return showNotif('Belum ada kecocokan saat ini.', 'info');
+        if (!users?.length) return showNotif('Belum ada kecocokan.', 'info');
         setFoundDoi(users[Math.floor(Math.random() * users.length)]);
         openModal('doi-card');
-      } catch (err) {
-        setIsSearchingDoi(false);
-        showNotif('Gagal mencari, coba lagi.', 'error');
-      }
-    }, 4000);
-  };
-
-  const handleSearchAndChat = async () => {
-    if (!searchUserId) return;
-    const cleanId = searchUserId.replace('#', '').toUpperCase();
-    const { data: target } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('short_id', cleanId)
-      .maybeSingle();
-    if (target) {
-      router.push(`/hypetalk/room?from=${target.id}`);
-      closeModal();
-    } else {
-      showNotif('ID tidak ditemukan', 'error');
-    }
+        const newLimit = sisaLimitDoi - 1;
+        setSisaLimitDoi(newLimit);
+        localStorage.setItem('doi_limit', String(newLimit));
+      } catch (err) { setIsSearchingDoi(false); }
+    }, 3000);
   };
 
   const handleCreateGroup = async () => {
-    if (!groupName.trim()) return showNotif('Nama grup tidak boleh kosong', 'error');
-    try {
-      const { data: newGroup, error } = await supabase
-        .from('groups')
-        .insert([{ name: groupName, created_by: currentUser.id }])
-        .select()
-        .single();
-      if (error) throw error;
-      await supabase.from('group_members').insert([{ group_id: newGroup.id, user_id: currentUser.id }]);
-      showNotif('Grup berhasil dibuat!', 'success');
-      closeModal();
-      router.push(`/hypetalk/room?group=${newGroup.id}&gname=${encodeURIComponent(newGroup.name)}`);
-    } catch (err) {
-      showNotif('Gagal membuat grup', 'error');
+    if (!groupName.trim()) return;
+    const { data: g, error } = await supabase.from('groups').insert([{ name: groupName, created_by: currentUser.id }]).select().single();
+    if (!error) {
+      await supabase.from('group_members').insert([{ group_id: g.id, user_id: currentUser.id }]);
+      router.push(`/hypetalk/room?group=${g.id}&gname=${encodeURIComponent(g.name)}`);
     }
   };
 
-  const handleOpenChat = (chat: any) => {
-    if (chat.room_id === 'room-1') {
-      router.push('/hypetalk/room?id=room-1');
-    } else {
-      const partnerId = chat.from === currentUser.id ? chat.to : chat.from;
-      router.push(`/hypetalk/room?from=${partnerId}`);
-    }
+  const handleSearchAndChat = async () => {
+    const cleanId = searchUserId.replace('#', '').toUpperCase();
+    const { data: target } = await supabase.from('profiles').select('id').eq('short_id', cleanId).maybeSingle();
+    if (target) { router.push(`/hypetalk/room?from=${target.id}`); closeModal(); }
+    else showNotif('ID tidak ditemukan', 'error');
   };
 
-  const handleAvatarClick = (chat: any) => {
-    if (chat.room_id === 'room-1') return; // Jangan buka profil kalau ini grup global
-    if (chat.partnerProfile) {
-      setSelectedProfile(chat.partnerProfile);
-      openModal('user-profile');
-    } else {
-      setSelectedProfile({ id: chat.partnerId, username: chat.partnerId });
-      openModal('user-profile');
-    }
-  };
+  if (isLoading || !currentUser) return null; // Lu mau pake file loading khusus kan, jadi di sini return null/kosong aja
 
-  const startCallFromLobby = (target: any) => {
-    router.push(`/hypetalk/room?from=${target.id}&call=true`);
-  };
-
-  // ----------------------------------------------
-  //  FILTER
-  // ----------------------------------------------
-  const filteredChats = chats.filter((chat) => {
-    if (!searchQuery) return true;
-    const name = chat.partnerProfile?.username || chat.partnerId || '';
-    return name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
-  // ----------------------------------------------
-  //  LOADING / EMPTY STATE
-  // ----------------------------------------------
-  if (isLoading || !currentUser) {
-    return (
-      <div className="telegram-wrapper loading-screen" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#ffffff', color: '#666' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid #f3f3f3', borderTop: '3px solid #1f3cff', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '15px', fontWeight: '500' }}>Memuat Hypetalk...</p>
-        <style dangerouslySetInnerHTML={{__html: `
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        `}} />
-      </div>
-    );
-  }
-
-  // ==============================================
-  //  RENDER
-  // ==============================================
   return (
     <div className="telegram-wrapper">
       {/* HEADER */}
-      <div className="header">
-        <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
-          <span className="material-icons">menu</span>
-        </button>
-        <div className="header-title">
-          <h2>Hypetalk</h2>
-          {requestChats.length > 0 && <span className="badge">{requestChats.length}</span>}
-        </div>
-        <div className="header-actions">
-          <button onClick={() => openModal('search')}>
-            <span className="material-icons">search</span>
+      <header className="tg-header">
+        <div className="header-left">
+          <button className="icon-btn" onClick={() => setIsSidebarOpen(true)}>
+            <span className="material-icons">menu</span>
           </button>
+          <h2>Hypetalk</h2>
         </div>
-      </div>
+      </header>
 
       {/* SEARCH BAR */}
-      <div className="search-bar">
-        <span className="material-icons">search</span>
-        <input
-          type="text"
-          placeholder="Cari obrolan..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="tg-search-bar">
+        <div className="search-inner">
+          <span className="material-icons">search</span>
+          <input 
+            type="text" 
+            placeholder="Cari obrolan..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+          />
+        </div>
       </div>
 
       {/* CHAT LIST */}
-      <div className="chat-list">
-        {filteredChats.length === 0 ? (
-          <div className="empty-chat">Belum ada obrolan. Cari teman baru!</div>
-        ) : (
-          filteredChats.map((chat) => (
-            <div key={chat.id} className="chat-item" onClick={() => handleOpenChat(chat)}>
-              <div
-                className="avatar"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAvatarClick(chat);
-                }}
-              >
-                {chat.room_id === 'room-1' ? (
-                   <span className="material-icons" style={{ fontSize: '32px', color: '#1da1f2' }}>public</span>
-                ) : (
-                  <img
-                    src={chat.partnerProfile?.avatar_url || '/asets/png/profile.webp'}
-                    alt="avatar"
-                    onError={(e) => (e.currentTarget.src = '/asets/png/profile.webp')}
-                  />
-                )}
-              </div>
-              <div className="chat-info">
-                <div className="name flex items-center gap-1">
-                   {chat.partnerProfile?.username || chat.partnerId} 
-                   {chat.partnerProfile?.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.partnerProfile.role) }} />}
-                </div>
-                <div className="last-msg">{chat.last_message || 'Klik untuk mulai chat'}</div>
-              </div>
-              <div className="chat-meta">
-                <span className="time">
-                  {chat.last_message_at
-                    ? new Date(chat.last_message_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : ''}
+      <main className="tg-chat-list">
+        {chats.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).map((chat) => (
+          <div key={chat.id || chat.roomId} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
+            <div className="tg-avatar-wrapper" onClick={(e) => handleAvatarClick(e, chat)}>
+              {chat.type === 'global' ? (
+                <div className="global-icon-circle"><span className="material-icons">public</span></div>
+              ) : (
+                <img src={chat.avatar || '/asets/png/profile.webp'} alt="av" />
+              )}
+            </div>
+            <div className="tg-chat-info">
+              <div className="tg-chat-top">
+                <h4 className="tg-name">
+                  {chat.name}
+                  {chat.type === 'group' && <span className="material-icons grup-tag">groups</span>}
+                  {chat.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role) }} />}
+                </h4>
+                <span className="tg-time">
+                  {new Date(chat.sortTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
+              <p className="tg-last-msg">{chat.lastMsg}</p>
             </div>
-          ))
-        )}
-      </div>
+          </div>
+        ))}
+      </main>
 
       {/* FAB */}
-      <button className="fab" onClick={() => openModal('search')}>
-        <span className="material-icons">edit</span>
+      <button className="tg-fab" onClick={() => openModal('search')}>
+        <span className="material-icons">chat</span>
       </button>
 
       {/* SIDEBAR */}
-      {isSidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}>
-          <div className="sidebar" onClick={(e) => e.stopPropagation()}>
-            <div className="sidebar-header">
-              <h3>Menu</h3>
-              <button onClick={() => setIsSidebarOpen(false)}>
-                <span className="material-icons">close</span>
-              </button>
-            </div>
-            <ul>
-              <li onClick={() => openModal('search')}>
-                <span className="material-icons">person_add</span> Chat by ID
-              </li>
-              <li onClick={() => handleCariDoi()}>
-                <span className="material-icons">whatshot</span> Cari Doi ({sisaLimitDoi})
-              </li>
-              <li onClick={() => openModal('bio')}>
-                <span className="material-icons">edit</span> Edit Bio
-              </li>
-              <li onClick={() => openModal('group')}>
-                <span className="material-icons">group_add</span> Buat Grup
-              </li>
-              <li onClick={() => router.push('/profile')}>
-                <span className="material-icons">person</span> Profil Saya
-              </li>
-              <li onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}>
-                <span className="material-icons">logout</span> Keluar
-              </li>
-            </ul>
-          </div>
+      <div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      <aside className={`tg-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <img src={currentUser.avatar_url || '/asets/png/profile.webp'} className="side-avatar" alt="me" />
+          <h3>{currentUser.username}</h3>
+          <p>#{currentUser.short_id}</p>
         </div>
-      )}
+        <nav className="sidebar-menu">
+          <div className="menu-item" onClick={() => openModal('search')}><span className="material-icons">person_add</span> Chat by ID</div>
+          <div className="menu-item" onClick={handleCariDoi}><span className="material-icons">favorite</span> Cari Doi ({sisaLimitDoi}/10)</div>
+          <div className="menu-item" onClick={() => openModal('group')}><span className="material-icons">group_add</span> Buat Grup</div>
+          <div className="menu-item" onClick={() => openModal('bio')}><span className="material-icons">settings</span> Edit Bio</div>
+          <div className="menu-item" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}><span className="material-icons">logout</span> Keluar</div>
+        </nav>
+      </aside>
 
-      {/* ========= MODALS ========= */}
-      {/* USER PROFILE */}
+      {/* MODALS (PRIVATE PROFILE, SEARCH, GROUP, ETC.) */}
       {activeModal === 'user-profile' && selectedProfile && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content profile-card" onClick={(e) => e.stopPropagation()}>
-            <div className="profile-image-section">
-              <img
-                src={selectedProfile.avatar_url || '/asets/png/profile.webp'}
-                alt="profile"
-                className="profile-img"
-              />
-              <div className="profile-name-overlay">
-                <h2>
-                  {selectedProfile.username}
-                  {selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}
-                </h2>
+          <div className="wa-profile-card" onClick={e => e.stopPropagation()}>
+            <div className="wa-profile-img">
+              <img src={selectedProfile.avatar_url || '/asets/png/profile.webp'} alt="p" />
+              <div className="wa-profile-name">
+                <h2>{selectedProfile.username}{selectedProfile.umur ? `, ${selectedProfile.umur}` : ''}</h2>
               </div>
             </div>
-            <div className="profile-actions">
-              <button
-                onClick={() => {
-                  closeModal();
-                  router.push(`/hypetalk/room?from=${selectedProfile.id}`);
-                }}
-              >
-                <span className="material-icons">chat</span> Chat
-              </button>
-              <button
-                onClick={() => {
-                  closeModal();
-                  startCallFromLobby(selectedProfile);
-                }}
-              >
-                <span className="material-icons">call</span> Telpon
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm('Blokir user ini?')) {
-                    supabase
-                      .from('blocked_users')
-                      .insert({ blocker_id: currentUser.id, blocked_id: selectedProfile.id })
-                      .then(() => closeModal());
-                  }
-                }}
-              >
-                <span className="material-icons">block</span> Blokir
-              </button>
+            <div className="wa-profile-actions">
+              <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }}><span className="material-icons">chat</span><p>Chat</p></button>
+              <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}&call=true`); }}><span className="material-icons">call</span><p>Call</p></button>
+              <button className="red" onClick={() => closeModal()}><span className="material-icons">block</span><p>Block</p></button>
             </div>
           </div>
         </div>
       )}
 
-      {/* EDIT BIO */}
-      {activeModal === 'bio' && (
-        <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Edit Biodata</h3>
-              <button onClick={closeModal}>
-                <span className="material-icons">close</span>
-              </button>
-            </div>
-            <div className="bio-form">
-              <input
-                type="number"
-                placeholder="Umur"
-                value={bioForm.umur}
-                onChange={(e) => setBioForm({ ...bioForm, umur: e.target.value })}
-              />
-              <select
-                value={bioForm.gender}
-                onChange={(e) => setBioForm({ ...bioForm, gender: e.target.value })}
-              >
-                <option>Pria</option>
-                <option>Wanita</option>
-              </select>
-              <input
-                placeholder="Zodiak"
-                value={bioForm.zodiak}
-                onChange={(e) => setBioForm({ ...bioForm, zodiak: e.target.value })}
-              />
-              <input
-                placeholder="Pekerjaan"
-                value={bioForm.pekerjaan}
-                onChange={(e) => setBioForm({ ...bioForm, pekerjaan: e.target.value })}
-              />
-              <input
-                placeholder="Hobi"
-                value={bioForm.hobi}
-                onChange={(e) => setBioForm({ ...bioForm, hobi: e.target.value })}
-              />
-              <button className="save-btn" onClick={handleSaveBio} disabled={isSavingBio}>
-                {isSavingBio ? 'Menyimpan...' : 'Simpan'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* BUAT GRUP */}
-      {activeModal === 'group' && (
-        <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Buat Grup Baru</h3>
-              <button onClick={closeModal}>
-                <span className="material-icons">close</span>
-              </button>
-            </div>
-            <div className="input-group">
-              <span className="material-icons">group</span>
-              <input
-                type="text"
-                placeholder="Nama grup"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-              />
-            </div>
-            <button className="action-btn" onClick={handleCreateGroup}>
-              Buat Grup
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* SEARCH ID */}
       {activeModal === 'search' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Mulai Chat Baru</h3>
-              <button onClick={closeModal}>
-                <span className="material-icons">close</span>
-              </button>
-            </div>
-            <div className="input-group">
-              <span className="material-icons">tag</span>
-              <input
-                type="text"
-                placeholder="ID teman (ABCD)"
-                value={searchUserId}
-                onChange={(e) => setSearchUserId(e.target.value)}
-              />
-            </div>
-            <button className="action-btn" onClick={handleSearchAndChat}>
-              Cari dan Chat
-            </button>
+          <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><h3>Mulai Chat Baru</h3><button onClick={closeModal}><span className="material-icons">close</span></button></div>
+            <div className="input-group"><span className="material-icons">tag</span><input type="text" placeholder="ID teman (ABCD)" value={searchUserId} onChange={e => setSearchUserId(e.target.value)} /></div>
+            <button className="action-btn" onClick={handleSearchAndChat}>Cari & Chat</button>
           </div>
         </div>
       )}
 
-      {/* DOI CARD */}
-      {activeModal === 'doi-card' && foundDoi && (
+      {activeModal === 'group' && (
         <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content doi-card" onClick={(e) => e.stopPropagation()}>
-            <div className="doi-image-section">
-              <img
-                src={foundDoi.avatar_url || '/asets/png/profile.webp'}
-                alt="doi"
-                className="doi-avatar"
-              />
-              <h2 className="doi-name">
-                {foundDoi.username}, {foundDoi.umur || '??'}
-              </h2>
-            </div>
-            <div className="doi-bio">
-              {foundDoi.pekerjaan && <span className="tag">{foundDoi.pekerjaan}</span>}
-              {foundDoi.hobi && <span className="tag">{foundDoi.hobi}</span>}
-            </div>
-            <button
-              className="chat-now-btn"
-              onClick={() => {
-                closeModal();
-                router.push(`/hypetalk/room?from=${foundDoi.id}`);
-              }}
-            >
-              Chat Sekarang
-            </button>
+          <div className="tg-modal-content slide-up" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><h3>Buat Grup</h3><button onClick={closeModal}><span className="material-icons">close</span></button></div>
+            <div className="input-group"><span className="material-icons">groups</span><input type="text" placeholder="Nama grup" value={groupName} onChange={e => setGroupName(e.target.value)} /></div>
+            <button className="action-btn" onClick={handleCreateGroup}>Buat Sekarang</button>
           </div>
         </div>
       )}
 
-      {/* LIMIT DOI */}
-      {activeModal === 'limit-doi' && (
-        <div className="tg-modal-overlay active" onClick={closeModal}>
-          <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>Limit Harian Habis</h3>
-            <p>Kamu sudah mencapai batas pencarian hari ini. Tunggu besok ya!</p>
-            <button onClick={closeModal}>OK</button>
-          </div>
-        </div>
-      )}
-
-      {/* RADAR SEARCHING OVERLAY */}
       {isSearchingDoi && (
         <div className="doi-search-overlay">
-          <div className="radar-container">
-            <div className="radar-ring"></div>
-            <div className="radar-ring delay-1"></div>
-            <div className="radar-center">
-              <span className="material-icons">person_search</span>
-            </div>
-          </div>
-          <h3 className="search-title">Mencari kecocokan...</h3>
+          <div className="radar-wrapper"><div className="radar-ring"></div><div className="radar-ring delay-1"></div><span className="material-icons">person_search</span></div>
+          <h3>Mencari kecocokan...</h3>
         </div>
       )}
     </div>
