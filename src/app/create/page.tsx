@@ -6,7 +6,7 @@ import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION UNTUK GELOMBANG
+import { motion } from 'framer-motion'; 
 import './Create.css'; 
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
@@ -57,7 +57,6 @@ export default function CreatePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [videoPos, setVideoPos] = useState(50);
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('pick');
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
@@ -206,9 +205,7 @@ export default function CreatePostPage() {
     video.muted = true;
     video.playsInline = true;
     
-    await new Promise((resolve) => {
-      video.onloadeddata = resolve;
-    });
+    await new Promise((resolve) => { video.onloadeddata = resolve; });
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -220,9 +217,7 @@ export default function CreatePostPage() {
 
     for (let i = 0; i < numThumbs; i++) {
       video.currentTime = (duration / numThumbs) * i;
-      await new Promise((resolve) => {
-        video.onseeked = resolve;
-      });
+      await new Promise((resolve) => { video.onseeked = resolve; });
       ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
       thumbs.push(canvas.toDataURL('image/jpeg', 0.6));
     }
@@ -271,18 +266,19 @@ export default function CreatePostPage() {
     video.pause();
     setIsVideoPlaying(false);
 
+    // KARENA KITA MENGHAPUS FITUR GESER KANAN/KIRI, KITA AMBIL CENTER CROP DEFAULT
     const targetRatio = 2 / 3;
     const videoRatio = video.videoWidth / video.videoHeight;
     let cw, ch, sx, sy;
 
     if (videoRatio > targetRatio) {
       ch = video.videoHeight; cw = ch * targetRatio;
-      sx = (video.videoWidth - cw) * (videoPos / 100); 
+      sx = (video.videoWidth - cw) / 2; // Center horizontal
       sy = 0;
     } else {
       cw = video.videoWidth; ch = cw / targetRatio;
       sx = 0; 
-      sy = (video.videoHeight - ch) * (videoPos / 100); 
+      sy = (video.videoHeight - ch) / 2; // Center vertical
     }
 
     canvas.width = cw; canvas.height = ch;
@@ -322,11 +318,9 @@ export default function CreatePostPage() {
     router.back(); 
   };
 
-  // 🔥 FIX 1: PENGIRIMAN GAMBAR DENGAN EKSTENSI BIAR KEBACA DI PROFIL 🔥
   const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
     return new Promise<any>((resolve, reject) => {
       const fd = new FormData();
-      // MEMAKSA NAMA FILE BIAR CLOUDINARY TAU INI FOTO JPG BUKAN BLOB GA JELAS
       const filename = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
       fd.append("file", file, filename); 
       fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
@@ -366,18 +360,12 @@ export default function CreatePostPage() {
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       const myUserId = session.user.id;
 
-      // 🔥 FIX 4: HASHTAG SAFE INSERT 🔥
-      const extractedTags = [...new Set((caption.match(/#\w+/g) || []).map(t => t.toLowerCase()))];
+      // 🔥 FIX 4: HASHTAG INSERT PAKSA 🔥
+      const extractedTags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
       if (extractedTags.length > 0) {
         for (const tg of extractedTags) {
-          try {
-            const { data: existingTag } = await supabase.from('hashtags').select('id').eq('tag', tg).maybeSingle();
-            if (!existingTag) {
-              await supabase.from('hashtags').insert({ tag: tg });
-            }
-          } catch (hashtagErr) {
-            console.warn("Gagal simpan hashtag", hashtagErr);
-          }
+          // Abaikan error (biar tetep ngesave tag lainnya)
+          await supabase.from('hashtags').insert({ tag: tg }).then(); 
         }
       }
 
@@ -385,22 +373,22 @@ export default function CreatePostPage() {
       let finalVideoUrl: string | null = null;
 
       if (postType === 'image' && croppedImages.length > 0) {
+        setUploadProgress(20);
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
         const uploadResults = await Promise.all(uploadPromises);
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
         setUploadProgress(100);
       } 
       else if (postType === 'video' && rawVideoFile && coverBlob) {
-        // Upload Cover
         const coverRes = await uploadToCloudinary(coverBlob, 'image');
         finalImageUrl = coverRes.secure_url; 
 
-        // Upload Video 
         const videoRes = await uploadToCloudinary(rawVideoFile, 'video');
         const uploadedVidUrl = videoRes.secure_url;
         const endSegment = Math.min(videoDuration, videoStart + 15);
         
-        finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/c_fill,ar_2:3,g_auto/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
+        // 🔥 FIX 1: Hapus g_auto, gunakan c_fill biasa agar video 100% jalan di semua perangkat 🔥
+        finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
       }
 
       let newPostId: string | null = null;
@@ -455,42 +443,39 @@ export default function CreatePostPage() {
     finally { setIsSubmitting(false); setUploadProgress(0); }
   };
 
-  // 🔥 FIX 2: TAMPILAN EDITOR SCREEN DIPERBAIKI BIAR GAK TENGGELAM 🔥
+  // 🔥 FIX 2: TAMPILAN EDITOR DIPERMUDAH DAN GAK TENGGELAM 🔥
   const renderEditorScreen = () => {
     if (step !== 'edit') return null;
     
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#000', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#080808', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
         
         {/* Header Editor */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <button 
             onClick={() => {
               if (postType === 'image') handleCancelCrop();
-              else {
-                handleRemoveVideo();
-                setStep('pick');
-              }
+              else { handleRemoveVideo(); setStep('pick'); }
             }} 
             style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
             <span className="material-icons">arrow_back</span>
           </button>
           <p style={{ color: '#fff', fontSize: '16px', fontWeight: 600, margin: 0 }}>
-            {postType === 'image' ? `Atur Foto (${croppedImages.length + 1}/${croppedImages.length + rawImagesQueue.length})` : 'Potong & Atur Video'}
+            {postType === 'image' ? `Atur Foto (${croppedImages.length + 1}/${croppedImages.length + rawImagesQueue.length})` : 'Edit Video'}
           </p>
           <button 
             onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
-            style={{ background: '#1f3cff', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}
+            style={{ background: '#1f3cff', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '20px', fontWeight: 800, cursor: 'pointer', fontSize: '13px' }}
           >
-            Lanjut
+            Selesai
           </button>
         </div>
 
         {/* Area Utama Editor */}
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#111', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#000', padding: '10px' }}>
           {postType === 'image' && imageForCrop ? (
-            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <div style={{ width: '100%', height: '100%', position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
               <Cropper 
                 image={imageForCrop} 
                 crop={crop} 
@@ -502,77 +487,59 @@ export default function CreatePostPage() {
               />
             </div>
           ) : postType === 'video' && rawVideoUrl ? (
-            <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', aspectRatio: '2/3', maxHeight: '100%' }}>
+            <div style={{ width: 'auto', height: '100%', maxWidth: '100%', position: 'relative', overflow: 'hidden', aspectRatio: '2/3', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
               <video 
                 ref={videoRef} 
                 src={rawVideoUrl} 
                 playsInline 
-                muted 
+                muted={!isVideoPlaying} 
                 loop 
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${videoPos}%` }} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
                 onLoadedMetadata={handleVideoLoadedMetadata} 
               />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
               
               <div 
                 onClick={togglePlayVideo}
-                style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isVideoPlaying ? 'transparent' : 'rgba(0,0,0,0.4)', cursor: 'pointer' }}
+                style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isVideoPlaying ? 'transparent' : 'rgba(0,0,0,0.5)', cursor: 'pointer', transition: '0.2s' }}
               >
                 {!isVideoPlaying && (
-                  <span className="material-icons" style={{ fontSize: '60px', color: 'rgba(255,255,255,0.8)' }}>play_circle_outline</span>
+                  <div style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', padding: '15px', borderRadius: '50%' }}>
+                    <span className="material-icons" style={{ fontSize: '40px', color: '#fff' }}>play_arrow</span>
+                  </div>
                 )}
               </div>
             </div>
           ) : null}
         </div>
 
-        {/* Kontrol Bawah (Fixed biar gak tenggelam) */}
-        <div style={{ flexShrink: 0, padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', background: '#1a1a1a', borderTopLeftRadius: '20px', borderTopRightRadius: '20px', overflowY: 'auto', maxHeight: '45vh' }}>
+        {/* Kontrol Bawah yang Dipermudah */}
+        <div style={{ flexShrink: 0, padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', background: '#111', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {postType === 'image' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: '#fff' }}>
               <span className="material-icons" style={{ fontSize: '20px' }}>remove</span>
-              <input 
-                type="range" 
-                value={zoom} 
-                min={1} 
-                max={3} 
-                step={0.1} 
-                onChange={(e) => setZoom(Number(e.target.value))} 
-                style={{ flex: 1, accentColor: '#1f3cff' }} 
-              />
+              <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} style={{ flex: 1, accentColor: '#1f3cff' }} />
               <span className="material-icons" style={{ fontSize: '20px' }}>add</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {/* Slider Posisi Video */}
-              <div>
-                <label style={{ color: '#aaa', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>GESER POSISI VIDEO (CROP)</label>
-                <input 
-                  type="range" 
-                  value={videoPos} 
-                  min={0} 
-                  max={100} 
-                  onChange={(e) => setVideoPos(Number(e.target.value))} 
-                  style={{ width: '100%', accentColor: '#f59e0b' }} 
-                />
-              </div>
-
-              {/* FILMSTRIP: Slider Durasi & Sampul */}
-              <div className="filmstrip-wrapper">
-                <label style={{ color: '#aaa', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
-                  ATUR DURASI & SAMPUL (MAX 15 DETIK)
-                </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Potong Video */}
+              <div className="editor-control-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>content_cut</span> Potong Video (Max 15s)
+                  </span>
+                  <span style={{ color: '#aaa', fontSize: '12px', fontWeight: 600 }}>{videoStart.toFixed(1)}s - {Math.min(videoDuration, videoStart + 15).toFixed(1)}s</span>
+                </div>
                 
                 <div className="filmstrip-box">
                   <div className="filmstrip-images">
-                    {videoThumbnails.map((thumb, idx) => (
-                      <img key={idx} src={thumb} alt="thumb" />
-                    ))}
+                    {videoThumbnails.map((thumb, idx) => <img key={idx} src={thumb} alt="thumb" />)}
                   </div>
-
                   <input 
                     type="range" 
-                    className="custom-range-timeline"
+                    className="custom-range-timeline blue-slider"
                     min={0} 
                     max={Math.max(0, videoDuration - 15)} 
                     step={0.1} 
@@ -584,10 +551,22 @@ export default function CreatePostPage() {
                       if (coverTime < val || coverTime > val + 15) setCoverTime(val);
                     }} 
                   />
-                  
+                </div>
+              </div>
+
+              {/* Pilih Cover */}
+              <div className="editor-control-card">
+                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px', color: '#f59e0b' }}>image</span> Pilih Sampul Depan
+                  </span>
+                  <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Tampil di: {coverTime.toFixed(1)}s</span>
+                </div>
+                
+                <div className="filmstrip-box" style={{ height: '30px' }}>
                   <input 
                     type="range" 
-                    className="custom-cover-timeline"
+                    className="custom-range-timeline orange-slider"
                     min={videoStart} 
                     max={Math.min(videoDuration, videoStart + 15)} 
                     step={0.1} 
@@ -599,12 +578,8 @@ export default function CreatePostPage() {
                     }} 
                   />
                 </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontSize: '12px', marginTop: '6px' }}>
-                  <span><span style={{color: '#1f3cff'}}>■</span> Potong: {videoStart.toFixed(1)}s</span>
-                  <span><span style={{color: '#ef4444'}}>■</span> Sampul: {coverTime.toFixed(1)}s</span>
-                </div>
               </div>
+
             </div>
           )}
         </div>
@@ -846,7 +821,7 @@ export default function CreatePostPage() {
                   width: '100%', 
                   padding: '16px', 
                   color: isSubmitting ? '#fff' : '#fff', 
-                  border: 'none', 
+                  border: isSubmitting ? '1px solid #1f3cff' : 'none', 
                   borderRadius: '14px', 
                   fontSize: '16px', 
                   fontWeight: 800, 
@@ -859,23 +834,21 @@ export default function CreatePostPage() {
                 {isSubmitting && (
                   <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
-                    height: `${Math.max(uploadProgress, 15)}%`, 
+                    height: `${uploadProgress}%`, 
                     background: '#1f3cff',
-                    transition: 'height 0.3s ease', zIndex: 1
+                    transition: 'height 0.4s ease-out', zIndex: 1
                   }}>
-                    <motion.div
-                      animate={{ x: ["0%", "-50%"] }}
-                      transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                      style={{
-                        position: 'absolute',
-                        top: '-15px',
-                        left: 0,
-                        width: '200%',
-                        height: '15px',
-                        backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,60 C300,120 300,0 600,60 C900,120 900,0 1200,60 L1200,120 L0,120 Z" fill="%231f3cff"/></svg>')`,
-                        backgroundSize: '50% 100%'
-                      }}
-                    />
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <motion.div
+                        animate={{ x: ["0%", "-50%"] }}
+                        transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                        style={{
+                          position: 'absolute', top: '-12px', left: 0, width: '200%', height: '12px',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,50 250,0 400,25 C550,50 650,0 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
+                          backgroundSize: '50% 100%'
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 
