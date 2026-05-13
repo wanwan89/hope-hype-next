@@ -1,5 +1,3 @@
-/* src/app/create/Create.css */
-
 /* --- RESET & BASIC ANIMATION --- */
 .create-page-wrapper {
   animation: fadeInPage 0.3s ease-in-out;
@@ -10,7 +8,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- MENTIONS & HASHTAG POPUP (CLEAN FLAT) --- */
+/* --- MENTIONS & HASHTAG POPUP --- */
 .mention-popup, .popup-suggestion-box {
   position: absolute; 
   bottom: calc(100% + 5px); 
@@ -20,7 +18,7 @@
   background: var(--bg-card, #1a1a1a); 
   border: 1px solid var(--border-card, #333); 
   border-radius: 16px;
-  box-shadow: none; /* 🔥 FLAT DESIGN NO SHADOW 🔥 */
+  box-shadow: none; 
   overflow-y: auto; 
   z-index: 99999;
   backdrop-filter: blur(10px);
@@ -41,10 +39,9 @@
 }
 
 .mention-name, .popup-name { font-size: 14px; font-weight: 700; color: var(--text-main, #fff); }
-.popup-tag { font-size: 14px; font-weight: 700; color: #1f3cff; } /* Biru HypeTalk */
+.popup-tag { font-size: 14px; font-weight: 700; color: #1f3cff; } 
 .mention-empty, .popup-empty { padding: 16px; text-align: center; font-size: 13px; color: var(--text-muted, #888); font-weight: 500; }
 
-/* Custom Scrollbar untuk Pop-up & List Lagu */
 .mention-popup::-webkit-scrollbar, .popup-suggestion-box::-webkit-scrollbar, .music-list-scroll::-webkit-scrollbar {
   width: 4px;
 }
@@ -62,7 +59,7 @@
 .dest-content {
   display: flex; align-items: center; padding: 12px 15px;
   background: var(--bg-secondary); border: 1.5px solid var(--border-card);
-  border-radius: 14px; transition: 0.2s ease; /* Hilangin transform translate biar clean */
+  border-radius: 14px; transition: 0.2s ease; 
 }
 .dest-content:active { transform: scale(0.98); }
 
@@ -80,7 +77,7 @@
 .dest-option input:checked + .dest-content .dest-icon-box { background: #1f3cff; color: white; }
 .dest-option input:checked + .dest-content .dest-check { background: #1f3cff; border-color: #1f3cff; border-width: 4px; }
 
-/* --- POST TYPE TOGGLE & VISIBILITY TOGGLE --- */
+/* --- POST TYPE & VISIBILITY --- */
 .post-type-toggle, .visibility-toggle { 
   display: flex; gap: 8px; background: var(--bg-secondary); padding: 6px; border-radius: 14px; 
 }
@@ -146,71 +143,76 @@ body:has(.crop-overlay-wrapper) { overflow: hidden; }
 .zoom-slider { display: flex; align-items: center; justify-content: center; gap: 10px; color: #fff; }
 .zoom-slider input[type="range"] { width: 70%; accent-color: #1f3cff; }
 
-.crop-action-btns { display: flex; gap: 12px; }
-.crop-action-btns button {
-  flex: 1; padding: 14px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; font-size: 15px; transition: 0.2s;
-}
-.crop-cancel { background: #333; color: #fff; }
-.crop-cancel:active { background: #444; }
-.crop-confirm { background: #1f3cff; color: #fff; box-shadow: none; } /* NO SHADOW */
-.crop-confirm:active { transform: scale(0.96); }
-
-/* --- VIDEO EDITOR UI (SLIDER KHUSUS) --- */
-.video-trim-slider {
-  -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 5px; outline: none; margin-top: 10px;
-}
-.video-trim-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #1f3cff; cursor: pointer; border: 3px solid white; box-shadow: none; /* NO SHADOW */
+/* 🔥 FILMSTRIP VIDEO EDITOR 🔥 */
+.filmstrip-wrapper {
+  margin-top: 10px;
 }
 
-/* --- TOMBOL SUBMIT --- */
-.post-submit-btn {
-  width: 100%; padding: 16px; background: #1f3cff; color: white;
-  border: none; border-radius: 14px; font-size: 16px; font-weight: 800;
-  cursor: pointer; transition: 0.2s; margin-top: 10px;
-  box-shadow: none; /* 🔥 FLAT DESIGN NO SHADOW 🔥 */
-}
-.post-submit-btn:active:not(:disabled) { transform: scale(0.98); }
-.post-submit-btn:disabled { background: var(--bg-input, #333); color: var(--text-muted, #888); cursor: not-allowed; transform: none; }
-/* Fix Editor Layout biar nggak tenggelam */
-.editor-screen-wrapper {
-  position: fixed; inset: 0; background: #000; z-index: 9999;
-  display: flex; flex-direction: column;
-}
-.editor-main-content {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  overflow: hidden; padding: 10px;
-}
-.video-visual-area { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-.video-viewport { 
-  width: auto; height: 100%; max-height: 70vh; overflow: hidden; 
-  background: #111; border-radius: 12px; position: relative;
-}
-.video-viewport video { width: 100%; height: 100%; object-fit: cover; }
-
-.editor-bottom-controls {
-  background: #111; padding: 20px; border-top: 1px solid #222;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+.filmstrip-box {
+  position: relative;
+  width: 100%;
+  height: 45px;
+  background: #222;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
-/* Styling Slider biar kayak "Kotak" */
-.box-trim-input {
-  -webkit-appearance: none; width: 100%; height: 40px; 
-  background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden;
-}
-.box-trim-input::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 80px; height: 40px;
-  background: rgba(31, 60, 255, 0.4); border: 2px solid #1f3cff;
-  border-radius: 6px; cursor: pointer;
+.filmstrip-images {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
 }
 
-.cover-trim-input {
-  -webkit-appearance: none; width: 100%; height: 10px; background: #333; border-radius: 5px;
-}
-.cover-trim-input::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 15px; height: 30px; background: #f59e0b; border-radius: 3px;
+.filmstrip-images img {
+  flex: 1;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
 }
 
-.control-group label {
-  color: #888; font-size: 10px; font-weight: 800; display: block; margin-bottom: 8px;
+/* Custom Slider over Filmstrip */
+.custom-range-timeline {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  z-index: 10;
+  margin: 0;
+}
+.custom-range-timeline::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 55px; /* Sedikit lebih tinggi dari box */
+  background: #1f3cff;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid white;
+}
+
+.custom-cover-timeline {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  z-index: 20;
+  margin: 0;
+  pointer-events: none; /* Biar klik jatuh ke timeline bawahnya kalau gak pas di thumb */
+}
+.custom-cover-timeline::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 55px;
+  background: #ef4444; /* Warna merah buat penanda cover */
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1.5px solid white;
+  pointer-events: auto; /* Thumbnya tetep bisa ditarik */
 }

@@ -17,10 +17,7 @@ export default function CreatePostPage() {
 
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
-  
-  // 🔥 STATE VISIBILITY KHUSUS STORY 🔥
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
-
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
   
@@ -32,18 +29,19 @@ export default function CreatePostPage() {
   // STATE VIDEO EDITOR
   const [rawVideoFile, setRawVideoFile] = useState<File | null>(null);
   const [rawVideoUrl, setRawVideoUrl] = useState<string | null>(null);
-  const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
-  
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoStart, setVideoStart] = useState(0); 
   const [coverTime, setCoverTime] = useState(0); 
-  
   const [coverBlob, setCoverBlob] = useState<Blob | null>(null);
   const [coverPreviewUrl, setCoverUrlPreview] = useState<string | null>(null);
+  
+  // 🔥 STATE BARU UNTUK FILMSTRIP & PLAY
+  const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null); 
@@ -61,7 +59,7 @@ export default function CreatePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [videoPos, setVideoPos] = useState(50); // 🔥 Sudah ditambahkan (Nilai 0-100)
+  const [videoPos, setVideoPos] = useState(50);
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('pick');
 
   // MENTIONS & HASHTAGS
@@ -144,9 +142,6 @@ export default function CreatePostPage() {
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
-  // ===============================================
-  // 🔥 FUNGSI GAMBAR 🔥
-  // ===============================================
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -163,7 +158,7 @@ export default function CreatePostPage() {
     Promise.all(readersArr).then(results => {
       setRawImagesQueue(results); 
       setImageForCrop(results[0]); 
-      setStep('edit'); // 🔥 Masuk mode edit
+      setStep('edit'); 
     });
   };
 
@@ -183,11 +178,10 @@ export default function CreatePostPage() {
         setCrop({ x: 0, y: 0 });
         setZoom(1);
         setCroppedAreaPixels(null);
-        // Tetap di step 'edit' untuk gambar berikutnya
       } else {
         setRawImagesQueue([]);
         setImageForCrop(null);
-        setStep('post'); // 🔥 Selesai semua crop, kembali ke post
+        setStep('post'); 
       }
     } catch (e) { console.error("Error Cropping:", e); }
   };
@@ -197,11 +191,10 @@ export default function CreatePostPage() {
     if (nextQueue.length > 0) {
       setRawImagesQueue(nextQueue);
       setImageForCrop(nextQueue[0]);
-      // Tetap di step 'edit'
     } else {
       setRawImagesQueue([]);
       setImageForCrop(null);
-      setStep('post'); // Kembali ke form
+      setStep('post'); 
     }
   };
 
@@ -210,18 +203,46 @@ export default function CreatePostPage() {
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  // ===============================================
-  // 🔥 FUNGSI VIDEO EDITOR 🔥
-  // ===============================================
+  // 🔥 GENERATE THUMBNAILS UNTUK TIMELINE VIDEO 🔥
+  const generateVideoThumbnails = async (url: string, duration: number) => {
+    const video = document.createElement('video');
+    video.src = url;
+    video.muted = true;
+    video.playsInline = true;
+    
+    await new Promise((resolve) => {
+      video.onloadeddata = resolve;
+    });
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 60; 
+    canvas.height = 80;
+
+    const numThumbs = 8; // Jumlah kotak thumbnail
+    const thumbs: string[] = [];
+
+    for (let i = 0; i < numThumbs; i++) {
+      video.currentTime = (duration / numThumbs) * i;
+      await new Promise((resolve) => {
+        video.onseeked = resolve;
+      });
+      ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      thumbs.push(canvas.toDataURL('image/jpeg', 0.6));
+    }
+    setVideoThumbnails(thumbs);
+  };
+
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 50 * 1024 * 1024) return showNotif("Ukuran video terlalu besar! Maksimal 50MB.", "warning");
 
     setRawVideoFile(file);
-    setRawVideoUrl(URL.createObjectURL(file));
-    setStep('edit'); // 🔥 Masuk ke editor video
-    setIsVideoEditorOpen(true);
+    const objUrl = URL.createObjectURL(file);
+    setRawVideoUrl(objUrl);
+    setVideoThumbnails([]); // Reset thumb
+    setStep('edit'); 
   };
 
   const handleVideoLoadedMetadata = () => {
@@ -230,6 +251,19 @@ export default function CreatePostPage() {
       setVideoDuration(duration);
       setVideoStart(0);
       setCoverTime(0);
+      if (rawVideoUrl) generateVideoThumbnails(rawVideoUrl, duration);
+    }
+  };
+
+  const togglePlayVideo = () => {
+    if (videoRef.current) {
+      if (isVideoPlaying) {
+        videoRef.current.pause();
+        setIsVideoPlaying(false);
+      } else {
+        videoRef.current.play();
+        setIsVideoPlaying(true);
+      }
     }
   };
 
@@ -237,6 +271,9 @@ export default function CreatePostPage() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
+
+    video.pause();
+    setIsVideoPlaying(false);
 
     const targetRatio = 2 / 3;
     const videoRatio = video.videoWidth / video.videoHeight;
@@ -260,7 +297,7 @@ export default function CreatePostPage() {
       if (blob) {
         setCoverBlob(blob);
         setCoverUrlPreview(URL.createObjectURL(blob));
-        setStep('post'); // 🔥 Selesai edit video, lanjut ke post
+        setStep('post'); 
       }
     }, 'image/jpeg', 0.9);
   };
@@ -270,6 +307,7 @@ export default function CreatePostPage() {
     setRawVideoUrl(null);
     setCoverBlob(null);
     setCoverUrlPreview(null);
+    setVideoThumbnails([]);
     setStep('pick');
   };
 
@@ -288,17 +326,33 @@ export default function CreatePostPage() {
     router.back(); 
   };
 
-  const uploadToCloudinary = async (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
-    const fd = new FormData();
-    fd.append("file", file); 
-    fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, { method: "POST", body: fd });
-    return await res.json();
+  // 🔥 CUSTOM UPLOAD DENGAN PROGRESS BAR 🔥
+  const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
+    return new Promise<any>((resolve, reject) => {
+      const fd = new FormData();
+      fd.append("file", file); 
+      fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+      
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && resourceType === 'video') {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percentComplete); // Set state progress
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
+        else reject(JSON.parse(xhr.responseText));
+      };
+
+      xhr.onerror = () => reject("Network Error during upload");
+      xhr.send(fd);
+    });
   };
 
-  // ===============================================
-  // 🔥 FUNGSI SUBMIT POSTINGAN 🔥
-  // ===============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -307,31 +361,40 @@ export default function CreatePostPage() {
     if (destination === "story" && postType === 'image' && croppedImages.length > 1) return showNotif("Story hanya bisa upload 1 foto!", "warning");
 
     setIsSubmitting(true);
+    setUploadProgress(0);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       const myUserId = session.user.id;
 
+      // 🔥 FIX HASHTAG (Bypass unique error) 🔥
       const extractedTags = [...new Set((caption.match(/#(\w+)/g) || []).map(t => t.toLowerCase()))];
       if (extractedTags.length > 0) {
-        const tagsToInsert = extractedTags.map(t => ({ tag: t }));
-        await supabase.from('hashtags').upsert(tagsToInsert, { onConflict: 'tag' }).select();
+        for (const tg of extractedTags) {
+          const { data: existingTag } = await supabase.from('hashtags').select('id').eq('tag', tg).single();
+          if (!existingTag) {
+            await supabase.from('hashtags').insert({ tag: tg });
+          }
+        }
       }
 
       let finalImageUrl: string | null = null;
       let finalVideoUrl: string | null = null;
 
       if (postType === 'image' && croppedImages.length > 0) {
+        setUploadProgress(20);
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
         const uploadResults = await Promise.all(uploadPromises);
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
+        setUploadProgress(100);
       } 
       else if (postType === 'video' && rawVideoFile && coverBlob) {
-        showNotif("Mengunggah Video...", "info");
-        
+        // Upload Cover
         const coverRes = await uploadToCloudinary(coverBlob, 'image');
         finalImageUrl = coverRes.secure_url.replace('/upload/', '/upload/c_fill,ar_2:3,g_auto/');
 
+        // Upload Video (Ini yang ada loading bar-nya)
         const videoRes = await uploadToCloudinary(rawVideoFile, 'video');
         const uploadedVidUrl = videoRes.secure_url;
         const endSegment = Math.min(videoDuration, videoStart + 15);
@@ -388,18 +451,14 @@ export default function CreatePostPage() {
       showNotif("Postingan Berhasil Terkirim!", "success");
       handleClose();
     } catch (err: any) { alert(err.message); } 
-    finally { setIsSubmitting(false); }
+    finally { setIsSubmitting(false); setUploadProgress(0); }
   };
 
-  // ===============================================
-  // 🔥 TAMPILAN EDITOR SCREEN (STEP EDIT) 🔥
-  // ===============================================
   const renderEditorScreen = () => {
     if (step !== 'edit') return null;
     
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#000', display: 'flex', flexDirection: 'column' }}>
-        {/* Header Editor */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <button 
             onClick={() => {
@@ -424,7 +483,6 @@ export default function CreatePostPage() {
           </button>
         </div>
 
-        {/* Area Utama Editor */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#111' }}>
           {postType === 'image' && imageForCrop ? (
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -446,20 +504,24 @@ export default function CreatePostPage() {
                 playsInline 
                 muted 
                 loop 
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'cover', 
-                  objectPosition: `center ${videoPos}%` 
-                }} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `center ${videoPos}%` }} 
                 onLoadedMetadata={handleVideoLoadedMetadata} 
               />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
+              
+              {/* 🔥 TOMBOL PLAY MANUAL (BIAR BISA PLAY DI APLIKASI) 🔥 */}
+              <div 
+                onClick={togglePlayVideo}
+                style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isVideoPlaying ? 'transparent' : 'rgba(0,0,0,0.4)', cursor: 'pointer' }}
+              >
+                {!isVideoPlaying && (
+                  <span className="material-icons" style={{ fontSize: '60px', color: 'rgba(255,255,255,0.8)' }}>play_circle_outline</span>
+                )}
+              </div>
             </div>
           ) : null}
         </div>
 
-        {/* Kontrol Bawah */}
         <div style={{ padding: '20px', background: '#1a1a1a', borderTopLeftRadius: '20px', borderTopRightRadius: '20px' }}>
           {postType === 'image' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: '#fff' }}>
@@ -476,10 +538,10 @@ export default function CreatePostPage() {
               <span className="material-icons" style={{ fontSize: '20px' }}>add</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Slider Posisi Video */}
               <div>
-                <label style={{ color: '#aaa', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>GESER POSISI VIDEO</label>
+                <label style={{ color: '#aaa', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>GESER POSISI VIDEO (CROP)</label>
                 <input 
                   type="range" 
                   value={videoPos} 
@@ -490,12 +552,24 @@ export default function CreatePostPage() {
                 />
               </div>
 
-              {/* Slider Durasi */}
-              <div>
-                <label style={{ color: '#aaa', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>PILIH DURASI (MAX 15S)</label>
-                <div style={{ position: 'relative' }}>
+              {/* 🔥 FILMSTRIP: Slider Durasi & Sampul 🔥 */}
+              <div className="filmstrip-wrapper">
+                <label style={{ color: '#aaa', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                  ATUR DURASI & SAMPUL (MAX 15 DETIK)
+                </label>
+                
+                <div className="filmstrip-box">
+                  {/* Deretan Gambar Belakang */}
+                  <div className="filmstrip-images">
+                    {videoThumbnails.map((thumb, idx) => (
+                      <img key={idx} src={thumb} alt="thumb" />
+                    ))}
+                  </div>
+
+                  {/* Range Slider Trim (Biru) */}
                   <input 
                     type="range" 
+                    className="custom-range-timeline"
                     min={0} 
                     max={Math.max(0, videoDuration - 15)} 
                     step={0.1} 
@@ -503,35 +577,31 @@ export default function CreatePostPage() {
                     onChange={(e) => {
                       const val = Number(e.target.value);
                       setVideoStart(val);
-                      if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.play(); }
+                      if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.play(); setIsVideoPlaying(true); }
                       if (coverTime < val || coverTime > val + 15) setCoverTime(val);
                     }} 
-                    style={{ width: '100%', accentColor: '#1f3cff' }} 
+                  />
+                  
+                  {/* Penanda Cover (Merah) - Dibuat melayang di atas slider biru */}
+                  <input 
+                    type="range" 
+                    className="custom-cover-timeline"
+                    min={videoStart} 
+                    max={Math.min(videoDuration, videoStart + 15)} 
+                    step={0.1} 
+                    value={coverTime} 
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setCoverTime(val);
+                      if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.pause(); setIsVideoPlaying(false); }
+                    }} 
                   />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontSize: '12px', marginTop: '4px' }}>
-                  <span>{videoStart.toFixed(1)}s</span>
-                  <span>{Math.min(videoDuration, videoStart + 15).toFixed(1)}s</span>
-                </div>
-              </div>
 
-              {/* Slider Cover */}
-              <div>
-                <label style={{ color: '#aaa', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>PILIH SAMPUL (COVER)</label>
-                <input 
-                  type="range" 
-                  min={videoStart} 
-                  max={Math.min(videoDuration, videoStart + 15)} 
-                  step={0.1} 
-                  value={coverTime} 
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setCoverTime(val);
-                    if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.pause(); }
-                  }} 
-                  style={{ width: '100%', accentColor: '#ef4444' }} 
-                />
-                <div style={{ color: '#fff', fontSize: '12px', marginTop: '4px' }}>{coverTime.toFixed(1)}s</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontSize: '12px', marginTop: '6px' }}>
+                  <span><span style={{color: '#1f3cff'}}>■</span> Potong: {videoStart.toFixed(1)}s</span>
+                  <span><span style={{color: '#ef4444'}}>■</span> Sampul: {coverTime.toFixed(1)}s</span>
+                </div>
               </div>
             </div>
           )}
@@ -540,35 +610,12 @@ export default function CreatePostPage() {
     );
   };
 
-  // ===============================================
-  // 🔥 TAMPILAN UTAMA 🔥
-  // ===============================================
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
-      
-      {/* Render Editor Screen jika step === 'edit' */}
       {step === 'edit' && renderEditorScreen()}
 
-      {/* Render Form hanya jika bukan step edit */}
       {step !== 'edit' && (
         <>
-          <style>{`
-            .popup-suggestion-box {
-              position: absolute; bottom: 105%; left: 0; width: 100%; max-height: 220px;
-              background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 16px;
-              box-shadow: 0 -4px 25px rgba(0,0,0,0.4); overflow-y: auto; z-index: 99999; backdrop-filter: blur(10px);
-            }
-            .popup-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; }
-            .popup-item:hover, .popup-item:active { background: var(--bg-input); }
-            .popup-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); }
-            .popup-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
-            .popup-tag { font-size: 14px; font-weight: 700; color: #1f3cff; } 
-            .popup-empty { padding: 16px; text-align: center; font-size: 13px; color: var(--text-muted); font-weight: 500; }
-
-            .video-trim-slider { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 5px; outline: none; margin-top: 10px; }
-            .video-trim-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #1f3cff; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-          `}</style>
-
           <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
             <button type="button" onClick={handleClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
               <span className="material-icons">arrow_back</span>
@@ -578,9 +625,6 @@ export default function CreatePostPage() {
           </div>
 
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
-            
-            {/* Tidak ada lagi crop overlay atau video overlay di sini karena sudah ditangani oleh renderEditorScreen */}
-
             <form onSubmit={handleSubmit} className="post-form">
               <div className="destination-container">
                 <p className="section-label" style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{t('send_to')}</p>
@@ -605,21 +649,12 @@ export default function CreatePostPage() {
                   ))}
                 </div>
                 
-                {/* 🔥 TOGGLE VISIBILITY KHUSUS STORY 🔥 */}
                 {destination === 'story' && (
                   <div className="visibility-toggle" style={{ display: 'flex', gap: '8px', marginTop: '15px', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '14px' }}>
-                     <button 
-                       type="button" 
-                       onClick={() => setVisibility('public')} 
-                       style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: visibility === 'public' ? 'var(--bg-input)' : 'transparent', color: visibility === 'public' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                     >
+                     <button type="button" onClick={() => setVisibility('public')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: visibility === 'public' ? 'var(--bg-input)' : 'transparent', color: visibility === 'public' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                        <span className="material-icons" style={{ fontSize: '16px' }}>public</span> Publik
                      </button>
-                     <button 
-                       type="button" 
-                       onClick={() => setVisibility('followers')} 
-                       style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: visibility === 'followers' ? 'var(--bg-input)' : 'transparent', color: visibility === 'followers' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                     >
+                     <button type="button" onClick={() => setVisibility('followers')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: visibility === 'followers' ? 'var(--bg-input)' : 'transparent', color: visibility === 'followers' ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                        <span className="material-icons" style={{ fontSize: '16px' }}>group</span> Hanya Followers
                      </button>
                   </div>
@@ -673,7 +708,6 @@ export default function CreatePostPage() {
                 </div>
               )}
 
-              {/* AREA UPLOAD VIDEO */}
               {postType === 'video' && (
                 <div style={{ marginTop: '20px' }}>
                   <input type="file" ref={videoInputRef} accept="video/*" hidden onChange={handleVideoSelect} />
@@ -800,8 +834,39 @@ export default function CreatePostPage() {
                 )}
               </div>
 
-              <button type="submit" className="post-submit-btn" disabled={isSubmitting} style={{ marginTop: '30px', width: '100%', padding: '16px', background: isSubmitting ? 'var(--bg-input)' : '#1f3cff', color: isSubmitting ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: 800, cursor: isSubmitting ? 'not-allowed' : 'pointer', boxShadow: isSubmitting ? 'none' : '0 8px 20px rgba(31, 60, 255, 0.3)' }}>
-                {isSubmitting ? (postType === 'video' ? 'Memproses Video...' : t('btn_uploading')) : t('btn_submit_post')}
+              {/* 🔥 TOMBOL SUBMIT DENGAN ANIMASI LOADING BAR 🔥 */}
+              <button 
+                type="submit" 
+                className="post-submit-btn" 
+                disabled={isSubmitting} 
+                style={{ 
+                  marginTop: '30px', 
+                  width: '100%', 
+                  padding: '16px', 
+                  color: isSubmitting ? '#fff' : '#fff', 
+                  border: 'none', 
+                  borderRadius: '14px', 
+                  fontSize: '16px', 
+                  fontWeight: 800, 
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer', 
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: isSubmitting ? 'var(--bg-input)' : '#1f3cff'
+                }}
+              >
+                {/* Background bar yang mengisi */}
+                {isSubmitting && (
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, bottom: 0,
+                    width: `${uploadProgress}%`, background: '#1f3cff',
+                    transition: 'width 0.3s ease', zIndex: 1
+                  }}></div>
+                )}
+                
+                {/* Text di atas bar */}
+                <span style={{ position: 'relative', zIndex: 2 }}>
+                  {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : t('btn_submit_post')}
+                </span>
               </button>
             </form>
           </div>
