@@ -62,9 +62,9 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
 
   // 🔥 FIX 5: STATE VISUALIZER PLAYBACK VN 🔥
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioRef = useRef<HTMLAudioElement null |>(null);
+  const audioCtxRef = useRef<AudioContext null |>(null);
+  const analyserRef = useRef<AnalyserNode null |>(null);
   const requestFrameRef = useRef<number>(0);
   
   // Default wave (12 bar)
@@ -182,7 +182,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
             for(let j=0; j<step; j++) sum += dataArray[i*step + j];
             const val = sum/step;
             if (val > 0) hasData = true;
-            newLevels.push(Math.max(15, (val / 255) * 100)); // Konversi ke persentase height
+            newLevels.push(Math.max(15, (val / 255) * 100)); 
         }
         
         // CORS Fallback: Kalau array kosong (diblokir Cloudinary) tapi audio jalan, bikin gelombang dummy yang natural
@@ -251,7 +251,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   return (
     <div className="hype-chat-scope" style={{ position: 'relative' }}>
       
-      {/* OVERLAY REACTION */}
+      
       {showReactions && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 99998 }} onClick={() => setShowReactions(false)} />
@@ -341,7 +341,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 </div>
               )}
 
-              {/* 🔥 VN DENGAN GELOMBANG SINKRON 🔥 */}
+              
               {msg.audio_url && !isDeleted && (
                 <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
                   <button onClick={toggleVN} className="vn-play-btn">
@@ -382,4 +382,3 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     </div>
   );
 }
-```</AnimatePresence>
