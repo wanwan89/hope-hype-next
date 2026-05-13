@@ -6,8 +6,23 @@ import { supabase } from '@/lib/supabase';
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 import * as LiveKit from 'livekit-client';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION 🔥
 import MessageBubble from './MessageBubble';
 import './ChatArea.css';
+
+// Helper format Last Seen
+const formatLastSeen = (dateStr: string) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
+  const time = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  
+  if (isToday) return `Hari ini, ${time}`;
+  if (isYesterday) return `Kemarin, ${time}`;
+  return `${date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}, ${time}`;
+};
 
 export default function ChatArea() {
   const router = useRouter();
@@ -22,7 +37,7 @@ export default function ChatArea() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [myProfile, setMyProfile] = useState<any>(null);
   
-  const [headerInfo, setHeaderInfo] = useState({ title: 'HopeTalk Globe', sub: '', avatar: '', role: 'user' });
+  const [headerInfo, setHeaderInfo] = useState({ title: 'HopeTalk Globe', sub: '', avatar: '', role: 'user', lastSeen: null as string | null });
   const [targetId, setTargetId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -36,7 +51,6 @@ export default function ChatArea() {
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
   
-  // 🔥 STATE UNTUK PREVIEW & KIRIM FOTO VIP 🔥
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
@@ -61,7 +75,7 @@ export default function ChatArea() {
   const [cancelAnim, setCancelAnim] = useState(false); 
   const isRecordingRef = useRef(false);
   const [recordTime, setRecordTime] = useState(0);
-  const [audioLevel, setAudioLevel] = useState(0); 
+  const [audioLevel, setAudioLevel] = useState(0); // Buat sinkronisasi visualizer
   const vnTouchStartX = useRef(0);
   const vnIsCanceled = useRef(false);
 
@@ -104,6 +118,9 @@ export default function ChatArea() {
     if (!session) return router.push('/login');
     setCurrentUser(session.user);
 
+    // Update last_seen saat ini
+    await supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id);
+
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
     setMyProfile(prof);
 
@@ -119,7 +136,7 @@ export default function ChatArea() {
       currentRoom = `group_${groupId}`;
       const { data: gData } = await supabase.from('groups').select('*').eq('id', groupId).single();
       if (gData) {
-        setHeaderInfo({ title: gData.name, sub: "Grup", avatar: gData.photo_url, role: 'user' });
+        setHeaderInfo({ title: gData.name, sub: "Grup", avatar: gData.photo_url, role: 'user', lastSeen: null });
         setNewGroupName(gData.name);
         setIsOwner(gData.created_by === session.user.id);
       }
@@ -128,9 +145,17 @@ export default function ChatArea() {
       const ids = [session.user.id, fromId].sort();
       currentRoom = `pv_${ids[0]}_${ids[1]}`;
       setTargetId(fromId);
-      const { data: pTarget } = await supabase.from('profiles').select('username, short_id, avatar_url, role').eq('id', fromId).single();
+      
+      // 🔥 FIX 1: AMBIL LAST SEEN TARGET 🔥
+      const { data: pTarget } = await supabase.from('profiles').select('username, short_id, avatar_url, role, last_seen').eq('id', fromId).single();
       if (pTarget) {
-        setHeaderInfo({ title: pTarget.username, sub: `#${pTarget.short_id}`, avatar: pTarget.avatar_url, role: pTarget.role });
+        setHeaderInfo({ 
+          title: pTarget.username, 
+          sub: `#${pTarget.short_id}`, 
+          avatar: pTarget.avatar_url, 
+          role: pTarget.role,
+          lastSeen: pTarget.last_seen 
+        });
       }
 
       const { data: f1 } = await supabase.from('followers').select('id').match({ follower_id: session.user.id, following_id: fromId }).maybeSingle();
@@ -248,6 +273,9 @@ export default function ChatArea() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${room}` }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as any;
+          // Cek kalau ini pesan dari kita yang tadi cuma temp
+          if (newMsg.user_id === user.id) return;
+
           const msgTextLower = String(newMsg.message).toLowerCase();
           
           if (newMsg.is_system && msgTextLower.includes("memanggil") && newMsg.user_id !== user.id) {
@@ -266,10 +294,8 @@ export default function ChatArea() {
           newMsg.profiles = p || undefined;
           setMessages(prev => [...prev, newMsg]);
           
-          if (newMsg.user_id !== user.id) {
-            refs.audio.current?.receive.play().catch(()=>{});
-            if (newMsg.status !== 'read') await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
-          }
+          refs.audio.current?.receive.play().catch(()=>{});
+          if (newMsg.status !== 'read') await supabase.from('messages').update({ status: 'read' }).eq('id', newMsg.id);
           scrollToBottom();
         } else if (payload.eventType === 'UPDATE') {
           setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
@@ -287,19 +313,26 @@ export default function ChatArea() {
 
   const scrollToBottom = () => setTimeout(() => refs.scroll.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
+  // 🔥 FIX 6: OPTIMISTIC UI (PESAN TERKIRIM DULU) 🔥
   const sendMessage = async (text?: string, sticker?: string, audio?: string, image?: string) => {
     const content = text || inputValue;
     if (!content && !sticker && !audio && !image) return;
+    
     refs.audio.current?.send.play().catch(()=>{});
 
     if (editMessageId) {
+      // Optimistic update for edit
+      setMessages(prev => prev.map(m => m.id === editMessageId ? { ...m, message: content } : m));
       await supabase.from('messages').update({ message: content }).eq('id', editMessageId);
       setEditMessageId(null);
       setInputValue('');
       return;
     }
 
-    const { error } = await supabase.from('messages').insert([{
+    // 1. BUAT PESAN SEMENTARA DENGAN STATUS SENDING
+    const tempId = `temp-${Date.now()}`;
+    const tempMsg = {
+      id: tempId,
       room_id: roomId, 
       user_id: currentUser.id, 
       message: image && !content ? "📸 Mengirim Foto" : audio ? "🎤 Voice Note" : (sticker ? "🎨 Stiker" : content),
@@ -307,12 +340,40 @@ export default function ChatArea() {
       audio_url: audio || null, 
       image_url: image || null, 
       reply_to: replyTo?.id || null, 
+      reply_to_msg: replyTo || null,
+      profiles: myProfile,
+      status: 'sending',
+      created_at: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, tempMsg]);
+    setInputValue(''); 
+    setReplyTo(null); 
+    setIsStickerOpen(false);
+    scrollToBottom();
+
+    // 2. KIRIM KE SUPABASE
+    const { data, error } = await supabase.from('messages').insert([{
+      room_id: roomId, 
+      user_id: currentUser.id, 
+      message: tempMsg.message,
+      sticker_url: sticker || null, 
+      audio_url: audio || null, 
+      image_url: image || null, 
+      reply_to: tempMsg.reply_to, 
       status: 'sent'
-    }]);
+    }]).select('*, profiles:user_id(*), reply_to_msg:reply_to(id, username, message)').single();
     
-    if (!error) { setInputValue(''); setReplyTo(null); setIsStickerOpen(false); }
-    if (targetId && !sticker && !audio && !image) {
-      supabase.functions.invoke('send-chat-notif', { body: { record: { sender_id: currentUser.id, receiver_id: targetId, content } } });
+    if (!error && data) {
+      // 3. GANTI PESAN SEMENTARA DENGAN YANG ASLI
+      setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+      if (targetId && !sticker && !audio && !image) {
+        supabase.functions.invoke('send-chat-notif', { body: { record: { sender_id: currentUser.id, receiver_id: targetId, content } } });
+      }
+    } else {
+      // Revert if failed
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      showNotif("Gagal mengirim pesan", "error");
     }
   };
 
@@ -336,6 +397,7 @@ export default function ChatArea() {
     router.back();
   };
 
+  // 🔥 FIX 4: EFEK GELOMBANG SINKRON SAAT MEREKAM 🔥
   const startVisualizer = (stream: MediaStream) => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     refs.audioCtx.current = audioContext;
@@ -345,12 +407,13 @@ export default function ChatArea() {
     analyser.fftSize = 64; 
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    
     const update = () => {
       if (!isRecordingRef.current) return;
       analyser.getByteFrequencyData(dataArray);
       let sum = 0;
       for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-      setAudioLevel(sum / bufferLength); 
+      setAudioLevel(sum / bufferLength); // Range roughly 0-255
       requestAnimationFrame(update);
     };
     update();
@@ -372,9 +435,25 @@ export default function ChatArea() {
         if (refs.audioChunks.current.length === 0) return;
         const blob = new Blob(refs.audioChunks.current, { type: 'audio/mpeg' });
         const fd = new FormData(); fd.append("file", blob); fd.append("upload_preset", "hopehype_preset"); fd.append("resource_type", "video");
+        
+        // Buat temp audio
+        const localUrl = URL.createObjectURL(blob);
+        const tempId = `temp-${Date.now()}`;
+        setMessages(prev => [...prev, {
+          id: tempId, room_id: roomId, user_id: currentUser.id, message: "🎤 Voice Note", audio_url: localUrl, status: 'sending', created_at: new Date().toISOString()
+        }]);
+        scrollToBottom();
+
         const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
         const d = await res.json();
-        if (d.secure_url) sendMessage(undefined, undefined, d.secure_url, undefined);
+        if (d.secure_url) {
+           // Ganti tempMsg di atas lewat logic sendMessage yang dirombak.
+           // Karena kita udah nambahin temp manual, kita panggil insert langsung aja
+           const { data } = await supabase.from('messages').insert([{
+              room_id: roomId, user_id: currentUser.id, message: "🎤 Voice Note", audio_url: d.secure_url, status: 'sent'
+           }]).select('*, profiles:user_id(*)').single();
+           if(data) setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+        }
       };
       refs.mediaRecorder.current.start();
       setIsRecording(true); isRecordingRef.current = true;
@@ -431,7 +510,6 @@ export default function ChatArea() {
     }
   };
 
-  // 🔥 FUNGSI PILIH FOTO (PREVIEW DULU) 🔥
   const handlePhotoClick = () => {
     const allowedRoles = ['verified', 'vip', 'admin', 'developer', 'creator'];
     const userRole = myProfile?.role?.toLowerCase() || 'user';
@@ -448,10 +526,9 @@ export default function ChatArea() {
     if (!file) return;
     setPendingImage(file);
     setPendingImagePreview(URL.createObjectURL(file));
-    if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = ''; 
   };
 
-  // 🔥 FUNGSI KIRIM SEMUA (TEKS + FOTO) 🔥
   const handleSendClick = async () => {
     if (pendingImage) {
       setIsUploadingImg(true);
@@ -598,11 +675,6 @@ export default function ChatArea() {
     const d = await res.json(); setStickers(d.data || []);
   };
 
-  const handleDeleteMsg = async (id: string) => {
-    await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', sticker_url: null, audio_url: null, image_url: null }).eq('id', id);
-    setMsgOptions(null);
-  };
-
   let chatState = 'normal';
   if (targetId && currentUser) {
     const myRawMsgs = messages.filter(m => m.user_id === currentUser.id);
@@ -616,18 +688,24 @@ export default function ChatArea() {
     }
   }
 
+  // 🔥 FIX 1: UPDATE LOGIKA LAST SEEN 🔥
   let displayStatus = 'Offline';
   if (typingUser) {
     displayStatus = `${typingUser.username} sedang mengetik...`;
   } else if (targetId) {
-    displayStatus = onlineCount >= 2 ? 'Sedang online' : 'Offline';
+    if (onlineCount >= 2) {
+      displayStatus = 'Online';
+    } else if (headerInfo.lastSeen) {
+      displayStatus = `Terakhir dilihat ${formatLastSeen(headerInfo.lastSeen)}`;
+    } else {
+      displayStatus = 'Offline';
+    }
   } else if (groupId) {
     displayStatus = `${onlineCount} anggota sedang online`;
   } else {
     displayStatus = `${onlineCount} hopers sedang online`;
   }
 
-  // Apakah tombol kanan jadi Send atau Mic?
   const canSend = inputValue.trim() || editMessageId || pendingImagePreview;
 
   return (
@@ -639,59 +717,27 @@ export default function ChatArea() {
           70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
           100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
         }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes hypeSpin {
-          100% { transform: rotate(360deg); }
-        }
-        .call-floating-popup {
-          position: fixed;
-          top: max(env(safe-area-inset-top, 20px), 20px);
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(20, 20, 20, 0.95);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(46, 204, 113, 0.4);
-          border-radius: 24px;
-          padding: 12px 20px;
-          display: flex;
-          align-items: center;
-          gap: 15px;
-          z-index: 9999999;
-          box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-          width: 90%;
-          max-width: 360px;
-          animation: slideDownCall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
         @keyframes slideDownCall {
           from { transform: translate(-50%, -120%); opacity: 0; }
           to { transform: translate(-50%, 0); opacity: 1; }
         }
-        .global-call-avatar {
-          width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
-          border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite;
+        .call-floating-popup {
+          position: fixed; top: max(env(safe-area-inset-top, 20px), 20px); left: 50%;
+          transform: translateX(-50%); background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
+          border: 1px solid rgba(46, 204, 113, 0.4); border-radius: 24px; padding: 12px 20px;
+          display: flex; align-items: center; gap: 15px; z-index: 9999999;
+          box-shadow: 0 15px 35px rgba(0,0,0,0.5); width: 90%; max-width: 360px;
+          animation: slideDownCall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+        .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
         @keyframes pulseCallGlobal {
           0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
           70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
           100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
         }
-        .global-call-btn {
-          border: none; border-radius: 50%; width: 40px; height: 40px;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; color: white; transition: transform 0.2s;
-        }
+        .global-call-btn { border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
         .global-call-btn:active { transform: scale(0.9); }
       `}</style>
-
-      {/* LIGHTBOX STIKER */}
-      {lightboxSticker && (
-        <div className="sticker-lightbox" onClick={() => setLightboxSticker(null)}>
-          <img src={lightboxSticker} alt="full sticker" />
-        </div>
-      )}
 
       {/* FLOATING CALL */}
       {(callStatus !== 'idle') && (
@@ -715,126 +761,46 @@ export default function ChatArea() {
           
           <div style={{ display: 'flex', gap: '10px' }}>
             {callStatus === 'incoming' && (
-              <button 
-                className="global-call-btn" 
-                style={{ background: '#2ecc71', boxShadow: '0 4px 10px rgba(46, 204, 113, 0.4)' }}
-                onClick={() => { 
-                  refs.audio.current?.ring.pause(); 
-                  connectLiveKit(callData.room); 
-                }}
-              >
+              <button className="global-call-btn" style={{ background: '#2ecc71', boxShadow: '0 4px 10px rgba(46, 204, 113, 0.4)' }} onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }}>
                 <span className="material-icons" style={{ fontSize: '20px' }}>call</span>
               </button>
             )}
-            
-            <button 
-              className="global-call-btn" 
-              style={{ background: '#ff4757', boxShadow: '0 4px 10px rgba(255, 71, 87, 0.4)' }}
-              onClick={async () => {
+            <button className="global-call-btn" style={{ background: '#ff4757', boxShadow: '0 4px 10px rgba(255, 71, 87, 0.4)' }} onClick={async () => {
                 const currentRoom = callData.room;
                 const isIncoming = callStatus === 'incoming';
                 const isConnected = callStatus === 'connected';
-                
                 endCall(true);
-                
-                if (isIncoming) {
-                  await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
-                } else if (isConnected) {
-                  await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan berakhir (${Math.floor(callData.seconds / 60)}:${String(callData.seconds % 60).padStart(2, '0')})`, is_system: true }]);
-                } else {
-                  await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan dibatalkan`, is_system: true }]);
-                }
-              }}
-            >
+                if (isIncoming) await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
+                else if (isConnected) await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan berakhir (${Math.floor(callData.seconds / 60)}:${String(callData.seconds % 60).padStart(2, '0')})`, is_system: true }]);
+                else await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan dibatalkan`, is_system: true }]);
+              }}>
               <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* MODAL GROUP SETTINGS */}
-      {isGroupSettingsOpen && groupId && (
-        <div className="custom-modal-overlay" onClick={() => setIsGroupSettingsOpen(false)} style={{ zIndex: 100000 }}>
-          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
-            {groupModalTab === 'invite' ? (
-              <>
-                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0 }}>Tambah Member</h3>
-                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', padding: '15px', background: 'var(--bg-main)', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
-                   <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} alt="grup" />
-                   <div>
-                      <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-color)' }}>{headerInfo.title}</h4>
-                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>ID Grup: {groupId}</p>
-                   </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="text" placeholder="Username / ID..." value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none' }} />
-                  <button onClick={handleAddMember} disabled={isUpdatingGroup} style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold' }}>TAMBAH</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h3 style={{ margin: 0 }}>Pengaturan Grup</h3>
-                  <button onClick={() => setIsGroupSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">close</span></button>
-                </div>
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <label style={{ position: 'relative', display: 'inline-block', cursor: isOwner ? 'pointer' : 'default' }}>
-                    <img src={headerInfo.avatar || '/asets/png/group_placeholder.png'} style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary-blue)', opacity: isUpdatingGroup ? 0.5 : 1, transition: '0.3s' }} alt="grup" />
-                    {isUpdatingGroup && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-blue)', fontWeight: 'bold', fontSize: '11px', background: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}>UPLOADING</div>}
-                    {isOwner && !isUpdatingGroup && <div style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--primary-blue)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '3px solid var(--bg-panel)' }}><span className="material-icons" style={{fontSize: '16px'}}>camera_alt</span></div>}
-                    <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={!isOwner || isUpdatingGroup} />
-                  </label>
-                  <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px'}}>{isOwner ? 'Klik foto untuk mengganti' : 'Foto Grup'}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-                  <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} disabled={!isOwner} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-color)', outline: 'none', fontWeight: 'bold' }} />
-                  {isOwner && <button onClick={() => updateGroupInfo('name', newGroupName)} disabled={isUpdatingGroup || newGroupName === headerInfo.title} style={{ background: newGroupName === headerInfo.title ? 'var(--border-color)' : 'var(--primary-blue)', color: newGroupName === headerInfo.title ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: '12px', padding: '0 20px', fontWeight: 'bold', transition: '0.3s' }}>SIMPAN</button>}
-                </div>
-                <div style={{ marginTop: '20px', maxHeight: '200px', overflowY: 'auto' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>MEMBER ({groupMembers.length})</p>
-                  {groupMembers.map(m => (
-                    <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} alt="u" />
-                        <span>{m.profiles?.username}</span>
-                      </div>
-                      {isOwner && m.user_id !== currentUser.id && <button onClick={() => kickMember(m.user_id, m.profiles?.username)} style={{ background: 'none', border: 'none', color: '#ff4757' }}><span className="material-icons">person_remove</span></button>}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
+      {/* HEADER */}
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
-          {targetId && <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)', background: 'var(--bg-panel)' }} />}
+          {targetId && <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)' }} />}
           <div className="header-info">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {headerInfo.title}
               {roomId !== 'room-1' && targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
             <div className="status-container">
-              <span className={typingUser ? "status-typing" : "status-online"}>{displayStatus}</span>
+              {/* STATUS ONLINE / TYPING / LAST SEEN */}
+              <span className={displayStatus === 'Online' || displayStatus.includes('mengetik') ? "status-typing" : "status-online"} style={{ color: displayStatus === 'Online' ? '#2ecc71' : '' }}>
+                {displayStatus}
+              </span>
             </div>
           </div>
         </div>
         <div className="header-right">
           {targetId ? (
-            <button 
-              className="btn-call" 
-              style={{ opacity: chatState === 'normal' ? 1 : 0.3 }}
-              onClick={() => {
-                if (chatState === 'normal') startCall();
-                else showNotif("Permintaan pesan belum disetujui", "warning");
-              }}
-            >
+            <button className="btn-call" style={{ opacity: chatState === 'normal' ? 1 : 0.3 }} onClick={() => { if (chatState === 'normal') startCall(); else showNotif("Permintaan pesan belum disetujui", "warning"); }}>
               <span className="material-icons">call</span>
             </button>
           ) : groupId ? (
@@ -846,13 +812,13 @@ export default function ChatArea() {
         </div>
       </header>
 
+      {/* MESSAGES */}
       <main className="chat-messages">
         {isLoading ? (
           <div className="chat-loading-screen">
             {[...Array(5)].map((_, i) => (
               <div key={i} className={`skeleton-msg ${i % 2 === 0 ? 'left' : 'right'}`}>
-                <div className="skeleton-avatar"></div>
-                <div className="skeleton-bubble"></div>
+                <div className="skeleton-avatar"></div><div className="skeleton-bubble"></div>
               </div>
             ))}
             <div className="loading-chat-hint">{t('connecting_chat')}</div>
@@ -875,9 +841,7 @@ export default function ChatArea() {
             ))}
             {typingUser && (
               <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
-                {(roomId === 'room-1' || roomId.startsWith('group_')) && (
-                  <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
-                )}
+                <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
                 <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '14px 14px 14px 4px', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px' }}>{typingUser.username}</div>
                   <div className="typing-bubble" style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '14px' }}>
@@ -904,92 +868,60 @@ export default function ChatArea() {
           </div>
         ) : chatState === 'i_am_blocked_by_request' ? (
           <div style={{ padding: '20px 15px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Menunggu permintaan pesan diterima oleh {headerInfo.title}. Anda tidak dapat mengirim pesan lagi saat ini.</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Menunggu permintaan pesan diterima oleh {headerInfo.title}.</p>
           </div>
         ) : (
           <>
-            {isStickerOpen && (
-              <div id="sticker-menu">
-                <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
-                <div id="sticker-list">
-                  {stickers.map((s, idx) => (
-                    <img 
-                      key={idx} 
-                      src={s.images.fixed_width_small.url} 
-                      alt="sticker" 
-                      onClick={() => {
-                        sendMessage(undefined, s.images.fixed_width.url);
-                        setIsStickerOpen(false); 
-                      }} 
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
             <div className="input-row">
               <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId || pendingImagePreview ? '16px' : '28px' }}>
                 
-                {editMessageId && (
-                  <div style={{ background: 'rgba(29, 161, 242, 0.1)', borderBottom: '1px solid var(--border-color)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)' }}>MENGEDIT PESAN</span>
-                    <span onClick={() => { setEditMessageId(null); setInputValue(''); }} style={{ cursor: 'pointer', fontSize: '16px', color: 'var(--text-muted)' }}>&times;</span>
-                  </div>
-                )}
-
-                {replyTo && (
-                  <div id="reply-preview-box" style={{ display: 'flex' }}>
-                    <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
-                      <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
-                    </div>
-                    <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8'}}>&times;</div>
-                  </div>
-                )}
-
-                {/* 🔥 PREVIEW FOTO YANG AKAN DIKIRIM 🔥 */}
-                {pendingImagePreview && (
-                  <div style={{ padding: '10px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', position: 'relative', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'center' }}>
-                    <img src={pendingImagePreview} style={{ maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--border-color)' }} alt="preview" />
-                    <button 
-                      onClick={() => { setPendingImage(null); setPendingImagePreview(null); }} 
-                      style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                {/* 🔥 FIX 2: ANIMASI MUNCUL BOX REPLY 🔥 */}
+                <AnimatePresence>
+                  {replyTo && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      id="reply-preview-box" 
+                      style={{ display: 'flex', background: 'rgba(29, 161, 242, 0.05)', borderRadius: '12px', padding: '8px 12px', marginBottom: '4px', border: '1px solid rgba(29, 161, 242, 0.1)' }}
                     >
-                      <span className="material-icons" style={{fontSize: '18px'}}>close</span>
-                    </button>
-                  </div>
-                )}
+                      <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
+                        <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
+                      </div>
+                      <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8'}}>&times;</div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
                   
-                  {cancelAnim ? (
-                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
-                      <div style={{ flex: 1, fontSize: '14px', textAlign: 'center' }}>Voice Note dibatalkan</div>
-                    </div>
-                  ) : isRecording ? (
+                  {isRecording ? (
+                    // 🔥 FIX 4: EFEK GELOMBANG SUARA SAAT VN (LIVE) 🔥
                     <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
                       <span className="online-dot" style={{ background: '#ff4757' }}></span>
                       <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
-                      <div style={{ flex: 1 }}>{t('recording')}...</div>
-                      <span style={{ fontSize: '12px', opacity: 0.6 }}>&lt; {t('slide_cancel')}</span>
+                      
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '3px', height: '24px', overflow: 'hidden' }}>
+                        {[...Array(12)].map((_, i) => (
+                           <motion.div 
+                             key={i} 
+                             animate={{ height: Math.max(4, (audioLevel/255) * 24 + (Math.random() * 6 - 3)) }} 
+                             transition={{ duration: 0.1 }}
+                             style={{ width: '3px', background: '#ff4757', borderRadius: '2px' }} 
+                           />
+                        ))}
+                      </div>
+
+                      <span style={{ fontSize: '12px', opacity: 0.6 }}>&lt; Geser batal</span>
                     </div>
                   ) : (
                     <>
-                      {/* URUTAN 1: TOMBOL STIKER */}
                       <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
-                      
-                      {/* URUTAN 2: TEXTAREA INPUT */}
                       <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 6px', fontSize: '15px' }} />
-
-                      {/* URUTAN 3: TOMBOL FOTO VIP (DI SEBERANG STIKER) */}
-                      <button 
-                        onClick={handlePhotoClick} 
-                        disabled={isUploadingImg} 
-                        style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer', position: 'relative' }}
-                      >
+                      <button onClick={handlePhotoClick} disabled={isUploadingImg} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer', position: 'relative' }}>
                         <span className="material-icons">image</span>
-                        {(!myProfile || !['verified', 'vip', 'admin', 'developer', 'creator'].includes(myProfile?.role?.toLowerCase())) && (
-                          <span className="material-icons" style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '10px', background: '#ff4757', color: 'white', borderRadius: '50%', padding: '2px' }}>lock</span>
-                        )}
                       </button>
                       <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
                     </>
@@ -1007,15 +939,24 @@ export default function ChatArea() {
                 onTouchMove={!canSend ? handleMicTouchMove : undefined} 
                 onClick={() => canSend && handleSendClick()}
               >
-                <span className="material-icons">
-                  {isUploadingImg ? 'hourglass_empty' : editMessageId ? 'check' : (canSend ? 'send' : 'mic')}
-                </span>
+                {/* 🔥 FIX 3: TRANSISI ANIMASI ICON SEND/MIC 🔥 */}
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={isUploadingImg ? 'load' : editMessageId ? 'edit' : canSend ? 'send' : 'mic'}
+                    initial={{ scale: 0, opacity: 0, rotate: -45 }}
+                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                    exit={{ scale: 0, opacity: 0, rotate: 45 }}
+                    transition={{ duration: 0.15 }}
+                    className="material-icons"
+                  >
+                    {isUploadingImg ? 'hourglass_empty' : editMessageId ? 'check' : (canSend ? 'send' : 'mic')}
+                  </motion.span>
+                </AnimatePresence>
               </button>
             </div>
           </>
         )}
       </footer>
-
     </div>
   );
 }
