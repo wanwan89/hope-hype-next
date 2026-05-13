@@ -35,9 +35,7 @@ export default function Gallerypost() {
   
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
-  
   const observerRef = useRef<IntersectionObserver | null>(null);
-  // 🔥 FIX: INI BARIS YANG HILANG SEBELUMNYA 🔥
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
@@ -53,7 +51,6 @@ export default function Gallerypost() {
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
 
-  // 🔥 AUTO LOAD MORE (INFINITE SCROLL) 🔥
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -403,7 +400,7 @@ export default function Gallerypost() {
           left: isOverlay ? '12px' : 'auto',
           maxWidth: isOverlay ? '130px' : '220px', 
           width: isOverlay ? 'auto' : 'fit-content',
-          zIndex: 5, 
+          zIndex: 2, /* 🔥 FIX: Z-Index aman di bawah Search Bar 🔥 */
           background: isOverlay ? 'rgba(0,0,0,0.5)' : 'var(--bg-secondary)',
           backdropFilter: isOverlay ? 'blur(8px)' : 'none',
           borderRadius: '16px',
@@ -625,7 +622,7 @@ export default function Gallerypost() {
                     <div className="slider">
                       {getMusicHtml(post, true)}
                       
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 5, display: 'flex', gap: '6px' }}>
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
                         {isVideoPost && (
                           <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
                             <span className="material-icons" style={{ fontSize: '12px' }}>videocam</span> Video
@@ -639,7 +636,7 @@ export default function Gallerypost() {
                         )}
                       </div>
 
-                      {/* 🔥 TOMBOL MUTE / UNMUTE 🔥 */}
+                      {/* 🔥 FIX 1: TOMBOL MUTE Z-INDEX 2 (Di Bawah Search Bar) 🔥 */}
                       {(post.audio_src || isVideoPost) && (
                         <button
                           onClick={toggleMute}
@@ -647,7 +644,7 @@ export default function Gallerypost() {
                             position: 'absolute',
                             bottom: '12px',
                             left: '12px',
-                            zIndex: 10,
+                            zIndex: 2, 
                             background: 'rgba(0,0,0,0.6)',
                             backdropFilter: 'blur(10px)',
                             border: '1px solid rgba(255,255,255,0.1)',
@@ -680,8 +677,9 @@ export default function Gallerypost() {
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
+                        {/* 🔥 FIX 3: RASIO VIDEO 2/3 🔥 */}
                         {isVideoPost ? (
-                          <div className="carousel-item" style={{ aspectRatio: '2 / 3', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                          <div className="carousel-item" style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: '#000' }}>
                             <video 
                               src={post.video_url} 
                               className="post-video-element"
@@ -692,7 +690,8 @@ export default function Gallerypost() {
                           </div>
                         ) : (
                           photoList.map((url: string, i: number) => (
-                            <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', overflow: 'hidden', position: 'relative', background: '#000' }}>
+                            /* 🔥 FIX 3: RASIO GAMBAR 3/4 🔥 */
+                            <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: '#000' }}>
                               <img 
                                 src={getOptimizedImage(url)} 
                                 className="active" 
@@ -706,8 +705,9 @@ export default function Gallerypost() {
                         )}
                       </div>
 
+                      {/* 🔥 FIX 2: DOT SLIDER Z-INDEX 2 TANPA POSITION RELATIVE 🔥 */}
                       {photoList.length > 1 && !isVideoPost && (
-                        <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 10, position: 'relative' }}>
+                        <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 2 }}>
                           {photoList.map((_: any, i: number) => (
                             <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
                           ))}
@@ -768,7 +768,7 @@ export default function Gallerypost() {
                     {post.audio_src && (
                       <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         {getMusicHtml(post, false)}
-                        {/* 🔥 TOMBOL SPEAKER UNTUK POSTINGAN TEKS SAJA 🔥 */}
+                        {/* 🔥 TOMBOL SPEAKER TEKS Z-INDEX AMAN 🔥 */}
                         <button
                           onClick={toggleMute}
                           style={{
@@ -783,7 +783,7 @@ export default function Gallerypost() {
                             justifyContent: 'center',
                             cursor: 'pointer',
                             transition: 'transform 0.2s',
-                            zIndex: 10
+                            zIndex: 2
                           }}
                           onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
                           onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -806,7 +806,7 @@ export default function Gallerypost() {
           })
         )}
 
-        {/* 🔥 3. EFEK LOADING INFINITE SCROLL 🔥 */}
+        {/* 🔥 AUTO LOAD MORE (INFINITE SCROLL) 🔥 */}
         {posts.length > 0 && hasMore && (
           <div ref={observerTarget} style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
             {isLoadingMore ? (
