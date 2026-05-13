@@ -35,7 +35,10 @@ export default function Gallerypost() {
   
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
+  
   const observerRef = useRef<IntersectionObserver | null>(null);
+  // 🔥 FIX: INI BARIS YANG HILANG SEBELUMNYA 🔥
+  const observerTarget = useRef<HTMLDivElement | null>(null);
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({}); 
@@ -49,6 +52,23 @@ export default function Gallerypost() {
   // 🔥 STATE & REF UNTUK MUTE/UNMUTE GLOBAL 🔥
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
+
+  // 🔥 AUTO LOAD MORE (INFINITE SCROLL) 🔥
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, isLoading, page, currentCategory]);
 
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
@@ -318,14 +338,12 @@ export default function Gallerypost() {
     }
   };
 
-  // 🔥 FUNGSI ON/OFF SUARA GLOBAL 🔥
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     const nextMuted = !isGloballyMuted;
     setIsGloballyMuted(nextMuted);
     isMutedRef.current = nextMuted;
 
-    // Terapkan ke semua elemen audio & video yang lagi jalan
     document.querySelectorAll('.post-audio-element, .post-video-element').forEach((el: any) => {
       el.muted = nextMuted;
     });
@@ -662,7 +680,6 @@ export default function Gallerypost() {
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
-                        {/* 🔥 FIX 1: RASIO VIDEO 2/3 🔥 */}
                         {isVideoPost ? (
                           <div className="carousel-item" style={{ aspectRatio: '2 / 3', overflow: 'hidden', position: 'relative', background: '#000' }}>
                             <video 
@@ -675,7 +692,6 @@ export default function Gallerypost() {
                           </div>
                         ) : (
                           photoList.map((url: string, i: number) => (
-                            /* 🔥 FIX 1: RASIO GAMBAR 3/4 🔥 */
                             <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', overflow: 'hidden', position: 'relative', background: '#000' }}>
                               <img 
                                 src={getOptimizedImage(url)} 
@@ -749,10 +765,10 @@ export default function Gallerypost() {
                       {renderBioWithMentions(post.bio?.trim())}
                     </div>
                     
-                    {/* 🔥 FIX 2: MUSIK UNTUK POSTINGAN TEKS 🔥 */}
                     {post.audio_src && (
                       <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         {getMusicHtml(post, false)}
+                        {/* 🔥 TOMBOL SPEAKER UNTUK POSTINGAN TEKS SAJA 🔥 */}
                         <button
                           onClick={toggleMute}
                           style={{
@@ -779,7 +795,6 @@ export default function Gallerypost() {
                       </div>
                     )}
 
-                    {/* 🔥 FIX 2: ENGAGEMENT BUTTONS UNTUK POSTINGAN TEKS 🔥 */}
                     <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
                       <a href={`/data?id=${post.creator_id}`} style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>{t('view_detail')}</a>
                       {renderEngagementButtons(post, postIdStr)}
@@ -791,14 +806,11 @@ export default function Gallerypost() {
           })
         )}
 
+        {/* 🔥 3. EFEK LOADING INFINITE SCROLL 🔥 */}
         {posts.length > 0 && hasMore && (
           <div ref={observerTarget} style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
             {isLoadingMore ? (
-              <motion.div 
-                animate={{ rotate: 360 }} 
-                transition={{ repeat: Infinity, duration: 1, ease: "linear" }} 
-                style={{ width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%' }} 
-              />
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} style={{ width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%' }} />
             ) : (
               <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
             )}
