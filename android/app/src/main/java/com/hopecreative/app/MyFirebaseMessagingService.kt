@@ -20,8 +20,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             if (data.isNotEmpty()) {
                 showNotification(data)
             }
-        } catch (e: Exception) {
-            Log.e("HopeTalk", "Gagal proses pesan: ${e.message}")
+        } catch (t: Throwable) {   // Tangkap semua error termasuk NoClassDefFoundError
+            Log.e("HopeTalk", "Gagal proses pesan: ${t.message}", t)
         }
     }
 
@@ -31,21 +31,37 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val channelId = "high_importance_channel"
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(channelId, "Urgent", NotificationManager.IMPORTANCE_HIGH)
+                val channel = NotificationChannel(
+                    channelId,
+                    "Urgent",
+                    NotificationManager.IMPORTANCE_HIGH
+                )
                 manager.createNotificationChannel(channel)
             }
 
             val baseFlag = PendingIntent.FLAG_UPDATE_CURRENT
-            val immutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) baseFlag or PendingIntent.FLAG_IMMUTABLE else baseFlag
-            val mutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) baseFlag or PendingIntent.FLAG_MUTABLE else baseFlag
+            val immutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                baseFlag or PendingIntent.FLAG_IMMUTABLE
+            } else baseFlag
+            val mutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                baseFlag or PendingIntent.FLAG_MUTABLE
+            } else baseFlag
 
-            // 🔥 FIX UTAMA: Tembak langsung MainActivity, hindari getLaunchIntent! 🔥
-val openAppIntent = Intent(this, Class.forName("com.hopecreative.app.MainActivity")).apply {
+            // 🔥 AMAN: Gunakan launcher intent dari PackageManager
+            val openAppIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            } ?: run {
+                // fallback kalau gagal (seharusnya tidak terjadi)
+                Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
             }
-            val openAppPendingIntent = PendingIntent.getActivity(this, 0, openAppIntent, immutableFlag)
+            val openAppPendingIntent = PendingIntent.getActivity(
+                this, 0, openAppIntent, immutableFlag
+            )
 
-            // Pake icon bawaan Capacitor (kalo gagal, pake icon sistem)
+            // Icon notifikasi: coba dari resource, fallback ke icon sistem
             var iconResId = resources.getIdentifier("ic_launcher", "mipmap", packageName)
             if (iconResId == 0) iconResId = android.R.drawable.ic_dialog_info
 
@@ -57,38 +73,50 @@ val openAppIntent = Intent(this, Class.forName("com.hopecreative.app.MainActivit
                 .setAutoCancel(true)
                 .setContentIntent(openAppPendingIntent)
 
-            if (data["type"] == "call") {
-                val acceptIntent = Intent(this, NotificationActionReceiver::class.java).apply {
-                    action = "ACTION_ACCEPT"
-                    putExtra("room_id", data["roomId"])
-                }
-                val acceptPending = PendingIntent.getBroadcast(this, 1, acceptIntent, immutableFlag)
-                
-                val rejectIntent = Intent(this, NotificationActionReceiver::class.java).apply {
-                    action = "ACTION_REJECT"
-                    putExtra("room_id", data["roomId"])
-                }
-                val rejectPending = PendingIntent.getBroadcast(this, 2, rejectIntent, immutableFlag)
+            when (data["type"]) {
+                "call" -> {
+                    val acceptIntent = Intent(this, NotificationActionReceiver::class.java).apply {
+                        action = "ACTION_ACCEPT"
+                        putExtra("room_id", data["roomId"])
+                    }
+                    val acceptPending = PendingIntent.getBroadcast(
+                        this, 1, acceptIntent, immutableFlag
+                    )
 
-                builder.addAction(0, "📞 Angkat", acceptPending)
-                builder.addAction(0, "❌ Tolak", rejectPending)
-                
-            } else {
-                val replyIntent = Intent(this, NotificationActionReceiver::class.java).apply {
-                    action = "ACTION_REPLY"
-                    putExtra("room_id", data["roomId"])
-                }
-                val replyPendingIntent = PendingIntent.getBroadcast(this, 3, replyIntent, mutableFlag)
-                val remoteInput = RemoteInput.Builder("key_text_reply").setLabel("Balas...").build()
-                val replyAction = NotificationCompat.Action.Builder(0, "Balas", replyPendingIntent).addRemoteInput(remoteInput).build()
+                    val rejectIntent = Intent(this, NotificationActionReceiver::class.java).apply {
+                        action = "ACTION_REJECT"
+                        putExtra("room_id", data["roomId"])
+                    }
+                    val rejectPending = PendingIntent.getBroadcast(
+                        this, 2, rejectIntent, immutableFlag
+                    )
 
-                builder.addAction(replyAction)
+                    builder.addAction(0, "📞 Angkat", acceptPending)
+                    builder.addAction(0, "❌ Tolak", rejectPending)
+                }
+                else -> {
+                    val replyIntent = Intent(this, NotificationActionReceiver::class.java).apply {
+                        action = "ACTION_REPLY"
+                        putExtra("room_id", data["roomId"])
+                    }
+                    val replyPendingIntent = PendingIntent.getBroadcast(
+                        this, 3, replyIntent, mutableFlag
+                    )
+                    val remoteInput = RemoteInput.Builder("key_text_reply")
+                        .setLabel("Balas...")
+                        .build()
+                    val replyAction = NotificationCompat.Action.Builder(
+                        0, "Balas", replyPendingIntent
+                    ).addRemoteInput(remoteInput).build()
+
+                    builder.addAction(replyAction)
+                }
             }
 
             manager.notify(System.currentTimeMillis().toInt(), builder.build())
 
-        } catch (t: Throwable) {
-            Log.e("HopeTalk", "CRASH PARAH DICEGAH: ${t.message}")
+        } catch (t: Throwable) {   // Tangkap semua error
+            Log.e("HopeTalk", "CRASH PARAH DICEGAH: ${t.message}", t)
         }
     }
 }

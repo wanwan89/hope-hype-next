@@ -16,24 +16,34 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         val replyText = remoteInput.getCharSequence("key_text_reply").toString()
                         val roomId = intent.getStringExtra("room_id")
                         Log.d("HopeTalk", "User ngebalas: $replyText ke room: $roomId")
-                        // TODO: Supabase Fetch
+                        // TODO: Supabase Fetch / kirim pesan
                     }
                 }
                 "ACTION_ACCEPT" -> {
                     Log.d("HopeTalk", "Angkat ditekan, buka app...")
-                    // 🔥 FIX: Tembak MainActivity langsung! 🔥
-val launchIntent = Intent(context, Class.forName("com.hopecreative.app.MainActivity")).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    // 🔥 AMAN: Gunakan launcher intent
+                    val launchIntent = context.packageManager
+                        .getLaunchIntentForPackage(context.packageName)?.apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                    if (launchIntent != null) {
+                        context.startActivity(launchIntent)
+                    } else {
+                        // fallback: intent generic LAUNCHER
+                        val fallback = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_LAUNCHER)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        context.startActivity(fallback)
                     }
-                    context.startActivity(launchIntent)
                 }
                 "ACTION_REJECT" -> {
                     Log.d("HopeTalk", "Panggilan ditolak")
-                    // TODO: Tolak Supabase
+                    // TODO: Tolak di Supabase
                 }
             }
         } catch (e: Exception) {
-            Log.e("HopeTalk", "Error di Receiver: ${e.message}")
+            Log.e("HopeTalk", "Error di Receiver: ${e.message}", e)
         }
     }
 }
