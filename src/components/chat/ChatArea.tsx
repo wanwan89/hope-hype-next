@@ -259,19 +259,21 @@ export default function ChatArea() {
   const fetchMessages = async (room: string, userId: string) => {
     setIsLoading(true);
     
-    // 🔥 FIX: HANYA MENGGUNAKAN .select('*') 🔥
     const { data, error } = await supabase.from('messages')
       .select('*') 
       .eq('room_id', room)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false }) // 🔥 FIX 1: Ambil dari yang paling BARU
       .limit(50);
       
     if (data) {
-      const userIds = [...new Set(data.map(m => m.user_id))];
+      // 🔥 FIX 2: Balik urutannya (reverse) biar pesan baru tetap ada di paling bawah
+      const reversedData = data.reverse();
+
+      const userIds = [...new Set(reversedData.map(m => m.user_id))];
       const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', userIds);
       const profMap = profs?.reduce((acc: any, p: any) => ({ ...acc, [p.id]: p }), {}) || {};
       
-      const enrichedData = data.map(m => ({ ...m, profiles: profMap[m.user_id] }));
+      const enrichedData = reversedData.map(m => ({ ...m, profiles: profMap[m.user_id] }));
       setMessages(enrichedData);
 
       if (room.startsWith('pv_')) {
