@@ -9,10 +9,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR, LIVEKIT & ONESIGNAL 🔥
+// 🔥 IMPORT CAPACITOR & LIVEKIT (OneSignal diimport dinamis di bawah) 🔥
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app'; 
-import OneSignal from 'onesignal-cordova-plugin'; // Jalur 1: OneSignal
 import { LiveKitRoom } from '@livekit/components-react';
 
 import "./globals.css";
@@ -41,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [lkToken, setLkToken] = useState<string | null>(null);
   const [lkRoom, setLkRoom] = useState<string | null>(null);
 
-  // 🔥 FONDASI TOKEN: Penampung ID OneSignal
+  // 🔥 FONDASI TOKEN: Penampung ID OneSignal agar tidak race condition
   const onesignalIdRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
@@ -88,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
         if (data) {
           setMyProfile(data);
-          // Jika ID OneSignal sudah ada saat profile didapat
+          // Jika ID OneSignal sudah siap, langsung update
           if (onesignalIdRef.current) {
             updatePushToken(session.user.id, onesignalIdRef.current);
           }
@@ -111,25 +110,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP ONESIGNAL (MENGGANTIKAN CAPACITOR PUSH) 🔥 ---
+  // --- 🔥 SETUP ONESIGNAL (FIX ReferenceError: window is not defined) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
+      // 1. Pastikan kode hanya jalan di Browser/HP (Cegah Error Vercel)
       if (typeof window === 'undefined') return;
 
       try {
         const platform = Capacitor.getPlatform();
 
-        if (platform === 'android') {
-          console.log("📱 Android Detected: Menghubungkan OneSignal...");
+        if (platform === 'android' || platform === 'ios') {
+          console.log("📱 Native Detected: Menghubungkan OneSignal...");
 
-          // 1. Inisialisasi OneSignal dengan ID kamu
+          // 2. 🔥 DYNAMIC IMPORT: Import hanya saat dijalankan di browser
+          const OneSignal = (await import('onesignal-cordova-plugin')).default;
+
+          // 3. Inisialisasi OneSignal
           OneSignal.initialize("a2e3be25-3ffb-4678-a41c-17aae778e4b5");
 
-          // 2. Minta Izin Notif
+          // 4. Minta Izin Notif
           OneSignal.Notifications.requestPermission(true);
 
-          // 3. Ambil ID User untuk Database
-          // Menggunakan delay kecil untuk memastikan sinkronisasi OneSignal selesai
+          // 5. Ambil ID User untuk Database
           setTimeout(() => {
             const subscriptionId = OneSignal.User.pushSubscription.id;
             if (subscriptionId) {
@@ -142,16 +144,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           }, 5000);
 
-          // 4. Handle Notification Click (Background/Kill State)
-          OneSignal.Notifications.addEventListener('click', (event) => {
-            const data: any = event.notification.additionalData;
+          // 6. Handle Notification Click
+          OneSignal.Notifications.addEventListener('click', (event: any) => {
+            const data = event.notification.additionalData;
             if (data && data.roomId) {
               const targetUserId = data.senderId || data.callerId;
               router.push(`/hypetalk/room?from=${targetUserId}`);
             }
           });
 
-          // 5. Handle Back Button App
+          // 7. Handle Back Button App
           App.addListener('backButton', ({ canGoBack }) => {
             if (lkToken) {
               App.minimizeApp(); 
@@ -164,20 +166,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         }
       } catch (error) {
-        console.warn("⚠️ OneSignal Init error:", error);
+        console.warn("⚠️ OneSignal/Native API error:", error);
       }
     };
 
     initNativeFeatures();
-
-    return () => {
-      if (typeof window !== 'undefined' && Capacitor.getPlatform() === 'android') {
-        // Pembersihan listener jika diperlukan
-      }
-    };
   }, [router, lkToken, myProfile]); 
 
-  // --- LIVEKIT TOKEN FETCH ---
+  // --- LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION ---
   const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
     try {
       setLkRoom(roomName); 
