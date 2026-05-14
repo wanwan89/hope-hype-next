@@ -8,28 +8,32 @@ import android.util.Log
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        when (intent.action) {
-            "ACTION_REPLY" -> {
-                val remoteInput = RemoteInput.getResultsFromIntent(intent)
-                if (remoteInput != null) {
-                    val replyText = remoteInput.getCharSequence("key_text_reply").toString()
-                    val roomId = intent.getStringExtra("room_id")
-                    
-                    Log.d("HopeTalk", "User ngebalas dari notif: $replyText ke room: $roomId")
-                    
-                    // TODO (Tahap 2): Nanti kita tambahin HTTP Request (Fetch) buat nembak Supabase dari sini
+        try {
+            when (intent.action) {
+                "ACTION_REPLY" -> {
+                    val remoteInput = RemoteInput.getResultsFromIntent(intent)
+                    if (remoteInput != null) {
+                        val replyText = remoteInput.getCharSequence("key_text_reply").toString()
+                        val roomId = intent.getStringExtra("room_id")
+                        Log.d("HopeTalk", "User ngebalas: $replyText ke room: $roomId")
+                        // TODO: Supabase Fetch
+                    }
+                }
+                "ACTION_ACCEPT" -> {
+                    Log.d("HopeTalk", "Angkat ditekan, buka app...")
+                    // 🔥 FIX: Tembak MainActivity langsung! 🔥
+                    val launchIntent = Intent(context, Class.forName("com.hopecreative.MainActivity")).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    context.startActivity(launchIntent)
+                }
+                "ACTION_REJECT" -> {
+                    Log.d("HopeTalk", "Panggilan ditolak")
+                    // TODO: Tolak Supabase
                 }
             }
-            "ACTION_ACCEPT" -> {
-                Log.d("HopeTalk", "User klik Angkat Panggilan")
-                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                launchIntent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                context.startActivity(launchIntent)
-            }
-            "ACTION_REJECT" -> {
-                Log.d("HopeTalk", "User klik Tolak Panggilan")
-                // TODO (Tahap 2): Nanti kita tembak "Panggilan ditolak" ke Supabase
-            }
+        } catch (e: Exception) {
+            Log.e("HopeTalk", "Error di Receiver: ${e.message}")
         }
     }
 }

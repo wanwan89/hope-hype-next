@@ -15,9 +15,13 @@ import com.google.firebase.messaging.RemoteMessage
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        val data = remoteMessage.data
-        if (data.isNotEmpty()) {
-            showNotification(data)
+        try {
+            val data = remoteMessage.data
+            if (data.isNotEmpty()) {
+                showNotification(data)
+            }
+        } catch (e: Exception) {
+            Log.e("HopeTalk", "Gagal proses pesan: ${e.message}")
         }
     }
 
@@ -26,33 +30,33 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channelId = "high_importance_channel"
 
-            // 1. Setup Channel buat Android 8+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(channelId, "Urgent", NotificationManager.IMPORTANCE_HIGH)
                 manager.createNotificationChannel(channel)
             }
 
-            // 2. SETUP FLAG ANTI-CRASH UNTUK SEMUA VERSI ANDROID
             val baseFlag = PendingIntent.FLAG_UPDATE_CURRENT
             val immutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) baseFlag or PendingIntent.FLAG_IMMUTABLE else baseFlag
             val mutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) baseFlag or PendingIntent.FLAG_MUTABLE else baseFlag
 
-            // 3. Intent untuk Buka Aplikasi
-            val openAppIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            // 🔥 FIX UTAMA: Tembak langsung MainActivity, hindari getLaunchIntent! 🔥
+            val openAppIntent = Intent(this, Class.forName("com.hopecreative.MainActivity")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val openAppPendingIntent = PendingIntent.getActivity(this, 0, openAppIntent, immutableFlag)
 
-            // 4. Bangun Notifikasi dengan Ikon Sistem Paling Aman (Pasti tembus)
+            // Pake icon bawaan Capacitor (kalo gagal, pake icon sistem)
+            var iconResId = resources.getIdentifier("ic_launcher", "mipmap", packageName)
+            if (iconResId == 0) iconResId = android.R.drawable.ic_dialog_info
+
             val builder = NotificationCompat.Builder(this, channelId)
-                .setContentTitle(data["title"] ?: "Pesan Baru")
-                .setContentText(data["body"] ?: "Buka aplikasi untuk melihat")
-                .setSmallIcon(android.R.drawable.ic_dialog_info) // 🔥 PAKE IKON SISTEM INI DIJAMIN GAK CRASH 🔥
-                .setPriority(NotificationCompat.PRIORITY_MAX) // Paksa muncul
+                .setContentTitle(data["title"] ?: "HypeTalk")
+                .setContentText(data["body"] ?: "Pesan baru")
+                .setSmallIcon(iconResId)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setAutoCancel(true)
                 .setContentIntent(openAppPendingIntent)
 
-            // 5. Rakit Tombol (Call vs Chat)
             if (data["type"] == "call") {
                 val acceptIntent = Intent(this, NotificationActionReceiver::class.java).apply {
                     action = "ACTION_ACCEPT"
@@ -74,20 +78,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     action = "ACTION_REPLY"
                     putExtra("room_id", data["roomId"])
                 }
-                // Tombol balas WAJIB MUTABLE di Android 12+
                 val replyPendingIntent = PendingIntent.getBroadcast(this, 3, replyIntent, mutableFlag)
-                val remoteInput = RemoteInput.Builder("key_text_reply").setLabel("Tulis balasan...").build()
+                val remoteInput = RemoteInput.Builder("key_text_reply").setLabel("Balas...").build()
                 val replyAction = NotificationCompat.Action.Builder(0, "Balas", replyPendingIntent).addRemoteInput(remoteInput).build()
 
                 builder.addAction(replyAction)
             }
 
-            // 6. Eksekusi Notif
             manager.notify(System.currentTimeMillis().toInt(), builder.build())
-            Log.d("HopeTalk", "✅ Notif sukses tembus tanpa crash!")
 
         } catch (t: Throwable) {
-            Log.e("HopeTalk", "❌ CRASH DICEGAH SECARA FATAL: ${t.stackTraceToString()}")
+            Log.e("HopeTalk", "CRASH PARAH DICEGAH: ${t.message}")
         }
     }
 }
