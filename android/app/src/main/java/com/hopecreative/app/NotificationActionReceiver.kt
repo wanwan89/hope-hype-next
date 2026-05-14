@@ -1,4 +1,4 @@
-package com.hopecreative
+package com.hopecreative.app
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -22,7 +22,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 "ACTION_ACCEPT" -> {
                     Log.d("HopeTalk", "Angkat ditekan, buka app...")
                     // 🔥 FIX: Tembak MainActivity langsung! 🔥
-                    val launchIntent = Intent(context, Class.forName("com.hopecreative.MainActivity")).apply {
+val launchIntent = Intent(context, Class.forName("com.hopecreative.app.MainActivity")).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                     }
                     context.startActivity(launchIntent)

@@ -1,4 +1,4 @@
-package com.hopecreative
+package com.hopecreative.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -40,7 +40,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val mutableFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) baseFlag or PendingIntent.FLAG_MUTABLE else baseFlag
 
             // 🔥 FIX UTAMA: Tembak langsung MainActivity, hindari getLaunchIntent! 🔥
-            val openAppIntent = Intent(this, Class.forName("com.hopecreative.MainActivity")).apply {
+val openAppIntent = Intent(this, Class.forName("com.hopecreative.app.MainActivity")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val openAppPendingIntent = PendingIntent.getActivity(this, 0, openAppIntent, immutableFlag)
