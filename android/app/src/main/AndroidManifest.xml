@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- 🔥 WAJIB ADA: xmlns:tools di sini 🔥 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 1. IZIN DASAR & INTERNET -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -60,16 +62,17 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- 🔥 FIX PENTING 1: DAFTARKAN SERVICE FIREBASE KUSTOM KITA 🔥 -->
+        <!-- 🔥 FIX PENTING: tools:node="replace" BIAR SERVICE CAPACITOR KITA TENDANG 🔥 -->
         <service
             android:name=".MyFirebaseMessagingService"
-            android:exported="false">
-            <intent-filter>
+            android:exported="false"
+            tools:node="replace">
+            <intent-filter android:priority="999">
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
 
-        <!-- 🔥 FIX PENTING 2: DAFTARKAN RECEIVER BUAT NANGKEP TOMBOL BALAS / ANGKAT 🔥 -->
+        <!-- DAFTARKAN RECEIVER BUAT NANGKEP TOMBOL BALAS / ANGKAT -->
         <receiver 
             android:name=".NotificationActionReceiver" 
             android:exported="false" />
