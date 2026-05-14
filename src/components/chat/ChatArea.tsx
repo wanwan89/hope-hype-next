@@ -259,8 +259,9 @@ export default function ChatArea() {
   const fetchMessages = async (room: string, userId: string) => {
     setIsLoading(true);
     
+    // 🔥 FIX: HANYA MENGGUNAKAN .select('*') 🔥
     const { data, error } = await supabase.from('messages')
-      .select('*, reply_to_msg:reply_to(id, username, message)')
+      .select('*') 
       .eq('room_id', room)
       .order('created_at', { ascending: true })
       .limit(50);
@@ -290,7 +291,6 @@ export default function ChatArea() {
     scrollToBottom();
   };
 
-  // 🔥 FIX 1: JANGAN ABAIKAN PESAN KITA SENDIRI DI REALTIME 🔥
   const setupRealtime = (room: string, user: any, prof: any) => {
     refs.msgChannel.current = supabase.channel(`msg-${room}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${room}` }, async (payload) => {
@@ -314,22 +314,18 @@ export default function ChatArea() {
           newMsg.profiles = p || undefined;
           
           setMessages(prev => {
-            // Cek apakah pesan sudah ter-update oleh state optimistic UI kita
             if (prev.some(m => m.id === newMsg.id)) {
               return prev.map(m => m.id === newMsg.id ? newMsg : m);
             }
-            // Mencegah duplikat: Cek jika ini adalah pesan kita yang masih berstatus 'temp-'
             if (newMsg.user_id === user.id) {
               const tempMsg = prev.find(m => String(m.id).startsWith('temp-') && m.message === newMsg.message);
               if (tempMsg) {
                  return prev.map(m => m.id === tempMsg.id ? newMsg : m);
               }
             }
-            // Tambahkan jika benar-benar baru
             return [...prev, newMsg];
           });
           
-          // Mainkan suara hanya jika itu pesan dari orang lain
           if (newMsg.user_id !== user.id) {
             refs.audio.current?.receive.play().catch(()=>{});
           }
@@ -354,7 +350,6 @@ export default function ChatArea() {
 
   const scrollToBottom = () => setTimeout(() => refs.scroll.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
-  // 🔥 FIX 2: HILANGKAN .select() JOIN YANG RAWAN ERROR 🔥
   const sendMessage = async (text?: string, sticker?: string, audio?: string, image?: string) => {
     const content = text || inputValue;
     if (!content && !sticker && !audio && !image) return;
@@ -391,7 +386,6 @@ export default function ChatArea() {
     setIsStickerOpen(false);
     scrollToBottom();
 
-    // Disederhanakan: tanpa join .select(reply_to_msg...) biar nggak meledak
     const { data, error } = await supabase.from('messages').insert([{
       room_id: roomId, 
       user_id: currentUser.id, 
@@ -405,7 +399,7 @@ export default function ChatArea() {
     
     if (!error && data) {
       data.profiles = myProfile; 
-      data.reply_to_msg = tempMsg.reply_to_msg; // Pasang manual ke data
+      data.reply_to_msg = tempMsg.reply_to_msg; 
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
       
       if (targetId && !sticker && !audio && !image) {
@@ -415,7 +409,6 @@ export default function ChatArea() {
       }
     } else {
       console.error("Gagal ngirim pesan detail:", error);
-      // Tunggu bentar buat ngasih waktu ke Realtime untuk nyelametin pesannya
       setTimeout(() => {
         setMessages(prev => {
           const stillTemp = prev.find(m => m.id === tempId);
@@ -499,7 +492,7 @@ export default function ChatArea() {
         if (d.secure_url) {
            const { data, error } = await supabase.from('messages').insert([{
               room_id: roomId, user_id: currentUser.id, message: "🎤 Voice Note", audio_url: d.secure_url, status: 'sent'
-           }]).select().single(); // Disederhanakan juga
+           }]).select().single(); 
            
            if(data && !error) {
              data.profiles = myProfile;
