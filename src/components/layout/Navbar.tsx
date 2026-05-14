@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -26,21 +26,6 @@ function NavbarContent() {
 
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
-
-  // Deteksi tema gelap/terang
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    const checkTheme = () => {
-      setIsDark(document.documentElement.classList.contains('dark'));
-    };
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-    return () => observer.disconnect();
-  }, []);
 
   // Hapus efek scroll hide: navbar selalu tampil (kecuali manual)
   useEffect(() => {
@@ -57,7 +42,6 @@ function NavbarContent() {
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
 
-  // Hypetalk TIDAK termasuk halaman tersembunyi
   const isHiddenPage =
     isLoginPage ||
     isVoiceRoom ||
@@ -174,13 +158,6 @@ function NavbarContent() {
     ? `calc(65px + env(safe-area-inset-bottom) + 10px)`
     : `max(20px, env(safe-area-inset-bottom))`;
 
-  // Warna adaptif tema
-  const bgColor = isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)';
-  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-  const textColor = isDark ? '#ddd' : '#333';
-  const iconInactive = isDark ? '#aaa' : '#666';
-  const iconActive = '#00a2ff';
-
   const handleNavClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
     item: (typeof navItems)[0],
@@ -247,16 +224,15 @@ function NavbarContent() {
           width: '40px',
           height: '40px',
           borderRadius: '50%',
-          backgroundColor: bgColor,
+          backgroundColor: 'var(--bg-card)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
-          border: `1px solid ${borderColor}`,
+          border: '1px solid var(--border-card)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
           cursor: 'pointer',
-          color: textColor,
+          color: 'var(--text-main)',
           transition: 'bottom 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
           outline: 'none',
         }}
@@ -286,29 +262,23 @@ function NavbarContent() {
             width: '100%',
             height: `calc(65px + env(safe-area-inset-bottom))`,
             paddingBottom: 'env(safe-area-inset-bottom)',
-            backgroundColor: bgColor,
+            backgroundColor: 'var(--bg-card)',
             backdropFilter: 'blur(15px)',
             WebkitBackdropFilter: 'blur(15px)',
-            borderTop: `1px solid ${borderColor}`,
+            borderTop: '1px solid var(--border-card)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-around',
-            boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
             boxSizing: 'border-box',
           }}
         >
           {navItems.map((item) => {
             const isActive = pathname === item.path;
-            const isVoice = item.name === 'Voice';
             const Icon = item.icon;
             const isClicked = clickedItem === item.name;
             const isAnimating = animatingIcon === item.name;
 
-            const normalColor = isVoice
-              ? '#ffffff'
-              : isActive
-              ? iconActive
-              : iconInactive;
+            const normalColor = isActive ? '#00a2ff' : 'var(--text-muted)';
 
             const iconVariant = getIconVariants(item.name);
 
@@ -337,38 +307,13 @@ function NavbarContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    ...(isVoice
-                      ? {
-                          width: '56px',
-                          height: '56px',
-                          borderRadius: '50%',
-                          background:
-                            'linear-gradient(135deg, #00a2ff, #bc13fe)',
-                          border: '4px solid white',
-                          marginTop: '-35px',
-                          boxShadow: isActive
-                            ? '0 0 20px rgba(188, 19, 254, 0.6)'
-                            : '0 8px 15px rgba(0, 162, 255, 0.3)',
-                          transform: isClicked
-                            ? 'scale(0.85) translateY(10px)'
-                            : isActive
-                            ? 'scale(1.1) translateY(-8px)'
-                            : 'scale(1)',
-                          ...(isClicked
-                            ? { boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }
-                            : {}),
-                          transition:
-                            'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)',
-                        }
-                      : {
-                          transform: isClicked
-                            ? 'scale(0.8)'
-                            : isActive
-                            ? 'scale(1.15)'
-                            : 'scale(1)',
-                          transition:
-                            'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        }),
+                    transform: isClicked
+                      ? 'scale(0.8)'
+                      : isActive
+                      ? 'scale(1.15)'
+                      : 'scale(1)',
+                    transition:
+                      'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   }}
                 >
                   <AnimatePresence mode="wait">
@@ -383,15 +328,9 @@ function NavbarContent() {
                         style={{ position: 'absolute' }}
                       >
                         <Icon
-                          size={isVoice ? 28 : 24}
+                          size={24}
                           color={normalColor}
-                          strokeWidth={isActive || isVoice ? 2.5 : 2}
-                          style={{
-                            filter:
-                              isActive && !isVoice
-                                ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))'
-                                : 'none',
-                          }}
+                          strokeWidth={isActive ? 2.5 : 2}
                         />
                       </motion.div>
                     ) : (
@@ -404,15 +343,9 @@ function NavbarContent() {
                         transition={{ duration: 0.4 }}
                       >
                         <Icon
-                          size={isVoice ? 28 : 24}
+                          size={24}
                           color={normalColor}
-                          strokeWidth={isActive || isVoice ? 2.5 : 2}
-                          style={{
-                            filter:
-                              isActive && !isVoice
-                                ? 'drop-shadow(0 0 8px rgba(0, 162, 255, 0.4))'
-                                : 'none',
-                          }}
+                          strokeWidth={isActive ? 2.5 : 2}
                         />
                       </motion.div>
                     )}
@@ -424,8 +357,8 @@ function NavbarContent() {
                       <div
                         style={{
                           position: 'absolute',
-                          top: isVoice ? '0px' : '-4px',
-                          right: isVoice ? '0px' : '-8px',
+                          top: '-4px',
+                          right: '-8px',
                           backgroundColor: '#ff4757',
                           color: 'white',
                           fontSize: '10px',
@@ -437,8 +370,7 @@ function NavbarContent() {
                           minWidth: '18px',
                           height: '18px',
                           borderRadius: '10px',
-                          border: '2px solid #ffffff',
-                          boxShadow: '0 0 5px rgba(255, 71, 87, 0.5)',
+                          border: '2px solid var(--bg-card)',
                           zIndex: 10,
                         }}
                       >
@@ -447,22 +379,19 @@ function NavbarContent() {
                     )}
                 </div>
 
-                {!isVoice && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: '2px',
-                      width: '5px',
-                      height: '5px',
-                      backgroundColor: '#00a2ff',
-                      borderRadius: '50%',
-                      boxShadow: '0 0 10px #00a2ff',
-                      transition: 'all 0.3s ease',
-                      opacity: isActive ? 1 : 0,
-                      transform: isActive ? 'scale(1)' : 'scale(0)',
-                    }}
-                  />
-                )}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '2px',
+                    width: '5px',
+                    height: '5px',
+                    backgroundColor: '#00a2ff',
+                    borderRadius: '50%',
+                    transition: 'all 0.3s ease',
+                    opacity: isActive ? 1 : 0,
+                    transform: isActive ? 'scale(1)' : 'scale(0)',
+                  }}
+                />
               </Link>
             );
           })}
