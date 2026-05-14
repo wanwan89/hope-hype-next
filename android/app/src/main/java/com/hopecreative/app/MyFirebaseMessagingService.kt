@@ -47,18 +47,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 baseFlag or PendingIntent.FLAG_MUTABLE
             } else baseFlag
 
-            val openAppIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            } ?: run {
-                Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
+            // 🔥 FIX CRASH VIVO: Pakai metode Intent yang 100% aman buat Android 11+
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            val openAppPendingIntent = if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                PendingIntent.getActivity(this, 0, intent, immutableFlag)
+            } else {
+                // Fallback kalau super mentok (sangat jarang terjadi)
+                PendingIntent.getActivity(this, 0, Intent(), immutableFlag)
             }
-            
-            val openAppPendingIntent = PendingIntent.getActivity(
-                this, 0, openAppIntent, immutableFlag
-            )
 
             var iconResId = resources.getIdentifier("ic_launcher", "mipmap", packageName)
             if (iconResId == 0) iconResId = android.R.drawable.ic_dialog_info
