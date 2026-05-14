@@ -3,7 +3,8 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
+  // 🔥 FIX UTAMA: Matiin PWA paksa biar Terser gak jalan ngebunuh RAM Termux!
+  disable: true, 
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
@@ -18,10 +19,8 @@ const nextConfig: NextConfig = {
   
   images: { unoptimized: true },
 
-  // 🔥 OBAT KUAT: Next.js 16 sekarang minta ignore lewat sini kalau mau lewat config
+  // 🔥 OBAT KUAT: Next.js 16
   typescript: { ignoreBuildErrors: true },
-  
-  // Catatan: 'eslint' & 'swcMinify' dihapus karena Next.js 16 sudah tidak mendukung kunci ini di config
   
   webpack: (config, { isServer }) => {
     config.cache = false; // Bungkam error cache di lingkungan terbatas (Termux)

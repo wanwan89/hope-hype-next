@@ -20,7 +20,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             if (data.isNotEmpty()) {
                 showNotification(data)
             }
-        } catch (t: Throwable) {   // Tangkap semua error termasuk NoClassDefFoundError
+        } catch (t: Throwable) {
             Log.e("HopeTalk", "Gagal proses pesan: ${t.message}", t)
         }
     }
@@ -47,21 +47,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 baseFlag or PendingIntent.FLAG_MUTABLE
             } else baseFlag
 
-            // 🔥 AMAN: Gunakan launcher intent dari PackageManager
             val openAppIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             } ?: run {
-                // fallback kalau gagal (seharusnya tidak terjadi)
                 Intent(Intent.ACTION_MAIN).apply {
                     addCategory(Intent.CATEGORY_LAUNCHER)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
             }
+            
             val openAppPendingIntent = PendingIntent.getActivity(
                 this, 0, openAppIntent, immutableFlag
             )
 
-            // Icon notifikasi: coba dari resource, fallback ke icon sistem
             var iconResId = resources.getIdentifier("ic_launcher", "mipmap", packageName)
             if (iconResId == 0) iconResId = android.R.drawable.ic_dialog_info
 
@@ -115,7 +113,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             manager.notify(System.currentTimeMillis().toInt(), builder.build())
 
-        } catch (t: Throwable) {   // Tangkap semua error
+        } catch (t: Throwable) {
             Log.e("HopeTalk", "CRASH PARAH DICEGAH: ${t.message}", t)
         }
     }

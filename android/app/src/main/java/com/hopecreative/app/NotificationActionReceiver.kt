@@ -16,12 +16,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         val replyText = remoteInput.getCharSequence("key_text_reply").toString()
                         val roomId = intent.getStringExtra("room_id")
                         Log.d("HopeTalk", "User ngebalas: $replyText ke room: $roomId")
-                        // TODO: Supabase Fetch / kirim pesan
                     }
                 }
                 "ACTION_ACCEPT" -> {
                     Log.d("HopeTalk", "Angkat ditekan, buka app...")
-                    // 🔥 AMAN: Gunakan launcher intent
                     val launchIntent = context.packageManager
                         .getLaunchIntentForPackage(context.packageName)?.apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -29,9 +27,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     if (launchIntent != null) {
                         context.startActivity(launchIntent)
                     } else {
-                        // fallback: intent generic LAUNCHER
                         val fallback = Intent(Intent.ACTION_MAIN).apply {
                             addCategory(Intent.CATEGORY_LAUNCHER)
+                            setPackage(context.packageName)
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
                         context.startActivity(fallback)
@@ -39,7 +37,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 }
                 "ACTION_REJECT" -> {
                     Log.d("HopeTalk", "Panggilan ditolak")
-                    // TODO: Tolak di Supabase
                 }
             }
         } catch (e: Exception) {

@@ -62,9 +62,9 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- 🔥 FIX PENTING: tools:node="replace" BIAR SERVICE CAPACITOR KITA TENDANG 🔥 -->
+        <!-- 🔥 FIX PENTING: Pake alamat LENGKAP com.hopecreative.app 🔥 -->
         <service
-            android:name=".MyFirebaseMessagingService"
+            android:name="com.hopecreative.app.MyFirebaseMessagingService"
             android:exported="false"
             tools:node="replace">
             <intent-filter android:priority="999">
@@ -72,9 +72,9 @@
             </intent-filter>
         </service>
 
-        <!-- DAFTARKAN RECEIVER BUAT NANGKEP TOMBOL BALAS / ANGKAT -->
+        <!-- 🔥 DAFTARKAN RECEIVER DENGAN ALAMAT LENGKAP JUGA 🔥 -->
         <receiver 
-            android:name=".NotificationActionReceiver" 
+            android:name="com.hopecreative.app.NotificationActionReceiver" 
             android:exported="false" />
 
         <meta-data
