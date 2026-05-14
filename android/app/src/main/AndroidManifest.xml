@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 🔥 WAJIB ADA: xmlns:tools di sini 🔥 -->
+<!-- 🔥 xmlns:tools tetap wajib ada untuk menghapus service yang bentrok 🔥 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
@@ -62,24 +62,14 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- 🔥 FIX MUTLAK: TENDANG SERVICE BAWAAN CAPACITOR BIAR GA BENTROK 🔥 -->
+        <!-- 🔥 TENDANG SERVICE BAWAAN CAPACITOR PUSH 🔥 -->
+        <!-- Ini tetap diperlukan agar plugin Push lama tidak ikut campur -->
         <service 
             android:name="com.capacitorjs.plugins.pushnotifications.MessagingService" 
             tools:node="remove" />
 
-        <!-- 🔥 Service Custom Kita (Yang Udah Kebal Crash) 🔥 -->
-        <service
-            android:name="com.hopecreative.app.MyFirebaseMessagingService"
-            android:exported="false">
-            <intent-filter android:priority="999">
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
-
-        <!-- 🔥 DAFTARKAN RECEIVER DENGAN ALAMAT LENGKAP 🔥 -->
-        <receiver 
-            android:name="com.hopecreative.app.NotificationActionReceiver" 
-            android:exported="false" />
+        <!-- 🔥 SERVICE CUSTOM & RECEIVER LAMA DIHAPUS TOTAL 🔥 -->
+        <!-- Karena kita pakai OneSignal, kita tidak butuh deklarasi service manual di sini lagi -->
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"

@@ -9,11 +9,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR & LIVEKIT 🔥
+// 🔥 IMPORT CAPACITOR, LIVEKIT & ONESIGNAL 🔥
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app'; 
+import OneSignal from 'onesignal-cordova-plugin'; // Jalur 1: OneSignal
 import { LiveKitRoom } from '@livekit/components-react';
 
 import "./globals.css";
@@ -42,8 +41,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [lkToken, setLkToken] = useState<string | null>(null);
   const [lkRoom, setLkRoom] = useState<string | null>(null);
 
-  // 🔥 FONDASI TOKEN: Penampung sementara buat ngatasi Race Condition
-  const fcmTokenRef = useRef<string | null>(null);
+  // 🔥 FONDASI TOKEN: Penampung ID OneSignal
+  const onesignalIdRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
 
@@ -75,9 +74,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         .eq('id', userId);
         
       if (error) throw error;
-      console.log("✅ Token FCM berhasil disimpen ke database!");
+      console.log("✅ OneSignal Subscription ID berhasil disimpen!");
     } catch (err: any) {
-      console.error("❌ Gagal simpan token ke DB:", err.message);
+      console.error("❌ Gagal simpan ID ke DB:", err.message);
     }
   };
 
@@ -89,9 +88,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
         if (data) {
           setMyProfile(data);
-          // 🔥 CEK CADANGAN: Jika token dapet duluan sebelum profil kelar, hajar sekarang
-          if (fcmTokenRef.current) {
-            updatePushToken(session.user.id, fcmTokenRef.current);
+          // Jika ID OneSignal sudah ada saat profile didapat
+          if (onesignalIdRef.current) {
+            updatePushToken(session.user.id, onesignalIdRef.current);
           }
         }
       }
@@ -112,7 +111,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FIX UNTUK KOTLIN NATIVE) 🔥 ---
+  // --- 🔥 SETUP ONESIGNAL (MENGGANTIKAN CAPACITOR PUSH) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -121,44 +120,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android') {
-          console.log("📱 Android Detected: Menyiapkan Fondasi HypeTalk...");
+          console.log("📱 Android Detected: Menghubungkan OneSignal...");
 
-          // 1. Minta Izin Notif & Mic
-          let permStatus = await PushNotifications.checkPermissions();
-          if (permStatus.receive === 'prompt') {
-            permStatus = await PushNotifications.requestPermissions();
-          }
+          // 1. Inisialisasi OneSignal dengan ID kamu
+          OneSignal.initialize("a2e3be25-3ffb-4678-a41c-17aae778e4b5");
 
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            stream.getTracks().forEach(track => track.stop());
-          } catch (err) {
-            console.warn("⚠️ User menolak izin Mic");
-          }
+          // 2. Minta Izin Notif
+          OneSignal.Notifications.requestPermission(true);
 
-          // 2. Daftar Push Notif (Buat mancing Token)
-          if (permStatus.receive === 'granted') {
-            await PushNotifications.register();
-          }
+          // 3. Ambil ID User untuk Database
+          // Menggunakan delay kecil untuk memastikan sinkronisasi OneSignal selesai
+          setTimeout(() => {
+            const subscriptionId = OneSignal.User.pushSubscription.id;
+            if (subscriptionId) {
+              console.log('✅ OneSignal ID HP ini:', subscriptionId);
+              onesignalIdRef.current = subscriptionId;
+              
+              if (myProfile?.id) {
+                updatePushToken(myProfile.id, subscriptionId);
+              }
+            }
+          }, 5000);
 
-          // 3. TANGKAP TOKEN FIREBASE & SIMPAN KE DB
-          PushNotifications.addListener('registration', async (token) => {
-            console.log('✅ FCM Token HP ini:', token.value);
-            fcmTokenRef.current = token.value; 
-
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-              updatePushToken(session.user.id, token.value);
+          // 4. Handle Notification Click (Background/Kill State)
+          OneSignal.Notifications.addEventListener('click', (event) => {
+            const data: any = event.notification.additionalData;
+            if (data && data.roomId) {
+              const targetUserId = data.senderId || data.callerId;
+              router.push(`/hypetalk/room?from=${targetUserId}`);
             }
           });
 
-          PushNotifications.addListener('registrationError', (error) => {
-            console.error('❌ Error registrasi push notif:', error);
-          });
-
-          // 🔥 BLOK PUSH NOTIFIKASI JAVASCRIPT DIHAPUS KARENA KOTLIN YANG AMBIL ALIH 🔥
-
-          // 4. Handle Back Button App
+          // 5. Handle Back Button App
           App.addListener('backButton', ({ canGoBack }) => {
             if (lkToken) {
               App.minimizeApp(); 
@@ -171,7 +164,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         }
       } catch (error) {
-        console.warn("⚠️ Capacitor Push API error:", error);
+        console.warn("⚠️ OneSignal Init error:", error);
       }
     };
 
@@ -179,16 +172,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     return () => {
       if (typeof window !== 'undefined' && Capacitor.getPlatform() === 'android') {
-        PushNotifications.removeAllListeners();
+        // Pembersihan listener jika diperlukan
       }
     };
   }, [router, lkToken, myProfile]); 
 
-  // --- LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION ---
+  // --- LIVEKIT TOKEN FETCH ---
   const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
     try {
       setLkRoom(roomName); 
-
       const { data, error } = await supabase.functions.invoke('get-livekit-token', {
         body: { 
           roomName: roomName, 
@@ -196,12 +188,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           username: myProfile?.username || 'User HypeTalk' 
         }
       });
-
       if (error || !data) throw new Error("Gagal ambil token dari Supabase");
-
       setLkToken(data.token);
-      console.log("✅ Token LiveKit didapat via Supabase Edge Function!");
-
     } catch (err) {
       console.error("❌ Error koneksi LiveKit:", err);
     }
