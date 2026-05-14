@@ -62,17 +62,21 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- 🔥 FIX PENTING: Pake alamat LENGKAP com.hopecreative.app 🔥 -->
+        <!-- 🔥 FIX MUTLAK: TENDANG SERVICE BAWAAN CAPACITOR BIAR GA BENTROK 🔥 -->
+        <service 
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService" 
+            tools:node="remove" />
+
+        <!-- 🔥 Service Custom Kita (Yang Udah Kebal Crash) 🔥 -->
         <service
             android:name="com.hopecreative.app.MyFirebaseMessagingService"
-            android:exported="false"
-            tools:node="replace">
+            android:exported="false">
             <intent-filter android:priority="999">
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
 
-        <!-- 🔥 DAFTARKAN RECEIVER DENGAN ALAMAT LENGKAP JUGA 🔥 -->
+        <!-- 🔥 DAFTARKAN RECEIVER DENGAN ALAMAT LENGKAP 🔥 -->
         <receiver 
             android:name="com.hopecreative.app.NotificationActionReceiver" 
             android:exported="false" />
