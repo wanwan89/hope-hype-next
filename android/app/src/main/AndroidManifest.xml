@@ -60,14 +60,19 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- 🔥 FIX PENTING: DAFTARKAN SERVICE FIREBASE 🔥 -->
+        <!-- 🔥 FIX PENTING 1: DAFTARKAN SERVICE FIREBASE KUSTOM KITA 🔥 -->
         <service
-            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:name=".MyFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- 🔥 FIX PENTING 2: DAFTARKAN RECEIVER BUAT NANGKEP TOMBOL BALAS / ANGKAT 🔥 -->
+        <receiver 
+            android:name=".NotificationActionReceiver" 
+            android:exported="false" />
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
