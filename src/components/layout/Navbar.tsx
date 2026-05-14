@@ -17,13 +17,10 @@ function NavbarContent() {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   
   const [clickedItem, setClickedItem] = useState<string | null>(null);
-  
-  // 🔥 STATE BARU BUAT ANIMASI ULAR (REFRESH) 🔥
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
   const lastScrollY = useRef(0);
 
-  // 🔥 UPDATE: Deteksi Halaman Login & Hypetalk 🔥
   const isLoginPage = pathname === '/login' || pathname?.startsWith('/login/');
   const isHypetalkPage = pathname === '/hypetalk' || pathname?.startsWith('/hypetalk/');
   const isVoiceRoom = pathname?.includes('/voice-room') && pathname !== '/voice-room'; 
@@ -32,7 +29,6 @@ function NavbarContent() {
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
 
-  // Gabungkan semua halaman yang mau disembunyikan Navbarnya
   const isHiddenPage = isLoginPage || isHypetalkPage || isVoiceRoom || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
 
   useEffect(() => {
@@ -131,9 +127,8 @@ function NavbarContent() {
       isMounted = false;
       if (badgeChannel) supabase.removeChannel(badgeChannel);
     };
-  }, [pathname]); 
+  }, [pathname]);
 
-  // 🔥 CEGAH RENDER NAVBAR JIKA BERADA DI HALAMAN HIDDEN 🔥
   if (isHiddenPage) {
     return null;
   }
@@ -148,16 +143,15 @@ function NavbarContent() {
 
   const showNavbar = isVisible && !isManualHidden;
 
-  // 🔥 FUNGSI BUAT NANGANIN KLIK & REFRESH ANIMASI 🔥
+  // Posisi tombol toggle disesuaikan dengan navbar yang menempel di bawah
+  const toggleButtonBottom = showNavbar
+    ? `calc(65px + env(safe-area-inset-bottom) + 10px)`
+    : `max(20px, env(safe-area-inset-bottom))`;
+
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, item: typeof navItems[0], isActive: boolean) => {
     if (isActive) {
-      // Mencegah link pindah (karena udah di halaman yang sama)
       e.preventDefault(); 
-      
-      // Memicu animasi ular (draw path)
       setAnimatingIcon(item.name);
-
-      // Setelah 800ms (animasi selesai), refresh halamannya
       setTimeout(() => {
         window.location.reload();
       }, 800);
@@ -169,18 +163,19 @@ function NavbarContent() {
 
   return (
     <>
+      {/* Tombol toggle sembunyi/tampilkan navbar */}
       <button
         onClick={() => setIsManualHidden(!isManualHidden)}
         aria-label={isManualHidden ? "Tampilkan Menu Navigasi" : "Sembunyikan Menu Navigasi"}
         style={{
           position: 'fixed',
-          bottom: isManualHidden ? 'max(20px, env(safe-area-inset-bottom))' : 'max(95px, calc(95px + env(safe-area-inset-bottom)))', 
+          bottom: toggleButtonBottom,
           right: '20px',
           zIndex: 9001,
           width: '40px',
           height: '40px',
           borderRadius: '50%',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
           border: '1px solid rgba(0,0,0,0.05)',
@@ -190,42 +185,40 @@ function NavbarContent() {
           boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
           cursor: 'pointer',
           color: '#333',
-          transform: isVisible ? 'translateY(0)' : 'translateY(150px)',
-          transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+          transition: 'bottom 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
           outline: 'none'
         }}
       >
         {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
       </button>
 
+      {/* Navbar menempel penuh di bawah */}
       <div style={{
         position: 'fixed', 
-        bottom: 'max(20px, env(safe-area-inset-bottom))', 
-        left: '0', 
-        right: '0',
-        zIndex: 9000, 
-        display: 'flex', 
-        justifyContent: 'center', 
-        padding: '0 20px',
+        bottom: 0, 
+        left: 0, 
+        right: 0,
+        zIndex: 9000,
+        display: 'flex',
+        justifyContent: 'center',
         transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease',
         transform: showNavbar ? 'translateY(0)' : 'translateY(150%)',
         opacity: showNavbar ? 1 : 0, 
         pointerEvents: showNavbar ? 'auto' : 'none'
       }}>
         <nav style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+          width: '100%',
+          height: `calc(65px + env(safe-area-inset-bottom))`,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)', 
-          border: '1px solid rgba(0, 0, 0, 0.05)',
-          borderRadius: '25px', 
-          width: '100%', 
-          maxWidth: '400px', 
-          height: '65px',
+          WebkitBackdropFilter: 'blur(15px)',
+          borderTop: '1px solid rgba(0, 0, 0, 0.1)',
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-around',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
-          padding: '0 5px'
+          boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
+          boxSizing: 'border-box'
         }}>
           {navItems.map((item) => {
             const isActive = pathname === item.path;
@@ -234,7 +227,6 @@ function NavbarContent() {
             const isClicked = clickedItem === item.name;
             const isAnimating = animatingIcon === item.name;
 
-            // Warna Ikon Normal
             const normalColor = isVoice ? '#ffffff' : (isActive ? '#00a2ff' : '#666666');
 
             return (
@@ -282,7 +274,6 @@ function NavbarContent() {
                   })
                 }}>
                   
-                  {/* 🔥 ANIMASI ULAR MENGGUNAKAN FRAMER MOTION 🔥 */}
                   <AnimatePresence mode="wait">
                     {isAnimating ? (
                       <motion.div
