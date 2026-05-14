@@ -13,6 +13,23 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Komponen lingkaran berputar (chase spinner)
+function CircularChase() {
+  return (
+    <motion.div
+      style={{
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        border: '3px solid rgba(128,128,128,0.3)',
+        borderTopColor: '#1f3cff',
+      }}
+      animate={{ rotate: 360 }}
+      transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+    />
+  );
+}
+
 function NavbarContent() {
   const pathname = usePathname();
 
@@ -55,6 +72,15 @@ function NavbarContent() {
   const isCreatePage = pathname?.startsWith('/create');
   const isSearchPage = pathname?.startsWith('/search');
 
+  // Room hanya di /hypetalk/room
+  const isRoomPage = pathname?.startsWith('/hypetalk/room');
+
+  const isSaldoPage = pathname?.includes('/saldo');
+  const isStoryPage = pathname?.includes('/story');
+  const isPendingPage = pathname?.includes('/pending');
+  const isHistoryCoinPage = pathname?.includes('/historycoin');
+  const isWithdrawPage = pathname?.includes('/withdraw');
+
   const isHiddenPage =
     isLoginPage ||
     isDailyCekPage ||
@@ -62,7 +88,13 @@ function NavbarContent() {
     isVipPage ||
     isContactPage ||
     isCreatePage ||
-    isSearchPage;
+    isSearchPage ||
+    isRoomPage ||
+    isSaldoPage ||
+    isStoryPage ||
+    isPendingPage ||
+    isHistoryCoinPage ||
+    isWithdrawPage;
 
   // --- LOGIKA BADGE PESAN & NOTIFIKASI ---
   useEffect(() => {
@@ -182,41 +214,6 @@ function NavbarContent() {
     setTimeout(() => setClickedItem(null), 300);
   };
 
-  const getIconVariants = (name: string) => {
-    switch (name) {
-      case 'Home':
-        return {
-          hidden: { rotate: -180, opacity: 0, scale: 0.5 },
-          visible: { rotate: 0, opacity: 1, scale: 1 },
-        };
-      case 'Chat':
-        return {
-          hidden: { x: -20, opacity: 0 },
-          visible: { x: 0, opacity: 1 },
-        };
-      case 'Voice':
-        return {
-          hidden: { scale: 0, opacity: 0 },
-          visible: { scale: 1, opacity: 1 },
-        };
-      case 'Notif':
-        return {
-          hidden: { rotate: 20, opacity: 0, scale: 0.8 },
-          visible: { rotate: 0, opacity: 1, scale: 1 },
-        };
-      case 'Profil':
-        return {
-          hidden: { y: 20, opacity: 0 },
-          visible: { y: 0, opacity: 1 },
-        };
-      default:
-        return {
-          hidden: { opacity: 0 },
-          visible: { opacity: 1 },
-        };
-    }
-  };
-
   return (
     <>
       {/* Navbar full width bottom */}
@@ -257,9 +254,7 @@ function NavbarContent() {
             const isClicked = clickedItem === item.name;
             const isAnimating = animatingIcon === item.name;
 
-            const normalColor = isActive ? '#00a2ff' : 'var(--text-muted)';
-
-            const iconVariant = getIconVariants(item.name);
+            const normalColor = isActive ? '#1f3cff' : 'var(--text-muted)';
 
             return (
               <Link
@@ -295,38 +290,39 @@ function NavbarContent() {
                       'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   }}
                 >
+                  {/* Area animasi: spinner saat double‑click, jika tidak tampilkan ikon biasa */}
                   <AnimatePresence mode="wait">
                     {isAnimating ? (
                       <motion.div
-                        key="animating"
-                        initial="hidden"
-                        animate="visible"
-                        exit="hidden"
-                        variants={iconVariant}
-                        transition={{ duration: 0.4 }}
-                        style={{ position: 'absolute' }}
+                        key="spinner"
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.8, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        style={{
+                          position: 'absolute',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
                       >
-                        <Icon
-                          size={24}
-                          color={normalColor}
-                          strokeWidth={isActive ? 2.5 : 2}
-                        />
+                        <CircularChase />
                       </motion.div>
                     ) : (
-                      <motion.div
-                        key="static"
-                        initial="hidden"
-                        animate="visible"
-                        exit="hidden"
-                        variants={iconVariant}
-                        transition={{ duration: 0.4 }}
+                      <div
+                        key="icon"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
                       >
                         <Icon
                           size={24}
                           color={normalColor}
                           strokeWidth={isActive ? 2.5 : 2}
                         />
-                      </motion.div>
+                      </div>
                     )}
                   </AnimatePresence>
 
