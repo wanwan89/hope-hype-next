@@ -220,18 +220,3 @@ html.dark .telegram-wrapper {
 .btn-cari-doi .material-icons { color: var(--tg-primary) !important; }
 .limit-badge { background: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
 [data-theme='dark'] .limit-badge { background: rgba(239,68,68,0.15); }
-
-/* Skeleton loading */
-.skeleton-shimmer {
-  background: linear-gradient(90deg, var(--tg-bg-secondary) 25%, var(--tg-border) 50%, var(--tg-bg-secondary) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
-  border-radius: 8px;
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.skeleton-chat { pointer-events: none; border-bottom: 1px solid var(--tg-border); }
-.skeleton-chat .tg-avatar { background: var(--tg-bg-secondary); border-radius: 50%; }
-.skeleton-line { background: var(--tg-bg-secondary); border-radius: 4px; }

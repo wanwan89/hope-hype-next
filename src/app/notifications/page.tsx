@@ -296,6 +296,27 @@ export default function NotificationsPage() {
     }
   };
 
+  // 🔥 FUNGSI MARK ALL AS READ 🔥
+  const handleMarkAllAsRead = async () => {
+    if (!currentUser) return;
+    
+    // Langsung update UI biar user ngerasa instan
+    setRawNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', currentUser.id)
+        .eq('is_read', false);
+
+      if (error) throw error;
+      showNotif("Semua notifikasi ditandai sudah dibaca", "success");
+    } catch (err) {
+      console.error("Gagal update semua notif:", err);
+    }
+  };
+
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like': return { icon: 'favorite', color: '#ff2e63' };
@@ -351,12 +372,43 @@ export default function NotificationsPage() {
     return notif.message || `Notifikasi dari ${notif.actorName}`; 
   };
 
+  const hasUnread = rawNotifs.some(n => !n.is_read && !n.id.toString().startsWith('repost-') && !n.id.toString().startsWith('save-') && !n.id.toString().startsWith('storylike-'));
+
   return (
     <div className="notif-page-container">
       <header className="notif-header">
         
-        <div className="notif-top-bar">
-          <h2 style={{ marginLeft: '10px' }}>{t('notifications', 'Notifikasi')}</h2>
+        <div className="notif-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '15px' }}>
+          <h2 style={{ marginLeft: '10px', margin: 0 }}>{t('notifications', 'Notifikasi')}</h2>
+          
+          {/* 🔥 TOMBOL TANDAI SUDAH DIBACA 🔥 */}
+          {hasUnread && (
+            <button 
+              onClick={handleMarkAllAsRead} 
+              style={{
+                background: 'rgba(31, 60, 255, 0.1)',
+                border: 'none',
+                color: '#1f3cff',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: '0.2s',
+                outline: 'none'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(31, 60, 255, 0.2)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(31, 60, 255, 0.1)'}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <span className="material-icons" style={{ fontSize: '16px' }}>done_all</span>
+              Tandai Dibaca
+            </button>
+          )}
         </div>
 
         <div className="notif-ad-banner-container" onMouseEnter={stopAutoSlide} onMouseLeave={startAutoSlide}>

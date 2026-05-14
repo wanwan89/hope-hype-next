@@ -6,7 +6,7 @@ import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION UNTUK GELOMBANG
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION
 import './Create.css'; 
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
@@ -21,6 +21,7 @@ export default function CreatePostPage() {
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false); // 🔥 STATE CUSTOM DROPDOWN
   
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); 
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]); 
@@ -603,8 +604,8 @@ export default function CreatePostPage() {
                 <p className="section-label" style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{t('send_to')}</p>
                 <div className="dest-toggle-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {[
-                    { id: 'feed', title: t('feed_title'), desc: t('feed_desc') },
-                    { id: 'story', title: t('story_title'), desc: t('story_desc') }
+                    { id: 'feed', title: t('feed_title', 'Feed'), desc: t('feed_desc', 'Tampil di timeline publik') },
+                    { id: 'story', title: t('story_title', 'Cerita'), desc: t('story_desc', 'Hilang dalam 24 jam') }
                   ].map((dest) => (
                     <label key={dest.id} className="dest-option" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '12px', border: destination === dest.id ? '2px solid #1f3cff' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
                       <input type="radio" name="postDestination" value={dest.id} checked={destination === dest.id} onChange={() => setDestination(dest.id as any)} style={{ display: 'none' }} />
@@ -756,13 +757,87 @@ export default function CreatePostPage() {
                 />
               </div>
 
+              {/* 🔥 CUSTOM DROPDOWN KATEGORI (PENGGANTI SELECT BAWAAN) 🔥 */}
               <div style={{ position: 'relative', marginTop: '20px' }}>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="post-select-custom" style={{ width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', appearance: 'none', WebkitAppearance: 'none', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', outline: 'none', fontWeight: '600' }}>
-                  {[
-                    { val: "Karya", label: t('cat_karya') }, { val: "Prestasi", label: t('cat_prestasi') }, { val: "Photography", label: t('cat_photo') }, { val: "Mountain", label: t('cat_mountain') }, { val: "Thread", label: t('cat_thread') }
-                  ].map(opt => ( <option key={opt.val} value={opt.val}>{opt.label}</option> ))}
-                </select>
-                <i style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)', fontSize: '12px' }}>▼</i>
+                {/* Overlay transparan buat close kalau klik area luar */}
+                {isCategoryOpen && (
+                  <div onClick={() => setIsCategoryOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+                )}
+                
+                {/* Tombol Pemicu Dropdown */}
+                <div 
+                  onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                  style={{ width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <span>
+                    {[
+                      { val: "Karya", label: t('cat_karya', 'Karya') }, 
+                      { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, 
+                      { val: "Photography", label: t('cat_photo', 'Photography') }, 
+                      { val: "Mountain", label: t('cat_mountain', 'Mountain') }, 
+                      { val: "Thread", label: t('cat_thread', 'Thread') }
+                    ].find(opt => opt.val === category)?.label || category}
+                  </span>
+                  <span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: '20px', transform: isCategoryOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
+                    expand_more
+                  </span>
+                </div>
+
+                {/* List Menu Dropdown dengan Animasi Framer Motion */}
+                <AnimatePresence>
+                  {isCategoryOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      style={{ 
+                        position: 'absolute', 
+                        bottom: '100%', /* 👈 Muncul ke ATAS biar gak ketutup keyboard/tombol */
+                        left: 0, 
+                        right: 0, 
+                        marginBottom: '8px', 
+                        background: 'var(--bg-main, #1a1d21)', 
+                        border: '1px solid var(--border-card, #2a2d31)', 
+                        borderRadius: '16px', 
+                        padding: '8px', 
+                        zIndex: 100, 
+                        boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' 
+                      }}
+                    >
+                      {[
+                        { val: "Karya", label: t('cat_karya', 'Karya') }, 
+                        { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, 
+                        { val: "Photography", label: t('cat_photo', 'Photography') }, 
+                        { val: "Mountain", label: t('cat_mountain', 'Mountain') }, 
+                        { val: "Thread", label: t('cat_thread', 'Thread') }
+                      ].map((opt) => (
+                        <div
+                          key={opt.val}
+                          onClick={() => {
+                            setCategory(opt.val);
+                            setIsCategoryOpen(false);
+                          }}
+                          style={{ 
+                            padding: '12px 16px', 
+                            borderRadius: '10px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between', 
+                            cursor: 'pointer', 
+                            background: category === opt.val ? 'rgba(31, 60, 255, 0.1)' : 'transparent', 
+                            color: category === opt.val ? '#1f3cff' : 'var(--text-main)', 
+                            fontWeight: category === opt.val ? 'bold' : 'normal', 
+                            transition: 'background 0.2s' 
+                          }}
+                        >
+                          {opt.label}
+                          {category === opt.val && <span className="material-icons" style={{ fontSize: '18px' }}>check_circle</span>}
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="music-picker-section" style={{ marginTop: '25px', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '16px' }}>
@@ -807,7 +882,7 @@ export default function CreatePostPage() {
                 )}
               </div>
 
-              {/* 🔥 TOMBOL SUBMIT DENGAN ANIMASI GELOMBANG AIR 🔥 */}
+              {/* 🔥 TOMBOL SUBMIT DENGAN ANIMASI GELOMBANG AIR SEAMLESS & MULUS 🔥 */}
               <button 
                 type="submit" 
                 className="post-submit-btn" 
@@ -836,22 +911,26 @@ export default function CreatePostPage() {
                     transition: 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)', 
                     zIndex: 1
                   }}>
+                    {/* Gelombang Belakang (Transparan) */}
                     <motion.div
-                      animate={{ x: ["0%", "-50%"] }}
-                      transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                      animate={{ backgroundPositionX: ["0px", "-800px"] }}
+                      transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
                       style={{
-                        position: 'absolute', top: '-18px', left: 0, width: '200%', height: '20px',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,50 250,0 400,25 C550,50 650,0 800,25 L800,50 L0,50 Z' fill='rgba(31,60,255,0.4)'/%3E%3C/svg%3E")`,
-                        backgroundSize: '50% 100%'
+                        position: 'absolute', top: '-18px', left: 0, width: '100%', height: '20px',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,55 250,-5 400,25 C550,55 650,-5 800,25 L800,50 L0,50 Z' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E")`,
+                        backgroundSize: '800px 100%',
+                        backgroundRepeat: 'repeat-x'
                       }}
                     />
+                    {/* Gelombang Depan (Solid) */}
                     <motion.div
-                      animate={{ x: ["-50%", "0%"] }}
-                      transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                      animate={{ backgroundPositionX: ["-800px", "0px"] }}
+                      transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
                       style={{
-                        position: 'absolute', top: '-14px', left: 0, width: '200%', height: '15px',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,0 250,50 400,25 C550,0 650,50 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
-                        backgroundSize: '50% 100%'
+                        position: 'absolute', top: '-14px', left: 0, width: '100%', height: '15px',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,45 250,5 400,25 C550,45 650,5 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
+                        backgroundSize: '800px 100%',
+                        backgroundRepeat: 'repeat-x'
                       }}
                     />
                   </div>

@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR & LIVEKIT (OneSignal diimport dinamis di bawah) 🔥
+// 🔥 IMPORT CAPACITOR & LIVEKIT 🔥
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app'; 
 import { LiveKitRoom } from '@livekit/components-react';
@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [lkToken, setLkToken] = useState<string | null>(null);
   const [lkRoom, setLkRoom] = useState<string | null>(null);
 
-  // 🔥 FONDASI TOKEN: Penampung ID OneSignal agar tidak race condition
+  // 🔥 FONDASI TOKEN
   const onesignalIdRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
@@ -63,6 +63,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
   const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
+
+  // 🔥 LIVEKIT TOKEN FETCH (Tahan Banting dari Cold Start) 🔥
+  const handleFetchLiveKitToken = async (roomName: string) => {
+    try {
+      setLkRoom(roomName); 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Belum login");
+
+      const myId = session.user.id;
+
+      // FIX BUG: Cegah error saat buka dari notifikasi (state myProfile mungkin masih kosong)
+      let uname = myProfile?.username;
+      if (!uname) {
+          const { data: prof } = await supabase.from('profiles').select('username').eq('id', myId).single();
+          uname = prof?.username || 'User HypeTalk';
+      }
+
+      const { data, error } = await supabase.functions.invoke('get-livekit-token', {
+        body: { roomName: roomName, identity: myId, username: uname }
+      });
+      
+      if (error || !data) throw new Error("Gagal ambil token dari Supabase");
+      setLkToken(data.token);
+    } catch (err) {
+      console.error("❌ Error koneksi LiveKit:", err);
+    }
+  };
 
   // 🔥 FUNGSI UPDATE TOKEN KE DATABASE 🔥
   const updatePushToken = async (userId: string, token: string) => {
@@ -87,7 +114,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
         if (data) {
           setMyProfile(data);
-          // Jika ID OneSignal sudah siap, langsung update
           if (onesignalIdRef.current) {
             updatePushToken(session.user.id, onesignalIdRef.current);
           }
@@ -110,10 +136,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP ONESIGNAL (FIX ReferenceError: window is not defined) 🔥 ---
+  // --- 🔥 SETUP ONESIGNAL 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
-      // 1. Pastikan kode hanya jalan di Browser/HP (Cegah Error Vercel)
       if (typeof window === 'undefined') return;
 
       try {
@@ -122,38 +147,49 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (platform === 'android' || platform === 'ios') {
           console.log("📱 Native Detected: Menghubungkan OneSignal...");
 
-          // 2. 🔥 DYNAMIC IMPORT: Import hanya saat dijalankan di browser
           const OneSignal = (await import('onesignal-cordova-plugin')).default;
 
-          // 3. Inisialisasi OneSignal
           OneSignal.initialize("a2e3be25-3ffb-4678-a41c-17aae778e4b5");
-
-          // 4. Minta Izin Notif
           OneSignal.Notifications.requestPermission(true);
 
-          // 5. Ambil ID User untuk Database
           setTimeout(() => {
             const subscriptionId = OneSignal.User.pushSubscription.id;
             if (subscriptionId) {
-              console.log('✅ OneSignal ID HP ini:', subscriptionId);
               onesignalIdRef.current = subscriptionId;
-              
               if (myProfile?.id) {
                 updatePushToken(myProfile.id, subscriptionId);
               }
             }
           }, 5000);
 
-          // 6. Handle Notification Click
-          OneSignal.Notifications.addEventListener('click', (event: any) => {
+          // 🔥 FIX: HANDLE KLIK NOTIFIKASI DARI LUAR APLIKASI 🔥
+          OneSignal.Notifications.addEventListener('click', async (event: any) => {
             const data = event.notification.additionalData;
+            const actionId = event.result?.actionId; 
+
             if (data && data.roomId) {
               const targetUserId = data.senderId || data.callerId;
-              router.push(`/hypetalk/room?from=${targetUserId}`);
+
+              if (actionId === "reject") {
+                // KALAU KLIK TOMBOL "TOLAK"
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                  await supabase.from('messages').insert([{ 
+                    room_id: data.roomId, 
+                    user_id: session.user.id, 
+                    message: `Panggilan Ditolak`, 
+                    is_system: true 
+                  }]);
+                }
+              } else {
+                // KALAU KLIK TOMBOL "ANGKAT" ATAU KLIK NOTIFNYA
+                await handleFetchLiveKitToken(data.roomId); // 🔥 FIX: Await tokennya sampe dapet
+                router.push(`/hypetalk/room?from=${targetUserId}`); // 🔥 Baru pindah halaman!
+              }
             }
           });
 
-          // 7. Handle Back Button App
+          // Handle Back Button App
           App.addListener('backButton', ({ canGoBack }) => {
             if (lkToken) {
               App.minimizeApp(); 
@@ -172,24 +208,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     initNativeFeatures();
   }, [router, lkToken, myProfile]); 
-
-  // --- LIVEKIT TOKEN FETCH VIA SUPABASE EDGE FUNCTION ---
-  const handleFetchLiveKitToken = async (roomName: string, userId: string) => {
-    try {
-      setLkRoom(roomName); 
-      const { data, error } = await supabase.functions.invoke('get-livekit-token', {
-        body: { 
-          roomName: roomName, 
-          identity: userId, 
-          username: myProfile?.username || 'User HypeTalk' 
-        }
-      });
-      if (error || !data) throw new Error("Gagal ambil token dari Supabase");
-      setLkToken(data.token);
-    } catch (err) {
-      console.error("❌ Error koneksi LiveKit:", err);
-    }
-  };
 
   // --- LOGIKA HALAMAN & RINGTONE ---
   useEffect(() => {
@@ -267,11 +285,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const handleAngkatGlobal = () => {
+  const handleAngkatGlobal = async () => {
     if (!globalIncomingCall) return;
-    handleFetchLiveKitToken(globalIncomingCall.roomId, globalIncomingCall.callerId);
+    const callerId = globalIncomingCall.callerId;
+    await handleFetchLiveKitToken(globalIncomingCall.roomId); // 🔥 FIX: Await tokennya juga
     setGlobalIncomingCall(null);
-    router.push(`/hypetalk/room?from=${globalIncomingCall.callerId}`);
+    router.push(`/hypetalk/room?from=${callerId}`);
   };
 
   const handleMessageClick = () => {

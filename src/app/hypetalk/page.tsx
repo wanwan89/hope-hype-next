@@ -370,22 +370,19 @@ export default function HypetalkPage() {
     }
   };
 
-  // 🔥 FIX UTAMA: Start Call tanpa bentrok LiveKit 🔥
   const startCallFromLobby = async (targetProfile: any) => {
     if (!currentUser) return;
     
     const ids = [currentUser.id, targetProfile.id].sort();
     const callRoomId = `pv_${ids[0]}_${ids[1]}`;
     
-    closeModal(); // Tutup popup profile
+    closeModal();
     showNotif("Memanggil " + targetProfile.username, "info");
 
-    // 1. Tembak Notif Push (APK Android)
     supabase.functions.invoke('send-chat-notif', { 
       body: { record: { sender_id: currentUser.id, receiver_id: targetProfile.id, content: "📞 Memanggil...", type: 'call', room_id: callRoomId } } 
     });
 
-    // 2. Masukin log ke Database
     await supabase.from('messages').insert([{ 
       room_id: callRoomId, 
       user_id: currentUser.id, 
@@ -393,7 +390,6 @@ export default function HypetalkPage() {
       is_system: true 
     }]);
 
-    // 3. Pindah halaman, serahkan urusan UI telpon ke ChatArea.tsx
     router.push(`/hypetalk/room?from=${targetProfile.id}`);
   };
 
@@ -544,19 +540,11 @@ export default function HypetalkPage() {
           </div>
         )}
 
+        {/* 🔥 SKELETON DIHAPUS, DIGANTI TEKS LOADING SIMPEL 🔥 */}
         {isLoading ? (
-          Array(8).fill(0).map((_, i) => (
-            <div key={i} className="tg-chat-item skeleton-chat">
-              <div className="tg-avatar skeleton-shimmer"></div>
-              <div className="tg-chat-info" style={{ flex: 1 }}>
-                <div className="tg-chat-top">
-                  <div className="skeleton-line skeleton-shimmer" style={{ width: '40%', height: '14px' }}></div>
-                  <div className="skeleton-line skeleton-shimmer" style={{ width: '30px', height: '10px' }}></div>
-                </div>
-                <div className="skeleton-line skeleton-shimmer" style={{ width: '70%', height: '12px', marginTop: '8px' }}></div>
-              </div>
-            </div>
-          ))
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--tg-text-muted)', fontSize: '14px', fontStyle: 'italic' }}>
+            Memuat obrolan...
+          </div>
         ) : (
           filteredChats.map(chat => (
             <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>

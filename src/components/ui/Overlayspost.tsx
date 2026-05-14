@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT ANIMASI
 
 /**
  * IMPORT SEMUA MODAL SECARA GLOBAL
@@ -25,6 +26,10 @@ declare global {
 
 export default function Overlayspost() {
   const [bigImgSrc, setBigImgSrc] = useState<string | null>(null);
+
+  // 🔥 STATE BARU BUAT MODAL HAPUS KARYA 🔥
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     // --- 1. SENSOR SINYAL BUKA MODAL POST (DIBIARKAN KOSONG DEMI KEAMANAN) ---
@@ -123,17 +128,11 @@ export default function Overlayspost() {
       }
     };
 
-    window.confirmDeletePost = async (postId: string) => {
+    // 🔥 FIX: BUKA MODAL CUSTOM KITA, JANGAN PAKE WINDOW.CONFIRM LAGI 🔥
+    window.confirmDeletePost = (postId: string) => {
       if (window.closePostOptions) window.closePostOptions();
-      if (!confirm("Hapus permanen?")) return;
-      try {
-        const { error } = await supabase.from("posts").delete().eq("id", postId);
-        if (error) throw error;
-        if (window.showNotif) window.showNotif("Berhasil dihapus!", "success");
-        setTimeout(() => location.reload(), 1000);
-      } catch (err: any) {
-        if (window.showNotif) window.showNotif(err.message, "error");
-      }
+      setDeleteTargetId(postId);
+      setIsDeleteModalOpen(true);
     };
 
     return () => {
@@ -149,6 +148,26 @@ export default function Overlayspost() {
       if (container) container.style.display = "none";
       setBigImgSrc(null);
     }, 300);
+  };
+
+  // 🔥 FUNGSI EKSEKUSI HAPUS KE SUPABASE 🔥
+  const executeDelete = async () => {
+    if (!deleteTargetId) return;
+    try {
+      const { error } = await supabase.from("posts").delete().eq("id", deleteTargetId);
+      if (error) throw error;
+      
+      if (window.showNotif) window.showNotif("Berhasil dihapus!", "success");
+      
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
+      
+      setTimeout(() => location.reload(), 1000);
+    } catch (err: any) {
+      if (window.showNotif) window.showNotif(err.message, "error");
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
+    }
   };
 
   return (
@@ -191,6 +210,77 @@ export default function Overlayspost() {
           <button className="sheet-cancel" onClick={() => window.closePostOptions && window.closePostOptions()}>Batal</button>
         </div>
       </div>
+
+      {/* 🔥 UI MODAL HAPUS PERMANEN (CUSTOM) 🔥 */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div 
+            style={{
+              position: 'fixed', inset: 0, zIndex: 999999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(5px)'
+            }}
+            onClick={() => setIsDeleteModalOpen(false)} 
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()} 
+              style={{
+                background: 'var(--tg-bg, #1a1d21)',
+                border: '1px solid var(--tg-border, #2a2d31)',
+                borderRadius: '20px',
+                padding: '24px',
+                width: '90%',
+                maxWidth: '320px',
+                textAlign: 'center',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+              }}
+            >
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%',
+                background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px'
+              }}>
+                <span className="material-icons" style={{ fontSize: '28px' }}>delete_forever</span>
+              </div>
+              
+              <h3 style={{ color: 'white', margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>
+                Hapus Permanen?
+              </h3>
+              <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+                Karya ini bakal hilang selamanya dari profil lu dan gak bisa dibalikin lagi.
+              </p>
+              
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
+                    background: 'var(--tg-bg-secondary, #2a2d31)', color: 'white',
+                    fontWeight: '600', cursor: 'pointer'
+                  }}
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={executeDelete}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
+                    background: '#ff4757', color: 'white',
+                    fontWeight: '600', cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
+                  }}
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

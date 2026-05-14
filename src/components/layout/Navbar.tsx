@@ -23,14 +23,17 @@ function NavbarContent() {
 
   const lastScrollY = useRef(0);
 
-  const isChatRoom = pathname?.startsWith('/hypetalk/') && pathname !== '/hypetalk';
+  // 🔥 UPDATE: Deteksi Halaman Login & Hypetalk 🔥
+  const isLoginPage = pathname === '/login' || pathname?.startsWith('/login/');
+  const isHypetalkPage = pathname === '/hypetalk' || pathname?.startsWith('/hypetalk/');
   const isVoiceRoom = pathname?.includes('/voice-room') && pathname !== '/voice-room'; 
   const isDailyCekPage = pathname?.includes('/dailycek');
   const isSettingsPage = pathname?.includes('/settings');
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
 
-  const isHiddenPage = isChatRoom || isVoiceRoom || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
+  // Gabungkan semua halaman yang mau disembunyikan Navbarnya
+  const isHiddenPage = isLoginPage || isHypetalkPage || isVoiceRoom || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
 
   useEffect(() => {
     if (isHiddenPage) return;
@@ -130,6 +133,7 @@ function NavbarContent() {
     };
   }, [pathname]); 
 
+  // 🔥 CEGAH RENDER NAVBAR JIKA BERADA DI HALAMAN HIDDEN 🔥
   if (isHiddenPage) {
     return null;
   }
@@ -228,7 +232,7 @@ function NavbarContent() {
             const isVoice = item.name === 'Voice'; 
             const Icon = item.icon;
             const isClicked = clickedItem === item.name;
-            const isAnimating = animatingIcon === item.name; // Cek apakah ikon ini lagi proses refresh ular
+            const isAnimating = animatingIcon === item.name;
 
             // Warna Ikon Normal
             const normalColor = isVoice ? '#ffffff' : (isActive ? '#00a2ff' : '#666666');
@@ -238,7 +242,7 @@ function NavbarContent() {
                 key={item.name} 
                 href={item.path}
                 aria-label={item.name}
-                onClick={(e) => handleNavClick(e, item, isActive)} // 🔥 Pasang Interceptor Di Sini 🔥
+                onClick={(e) => handleNavClick(e, item, isActive)} 
                 style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
@@ -287,10 +291,6 @@ function NavbarContent() {
                         exit={{ opacity: 0 }}
                         style={{ position: 'absolute' }}
                       >
-                        {/* Kita render SVG kosongan, lalu Framer Motion narik garisnya 
-                          Lucide-react melempar path-nya otomatis. 
-                          Kita manipulasi agar path-nya punya animasi 'draw'
-                        */}
                         <motion.svg
                            width={isVoice ? 28 : 24} 
                            height={isVoice ? 28 : 24}
