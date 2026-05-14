@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
-import { sendPushAndAppNotif } from '@/lib/notif'; // 🔥 IMPORT HELPER NOTIFIKASI 🔥
+import { sendPushAndAppNotif } from '@/lib/notif'; 
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -199,7 +199,6 @@ export default function Gallerypost() {
     }
   };
 
-  // 🔥 UPDATE: Nembak Notif Pas Komen / Follow 🔥
   const handleFollowToggle = async (e: any, creatorId: string) => {
     e.stopPropagation(); 
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
@@ -230,7 +229,6 @@ export default function Gallerypost() {
         if (error && error.code !== '23505') throw error; 
         
         if (!error) {
-          // 🚀 TEMBAK PUSH NOTIFIKASI FOLLOW 🚀
           await sendPushAndAppNotif({
             senderId: currentUser.id,
             receiverId: creatorId,
@@ -241,7 +239,6 @@ export default function Gallerypost() {
     } catch (err) { console.error("Follow error", err); }
   };
 
-  // 🔥 UPDATE: Nembak Notif Pas Like 🔥
   const handleLike = async (postId: string, creatorId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isLiked = myLikedPosts.has(postId);
@@ -266,7 +263,6 @@ export default function Gallerypost() {
         if (error && error.code !== '23505') throw error; 
         
         if (!error && creatorId !== currentUser.id) {
-          // 🚀 TEMBAK PUSH NOTIFIKASI LIKE 🚀
           await sendPushAndAppNotif({
             senderId: currentUser.id,
             receiverId: creatorId,
@@ -307,18 +303,6 @@ export default function Gallerypost() {
       } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
         if (error && error.code !== '23505') throw error;
-        
-        // Repost Notif (kalau lu mau muncul notif pas direpost, uncomment di bawah)
-        /*
-        if (!error && creatorId !== currentUser.id) {
-          await sendPushAndAppNotif({
-            senderId: currentUser.id,
-            receiverId: creatorId,
-            type: 'repost',
-            postId: postId
-          });
-        }
-        */
       }
     } catch (err) { console.error("Repost error", err); }
   };
@@ -651,32 +635,35 @@ export default function Gallerypost() {
                         )}
                       </div>
 
-                      <button
-                        className="btn-press"
-                        onClick={toggleMute}
-                        style={{
-                          position: 'absolute',
-                          bottom: '12px',
-                          left: '12px',
-                          zIndex: 2, 
-                          background: 'rgba(0,0,0,0.6)',
-                          backdropFilter: 'blur(10px)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          color: 'white',
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
-                        }}
-                      >
-                        <span className="material-icons" style={{ fontSize: '18px' }}>
-                          {isGloballyMuted ? 'volume_off' : 'volume_up'}
-                        </span>
-                      </button>
+                      {/* 🔥 FIX: TOMBOL SPIKER HANYA MUNCUL JIKA ADA VIDEO ATAU AUDIO 🔥 */}
+                      {(isVideoPost || post.audio_src) && (
+                        <button
+                          className="btn-press"
+                          onClick={toggleMute}
+                          style={{
+                            position: 'absolute',
+                            bottom: '12px',
+                            left: '12px',
+                            zIndex: 2, 
+                            background: 'rgba(0,0,0,0.6)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'white',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+                          }}
+                        >
+                          <span className="material-icons" style={{ fontSize: '18px' }}>
+                            {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                          </span>
+                        </button>
+                      )}
 
                       <div className="photo-carousel" onScroll={(e) => {
                           const target = e.target as HTMLDivElement;

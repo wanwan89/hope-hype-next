@@ -185,21 +185,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           // 🔥 RAKIT NOTIFIKASI LOKAL (AVATAR & TOMBOL) 🔥
           PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+            // 🔥 POPUP DEBUGGING: Cek apakah data beneran nyampe HP 🔥
+            alert("Sinyal Masuk: " + JSON.stringify(notification.data));
+            console.log("📩 Notif Masuk (Data):", notification.data);
+
             const { data } = notification;
             
-            await LocalNotifications.schedule({
-              notifications: [
-                {
-                  title: data.title || "HypeTalk",
-                  body: data.body || "Pesan baru masuk",
-                  id: Math.floor(Math.random() * 10000),
-                  largeIcon: data.image, // 🔥 FOTO PROFIL PENGIRIM
-                  actionTypeId: data.type === 'call' ? 'CALL_ACTIONS' : 'CHAT_ACTIONS',
-                  extra: data, 
-                  schedule: { at: new Date(Date.now() + 100) }
-                }
-              ]
-            });
+            try {
+              await LocalNotifications.schedule({
+                notifications: [
+                  {
+                    title: data.title || "HypeTalk",
+                    body: data.body || "Pesan baru masuk",
+                    id: Math.floor(Math.random() * 10000),
+                    channelId: 'high_importance_channel', // 🔥 WAJIB ADA BIAR MUNCUL DI ANDROID 8+ 🔥
+                    largeIcon: data.image, // 🔥 FOTO PROFIL PENGIRIM
+                    actionTypeId: data.type === 'call' ? 'CALL_ACTIONS' : 'CHAT_ACTIONS',
+                    extra: data, 
+                    schedule: { at: new Date(Date.now() + 100) }
+                  }
+                ]
+              });
+            } catch (err) {
+              console.error("❌ Gagal nampilin Local Notif:", err);
+            }
           });
 
           // 🔥 HANDLE KLIK TOMBOL BALAS / ANGKAT / TAP 🔥

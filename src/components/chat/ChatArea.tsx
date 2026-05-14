@@ -387,7 +387,7 @@ export default function ChatArea() {
       data.profiles = myProfile; 
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
       
-      // 🔥 FIX 1: UPDATE PAYLOAD EDGE FUNCTION BUAT CHAT 🔥
+      // 🔥 UPDATE PAYLOAD EDGE FUNCTION BUAT CHAT 🔥
       if (targetId && !sticker && !audio && !image) {
         supabase.functions.invoke('send-chat-notif', { 
           body: { record: { sender_id: currentUser.id, receiver_id: targetId, content: content, type: 'chat', room_id: roomId } } 
@@ -593,7 +593,6 @@ export default function ChatArea() {
     setCallStatus('calling'); 
     setCallData({ partnerName: headerInfo.title, partnerAvatar: pTarget?.avatar_url, seconds: 0, room: roomId });
 
-    // 🔥 FIX 2: TRIGGER NOTIFIKASI PANGGILAN (CALL) KE HP TARGET 🔥
     if (targetId) {
       supabase.functions.invoke('send-chat-notif', { 
         body: { record: { sender_id: currentUser.id, receiver_id: targetId, content: "📞 Memanggil...", type: 'call', room_id: roomId } } 
@@ -834,8 +833,8 @@ export default function ChatArea() {
             </button>
           ) : groupId ? (
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>INVITE</button>
-              {isOwner && <button onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }} style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>SETTINGS</button>}
+              <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>INVITE</button>
+              {isOwner && <button onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }} style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>SETTINGS</button>}
             </div>
           ) : null}
         </div>
@@ -1028,6 +1027,115 @@ export default function ChatArea() {
           </>
         )}
       </footer>
+
+      {/* 🔥 FIX: MODAL INVITE & SETTINGS GRUP DITAMBAHKAN DI SINI 🔥 */}
+      <AnimatePresence>
+        {isGroupSettingsOpen && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+              onClick={() => setIsGroupSettingsOpen(false)}
+            />
+            <motion.div 
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={{ position: 'relative', background: 'var(--bg-main)', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '85vh' }}
+            >
+              <div style={{ width: '40px', height: '5px', background: 'var(--border-color)', borderRadius: '10px', margin: '0 auto 10px' }} />
+              
+              <h3 style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {groupModalTab === 'invite' ? 'Tambah Anggota' : 'Pengaturan Grup'}
+                <span className="material-icons" style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setIsGroupSettingsOpen(false)}>close</span>
+              </h3>
+
+              <div style={{ overflowY: 'auto', paddingRight: '4px', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {groupModalTab === 'invite' ? (
+                  <>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <input 
+                        placeholder="Username atau #ShortID" 
+                        value={inviteSearch} 
+                        onChange={e => setInviteSearch(e.target.value)} 
+                        style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-color)', outline: 'none' }}
+                      />
+                      <button 
+                        onClick={handleAddMember} 
+                        disabled={isUpdatingGroup || !inviteSearch.trim()}
+                        style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '12px', fontWeight: 'bold', opacity: (isUpdatingGroup || !inviteSearch.trim()) ? 0.7 : 1, cursor: 'pointer' }}
+                      >
+                        Tambah
+                      </button>
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '14px', marginBottom: '10px', color: 'var(--text-muted)' }}>Daftar Anggota ({groupMembers.length})</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {groupMembers.map(m => (
+                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-secondary)', padding: '10px', borderRadius: '12px' }}>
+                            <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt="avatar"/>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{m.profiles?.username}</div>
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{m.user_id === currentUser?.id ? 'Kamu' : 'Member'}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <img src={headerInfo.avatar || '/asets/png/profile.webp'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-color)' }} alt="group avatar" />
+                        <label style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <span className="material-icons" style={{ fontSize: '16px' }}>edit</span>
+                          <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={isUpdatingGroup} />
+                        </label>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                        <input 
+                          value={newGroupName} 
+                          onChange={e => setNewGroupName(e.target.value)} 
+                          style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-color)', textAlign: 'center', fontWeight: 'bold' }}
+                        />
+                        <button 
+                          onClick={() => updateGroupInfo('name', newGroupName)} 
+                          disabled={isUpdatingGroup || newGroupName === headerInfo.title || !newGroupName.trim()}
+                          style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '12px', fontWeight: 'bold', opacity: (isUpdatingGroup || newGroupName === headerInfo.title) ? 0.7 : 1, cursor: 'pointer' }}
+                        >
+                          Simpan
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 style={{ fontSize: '14px', marginBottom: '10px', color: 'var(--text-muted)' }}>Manajemen Anggota</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {groupMembers.map(m => (
+                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-secondary)', padding: '10px', borderRadius: '12px' }}>
+                            <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt="avatar"/>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{m.profiles?.username}</div>
+                            </div>
+                            {isOwner && m.user_id !== currentUser?.id && (
+                              <button 
+                                onClick={() => kickMember(m.user_id, m.profiles?.username)}
+                                style={{ background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                              >
+                                Keluarkan
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
