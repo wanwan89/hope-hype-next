@@ -112,7 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FIX UNIMPLEMENTED & PREMIUM UI) 🔥 ---
+  // --- 🔥 SETUP NATIVE FEATURES & PUSH NOTIF (FIX UNTUK KOTLIN NATIVE) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -123,35 +123,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (platform === 'android') {
           console.log("📱 Android Detected: Menyiapkan Fondasi HypeTalk...");
 
-          // 1. DAFTARKAN TIPE TOMBOL (BALAS & ANGKAT)
-          await LocalNotifications.registerActionTypes({
-            types: [
-              {
-                id: 'CHAT_ACTIONS',
-                actions: [
-                  { id: 'reply', title: 'Balas', input: true, inputPlaceholder: 'Ketik balasan...' },
-                  { id: 'read', title: 'Tandai Dibaca' }
-                ]
-              },
-              {
-                id: 'CALL_ACTIONS',
-                actions: [
-                  { id: 'accept', title: '📞 Angkat', foreground: true },
-                  { id: 'reject', title: '❌ Tolak', destructive: true }
-                ]
-              }
-            ]
-          });
-          
-          await PushNotifications.createChannel({
-            id: 'high_importance_channel',
-            name: 'Urgent Notifications',
-            importance: 5,
-            sound: 'default',
-            visibility: 1,
-            vibration: true
-          });
-
+          // 1. Minta Izin Notif & Mic
           let permStatus = await PushNotifications.checkPermissions();
           if (permStatus.receive === 'prompt') {
             permStatus = await PushNotifications.requestPermissions();
@@ -164,14 +136,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.warn("⚠️ User menolak izin Mic");
           }
 
+          // 2. Daftar Push Notif (Buat mancing Token)
           if (permStatus.receive === 'granted') {
             await PushNotifications.register();
           }
 
-          // 🔥 TANGKAP TOKEN FIREBASE & SIMPAN KE DB 🔥
+          // 3. TANGKAP TOKEN FIREBASE & SIMPAN KE DB
           PushNotifications.addListener('registration', async (token) => {
             console.log('✅ FCM Token HP ini:', token.value);
-            fcmTokenRef.current = token.value; // Simpan ke penampung (Ref)
+            fcmTokenRef.current = token.value; 
 
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
@@ -183,63 +156,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             console.error('❌ Error registrasi push notif:', error);
           });
 
-          // 🔥 RAKIT NOTIFIKASI LOKAL (AVATAR & TOMBOL) 🔥
-          PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-            // 🔥 POPUP DEBUGGING: Cek apakah data beneran nyampe HP 🔥
-            alert("Sinyal Masuk: " + JSON.stringify(notification.data));
-            console.log("📩 Notif Masuk (Data):", notification.data);
+          // 🔥 BLOK PUSH NOTIFIKASI JAVASCRIPT DIHAPUS KARENA KOTLIN YANG AMBIL ALIH 🔥
 
-            const { data } = notification;
-            
-            try {
-              await LocalNotifications.schedule({
-                notifications: [
-                  {
-                    title: data.title || "HypeTalk",
-                    body: data.body || "Pesan baru masuk",
-                    id: Math.floor(Math.random() * 10000),
-                    channelId: 'high_importance_channel', // 🔥 WAJIB ADA BIAR MUNCUL DI ANDROID 8+ 🔥
-                    largeIcon: data.image, // 🔥 FOTO PROFIL PENGIRIM
-                    actionTypeId: data.type === 'call' ? 'CALL_ACTIONS' : 'CHAT_ACTIONS',
-                    extra: data, 
-                    schedule: { at: new Date(Date.now() + 100) }
-                  }
-                ]
-              });
-            } catch (err) {
-              console.error("❌ Gagal nampilin Local Notif:", err);
-            }
-          });
-
-          // 🔥 HANDLE KLIK TOMBOL BALAS / ANGKAT / TAP 🔥
-          LocalNotifications.addListener('localNotificationActionPerformed', async (action) => {
-            const { actionId, notification, inputValue } = action;
-            const data = notification.extra;
-
-            if (actionId === 'accept') {
-              if (data?.callerId && data?.roomId) {
-                handleFetchLiveKitToken(data.roomId, data.callerId);
-                router.push(`/hypetalk/room?from=${data.callerId}`);
-              }
-            } else if (actionId === 'reply' && inputValue) {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session?.user?.id && data?.roomId) {
-                await supabase.from('messages').insert([{
-                  room_id: data.roomId,
-                  user_id: session.user.id,
-                  message: inputValue,
-                  is_system: false
-                }]);
-              }
-            } else if (actionId === 'tap') {
-              if (data?.type === 'like' || data?.type === 'comment') {
-                if (data.postId) router.push(`/post/${data.postId}`);
-              } else if (data?.type === 'chat' || data?.type === 'call') {
-                if (data.callerId) router.push(`/hypetalk/room?from=${data.callerId}`);
-              }
-            }
-          });
-
+          // 4. Handle Back Button App
           App.addListener('backButton', ({ canGoBack }) => {
             if (lkToken) {
               App.minimizeApp(); 
@@ -261,7 +180,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => {
       if (typeof window !== 'undefined' && Capacitor.getPlatform() === 'android') {
         PushNotifications.removeAllListeners();
-        LocalNotifications.removeAllListeners();
       }
     };
   }, [router, lkToken, myProfile]); 
