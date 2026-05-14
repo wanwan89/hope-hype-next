@@ -8,10 +8,8 @@ import {
   MessageCircle,
   User,
   Mic,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -19,7 +17,7 @@ function NavbarContent() {
   const pathname = usePathname();
 
   const [isVisible, setIsVisible] = useState(true);
-  const [isManualHidden, setIsManualHidden] = useState(false);
+  const prevScrollY = useRef(0);
 
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -27,10 +25,25 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
-  // Hapus efek scroll hide: navbar selalu tampil (kecuali manual)
+  // Scroll otomatis hanya di Home
   useEffect(() => {
-    setIsVisible(true);
-    setIsManualHidden(false);
+    if (pathname !== '/') {
+      setIsVisible(true);
+      return;
+    }
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > prevScrollY.current && currentScrollY > 50) {
+        setIsVisible(false);
+      } else if (currentScrollY < prevScrollY.current) {
+        setIsVisible(true);
+      }
+      prevScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [pathname]);
 
   // Halaman yang tidak menampilkan navbar
@@ -39,14 +52,17 @@ function NavbarContent() {
   const isSettingsPage = pathname?.includes('/settings');
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
+  const isCreatePage = pathname?.startsWith('/create');
+  const isSearchPage = pathname?.startsWith('/search');
 
-  // 🔥 HAPUS isVoiceRoom dari sini agar navbar tetap muncul di voice room
   const isHiddenPage =
     isLoginPage ||
     isDailyCekPage ||
     isSettingsPage ||
     isVipPage ||
-    isContactPage;
+    isContactPage ||
+    isCreatePage ||
+    isSearchPage;
 
   // --- LOGIKA BADGE PESAN & NOTIFIKASI ---
   useEffect(() => {
@@ -150,11 +166,7 @@ function NavbarContent() {
     { name: 'Profil', path: '/data', icon: User },
   ];
 
-  const showNavbar = isVisible && !isManualHidden;
-
-  const toggleButtonBottom = showNavbar
-    ? `calc(65px + env(safe-area-inset-bottom) + 10px)`
-    : `max(20px, env(safe-area-inset-bottom))`;
+  const showNavbar = isVisible;
 
   const handleNavClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -170,7 +182,6 @@ function NavbarContent() {
     setTimeout(() => setClickedItem(null), 300);
   };
 
-  // Varian animasi unik per ikon
   const getIconVariants = (name: string) => {
     switch (name) {
       case 'Home':
@@ -208,36 +219,6 @@ function NavbarContent() {
 
   return (
     <>
-      {/* Tombol toggle */}
-      <button
-        onClick={() => setIsManualHidden(!isManualHidden)}
-        aria-label={
-          isManualHidden ? 'Tampilkan Menu Navigasi' : 'Sembunyikan Menu Navigasi'
-        }
-        style={{
-          position: 'fixed',
-          bottom: toggleButtonBottom,
-          right: '20px',
-          zIndex: 9001,
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          backgroundColor: 'var(--bg-card)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          border: '1px solid var(--border-card)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          cursor: 'pointer',
-          color: 'var(--text-main)',
-          transition: 'bottom 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
-          outline: 'none',
-        }}
-      >
-        {isManualHidden ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-      </button>
-
       {/* Navbar full width bottom */}
       <div
         style={{
@@ -376,9 +357,6 @@ function NavbarContent() {
                       </div>
                     )}
                 </div>
-
-                {/* 🔥 HAPUS DOT INDIKATOR 🔥 */}
-                {/* Sebelumnya ada <div> untuk dot, sekarang dihilangkan */}
               </Link>
             );
           })}
