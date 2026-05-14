@@ -17,9 +17,11 @@
   --bg-story-seen: #dddfe2;
   --modal-overlay: rgba(0, 0, 0, 0.5);
   
-  /* Warna utama aplikasi diselaraskan */
   --primary: #1f3cff;
   --primary-soft: rgba(31, 60, 255, 0.1);
+  
+  /* 🔥 Beri tahu browser: halaman ini mendukung light mode */
+  color-scheme: light;
 }
 
 [data-theme='dark'], html.dark {
@@ -34,6 +36,9 @@
   --bg-secondary: #1e293b;
   --bg-story-seen: #2c2c2c;
   --modal-overlay: rgba(0, 0, 0, 0.7);
+  
+  /* 🔥 Beri tahu browser: halaman ini mendukung dark mode */
+  color-scheme: dark;
 }
 
 /* === RESET GLOBAL & ANTI-BLUE HIGHLIGHT === */
@@ -42,32 +47,33 @@
   margin: 0;
   padding: 0;
   
-  /* 🔥 FIX 1: MATIKAN SEMUA EFEK BIRU (Tap & Selection) 🔥 */
   -webkit-tap-highlight-color: transparent !important; 
   -webkit-tap-highlight-color: rgba(0,0,0,0) !important; 
   outline: none !important; 
   user-select: none; 
   
+  /* 🔥 Transisi tetap ada, tapi tidak untuk html & body */
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
-/* Biar inputan & pesan tetep bisa di-copy/ketik, tapi gak ada outline birunya */
+/* Biar inputan & pesan tetep bisa di-copy/ketik */
 input, textarea, [contenteditable="true"], .selectable { 
   user-select: text !important; 
   -webkit-touch-callout: default; 
   outline: none !important;
 }
 
+/* 🔥 PERBAIKAN UTAMA: html & body TIDAK BOLEH BERTRANSISI */
 html, body {
   background-color: var(--bg-main) !important;
   height: 100%;
   min-height: 100%;
   scroll-behavior: smooth;
   
-  /* 🔥 FIX 2: BIAR BISA REFRESH (PULL TO REFRESH) 🔥 */
-  /* Ubah 'none' ke 'auto' pada sumbu Y agar fitur tarik-refresh browser aktif */
+  /* 🔥 MATIKAN transisi agar tidak ada animasi flash */
+  transition: none !important;
+  
   overscroll-behavior-y: auto; 
-  /* Sumbu X tetep 'contain' biar swipe back browser gak ganggu UI */
   overscroll-behavior-x: contain; 
 }
 
@@ -82,7 +88,7 @@ body {
   -ms-user-select: none;
 }
 
-/* Tombol dan link nggak boleh ada highlight biru sama sekali */
+/* Tombol dan link */
 a, button, select, .menu-item-tiktok, .card-btn {
   -webkit-tap-highlight-color: transparent !important;
   outline: none !important;
@@ -94,44 +100,37 @@ a, button, select, .menu-item-tiktok, .card-btn {
   width: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh; /* Pastikan selalu memenuhi tinggi layar */
+  min-height: 100dvh;
 }
 
-/* Class ini dipakai buat nge-lock layar (misal di Voice Room / Story) */
 .fixed-layout {
   height: 100dvh !important;
   overflow: hidden !important;
   position: relative;
-  /* Kalau lagi mode fix, kita matiin refresh-nya biar gak keganggu */
   overscroll-behavior-y: none;
 }
 
 .main-content {
   flex: 1;
   width: 100%;
-  /* 🔥 FIX RESPONSIVE: Default 100% biar di HP (layar kecil) full layar 🔥 */
   max-width: 100%; 
   margin: 0 auto;
   position: relative;
   padding-bottom: env(safe-area-inset-bottom, 20px);
 }
 
-/* 🔥 RESPONSIVE BREAKPOINTS (TABLET & DESKTOP) 🔥 */
 @media (min-width: 640px) {
-  /* Untuk Tablet / iPad Portrait */
   .main-content {
-    max-width: 600px; /* Di tablet, dikunci 600px biar feed-nya proporsional (gak terlalu melar) */
+    max-width: 600px;
   }
 }
 
 @media (min-width: 1024px) {
-  /* Untuk Desktop / PC / Layar Lebar */
   .main-content {
-    max-width: 680px; /* Di layar gede makin lega, ala-ala feed Twitter/Instagram Web */
+    max-width: 680px;
   }
 }
 
-/* 🔥 TAMBAHAN KHUSUS BREE 🔥 */
 .with-bottom-nav {
   padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
 }
@@ -139,13 +138,11 @@ a, button, select, .menu-item-tiktok, .card-btn {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* === Z-INDEX & OVERLAYS === */
 .navbar-bottom {
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Animasi Transisi Halaman */
 .page-fade {
   animation: smoothFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }

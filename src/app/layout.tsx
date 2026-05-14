@@ -375,7 +375,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="id" suppressHydrationWarning>
-       <head>
+      <head>
+        {/* 🔥 SCRIPT ANTI FLASH PUTIH - Dijalankan SEBELUM render */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
