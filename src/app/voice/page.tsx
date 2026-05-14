@@ -96,6 +96,9 @@ function VoiceRoomContent() {
     setMounted(true);
     window.__VOICE_ROOM_INIT__ = true;
 
+    // Tambah class ke body pas mount biar styling body aman
+    document.body.classList.add('voice-room-active');
+
     const rawId = searchParams?.get('id');
     const rawName = searchParams?.get('name');
     const urlParams = new URLSearchParams(window.location.search);
@@ -537,10 +540,7 @@ function VoiceRoomContent() {
         fetchStage();
     };
 
-    // 🔥 FIX: FUNGSI BUKA KADO DARI WINDOW (JALUR 1) 🔥
     window.toggleRoomGiftDrawer = () => {
-        console.log("Jalur 1 (window function) berjalan!");
-        // Tembak CustomEvent karena modal Framer Motion mu sekarang dengerin ini
         window.dispatchEvent(new CustomEvent('openRoomGift'));
     };
 
@@ -602,7 +602,9 @@ function VoiceRoomContent() {
         roomRef.current?.disconnect();
         window.removeEventListener('resize', fixMobileHeight);
         window.removeEventListener('orientationchange', fixMobileHeight);
-        // 🔥 PASTIKAN GAK HAPUS ELEMEN MODAL YANG UDAH ADA DI REACT
+        
+        // 🔥 FIX: HAPUS CLASS DARI BODY PAS KELUAR HALAMAN 🔥
+        document.body.classList.remove('voice-room-active');
     };
   }, [t, searchParams, router]);
 
@@ -663,12 +665,9 @@ function VoiceRoomContent() {
         <Footer />
       </div> 
       
-      {/* 🔥 PASTIKAN INI ADA DI SINI 🔥 */}
       <GiftDrawer />
       <GiftAnimOverlay />
 
-      {/* 🔥 PANGGIL KOMPONEN SLIDE-UP YANG UDAH KITA PISAH 🔥 */}
-      
       <ActionSheetroom 
         isOpen={isActionMenuOpen}
         onClose={() => setIsActionMenuOpen(false)}
@@ -691,44 +690,50 @@ function VoiceRoomContent() {
         onKickUser={(id, name) => window.kickUser?.(id, name)}
       />
 
+      {/* 🔥 FIX: GANTI BODY SELEKTOR DENGAN CLASS YANG CUMA AKTIF PAS HALAMAN INI DIBUKA 🔥 */}
       <style jsx global>{`
         :root { --radar-color: #1f3cff; }
-        body:has(.in-voice-room) { background-color: #0B141A !important; }
+        
+        /* Cuma ganti background body kalau class voice-room-active nempel di body */
+        body.voice-room-active { 
+            background-color: #0B141A !important; 
+        }
+
         .in-voice-room { background-color: #0B141A !important; color: #ffffff !important; }
         .in-voice-room .app-container { background-color: #0B141A !important; }
 
-        .vr-custom-header {
+        .in-voice-room .vr-custom-header {
            display: flex; align-items: center; justify-content: space-between;
            padding: 10px 16px; background: rgba(11, 20, 26, 0.85); backdrop-filter: blur(12px);
            position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 500px;
            z-index: 1000; border-bottom: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;
         }
-        .vr-header-left { display: flex; align-items: center; gap: 12px; }
-        .vr-owner-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; cursor: pointer; }
-        .vr-room-name { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 2px 0; text-transform: uppercase; }
-        .vr-room-stats { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #1da1f2; font-weight: 600; }
-        .vr-btn-follow { background: linear-gradient(135deg, #1f3cff, #bc13fe); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .in-voice-room .vr-header-left { display: flex; align-items: center; gap: 12px; }
+        .in-voice-room .vr-owner-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; cursor: pointer; }
+        .in-voice-room .vr-room-name { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 2px 0; text-transform: uppercase; }
+        .in-voice-room .vr-room-stats { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #1da1f2; font-weight: 600; }
+        .in-voice-room .vr-btn-follow { background: linear-gradient(135deg, #1f3cff, #bc13fe); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; cursor: pointer; }
 
-        .tap-emoji-fly { position: fixed; pointer-events: none; z-index: 999999; font-size: 28px; user-select: none; animation: flyUpAnim 1s ease-out forwards; }
+        .in-voice-room .tap-emoji-fly { position: fixed; pointer-events: none; z-index: 999999; font-size: 28px; user-select: none; animation: flyUpAnim 1s ease-out forwards; }
         @keyframes flyUpAnim { 0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; } 100% { transform: translateY(-200px) translateX(${Math.random() * 80 - 40}px) scale(1.5) rotate(20deg); opacity: 0; } }
 
-        .user-profile-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 10005; opacity: 0; visibility: hidden; transition: 0.3s; }
-        .user-profile-sheet-overlay.active { opacity: 1; visibility: visible; }
-        .user-profile-sheet {
+        .in-voice-room .user-profile-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 10005; opacity: 0; visibility: hidden; transition: 0.3s; }
+        .in-voice-room .user-profile-sheet-overlay.active { opacity: 1; visibility: visible; }
+        .in-voice-room .user-profile-sheet {
           position: absolute; bottom: 0; left: 0; right: 0; background: #1A2228 !important; border-top-left-radius: 24px; border-top-right-radius: 24px;
           padding: 20px 20px 40px; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); text-align: center; border-top: 1px solid rgba(255,255,255,0.05); box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
-        .user-profile-sheet-overlay.active .user-profile-sheet { transform: translateY(0); }
-        .sheet-handle { width: 40px; height: 5px; background: #444; border-radius: 10px; margin: 0 auto 20px; }
-        .profile-sheet-avatar { width: 95px; height: 95px; border-radius: 50%; border: 3px solid transparent; background-clip: padding-box, border-box; background-origin: padding-box, border-box; background-image: linear-gradient(#1A2228, #1A2228), linear-gradient(135deg, #1f3cff, #bc13fe); object-fit: cover; }
-        .profile-sheet-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .in-voice-room .user-profile-sheet-overlay.active .user-profile-sheet { transform: translateY(0); }
+        .in-voice-room .sheet-handle { width: 40px; height: 5px; background: #444; border-radius: 10px; margin: 0 auto 20px; }
+        .in-voice-room .profile-sheet-avatar { width: 95px; height: 95px; border-radius: 50%; border: 3px solid transparent; background-clip: padding-box, border-box; background-origin: padding-box, border-box; background-image: linear-gradient(#1A2228, #1A2228), linear-gradient(135deg, #1f3cff, #bc13fe); object-fit: cover; }
+        .in-voice-room .profile-sheet-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
         
-        .btn-action-sheet { width: 100%; padding: 14px; border: none; border-radius: 14px; font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s, opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-action-sheet.danger { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255,71,87,0.2); }
-        .btn-action-sheet.btn-gradient { background: linear-gradient(135deg, #1f3cff, #bc13fe); color: #fff; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3); }
-        .btn-action-sheet:active { transform: scale(0.96); opacity: 0.9; }
+        .in-voice-room .btn-action-sheet { width: 100%; padding: 14px; border: none; border-radius: 14px; font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s, opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .in-voice-room .btn-action-sheet.danger { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255,71,87,0.2); }
+        .in-voice-room .btn-action-sheet.btn-gradient { background: linear-gradient(135deg, #1f3cff, #bc13fe); color: #fff; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3); }
+        .in-voice-room .btn-action-sheet:active { transform: scale(0.96); opacity: 0.9; }
 
-        .avatar.speaking { box-shadow: 0 0 0 3px var(--radar-color); animation: pulseRadar 1.5s infinite; }
+        .in-voice-room .avatar.speaking { box-shadow: 0 0 0 3px var(--radar-color); animation: pulseRadar 1.5s infinite; }
         @keyframes pulseRadar { 0% { box-shadow: 0 0 0 0px var(--radar-color); } 70% { box-shadow: 0 0 0 10px rgba(31, 60, 255, 0); } 100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); } }
       `}</style>
     </div>

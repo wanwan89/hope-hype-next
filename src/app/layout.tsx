@@ -14,6 +14,9 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app'; 
 import { LiveKitRoom } from '@livekit/components-react';
 
+// 🔥 IMPORT TOP LOADER 🔥
+import NextTopLoader from 'nextjs-toploader';
+
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -410,6 +413,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
+        
+        {/* 🔥 INI DIA PROGRESS BAR TOP LOADER-NYA 🔥 */}
+        <NextTopLoader 
+          color="#1f3cff"
+          showSpinner={false}
+          shadow="0 0 10px #1f3cff,0 0 5px #1f3cff"
+          zIndex={99999999}
+        />
+
         <Script src="https://cdn.jsdelivr.net/npm/eruda" strategy="lazyOnload" onLoad={() => { if (typeof window !== 'undefined' && (window as any).eruda) (window as any).eruda.init(); }} />
 
         <I18nextProvider i18n={i18n}>
