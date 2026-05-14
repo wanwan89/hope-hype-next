@@ -35,16 +35,14 @@ function NavbarContent() {
 
   // Halaman yang tidak menampilkan navbar
   const isLoginPage = pathname === '/login' || pathname?.startsWith('/login/');
-  const isVoiceRoom =
-    pathname?.includes('/voice-room') && pathname !== '/voice-room';
   const isDailyCekPage = pathname?.includes('/dailycek');
   const isSettingsPage = pathname?.includes('/settings');
   const isVipPage = pathname?.includes('/vip');
   const isContactPage = pathname?.includes('/contact');
 
+  // 🔥 HAPUS isVoiceRoom dari sini agar navbar tetap muncul di voice room
   const isHiddenPage =
     isLoginPage ||
-    isVoiceRoom ||
     isDailyCekPage ||
     isSettingsPage ||
     isVipPage ||
@@ -379,19 +377,8 @@ function NavbarContent() {
                     )}
                 </div>
 
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '2px',
-                    width: '5px',
-                    height: '5px',
-                    backgroundColor: '#00a2ff',
-                    borderRadius: '50%',
-                    transition: 'all 0.3s ease',
-                    opacity: isActive ? 1 : 0,
-                    transform: isActive ? 'scale(1)' : 'scale(0)',
-                  }}
-                />
+                {/* 🔥 HAPUS DOT INDIKATOR 🔥 */}
+                {/* Sebelumnya ada <div> untuk dot, sekarang dihilangkan */}
               </Link>
             );
           })}
