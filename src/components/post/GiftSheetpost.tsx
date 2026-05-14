@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// 🔥 IMPORT RUMUS SAKTI 🔥
 import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
 
 const GIFT_DATA = [
@@ -36,7 +37,7 @@ export default function GiftSheetpost() {
   const fetchUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      const { data: prof } = await supabase.from("profiles").select("username, avatar_url, coins, total_gift_sent, level").eq("id", session.user.id).single();
+      const { data: prof } = await supabase.from("profiles").select("id, username, avatar_url, coins, total_gift_sent, level").eq("id", session.user.id).single();
       if (prof) {
         setMyProfile(prof);
         setUserCoins(prof.coins || 0);
@@ -125,6 +126,7 @@ export default function GiftSheetpost() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Silakan login kembali.");
 
+      // 1. Potong Koin
       const { error: rpcErr } = await supabase.rpc("transfer_coins", { 
         sender_id: session.user.id, 
         receiver_id: targetPost.creatorId, 
@@ -132,23 +134,36 @@ export default function GiftSheetpost() {
       });
       if (rpcErr) throw rpcErr;
 
-      supabase.from("gift_transactions").insert({ 
-        sender_id: session.user.id, 
-        receiver_id: targetPost.creatorId, 
-        post_id: parseInt(targetPost.id) || null, 
-        amount: giftToSend.amount 
-      }).then(({error}) => { if (error) console.warn("RLS Gift Transaction diabaikan"); });
+      // 2. 🔥 FIX: Hitung Level Baru & Update Profil di Database 🔥
+      const newTotalGiftSent = coinsGiven + giftToSend.amount;
+      const newLevel = calculateLevel(newTotalGiftSent);
+      
+      await supabase.from("profiles").update({ 
+          total_gift_sent: newTotalGiftSent,
+          level: newLevel
+      }).eq('id', session.user.id);
 
-      supabase.from("coin_history").insert([
-        { user_id: session.user.id, type: "keluar", transaction_type: "keluar", amount: giftToSend.amount, description: `Kirim kado ke ${targetPost.creatorName}` },
-        { user_id: targetPost.creatorId, type: "masuk", transaction_type: "masuk", amount: giftToSend.amount, description: `Terima kado` }
-      ]).then();
+      // 3. Catat di transaksi, history, dan notifikasi
+      await Promise.all([
+        supabase.from("gift_transactions").insert({ 
+          sender_id: session.user.id, 
+          receiver_id: targetPost.creatorId, 
+          post_id: parseInt(targetPost.id) || null, 
+          amount: giftToSend.amount 
+        }).then(({error}) => { if (error) console.warn("RLS Gift Transaction diabaikan"); }),
+  
+        supabase.from("coin_history").insert([
+          { user_id: session.user.id, type: "keluar", transaction_type: "keluar", amount: giftToSend.amount, description: `Kirim kado ke ${targetPost.creatorName}` },
+          { user_id: targetPost.creatorId, type: "masuk", transaction_type: "masuk", amount: giftToSend.amount, description: `Terima kado` }
+        ]),
+  
+        supabase.from("notifications").insert({ 
+          user_id: targetPost.creatorId, actor_id: session.user.id, post_id: parseInt(targetPost.id) || null, type: "gift", 
+          message: `mengirimkan hadiah senilai ${giftToSend.amount} koin` 
+        })
+      ]);
 
-      supabase.from("notifications").insert({ 
-        user_id: targetPost.creatorId, actor_id: session.user.id, post_id: parseInt(targetPost.id) || null, type: "gift", 
-        message: `mengirimkan hadiah senilai ${giftToSend.amount} koin` 
-      }).then();
-
+      // 4. Trigger komentar otomatis
       window.dispatchEvent(new CustomEvent('insertGiftComment', {
         detail: {
           postId: targetPost.id,
@@ -158,8 +173,9 @@ export default function GiftSheetpost() {
         }
       }));
 
+      // 5. Update State Lokal biar bar naik
       setUserCoins(prev => prev - giftToSend.amount);
-      setCoinsGiven(prev => prev + giftToSend.amount);
+      setCoinsGiven(newTotalGiftSent);
       
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
       
@@ -177,7 +193,8 @@ export default function GiftSheetpost() {
     }
   };
 
-  const currentLevel = myProfile?.level || 1;
+  // 🔥 LOGIKA KALKULASI LEVEL UNTUK TAMPILAN BAR 🔥
+  const currentLevel = calculateLevel(coinsGiven); 
   let targetKoin = currentLevel * 500;
   let prevTarget = (currentLevel - 1) * 500;
   let needed = targetKoin - coinsGiven;
@@ -228,12 +245,11 @@ export default function GiftSheetpost() {
           scrollbar-width: none;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
-        .gift-column { display: flex; flex-direction: column; gap: 40px; flex-shrink: 0; width: calc(33.333% - 10px); } /* 🔥 FIX 1: GAP DITAMBAH BIAR KADO GEDE GAK NABRAK 🔥 */
+        .gift-column { display: flex; flex-direction: column; gap: 40px; flex-shrink: 0; width: calc(33.333% - 10px); } 
         
         .drawer-footer { 
           display: flex; justify-content: space-between; align-items: center; 
           padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); 
-          /* 🔥 FIX 2: SINKRON TEMA 🔥 */
           background: var(--bg-card, #ffffff); border-top: 1px solid var(--border-card); 
           position: sticky; bottom: 0; z-index: 50; 
         }
@@ -262,7 +278,6 @@ export default function GiftSheetpost() {
               <div className="sheet-handle" style={{ width: '40px', height: '4px', background: 'var(--border-card)', borderRadius: '4px', margin: '0 auto 15px auto' }} />
 
               <div className="drawer-header">
-                {/* 🔥 FIX 2: WARNA TEKS DIBUAT DINAMIS VAR(--TEXT-MAIN) 🔥 */}
                 <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-main)' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
                 <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
               </div>
@@ -295,7 +310,6 @@ export default function GiftSheetpost() {
                 </span>
                 <div className="target-box">
                   <span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>account_circle</span>
-                  {/* 🔥 FIX 2: NAMA KREATOR DI WARNA TEXT-MAIN 🔥 */}
                   <span style={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-main)' }}>{targetPost.creatorName}</span>
                 </div>
               </div>
@@ -311,7 +325,6 @@ export default function GiftSheetpost() {
                           key={gift.id}
                           onClick={() => setSelectedGift(gift)}
                           style={{ 
-                            /* 🔥 FIX 1: TINGGI CONTAINER KADO DITAMBAH JADI 120px BIAR GAMBAR LEBIH BESAR 🔥 */
                             position: 'relative', height: '120px', width: '100%', 
                             display: 'flex', flexDirection: 'column', alignItems: 'center', 
                             justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
@@ -328,14 +341,12 @@ export default function GiftSheetpost() {
                             <motion.img 
                               src={gift.img} 
                               alt={gift.name} 
-                              /* 🔥 FIX 1: UKURAN GAMBAR KADO NAIK JADI 90px 🔥 */
                               style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.4))' }}
                               animate={isActiveGift ? { y: [-5, 5, -5] } : { y: 0 }}
                               transition={isActiveGift ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : {}}
                             />
                           </motion.div>
 
-                          {/* Kotak Latar Belakang Pas Aktif */}
                           <AnimatePresence>
                             {isActiveGift && (
                               <motion.div 
@@ -365,7 +376,6 @@ export default function GiftSheetpost() {
                             )}
                           </AnimatePresence>
 
-                          {/* Info Default (Nama & Harga) */}
                           <motion.div 
                             animate={{ opacity: isActiveGift ? 0 : 1, y: isActiveGift ? 10 : 0 }}
                             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px' }}

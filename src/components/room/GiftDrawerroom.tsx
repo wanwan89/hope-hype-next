@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION
+import { motion, AnimatePresence } from 'framer-motion'; 
 
 // 🔥 IMPORT RUMUS SAKTI DARI FILE BARU 🔥
 import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
@@ -40,7 +40,7 @@ export default function GiftDrawerroom() {
   const fetchUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      const { data: prof } = await supabase.from("profiles").select("username, avatar_url, coins, total_gift_sent, level").eq("id", session.user.id).single();
+      const { data: prof } = await supabase.from("profiles").select("id, username, avatar_url, coins, total_gift_sent, level").eq("id", session.user.id).single();
       if (prof) {
         setMyProfile(prof);
         setUserCoins(prof.coins || 0);
@@ -50,54 +50,39 @@ export default function GiftDrawerroom() {
   };
 
   useEffect(() => {
-    const handleGiftOpen = async (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const btn = target.closest(".gift-btn") as HTMLElement;
-      
-      if (btn) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
-        
-        if (session.user.id === btn.dataset.creator) {
-          if ((window as any).showNotif) (window as any).showNotif("Tidak bisa mengirim kado ke postingan sendiri!", "warning");
-          return;
-        }
-
-        setTargetPost({
-          id: btn.dataset.post || '',
-          creatorId: btn.dataset.creator || '',
-          creatorName: btn.dataset.name || t('creator_label')
-        });
-
-        await fetchUser();
-        setIsActive(true);
-        document.body.style.overflow = "hidden";
-      }
-    };
-
-    document.body.addEventListener("click", handleGiftOpen);
-    return () => document.body.removeEventListener("click", handleGiftOpen);
-  }, [t]);
-
-  useEffect(() => {
     const handleOpenFromFooter = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       
-      // Karena ini untuk Voice Room, targetnya mungkin pemilik room atau open
-      // Sesuaikan creatorId dengan logika room lu. Untuk sekarang, kita anggap targetnya ada di context
-      setTargetPost({
-        id: 'room-target', // Placeholder
-        creatorId: 'room-host-id', // Placeholder
-        creatorName: 'Host Room'
-      });
+      // Karena ini untuk Voice Room, kita dapetin room_id dari URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomId = urlParams.get('id');
+
+      if(!roomId) return;
+
+      // Ambil data Owner Room untuk dijadikan target kirim kado default
+      const { data: roomData } = await supabase.from('rooms').select('owner_id, profiles:owner_id(username)').eq('id', roomId).single();
+      
+      if (roomData && roomData.owner_id) {
+          setTargetPost({
+            id: roomId, // Pake Room ID sebagai reference post ID untuk Voice Room
+            creatorId: roomData.owner_id, 
+            creatorName: roomData.profiles?.username || 'Host Room'
+          });
+      } else {
+          setTargetPost({
+            id: 'room-target',
+            creatorId: 'room-host-id',
+            creatorName: 'Host Room'
+          });
+      }
 
       await fetchUser();
       setIsActive(true);
       document.body.style.overflow = "hidden";
     };
 
-    // 🔥 NANGKEP SINYAL DARI FOOTER 🔥
+    // Nangkep sinyal dari footer Room
     window.addEventListener('openRoomGift', handleOpenFromFooter);
     return () => window.removeEventListener('openRoomGift', handleOpenFromFooter);
   }, []);
@@ -109,7 +94,6 @@ export default function GiftDrawerroom() {
   };
 
   const handleSendGift = async (gift?: any, e?: any) => {
-    // 🔥 PENTING BIAR KLIK TOMBOL GAK BIKIN KADO KETUTUP/KE-SELECT ULANG 🔥
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -133,6 +117,7 @@ export default function GiftDrawerroom() {
           throw new Error("Tidak bisa mengirim kado ke diri sendiri.");
       }
 
+      // 1. Eksekusi RPC untuk pindah koin
       const { error: rpcErr } = await supabase.rpc("transfer_coins", { 
         sender_id: session.user.id, 
         receiver_id: targetPost.creatorId, 
@@ -141,37 +126,63 @@ export default function GiftDrawerroom() {
       
       if (rpcErr) throw rpcErr;
 
+      // 2. Tambahin total_gift_sent ke profil pengirim buat leveling
+      const newTotalGiftSent = coinsGiven + giftToSend.amount;
+      const newLevel = calculateLevel(newTotalGiftSent); // Kalkulasi level baru pakai fungsi sakti lu
+      
+      await supabase.from("profiles").update({ 
+          total_gift_sent: newTotalGiftSent,
+          level: newLevel // Update level jika naik
+      }).eq('id', session.user.id);
+
+      // 3. Catat di history & database
       await Promise.all([
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
           receiver_id: targetPost.creatorId, 
-          post_id: parseInt(targetPost.id) || 0, // Handler kalau bukan post
+          post_id: parseInt(targetPost.id) || null, // Biarkan null kalau gagal parse room string
           amount: giftToSend.amount 
-        }),
+        }).then(({error}) => { if(error) console.warn("Gift Transaction RLS warning"); }),
+        
         supabase.from("coin_history").insert([
           { 
             user_id: session.user.id, 
             type: "keluar", 
             transaction_type: "keluar", 
             amount: giftToSend.amount, 
-            description: `Kirim kado ke ${targetPost.creatorName}` 
+            description: `Kirim kado ${giftToSend.name} ke ${targetPost.creatorName}` 
           },
           { 
             user_id: targetPost.creatorId, 
             type: "masuk", 
             transaction_type: "masuk", 
             amount: giftToSend.amount, 
-            description: `Terima kado` 
+            description: `Menerima kado ${giftToSend.name} dari ${myProfile?.username || 'Seseorang'}` 
           }
         ])
       ]);
 
+      // 4. Update UI Local (Optimistic Update)
       setUserCoins(prev => prev - giftToSend.amount);
-      setCoinsGiven(prev => prev + giftToSend.amount);
+      setCoinsGiven(newTotalGiftSent);
       
+      // 5. Trigger animasi & notif ke room chat kalau ada fungsi globalnya
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100005 });
-      
       if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
+
+      // Tembak event ke chat room untuk render pesan sistem gift
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomId = urlParams.get('id');
+      if (roomId) {
+          await supabase.from('room_messages').insert([{ 
+              room_id: roomId, 
+              username: "SISTEM_GIFT", 
+              text: `${myProfile?.username || 'User'} mengirim ${giftToSend.name} x1 ke ${targetPost.creatorName}`, 
+              role: giftToSend.id.toString(), // Pake role sebagai wadah nyimpen ID Kado untuk animasinya
+              level: newLevel, 
+              user_id: session.user.id 
+          }]);
+      }
 
       setTimeout(() => {
         closeSheet();
@@ -184,9 +195,11 @@ export default function GiftDrawerroom() {
     }
   };
 
-  const currentLevel = myProfile?.level || 1;
-  let targetKoin = currentLevel * 500;
+  // 🔥 LOGIKA KALKULASI LEVEL UNTUK TAMPILAN BAR 🔥
+  const currentLevel = calculateLevel(coinsGiven); // Pake rumus sakti
+  // Perhitungan target berdasarkan level lu (asumsi per level butuh 500 koin)
   let prevTarget = (currentLevel - 1) * 500;
+  let targetKoin = currentLevel * 500;
   let needed = targetKoin - coinsGiven;
   let progressPercent = ((coinsGiven - prevTarget) / (targetKoin - prevTarget)) * 100;
   if (progressPercent > 100) progressPercent = 100;
@@ -239,30 +252,28 @@ export default function GiftDrawerroom() {
           position: sticky; bottom: 0; z-index: 50; 
         }
 
-        /* 🔥 FIX KLIK TOMBOL 🔥 */
         .gift-active-bg-box {
           position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
           border: 1.5px solid #1f3cff; border-radius: 12px; background: rgba(0,0,0,0.5);
           display: flex; flex-direction: column; justify-content: flex-end; 
           alignItems: center; padding-bottom: 6px;
-          z-index: 30; /* Angkat kotak di atas gambar agar tombol terbaca jelas */
-          pointer-events: none; /* Kotaknya tembus klik... */
+          z-index: 30; 
+          pointer-events: none; 
         }
 
         .gift-send-btn-mini {
           background: #1f3cff; color: white; border: none; border-radius: 8px; 
           padding: 6px 22px; font-weight: 800; font-size: 11px; 
           cursor: pointer; 
-          pointer-events: auto; /* ...tapi tombolnya BISA diklik! */
+          pointer-events: auto; 
           position: relative;
-          z-index: 40; /* Paling atas dari segala hal di dalam grid */
+          z-index: 40; 
         }
       `}</style>
 
       <AnimatePresence>
         {isActive && (
           <>
-            {/* OVERLAY */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -272,7 +283,6 @@ export default function GiftDrawerroom() {
               style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100000 }}
             />
 
-            {/* MODAL KONTEN */}
             <motion.div 
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
@@ -284,7 +294,7 @@ export default function GiftDrawerroom() {
               <div className="sheet-handle" style={{ width: '40px', height: '4px', background: '#555', borderRadius: '4px', margin: '0 auto 15px auto' }} />
 
               <div className="drawer-header">
-                <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
+                <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')} ke {targetPost.creatorName}</span>
                 <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
               </div>
 
@@ -310,7 +320,6 @@ export default function GiftDrawerroom() {
                 </div>
               </div>
 
-              {/* BUNGKUSAN LIST KADO DENGAN 3D FRAMER MOTION */}
               <div className="gift-list-3d-wrapper">
                 {Array.from({ length: Math.ceil(GIFT_DATA.length / 2) }).map((_, colIndex) => (
                   <div key={colIndex} className="gift-column">
@@ -320,7 +329,6 @@ export default function GiftDrawerroom() {
                       return (
                         <div 
                           key={gift.id}
-                          // 🔥 Klik di seluruh item untuk memilih kado 🔥
                           onClick={() => setSelectedGift(gift)}
                           style={{ 
                             position: 'relative', height: '100px', width: '100%', 
@@ -328,7 +336,6 @@ export default function GiftDrawerroom() {
                             justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
                           }}
                         >
-                          {/* Gambar Kado */}
                           <motion.img 
                             src={gift.img} 
                             alt={gift.name} 
@@ -345,7 +352,6 @@ export default function GiftDrawerroom() {
                             })}
                           />
 
-                          {/* Info Default (Nama & Harga) - Menghilang saat aktif */}
                           <motion.div 
                             animate={{ opacity: isActiveGift ? 0 : 1, y: isActiveGift ? 10 : 0 }}
                             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px' }}
@@ -356,7 +362,6 @@ export default function GiftDrawerroom() {
                             </span>
                           </motion.div>
 
-                          {/* Kotak & Tombol saat Kado Dipilih */}
                           <AnimatePresence>
                             {isActiveGift && (
                               <motion.div 
@@ -365,15 +370,11 @@ export default function GiftDrawerroom() {
                                 exit={{ opacity: 0, scale: 0.8, y: 10 }}
                                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                 className="gift-active-bg-box"
-                                style={{
-                                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: '6px'
-                                }}
                               >
                                 <span style={{ fontSize: '11px', color: '#1f3cff', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '2px', marginBottom: '4px' }}>
                                   <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
                                   {gift.amount.toLocaleString('id-ID')}
                                 </span>
-                                {/* 🔥 TOMBOL KIRIM - INI YANG KEMARIN GAK BISA DIKLIK 🔥 */}
                                 <motion.button 
                                   className="gift-send-btn-mini"
                                   whileHover={{ scale: 1.05 }}
@@ -392,7 +393,6 @@ export default function GiftDrawerroom() {
                 ))}
               </div>
               
-              {/* Footer Modal */}
               <div className="drawer-footer">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '12px' }}>
                   <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
@@ -400,10 +400,12 @@ export default function GiftDrawerroom() {
                 </div>
                 <motion.button 
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => handleSendGift()}
+                  onClick={(e) => handleSendGift(selectedGift, e)}
                   disabled={!selectedGift || isSending}
                   className="btn-send-gift-footer"
                   style={{
+                    background: 'linear-gradient(135deg, #1f3cff, #bc13fe)', color: 'white', border: 'none',
+                    padding: '10px 24px', borderRadius: '20px', fontWeight: 800, fontSize: '14px',
                     opacity: (!selectedGift || isSending) ? 0.5 : 1
                   }}
                 >

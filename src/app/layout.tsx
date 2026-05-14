@@ -61,10 +61,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isPostPage = pathname?.includes('/post');
 
   const isStandaloneApp = isVoicePage || isStoryPage || isDailyCekPage;
-  const hasNavbar = isHomePage || isNotifPage || isPostPage;
+  
+  // 🔥 FIX 1: Tambahkan isVoicePage ke hasNavbar supaya layout ngasih ruang buat navbarnya di bawah
+  const hasNavbar = isHomePage || isNotifPage || isPostPage || isVoicePage;
+  
   const isFullscreenPage = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage;
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
-  const hideNavbar = isStandaloneApp || isSettingsPage || isVipPage || isContactPage;
+  
+  // 🔥 FIX 2: Keluarkan isVoicePage (atau isStandaloneApp) dari hideNavbar
+  // Supaya Navbar tetep di-render saat buka halaman voice room!
+  const hideNavbar = isStoryPage || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
+  
   const hideOverlays = isVoicePage || isStoryPage;
 
   // 🔥 LIVEKIT TOKEN FETCH (Tahan Banting dari Cold Start) 🔥
@@ -372,6 +379,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
       </div>
+      
+      {/* Navbar sekarang bakal tampil kalau hideNavbar = false */}
       {!hideNavbar && <Navbar />}
     </>
   );
