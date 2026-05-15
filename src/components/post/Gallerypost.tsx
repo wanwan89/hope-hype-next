@@ -135,7 +135,8 @@ export default function Gallerypost() {
       const to = from + POSTS_PER_PAGE - 1;
 
       let query = supabase.from("posts")
-        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (username, role, avatar_url)`)
+        // 🔥 Menambahkan fetch full_name dari tabel profiles
+        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (full_name, username, role, avatar_url)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .range(from, to); 
@@ -720,9 +721,10 @@ export default function Gallerypost() {
                     <div className="overlay">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`} style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                            {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-                          </h2>
+<h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`} style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+  {post.profiles?.full_name || post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
+</h2>
+
                           {renderFollowButton(post.creator_id)}
                         </div>
                         <button 
@@ -751,10 +753,10 @@ export default function Gallerypost() {
                       <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
                         <img src={optimizedAvatar} alt="Avatar Profil" loading="lazy" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
-                            {post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-                            {renderFollowButton(post.creator_id)}
-                          </div>
+<div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
+  {post.profiles?.full_name || post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
+  {renderFollowButton(post.creator_id)}
+</div>
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
                         </div>
                       </div>

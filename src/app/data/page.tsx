@@ -50,8 +50,8 @@ function ProfileContent() {
   const [followList, setFollowList] = useState<any[]>([]);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
 
-  // Form Edit
-  const [editData, setEditData] = useState({ username: '', bio: '', avatar_url: '', website: '' });
+  // Form Edit (Ditambah full_name)
+  const [editData, setEditData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', website: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -135,6 +135,7 @@ function ProfileContent() {
       if (isComponentActive) {
         setProfile(profData);
         setEditData({
+          full_name: profData.full_name || '',
           username: profData.username || '',
           bio: profData.bio || '',
           avatar_url: profData.avatar_url || '',
@@ -207,7 +208,7 @@ function ProfileContent() {
       if (type === 'post') {
         const { data, error } = await supabase
           .from('posts')
-          .select('id, image_url, video_url') 
+          .select('id, image_url, video_url, views') 
           .eq('creator_id', profile.id) 
           .eq('status', 'approved')    
           .order('created_at', { ascending: false });
@@ -234,7 +235,7 @@ function ProfileContent() {
             if (postIds.length > 0) {
               const { data: pData, error: pError } = await supabase
                 .from('posts')
-                .select('id, image_url, video_url') 
+                .select('id, image_url, video_url, views') 
                 .in('id', postIds)
                 .order('created_at', { ascending: false });
               
@@ -259,20 +260,18 @@ function ProfileContent() {
     router.push(`/post?id=${postId}#post-${postId}`);
   };
 
-const handleAvatarClick = () => {
-  if (hasStory && storyIdToGo) {
-    router.push(`/story/view?id=${storyIdToGo}`); // 🔥 GANTI JADI GINI 🔥
-  } else {
-    showNotif("Belum ada story terbaru", "info");
-  }
-};
+  const handleAvatarClick = () => {
+    if (hasStory && storyIdToGo) {
+      router.push(`/story/view?id=${storyIdToGo}`);
+    } else {
+      showNotif("Belum ada story terbaru", "info");
+    }
+  };
 
-
-// GANTI ISI FUNGSINYA JADI GINI:
-const handleGoToChat = () => {
-  if (!profile?.id) return;
-  router.push(`/hypetalk/room?from=${profile.id}`); // Pastikan tujuannya /hypetalk/room
-};
+  const handleGoToChat = () => {
+    if (!profile?.id) return;
+    router.push(`/hypetalk/room?from=${profile.id}`); 
+  };
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
     setFollowModalType(type);
@@ -320,7 +319,7 @@ const handleGoToChat = () => {
         finalAvatarUrl = resData.secure_url;
       }
       await supabase.from("profiles").update({ 
-        username: editData.username, bio: editData.bio, avatar_url: finalAvatarUrl || profile.avatar_url, website: editData.website 
+        full_name: editData.full_name, username: editData.username, bio: editData.bio, avatar_url: finalAvatarUrl || profile.avatar_url, website: editData.website 
       }).eq("id", myId);
       showNotif(t('profile_updated', 'Profil diperbarui!'), "success");
       setIsEditModalOpen(false);
@@ -514,8 +513,8 @@ const handleGoToChat = () => {
             </div>
           </div>
           
-          <h1 className="profile-name">{profile.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} /></h1>
-<p className="profile-username">@{(profile.username || 'user').toLowerCase().replace(/\s/g, '')}</p>
+          <h1 className="profile-name">{profile.full_name || profile.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} /></h1>
+          <p className="profile-username">@{profile.username}</p>
 
           <div className="profile-stats">
             <div className="stat-box" onClick={() => handleOpenFollowModal('followers')}><span className="stat-num">{stats.followers}</span><span className="stat-label">{t('followers', 'Pengikut')}</span></div>
@@ -613,10 +612,21 @@ const handleGoToChat = () => {
                               filter_none
                             </span>
                           ) : null}
+
+                          {/* 🔥 IKON VIEW (KIRI BAWAH) 🔥 */}
+                          <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+                            <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>
+                            {post.views || 0}
+                          </div>
                         </>
                     ) : (
                         <div className="grid-no-img">
                           <span className="material-icons">article</span>
+                          {/* Kalo mau tampil juga di grid tanpa gambar, uncomment ini: */}
+                          {/* <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '11px', fontWeight: 'bold' }}>
+                            <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>
+                            {post.views || 0}
+                          </div> */}
                         </div>
                     )}
                   </div>
@@ -631,7 +641,21 @@ const handleGoToChat = () => {
         <>
           <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
           <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
-            <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder', 'Cari...')} /></div></div>
+            <div className="sidebar-search-container">
+              <div className="sidebar-search">
+                <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
+                <input 
+                  type="text" 
+                  placeholder={t('search_placeholder', 'Cari...')} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                      router.push(`/?search=${encodeURIComponent(e.currentTarget.value.trim())}`);
+                      setIsSidebarOpen(false);
+                    }
+                  }}
+                />
+              </div>
+            </div>
             <div className="menu-category-label">{t('wallet_assets', 'Aset Dompet')}</div>
             <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance', 'Saldo Hypecoin')}</div><div className="arrow-right">›</div></div>
             <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history', 'Riwayat Transaksi')}</div><div className="arrow-right">›</div></div>
@@ -676,6 +700,11 @@ const handleGoToChat = () => {
             </div>
             
             <div className="edit-form-group">
+               <label>Nama Tampilan</label>
+               <input type="text" value={editData.full_name} onChange={e => setEditData({...editData, full_name: e.target.value})} placeholder="Nama lengkap kamu" />
+            </div>
+
+            <div className="edit-form-group">
                <label>{t('username_label', 'Username')}</label>
                <input type="text" value={editData.username} onChange={e => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})} placeholder="Gunakan huruf kecil" />
             </div>
@@ -713,8 +742,7 @@ const handleGoToChat = () => {
                     <img src={user.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
                     <div className="follow-item-info">
                        <span className="follow-username">{user.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) }} /></span>
-<span className="follow-handle">@{(user.username || 'user').toLowerCase().replace(/\s/g, '')}</span>
-
+                       <span className="follow-handle">@{(user.username || 'user').toLowerCase().replace(/\s/g, '')}</span>
                     </div>
                     <span className="material-icons" style={{color: '#8a8b91'}}>chevron_right</span>
                  </div>
