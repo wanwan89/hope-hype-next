@@ -4,6 +4,9 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { getUserBadge } from '@/lib/ui-utils';
 
+// 🔥 IMPORT RUMUS SAKTI 🔥
+import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
+
 interface UserProfileSheetProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,6 +24,9 @@ export default function UserProfileSheetroom({
 
   if (!selectedUser) return null;
 
+  // 🔥 Hitung level pakai fungsi sakti yang sama dengan sistem Gift
+  const currentLevel = calculateLevel(selectedUser.total_gift_sent || 0);
+
   return (
     <div className={`user-profile-sheet-overlay ${isOpen ? 'active' : ''}`} onClick={onClose}>
       <div className="user-profile-sheet" onClick={e => e.stopPropagation()}>
@@ -28,13 +34,13 @@ export default function UserProfileSheetroom({
         <div className="profile-sheet-content">
           <div style={{ position: 'relative', display: 'inline-block', marginBottom: '15px' }}>
              <img src={selectedUser.avatar_url || '/asets/png/profile.webp'} className="profile-sheet-avatar" alt="Avatar" style={{ marginBottom: '0' }}/>
-             <div style={{ position: 'absolute', bottom: '0', right: '-10px' }}>
-                <span dangerouslySetInnerHTML={{ 
-                  __html: `<span style="display:inline-flex;align-items:center;background:linear-gradient(135deg,#ff0844,#ffb199);color:#fff;font-size:10px;font-weight:900;padding:4px 8px;border-radius:12px;border:2px solid #1A2228;box-shadow:0 2px 4px rgba(0,0,0,0.5);"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>&nbsp;${Math.floor((selectedUser.total_gift_sent || 0) / 500) + 1}</span>` 
-                }} />
+             
+             {/* 🔥 Panggil desain badge level otomatis dari utils 🔥 */}
+             <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
+                <span dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
              </div>
           </div>
-          <div className="profile-sheet-info">
+          <div className="profile-sheet-info" style={{ marginTop: '10px' }}>
             <h3 className="profile-sheet-name">
               {selectedUser.username}
               <span dangerouslySetInnerHTML={{ __html: getUserBadge(selectedUser.role) }} />

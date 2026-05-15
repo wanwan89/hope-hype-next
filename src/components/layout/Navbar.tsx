@@ -72,8 +72,11 @@ function NavbarContent() {
   const isCreatePage = pathname?.startsWith('/create');
   const isSearchPage = pathname?.startsWith('/search');
 
-  // Room hanya di /hypetalk/room
+  // Room private chat
   const isRoomPage = pathname?.startsWith('/hypetalk/room');
+  
+  // 🔥 FIX: Deteksi halaman Voice Room (src/app/voice)
+  const isVoicePage = pathname?.startsWith('/voice');
 
   const isSaldoPage = pathname?.includes('/saldo');
   const isStoryPage = pathname?.includes('/story');
@@ -81,6 +84,7 @@ function NavbarContent() {
   const isHistoryCoinPage = pathname?.includes('/historycoin');
   const isWithdrawPage = pathname?.includes('/withdraw');
 
+  // 🔥 Masukin isVoicePage ke sini biar Navbar ngilang
   const isHiddenPage =
     isLoginPage ||
     isDailyCekPage ||
@@ -90,6 +94,7 @@ function NavbarContent() {
     isCreatePage ||
     isSearchPage ||
     isRoomPage ||
+    isVoicePage || 
     isSaldoPage ||
     isStoryPage ||
     isPendingPage ||
@@ -290,7 +295,6 @@ function NavbarContent() {
                       'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   }}
                 >
-                  {/* Area animasi: spinner saat double‑click, jika tidak tampilkan ikon biasa */}
                   <AnimatePresence mode="wait">
                     {isAnimating ? (
                       <motion.div
