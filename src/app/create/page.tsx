@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import './Create.css'; 
 
+// 🔥 IMPORT TOP LEVEL TF & NSFWJS DIHAPUS DARI SINI BIAR VERCEL GAK CRASH 🔥
+
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
@@ -17,7 +19,9 @@ export default function CreatePostPage() {
   const router = useRouter(); 
 
   // --- MODEL NSFW STATE ---
+  // 🔥 FIX 1: Ubah tipenya jadi any karena nsfwjs kita load secara dinamis 🔥
   const [nsfwModel, setNsfwModel] = useState<any>(null);
+
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
@@ -62,18 +66,16 @@ export default function CreatePostPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [videoPos, setVideoPos] = useState(50);
   
-  // 🔥 FIX 2: STATE BARU UNTUK HALAMAN MUSIK 🔥
   const [step, setStep] = useState<'pick' | 'edit' | 'post' | 'music'>('pick');
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
-  // 🔥 LOAD MODEL AI SAAT HALAMAN DIBUKA (LAZY IMPORT) 🔥
+  // 🔥 FIX 2: LOAD MODEL AI SECARA DINAMIS (LAZY IMPORT) BIAR VERCEL AMAN 🔥
   useEffect(() => {
     const loadModel = async () => {
       try {
-        // Import dinamis di dalam fungsi biar Vercel nggak crash!
         const tf = await import('@tensorflow/tfjs');
         const nsfwjs = await import('nsfwjs');
 
@@ -370,12 +372,12 @@ export default function CreatePostPage() {
 
   // 🔥 FUNGSI SCAN AI LOKAL (NSFWJS) 🔥
   const checkNSFW = async (imageElement: HTMLImageElement | HTMLVideoElement): Promise<boolean> => {
-    if (!nsfwModel) return false; // Kalau model belum siap, lolosin aja (atau lu bisa blokir)
+    if (!nsfwModel) return false; 
     try {
       const predictions = await nsfwModel.classify(imageElement as any);
       
       // Cek prediksi yg berbahaya (Porn & Hentai)
-      const isBad = predictions.some(p => 
+      const isBad = predictions.some((p: any) => 
         (p.className === 'Porn' || p.className === 'Hentai') && p.probability > 0.6
       );
       
@@ -421,12 +423,11 @@ export default function CreatePostPage() {
           if (isNSFW) {
             setIsSubmitting(false);
             showNotif("Upload digagalkan! Konten terdeteksi sensitif/melanggar aturan.", "error");
-            return; // BERHENTI, JANGAN LANJUT UPLOAD!
+            return; 
           }
         }
       } else if (postType === 'video' && coverBlob) {
         setUploadProgress(5);
-        // Kita scan cover videonya aja sebagai representasi
         const imgEl = await createImageElement(coverBlob);
         const isNSFW = await checkNSFW(imgEl);
         if (isNSFW) {
@@ -488,7 +489,7 @@ export default function CreatePostPage() {
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
-          status: "approved" // Karena udah di-scan AI lokal, langsung gas approved!
+          status: "approved" 
         }).select('id').single();
         
         if (newPost) newPostId = newPost.id;
@@ -653,7 +654,6 @@ export default function CreatePostPage() {
     );
   };
 
-  // 🔥 FIX 2: HALAMAN KHUSUS PILIH MUSIK 🔥
   const renderMusicScreen = () => {
     if (step !== 'music') return null;
 
