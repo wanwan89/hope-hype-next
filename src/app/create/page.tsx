@@ -7,9 +7,8 @@ import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion'; 
+import Script from 'next/script'; // 🔥 IMPORT SCRIPT NEXT.JS
 import './Create.css'; 
-
-// 🔥 IMPORT TOP LEVEL TF & NSFWJS DIHAPUS DARI SINI BIAR VERCEL GAK CRASH 🔥
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
@@ -19,8 +18,8 @@ export default function CreatePostPage() {
   const router = useRouter(); 
 
   // --- MODEL NSFW STATE ---
-  // 🔥 FIX 1: Ubah tipenya jadi any karena nsfwjs kita load secara dinamis 🔥
   const [nsfwModel, setNsfwModel] = useState<any>(null);
+  const isModelLoading = useRef(false); // 🔥 TAMBAHKAN INI sebagai penjaga gerbang
 
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
@@ -72,22 +71,25 @@ export default function CreatePostPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
-  // 🔥 FIX 2: LOAD MODEL AI SECARA DINAMIS (LAZY IMPORT) BIAR VERCEL AMAN 🔥
-  useEffect(() => {
-    const loadModel = async () => {
-      try {
-        const tf = await import('@tensorflow/tfjs');
-        const nsfwjs = await import('nsfwjs');
+  // 🔥 LOAD MODEL AI VIA CDN DENGAN PENJAGA GERBANG 🔥
+  const initNsfwModel = async () => {
+    // Kalau model udah ada atau lagi proses loading, stop!
+    if (nsfwModel || isModelLoading.current) return;
 
-        await tf.ready();
+    try {
+      isModelLoading.current = true; // Kunci gerbang
+      const nsfwjs = (window as any).nsfwjs;
+      if (nsfwjs) {
         const model = await nsfwjs.load();
         setNsfwModel(model);
-      } catch (err) {
-        console.error("Gagal load model AI NSFW", err);
+        console.log("✅ AI Model berhasil di-load!");
       }
-    };
-    loadModel();
-  }, []);
+    } catch (err) {
+      console.error("❌ Gagal load model AI", err);
+    } finally {
+      isModelLoading.current = false; // Buka gerbang kalau error (biar bisa coba lagi)
+    }
+  };
 
   useEffect(() => {
     if (showPopup === 'none') return;
@@ -370,17 +372,13 @@ export default function CreatePostPage() {
     });
   };
 
-  // 🔥 FUNGSI SCAN AI LOKAL (NSFWJS) 🔥
   const checkNSFW = async (imageElement: HTMLImageElement | HTMLVideoElement): Promise<boolean> => {
     if (!nsfwModel) return false; 
     try {
       const predictions = await nsfwModel.classify(imageElement as any);
-      
-      // Cek prediksi yg berbahaya (Porn & Hentai)
       const isBad = predictions.some((p: any) => 
         (p.className === 'Porn' || p.className === 'Hentai') && p.probability > 0.6
       );
-      
       return isBad;
     } catch (err) {
       console.error("Gagal nge-scan gambar:", err);
@@ -388,7 +386,6 @@ export default function CreatePostPage() {
     }
   };
 
-  // Helper bikin HTML Image dari Blob buat dikirim ke NSFWJS
   const createImageElement = (blob: Blob): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -414,7 +411,6 @@ export default function CreatePostPage() {
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       const myUserId = session.user.id;
 
-      // 🔥 AI SCANNING PROSES 🔥
       if (postType === 'image' && croppedImages.length > 0) {
         setUploadProgress(5);
         for (let i = 0; i < croppedImages.length; i++) {
@@ -732,6 +728,22 @@ export default function CreatePostPage() {
 
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
+      
+{/* 🔥 TAG SCRIPT CDN UNTUK LOAD AI MODEL NSFW 🔥 */}
+<Script 
+  src="https://unpkg.com/@tensorflow/tfjs" 
+  strategy="lazyOnload" 
+/>
+<Script 
+  src="https://unpkg.com/nsfwjs" 
+  strategy="lazyOnload" 
+  onLoad={() => {
+    // 🔥 Pake delay 1 detik biar TFJS bener-bener siap di memori
+    setTimeout(initNsfwModel, 1000); 
+  }} 
+/>
+
+
       {step === 'edit' && renderEditorScreen()}
       {step === 'music' && renderMusicScreen()}
 
