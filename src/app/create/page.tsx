@@ -733,20 +733,21 @@ export default function CreatePostPage() {
 
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
-{/* 🔥 GANTI DENGAN INI 🔥 */}
+{/* 🔥 TAMBAHKAN crossOrigin="anonymous" BIAR ERROR CORS HILANG 🔥 */}
 <Script 
   src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" 
   strategy="afterInteractive" 
+  crossOrigin="anonymous" 
 />
 <Script 
   src="https://cdn.jsdelivr.net/npm/nsfwjs" 
   strategy="afterInteractive" 
+  crossOrigin="anonymous"
   onReady={() => {
-    // Pakai onReady biar mastiin script bener-bener nempel di window
+    // Tunggu sebentar biar TensorFlow bener-bener nempel di window
     setTimeout(initNsfwModel, 2000); 
   }}
 />
-
 
       {step === 'edit' && renderEditorScreen()}
       {step === 'music' && renderMusicScreen()}
