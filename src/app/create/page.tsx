@@ -58,7 +58,8 @@ export default function CreatePostPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [videoPos, setVideoPos] = useState(50);
   
-  const [step, setStep] = useState<'pick' | 'edit' | 'post'>('pick');
+const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
+
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
   const [searchQuery, setSearchQuery] = useState("");
@@ -300,8 +301,9 @@ export default function CreatePostPage() {
     setCoverBlob(null);
     setCoverUrlPreview(null);
     setVideoThumbnails([]);
-    setStep('pick');
+    setStep('post'); // 🔥 Ganti jadi 'post'
   };
+
 
   const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
