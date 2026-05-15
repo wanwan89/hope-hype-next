@@ -31,8 +31,6 @@ export default function ChatArea() {
   const fromId = searchParams?.get('from');
   const groupId = searchParams?.get('group');
   const groupName = searchParams?.get('gname');
-  
-  // 🔥 FIX 1: TANGKAP SINYAL AUTOCALL DARI NOTIFIKASI 🔥
   const autoCall = searchParams?.get('autoCall');
 
   const [roomId, setRoomId] = useState('room-1');
@@ -53,8 +51,10 @@ export default function ChatArea() {
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
   
+  // 🔥 STATE IMAGE EDITOR FULL SCREEN 🔥
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
+  const [imageCaption, setImageCaption] = useState(''); // State terpisah untuk caption foto
   const [isUploadingImg, setIsUploadingImg] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,7 +170,6 @@ export default function ChatArea() {
     await fetchMessages(currentRoom, session.user.id); 
     setupRealtime(currentRoom, session.user, prof);
 
-    // 🔥 FIX 2: EKSEKUSI AUTOCALL JIKA ADA SINYAL 🔥
     if (autoCall === 'true' && currentRoom !== 'room-1') {
       setCallStatus('calling');
       setCallData({ partnerName: pName, partnerAvatar: pAvatar, seconds: 0, room: currentRoom });
@@ -428,7 +427,7 @@ export default function ChatArea() {
         setMessages(prev => {
           const stillTemp = prev.find(m => m.id === tempId);
           if (stillTemp) {
-             showNotif("Pesan gagal terkirim, cek koneksi lu", "error");
+             showNotif("Pesan gagal terkirim", "error");
              return prev.filter(m => m.id !== tempId);
           }
           return prev;
@@ -446,7 +445,7 @@ export default function ChatArea() {
 
   const handleTerimaRequest = async () => {
     await supabase.from('messages').insert([{
-      room_id: roomId, user_id: currentUser.id, message: `Permintaan pesan diterima. Kamu sekarang bisa membalas dan melakukan panggilan.`, is_system: true, status: 'sent'
+      room_id: roomId, user_id: currentUser.id, message: `Permintaan pesan diterima.`, is_system: true, status: 'sent'
     }]);
     showNotif("Pesan diterima", "success");
   };
@@ -588,36 +587,40 @@ export default function ChatArea() {
     if (!file) return;
     setPendingImage(file);
     setPendingImagePreview(URL.createObjectURL(file));
+    setImageCaption(''); // Reset caption pas ganti foto
     if (fileInputRef.current) fileInputRef.current.value = ''; 
   };
 
-  const handleSendClick = async () => {
-    if (pendingImage) {
-      setIsUploadingImg(true);
-      try {
-        const fd = new FormData(); 
-        fd.append("file", pendingImage); 
-        fd.append("upload_preset", "hopehype_preset");
-        
-        const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
-        const d = await res.json();
-        
-        if (d.secure_url) {
-          await sendMessage(inputValue, undefined, undefined, d.secure_url);
-        } else {
-          showNotif("Gagal upload foto", "error");
-        }
-      } catch (err) {
-        console.error(err);
-        showNotif("Terjadi kesalahan saat upload", "error");
-      } finally {
-        setIsUploadingImg(false);
-        setPendingImage(null);
-        setPendingImagePreview(null);
+  const handleSendImageFullScreen = async () => {
+    if (!pendingImage) return;
+    setIsUploadingImg(true);
+    try {
+      const fd = new FormData(); 
+      fd.append("file", pendingImage); 
+      fd.append("upload_preset", "hopehype_preset");
+      
+      const res = await fetch(`https://api.cloudinary.com/v1_1/dhhmkb8kl/upload`, { method: "POST", body: fd });
+      const d = await res.json();
+      
+      if (d.secure_url) {
+        // Kirim foto dengan captionnya
+        await sendMessage(imageCaption, undefined, undefined, d.secure_url);
+      } else {
+        showNotif("Gagal upload foto", "error");
       }
-    } else {
-      sendMessage();
+    } catch (err) {
+      console.error(err);
+      showNotif("Terjadi kesalahan saat upload", "error");
+    } finally {
+      setIsUploadingImg(false);
+      setPendingImage(null);
+      setPendingImagePreview(null);
+      setImageCaption('');
     }
+  };
+
+  const handleSendClick = async () => {
+    sendMessage();
   };
 
   const startCall = async () => {
@@ -773,12 +776,14 @@ export default function ChatArea() {
     displayStatus = `${onlineCount} hopers sedang online`;
   }
 
-  const canSend = inputValue.trim() || editMessageId || pendingImagePreview;
+  // Tanda bisa nge-send kalau ada teks atau id edit (Karena image sekarang dipindah ke state full screen)
+  const canSend = inputValue.trim() || editMessageId;
 
   return (
     <div className="telegram-chat hype-chat-scope">
       
       <style>{`
+        /* Animasi dan style yang sudah ada */
         @keyframes pulseCall {
           0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
           70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
@@ -804,6 +809,65 @@ export default function ChatArea() {
         }
         .global-call-btn { border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
         .global-call-btn:active { transform: scale(0.9); }
+        
+        /* 🔥 FIX: INPUT SLIM PREMIUM 🔥 */
+        .slim-input-wrapper {
+          display: flex;
+          align-items: flex-end;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 24px; /* OVAL SEMPURNA */
+          padding: 6px 12px;
+          flex: 1;
+          gap: 4px;
+        }
+        .slim-input-wrapper textarea {
+          flex: 1;
+          resize: none;
+          border: none;
+          background: transparent;
+          outline: none;
+          color: var(--text-color);
+          font-size: 15px;
+          line-height: 20px;
+          max-height: 100px;
+          padding: 6px 0;
+        }
+        .action-icon-btn {
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          padding: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          border-radius: 50%;
+          transition: background 0.2s, color 0.2s;
+        }
+        .action-icon-btn:active {
+          background: rgba(255,255,255,0.1);
+        }
+        .action-icon-btn .material-icons {
+          font-size: 24px;
+        }
+        .send-btn-round {
+          background: var(--primary-blue);
+          border: none;
+          color: white;
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: 8px;
+          box-shadow: 0 4px 10px rgba(31, 60, 255, 0.3);
+          transition: transform 0.2s;
+        }
+        .send-btn-round:active {
+          transform: scale(0.9);
+        }
       `}</style>
 
       {/* FLOATING CALL */}
@@ -896,16 +960,42 @@ export default function ChatArea() {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
               <span>{t('encryption_notice')}</span>
             </div>
-            {messages.map((msg) => (
-              <MessageBubble 
-                key={msg.id} 
-                msg={msg} 
-                currentUser={currentUser}
-                isMe={msg.user_id === currentUser?.id} 
-                onReply={setReplyTo} 
-                onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
-              />
-            ))}
+            {messages.map((msg, idx) => {
+              // Deteksi batas pesan belum dibaca
+              const isUnread = msg.user_id !== currentUser?.id && msg.status !== 'read';
+              let isFirstUnread = false;
+              if (isUnread) {
+                 const prevMsg = messages[idx + 1]; // array kebalik
+                 if (!prevMsg || prevMsg.status === 'read' || prevMsg.user_id === currentUser?.id) {
+                    isFirstUnread = true;
+                 }
+              }
+
+              // Deteksi batas tanggal
+              let showDateSeparator = false;
+              if (idx === messages.length - 1) {
+                showDateSeparator = true; 
+              } else {
+                const currDate = new Date(msg.created_at).toDateString();
+                const nextDate = new Date(messages[idx + 1].created_at).toDateString();
+                if (currDate !== nextDate) showDateSeparator = true;
+              }
+
+              return (
+                <MessageBubble 
+                  key={msg.id} 
+                  msg={msg} 
+                  currentUser={currentUser}
+                  isMe={msg.user_id === currentUser?.id} 
+                  onReply={setReplyTo} 
+                  onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
+                  isFirstUnread={isFirstUnread}
+                  unreadCount={isFirstUnread ? messages.filter(m => m.user_id !== currentUser?.id && m.status !== 'read').length : 0}
+                  showDateSeparator={showDateSeparator}
+                />
+              );
+            })}
+            
             {typingUser && (
               <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
                 <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
@@ -924,9 +1014,10 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
-      <footer className="chat-input-container">
+      {/* INPUT CONTAINER */}
+      <footer className="chat-input-container" style={{ padding: '8px 10px', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)' }}>
         {chatState === 'i_must_approve' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>{headerInfo.title} bukan pengikutmu. Terima pesan untuk membalas dan melakukan panggilan.</p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={handleTolakRequest} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: 'none', background: '#ff4757', color: 'white', fontWeight: 600 }}>Tolak</button>
@@ -934,7 +1025,7 @@ export default function ChatArea() {
             </div>
           </div>
         ) : chatState === 'i_am_blocked_by_request' ? (
-          <div style={{ padding: '20px 15px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Menunggu permintaan pesan diterima oleh {headerInfo.title}.</p>
           </div>
         ) : (
@@ -942,18 +1033,15 @@ export default function ChatArea() {
             <AnimatePresence>
               {isStickerOpen && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  id="sticker-menu"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                  id="sticker-menu" style={{ position: 'absolute', bottom: '100%', left: '10px', right: '10px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 -4px 15px rgba(0,0,0,0.1)', padding: '10px', zIndex: 10 }}
                 >
                   <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
-                  <div id="sticker-list">
+                  <div id="sticker-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', maxHeight: '180px', overflowY: 'auto', marginTop: '10px' }}>
                     {stickers.map((s, idx) => (
                       <img 
-                        key={idx} 
-                        src={s.images.fixed_width_small.url} 
-                        alt="sticker" 
+                        key={idx} src={s.images.fixed_width_small.url} alt="sticker" 
+                        style={{ width: '100%', height: 'auto', borderRadius: '8px', cursor: 'pointer' }}
                         onClick={() => {
                           sendMessage(undefined, s.images.fixed_width.url);
                           setIsStickerOpen(false); 
@@ -965,83 +1053,72 @@ export default function ChatArea() {
               )}
             </AnimatePresence>
 
-            <div className="input-row">
-              <div className="input-group-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '4px 6px', borderRadius: replyTo || editMessageId || pendingImagePreview ? '16px' : '28px' }}>
-                
-                <AnimatePresence>
-                  {replyTo && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      id="reply-preview-box" 
-                      style={{ display: 'flex', background: 'rgba(29, 161, 242, 0.05)', borderRadius: '12px', padding: '8px 12px', marginBottom: '4px', border: '1px solid rgba(29, 161, 242, 0.1)' }}
-                    >
-                      <div className="reply-content-wrapper" style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
-                        <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
-                      </div>
-                      <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8'}}>&times;</div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            {/* PREVIEW REPLY */}
+            <AnimatePresence>
+              {replyTo && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                  style={{ display: 'flex', background: 'rgba(29, 161, 242, 0.05)', borderRadius: '12px', padding: '8px 12px', marginBottom: '8px', border: '1px solid rgba(29, 161, 242, 0.1)', position: 'relative' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
+                    <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
+                  </div>
+                  <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8', padding: '0 5px'}}>&times;</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                <AnimatePresence>
-                  {pendingImagePreview && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      style={{ padding: '10px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', position: 'relative', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'center' }}
-                    >
-                      <img src={pendingImagePreview} style={{ maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--border-color)' }} alt="preview" />
-                      <button 
-                        onClick={() => { setPendingImage(null); setPendingImagePreview(null); }} 
-                        style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <span className="material-icons" style={{fontSize: '18px'}}>close</span>
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
-                  
-                  {isRecording ? (
-                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600, padding: '8px 10px' }}>
-                      <span className="online-dot" style={{ background: '#ff4757' }}></span>
-                      <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
-                      
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '3px', height: '24px', overflow: 'hidden' }}>
-                        {[...Array(12)].map((_, i) => (
-                           <motion.div 
-                             key={i} 
-                             animate={{ height: Math.max(4, (audioLevel/255) * 24 + (Math.random() * 6 - 3)) }} 
-                             transition={{ duration: 0.1 }}
-                             style={{ width: '3px', background: '#ff4757', borderRadius: '2px' }} 
-                           />
-                        ))}
-                      </div>
-
-                      <span style={{ fontSize: '12px', opacity: 0.6 }}>&lt; Geser batal</span>
+            <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%' }}>
+              
+              {isRecording ? (
+                // VN RECORDING UI
+                <div className="slim-input-wrapper" style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600 }}>
+                    <span className="online-dot" style={{ background: '#ff4757' }}></span>
+                    <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
+                    
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '3px', height: '24px', overflow: 'hidden' }}>
+                      {[...Array(12)].map((_, i) => (
+                         <motion.div 
+                           key={i} 
+                           animate={{ height: Math.max(4, (audioLevel/255) * 24 + (Math.random() * 6 - 3)) }} 
+                           transition={{ duration: 0.1 }}
+                           style={{ width: '3px', background: '#ff4757', borderRadius: '2px' }} 
+                         />
+                      ))}
                     </div>
-                  ) : (
-                    <>
-                      <button onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer' }}><span className="material-icons">sentiment_satisfied_alt</span></button>
-                      <textarea placeholder={t('write_message')} value={inputValue} onChange={handleTyping} style={{ flex: 1, resize: 'none', border: 'none', background: 'transparent', outline: 'none', padding: '12px 6px', fontSize: '15px' }} />
-                      <button onClick={handlePhotoClick} disabled={isUploadingImg} style={{ border: 'none', background: 'transparent', padding: '8px', color: 'var(--text-color)', cursor: 'pointer', position: 'relative' }}>
-                        <span className="material-icons">image</span>
-                      </button>
-                      <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
-                    </>
-                  )}
+                    <span style={{ fontSize: '11px', opacity: 0.6, whiteSpace: 'nowrap' }}>&lt; Geser batal</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                // 🔥 FIX: SLIM INPUT & ICONS 🔥
+                <div className="slim-input-wrapper">
+                  <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
+                    <span className="material-icons" style={{ color: isStickerOpen ? '#1f3cff' : '' }}>sentiment_satisfied_alt</span>
+                  </button>
+                  
+                  <textarea 
+                    placeholder="Tulis pesan..." 
+                    value={inputValue} 
+                    onChange={handleTyping} 
+                    rows={1}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = Math.min(target.scrollHeight, 100) + 'px';
+                    }}
+                  />
+                  
+                  <button className="action-icon-btn" onClick={handlePhotoClick} disabled={isUploadingImg}>
+                    <span className="material-icons">attach_file</span>
+                  </button>
+                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
+                </div>
+              )}
               
               <button 
-                id="action-btn" 
-                className={canSend ? 'mode-typing' : (isRecording || isMicPressed ? 'is-recording' : '')} 
+                className="send-btn-round"
                 onMouseDown={!canSend ? handleMicTouchStart : undefined} 
                 onMouseUp={!canSend ? () => stopVN(false) : undefined} 
                 onTouchStart={!canSend ? handleMicTouchStart : undefined} 
@@ -1051,23 +1128,84 @@ export default function ChatArea() {
               >
                 <AnimatePresence mode="wait">
                   <motion.span
-                    key={isUploadingImg ? 'load' : editMessageId ? 'edit' : canSend ? 'send' : 'mic'}
+                    key={editMessageId ? 'edit' : canSend ? 'send' : 'mic'}
                     initial={{ scale: 0, opacity: 0, rotate: -45 }}
                     animate={{ scale: 1, opacity: 1, rotate: 0 }}
                     exit={{ scale: 0, opacity: 0, rotate: 45 }}
                     transition={{ duration: 0.15 }}
                     className="material-icons"
+                    style={{ fontSize: '20px' }}
                   >
-                    {isUploadingImg ? 'hourglass_empty' : editMessageId ? 'check' : (canSend ? 'send' : 'mic')}
+                    {editMessageId ? 'check' : (canSend ? 'send' : 'mic')}
                   </motion.span>
                 </AnimatePresence>
               </button>
+
             </div>
           </>
         )}
       </footer>
 
-      {/* 🔥 MODAL INVITE & SETTINGS GRUP 🔥 */}
+      {/* 🔥 FIX 1: FULL SCREEN IMAGE EDITOR MODAL 🔥 */}
+      <AnimatePresence>
+        {pendingImagePreview && (
+          <motion.div 
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            style={{ 
+              position: 'fixed', inset: 0, background: 'var(--bg-main)', zIndex: 9999999, 
+              display: 'flex', flexDirection: 'column'
+            }}
+          >
+            {/* Header */}
+            <div style={{ padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+              <button onClick={() => { setPendingImage(null); setPendingImagePreview(null); setImageCaption(''); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+                <span className="material-icons" style={{fontSize: '28px'}}>close</span>
+              </button>
+              <span style={{ color: 'white', fontWeight: 600, fontSize: '16px' }}>Kirim Foto</span>
+              <div style={{width: '28px'}}></div>
+            </div>
+
+            {/* Area Foto */}
+            <div style={{ flex: 1, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src={pendingImagePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="preview full" />
+            </div>
+
+            {/* Area Caption & Tombol Kirim */}
+            <div style={{ padding: '20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              <div className="slim-input-wrapper" style={{ background: 'var(--bg-main)' }}>
+                <textarea 
+                  placeholder="Tambahkan keterangan..." 
+                  value={imageCaption}
+                  onChange={(e) => setImageCaption(e.target.value)}
+                  rows={1}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 100) + 'px';
+                  }}
+                  autoFocus
+                />
+              </div>
+              <button 
+                onClick={handleSendImageFullScreen} 
+                disabled={isUploadingImg}
+                className="send-btn-round"
+              >
+                {isUploadingImg ? (
+                   <span className="material-icons" style={{ animation: 'spinLoading 1s linear infinite' }}>autorenew</span>
+                ) : (
+                   <span className="material-icons">send</span>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL INVITE & SETTINGS GRUP */}
       <AnimatePresence>
         {isGroupSettingsOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>

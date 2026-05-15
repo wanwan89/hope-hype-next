@@ -2,10 +2,10 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; 
-import { getUserBadge, showNotif } from '@/lib/ui-utils'; // 🔥 FIX: Import showNotif ditambahin
+import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next'; 
 import { useRouter } from 'next/navigation'; 
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 FIX: Import AnimatePresence
+import { motion, AnimatePresence } from 'framer-motion'; 
 import './MessageBubble.css';
 
 export const getStatusIcon = (status: string) => {
@@ -40,7 +40,43 @@ const renderTextWithLinks = (text: string) => {
   });
 };
 
-export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUser }: any) {
+// 🔥 FUNGSI FORMAT WAKTU CHAT SEPARATOR 🔥
+const formatChatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const timeStr = `${hours}:${minutes}`;
+
+  // Hari ini
+  if (date.toDateString() === now.toDateString()) {
+    return `Hari ini, ${timeStr}`;
+  }
+  
+  // Kemarin
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `Kemarin, ${timeStr}`;
+  }
+
+  // Dalam minggu yang sama (Nama Hari)
+  if (diffDays < 7) {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return `${days[date.getDay()]}, ${timeStr}`;
+  }
+
+  // Lebih dari seminggu (Tanggal Lengkap)
+  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${timeStr}`;
+};
+
+
+// Tambah prop `showDateSeparator` dari parent (ChatRoom)
+export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUser, isFirstUnread, unreadCount, showDateSeparator }: any) {
   const { t } = useTranslation(); 
   const router = useRouter(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -59,7 +95,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
   
-  // 🔥 FIX: STATE UNTUK PREVIEW FOTO 🔥
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -124,6 +159,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     let diff = touchCurrentX.current - touchStartX.current;
     const now = Date.now();
     
+    // Double tap buat buka reaction
     if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted && !msg.is_system) {
       setShowReactions(true);
       if (navigator.vibrate) navigator.vibrate(20);
@@ -197,6 +233,8 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   };
 
   const toggleVN = () => {
+    if (msg.status === 'sending') return;
+
     if (isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
@@ -236,11 +274,9 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     } catch (err) { console.error(err); }
   };
 
-  // 🔥 FIX: FUNGSI DOWNLOAD FOTO 🔥
   const handleDownloadImage = async (url: string) => {
     try {
       showNotif("Mengunduh foto...", "info");
-      // Menggunakan fetch blob agar paksa browser untuk mendownload, bukan membuka tab baru
       const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
@@ -270,183 +306,231 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   const shouldShowText = cleanMsg && (!isPlaceholder || isDeleted);
 
   return (
-    <div className="hype-chat-scope" style={{ position: 'relative' }}>
-      
-      {/* 🔥 FIX: FULLSCREEN LIGHTBOX PREVIEW FOTO 🔥 */}
-      <AnimatePresence>
-        {previewImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.95)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-            }}
-            onClick={() => setPreviewImage(null)}
-          >
-            {/* Header Toolbar */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', zIndex: 1000000, background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setPreviewImage(null); }} 
-                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '5px' }}
-              >
-                <span className="material-icons" style={{fontSize: '32px'}}>arrow_back</span>
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleDownloadImage(previewImage); }} 
-                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '5px' }}
-              >
-                <span className="material-icons" style={{fontSize: '32px'}}>download</span>
-              </button>
-            </div>
-            
-            {/* Image Content */}
-            <motion.img
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
-              src={previewImage}
-              style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain' }}
-              onClick={(e) => e.stopPropagation()} // Supaya kalau klik foto gak langsung nutup
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <>
+      <style>{`
+        @keyframes spinLoading {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .reaction-menu {
+          position: absolute;
+          top: -48px;
+          background: var(--bg-panel, #ffffff);
+          padding: 8px 12px;
+          border-radius: 24px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+          display: flex;
+          gap: 12px;
+          border: 1px solid var(--border-color);
+          z-index: 100;
+          animation: popReaction 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popReaction {
+          0% { transform: scale(0.5); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .reaction-btn {
+          font-size: 24px;
+          cursor: pointer;
+          transition: transform 0.2s;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .reaction-btn:active {
+          transform: scale(1.3);
+        }
+      `}</style>
 
-      {/* OVERLAY REACTION */}
-      {showReactions && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 99998 }} onClick={() => setShowReactions(false)} />
-          <div style={{
-            position: 'absolute', top: '-45px', [isMe ? 'right' : 'left']: '0',
-            background: 'var(--bg-panel, #ffffff)', padding: '8px 14px', borderRadius: '24px',
-            boxShadow: '0 5px 20px rgba(0,0,0,0.2)', display: 'flex', gap: '12px',
-            border: '1px solid var(--border-color)', zIndex: 99999,
-            animation: 'hype-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-          }}>
-            {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-              <span 
-                key={emoji} onClick={(e) => handleReactionSelect(emoji, e)}
-                style={{ fontSize: '22px', cursor: 'pointer', transition: 'transform 0.2s' }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >{emoji}</span>
-            ))}
+      {/* 🔥 1. WAKTU CHAT SEPARATOR (Misal: Kamis, 21:00) 🔥 */}
+      {showDateSeparator && (
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 8px' }}>
+          <div style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+            {formatChatDate(msg.created_at)}
           </div>
-        </>
+        </div>
       )}
 
-      <div 
-        ref={bubbleRef} id={`msg-${msg.id}`}
-        className={`chat-message ${isMe ? 'self' : 'other'} ${msg.is_system ? 'system' : ''}`}
-        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onDoubleClick={handleDoubleClick}
-        style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
-      >
-        {msg.is_system ? (
-          <div className="system-text" style={{ 
-              background: 'rgba(0, 0, 0, 0.3)', color: 'var(--text-main, #ffffff)', padding: '6px 14px', 
-              borderRadius: '20px', fontSize: '11px', fontWeight: 600, boxShadow: 'none', border: 'none', 
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', margin: '8px auto', textAlign: 'center'
-            }}>
-            {(msg.message.includes("Memanggil") || msg.message.includes("Panggilan") || msg.message.includes("terjawab") || msg.message.includes("dibatalkan")) && (
-               <span className="material-icons" style={{ fontSize: '14px', color: msg.message.includes("ditolak") || msg.message.includes("tak") ? '#ff4757' : '#2ecc71' }}>
-                 {msg.message.includes("ditolak") || msg.message.includes("tak") ? 'call_missed' : 'phone_in_talk'}
-               </span>
-            )}
-            {msg.message.replace(/📞/g, '').replace(/🎤/g, '').trim()}
+      {/* PEMBATAS "X PESAN BARU" */}
+      {isFirstUnread && unreadCount > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0 10px', width: '100%' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)', opacity: 0.5 }}></div>
+          <div style={{ background: 'rgba(31, 60, 255, 0.1)', color: '#1f3cff', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', margin: '0 10px' }}>
+            {unreadCount} Pesan Baru
           </div>
-        ) : (
-          <>
-            {showUserDetail && (
-              <img src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
-            )}
-            
-            <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px' }}>
-              
-              {showUserDetail && (
-                <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px', marginLeft: '6px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url) ? '4px' : '0' }}>
-                  {msg.profiles?.username || 'User'} 
-                  <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
-                </div>
-              )}
-              
-              {liveReply && (
-                <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})} style={{ marginLeft: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0', marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0' }}>
-                  <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
-                </div>
-              )}
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)', opacity: 0.5 }}></div>
+        </div>
+      )}
 
-              {/* 🔥 FIX: FOTO BISA DIKLIK BUAT PREVIEW 🔥 */}
-              {msg.image_url && !isDeleted && (
-                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: shouldShowText ? '6px' : '0' }}>
-                  <img 
-                    src={getOptimizedImage(msg.image_url)} 
-                    alt="Foto Kiriman" 
-                    onClick={() => setPreviewImage(msg.image_url)} // Fungsi memunculkan lightbox
-                    style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: 'auto', objectFit: 'cover', opacity: msg.status === 'sending' ? 0.6 : 1, cursor: 'pointer' }} 
-                  />
-                </div>
-              )}
-
-              {isStoryReply && msg.sticker_url && !isDeleted ? (
-                <div className="story-reply-card" onClick={() => handleStoryClick(msg.sticker_url)} style={{ cursor: 'pointer', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)', width: '100%' }}>
-                  <div style={{ position: 'relative', width: '40px', height: '55px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
-                     <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, fontStyle: 'italic', flex: 1 }}>Membalas Cerita...</div>
-                </div>
-              ) : (
-                msg.sticker_url && !isDeleted && !isStoryReply && (
-                  <div style={{ position: 'relative' }}>
-                    <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0' }} />
-                  </div>
-                )
-              )}
-
-              {shouldShowText && (
-                <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', wordBreak: 'break-word' }}>
-                  {isDeleted ? t('msg_deleted') : renderTextWithLinks(cleanMsg)}
-                </div>
-              )}
-
-              {msg.audio_url && !isDeleted && (
-                <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
-                  <button onClick={toggleVN} className="vn-play-btn">
-                    {isPlaying ? (
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
-                    )}
-                  </button>
-                  <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '24px', flex: 1, marginLeft: '8px' }}>
-                    {waveData.map((heightPercent, i) => (
-                      <motion.div 
-                        key={i} 
-                        animate={{ height: `${heightPercent}%` }}
-                        transition={{ duration: 0.1 }}
-                        style={{ width: '3px', background: isPlaying ? '#1f3cff' : '#8e8e93', borderRadius: '2px' }} 
-                      />
-                    ))}
-                  </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #8e8e93)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
-                </div>
-              )}
-
-              {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '-12px' : '-16px' }}>
-                  {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
-                </div>
-              )}
-              
-              <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0' }}>
-                <span className="timestamp">{new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                {isMe && getStatusIcon(msg.status || 'sent')}
+      <div className="hype-chat-scope" style={{ position: 'relative' }}>
+        
+        {/* PREVIEW FOTO */}
+        <AnimatePresence>
+          {previewImage && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.95)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+              }}
+              onClick={() => setPreviewImage(null)}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', zIndex: 1000000, background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}>
+                <button onClick={(e) => { e.stopPropagation(); setPreviewImage(null); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '5px' }}>
+                  <span className="material-icons" style={{fontSize: '32px'}}>arrow_back</span>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); handleDownloadImage(previewImage); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '5px' }}>
+                  <span className="material-icons" style={{fontSize: '32px'}}>download</span>
+                </button>
               </div>
+              
+              <motion.img
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.8 }}
+                src={previewImage}
+                style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain' }}
+                onClick={(e) => e.stopPropagation()} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div 
+          ref={bubbleRef} id={`msg-${msg.id}`}
+          className={`chat-message ${isMe ? 'self' : 'other'} ${msg.is_system ? 'system' : ''}`}
+          onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onDoubleClick={handleDoubleClick}
+          style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
+        >
+
+          {/* 🔥 2. PERBAIKAN MENU REACTION BUBBLE 🔥 */}
+          {/* Reaction menu sekarang diposisikan relatif terhadap bubble chat-nya biar pas posisinya */}
+          {showReactions && !msg.is_system && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowReactions(false)} />
+              <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0' }}>
+                {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
+                  <div 
+                    key={emoji} className="reaction-btn"
+                    onClick={(e) => handleReactionSelect(emoji, e)}
+                  >
+                    {emoji}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {msg.is_system ? (
+            <div className="system-text" style={{ 
+                background: 'rgba(0, 0, 0, 0.3)', color: 'var(--text-main, #ffffff)', padding: '6px 14px', 
+                borderRadius: '20px', fontSize: '11px', fontWeight: 600, boxShadow: 'none', border: 'none', 
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', margin: '8px auto', textAlign: 'center'
+              }}>
+              {(msg.message.includes("Memanggil") || msg.message.includes("Panggilan") || msg.message.includes("terjawab") || msg.message.includes("dibatalkan")) && (
+                 <span className="material-icons" style={{ fontSize: '14px', color: msg.message.includes("ditolak") || msg.message.includes("tak") ? '#ff4757' : '#2ecc71' }}>
+                   {msg.message.includes("ditolak") || msg.message.includes("tak") ? 'call_missed' : 'phone_in_talk'}
+                 </span>
+              )}
+              {msg.message.replace(/📞/g, '').replace(/🎤/g, '').trim()}
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              {showUserDetail && (
+                <img src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
+              )}
+              
+              <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px' }}>
+                
+                {showUserDetail && (
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px', marginLeft: '6px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url) ? '4px' : '0' }}>
+                    {msg.profiles?.username || 'User'} 
+                    <span dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
+                  </div>
+                )}
+                
+                {liveReply && (
+                  <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})} style={{ marginLeft: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0', marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0' }}>
+                    <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
+                  </div>
+                )}
+
+                {msg.image_url && !isDeleted && (
+                  <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: shouldShowText ? '6px' : '0' }}>
+                    <img 
+                      src={getOptimizedImage(msg.image_url)} 
+                      alt="Foto Kiriman" 
+                      onClick={() => setPreviewImage(msg.image_url)} 
+                      style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: 'auto', objectFit: 'cover', opacity: msg.status === 'sending' ? 0.6 : 1, cursor: 'pointer' }} 
+                    />
+                  </div>
+                )}
+
+                {isStoryReply && msg.sticker_url && !isDeleted ? (
+                  <div className="story-reply-card" onClick={() => handleStoryClick(msg.sticker_url)} style={{ cursor: 'pointer', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)', width: '100%' }}>
+                    <div style={{ position: 'relative', width: '40px', height: '55px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                       <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, fontStyle: 'italic', flex: 1 }}>Membalas Cerita...</div>
+                  </div>
+                ) : (
+                  msg.sticker_url && !isDeleted && !isStoryReply && (
+                    <div style={{ position: 'relative' }}>
+                      <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '8px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0' }} />
+                    </div>
+                  )
+                )}
+
+                {shouldShowText && (
+                  <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', wordBreak: 'break-word' }}>
+                    {isDeleted ? t('msg_deleted') : renderTextWithLinks(cleanMsg)}
+                  </div>
+                )}
+
+                {msg.audio_url && !isDeleted && (
+                  <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
+                    <button onClick={toggleVN} className="vn-play-btn" disabled={msg.status === 'sending'}>
+                      {msg.status === 'sending' ? (
+                        <span className="material-icons" style={{ fontSize: '16px', color: 'white', animation: 'spinLoading 1s linear infinite' }}>autorenew</span>
+                      ) : isPlaying ? (
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="white" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
+                      )}
+                    </button>
+                    
+                    <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '24px', flex: 1, marginLeft: '8px' }}>
+                      {waveData.map((heightPercent, i) => (
+                        <motion.div 
+                          key={i} 
+                          animate={{ height: `${heightPercent}%` }}
+                          transition={{ duration: 0.1 }}
+                          style={{ width: '3px', background: isPlaying ? '#1f3cff' : '#8e8e93', borderRadius: '2px' }} 
+                        />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #8e8e93)', marginLeft: '12px', marginRight: '4px' }}>VN</span>
+                  </div>
+                )}
+
+                {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                  <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '-12px' : '-16px' }}>
+                    {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
+                  </div>
+                )}
+                
+                <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '2px' }}>
+                  <span className="timestamp" style={{ fontSize: '10.5px', color: 'var(--text-muted, #8e8e93)', fontWeight: 500 }}>
+                    {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                  </span>
+                  {isMe && getStatusIcon(msg.status || 'sent')}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
