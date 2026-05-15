@@ -45,21 +45,25 @@ export default function CreatePostPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null); 
 
+  // 🔥 FIX: Balikin State buat Cropper Foto 🔥
+  const [imageForCrop, setImageForCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
   const [searchMusic, setSearchMusic] = useState('');
   const [musicResults, setMusicResults] = useState<any[]>([]);
   const [selectedMusic, setSelectedMusic] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
   
-  // 🔥 STATE BARU UNTUK SLIDE-UP MUSIK 🔥
   const [isMusicSheetOpen, setIsMusicSheetOpen] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [videoPos, setVideoPos] = useState(50);
   
-const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
-
+  // Status awal form
+  const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
   const [searchQuery, setSearchQuery] = useState("");
@@ -301,9 +305,8 @@ const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
     setCoverBlob(null);
     setCoverUrlPreview(null);
     setVideoThumbnails([]);
-    setStep('post'); // 🔥 Ganti jadi 'post'
+    setStep('post'); 
   };
-
 
   const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -326,8 +329,6 @@ const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
       const filename = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
       fd.append("file", file, filename); 
       fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-      
-      // 🔥 Baris moderation dihapus karena Preset Cloudinary lu udah otomatis nge-scan! 🔥
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
@@ -373,7 +374,6 @@ const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
 
       let finalImageUrl: string | null = null;
       let finalVideoUrl: string | null = null;
-      let moderationStatus = "pending"; 
 
       if (postType === 'image' && croppedImages.length > 0) {
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
