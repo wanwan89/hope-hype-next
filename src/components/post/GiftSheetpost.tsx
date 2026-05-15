@@ -66,9 +66,10 @@ export default function GiftSheetpost() {
           creatorName: btn.dataset.name || t('creator_label')
         });
 
-        await fetchUser();
+        // 🔥 FIX 1: Tampilkan Sheet INSTAN tanpa nunggu fetch internet 🔥
         setIsActive(true);
         document.body.style.overflow = "hidden";
+        fetchUser(); // Jalan di background
       }
     };
 
@@ -94,9 +95,10 @@ export default function GiftSheetpost() {
         creatorName: creatorName || t('creator_label')
       });
 
-      await fetchUser();
+      // 🔥 FIX 1: Buka instan 🔥
       setIsActive(true);
       document.body.style.overflow = "hidden";
+      fetchUser(); 
     };
 
     window.addEventListener("openGift", handleOpenFromComment);
@@ -106,7 +108,7 @@ export default function GiftSheetpost() {
   const closeSheet = () => {
     setIsActive(false);
     document.body.style.overflow = "";
-    setSelectedGift(null);
+    setTimeout(() => setSelectedGift(null), 300); // Hapus pilihan kado setelah tertutup
   };
 
   const handleSendGift = async (gift?: any, e?: any) => {
@@ -126,7 +128,6 @@ export default function GiftSheetpost() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Silakan login kembali.");
 
-      // 1. Potong Koin
       const { error: rpcErr } = await supabase.rpc("transfer_coins", { 
         sender_id: session.user.id, 
         receiver_id: targetPost.creatorId, 
@@ -134,7 +135,6 @@ export default function GiftSheetpost() {
       });
       if (rpcErr) throw rpcErr;
 
-      // 2. 🔥 FIX: Hitung Level Baru & Update Profil di Database 🔥
       const newTotalGiftSent = coinsGiven + giftToSend.amount;
       const newLevel = calculateLevel(newTotalGiftSent);
       
@@ -143,7 +143,6 @@ export default function GiftSheetpost() {
           level: newLevel
       }).eq('id', session.user.id);
 
-      // 3. Catat di transaksi, history, dan notifikasi
       await Promise.all([
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
@@ -163,7 +162,6 @@ export default function GiftSheetpost() {
         })
       ]);
 
-      // 4. Trigger komentar otomatis
       window.dispatchEvent(new CustomEvent('insertGiftComment', {
         detail: {
           postId: targetPost.id,
@@ -173,7 +171,6 @@ export default function GiftSheetpost() {
         }
       }));
 
-      // 5. Update State Lokal biar bar naik
       setUserCoins(prev => prev - giftToSend.amount);
       setCoinsGiven(newTotalGiftSent);
       
@@ -193,7 +190,6 @@ export default function GiftSheetpost() {
     }
   };
 
-  // 🔥 LOGIKA KALKULASI LEVEL UNTUK TAMPILAN BAR 🔥
   const currentLevel = calculateLevel(coinsGiven); 
   let targetKoin = currentLevel * 500;
   let prevTarget = (currentLevel - 1) * 500;
@@ -207,7 +203,6 @@ export default function GiftSheetpost() {
     <>
       <style>{`
         .gift-sheet-content-framer {
-          /* 🔥 FIX 2: SINKRON TEMA DARK/LIGHT MODE 🔥 */
           background: var(--bg-card, #ffffff);
           border-top-left-radius: 24px;
           border-top-right-radius: 24px;
@@ -222,6 +217,7 @@ export default function GiftSheetpost() {
           z-index: 100000;
           box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
           overflow: visible; 
+          will-change: transform; /* Hardware Acceleration */
         }
         
         .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; margin-bottom: 15px; }
@@ -243,6 +239,7 @@ export default function GiftSheetpost() {
           overflow-x: auto; 
           overflow-y: hidden; 
           scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
         .gift-column { display: flex; flex-direction: column; gap: 40px; flex-shrink: 0; width: calc(33.333% - 10px); } 
@@ -253,6 +250,19 @@ export default function GiftSheetpost() {
           background: var(--bg-card, #ffffff); border-top: 1px solid var(--border-card); 
           position: sticky; bottom: 0; z-index: 50; 
         }
+
+        /* 🔥 FIX 2: ANIMASI CSS MURNI PENGGANTI FRAMER MOTION 🔥 */
+        @keyframes floatingGiftCSS {
+          0%, 100% { transform: translateY(-5px); }
+          50% { transform: translateY(5px); }
+        }
+        .gift-item-img {
+          width: 90px; height: 90px; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0,0,0,0.4));
+          will-change: transform;
+        }
+        .gift-item-img.active {
+          animation: floatingGiftCSS 2s ease-in-out infinite;
+        }
       `}</style>
 
       <AnimatePresence>
@@ -262,6 +272,7 @@ export default function GiftSheetpost() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               className="gift-sheet-overlay" 
               onClick={closeSheet} 
               style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 99999 }}
@@ -330,22 +341,21 @@ export default function GiftSheetpost() {
                             justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
                           }}
                         >
-                          <motion.div
-                            animate={{
-                              y: isActiveGift ? -40 : 0, 
-                              scale: isActiveGift ? 1.3 : 1, 
+                          {/* 🔥 FIX 2: GANTI FRAMER MOTION JADI CSS TRANSITION BIASA 🔥 */}
+                          <div
+                            style={{ 
+                              position: 'absolute', zIndex: 2, bottom: '30px', pointerEvents: 'none',
+                              transform: isActiveGift ? 'translateY(-40px) scale(1.3)' : 'translateY(0px) scale(1)',
+                              transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                             }}
-                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            style={{ position: 'absolute', zIndex: 2, bottom: '30px', pointerEvents: 'none' }}
                           >
-                            <motion.img 
+                            <img 
                               src={gift.img} 
                               alt={gift.name} 
-                              style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.4))' }}
-                              animate={isActiveGift ? { y: [-5, 5, -5] } : { y: 0 }}
-                              transition={isActiveGift ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : {}}
+                              loading="lazy"
+                              className={`gift-item-img ${isActiveGift ? 'active' : ''}`} 
                             />
-                          </motion.div>
+                          </div>
 
                           <AnimatePresence>
                             {isActiveGift && (
@@ -365,26 +375,30 @@ export default function GiftSheetpost() {
                                   <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
                                   {gift.amount.toLocaleString('id-ID')}
                                 </span>
-                                <motion.button 
-                                  whileTap={{ scale: 0.9 }}
+                                <button 
                                   onClick={(e) => handleSendGift(gift, e)}
-                                  style={{ background: '#1f3cff', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 22px', fontWeight: 800, fontSize: '11px' }}
+                                  style={{ background: '#1f3cff', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 22px', fontWeight: 800, fontSize: '11px', cursor: 'pointer', transition: 'transform 0.1s' }}
+                                  onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                                  onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                 >
                                   {isSending ? '...' : 'KIRIM'}
-                                </motion.button>
+                                </button>
                               </motion.div>
                             )}
                           </AnimatePresence>
 
-                          <motion.div 
-                            animate={{ opacity: isActiveGift ? 0 : 1, y: isActiveGift ? 10 : 0 }}
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px' }}
+                          <div 
+                            style={{ 
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px',
+                              opacity: isActiveGift ? 0 : 1, transform: isActiveGift ? 'translateY(10px)' : 'translateY(0px)',
+                              transition: 'all 0.2s ease-in-out'
+                            }}
                           >
                             <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>{gift.name}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
                               <span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.amount}
                             </span>
-                          </motion.div>
+                          </div>
                         </div>
                       );
                     })}
@@ -397,18 +411,20 @@ export default function GiftSheetpost() {
                   <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
                   <span>{userCoins.toLocaleString('id-ID')}</span>
                 </div>
-                <motion.button 
-                  whileTap={{ scale: 0.95 }}
+                <button 
                   onClick={() => handleSendGift()}
                   disabled={!selectedGift || isSending}
                   style={{
                     background: 'linear-gradient(135deg, #1f3cff, #bc13fe)', color: 'white', border: 'none',
                     padding: '10px 24px', borderRadius: '20px', fontWeight: 800, fontSize: '14px',
-                    opacity: (!selectedGift || isSending) ? 0.5 : 1
+                    opacity: (!selectedGift || isSending) ? 0.5 : 1, cursor: (!selectedGift || isSending) ? 'not-allowed' : 'pointer',
+                    transition: 'transform 0.1s'
                   }}
+                  onMouseDown={(e) => { if (selectedGift && !isSending) e.currentTarget.style.transform = 'scale(0.95)'; }}
+                  onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 >
                   {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}
-                </motion.button>
+                </button>
               </div>
 
             </motion.div>

@@ -31,6 +31,9 @@ export default function ChatArea() {
   const fromId = searchParams?.get('from');
   const groupId = searchParams?.get('group');
   const groupName = searchParams?.get('gname');
+  
+  // 🔥 FIX 1: TANGKAP SINYAL AUTOCALL DARI NOTIFIKASI 🔥
+  const autoCall = searchParams?.get('autoCall');
 
   const [roomId, setRoomId] = useState('room-1');
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -129,6 +132,9 @@ export default function ChatArea() {
     if (refs.audio.current.ring) refs.audio.current.ring.loop = true;
 
     let currentRoom = 'room-1';
+    let pName = 'User';
+    let pAvatar = '/asets/png/profile.webp';
+
     if (groupId) {
       currentRoom = `group_${groupId}`;
       const { data: gData } = await supabase.from('groups').select('*').eq('id', groupId).single();
@@ -145,6 +151,8 @@ export default function ChatArea() {
       
       const { data: pTarget } = await supabase.from('profiles').select('username, short_id, avatar_url, role, last_seen').eq('id', fromId).single();
       if (pTarget) {
+        pName = pTarget.username;
+        pAvatar = pTarget.avatar_url;
         setHeaderInfo({ 
           title: pTarget.username, 
           sub: `#${pTarget.short_id}`, 
@@ -161,6 +169,13 @@ export default function ChatArea() {
     setRoomId(currentRoom);
     await fetchMessages(currentRoom, session.user.id); 
     setupRealtime(currentRoom, session.user, prof);
+
+    // 🔥 FIX 2: EKSEKUSI AUTOCALL JIKA ADA SINYAL 🔥
+    if (autoCall === 'true' && currentRoom !== 'room-1') {
+      setCallStatus('calling');
+      setCallData({ partnerName: pName, partnerAvatar: pAvatar, seconds: 0, room: currentRoom });
+      connectLiveKit(currentRoom);
+    }
   };
 
   const fetchGroupMembers = async () => {
@@ -260,15 +275,13 @@ export default function ChatArea() {
     setIsLoading(true);
     
     const { data, error } = await supabase.from('messages')
-      .select('*') 
+      .select('*')
       .eq('room_id', room)
-      .order('created_at', { ascending: false }) // 🔥 FIX 1: Ambil dari yang paling BARU
+      .order('created_at', { ascending: false })
       .limit(50);
       
     if (data) {
-      // 🔥 FIX 2: Balik urutannya (reverse) biar pesan baru tetap ada di paling bawah
       const reversedData = data.reverse();
-
       const userIds = [...new Set(reversedData.map(m => m.user_id))];
       const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', userIds);
       const profMap = profs?.reduce((acc: any, p: any) => ({ ...acc, [p.id]: p }), {}) || {};

@@ -36,17 +36,61 @@ export default function GiftDrawerroom() {
   const [coinsGiven, setCoinsGiven] = useState(0);
   
   const [targetPost, setTargetPost] = useState({ id: '', creatorId: '', creatorName: '' });
+  
+  // 🔥 STATE BARU UNTUK PILIH PENERIMA KADO 🔥
+  const [roomMembers, setRoomMembers] = useState<any[]>([]);
 
-  const fetchUser = async () => {
+  const fetchRoomDataAndUser = async (roomId: string) => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data: prof } = await supabase.from("profiles").select("id, username, avatar_url, coins, total_gift_sent, level").eq("id", session.user.id).single();
-      if (prof) {
-        setMyProfile(prof);
-        setUserCoins(prof.coins || 0);
-        setCoinsGiven(prof.total_gift_sent || 0);
-      }
+    if (!session) return;
+
+    // 1. Fetch Profil Kita Sendiri
+    const { data: prof } = await supabase.from("profiles").select("id, username, avatar_url, coins, total_gift_sent, level").eq("id", session.user.id).single();
+    if (prof) {
+      setMyProfile(prof);
+      setUserCoins(prof.coins || 0);
+      setCoinsGiven(prof.total_gift_sent || 0);
     }
+
+    if (!roomId) return;
+
+    // 2. Fetch Owner Room & Orang-orang di Room
+    let membersArr: any[] = [];
+    
+    // Ambil owner room
+    const { data: roomData } = await supabase.from('rooms').select('owner_id, profiles:owner_id(username, avatar_url)').eq('id', roomId).single();
+    if (roomData && roomData.owner_id) {
+      const owner = { 
+        id: roomData.owner_id, 
+        name: roomData.profiles?.username || 'Host', 
+        avatar: roomData.profiles?.avatar_url 
+      };
+      membersArr.push(owner);
+      setTargetPost({ id: roomId, creatorId: owner.id, creatorName: owner.name });
+    }
+
+    // Ambil user lain yang aktif di chat room ini buat dijadiin target kado
+    const { data: recentMsgs } = await supabase.from('room_messages')
+      .select('user_id, profiles(username, avatar_url)')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (recentMsgs) {
+      const uniqueUsers = new Map();
+      recentMsgs.forEach(msg => {
+        if (msg.user_id !== roomData?.owner_id && msg.user_id !== session.user.id && !uniqueUsers.has(msg.user_id)) {
+          uniqueUsers.set(msg.user_id, {
+            id: msg.user_id,
+            name: msg.profiles?.username || 'User',
+            avatar: msg.profiles?.avatar_url
+          });
+        }
+      });
+      membersArr = [...membersArr, ...Array.from(uniqueUsers.values())];
+    }
+    
+    setRoomMembers(membersArr);
   };
 
   useEffect(() => {
@@ -54,35 +98,18 @@ export default function GiftDrawerroom() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       
-      // Karena ini untuk Voice Room, kita dapetin room_id dari URL
       const urlParams = new URLSearchParams(window.location.search);
       const roomId = urlParams.get('id');
 
       if(!roomId) return;
 
-      // Ambil data Owner Room untuk dijadikan target kirim kado default
-      const { data: roomData } = await supabase.from('rooms').select('owner_id, profiles:owner_id(username)').eq('id', roomId).single();
-      
-      if (roomData && roomData.owner_id) {
-          setTargetPost({
-            id: roomId, // Pake Room ID sebagai reference post ID untuk Voice Room
-            creatorId: roomData.owner_id, 
-            creatorName: roomData.profiles?.username || 'Host Room'
-          });
-      } else {
-          setTargetPost({
-            id: 'room-target',
-            creatorId: 'room-host-id',
-            creatorName: 'Host Room'
-          });
-      }
-
-      await fetchUser();
+      // 🔥 FIX PERFORMA 1: Langsung buka sheet-nya, data di-load di background
       setIsActive(true);
       document.body.style.overflow = "hidden";
+      
+      fetchRoomDataAndUser(roomId);
     };
 
-    // Nangkep sinyal dari footer Room
     window.addEventListener('openRoomGift', handleOpenFromFooter);
     return () => window.removeEventListener('openRoomGift', handleOpenFromFooter);
   }, []);
@@ -90,7 +117,7 @@ export default function GiftDrawerroom() {
   const closeSheet = () => {
     setIsActive(false);
     document.body.style.overflow = "";
-    setSelectedGift(null);
+    setTimeout(() => setSelectedGift(null), 300);
   };
 
   const handleSendGift = async (gift?: any, e?: any) => {
@@ -101,6 +128,11 @@ export default function GiftDrawerroom() {
     
     const giftToSend = gift || selectedGift;
     if (!giftToSend || isSending) return;
+
+    if (!targetPost.creatorId) {
+      if ((window as any).showNotif) (window as any).showNotif("Pilih penerima dulu!", "warning");
+      return;
+    }
 
     if (giftToSend.amount > userCoins) {
       if ((window as any).showNotif) (window as any).showNotif("Koin tidak cukup! Silakan Top Up", "error");
@@ -123,16 +155,15 @@ export default function GiftDrawerroom() {
         receiver_id: targetPost.creatorId, 
         amount: giftToSend.amount 
       });
-      
       if (rpcErr) throw rpcErr;
 
-      // 2. Tambahin total_gift_sent ke profil pengirim buat leveling
+      // 2. Tambahin total_gift_sent
       const newTotalGiftSent = coinsGiven + giftToSend.amount;
-      const newLevel = calculateLevel(newTotalGiftSent); // Kalkulasi level baru pakai fungsi sakti lu
+      const newLevel = calculateLevel(newTotalGiftSent); 
       
       await supabase.from("profiles").update({ 
           total_gift_sent: newTotalGiftSent,
-          level: newLevel // Update level jika naik
+          level: newLevel 
       }).eq('id', session.user.id);
 
       // 3. Catat di history & database
@@ -140,7 +171,7 @@ export default function GiftDrawerroom() {
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
           receiver_id: targetPost.creatorId, 
-          post_id: parseInt(targetPost.id) || null, // Biarkan null kalau gagal parse room string
+          post_id: parseInt(targetPost.id) || null,
           amount: giftToSend.amount 
         }).then(({error}) => { if(error) console.warn("Gift Transaction RLS warning"); }),
         
@@ -162,15 +193,15 @@ export default function GiftDrawerroom() {
         ])
       ]);
 
-      // 4. Update UI Local (Optimistic Update)
+      // 4. Update UI Local
       setUserCoins(prev => prev - giftToSend.amount);
       setCoinsGiven(newTotalGiftSent);
       
-      // 5. Trigger animasi & notif ke room chat kalau ada fungsi globalnya
+      // 5. Animasi & Notif
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100005 });
       if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
 
-      // Tembak event ke chat room untuk render pesan sistem gift
+      // 6. Tembak event ke chat room
       const urlParams = new URLSearchParams(window.location.search);
       const roomId = urlParams.get('id');
       if (roomId) {
@@ -178,15 +209,13 @@ export default function GiftDrawerroom() {
               room_id: roomId, 
               username: "SISTEM_GIFT", 
               text: `${myProfile?.username || 'User'} mengirim ${giftToSend.name} x1 ke ${targetPost.creatorName}`, 
-              role: giftToSend.id.toString(), // Pake role sebagai wadah nyimpen ID Kado untuk animasinya
+              role: giftToSend.id.toString(), 
               level: newLevel, 
               user_id: session.user.id 
           }]);
       }
 
-      setTimeout(() => {
-        closeSheet();
-      }, 300);
+      setTimeout(() => { closeSheet(); }, 300);
 
     } catch (err: any) {
       if ((window as any).showNotif) (window as any).showNotif(err.message, "error");
@@ -195,9 +224,7 @@ export default function GiftDrawerroom() {
     }
   };
 
-  // 🔥 LOGIKA KALKULASI LEVEL UNTUK TAMPILAN BAR 🔥
-  const currentLevel = calculateLevel(coinsGiven); // Pake rumus sakti
-  // Perhitungan target berdasarkan level lu (asumsi per level butuh 500 koin)
+  const currentLevel = calculateLevel(coinsGiven); 
   let prevTarget = (currentLevel - 1) * 500;
   let targetKoin = currentLevel * 500;
   let needed = targetKoin - coinsGiven;
@@ -209,7 +236,7 @@ export default function GiftDrawerroom() {
   return (
     <>
       <style>{`
-        /* 🔥 CSS Reset & Fix buat Framer Motion 🔥 */
+        /* 🔥 CSS Reset & Fix Animasi Hardware Acceleration 🔥 */
         .gift-sheet-content-framer {
           background: var(--bg-base, #121212);
           border-top-left-radius: 24px;
@@ -218,18 +245,17 @@ export default function GiftDrawerroom() {
           display: flex;
           flex-direction: column;
           position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
+          bottom: 0; left: 0; right: 0;
           max-height: 90vh;
-          z-index: 100001; /* Pastikan tinggi */
+          z-index: 100001; 
           box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
           overflow: visible; 
+          will-change: transform;
         }
         
         .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; margin-bottom: 15px; }
         
-        .drawer-top-level { display: flex; align-items: center; gap: 12px; background: transparent; padding: 12px 0px; margin: 0 20px 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .drawer-top-level { display: flex; align-items: center; gap: 12px; background: transparent; padding: 12px 0px; margin: 0 20px 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; z-index: 10; }
         .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; }
         .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
@@ -237,10 +263,31 @@ export default function GiftDrawerroom() {
         .progress-track { width: 100%; height: 8px; background: rgba(150,150,150,0.2); border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; background: #1f3cff; transition: width 0.5s ease; }
 
+        /* 🔥 CSS UNTUK FITUR TARGET SELECTOR 🔥 */
+        .target-selector-container {
+          padding: 0 20px; margin-bottom: 5px;
+        }
+        .target-scroll-area {
+          display: flex; gap: 12px; overflow-x: auto; padding: 10px 0;
+          scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        }
+        .target-scroll-area::-webkit-scrollbar { display: none; }
+        .target-avatar-item {
+          display: flex; flex-direction: column; align-items: center; gap: 6px;
+          cursor: pointer; opacity: 0.6; transition: all 0.2s; min-width: 50px;
+        }
+        .target-avatar-item.active { opacity: 1; transform: scale(1.1); }
+        .target-avatar-item img {
+          width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
+          border: 2px solid transparent; transition: 0.2s;
+        }
+        .target-avatar-item.active img { border-color: #1f3cff; box-shadow: 0 0 10px rgba(31,60,255,0.5); }
+        .target-avatar-name { font-size: 10px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+
         .gift-list-3d-wrapper {
-          padding: 20px 15px 40px 15px;
+          padding: 10px 15px 40px 15px;
           display: flex; gap: 15px; overflow-x: auto; overflow-y: visible; 
-          scrollbar-width: none;
+          scrollbar-width: none; -webkit-overflow-scrolling: touch;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
         .gift-column { display: flex; flex-direction: column; gap: 30px; flex-shrink: 0; width: calc(33.333% - 10px); }
@@ -252,23 +299,32 @@ export default function GiftDrawerroom() {
           position: sticky; bottom: 0; z-index: 50; 
         }
 
+        /* 🔥 FIX PERFORMA 2: ANIMASI CSS MURNI PENGGANTI FRAMER MOTION 🔥 */
+        @keyframes floatingGiftCSS {
+          0%, 100% { transform: translateY(-50px) scale(1.3); }
+          50% { transform: translateY(-60px) scale(1.3); }
+        }
+        .gift-item-img {
+          width: 85px; height: 85px; object-fit: contain; position: absolute; z-index: 2; bottom: 10px;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          will-change: transform; pointer-events: none;
+        }
+        .gift-item-img.active {
+          z-index: 20; animation: floatingGiftCSS 2s ease-in-out infinite;
+        }
+        
         .gift-active-bg-box {
           position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
           border: 1.5px solid #1f3cff; border-radius: 12px; background: rgba(0,0,0,0.5);
           display: flex; flex-direction: column; justify-content: flex-end; 
-          alignItems: center; padding-bottom: 6px;
-          z-index: 30; 
-          pointer-events: none; 
+          align-items: center; padding-bottom: 6px; z-index: 10; 
         }
-
         .gift-send-btn-mini {
           background: #1f3cff; color: white; border: none; border-radius: 8px; 
           padding: 6px 22px; font-weight: 800; font-size: 11px; 
-          cursor: pointer; 
-          pointer-events: auto; 
-          position: relative;
-          z-index: 40; 
+          cursor: pointer; transition: transform 0.1s;
         }
+        .gift-send-btn-mini:active { transform: scale(0.9); }
       `}</style>
 
       <AnimatePresence>
@@ -278,6 +334,7 @@ export default function GiftDrawerroom() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               className="gift-sheet-overlay" 
               onClick={closeSheet} 
               style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100000 }}
@@ -294,7 +351,7 @@ export default function GiftDrawerroom() {
               <div className="sheet-handle" style={{ width: '40px', height: '4px', background: '#555', borderRadius: '4px', margin: '0 auto 15px auto' }} />
 
               <div className="drawer-header">
-                <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')} ke {targetPost.creatorName}</span>
+                <span style={{ fontWeight: 800, fontSize: '16px' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
                 <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
               </div>
 
@@ -320,6 +377,26 @@ export default function GiftDrawerroom() {
                 </div>
               </div>
 
+              {/* 🔥 TARGET SELECTOR UI 🔥 */}
+              <div className="target-selector-container">
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)' }}>PILIH PENERIMA:</span>
+                <div className="target-scroll-area">
+                  {roomMembers.map(member => (
+                    <div 
+                      key={member.id} 
+                      className={`target-avatar-item ${targetPost.creatorId === member.id ? 'active' : ''}`}
+                      onClick={() => setTargetPost({ id: targetPost.id, creatorId: member.id, creatorName: member.name })}
+                    >
+                      <img src={member.avatar || '/asets/png/profile.webp'} alt="Target" />
+                      <span className="target-avatar-name">{member.name.substring(0, 8)}</span>
+                    </div>
+                  ))}
+                  {roomMembers.length === 0 && (
+                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '10px 0' }}>Memuat pengguna room...</div>
+                  )}
+                </div>
+              </div>
+
               <div className="gift-list-3d-wrapper">
                 {Array.from({ length: Math.ceil(GIFT_DATA.length / 2) }).map((_, colIndex) => (
                   <div key={colIndex} className="gift-column">
@@ -336,31 +413,24 @@ export default function GiftDrawerroom() {
                             justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
                           }}
                         >
-                          <motion.img 
+                          <img 
                             src={gift.img} 
                             alt={gift.name} 
-                            animate={{
-                              width: isActiveGift ? 130 : 85,
-                              height: isActiveGift ? 130 : 85,
-                              y: isActiveGift ? -60 : -10, 
-                            }}
-                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            style={{ position: 'absolute', zIndex: isActiveGift ? 20 : 2, objectFit: 'contain' }}
-                            {...(isActiveGift && {
-                              animate: { width: 130, height: 130, y: [-60, -70, -60] },
-                              transition: { y: { repeat: Infinity, duration: 2, ease: "easeInOut" } }
-                            })}
+                            loading="lazy"
+                            className={`gift-item-img ${isActiveGift ? 'active' : ''}`} 
                           />
 
-                          <motion.div 
-                            animate={{ opacity: isActiveGift ? 0 : 1, y: isActiveGift ? 10 : 0 }}
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px' }}
+                          <div style={{ 
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px',
+                              opacity: isActiveGift ? 0 : 1, transform: isActiveGift ? 'translateY(10px)' : 'translateY(0px)',
+                              transition: 'all 0.2s ease-in-out'
+                            }}
                           >
                             <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>{gift.name}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
                               <span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.amount}
                             </span>
-                          </motion.div>
+                          </div>
 
                           <AnimatePresence>
                             {isActiveGift && (
@@ -375,14 +445,12 @@ export default function GiftDrawerroom() {
                                   <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
                                   {gift.amount.toLocaleString('id-ID')}
                                 </span>
-                                <motion.button 
+                                <button 
                                   className="gift-send-btn-mini"
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.9 }}
                                   onClick={(e) => handleSendGift(gift, e)}
                                 >
                                   {isSending ? '...' : 'KIRIM'}
-                                </motion.button>
+                                </button>
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -402,11 +470,10 @@ export default function GiftDrawerroom() {
                   whileTap={{ scale: 0.95 }}
                   onClick={(e) => handleSendGift(selectedGift, e)}
                   disabled={!selectedGift || isSending}
-                  className="btn-send-gift-footer"
                   style={{
                     background: 'linear-gradient(135deg, #1f3cff, #bc13fe)', color: 'white', border: 'none',
                     padding: '10px 24px', borderRadius: '20px', fontWeight: 800, fontSize: '14px',
-                    opacity: (!selectedGift || isSending) ? 0.5 : 1
+                    opacity: (!selectedGift || isSending) ? 0.5 : 1, cursor: (!selectedGift || isSending) ? 'not-allowed' : 'pointer'
                   }}
                 >
                   {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}

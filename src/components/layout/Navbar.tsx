@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Home,
   Bell,
@@ -32,6 +32,7 @@ function CircularChase() {
 
 function NavbarContent() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [isVisible, setIsVisible] = useState(true);
   const prevScrollY = useRef(0);
@@ -75,8 +76,9 @@ function NavbarContent() {
   // Room private chat
   const isRoomPage = pathname?.startsWith('/hypetalk/room');
   
-  // 🔥 FIX: Deteksi halaman Voice Room (src/app/voice)
-  const isVoicePage = pathname?.startsWith('/voice');
+  // 🔥 FIX DETEKSI VOICE ROOM 🔥
+  // Kalau URL-nya /voice dan bawa parameter "id" (artinya lagi masuk ke dalam room)
+  const isInsideVoiceRoom = pathname === '/voice' && searchParams?.get('id') !== null;
 
   const isSaldoPage = pathname?.includes('/saldo');
   const isStoryPage = pathname?.includes('/story');
@@ -84,7 +86,7 @@ function NavbarContent() {
   const isHistoryCoinPage = pathname?.includes('/historycoin');
   const isWithdrawPage = pathname?.includes('/withdraw');
 
-  // 🔥 Masukin isVoicePage ke sini biar Navbar ngilang
+  // 🔥 Masukin isInsideVoiceRoom ke sini, JANGAN isVoicePage yang general
   const isHiddenPage =
     isLoginPage ||
     isDailyCekPage ||
@@ -94,7 +96,7 @@ function NavbarContent() {
     isCreatePage ||
     isSearchPage ||
     isRoomPage ||
-    isVoicePage || 
+    isInsideVoiceRoom || 
     isSaldoPage ||
     isStoryPage ||
     isPendingPage ||
@@ -198,7 +200,7 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: Mic },
+    { name: 'Voice', path: '/voice-room', icon: Mic }, 
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
     { name: 'Profil', path: '/data', icon: User },
   ];
@@ -254,7 +256,7 @@ function NavbarContent() {
           }}
         >
           {navItems.map((item) => {
-            const isActive = pathname === item.path;
+            const isActive = pathname === item.path || (item.path === '/voice-room' && pathname === '/voice' && !isInsideVoiceRoom);
             const Icon = item.icon;
             const isClicked = clickedItem === item.name;
             const isAnimating = animatingIcon === item.name;

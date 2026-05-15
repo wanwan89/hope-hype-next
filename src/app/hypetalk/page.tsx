@@ -139,7 +139,7 @@ export default function HypetalkPage() {
             let currentUnread = unreadMap.get(p.id) || 0;
 
             if (lastMsg.user_id === userId) {
-              msgPreview = `Anda: ${msgPreview}`;
+              msgPreview = `${msgPreview}`; // 🔥 DIBUANG KATA "Anda: " BIAR DIGANTI ICON SVG
               currentUnread = 0;
             }
 
@@ -150,8 +150,8 @@ export default function HypetalkPage() {
               avatar: p.avatar_url,
               role: p.role,
               preview: msgPreview,
-              lastMsgUserId: lastMsg.user_id,
-              lastMsgStatus: lastMsg.status,
+              lastMsgUserId: lastMsg.user_id, // 🔥 PENTING UNTUK CEK SIAPA YANG KIRIM
+              lastMsgStatus: lastMsg.status, // 🔥 PENTING UNTUK CEK STATUS READ
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               sortTime: new Date(lastMsg.created_at).getTime(),
               unread: currentUnread
@@ -395,6 +395,30 @@ export default function HypetalkPage() {
 
   const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
 
+  // 🔥 FUNGSI RENDER ICON TICK (READ RECEIPT) 🔥
+  const renderReadReceipt = (chat: any) => {
+    if (!currentUser || chat.lastMsgUserId !== currentUser.id || chat.type !== 'private') return null;
+
+    const isRead = chat.lastMsgStatus === 'read';
+
+    return (
+      <span style={{ marginRight: '4px', display: 'flex', alignItems: 'center' }}>
+        {isRead ? (
+          // DOUBLE TICK BIRU (UDAH DIBACA)
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#00a2ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 12l3 3 7-7" />
+            <path d="M2 12l3 3 7-7" />
+          </svg>
+        ) : (
+          // SINGLE TICK ABU-ABU (TERKIRIM)
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12l5 5L20 7" />
+          </svg>
+        )}
+      </span>
+    );
+  };
+
   return (
     <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
       <style>{`
@@ -563,6 +587,10 @@ export default function HypetalkPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div className="tg-preview-container" style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    
+                    {/* 🔥 DI SINI ICON TICK DITAMPILKAN 🔥 */}
+                    {!typingStatus[chat.id] && renderReadReceipt(chat)}
+
                     <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#1DA1F2' : 'var(--text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {typingStatus[chat.id] ? `${typingStatus[chat.id]} sedang mengetik...` : chat.preview}
                     </p>

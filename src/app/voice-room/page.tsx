@@ -36,6 +36,12 @@ export default function VoiceLobbyPage() {
   const [customCoinAmount, setCustomCoinAmount] = useState('');
   const [loadingPackage, setLoadingPackage] = useState<number | null>(null);
 
+  // 🔥 FIX: Bersihkan class body yang nyangkut dari Voice Room 🔥
+  useEffect(() => {
+    document.body.classList.remove('in-voice-room');
+    document.body.classList.add('in-home-app');
+  }, []);
+
   const fetchUser = async () => {
     try {
       const { data: { user }, error: authErr } = await supabase.auth.getUser();
