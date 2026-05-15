@@ -6,6 +6,7 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
 import { sendPushAndAppNotif } from '@/lib/notif'; 
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -16,6 +17,26 @@ const getOptimizedImage = (url: string) => {
     return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_800/');
   }
   return cleanUrl;
+};
+
+const getWatermarkedUrl = (originalUrl: string, username: string, isVideo: boolean) => {
+  if (!originalUrl || !originalUrl.includes('res.cloudinary.com')) return originalUrl;
+
+  const cleanUsername = encodeURIComponent(username);
+  const logoId = "logo_hope"; 
+  const outroId = "outro_hope"; 
+  const movingLogoGifId = "logo_moving_hope"; // 🔥 NAMA FILE GIF LU DI CLOUDINARY
+
+  if (isVideo) {
+    const movingOverlay = `l_video:${movingLogoGifId},w_0.3,c_fit,so_0,eo_100p,g_center`;
+    const spliceTransform = `l_video:${outroId}/c_pad,w_1.0,h_1.0,fl_relative,b_black/l_text:Arial_30_bold:@${cleanUsername}/co_white,g_center,y_60/fl_layer_apply/fl_splice`;
+    return originalUrl.replace('/upload/', `/upload/${movingOverlay}/${spliceTransform}/fl_attachment:HopeHype_Video`);
+  } else {
+    // 🔥 INI YANG NGUBAH FOTO JADI GIF BERGERAK 🔥
+    const convertToGif = "f_gif,du_3"; 
+    const movingOverlayOnImage = `l_${movingLogoGifId},w_0.3,c_fit,g_center`;
+    return originalUrl.replace('/upload/', `/upload/${convertToGif}/${movingOverlayOnImage}/fl_attachment:HopeHype_Image`);
+  }
 };
 
 export default function Gallerypost() {
@@ -39,6 +60,11 @@ export default function Gallerypost() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
+  // Tracking Views 2 Detik
+  const viewObserverRef = useRef<IntersectionObserver | null>(null);
+  const viewedPostsRef = useRef<Set<string>>(new Set());
+  const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({}); 
 
@@ -50,6 +76,17 @@ export default function Gallerypost() {
 
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
+
+  // 🔥 STATE UNTUK OPSI POSTINGAN & DOWNLOAD 🔥
+  const [optionsModal, setOptionsModal] = useState<{isOpen: boolean, postId: string, isOwner: boolean, creatorId: string, url: string, isVideo: boolean, username: string} | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (viewObserverRef.current) viewObserverRef.current.disconnect();
+      Object.values(viewTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -135,8 +172,7 @@ export default function Gallerypost() {
       const to = from + POSTS_PER_PAGE - 1;
 
       let query = supabase.from("posts")
-        // 🔥 Menambahkan fetch full_name dari tabel profiles
-        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, profiles:creator_id (full_name, username, role, avatar_url)`)
+        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, profiles:creator_id (full_name, username, role, avatar_url)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .range(from, to); 
@@ -187,7 +223,10 @@ export default function Gallerypost() {
       if (isLoadMore) setPosts(prev => [...prev, ...fetchedPosts]);
       else setPosts(fetchedPosts);
 
-      setTimeout(initAutoPlayObserver, 500);
+      setTimeout(() => {
+        initAutoPlayObserver();
+        initViewTrackingObserver(); 
+      }, 500);
 
     } catch (err) { console.error(err); } finally { setIsLoading(false); setIsLoadingMore(false); }
   };
@@ -198,6 +237,66 @@ export default function Gallerypost() {
       setPage(nextPage);
       fetchPosts(currentCategory, currentUser, nextPage, true);
     }
+  };
+
+  // 🔥 EKSEKUSI DOWNLOAD 🔥
+  const executeDownload = async () => {
+    if (!optionsModal) return;
+    setIsDownloading(true);
+    setOptionsModal(null); // Tutup popup biar fokus ke loading bar
+
+    try {
+      const watermarkedUrl = getWatermarkedUrl(optionsModal.url, optionsModal.username, optionsModal.isVideo);
+      
+      const response = await fetch(watermarkedUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `HopeHype-${optionsModal.username}-${Date.now()}.${optionsModal.isVideo ? 'mp4' : 'jpg'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+      
+      showNotif(t('Berhasil diunduh!'), "success");
+    } catch (err) {
+      console.error(err);
+      showNotif(t('Gagal mengunduh file.'), "error");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // 🔥 FUNGSI HAPUS POSTINGAN 🔥
+  const handleDeletePost = async () => {
+    if (!optionsModal || !optionsModal.isOwner) return;
+    if (confirm("Yakin ingin menghapus postingan ini?")) {
+      try {
+        await supabase.from("posts").delete().eq("id", optionsModal.postId);
+        setPosts(prev => prev.filter(p => p.id !== optionsModal.postId));
+        showNotif("Postingan berhasil dihapus", "success");
+      } catch (err) {
+        showNotif("Gagal menghapus postingan", "error");
+      }
+      setOptionsModal(null);
+    }
+  };
+
+  const openOptionsModal = (post: any, isOwner: boolean) => {
+    const photoList = post.image_url ? post.image_url.split(',') : [];
+    const targetUrl = photoList.length > 0 ? photoList[0] : post.video_url;
+
+    setOptionsModal({
+      isOpen: true,
+      postId: post.id,
+      isOwner,
+      creatorId: post.creator_id,
+      url: targetUrl || '',
+      isVideo: !!post.video_url,
+      username: post.profiles?.username || 'User'
+    });
   };
 
   const handleFollowToggle = async (e: any, creatorId: string) => {
@@ -393,6 +492,43 @@ export default function Gallerypost() {
     document.querySelectorAll('.card').forEach(card => observerRef.current?.observe(card));
   };
 
+  const initViewTrackingObserver = () => {
+    if (viewObserverRef.current) viewObserverRef.current.disconnect();
+
+    viewObserverRef.current = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const postId = entry.target.getAttribute('data-postid');
+        if (!postId) return;
+
+        if (entry.isIntersecting) {
+          if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
+            viewTimersRef.current[postId] = setTimeout(async () => {
+              viewedPostsRef.current.add(postId);
+              delete viewTimersRef.current[postId]; 
+              
+              try {
+                const { data } = await supabase.from('posts').select('views').eq('id', postId).single();
+                const currentViews = data?.views || 0;
+                await supabase.from('posts').update({ views: currentViews + 1 }).eq('id', postId);
+              } catch (err) {
+                console.error("Gagal hitung view", err);
+              }
+            }, 2000); 
+          }
+        } else {
+          if (viewTimersRef.current[postId]) {
+            clearTimeout(viewTimersRef.current[postId]);
+            delete viewTimersRef.current[postId];
+          }
+        }
+      });
+    }, { threshold: 0.6 }); 
+
+    document.querySelectorAll('.card[data-postid]').forEach(card => {
+      viewObserverRef.current?.observe(card);
+    });
+  };
+
   const getMusicHtml = (post: any, isOverlay = true) => {
     if (!post.audio_src) return null;
     let cleanAudio = (post.audio_src || "").trim();
@@ -536,7 +672,6 @@ export default function Gallerypost() {
     } catch (err) { console.error(err); }
   };
 
-  // 🔥 UPDATE RENDERER BIO 🔥
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(@\w+|#\w+)/g); 
@@ -593,6 +728,59 @@ export default function Gallerypost() {
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
       `}</style>
 
+      {/* 🔥 PROGRESS BAR DOWNLOAD (DI ATAS NAVBAR) 🔥 */}
+      {isDownloading && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.1)', zIndex: 999999 }}>
+          <motion.div 
+             initial={{ width: '0%' }}
+             animate={{ width: '100%' }}
+             transition={{ duration: 1.5, ease: "linear", repeat: Infinity }}
+             style={{ height: '100%', background: '#1f3cff', boxShadow: '0 0 10px #1f3cff' }}
+          />
+        </div>
+      )}
+
+      {/* 🔥 MODAL SLIDE-UP OPSI POSTINGAN 🔥 */}
+      <AnimatePresence>
+        {optionsModal && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setOptionsModal(null)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99998 }}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={{ 
+                position: 'fixed', bottom: 0, left: 0, right: 0, 
+                background: 'var(--bg-secondary)', borderTopLeftRadius: '24px', 
+                borderTopRightRadius: '24px', zIndex: 99999, 
+                padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))'
+              }}
+            >
+              <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '0 auto 20px' }} />
+              
+              {optionsModal.url && (
+                <button onClick={executeDownload} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <span className="material-icons">download</span> Unduh
+                </button>
+              )}
+              
+              {optionsModal.isOwner ? (
+                 <button onClick={handleDeletePost} style={{ width: '100%', padding: '16px', background: 'rgba(255,71,87,0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                   <span className="material-icons">delete</span> Hapus Postingan
+                 </button>
+              ) : (
+                 <button onClick={() => { setOptionsModal(null); showNotif("Laporan dikirim untuk ditinjau.", "info"); }} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                   <span className="material-icons">flag</span> Laporkan
+                 </button>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
           {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
@@ -624,7 +812,7 @@ export default function Gallerypost() {
             const isVideoPost = !!post.video_url;
 
             return (
-              <div key={post.id} id={`post-${post.id}`} className="card" style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
+              <div key={post.id} id={`post-${post.id}`} data-postid={post.id} className="card" style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
                 {(photoList.length > 0 || isVideoPost) ? (
                   <>
                     <div className="slider">
@@ -644,7 +832,6 @@ export default function Gallerypost() {
                         )}
                       </div>
 
-                      {/* 🔥 FIX: TOMBOL SPIKER HANYA MUNCUL JIKA ADA VIDEO ATAU AUDIO 🔥 */}
                       {(isVideoPost || post.audio_src) && (
                         <button
                           className="btn-press"
@@ -721,16 +908,16 @@ export default function Gallerypost() {
                     <div className="overlay">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-<h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`} style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-  {post.profiles?.full_name || post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-</h2>
-
+                          <h2 className="name" onClick={() => window.location.href=`/data?id=${post.creator_id}`} style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                            {post.profiles?.full_name || post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
+                          </h2>
                           {renderFollowButton(post.creator_id)}
                         </div>
+                        {/* 🔥 TOMBOL OPSI MEMANGGIL MODAL KITA 🔥 */}
                         <button 
                           className="options-btn btn-press" 
                           aria-label="Opsi Postingan" 
-                          onClick={() => (window as any).openPostOptions?.(post.id, isOwner, post.creator_id)}
+                          onClick={(e) => { e.stopPropagation(); openOptionsModal(post, isOwner); }}
                         >
                           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
@@ -753,14 +940,17 @@ export default function Gallerypost() {
                       <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => window.location.href=`/data?id=${post.creator_id}`}>
                         <img src={optimizedAvatar} alt="Avatar Profil" loading="lazy" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-<div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
-  {post.profiles?.full_name || post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-  {renderFollowButton(post.creator_id)}
-</div>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formattedDate}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
+                            {post.profiles?.full_name || post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
+                            {renderFollowButton(post.creator_id)}
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {formattedDate}
+                          </span>
                         </div>
                       </div>
-                      <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); (window as any).openPostOptions?.(post.id, isOwner, post.creator_id); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      {/* 🔥 TOMBOL OPSI MEMANGGIL MODAL KITA 🔥 */}
+                      <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openOptionsModal(post, isOwner); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
                     </div>
