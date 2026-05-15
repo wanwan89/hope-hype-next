@@ -327,8 +327,7 @@ const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
       fd.append("file", file, filename); 
       fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       
-      // Menggunakan moderasi otomatis Cloudinary (AWS Rekognition)
-      fd.append("moderation", "aws_rek"); 
+      // 🔥 Baris moderation dihapus karena Preset Cloudinary lu udah otomatis nge-scan! 🔥
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
