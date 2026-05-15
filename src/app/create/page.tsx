@@ -6,8 +6,12 @@ import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION
+import { motion, AnimatePresence } from 'framer-motion'; 
 import './Create.css'; 
+
+// 🔥 IMPORT TENSORFLOW & NSFWJS 🔥
+import * as tf from '@tensorflow/tfjs';
+import * as nsfwjs from 'nsfwjs';
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
@@ -16,12 +20,15 @@ export default function CreatePostPage() {
   const { t } = useTranslation();
   const router = useRouter(); 
 
+  // --- MODEL NSFW STATE ---
+  const [nsfwModel, setNsfwModel] = useState<nsfwjs.NSFWJS | null>(null);
+
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false); // 🔥 STATE CUSTOM DROPDOWN
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false); 
   
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); 
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]); 
@@ -59,11 +66,27 @@ export default function CreatePostPage() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [videoPos, setVideoPos] = useState(50);
-  const [step, setStep] = useState<'pick' | 'edit' | 'post'>('pick');
+  
+  // 🔥 FIX 2: STATE BARU UNTUK HALAMAN MUSIK 🔥
+  const [step, setStep] = useState<'pick' | 'edit' | 'post' | 'music'>('pick');
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
+
+  // 🔥 LOAD MODEL AI SAAT HALAMAN DIBUKA 🔥
+  useEffect(() => {
+    const loadModel = async () => {
+      try {
+        await tf.ready();
+        const model = await nsfwjs.load();
+        setNsfwModel(model);
+      } catch (err) {
+        console.error("Gagal load model AI NSFW", err);
+      }
+    };
+    loadModel();
+  }, []);
 
   useEffect(() => {
     if (showPopup === 'none') return;
@@ -133,7 +156,7 @@ export default function CreatePostPage() {
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchMusic)}&media=music&limit=10`);
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchMusic)}&media=music&limit=20`);
         const data = await res.json(); setMusicResults(data.results || []);
       } catch (err) { console.error(err); } finally { setIsSearching(false); }
     }, 600);
@@ -346,6 +369,35 @@ export default function CreatePostPage() {
     });
   };
 
+  // 🔥 FUNGSI SCAN AI LOKAL (NSFWJS) 🔥
+  const checkNSFW = async (imageElement: HTMLImageElement | HTMLVideoElement): Promise<boolean> => {
+    if (!nsfwModel) return false; // Kalau model belum siap, lolosin aja (atau lu bisa blokir)
+    try {
+      const predictions = await nsfwModel.classify(imageElement as any);
+      
+      // Cek prediksi yg berbahaya (Porn & Hentai)
+      const isBad = predictions.some(p => 
+        (p.className === 'Porn' || p.className === 'Hentai') && p.probability > 0.6
+      );
+      
+      return isBad;
+    } catch (err) {
+      console.error("Gagal nge-scan gambar:", err);
+      return false;
+    }
+  };
+
+  // Helper bikin HTML Image dari Blob buat dikirim ke NSFWJS
+  const createImageElement = (blob: Blob): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(blob);
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -361,6 +413,30 @@ export default function CreatePostPage() {
       if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
       const myUserId = session.user.id;
 
+      // 🔥 AI SCANNING PROSES 🔥
+      if (postType === 'image' && croppedImages.length > 0) {
+        setUploadProgress(5);
+        for (let i = 0; i < croppedImages.length; i++) {
+          const imgEl = await createImageElement(croppedImages[i]);
+          const isNSFW = await checkNSFW(imgEl);
+          if (isNSFW) {
+            setIsSubmitting(false);
+            showNotif("Upload digagalkan! Konten terdeteksi sensitif/melanggar aturan.", "error");
+            return; // BERHENTI, JANGAN LANJUT UPLOAD!
+          }
+        }
+      } else if (postType === 'video' && coverBlob) {
+        setUploadProgress(5);
+        // Kita scan cover videonya aja sebagai representasi
+        const imgEl = await createImageElement(coverBlob);
+        const isNSFW = await checkNSFW(imgEl);
+        if (isNSFW) {
+          setIsSubmitting(false);
+          showNotif("Video ditolak! Cover video terdeteksi sensitif/melanggar aturan.", "error");
+          return;
+        }
+      }
+
       const extractedTags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
       if (extractedTags.length > 0) {
         for (const tg of extractedTags) {
@@ -372,7 +448,6 @@ export default function CreatePostPage() {
       let finalVideoUrl: string | null = null;
 
       if (postType === 'image' && croppedImages.length > 0) {
-        setUploadProgress(20);
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
         const uploadResults = await Promise.all(uploadPromises);
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
@@ -414,7 +489,7 @@ export default function CreatePostPage() {
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
-          status: "pending"
+          status: "approved" // Karena udah di-scan AI lokal, langsung gas approved!
         }).select('id').single();
         
         if (newPost) newPostId = newPost.id;
@@ -447,7 +522,6 @@ export default function CreatePostPage() {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#080808', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
         
-        {/* Header Editor */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <button 
             onClick={() => {
@@ -469,7 +543,6 @@ export default function CreatePostPage() {
           </button>
         </div>
 
-        {/* Area Utama Editor */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#000', padding: '10px' }}>
           {postType === 'image' && imageForCrop ? (
             <div style={{ width: '100%', height: '100%', position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
@@ -510,7 +583,6 @@ export default function CreatePostPage() {
           ) : null}
         </div>
 
-        {/* Kontrol Bawah yang Dipermudah */}
         <div style={{ flexShrink: 0, padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', background: '#111', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {postType === 'image' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: '#fff' }}>
@@ -521,7 +593,6 @@ export default function CreatePostPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
-              {/* Potong Video */}
               <div className="editor-control-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -551,7 +622,6 @@ export default function CreatePostPage() {
                 </div>
               </div>
 
-              {/* Pilih Cover */}
               <div className="editor-control-card">
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -584,11 +654,89 @@ export default function CreatePostPage() {
     );
   };
 
+  // 🔥 FIX 2: HALAMAN KHUSUS PILIH MUSIK 🔥
+  const renderMusicScreen = () => {
+    if (step !== 'music') return null;
+
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-color)' }}>
+          <button 
+            onClick={() => {
+              if (audioRef.current) { audioRef.current.pause(); setPlayingUrl(null); }
+              setStep('post');
+            }} 
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          >
+            <span className="material-icons">close</span>
+          </button>
+          <p style={{ color: 'var(--text-main)', fontSize: '16px', fontWeight: 700, margin: 0 }}>Pilih Musik</p>
+          <div style={{ width: 24 }}></div>
+        </div>
+
+        <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+          <div style={{ position: 'relative', marginBottom: '20px' }}>
+            <span className="material-icons" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>search</span>
+            <input 
+              type="text" 
+              placeholder={t('search_music')} 
+              value={searchMusic} 
+              onChange={(e) => setSearchMusic(e.target.value)} 
+              style={{ width: '100%', padding: '16px 15px 16px 45px', borderRadius: '16px', border: '2px solid var(--border-card)', background: 'var(--bg-secondary)', color: 'var(--text-main)', fontSize: '16px', outline: 'none', fontWeight: 600 }} 
+            />
+          </div>
+
+          {isSearching ? (
+            <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)' }}>
+               <span className="material-icons" style={{ fontSize: '40px', animation: 'spin 1s linear infinite' }}>autorenew</span>
+               <p style={{ fontWeight: 600, marginTop: '10px' }}>Mencari lagu...</p>
+            </div>
+          ) : musicResults.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {musicResults.map((song, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', padding: '12px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
+                  
+                  <div style={{ position: 'relative', width: 60, height: 60, marginRight: 15, flexShrink: 0 }}>
+                    <img src={song.artworkUrl100} style={{ width:'100%', height:'100%', borderRadius: 12, objectFit: 'cover' }} />
+                    <div onClick={() => togglePlayPreview(song.previewUrl)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <span className="material-icons" style={{ color: '#fff', fontSize: '30px' }}>{playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)', whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden' }}>{song.trackName}</div>
+                    <div style={{ fontSize: 13, color:'var(--text-muted)', marginTop: '4px' }}>{song.artistName}</div>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      setSelectedMusic(song);
+                      if (audioRef.current) { audioRef.current.pause(); setPlayingUrl(null); }
+                      setStep('post');
+                    }}
+                    style={{ background: '#1f3cff', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '12px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', marginLeft: '10px' }}
+                  >
+                    Pilih
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : searchMusic ? (
+             <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)', fontWeight: 600 }}>Tidak ada hasil untuk "{searchMusic}"</div>
+          ) : (
+             <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Ketik judul lagu atau nama artis di atas...</div>
+          )}
+        </div>
+      </div>
+    )
+  };
+
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       {step === 'edit' && renderEditorScreen()}
+      {step === 'music' && renderMusicScreen()}
 
-      {step !== 'edit' && (
+      {step === 'post' && (
         <>
           <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
             <button type="button" onClick={handleClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -600,6 +748,14 @@ export default function CreatePostPage() {
 
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
             <form onSubmit={handleSubmit} className="post-form">
+              
+              {!nsfwModel && (
+                <div style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '10px 15px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                  <span className="material-icons" style={{ fontSize: '16px' }}>sync</span>
+                  Memuat sistem pendeteksi keamanan gambar...
+                </div>
+              )}
+
               <div className="destination-container">
                 <p className="section-label" style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{t('send_to')}</p>
                 <div className="dest-toggle-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -757,14 +913,11 @@ export default function CreatePostPage() {
                 />
               </div>
 
-              {/* 🔥 CUSTOM DROPDOWN KATEGORI (PENGGANTI SELECT BAWAAN) 🔥 */}
               <div style={{ position: 'relative', marginTop: '20px' }}>
-                {/* Overlay transparan buat close kalau klik area luar */}
                 {isCategoryOpen && (
                   <div onClick={() => setIsCategoryOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
                 )}
                 
-                {/* Tombol Pemicu Dropdown */}
                 <div 
                   onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                   style={{ width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -783,7 +936,6 @@ export default function CreatePostPage() {
                   </span>
                 </div>
 
-                {/* List Menu Dropdown dengan Animasi Framer Motion */}
                 <AnimatePresence>
                   {isCategoryOpen && (
                     <motion.div
@@ -793,7 +945,7 @@ export default function CreatePostPage() {
                       transition={{ duration: 0.15 }}
                       style={{ 
                         position: 'absolute', 
-                        bottom: '100%', /* 👈 Muncul ke ATAS biar gak ketutup keyboard/tombol */
+                        bottom: '100%', 
                         left: 0, 
                         right: 0, 
                         marginBottom: '8px', 
@@ -840,53 +992,29 @@ export default function CreatePostPage() {
                 </AnimatePresence>
               </div>
 
-              <div className="music-picker-section" style={{ marginTop: '25px', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '16px' }}>
-                <div className="section-label-bold" style={{ color: 'var(--text-main)', fontWeight: 700, marginBottom: '15px' }}>{t('select_music_optional')}</div>
-                {!selectedMusic ? (
-                  <>
-                    <div style={{ position: 'relative' }}>
-                      <span className="material-icons" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '20px' }}>search</span>
-                      <input type="text" placeholder={t('search_music')} className="music-search-input" value={searchMusic} onChange={(e) => setSearchMusic(e.target.value)} style={{ width: '100%', padding: '12px 15px 12px 40px', borderRadius: '10px', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }} />
-                    </div>
-                    <div className="music-list-scroll" style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '15px' }}>
-                      {isSearching && <p style={{textAlign:'center', fontSize:'12px', padding: '10px', color: 'var(--text-muted)'}}>{t('searching')}</p>}
-                      {musicResults.map((song, i) => (
-                        <div key={i} className="dest-content" style={{display: 'flex', padding:'10px', borderRadius: '10px', cursor:'pointer', alignItems: 'center', transition: 'background 0.2s', background: 'transparent', border: 'none'}} onClick={() => setSelectedMusic(song)}>
-                          <div style={{position: 'relative', width: 45, height: 45, marginRight: 15, flexShrink: 0}}>
-                            <img src={song.artworkUrl100} style={{width:'100%', height:'100%', borderRadius:10, objectFit: 'cover'}} />
-                            <div onClick={(e) => togglePlayPreview(song.previewUrl, e)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <span className="material-icons" style={{color: '#fff', fontSize: '24px'}}>{playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}</span>
-                            </div>
-                          </div>
-                          <div style={{flex:1, overflow:'hidden'}}>
-                            <div style={{fontSize:14, fontWeight:700, color: 'var(--text-main)', whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden'}}>{song.trackName}</div>
-                            <div style={{fontSize:12, color:'var(--text-muted)'}}>{song.artistName}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="selected-music-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-input)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-card)' }}>
-                    <div className="music-info-mini" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <button type="button" onClick={() => togglePlayPreview(selectedMusic.previewUrl)} style={{ background: '#1f3cff', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        <span className="material-icons" style={{ color: '#fff', fontSize: '20px' }}>{playingUrl === selectedMusic.previewUrl ? 'pause' : 'play_arrow'}</span>
-                      </button>
-                      <div>
-                        <span className="audio-tag" style={{ fontSize: '10px', background: 'var(--bg-card)', color: 'var(--text-main)', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>AUDIO</span>
-                        <div className="music-title-text" style={{ color: 'var(--text-main)', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>{selectedMusic.trackName} — {selectedMusic.artistName}</div>
-                      </div>
-                    </div>
-                    <button type="button" className="remove-music-link" onClick={() => { if(playingUrl === selectedMusic.previewUrl) togglePlayPreview(selectedMusic.previewUrl); setSelectedMusic(null); }} style={{ background: 'transparent', border: 'none', color: '#ff4757', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>{t('remove_music')}</button>
+              {/* 🔥 TOMBOL BUKA HALAMAN MUSIK 🔥 */}
+              <div 
+                className="music-picker-btn" 
+                onClick={() => setStep('music')}
+                style={{ marginTop: '20px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', padding: '15px', borderRadius: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ background: '#1f3cff', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                     <span className="material-icons" style={{ color: '#fff', fontSize: '24px' }}>music_note</span>
                   </div>
-                )}
+                  <div>
+                    <div style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '15px' }}>{selectedMusic ? selectedMusic.trackName : 'Tambahkan Musik'}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>{selectedMusic ? selectedMusic.artistName : 'Opsional (Pilih lagu favoritmu)'}</div>
+                  </div>
+                </div>
+                <span className="material-icons" style={{ color: 'var(--text-muted)' }}>chevron_right</span>
               </div>
 
-              {/* 🔥 TOMBOL SUBMIT DENGAN ANIMASI GELOMBANG AIR SEAMLESS & MULUS 🔥 */}
+              {/* 🔥 TOMBOL SUBMIT DENGAN ANIMASI GELOMBANG NAIK (FRAMER MOTION) 🔥 */}
               <button 
                 type="submit" 
                 className="post-submit-btn" 
-                disabled={isSubmitting} 
+                disabled={isSubmitting || !nsfwModel} 
                 style={{ 
                   marginTop: '30px', 
                   width: '100%', 
@@ -896,44 +1024,48 @@ export default function CreatePostPage() {
                   borderRadius: '14px', 
                   fontSize: '16px', 
                   fontWeight: 800, 
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer', 
+                  cursor: isSubmitting || !nsfwModel ? 'not-allowed' : 'pointer', 
                   position: 'relative',
                   overflow: 'hidden',
                   background: isSubmitting ? 'var(--bg-input)' : '#1f3cff',
                   transform: 'translateZ(0)',
+                  opacity: !nsfwModel ? 0.7 : 1
                 }}
               >
                 {isSubmitting && (
-                  <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    height: `${Math.max(uploadProgress, 5)}%`, 
-                    background: '#1f3cff',
-                    transition: 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)', 
-                    zIndex: 1
-                  }}>
-                    {/* Gelombang Belakang (Transparan) */}
+                  <motion.div
+                    initial={{ y: "100%" }}
+                    animate={{ y: `${100 - uploadProgress}%` }}
+                    transition={{ ease: "linear", duration: 0.5 }}
+                    style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0, top: 0,
+                      background: '#1f3cff',
+                      zIndex: 1
+                    }}
+                  >
+                    {/* Gelombang Transparan (Belakang) */}
                     <motion.div
-                      animate={{ backgroundPositionX: ["0px", "-800px"] }}
-                      transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                      style={{
-                        position: 'absolute', top: '-18px', left: 0, width: '100%', height: '20px',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,55 250,-5 400,25 C550,55 650,-5 800,25 L800,50 L0,50 Z' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E")`,
-                        backgroundSize: '800px 100%',
-                        backgroundRepeat: 'repeat-x'
-                      }}
-                    />
-                    {/* Gelombang Depan (Solid) */}
-                    <motion.div
-                      animate={{ backgroundPositionX: ["-800px", "0px"] }}
+                      animate={{ x: ["0%", "-50%"] }}
                       transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
                       style={{
-                        position: 'absolute', top: '-14px', left: 0, width: '100%', height: '15px',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,45 250,5 400,25 C550,45 650,5 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
-                        backgroundSize: '800px 100%',
+                        position: 'absolute', top: '-18px', left: 0, width: '200%', height: '20px',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,55 250,-5 400,25 C550,55 650,-5 800,25 L800,50 L0,50 Z' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E")`,
+                        backgroundSize: '50% 100%',
                         backgroundRepeat: 'repeat-x'
                       }}
                     />
-                  </div>
+                    {/* Gelombang Solid (Depan) */}
+                    <motion.div
+                      animate={{ x: ["-50%", "0%"] }}
+                      transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                      style={{
+                        position: 'absolute', top: '-14px', left: 0, width: '200%', height: '15px',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,45 250,5 400,25 C550,45 650,5 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
+                        backgroundSize: '50% 100%',
+                        backgroundRepeat: 'repeat-x'
+                      }}
+                    />
+                  </motion.div>
                 )}
                 
                 <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>

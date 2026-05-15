@@ -535,6 +535,7 @@ export default function Gallerypost() {
     } catch (err) { console.error(err); }
   };
 
+  // 🔥 UPDATE RENDERER BIO 🔥
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(@\w+|#\w+)/g); 
@@ -548,7 +549,14 @@ export default function Gallerypost() {
         );
       } else if (part.startsWith('#')) {
         return (
-          <span key={i} style={{ color: 'var(--text-muted, #8696a0)', fontWeight: 400 }}>
+          <span 
+            key={i} 
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/?search=${encodeURIComponent(part)}`);
+            }} 
+            style={{ color: 'var(--text-muted, #8696a0)', fontWeight: 400, cursor: 'pointer' }}
+          >
             {part}
           </span>
         );
