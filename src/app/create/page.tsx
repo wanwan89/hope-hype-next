@@ -9,10 +9,6 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import './Create.css'; 
 
-// 🔥 IMPORT TENSORFLOW & NSFWJS 🔥
-import * as tf from '@tensorflow/tfjs';
-import * as nsfwjs from 'nsfwjs';
-
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
@@ -21,8 +17,7 @@ export default function CreatePostPage() {
   const router = useRouter(); 
 
   // --- MODEL NSFW STATE ---
-  const [nsfwModel, setNsfwModel] = useState<nsfwjs.NSFWJS | null>(null);
-
+  const [nsfwModel, setNsfwModel] = useState<any>(null);
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
@@ -74,10 +69,14 @@ export default function CreatePostPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
-  // 🔥 LOAD MODEL AI SAAT HALAMAN DIBUKA 🔥
+  // 🔥 LOAD MODEL AI SAAT HALAMAN DIBUKA (LAZY IMPORT) 🔥
   useEffect(() => {
     const loadModel = async () => {
       try {
+        // Import dinamis di dalam fungsi biar Vercel nggak crash!
+        const tf = await import('@tensorflow/tfjs');
+        const nsfwjs = await import('nsfwjs');
+
         await tf.ready();
         const model = await nsfwjs.load();
         setNsfwModel(model);
