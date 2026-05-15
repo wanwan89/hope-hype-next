@@ -71,23 +71,28 @@ export default function CreatePostPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
-  // 🔥 LOAD MODEL AI VIA CDN DENGAN PENJAGA GERBANG 🔥
   const initNsfwModel = async () => {
-    // Kalau model udah ada atau lagi proses loading, stop!
     if (nsfwModel || isModelLoading.current) return;
 
     try {
-      isModelLoading.current = true; // Kunci gerbang
+      isModelLoading.current = true;
       const nsfwjs = (window as any).nsfwjs;
-      if (nsfwjs) {
+      const tf = (window as any).tf; // Ambil tf dari window
+
+      if (nsfwjs && tf) {
+        // 🔥 JURUS ANTI BLANK: Reset engine kalau ada kernel yang nyangkut
+        if (tf.engine) {
+          tf.engine().reset(); 
+        }
+        
         const model = await nsfwjs.load();
         setNsfwModel(model);
-        console.log("✅ AI Model berhasil di-load!");
+        console.log("✅ AI Model Aman!");
       }
     } catch (err) {
-      console.error("❌ Gagal load model AI", err);
+      console.error("❌ Gagal load AI:", err);
     } finally {
-      isModelLoading.current = false; // Buka gerbang kalau error (biar bisa coba lagi)
+      isModelLoading.current = false;
     }
   };
 
@@ -728,21 +733,21 @@ export default function CreatePostPage() {
 
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
-      
-{/* 🔥 TAG SCRIPT CDN UNTUK LOAD AI MODEL NSFW 🔥 */}
+{/* 🔥 TAMBAHKAN crossOrigin="anonymous" BIAR ERROR CORS HILANG 🔥 */}
 <Script 
-  src="https://unpkg.com/@tensorflow/tfjs" 
-  strategy="lazyOnload" 
+  src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" 
+  strategy="afterInteractive" 
+  crossOrigin="anonymous" 
 />
 <Script 
-  src="https://unpkg.com/nsfwjs" 
-  strategy="lazyOnload" 
-  onLoad={() => {
-    // 🔥 Pake delay 1 detik biar TFJS bener-bener siap di memori
-    setTimeout(initNsfwModel, 1000); 
-  }} 
+  src="https://cdn.jsdelivr.net/npm/nsfwjs" 
+  strategy="afterInteractive" 
+  crossOrigin="anonymous"
+  onReady={() => {
+    // Tunggu sebentar biar TensorFlow bener-bener nempel di window
+    setTimeout(initNsfwModel, 2000); 
+  }}
 />
-
 
       {step === 'edit' && renderEditorScreen()}
       {step === 'music' && renderMusicScreen()}
