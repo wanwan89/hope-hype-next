@@ -165,6 +165,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             if (data && data.roomId) {
               const targetUserId = data.senderId || data.callerId;
 
+              // 🔥 FIX 1: Deteksi jenis klik notifikasi 🔥
               if (actionId === "reject") {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
@@ -175,8 +176,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     is_system: true 
                   }]);
                 }
+              } else if (actionId === "answer") {
+                // Tombol angkat dipencet langsung dari notif HP
+                router.push(`/hypetalk/room?from=${targetUserId}&answerCall=true`);
               } else {
-                router.push(`/hypetalk/room?from=${targetUserId}&autoCall=true`); 
+                // User cuma tap notifikasinya buat buka HP tanpa pencet tombol spesifik
+                router.push(`/hypetalk/room?from=${targetUserId}&incomingCall=true`); 
               }
             }
           });
@@ -269,15 +274,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     setGlobalIncomingCall(null);
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      await supabase.from('messages').insert([{ room_id: currentRoomId, user_id: session.user.id, message: `Panggilan Ditolak`, is_system: true }]);
+      await supabase.from('messages').insert([{ 
+        room_id: currentRoomId, 
+        user_id: session.user.id, 
+        message: `Panggilan Ditolak`, 
+        is_system: true 
+      }]);
     }
   };
 
+  // 🔥 FIX 2: Bawa parameter 'answerCall' dari Popup In-App 🔥
   const handleAngkatGlobal = async () => {
     if (!globalIncomingCall) return;
     const callerId = globalIncomingCall.callerId;
     setGlobalIncomingCall(null);
-    router.push(`/hypetalk/room?from=${callerId}&autoCall=true`);
+    router.push(`/hypetalk/room?from=${callerId}&answerCall=true`);
   };
 
   const handleMessageClick = () => {

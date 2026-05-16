@@ -31,7 +31,11 @@ export default function ChatArea() {
   const fromId = searchParams?.get('from');
   const groupId = searchParams?.get('group');
   const groupName = searchParams?.get('gname');
+  
+  // 🔥 FIX 1: Tangkap 3 tipe parameter panggilan 🔥
   const autoCall = searchParams?.get('autoCall');
+  const answerCall = searchParams?.get('answerCall');
+  const incomingCall = searchParams?.get('incomingCall');
 
   const [roomId, setRoomId] = useState('room-1');
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -51,10 +55,9 @@ export default function ChatArea() {
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
   
-  // 🔥 STATE IMAGE EDITOR FULL SCREEN 🔥
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
-  const [imageCaption, setImageCaption] = useState(''); // State terpisah untuk caption foto
+  const [imageCaption, setImageCaption] = useState(''); 
   const [isUploadingImg, setIsUploadingImg] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,10 +173,25 @@ export default function ChatArea() {
     await fetchMessages(currentRoom, session.user.id); 
     setupRealtime(currentRoom, session.user, prof);
 
+    // 🔥 FIX 2: CEK APAKAH PANGGILAN BENERAN MASIH ADA? 🔥
+    const { data: lastMsg } = await supabase.from('messages')
+      .select('*').eq('room_id', currentRoom).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    
+    const lastMsgText = lastMsg?.message?.toLowerCase() || '';
+    const isCallStillActive = lastMsg?.is_system && lastMsgText.includes("memanggil") && lastMsg?.user_id !== session.user.id;
+
     if (autoCall === 'true' && currentRoom !== 'room-1') {
       setCallStatus('calling');
       setCallData({ partnerName: pName, partnerAvatar: pAvatar, seconds: 0, room: currentRoom });
       connectLiveKit(currentRoom);
+    } else if (answerCall === 'true' && currentRoom !== 'room-1' && isCallStillActive) {
+      setCallStatus('incoming'); 
+      setCallData({ partnerName: pName, partnerAvatar: pAvatar, seconds: 0, room: currentRoom });
+      connectLiveKit(currentRoom); 
+    } else if (incomingCall === 'true' && currentRoom !== 'room-1' && isCallStillActive) {
+      setCallStatus('incoming');
+      setCallData({ partnerName: pName, partnerAvatar: pAvatar, seconds: 0, room: currentRoom });
+      if (refs.audio.current?.ring) refs.audio.current.ring.play().catch(() => {});
     }
   };
 
@@ -587,7 +605,7 @@ export default function ChatArea() {
     if (!file) return;
     setPendingImage(file);
     setPendingImagePreview(URL.createObjectURL(file));
-    setImageCaption(''); // Reset caption pas ganti foto
+    setImageCaption(''); 
     if (fileInputRef.current) fileInputRef.current.value = ''; 
   };
 
@@ -603,7 +621,6 @@ export default function ChatArea() {
       const d = await res.json();
       
       if (d.secure_url) {
-        // Kirim foto dengan captionnya
         await sendMessage(imageCaption, undefined, undefined, d.secure_url);
       } else {
         showNotif("Gagal upload foto", "error");
@@ -776,14 +793,12 @@ export default function ChatArea() {
     displayStatus = `${onlineCount} hopers sedang online`;
   }
 
-  // Tanda bisa nge-send kalau ada teks atau id edit (Karena image sekarang dipindah ke state full screen)
   const canSend = inputValue.trim() || editMessageId;
 
   return (
     <div className="telegram-chat hype-chat-scope">
       
       <style>{`
-        /* Animasi dan style yang sudah ada */
         @keyframes pulseCall {
           0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
           70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
@@ -810,13 +825,12 @@ export default function ChatArea() {
         .global-call-btn { border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
         .global-call-btn:active { transform: scale(0.9); }
         
-        /* 🔥 FIX: INPUT SLIM PREMIUM 🔥 */
         .slim-input-wrapper {
           display: flex;
           align-items: flex-end;
           background: var(--bg-secondary);
           border: 1px solid var(--border-color);
-          border-radius: 24px; /* OVAL SEMPURNA */
+          border-radius: 24px; 
           padding: 6px 12px;
           flex: 1;
           gap: 4px;
@@ -870,7 +884,6 @@ export default function ChatArea() {
         }
       `}</style>
 
-      {/* FLOATING CALL */}
       {(callStatus !== 'idle') && (
         <div className="call-floating-popup">
           <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="partner" />
@@ -911,7 +924,6 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* HEADER */}
       <header className="chat-header">
         <div className="header-left">
           <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
@@ -922,7 +934,6 @@ export default function ChatArea() {
               {roomId !== 'room-1' && targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
             </h3>
             <div className="status-container">
-              {/* STATUS ONLINE / TYPING / LAST SEEN */}
               <span className={displayStatus === 'Online' || displayStatus.includes('mengetik') ? "status-typing" : "status-online"} style={{ color: displayStatus === 'Online' ? '#2ecc71' : '' }}>
                 {displayStatus}
               </span>
@@ -943,7 +954,6 @@ export default function ChatArea() {
         </div>
       </header>
 
-      {/* MESSAGES */}
       <main className="chat-messages">
         {isLoading ? (
           <div className="chat-loading-screen">
@@ -961,17 +971,15 @@ export default function ChatArea() {
               <span>{t('encryption_notice')}</span>
             </div>
             {messages.map((msg, idx) => {
-              // Deteksi batas pesan belum dibaca
               const isUnread = msg.user_id !== currentUser?.id && msg.status !== 'read';
               let isFirstUnread = false;
               if (isUnread) {
-                 const prevMsg = messages[idx + 1]; // array kebalik
+                 const prevMsg = messages[idx + 1]; 
                  if (!prevMsg || prevMsg.status === 'read' || prevMsg.user_id === currentUser?.id) {
                     isFirstUnread = true;
                  }
               }
 
-              // Deteksi batas tanggal
               let showDateSeparator = false;
               if (idx === messages.length - 1) {
                 showDateSeparator = true; 
@@ -1014,7 +1022,6 @@ export default function ChatArea() {
         <div ref={refs.scroll} />
       </main>
 
-      {/* INPUT CONTAINER */}
       <footer className="chat-input-container" style={{ padding: '8px 10px', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)' }}>
         {chatState === 'i_must_approve' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'center' }}>
@@ -1053,7 +1060,6 @@ export default function ChatArea() {
               )}
             </AnimatePresence>
 
-            {/* PREVIEW REPLY */}
             <AnimatePresence>
               {replyTo && (
                 <motion.div 
@@ -1072,7 +1078,6 @@ export default function ChatArea() {
             <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%' }}>
               
               {isRecording ? (
-                // VN RECORDING UI
                 <div className="slim-input-wrapper" style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600 }}>
                     <span className="online-dot" style={{ background: '#ff4757' }}></span>
@@ -1092,7 +1097,6 @@ export default function ChatArea() {
                   </div>
                 </div>
               ) : (
-                // 🔥 FIX: SLIM INPUT & ICONS 🔥
                 <div className="slim-input-wrapper">
                   <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
                     <span className="material-icons" style={{ color: isStickerOpen ? '#1f3cff' : '' }}>sentiment_satisfied_alt</span>
@@ -1146,7 +1150,6 @@ export default function ChatArea() {
         )}
       </footer>
 
-      {/* 🔥 FIX 1: FULL SCREEN IMAGE EDITOR MODAL 🔥 */}
       <AnimatePresence>
         {pendingImagePreview && (
           <motion.div 
@@ -1159,7 +1162,6 @@ export default function ChatArea() {
               display: 'flex', flexDirection: 'column'
             }}
           >
-            {/* Header */}
             <div style={{ padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
               <button onClick={() => { setPendingImage(null); setPendingImagePreview(null); setImageCaption(''); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
                 <span className="material-icons" style={{fontSize: '28px'}}>close</span>
@@ -1168,12 +1170,10 @@ export default function ChatArea() {
               <div style={{width: '28px'}}></div>
             </div>
 
-            {/* Area Foto */}
             <div style={{ flex: 1, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <img src={pendingImagePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="preview full" />
             </div>
 
-            {/* Area Caption & Tombol Kirim */}
             <div style={{ padding: '20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
               <div className="slim-input-wrapper" style={{ background: 'var(--bg-main)' }}>
                 <textarea 
@@ -1205,7 +1205,6 @@ export default function ChatArea() {
         )}
       </AnimatePresence>
 
-      {/* MODAL INVITE & SETTINGS GRUP */}
       <AnimatePresence>
         {isGroupSettingsOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
