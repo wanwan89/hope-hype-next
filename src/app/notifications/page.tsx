@@ -62,7 +62,6 @@ export default function NotificationsPage() {
       
       setPendingCount(pendingPosts || 0);
 
-      // 1. Fetch Notifikasi Umum
       const { data: dbNotifs } = await supabase
         .from('notifications')
         .select('*')
@@ -80,7 +79,6 @@ export default function NotificationsPage() {
       let savesData: any[] = [];
 
       if (postIds.length > 0) {
-        // 🔥 FIX 1 & 2: Hapus JOIN Otomatis, Ganti "comment" jadi "content" 🔥
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from('likes').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
           supabase.from('comments').select('id, post_id, content, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
@@ -94,7 +92,6 @@ export default function NotificationsPage() {
         savesData = savesRes.data || [];
       }
 
-      // 🔥 FIX 2: Kumpulin semua user_id yang berinteraksi 🔥
       const allActorIds = new Set<string>();
       (dbNotifs || []).forEach(n => { if (n.actor_id) allActorIds.add(n.actor_id); });
       likesData.forEach(l => allActorIds.add(l.user_id));
@@ -102,7 +99,6 @@ export default function NotificationsPage() {
       repostsData.forEach(r => allActorIds.add(r.user_id));
       savesData.forEach(s => allActorIds.add(s.user_id));
 
-      // Fetch profil orang-orangnya sekaligus
       let profilesMap: Record<string, any> = {};
       if (allActorIds.size > 0) {
         const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(allActorIds));
@@ -111,7 +107,6 @@ export default function NotificationsPage() {
         }
       }
 
-      // Format data notifikasi pakai profil yang barusan ditarik
       const formattedLikes = likesData.map((l: any) => ({
         id: `like-${l.id}`, type: 'like', post_id: l.post_id, user_id: userId, actor_id: l.user_id,
         created_at: l.created_at, is_read: true, actor: profilesMap[l.user_id], postData: myPosts.find(p => p.id === l.post_id)
@@ -119,7 +114,7 @@ export default function NotificationsPage() {
 
       const formattedComments = commentsData.map((c: any) => ({
         id: `comment-${c.id}`, type: 'comment', post_id: c.post_id, user_id: userId, actor_id: c.user_id,
-        message: c.content, // 🔥 Content dari komentar 🔥
+        message: c.content, 
         created_at: c.created_at, is_read: true, actor: profilesMap[c.user_id], postData: myPosts.find(p => p.id === c.post_id)
       }));
 
@@ -185,16 +180,30 @@ export default function NotificationsPage() {
     if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
   };
 
+  // 🔥 FIX LOGIKA KLIK & NAVIGASI 🔥
   const handleNotifClick = async (notif: any) => {
+    // 1. Tandai sebagai sudah dibaca (jika notif berasal dari database notifications)
     if (!notif.is_read && notif.id && !String(notif.id).includes('-')) {
       setRawNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
 
-    if (notif.post_id) {
-      router.push(`/?search=${notif.post_id}#post-${notif.post_id}`); 
-    } else if (notif.type === 'follow' && notif.actor_id) {
+    // 2. Arahkan URL sesuai Tipe Notifikasi
+    if (notif.type === 'follow' && notif.actor_id) {
+      // Buka Profil Orang
       router.push(`/data?id=${notif.actor_id}`); 
+      
+    } else if (notif.type === 'comment' && notif.post_id) {
+      // Ke Postingan + Memicu pop-up Komentar otomatis lewat parameter URL
+      router.push(`/?search=${notif.post_id}&openComment=true#post-${notif.post_id}`); 
+      
+    } else if (notif.type === 'story_like' && notif.story_id) {
+      // Ke Story Player
+      router.push(`/story/${notif.story_id}`);
+      
+    } else if (notif.post_id) {
+      // Ke Postingan Biasa (Like, Save, Repost)
+      router.push(`/?search=${notif.post_id}#post-${notif.post_id}`); 
     }
   };
 

@@ -19,8 +19,14 @@ const getOptimizedImage = (url: string) => {
 // 🔥 FILTER KATA KASAR (ANTI TOXIC) 🔥
 const BAD_WORDS = ["anjing", "bangsat", "kontol", "babi", "memek", "jembut", "ngentot", "bgsd", "njing", "tolol", "goblok"];
 const containsBadWords = (text: string) => {
-  const lowerText = text.toLowerCase();
-  return BAD_WORDS.some(word => lowerText.includes(word));
+  // Ubah ke lowercase dan hapus simbol/tanda baca biar filternya lebih akurat
+  const lowerText = text.toLowerCase().replace(/[^a-z0-9 ]/g, ''); 
+  const words = lowerText.split(/\s+/); // Pecah jadi perkata
+  
+  // Cek apakah ada kata yang persis sama dengan kata kasar, atau ada yang diselipin
+  return BAD_WORDS.some(badWord => 
+    words.includes(badWord) || lowerText.includes(badWord)
+  );
 };
 
 export default function CommentModalpost() {
@@ -152,23 +158,28 @@ export default function CommentModalpost() {
     const { data: commsData } = await supabase.from("comments")
       .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
       .eq("post_id", postId)
-      .order("created_at", { ascending: true });
-
-    setComments(commsData || []);
+      .order("created_at", { ascending: true }); // Tetap urut waktu dulu
 
     if (commsData && commsData.length > 0) {
       const commentIds = commsData.map(c => c.id);
-      
       const { data: allLikesData } = await supabase.from("comment_likes").select("comment_id").in("comment_id", commentIds);
       
       const newCounts: Record<string, number> = {};
       commentIds.forEach(id => newCounts[String(id)] = 0);
-      
-      allLikesData?.forEach(like => {
-        newCounts[String(like.comment_id)] += 1;
-      });
-      
+      allLikesData?.forEach(like => { newCounts[String(like.comment_id)] += 1; });
       setCommentLikesCount(newCounts);
+
+      // 🔥 FIX: URUTKAN KOMENTAR BERDASARKAN LIKE TERBANYAK 🔥
+      const sortedComments = [...commsData].sort((a, b) => {
+         const likesA = newCounts[String(a.id)] || 0;
+         const likesB = newCounts[String(b.id)] || 0;
+         if (likesA === likesB) {
+            // Kalau likes-nya sama, yang lebih lama (awal) yang di atas
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+         }
+         return likesB - likesA; // Yang paling banyak like di atas
+      });
+      setComments(sortedComments);
 
       if (userId) {
         const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
@@ -176,6 +187,8 @@ export default function CommentModalpost() {
         myLikes?.forEach(l => likedSet.add(String(l.comment_id)));
         setLikedComments(likedSet);
       }
+    } else {
+      setComments([]);
     }
     setIsLoading(false);
   };
@@ -266,9 +279,10 @@ export default function CommentModalpost() {
 
       let finalContent = inputValue.trim();
 
+      // 🔥 FIX: PENCEGAHAN KATA KASAR YANG LEBIH STRICT 🔥
       if (containsBadWords(finalContent)) {
-        showNotif("Komentar mengandung kata-kata yang tidak pantas!", "warning");
-        return;
+        showNotif("Komentar ditolak! Mengandung bahasa yang tidak pantas.", "error");
+        return; // Stop fungsi, komentar tidak masuk ke database
       }
 
       const parentId = replyToId;
@@ -316,7 +330,8 @@ export default function CommentModalpost() {
         }
 
         if (newComment) {
-          setComments(prev => [...prev, newComment]);
+          // Komentar baru taruh di atas aja (sementara sampai di-refresh lagi)
+          setComments(prev => [newComment, ...prev]);
           setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
         }
 
@@ -394,14 +409,13 @@ export default function CommentModalpost() {
     });
   };
 
-  // 🔥 FIX 1: TANGKAP TOUCH EVENT UNTUK HP BIAR RESPONSIVE 🔥
   const handleTouchStart = (comment: any) => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(50);
       setActionSheetComment(comment);
       setIsActionSheetOpen(true);
-    }, 450); // Sensitivitas dipercepat sedikit
+    }, 450); 
   };
 
   const handleTouchEnd = () => {
@@ -491,14 +505,13 @@ export default function CommentModalpost() {
       <div 
         className="comment-item" 
         key={comment.id} 
-        /* 🔥 FIX 1: EVENT LISTENER HP & MOUSE LENGKAP 🔥 */
         onTouchStart={() => handleTouchStart(comment)} 
         onTouchEnd={handleTouchEnd}
-        onTouchMove={handleTouchEnd} /* Batalin popup kalo layar di-scroll */
+        onTouchMove={handleTouchEnd} 
         onMouseDown={() => handleTouchStart(comment)}
         onMouseUp={handleTouchEnd}
         onMouseLeave={handleTouchEnd}
-        onContextMenu={(e) => { e.preventDefault(); }} /* Blokir default popup browser biar gampang klik lama */
+        onContextMenu={(e) => { e.preventDefault(); }} 
       >
         <div className="comment-left">
           <img className="comment-avatar" src={avatar} loading="lazy" onClick={() => window.location.href = `/data?id=${p?.id}`} alt="Avatar" />
@@ -704,7 +717,23 @@ export default function CommentModalpost() {
         </div>
       </div>
 
-      {/* 🔥 FIX 2: STRUKTUR ACTION SHEET (LAPORKAN KOMENTAR) 🔥 */}
+      {/* 🔥 FIX 3: ACTION SHEET DESAIN NETRAL (Sesuai Tema) 🔥 */}
+      <style>{`
+        /* Timpa warna bawaan tombol supaya ngikutin warna standar lu (Teks putih/hitam, gak warna-warni) */
+        .c-action-btn.danger {
+          color: var(--text-main) !important;
+          background: transparent !important;
+          border-bottom: 1px solid var(--border-card) !important;
+        }
+        .c-action-btn.danger .material-icons { color: var(--text-main) !important; }
+        
+        .c-action-btn.warning {
+          color: var(--text-main) !important;
+          background: transparent !important;
+        }
+        .c-action-btn.warning .material-icons { color: var(--text-main) !important; }
+      `}</style>
+      
       <div className={`c-action-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)}></div>
       <div className={`c-action-sheet ${isActionSheetOpen ? 'open' : ''}`}>
         <div className="c-drag-handle"></div>

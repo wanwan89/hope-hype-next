@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT ANIMASI
+import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * IMPORT SEMUA MODAL SECARA GLOBAL
@@ -21,24 +21,37 @@ declare global {
     closePostOptions?: () => void;
     sharePost?: (postId: string) => void;
     confirmDeletePost?: (postId: string) => void;
+    // 🔥 FUNGSI BARU: BISA DIPANGGIL DARI MANA AJA BUAT GANTIIN confirm() BAWAAN ANDROID 🔥
+    showConfirm?: (title: string, message: string, onConfirm: () => void, isDanger?: boolean) => void;
   }
 }
 
 export default function Overlayspost() {
   const [bigImgSrc, setBigImgSrc] = useState<string | null>(null);
 
-  // 🔥 STATE BARU BUAT MODAL HAPUS KARYA 🔥
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  // 🔥 STATE UNIVERSAL CUSTOM CONFIRM MODAL 🔥
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isDanger: boolean;
+    onConfirm: (() => void) | null;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    isDanger: true,
+    onConfirm: null
+  });
 
   useEffect(() => {
-    // --- 1. SENSOR SINYAL BUKA MODAL POST (DIBIARKAN KOSONG DEMI KEAMANAN) ---
+    // --- 1. SENSOR SINYAL BUKA MODAL POST ---
     const handleOpenPost = () => {
       console.log("Sinyal Open Post diterima! Arahkan ke /create lewat router di tempat lain.");
     };
     window.addEventListener('openPostModal', handleOpenPost);
 
-    // --- 2. TOAST NOTIFIKASI (GLOBAL UTILS) ---
+    // --- 2. TOAST NOTIFIKASI ---
     window.showNotif = (msg: string, type: string = "info") => {
       const container = document.getElementById("toast");
       if (!container) return;
@@ -112,7 +125,6 @@ export default function Overlayspost() {
     // --- 5. HUBUNGKAN KE GLOBAL SHARE MODAL ---
     window.sharePost = (postId: string) => {
       const url = window.location.origin + '/post?id=' + postId;
-      
       if (window.closePostOptions) window.closePostOptions();
 
       if (window.openGlobalShare) {
@@ -128,11 +140,31 @@ export default function Overlayspost() {
       }
     };
 
-    // 🔥 FIX: BUKA MODAL CUSTOM KITA, JANGAN PAKE WINDOW.CONFIRM LAGI 🔥
+    // 🔥 6. DAFTARIN FUNGSI CUSTOM CONFIRM UNIVERSAL 🔥
+    window.showConfirm = (title, message, onConfirm, isDanger = true) => {
+      setConfirmConfig({ isOpen: true, title, message, onConfirm, isDanger });
+    };
+
+    // 🔥 7. UBAH LOGIKA DELETE POST PAKAI CUSTOM CONFIRM 🔥
     window.confirmDeletePost = (postId: string) => {
       if (window.closePostOptions) window.closePostOptions();
-      setDeleteTargetId(postId);
-      setIsDeleteModalOpen(true);
+      
+      window.showConfirm(
+        "Hapus Permanen?", 
+        "Karya ini bakal hilang selamanya dari profil lu dan gak bisa dibalikin lagi.",
+        async () => {
+          try {
+            const { error } = await supabase.from("posts").delete().eq("id", postId);
+            if (error) throw error;
+            
+            if (window.showNotif) window.showNotif("Berhasil dihapus!", "success");
+            setTimeout(() => location.reload(), 1000);
+          } catch (err: any) {
+            if (window.showNotif) window.showNotif(err.message, "error");
+          }
+        },
+        true // True karena ini aksi berbahaya (merah)
+      );
     };
 
     return () => {
@@ -150,24 +182,11 @@ export default function Overlayspost() {
     }, 300);
   };
 
-  // 🔥 FUNGSI EKSEKUSI HAPUS KE SUPABASE 🔥
-  const executeDelete = async () => {
-    if (!deleteTargetId) return;
-    try {
-      const { error } = await supabase.from("posts").delete().eq("id", deleteTargetId);
-      if (error) throw error;
-      
-      if (window.showNotif) window.showNotif("Berhasil dihapus!", "success");
-      
-      setIsDeleteModalOpen(false);
-      setDeleteTargetId(null);
-      
-      setTimeout(() => location.reload(), 1000);
-    } catch (err: any) {
-      if (window.showNotif) window.showNotif(err.message, "error");
-      setIsDeleteModalOpen(false);
-      setDeleteTargetId(null);
+  const executeConfirmAction = () => {
+    if (confirmConfig.onConfirm) {
+      confirmConfig.onConfirm();
     }
+    setConfirmConfig(prev => ({ ...prev, isOpen: false }));
   };
 
   return (
@@ -211,16 +230,16 @@ export default function Overlayspost() {
         </div>
       </div>
 
-      {/* 🔥 UI MODAL HAPUS PERMANEN (CUSTOM) 🔥 */}
+      {/* 🔥 UI MODAL KONFIRMASI CUSTOM UNIVERSAL 🔥 */}
       <AnimatePresence>
-        {isDeleteModalOpen && (
+        {confirmConfig.isOpen && (
           <div 
             style={{
               position: 'fixed', inset: 0, zIndex: 999999,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(5px)'
             }}
-            onClick={() => setIsDeleteModalOpen(false)} 
+            onClick={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))} 
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -228,53 +247,60 @@ export default function Overlayspost() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()} 
               style={{
-                background: 'var(--tg-bg, #1a1d21)',
-                border: '1px solid var(--tg-border, #2a2d31)',
-                borderRadius: '20px',
+                background: 'var(--bg-secondary, #1a1d21)',
+                border: '1px solid var(--border-card, #2a2d31)',
+                borderRadius: '24px',
                 padding: '24px',
-                width: '90%',
+                width: '85%',
                 maxWidth: '320px',
                 textAlign: 'center',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+                boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
               }}
             >
+              {/* Ikon Dinamis (Merah kalo danger, Biru kalo info) */}
               <div style={{
-                width: '56px', height: '56px', borderRadius: '50%',
-                background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757',
+                width: '64px', height: '64px', borderRadius: '50%',
+                background: confirmConfig.isDanger ? 'rgba(255, 71, 87, 0.1)' : 'rgba(31, 60, 255, 0.1)', 
+                color: confirmConfig.isDanger ? '#ff4757' : '#1f3cff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 margin: '0 auto 16px'
               }}>
-                <span className="material-icons" style={{ fontSize: '28px' }}>delete_forever</span>
+                <span className="material-icons" style={{ fontSize: '32px' }}>
+                  {confirmConfig.isDanger ? 'delete_forever' : 'help_outline'}
+                </span>
               </div>
               
-              <h3 style={{ color: 'white', margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>
-                Hapus Permanen?
+              <h3 style={{ color: 'var(--text-main, white)', margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800' }}>
+                {confirmConfig.title}
               </h3>
-              <p style={{ color: '#9ca3af', fontSize: '13px', margin: '0 0 24px 0', lineHeight: '1.5' }}>
-                Karya ini bakal hilang selamanya dari profil lu dan gak bisa dibalikin lagi.
+              <p style={{ color: 'var(--text-muted, #9ca3af)', fontSize: '13.5px', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+                {confirmConfig.message}
               </p>
               
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button 
-                  onClick={() => setIsDeleteModalOpen(false)}
+                  onClick={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
                   style={{
-                    flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
-                    background: 'var(--tg-bg-secondary, #2a2d31)', color: 'white',
-                    fontWeight: '600', cursor: 'pointer'
+                    flex: 1, padding: '14px', borderRadius: '14px', border: 'none',
+                    background: 'var(--bg-input, #2a2d31)', color: 'var(--text-main, white)',
+                    fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: '0.2s'
                   }}
+                  onActive={(e: any) => e.target.style.transform = 'scale(0.95)'}
                 >
                   Batal
                 </button>
                 <button 
-                  onClick={executeDelete}
+                  onClick={executeConfirmAction}
                   style={{
-                    flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
-                    background: '#ff4757', color: 'white',
-                    fontWeight: '600', cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
+                    flex: 1, padding: '14px', borderRadius: '14px', border: 'none',
+                    background: confirmConfig.isDanger ? '#ff4757' : '#1f3cff', 
+                    color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
+                    boxShadow: confirmConfig.isDanger ? '0 4px 15px rgba(255, 71, 87, 0.3)' : '0 4px 15px rgba(31, 60, 255, 0.3)',
+                    transition: '0.2s'
                   }}
+                  onActive={(e: any) => e.target.style.transform = 'scale(0.95)'}
                 >
-                  Ya, Hapus
+                  Ya, Lanjutkan
                 </button>
               </div>
             </motion.div>

@@ -6,7 +6,7 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
 import { sendPushAndAppNotif } from '@/lib/notif'; 
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 IMPORT FRAMER MOTION
+import { motion, AnimatePresence } from 'framer-motion'; 
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -25,14 +25,13 @@ const getWatermarkedUrl = (originalUrl: string, username: string, isVideo: boole
   const cleanUsername = encodeURIComponent(username);
   const logoId = "logo_hope"; 
   const outroId = "outro_hope"; 
-  const movingLogoGifId = "logo_moving_hope"; // 🔥 NAMA FILE GIF LU DI CLOUDINARY
+  const movingLogoGifId = "logo_moving_hope"; 
 
   if (isVideo) {
     const movingOverlay = `l_video:${movingLogoGifId},w_0.3,c_fit,so_0,eo_100p,g_center`;
     const spliceTransform = `l_video:${outroId}/c_pad,w_1.0,h_1.0,fl_relative,b_black/l_text:Arial_30_bold:@${cleanUsername}/co_white,g_center,y_60/fl_layer_apply/fl_splice`;
     return originalUrl.replace('/upload/', `/upload/${movingOverlay}/${spliceTransform}/fl_attachment:HopeHype_Video`);
   } else {
-    // 🔥 INI YANG NGUBAH FOTO JADI GIF BERGERAK 🔥
     const convertToGif = "f_gif,du_3"; 
     const movingOverlayOnImage = `l_${movingLogoGifId},w_0.3,c_fit,g_center`;
     return originalUrl.replace('/upload/', `/upload/${convertToGif}/${movingOverlayOnImage}/fl_attachment:HopeHype_Image`);
@@ -77,7 +76,6 @@ export default function Gallerypost() {
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
 
-  // 🔥 STATE UNTUK OPSI POSTINGAN & DOWNLOAD 🔥
   const [optionsModal, setOptionsModal] = useState<{isOpen: boolean, postId: string, isOwner: boolean, creatorId: string, url: string, isVideo: boolean, username: string} | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -239,11 +237,10 @@ export default function Gallerypost() {
     }
   };
 
-  // 🔥 EKSEKUSI DOWNLOAD 🔥
   const executeDownload = async () => {
     if (!optionsModal) return;
     setIsDownloading(true);
-    setOptionsModal(null); // Tutup popup biar fokus ke loading bar
+    setOptionsModal(null); 
 
     try {
       const watermarkedUrl = getWatermarkedUrl(optionsModal.url, optionsModal.username, optionsModal.isVideo);
@@ -269,9 +266,16 @@ export default function Gallerypost() {
     }
   };
 
-  // 🔥 FUNGSI HAPUS POSTINGAN 🔥
   const handleDeletePost = async () => {
     if (!optionsModal || !optionsModal.isOwner) return;
+    // Pakai custom confirm buatan lu kalau udah ditaruh di Overlays, 
+    // tapi ini gue amanin tetep manggil window fungsi dulu
+    if (window.confirmDeletePost) {
+      window.confirmDeletePost(optionsModal.postId);
+      setOptionsModal(null);
+      return;
+    }
+
     if (confirm("Yakin ingin menghapus postingan ini?")) {
       try {
         await supabase.from("posts").delete().eq("id", optionsModal.postId);
@@ -672,6 +676,7 @@ export default function Gallerypost() {
     } catch (err) { console.error(err); }
   };
 
+  // 🔥 FIX RUTING HASHTAG KE HALAMAN /search 🔥
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(@\w+|#\w+)/g); 
@@ -689,7 +694,8 @@ export default function Gallerypost() {
             key={i} 
             onClick={(e) => {
               e.stopPropagation();
-              router.push(`/?search=${encodeURIComponent(part)}`);
+              // Arahin langsung ke halaman search dengan bawa query tag-nya
+              router.push(`/search?q=${encodeURIComponent(part)}`);
             }} 
             style={{ color: 'var(--text-muted, #8696a0)', fontWeight: 400, cursor: 'pointer' }}
           >
@@ -728,7 +734,6 @@ export default function Gallerypost() {
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
       `}</style>
 
-      {/* 🔥 PROGRESS BAR DOWNLOAD (DI ATAS NAVBAR) 🔥 */}
       {isDownloading && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.1)', zIndex: 999999 }}>
           <motion.div 
@@ -740,7 +745,6 @@ export default function Gallerypost() {
         </div>
       )}
 
-      {/* 🔥 MODAL SLIDE-UP OPSI POSTINGAN 🔥 */}
       <AnimatePresence>
         {optionsModal && (
           <>
@@ -913,7 +917,6 @@ export default function Gallerypost() {
                           </h2>
                           {renderFollowButton(post.creator_id)}
                         </div>
-                        {/* 🔥 TOMBOL OPSI MEMANGGIL MODAL KITA 🔥 */}
                         <button 
                           className="options-btn btn-press" 
                           aria-label="Opsi Postingan" 
@@ -949,7 +952,6 @@ export default function Gallerypost() {
                           </span>
                         </div>
                       </div>
-                      {/* 🔥 TOMBOL OPSI MEMANGGIL MODAL KITA 🔥 */}
                       <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openOptionsModal(post, isOwner); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
