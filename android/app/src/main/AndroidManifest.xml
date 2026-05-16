@@ -1,31 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 🔥 xmlns:tools tetap wajib ada untuk menghapus service yang bentrok 🔥 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 1. IZIN DASAR & INTERNET -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- 2. IZIN NOTIFIKASI (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- 3. IZIN MICROPHONE (Wajib buat LiveKit & VN) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- 4. IZIN BACKGROUND SERVICE -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
 
-    <!-- 5. IZIN MEDIA & GALERI -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-    <!-- 6. IZIN MEDIA (Lama) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
@@ -62,18 +55,17 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- 🔥 TENDANG SERVICE BAWAAN CAPACITOR PUSH 🔥 -->
-        <!-- Ini tetap diperlukan agar plugin Push lama tidak ikut campur -->
         <service 
             android:name="com.capacitorjs.plugins.pushnotifications.MessagingService" 
             tools:node="remove" />
 
-        <!-- 🔥 SERVICE CUSTOM & RECEIVER LAMA DIHAPUS TOTAL 🔥 -->
-        <!-- Karena kita pakai OneSignal, kita tidak butuh deklarasi service manual di sini lagi -->
-
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="high_importance_channel" />
+
+        <meta-data 
+            android:name="com.onesignal.NotificationAccentColor.DEFAULT" 
+            android:value="FFFFFFFF" />
 
     </application>
 </manifest>
