@@ -27,14 +27,15 @@ export default function CustomSplash() {
             position: 'fixed',
             inset: 0,
             zIndex: 9999999, // Harus paling atas nutupin semuanya
-            background: '#FFFFFF', // 🔥 Background diubah jadi Putih Solid
+            background: '#FFFFFF', // 🔥 Background Putih Solid
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            gap: '20px' // Menambahkan jarak antar elemen agar rapi
           }}
         >
-          {/* 🔥 LOGO PNG LU 🔥 */}
+          {/* 🔥 LOGO PNG (TANPA BAYANGAN) 🔥 */}
           <motion.img
             // Pastiin URL ini bener ngarah ke lokasi gambar hope_splash.png lu
             src="/hope_splash.png" 
@@ -46,27 +47,26 @@ export default function CustomSplash() {
               width: '120px', 
               height: '120px',
               objectFit: 'contain',
-              marginBottom: '20px',
-              // Drop shadow tipis biar logonya agak "ngambang" di background putih
-              filter: 'drop-shadow(0px 10px 20px rgba(31, 60, 255, 0.15))' 
+              // filter: 'drop-shadow(0px 10px 20px rgba(31, 60, 255, 0.15))' // 🔥 Bayangan DIHAPUS
             }}
           />
 
-          {/* Animasi Teks Tengah */}
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
+          {/* 🔥 EFEK LOADING (SPINNER) 🔥 */}
+          <motion.div
             style={{
-              color: '#121212', // 🔥 Teks dibikin gelap karena background putih
-              fontSize: '26px',
-              fontWeight: 800,
-              letterSpacing: '1px',
-              margin: 0
+              width: '30px',
+              height: '30px',
+              border: '4px solid rgba(31, 60, 255, 0.2)', // Warna latar spinner samar
+              borderTop: '4px solid #1f3cff', // Warna spinner utama biru khas lu
+              borderRadius: '50%'
             }}
-          >
-            HopeHype
-          </motion.h1>
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: 1,
+              repeat: Infinity,
+              ease: 'linear' // Putaran stabil dan halus
+            }}
+          />
 
           {/* 🔥 TULISAN HYPECO DI PALING BAWAH 🔥 */}
           <motion.div
