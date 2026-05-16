@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Hypecreative</string>
-    <string name="title_activity_main">Hypecreative</string>
+    <string name="app_name">Hypeco</string>
+    <string name="title_activity_main">Hypeco</string>
     <string name="package_name">com.hopecreative.app</string>
     <string name="custom_url_scheme">com.hopecreative.app</string>
 </resources>

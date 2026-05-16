@@ -38,6 +38,30 @@ const getWatermarkedUrl = (originalUrl: string, username: string, isVideo: boole
   }
 };
 
+// 🔥 FUNGSI FORMAT WAKTU RELATIF 🔥
+const formatRelativeTime = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "Baru saja";
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} menit lalu`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} jam lalu`;
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} hari lalu`;
+  
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) return `${diffInWeeks} minggu lalu`;
+
+  // Kalau lebih dari sebulan, tampilin format lengkap (misal: 11 Agustus 2026)
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
 export default function Gallerypost() {
   const { t, i18n } = useTranslation();
   const router = useRouter(); 
@@ -268,8 +292,7 @@ export default function Gallerypost() {
 
   const handleDeletePost = async () => {
     if (!optionsModal || !optionsModal.isOwner) return;
-    // Pakai custom confirm buatan lu kalau udah ditaruh di Overlays, 
-    // tapi ini gue amanin tetep manggil window fungsi dulu
+    
     if (window.confirmDeletePost) {
       window.confirmDeletePost(optionsModal.postId);
       setOptionsModal(null);
@@ -676,7 +699,6 @@ export default function Gallerypost() {
     } catch (err) { console.error(err); }
   };
 
-  // 🔥 FIX RUTING HASHTAG KE HALAMAN /search 🔥
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(@\w+|#\w+)/g); 
@@ -694,7 +716,6 @@ export default function Gallerypost() {
             key={i} 
             onClick={(e) => {
               e.stopPropagation();
-              // Arahin langsung ke halaman search dengan bawa query tag-nya
               router.push(`/search?q=${encodeURIComponent(part)}`);
             }} 
             style={{ color: 'var(--text-muted, #8696a0)', fontWeight: 400, cursor: 'pointer' }}
@@ -765,18 +786,26 @@ export default function Gallerypost() {
             >
               <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '0 auto 20px' }} />
               
+              {/* 🔥 TOMBOL BAGIKAN MUNCUL DI SINI 🔥 */}
+              <button onClick={() => {
+                if (window.sharePost) window.sharePost(optionsModal.postId);
+                setOptionsModal(null);
+              }} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+                <span className="material-icons">share</span> Bagikan Karya
+              </button>
+
               {optionsModal.url && (
-                <button onClick={executeDownload} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <button onClick={executeDownload} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
                   <span className="material-icons">download</span> Unduh
                 </button>
               )}
               
               {optionsModal.isOwner ? (
-                 <button onClick={handleDeletePost} style={{ width: '100%', padding: '16px', background: 'rgba(255,71,87,0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                 <button onClick={handleDeletePost} style={{ width: '100%', padding: '16px', background: 'rgba(255,71,87,0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
                    <span className="material-icons">delete</span> Hapus Postingan
                  </button>
               ) : (
-                 <button onClick={() => { setOptionsModal(null); showNotif("Laporan dikirim untuk ditinjau.", "info"); }} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                 <button onClick={() => { setOptionsModal(null); showNotif("Laporan dikirim untuk ditinjau.", "info"); }} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
                    <span className="material-icons">flag</span> Laporkan
                  </button>
               )}
@@ -809,7 +838,9 @@ export default function Gallerypost() {
               optimizedAvatar = optimizedAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
             }
 
-            const formattedDate = new Date(post.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short" });
+            // 🔥 MENGGUNAKAN FORMAT WAKTU RELATIF BARU 🔥
+            const formattedDate = formatRelativeTime(post.created_at);
+            
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
             const photoList = post.image_url ? post.image_url.split(',') : [];
@@ -930,7 +961,7 @@ export default function Gallerypost() {
                         {renderBioWithMentions(post.bio?.trim())}
                       </p>
 
-                      <div className="post-date-wrapper">{t('uploaded_on')} {formattedDate}</div>
+                      <div className="post-date-wrapper">{formattedDate}</div>
                       <div className="actions">
                         <a href={`/data?id=${post.creator_id}`} className="primary btn-press" style={{ display: 'inline-block' }}>{t('view_detail')}</a>
                         {renderEngagementButtons(post, postIdStr)}

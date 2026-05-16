@@ -139,7 +139,7 @@ export default function HypetalkPage() {
             let currentUnread = unreadMap.get(p.id) || 0;
 
             if (lastMsg.user_id === userId) {
-              msgPreview = `${msgPreview}`; // 🔥 DIBUANG KATA "Anda: " BIAR DIGANTI ICON SVG
+              msgPreview = `${msgPreview}`; 
               currentUnread = 0;
             }
 
@@ -150,8 +150,8 @@ export default function HypetalkPage() {
               avatar: p.avatar_url,
               role: p.role,
               preview: msgPreview,
-              lastMsgUserId: lastMsg.user_id, // 🔥 PENTING UNTUK CEK SIAPA YANG KIRIM
-              lastMsgStatus: lastMsg.status, // 🔥 PENTING UNTUK CEK STATUS READ
+              lastMsgUserId: lastMsg.user_id, 
+              lastMsgStatus: lastMsg.status, 
               time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               sortTime: new Date(lastMsg.created_at).getTime(),
               unread: currentUnread
@@ -395,7 +395,6 @@ export default function HypetalkPage() {
 
   const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
 
-  // 🔥 FUNGSI RENDER ICON TICK (READ RECEIPT) 🔥
   const renderReadReceipt = (chat: any) => {
     if (!currentUser || chat.lastMsgUserId !== currentUser.id || chat.type !== 'private') return null;
 
@@ -530,6 +529,18 @@ export default function HypetalkPage() {
         .req-text h4 { margin: 0; font-size: 14px; color: var(--text-main); font-weight: 700; }
         .req-text p { margin: 0; font-size: 12px; color: var(--text-muted); }
         .message-request-banner .arrow { color: var(--text-muted); }
+
+        /* 🔥 CSS SKELETON LOADER 🔥 */
+        @keyframes skeletonPulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 0.3; }
+          100% { opacity: 0.6; }
+        }
+        .skeleton-box {
+          background-color: var(--border-card, #2a2d31);
+          border-radius: 4px;
+          animation: skeletonPulse 1.5s infinite ease-in-out;
+        }
       `}</style>
 
       <header className="tg-header">
@@ -565,9 +576,21 @@ export default function HypetalkPage() {
         )}
 
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: '14px', fontStyle: 'italic' }}>
-            Memuat obrolan...
-          </div>
+          /* 🔥 SKELETON UI LOADING 🔥 */
+          <>
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
+                <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }}></div>
+                <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="skeleton-box" style={{ width: '40%', height: '16px' }}></div>
+                    <div className="skeleton-box" style={{ width: '30px', height: '12px' }}></div>
+                  </div>
+                  <div className="skeleton-box" style={{ width: '70%', height: '14px' }}></div>
+                </div>
+              </div>
+            ))}
+          </>
         ) : (
           filteredChats.map(chat => (
             <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
@@ -588,7 +611,6 @@ export default function HypetalkPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div className="tg-preview-container" style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
                     
-                    {/* 🔥 DI SINI ICON TICK DITAMPILKAN 🔥 */}
                     {!typingStatus[chat.id] && renderReadReceipt(chat)}
 
                     <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#1DA1F2' : 'var(--text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

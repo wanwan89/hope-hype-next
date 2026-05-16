@@ -12,6 +12,7 @@ import Script from 'next/script';
 // 🔥 IMPORT CAPACITOR (LIVEKIT UDAH DIHAPUS DARI SINI BIAR GAK BENTROK SAMA CHATAREA) 🔥
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app'; 
+import { SplashScreen } from '@capacitor/splash-screen'; // 🔥 IMPORT PLUGIN SPLASH SCREEN NATIVE
 
 // 🔥 IMPORT TOP LOADER 🔥
 import NextTopLoader from 'nextjs-toploader';
@@ -26,7 +27,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
 // 🔥 IMPORT SPLASH SCREEN CUSTOM KITA 🔥
-import CustomSplash from '@/components/CustomSplash';
+import CustomSplash from '@/components/ui/CustomSplash';
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -45,6 +46,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const onesignalIdRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
+
+  // --- 🔥 TENDANG SPLASH SCREEN BAWAAN HP 🔥 ---
+  useEffect(() => {
+    const hideNativeSplash = async () => {
+      try {
+        const platform = Capacitor.getPlatform();
+        if (platform === 'android' || platform === 'ios') {
+          // Langsung sembunyikan splash bawaan pas web kita siap render!
+          await SplashScreen.hide();
+        }
+      } catch (e) {
+        console.warn("Splash screen native tidak aktif / tidak ditemukan", e);
+      }
+    };
+
+    hideNativeSplash();
+  }, []);
 
   // --- DETEKSI HALAMAN ---
   const isVoicePage = pathname?.includes('/voice');
