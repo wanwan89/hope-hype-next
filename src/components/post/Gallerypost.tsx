@@ -268,6 +268,8 @@ export default function Gallerypost() {
 
   const handleDeletePost = async () => {
     if (!optionsModal || !optionsModal.isOwner) return;
+    // Pakai custom confirm buatan lu kalau udah ditaruh di Overlays, 
+    // tapi ini gue amanin tetep manggil window fungsi dulu
     if (window.confirmDeletePost) {
       window.confirmDeletePost(optionsModal.postId);
       setOptionsModal(null);
@@ -284,29 +286,6 @@ export default function Gallerypost() {
       }
       setOptionsModal(null);
     }
-  };
-
-  // Fungsi Bagikan Postingan
-  const handleSharePost = async () => {
-    if (!optionsModal) return;
-    const shareUrl = `${window.location.origin}/#post-${optionsModal.postId}`;
-    const shareTitle = `Postingan dari @${optionsModal.username}`;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: shareTitle,
-          text: 'Lihat postingan ini di HopeHype!',
-          url: shareUrl
-        });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        showNotif("Tautan disalin ke papan klip!", "success");
-      }
-    } catch (err) {
-      console.error("Gagal membagikan:", err);
-    }
-    setOptionsModal(null);
   };
 
   const openOptionsModal = (post: any, isOwner: boolean) => {
@@ -697,6 +676,7 @@ export default function Gallerypost() {
     } catch (err) { console.error(err); }
   };
 
+  // 🔥 FIX RUTING HASHTAG KE HALAMAN /search 🔥
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(@\w+|#\w+)/g); 
@@ -714,6 +694,7 @@ export default function Gallerypost() {
             key={i} 
             onClick={(e) => {
               e.stopPropagation();
+              // Arahin langsung ke halaman search dengan bawa query tag-nya
               router.push(`/search?q=${encodeURIComponent(part)}`);
             }} 
             style={{ color: 'var(--text-muted, #8696a0)', fontWeight: 400, cursor: 'pointer' }}
@@ -784,11 +765,6 @@ export default function Gallerypost() {
             >
               <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '0 auto 20px' }} />
               
-              {/* TOMBOL BAGIKAN DITAMBAHKAN DI SINI */}
-              <button onClick={handleSharePost} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <span className="material-icons">share</span> Bagikan Postingan
-              </button>
-
               {optionsModal.url && (
                 <button onClick={executeDownload} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <span className="material-icons">download</span> Unduh
@@ -833,16 +809,7 @@ export default function Gallerypost() {
               optimizedAvatar = optimizedAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
             }
 
-            // PERUBAHAN TANGGAL MENJADI ADA JAM MENIT DETIK
-            const formattedDate = new Date(post.created_at).toLocaleString(i18n.language, { 
-                day: "numeric", 
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit"
-            });
-            
+            const formattedDate = new Date(post.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short" });
             const isOwner = currentUser && currentUser.id === post.creator_id;
             const postIdStr = String(post.id);
             const photoList = post.image_url ? post.image_url.split(',') : [];

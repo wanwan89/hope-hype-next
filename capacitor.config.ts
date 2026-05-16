@@ -2,20 +2,19 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.hopecreative.app',
-  appName: 'Hypecreative', 
+  appName: 'Hypeco', 
   webDir: 'out',       
   bundledWebRuntime: false,
-  // 🔥 TAMBAHKAN BLOK PLUGINS DI BAWAH INI 🔥
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 0, // 🔥 Ubah jadi 0 biar splash bawaan mati, diganti splash kodingan
       backgroundColor: "#1a1a1a",
-      androidSplashResourceName: "splash", // Nama file splash screen lu
+      androidSplashResourceName: "splash",
       showSpinner: false,
     },
     LocalNotifications: {
-      smallIcon: "ic_stat_hope", // Nama file ikon notif lu (tanpa .png)
-      iconColor: "#1f3cff",      // Warna biru khas Hope Hype
+      smallIcon: "ic_stat_onesignal_default", // 🔥 Nama icon putih transparan
+      iconColor: "#ffffff",                   // 🔥 Warna icon putih
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]

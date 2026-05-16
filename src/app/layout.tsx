@@ -25,6 +25,9 @@ import Navbar from "@/components/layout/Navbar";
 import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
+// 🔥 IMPORT SPLASH SCREEN CUSTOM KITA 🔥
+import CustomSplash from '@/components/CustomSplash';
+
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -388,6 +391,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
         
+        {/* 🔥 INI KOMPONEN SPLASH SCREEN KITA 🔥 */}
+        <CustomSplash />
+
         {/* 🔥 INI DIA PROGRESS BAR TOP LOADER-NYA 🔥 */}
         <NextTopLoader 
           color="#1f3cff"
