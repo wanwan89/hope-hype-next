@@ -26,7 +26,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
 // 🔥 PATH IMPORT SESUAI LOKASI src/Components (Pake 'C' Gede) 🔥
-import CustomSplash from '@/Components/CustomSplash';
+import CustomSplash from '@/components/CustomSplash';
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
