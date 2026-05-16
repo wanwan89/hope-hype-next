@@ -24,7 +24,8 @@ import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
 import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
-import Navbar = from "@/components/layout/Navbar"; 
+import Navbar from "@/components/layout/Navbar"; 
+
 import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
