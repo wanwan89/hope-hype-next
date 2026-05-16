@@ -7,14 +7,13 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   plugins: {
     SplashScreen: {
-      launchShowDuration: 0, // 🔥 Ubah jadi 0 biar splash bawaan mati, diganti splash kodingan
-      backgroundColor: "#1a1a1a",
-      androidSplashResourceName: "splash",
+      launchShowDuration: 0, // Sudah benar 0 biar langsung masuk ke tsx
+      backgroundColor: "#ffffff", // Diubah jadi putih sesuai maumu
       showSpinner: false,
     },
     LocalNotifications: {
-      smallIcon: "ic_stat_onesignal_default", // 🔥 Nama icon putih transparan
-      iconColor: "#ffffff",                   // 🔥 Warna icon putih
+      smallIcon: "ic_stat_onesignal_default", 
+      iconColor: "#ffffff",                   
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
