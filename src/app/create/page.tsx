@@ -45,7 +45,6 @@ export default function CreatePostPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null); 
 
-  // 🔥 FIX: Balikin State buat Cropper Foto 🔥
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -62,12 +61,34 @@ export default function CreatePostPage() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
-  // Status awal form
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
+
+  // 🔥 STATE BARU UNTUK FITUR IKLAN 🔥
+  const [isBusinessUser, setIsBusinessUser] = useState(false);
+  const [isAd, setIsAd] = useState(false);
+
+  // 🔥 EFEK UNTUK CEK STATUS AKUN BISNIS 🔥
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_business')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (data && data.is_business) {
+          setIsBusinessUser(true);
+        }
+      }
+    };
+    checkUserStatus();
+  }, []);
 
   useEffect(() => {
     if (showPopup === 'none') return;
@@ -405,6 +426,7 @@ export default function CreatePostPage() {
 
       let newPostId: string | null = null;
 
+      // 🔥 UPDATE PAYLOAD: MENGIRIM STATUS IKLAN (is_ad) KE DATABASE 🔥
       if (destination === "story") {
         await supabase.from("stories").insert({
           creator_id: myUserId,
@@ -414,7 +436,8 @@ export default function CreatePostPage() {
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
-          visibility: visibility
+          visibility: visibility,
+          is_ad: isBusinessUser ? isAd : false // Set status iklan
         });
       } else {
         const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
@@ -428,7 +451,8 @@ export default function CreatePostPage() {
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
-          status: "approved" 
+          status: "approved",
+          is_ad: isBusinessUser ? isAd : false // Set status iklan
         }).select('id').single();
         
         if (newPost) newPostId = newPost.id;
@@ -531,7 +555,6 @@ export default function CreatePostPage() {
 
       {step === 'edit' && renderEditorScreen()}
 
-      {/* 🔥 MODAL SLIDE-UP PENCARIAN MUSIK 🔥 */}
       <AnimatePresence>
         {isMusicSheetOpen && (
           <>
@@ -549,7 +572,6 @@ export default function CreatePostPage() {
                 borderTopRightRadius: '24px', zIndex: 10000, display: 'flex', flexDirection: 'column' 
               }}
             >
-               {/* Header Handle */}
                <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '15px auto 10px' }} />
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px 15px', borderBottom: '1px solid var(--border-card)' }}>
                  <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '18px' }}>Tambahkan Musik</h3>
@@ -558,7 +580,6 @@ export default function CreatePostPage() {
                  </button>
                </div>
                
-               {/* Input Cari Musik */}
                <div style={{ padding: '15px 20px' }}>
                   <div style={{ position: 'relative' }}>
                     <span className="material-icons" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>search</span>
@@ -573,7 +594,6 @@ export default function CreatePostPage() {
                   </div>
                </div>
 
-               {/* Hasil Pencarian */}
                <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
                   {isSearching ? (
                     <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)' }}>
@@ -598,7 +618,7 @@ export default function CreatePostPage() {
                             onClick={() => {
                               setSelectedMusic(song);
                               if (audioRef.current) { audioRef.current.pause(); setPlayingUrl(null); }
-                              setIsMusicSheetOpen(false); // Tutup slide-up
+                              setIsMusicSheetOpen(false); 
                             }} 
                             style={{ background: '#1f3cff', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '12px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', marginLeft: '10px' }}
                           >
@@ -696,7 +716,6 @@ export default function CreatePostPage() {
                 </AnimatePresence>
               </div>
 
-              {/* 🔥 TOMBOL BUKA SLIDE-UP MUSIK 🔥 */}
               <div 
                 className="music-picker-btn" 
                 onClick={() => setIsMusicSheetOpen(true)}
@@ -731,7 +750,41 @@ export default function CreatePostPage() {
                 )}
               </div>
 
-              {/* 🔥 TOMBOL SUBMIT DENGAN ANIMASI GELOMBANG AIR SMOOTH 🔥 */}
+              {/* 🔥 TOGGLE IKLAN (HANYA MUNCUL JIKA AKUN BISNIS) 🔥 */}
+              {isBusinessUser && (
+                <div style={{ marginTop: '20px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', padding: '15px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ color: 'var(--text-main)', fontSize: '15px', fontWeight: '600' }}>
+                      Tandai sebagai Iklan
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>
+                      Beri tahu audiens bahwa ini adalah konten promosi / bersponsor
+                    </div>
+                  </div>
+                  
+                  <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', flexShrink: 0 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={isAd} 
+                      onChange={(e) => setIsAd(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }} 
+                    />
+                    <span style={{
+                      position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: isAd ? '#1f3cff' : 'var(--border-card)',
+                      transition: '.3s ease', borderRadius: '34px'
+                    }}>
+                      <span style={{
+                        position: 'absolute', content: '""', height: '18px', width: '18px',
+                        left: isAd ? '23px' : '3px', bottom: '3px',
+                        backgroundColor: '#ffffff', transition: '.3s ease', borderRadius: '50%',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }} />
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <button 
                 type="submit" 
                 className="post-submit-btn" 
@@ -747,7 +800,7 @@ export default function CreatePostPage() {
                   fontWeight: 800, 
                   cursor: isSubmitting ? 'not-allowed' : 'pointer', 
                   position: 'relative',
-                  overflow: 'hidden', // Super penting biar gelombangnya gak bocor keluar tombol
+                  overflow: 'hidden', 
                   background: isSubmitting ? 'var(--bg-input)' : '#1f3cff',
                   transform: 'translateZ(0)',
                 }}
@@ -755,15 +808,14 @@ export default function CreatePostPage() {
                 {isSubmitting && (
                   <motion.div
                     initial={{ y: "100%" }}
-                    animate={{ y: `${100 - Math.max(uploadProgress, 2)}%` }} // Gerak translasi Y ke atas (smooth)
+                    animate={{ y: `${100 - Math.max(uploadProgress, 2)}%` }} 
                     transition={{ ease: "easeInOut", duration: 0.8 }}
                     style={{
-                      position: 'absolute', top: 0, left: 0, right: 0, height: '150%', // Height dilebihin biar wave gak kepotong
+                      position: 'absolute', top: 0, left: 0, right: 0, height: '150%', 
                       background: '#1f3cff',
                       zIndex: 1
                     }}
                   >
-                    {/* Gelombang Transparan (Belakang) */}
                     <motion.div
                       animate={{ x: ["0%", "-50%"] }}
                       transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
@@ -774,7 +826,6 @@ export default function CreatePostPage() {
                         backgroundRepeat: 'repeat-x'
                       }}
                     />
-                    {/* Gelombang Solid (Depan) */}
                     <motion.div
                       animate={{ x: ["-50%", "0%"] }}
                       transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}

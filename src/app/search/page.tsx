@@ -13,7 +13,6 @@ function SearchContent() {
   const [users, setUsers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   
-  // 🔥 STATE BUAT BOX SEARCH LOKAL DI HEADER 🔥
   const [localQuery, setLocalQuery] = useState(query);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -21,11 +20,9 @@ function SearchContent() {
   const [recommendedPosts, setRecommendedPosts] = useState<any[]>([]);
 
   useEffect(() => {
-    // Sinkronisasi box input kalau URL berubah
     setLocalQuery(query);
   }, [query]);
 
-  // 1. Load User yang lagi login buat fitur Follow
   useEffect(() => {
     const initUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -55,16 +52,17 @@ function SearchContent() {
       // 1. CARI PROFIL & 3 POSTINGAN TERBAIKNYA
       // ==========================================
       if (!isHashtag) {
+        // 🔥 Tambahkan is_private di query
         const { data: userData } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url, bio')
+          .select('id, username, avatar_url, bio, is_private')
           .ilike('username', `%${query}%`)
           .limit(5);
         
         let usersWithPosts = [];
         if (userData && userData.length > 0) {
           const userIds = userData.map(u => u.id);
-          // Ambil postingan dari user-user yang ketemu
+          
           const { data: userPosts } = await supabase
             .from('posts')
             .select('id, creator_id, image_url, video_url')
@@ -72,7 +70,6 @@ function SearchContent() {
             .in('creator_id', userIds)
             .order('created_at', { ascending: false });
 
-          // Gabungin profil dengan 3 postingan terbarunya
           usersWithPosts = userData.map(u => ({
             ...u,
             recentPosts: userPosts ? userPosts.filter(p => p.creator_id === u.id).slice(0, 3) : []
@@ -88,7 +85,7 @@ function SearchContent() {
       // ==========================================
       const { data: postData } = await supabase
         .from('posts')
-        .select('id, image_url, video_url, bio, profiles:creator_id(username)')
+        .select('id, image_url, video_url, bio, profiles:creator_id(username, is_private)')
         .eq('status', 'approved')
         .ilike('bio', `%${query}%`)
         .order('created_at', { ascending: false })
@@ -107,11 +104,10 @@ function SearchContent() {
           .limit(20);
         
         if (recData) {
-          // Acak urutan biar rekomendasinya beda-beda
           setRecommendedPosts(recData.sort(() => Math.random() - 0.5).slice(0, 9)); 
         }
       } else {
-        setRecommendedPosts([]); // Kosongin kalau pencariannya ketemu
+        setRecommendedPosts([]); 
       }
 
     } catch (error) {
@@ -121,29 +117,25 @@ function SearchContent() {
     }
   };
 
-  // 🔥 FUNGSI BUAT NYARI PAS USER TEKAN ENTER DI BOX SEARCH 🔥
   const handleSearchEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && localQuery.trim() !== '') {
       router.push(`/search?q=${encodeURIComponent(localQuery.trim())}`);
     }
   };
 
-  // 🔥 FUNGSI TOMBOL FOLLOW 🔥
   const handleFollowToggle = async (e: any, targetUserId: string) => {
     e.stopPropagation();
     if (!currentUser) return alert("Silakan login untuk mengikuti user.");
-    if (currentUser.id === targetUserId) return; // Ga bisa follow diri sendiri
+    if (currentUser.id === targetUserId) return; 
 
     const isFollowing = followedUsers.has(targetUserId);
 
-    // Update UI langsung (Optimistic)
     setFollowedUsers(prev => {
       const next = new Set(prev);
       isFollowing ? next.delete(targetUserId) : next.add(targetUserId);
       return next;
     });
 
-    // Update ke Database
     if (isFollowing) {
       await supabase.from('followers').delete().match({ follower_id: currentUser.id, following_id: targetUserId });
     } else {
@@ -160,7 +152,6 @@ function SearchContent() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto' }}>
       
-      {/* 🔥 HEADER BARU DENGAN INPUT SEARCH 🔥 */}
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', padding: '12px 20px', borderBottom: '1px solid var(--border-card)', display: 'flex', alignItems: 'center', gap: '15px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
           <span className="material-icons">arrow_back</span>
@@ -185,7 +176,6 @@ function SearchContent() {
 
       <div style={{ padding: '20px' }}>
         
-        {/* 🔥 TEKS HASIL PENCARIAN DIKECILIN DI BAWAH BOX SEARCH 🔥 */}
         {query && !isLoading && (
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
             Hasil pencarian untuk <strong style={{ color: 'var(--text-main)' }}>"{query}"</strong>
@@ -210,17 +200,19 @@ function SearchContent() {
                     return (
                       <div key={user.id} style={{ background: 'var(--bg-card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
                         
-                        {/* Area Profil (Klik foto/nama buat ke profil) */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${user.id}`)}>
                           <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}`} alt="avatar" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '15px' }}>{user.username}</div>
+                            {/* 🔥 ICON PRIVATE DITAMBAHKAN DI SEBELAH NAMA 🔥 */}
+                            <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {user.username}
+                              {user.is_private && <span className="material-icons" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>lock</span>}
+                            </div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                               {user.bio || 'Kreator HypeTalk'}
                             </div>
                           </div>
                           
-                          {/* Tombol Follow */}
                           {!isMe && (
                             <button 
                               onClick={(e) => handleFollowToggle(e, user.id)}
@@ -236,22 +228,29 @@ function SearchContent() {
                           )}
                         </div>
 
-                        {/* Area 3 Postingan Highlight */}
-                        {user.recentPosts?.length > 0 && (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
-                            {user.recentPosts.map((rp: any) => (
-                              <div 
-                                key={rp.id} 
-                                onClick={(e) => { e.stopPropagation(); router.push(`/#post-${rp.id}`); }}
-                                style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-secondary)' }}
-                              >
-                                <img src={getThumbnail(rp)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post" />
-                                {rp.video_url && (
-                                  <span className="material-icons" style={{ position: 'absolute', top: '4px', right: '4px', color: '#fff', fontSize: '16px', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', padding: '2px' }}>play_arrow</span>
-                                )}
-                              </div>
-                            ))}
+                        {/* 🔥 LOGIKA SEMBUNYIKAN POSTINGAN JIKA PRIVATE 🔥 */}
+                        {user.is_private && !isMe ? (
+                          <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-main)', borderRadius: '12px', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border-card)' }}>
+                            <span className="material-icons" style={{ fontSize: '24px', marginBottom: '4px' }}>lock</span>
+                            <div style={{ fontSize: '12px', fontWeight: 600 }}>Akun ini privat</div>
                           </div>
+                        ) : (
+                          user.recentPosts?.length > 0 && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
+                              {user.recentPosts.map((rp: any) => (
+                                <div 
+                                  key={rp.id} 
+                                  onClick={(e) => { e.stopPropagation(); router.push(`/#post-${rp.id}`); }}
+                                  style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-secondary)' }}
+                                >
+                                  <img src={getThumbnail(rp)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post" />
+                                  {rp.video_url && (
+                                    <span className="material-icons" style={{ position: 'absolute', top: '4px', right: '4px', color: '#fff', fontSize: '16px', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', padding: '2px' }}>play_arrow</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )
                         )}
                       </div>
                     );
@@ -323,7 +322,6 @@ function SearchContent() {
   );
 }
 
-// BUNGKUS SUSPENSE BIAR VERCEL GAK ERROR
 export default function SearchPage() {
   return (
     <Suspense fallback={<div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>Memuat halaman pencarian...</div>}>

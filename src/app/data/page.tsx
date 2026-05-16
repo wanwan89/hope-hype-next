@@ -31,6 +31,7 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowedBy, setIsFollowedBy] = useState(false); // 🔥 STATE BARU: Cek apakah di-folback
   const [hasStory, setHasStory] = useState(false); 
   const [storyIdToGo, setStoryIdToGo] = useState<string | null>(null); 
 
@@ -50,7 +51,7 @@ function ProfileContent() {
   const [followList, setFollowList] = useState<any[]>([]);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
 
-  // Form Edit (Ditambah full_name)
+  // Form Edit 
   const [editData, setEditData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', website: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -67,7 +68,6 @@ function ProfileContent() {
   useEffect(() => {
     setIsMounted(true);
     return () => {
-      // Cleanup biar aman saat unmount
       setIsEditModalOpen(false);
       setIsSidebarOpen(false);
       setIsActionSheetOpen(false);
@@ -75,7 +75,6 @@ function ProfileContent() {
   }, []);
 
   useEffect(() => { 
-    // 🔥 FIX: Gunakan variabel isActive biar nge-fetch data aman pas pindah halaman cepet
     let isComponentActive = true;
 
     const initLoad = async () => {
@@ -93,7 +92,9 @@ function ProfileContent() {
     let isComponentActive = true;
 
     if (profile && isMounted && blockStatus === 'none') {
-      if (profile.is_private && myId !== profile.id && !isFollowing) {
+      const isMutual = isFollowing && isFollowedBy; // 🔥 LOGIKA BARU: Harus saling follow
+
+      if (profile.is_private && myId !== profile.id && !isMutual) {
         if (isComponentActive) setPosts([]); 
       } else {
         loadPostsTab(activeTab, isComponentActive); 
@@ -104,7 +105,7 @@ function ProfileContent() {
       isComponentActive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, profile, isMounted, blockStatus, isFollowing]);
+  }, [activeTab, profile, isMounted, blockStatus, isFollowing, isFollowedBy]);
 
   const loadProfile = async (isComponentActive: boolean = true) => {
     try {
@@ -123,7 +124,6 @@ function ProfileContent() {
       if (error || !profData) return;
       if (!isComponentActive) return;
 
-      // Cek Status Blokir
       if (currentUserId && currentUserId !== profData.id) {
         const { data: myBlock } = await supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: profData.id }).maybeSingle();
         if (myBlock && isComponentActive) setBlockStatus('blocked_by_me');
@@ -189,8 +189,13 @@ function ProfileContent() {
       }
 
       if (currentUserId && currentUserId !== targetId) {
+        // Cek apakah KITA mem-follow DIA
         const { data: isF } = await supabase.from('followers').select('id').match({ follower_id: currentUserId, following_id: targetId }).maybeSingle();
         if (isComponentActive) setIsFollowing(!!isF);
+
+        // 🔥 LOGIKA BARU: Cek apakah DIA mem-follow KITA
+        const { data: isFB } = await supabase.from('followers').select('id').match({ follower_id: targetId, following_id: currentUserId }).maybeSingle();
+        if (isComponentActive) setIsFollowedBy(!!isFB);
       }
     } catch (e) {
       console.error("Stats Error:", e);
@@ -383,6 +388,7 @@ function ProfileContent() {
   if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)' }}></div>;
 
   const isMe = myId === profile.id;
+  const isMutual = isFollowing && isFollowedBy;
 
   if (blockStatus === 'blocking_me') {
     return (
@@ -534,7 +540,10 @@ function ProfileContent() {
                     <span className="material-icons" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '4px' }}>chat</span>
                     Chat
                   </button>
-                  <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>{isFollowing ? t('following_btn', 'Mengikuti') : t('follow', 'Ikuti')}</button>
+                  {/* Tampilan tombol berubah jika mutual */}
+                  <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>
+                    {isFollowing ? (isMutual ? 'Berteman' : 'Mengikuti') : t('follow', 'Ikuti')}
+                  </button>
                   <button className="btn-action btn-secondary" onClick={() => setIsActionSheetOpen(true)} style={{ padding: '8px 12px' }}>
                     <span className="material-icons" style={{ fontSize: '18px' }}>more_horiz</span>
                   </button>
@@ -553,7 +562,8 @@ function ProfileContent() {
           )}
         </section>
 
-        {(!profile.is_private || isMe || isFollowing) && (
+        {/* 🔥 TABS MUNCUL KALAU: Bukan private, Diri sendiri, ATAU Mutual (saling follow) */}
+        {(!profile.is_private || isMe || isMutual) && (
           <div className="profile-tabs">
             <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
             <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Suka')}</div>
@@ -567,11 +577,12 @@ function ProfileContent() {
         <div className="post-grid">
            {isLoadingPosts ? (
               Array(9).fill(0).map((_, i) => <div key={i} className="skeleton-grid-item"></div>)
-           ) : profile.is_private && !isFollowing && !isMe ? (
+           ) : profile.is_private && !isMutual && !isMe ? (
+              /* 🔥 INFO JIKA PRIVATE TAPI BELUM MUTUAL 🔥 */
               <div className="no-posts-v2">
                 <div className="no-posts-icon-circle"><span className="material-icons">lock</span></div>
                 <h3>Akun Private</h3>
-                <p>Ikuti akun ini untuk melihat postingan dan karya mereka.</p>
+                <p>Harus saling mengikuti (berteman) untuk melihat postingan dan karya mereka.</p>
               </div>
            ) : posts.length === 0 ? (
               <div className="no-posts-v2">
@@ -584,7 +595,6 @@ function ProfileContent() {
               const allImages = post.image_url ? post.image_url.split(',') : [];
               const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
               
-              // 🔥 DETEKSI POSTINGAN VIDEO 🔥
               const isVideo = !!post.video_url;
 
               return (
@@ -602,7 +612,6 @@ function ProfileContent() {
                             <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           )}
                           
-                          {/* 🔥 IKON INDIKATOR (KANAN ATAS) 🔥 */}
                           {isVideo ? (
                             <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>
                               play_circle_filled
@@ -613,7 +622,6 @@ function ProfileContent() {
                             </span>
                           ) : null}
 
-                          {/* 🔥 IKON VIEW (KIRI BAWAH) 🔥 */}
                           <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
                             <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>
                             {post.views || 0}
@@ -622,11 +630,6 @@ function ProfileContent() {
                     ) : (
                         <div className="grid-no-img">
                           <span className="material-icons">article</span>
-                          {/* Kalo mau tampil juga di grid tanpa gambar, uncomment ini: */}
-                          {/* <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '11px', fontWeight: 'bold' }}>
-                            <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>
-                            {post.views || 0}
-                          </div> */}
                         </div>
                     )}
                   </div>

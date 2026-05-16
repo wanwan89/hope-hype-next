@@ -58,7 +58,6 @@ const formatRelativeTime = (dateString: string) => {
   const diffInWeeks = Math.floor(diffInDays / 7);
   if (diffInWeeks < 4) return `${diffInWeeks} minggu lalu`;
 
-  // Kalau lebih dari sebulan, tampilin format lengkap (misal: 11 Agustus 2026)
   return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
@@ -75,6 +74,10 @@ export default function Gallerypost() {
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
+  
+  // 🔥 STATE BARU: Simpan user yang saling follow (Mutual) 🔥
+  const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
+
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
@@ -83,7 +86,6 @@ export default function Gallerypost() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
-  // Tracking Views 2 Detik
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
@@ -124,7 +126,7 @@ export default function Gallerypost() {
       observer.observe(observerTarget.current);
     }
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, isLoading, page, currentCategory]);
+  }, [hasMore, isLoadingMore, isLoading, page, currentCategory, mutualUsers]);
 
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
@@ -151,11 +153,11 @@ export default function Gallerypost() {
       const newCat = e.detail.category;
       setCurrentCategory(newCat);
       setPage(1); 
-      fetchPosts(newCat, currentUser, 1, false);
+      fetchPosts(newCat, currentUser, 1, false, mutualUsers);
     };
     window.addEventListener('changeCategory', handleCategoryChange);
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
-  }, [currentUser]);
+  }, [currentUser, mutualUsers]);
 
   useEffect(() => {
     const hash = window.location.hash; 
@@ -175,17 +177,32 @@ export default function Gallerypost() {
     const user = session?.user || null;
     setCurrentUser(user);
 
+    let currentMutuals = new Set<string>();
+
     if (user) {
-      const { data: follows } = await supabase.from('followers').select('following_id').eq('follower_id', user.id);
-      if (follows) {
-        setFollowedUsers(new Set(follows.map(f => String(f.following_id))));
+      // 🔥 CEK DATA FOLLOWING & FOLLOWERS SEKALIGUS 🔥
+      const [followsRes, followersRes] = await Promise.all([
+        supabase.from('followers').select('following_id').eq('follower_id', user.id),
+        supabase.from('followers').select('follower_id').eq('following_id', user.id)
+      ]);
+
+      if (followsRes.data) {
+        const followingSet = new Set(followsRes.data.map(f => String(f.following_id)));
+        setFollowedUsers(followingSet);
+
+        // Jika mereka ada di data yang kita ikuti dan mereka mengikuti kita = Berteman
+        if (followersRes.data) {
+          const followerSet = new Set(followersRes.data.map(f => String(f.follower_id)));
+          currentMutuals = new Set([...followingSet].filter(x => followerSet.has(x)));
+          setMutualUsers(currentMutuals);
+        }
       }
     }
 
-    await fetchPosts("all", user, 1, false);
+    await fetchPosts("all", user, 1, false, currentMutuals);
   };
 
-  const fetchPosts = async (category = "all", userObj = currentUser, pageNumber = 1, isLoadMore = false) => {
+  const fetchPosts = async (category = "all", userObj = currentUser, pageNumber = 1, isLoadMore = false, mutuals = mutualUsers) => {
     if (isLoadMore) setIsLoadingMore(true);
     else setIsLoading(true);
 
@@ -193,8 +210,9 @@ export default function Gallerypost() {
       const from = (pageNumber - 1) * POSTS_PER_PAGE;
       const to = from + POSTS_PER_PAGE - 1;
 
+      // 🔥 FIX: MENAMBAHKAN is_private DI DALAM SELECT QUERY 🔥
       let query = supabase.from("posts")
-        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, profiles:creator_id (full_name, username, role, avatar_url)`)
+        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .range(from, to); 
@@ -206,9 +224,16 @@ export default function Gallerypost() {
       const { data: rawPosts, error } = await query;
       if (error) throw error;
 
-      let fetchedPosts = rawPosts || [];
+      // 🔥 FILTERING: SEMBUNYIKAN AKUN PRIVATE KECUALI UNTUK TEMAN (MUTUAL) 🔥
+      let fetchedPosts = (rawPosts || []).filter(post => {
+        if (!post.profiles?.is_private) return true; // Akun publik = Munculkan
+        if (userObj && post.creator_id === userObj.id) return true; // Postingan sendiri = Munculkan
+        if (userObj && mutuals.has(post.creator_id)) return true; // Saling follow (teman) = Munculkan
+        return false; // Private dan bukan teman = Sembunyikan
+      });
       
-      setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
+      // Deteksi hasMore dari rawPosts, karena kalau dari fetchedPosts bisa error misal 15 postingan semuanya private
+      setHasMore((rawPosts || []).length === POSTS_PER_PAGE);
 
       if (category === "all" && !isLoadMore) fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
 
@@ -257,7 +282,7 @@ export default function Gallerypost() {
     if (!isLoadingMore && hasMore) {
       const nextPage = page + 1;
       setPage(nextPage);
-      fetchPosts(currentCategory, currentUser, nextPage, true);
+      fetchPosts(currentCategory, currentUser, nextPage, true, mutualUsers);
     }
   };
 
@@ -611,6 +636,7 @@ export default function Gallerypost() {
   const renderFollowButton = (creatorId: string) => {
     if (!currentUser || currentUser.id === creatorId) return null; 
     const isFollowing = followedUsers.has(creatorId);
+    const isMutual = mutualUsers.has(creatorId); // 🔥 CEK STATUS TEMAN 🔥
     const isAnimating = animatingFollows.has(creatorId);
 
     return (
@@ -642,7 +668,7 @@ export default function Gallerypost() {
             check
           </span>
         )}
-        {isFollowing ? t('following', 'Mengikuti') : t('follow', 'Ikuti')}
+        {isFollowing ? (isMutual ? 'Berteman' : 'Mengikuti') : t('follow', 'Ikuti')}
       </button>
     );
   };
@@ -786,7 +812,6 @@ export default function Gallerypost() {
             >
               <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '0 auto 20px' }} />
               
-              {/* 🔥 TOMBOL BAGIKAN MUNCUL DI SINI 🔥 */}
               <button onClick={() => {
                 if (window.sharePost) window.sharePost(optionsModal.postId);
                 setOptionsModal(null);
@@ -838,7 +863,6 @@ export default function Gallerypost() {
               optimizedAvatar = optimizedAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
             }
 
-            // 🔥 MENGGUNAKAN FORMAT WAKTU RELATIF BARU 🔥
             const formattedDate = formatRelativeTime(post.created_at);
             
             const isOwner = currentUser && currentUser.id === post.creator_id;
@@ -961,7 +985,26 @@ export default function Gallerypost() {
                         {renderBioWithMentions(post.bio?.trim())}
                       </p>
 
-                      <div className="post-date-wrapper">{formattedDate}</div>
+                      <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{formattedDate}</span>
+                        {post.is_ad && (
+                          <span style={{ 
+                            background: 'rgba(255,255,255,0.2)', 
+                            backdropFilter: 'blur(4px)', 
+                            padding: '2px 8px', 
+                            borderRadius: '10px', 
+                            fontSize: '10px', 
+                            fontWeight: 700, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '2px', 
+                            color: '#fff' 
+                          }}>
+                            <span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan
+                          </span>
+                        )}
+                      </div>
+
                       <div className="actions">
                         <a href={`/data?id=${post.creator_id}`} className="primary btn-press" style={{ display: 'inline-block' }}>{t('view_detail')}</a>
                         {renderEngagementButtons(post, postIdStr)}
@@ -978,8 +1021,17 @@ export default function Gallerypost() {
                             {post.profiles?.full_name || post.profiles?.username || "User"} <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                             {renderFollowButton(post.creator_id)}
                           </div>
+
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             {formattedDate}
+                            {post.is_ad && (
+                              <>
+                                <span>•</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#1f3cff', fontWeight: 700 }}>
+                                  <span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan
+                                </span>
+                              </>
+                            )}
                           </span>
                         </div>
                       </div>

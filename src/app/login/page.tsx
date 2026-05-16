@@ -137,13 +137,15 @@ export default function LoginPage() {
         {/* Header Ala Sosmed Besar (Left Aligned) */}
         <div className="auth-header">
           <div className="auth-logo">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="45" height="45">
-              <rect x="6" y="14" width="8" height="12" rx="4" fill="var(--primary)" />
-              <rect x="26" y="14" width="8" height="12" rx="4" fill="var(--text-main)" />
-              <path d="M10 20 H30" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" />
-            </svg>
+            <img 
+              src="/brand.png" 
+              alt="Hypeco Logo" 
+              width="45" 
+              height="45" 
+              style={{ objectFit: 'contain' }} 
+            />
           </div>
-          <h1>{isSignUpMode ? 'Bergabung sekarang.' : 'Sedang terjadi.'}</h1>
+          <h1>{isSignUpMode ? 'Bergabung sekarang.' : 'hypeco'}</h1>
           <p>
             {isSignUpMode 
               ? t('signup_subtitle', 'Buat akun untuk membagikan karya Anda') 
