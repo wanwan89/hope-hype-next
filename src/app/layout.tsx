@@ -9,10 +9,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR & FIREBASE PUSH NOTIFICATIONS 🔥
+// 🔥 IMPORT CAPACITOR & FIREBASE PUSH + LOCAL NOTIFICATIONS 🔥
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app'; 
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 // 🔥 IMPORT TOP LOADER 🔥
 import NextTopLoader from 'nextjs-toploader';
@@ -26,7 +27,6 @@ import Navbar from "@/components/layout/Navbar";
 import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
-// 🔥 PATH IMPORT SESUAI LOKASI src/Components (Pake 'C' Gede) 🔥
 import CustomSplash from '@/components/CustomSplash';
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
@@ -57,7 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           await SplashScreen.hide();
         }
       } catch (e) {
-        // console.warn("Splash screen native tidak aktif", e);
+        // console.warn("Splash screen native tidak aktif");
       }
     };
 
@@ -77,20 +77,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isPostPage = pathname?.includes('/post');
 
   const isStandaloneApp = isVoicePage || isStoryPage || isDailyCekPage;
-  
   const hasNavbar = isHomePage || isNotifPage || isPostPage || isVoicePage;
-  
   const isFullscreenPage = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage;
   const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
-  
   const hideNavbar = isStoryPage || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
-  
   const hideOverlays = isVoicePage || isStoryPage;
 
   // 🔥 FUNGSI UPDATE TOKEN KE DATABASE 🔥
   const updatePushToken = async (userId: string, token: string) => {
     try {
-      // Kita tetap pakai kolom 'push_token' di database biar ga usah ganti schema
       const { error } = await supabase
         .from('profiles')
         .update({ push_token: token })
@@ -133,7 +128,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP FIREBASE CLOUD MESSAGING (FCM) 🔥 ---
+  // --- 🔥 SETUP PUSH NOTIFICATION & LOCAL NOTIF 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -142,22 +137,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android' || platform === 'ios') {
-          console.log("📱 Native Detected: Menghubungkan Firebase Push Notifications...");
+          console.log("📱 Native Detected: Menghubungkan Firebase & Local Notifications...");
 
-          // 1. Minta Izin Kirim Notif ke User
-          let permStatus = await PushNotifications.checkPermissions();
-          if (permStatus.receive === 'prompt') {
-            permStatus = await PushNotifications.requestPermissions();
+          // 1. Minta Izin Kirim Notif (Push & Local)
+          let permPush = await PushNotifications.checkPermissions();
+          if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
+          
+          let permLocal = await LocalNotifications.checkPermissions();
+          if (permLocal.display === 'prompt') permLocal = await LocalNotifications.requestPermissions();
+
+          // 2. Bikin Channel Khusus di Android buat maksa SLIDE DOWN (Heads-up)
+          if (platform === 'android') {
+            await LocalNotifications.createChannel({
+              id: 'hype_high_channel',
+              name: 'Panggilan & Chat HypeTalk',
+              description: 'Channel penting untuk notifikasi dengan foto profil',
+              importance: 5, // 5 = MAX (Wajib buat Slide Down)
+              visibility: 1, // Muncul di lockscreen
+              sound: 'suara_panggilan', 
+              vibration: true,
+            });
           }
 
-          // 2. Kalau diizinkan, daftarkan HP ke Firebase FCM
-          if (permStatus.receive === 'granted') {
+          // 3. Daftarkan token ke Firebase
+          if (permPush.receive === 'granted') {
             await PushNotifications.register();
-          } else {
-            console.warn("User tidak memberikan izin push notification.");
           }
 
-          // 3. Tangkap Token FCM dan simpan
+          // 4. Tangkap Token FCM dan simpan
           PushNotifications.addListener('registration', (token) => {
             console.log("🔥 FCM Token didapat:", token.value);
             fcmTokenRef.current = token.value; 
@@ -166,41 +173,50 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           });
 
-          PushNotifications.addListener('registrationError', (error: any) => {
-            console.error("❌ Gagal mendaftar FCM:", JSON.stringify(error));
-          });
-
-          // 4. Deteksi Notifikasi Masuk Saat App Terbuka (Foreground)
-          PushNotifications.addListener('pushNotificationReceived', (notification) => {
-             console.log('Notifikasi masuk saat app terbuka:', notification);
-             // Karena ada notif in-app khusus chat/call, kita bisa abaikan notif sistem ini
-          });
-
-          // 5. Deteksi Kalau Notifikasi di-Klik sama User (Buka App dari Notif)
-          PushNotifications.addListener('pushNotificationActionPerformed', async (notification) => {
-            console.log('Notifikasi diklik:', notification);
+          // 🔥 5. TANGKAP SILENT DATA & RAKIT NOTIF LOKAL (Biar ada Foto) 🔥
+          PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+            console.log('Data Silent FCM Masuk:', notification);
             
-            // Payload data dari Firebase ada di dalam notification.notification.data
-            const data = notification.notification.data;
-            const actionId = notification.actionId; // Kalau user klik tombol aksi (tergantung plugin action yg dipakai)
+            // Ambil data kiriman dari Edge Function
+            const payloadData = notification.data || {};
+
+            if (payloadData && payloadData.title) {
+              // Jadwalkan notifikasi lokal langsung saat itu juga
+              await LocalNotifications.schedule({
+                notifications: [
+                  {
+                    id: Math.floor(Math.random() * 100000), 
+                    title: payloadData.title,
+                    body: payloadData.body,
+                    channelId: 'hype_high_channel', 
+                    // FOTO PROFIL BUNDAR DI KANAN
+                    largeIcon: payloadData.avatarUrl ? payloadData.avatarUrl : undefined, 
+                    smallIcon: payloadData.iconType || 'ic_stat_chat', 
+                    extra: { // Data yang dibawa saat notif diklik
+                      roomId: payloadData.roomId,
+                      senderId: payloadData.senderId,
+                      postId: payloadData.postId,
+                      type: payloadData.type
+                    }
+                  }
+                ]
+              });
+            }
+          });
+
+          // 6. Deteksi Jika Notifikasi Lokal Di-klik User
+          LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+            console.log('Notifikasi Lokal diklik:', action);
+            
+            const data = action.notification.extra;
 
             if (data && data.roomId) {
-              const targetUserId = data.senderId || data.callerId;
-
-              if (actionId === "reject") {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                  await supabase.from('messages').insert([{ 
-                    room_id: data.roomId, 
-                    user_id: session.user.id, 
-                    message: `Panggilan Ditolak`, 
-                    is_system: true 
-                  }]);
-                }
-              } else if (actionId === "answer") {
-                router.push(`/hypetalk/room?from=${targetUserId}&answerCall=true`);
-              } else {
+              const targetUserId = data.senderId;
+              
+              if (data.type === 'call') {
                 router.push(`/hypetalk/room?from=${targetUserId}&incomingCall=true`); 
+              } else {
+                router.push(`/hypetalk/room?from=${targetUserId}`);
               }
             }
           });
@@ -216,16 +232,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         }
       } catch (error) {
-        console.warn("⚠️ Firebase Native API error:", error);
+        console.warn("⚠️ Firebase/Native API error:", error);
       }
     };
 
     initNativeFeatures();
 
-    // Cleanup: Cabut listener kalau komponen dibongkar
+    // Cleanup listener
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
          PushNotifications.removeAllListeners();
+         LocalNotifications.removeAllListeners();
       }
     };
   }, [router, myProfile]); 
