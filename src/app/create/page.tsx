@@ -67,11 +67,10 @@ export default function CreatePostPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
-  // 🔥 STATE BARU UNTUK FITUR IKLAN 🔥
+  // 🔥 STATE UNTUK FITUR IKLAN 🔥
   const [isBusinessUser, setIsBusinessUser] = useState(false);
   const [isAd, setIsAd] = useState(false);
 
-  // 🔥 EFEK UNTUK CEK STATUS AKUN BISNIS 🔥
   useEffect(() => {
     const checkUserStatus = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -371,10 +370,9 @@ export default function CreatePostPage() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (postType === 'image' && croppedImages.length === 0 && !caption.trim()) return alert(t('alert_empty_post'));
+  // 🔥 UPDATE: FUNGSI SUBMIT DENGAN STATUS (APPROVED / DRAFT) 🔥
+  const submitPostAction = async (isDraft: boolean = false) => {
+    if (postType === 'image' && croppedImages.length === 0 && !caption.trim()) return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
     if (postType === 'video' && !rawVideoFile) return showNotif("Pilih video terlebih dahulu!", "warning");
     if (destination === "story" && postType === 'image' && croppedImages.length > 1) return showNotif("Story hanya bisa upload 1 foto!", "warning");
 
@@ -426,7 +424,6 @@ export default function CreatePostPage() {
 
       let newPostId: string | null = null;
 
-      // 🔥 UPDATE PAYLOAD: MENGIRIM STATUS IKLAN (is_ad) KE DATABASE 🔥
       if (destination === "story") {
         await supabase.from("stories").insert({
           creator_id: myUserId,
@@ -437,7 +434,7 @@ export default function CreatePostPage() {
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
           visibility: visibility,
-          is_ad: isBusinessUser ? isAd : false // Set status iklan
+          is_ad: isBusinessUser ? isAd : false 
         });
       } else {
         const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
@@ -451,14 +448,15 @@ export default function CreatePostPage() {
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
-          status: "approved",
-          is_ad: isBusinessUser ? isAd : false // Set status iklan
+          status: isDraft ? "draft" : "approved", // 🔥 STATUS BERGANTUNG TOMBOL YANG DIKLIK 🔥
+          is_ad: isBusinessUser ? isAd : false 
         }).select('id').single();
         
         if (newPost) newPostId = newPost.id;
       }
 
-      if (newPostId || destination === "story") {
+      // Notifikasi Mentions hanya jalan jika postingan BUKAN Draft
+      if (!isDraft && (newPostId || destination === "story")) {
         const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         if (mentionedUsernames.length > 0) {
           const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
@@ -473,7 +471,7 @@ export default function CreatePostPage() {
         }
       }
 
-      showNotif("Postingan Berhasil Terkirim!", "success");
+      showNotif(isDraft ? "Berhasil disimpan ke draft" : "Postingan Berhasil Terkirim!", "success");
       handleClose();
     } catch (err: any) { 
       console.error(err);
@@ -649,7 +647,8 @@ export default function CreatePostPage() {
           </div>
 
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
-            <form onSubmit={handleSubmit} className="post-form">
+            {/* 🔥 MENGGANTI FORM SUBMIT DENGAN BUTTON ONCLICK BIASA BIAR FLEKSIBEL 🔥 */}
+            <div className="post-form">
 
               <div className="destination-container">
                 <p className="section-label" style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{t('send_to')}</p>
@@ -750,7 +749,6 @@ export default function CreatePostPage() {
                 )}
               </div>
 
-              {/* 🔥 TOGGLE IKLAN (HANYA MUNCUL JIKA AKUN BISNIS) 🔥 */}
               {isBusinessUser && (
                 <div style={{ marginTop: '20px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', padding: '15px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
@@ -785,65 +783,90 @@ export default function CreatePostPage() {
                 </div>
               )}
 
-              <button 
-                type="submit" 
-                className="post-submit-btn" 
-                disabled={isSubmitting} 
-                style={{ 
-                  marginTop: '30px', 
-                  width: '100%', 
-                  padding: '16px', 
-                  color: '#fff', 
-                  border: isSubmitting ? '1px solid #1f3cff' : 'none', 
-                  borderRadius: '14px', 
-                  fontSize: '16px', 
-                  fontWeight: 800, 
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer', 
-                  position: 'relative',
-                  overflow: 'hidden', 
-                  background: isSubmitting ? 'var(--bg-input)' : '#1f3cff',
-                  transform: 'translateZ(0)',
-                }}
-              >
-                {isSubmitting && (
-                  <motion.div
-                    initial={{ y: "100%" }}
-                    animate={{ y: `${100 - Math.max(uploadProgress, 2)}%` }} 
-                    transition={{ ease: "easeInOut", duration: 0.8 }}
+              {/* 🔥 TOMBOL SUBMIT & DRAFT 🔥 */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '30px', width: '100%' }}>
+                {destination !== 'story' && (
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => submitPostAction(true)}
                     style={{
-                      position: 'absolute', top: 0, left: 0, right: 0, height: '150%', 
-                      background: '#1f3cff',
-                      zIndex: 1
+                      flex: 1, 
+                      padding: '16px', 
+                      borderRadius: '14px', 
+                      border: '1px solid var(--border-card)', 
+                      background: 'var(--bg-secondary)', 
+                      color: 'var(--text-main)', 
+                      fontSize: '15px', 
+                      fontWeight: 700, 
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      transition: '0.2s ease'
                     }}
                   >
-                    <motion.div
-                      animate={{ x: ["0%", "-50%"] }}
-                      transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                      style={{
-                        position: 'absolute', top: '-19px', left: 0, width: '200%', height: '20px',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,55 250,-5 400,25 C550,55 650,-5 800,25 L800,50 L0,50 Z' fill='rgba(31,60,255,0.5)'/%3E%3C/svg%3E")`,
-                        backgroundSize: '50% 100%',
-                        backgroundRepeat: 'repeat-x'
-                      }}
-                    />
-                    <motion.div
-                      animate={{ x: ["-50%", "0%"] }}
-                      transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
-                      style={{
-                        position: 'absolute', top: '-14px', left: 0, width: '200%', height: '15px',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,45 250,5 400,25 C550,45 650,5 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
-                        backgroundSize: '50% 100%',
-                        backgroundRepeat: 'repeat-x'
-                      }}
-                    />
-                  </motion.div>
+                    Simpan Draft
+                  </button>
                 )}
-                
-                <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>
-                  {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : t('btn_submit_post')}
-                </span>
-              </button>
-            </form>
+
+                <button 
+                  type="button" 
+                  onClick={() => submitPostAction(false)}
+                  disabled={isSubmitting} 
+                  style={{ 
+                    flex: destination !== 'story' ? 2 : 1, 
+                    padding: '16px', 
+                    color: '#fff', 
+                    border: isSubmitting ? '1px solid #1f3cff' : 'none', 
+                    borderRadius: '14px', 
+                    fontSize: '16px', 
+                    fontWeight: 800, 
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer', 
+                    position: 'relative',
+                    overflow: 'hidden', 
+                    background: isSubmitting ? 'var(--bg-input)' : '#1f3cff',
+                    transform: 'translateZ(0)',
+                  }}
+                >
+                  {isSubmitting && (
+                    <motion.div
+                      initial={{ y: "100%" }}
+                      animate={{ y: `${100 - Math.max(uploadProgress, 2)}%` }} 
+                      transition={{ ease: "easeInOut", duration: 0.8 }}
+                      style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, height: '150%', 
+                        background: '#1f3cff',
+                        zIndex: 1
+                      }}
+                    >
+                      <motion.div
+                        animate={{ x: ["0%", "-50%"] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                        style={{
+                          position: 'absolute', top: '-19px', left: 0, width: '200%', height: '20px',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,55 250,-5 400,25 C550,55 650,-5 800,25 L800,50 L0,50 Z' fill='rgba(31,60,255,0.5)'/%3E%3C/svg%3E")`,
+                          backgroundSize: '50% 100%',
+                          backgroundRepeat: 'repeat-x'
+                        }}
+                      />
+                      <motion.div
+                        animate={{ x: ["-50%", "0%"] }}
+                        transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                        style={{
+                          position: 'absolute', top: '-14px', left: 0, width: '200%', height: '15px',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,45 250,5 400,25 C550,45 650,5 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
+                          backgroundSize: '50% 100%',
+                          backgroundRepeat: 'repeat-x'
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                  
+                  <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>
+                    {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : t('btn_submit_post')}
+                  </span>
+                </button>
+              </div>
+
+            </div>
           </div>
         </>
       )}

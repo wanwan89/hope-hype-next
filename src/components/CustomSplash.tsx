@@ -4,16 +4,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 export default function CustomSplash() {
-  const [isVisible, setIsVisible] = useState(true);
+  // 🔥 FIX: Cek sessionStorage langsung di awal state biar gak kedip pas direfresh
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+      return !hasSeenSplash; // Kalau udah ada jejaknya, langsung set false (jangan muncul)
+    }
+    return true; // Default saat proses render di server (SSR)
+  });
 
   useEffect(() => {
+    // Kalau isVisible udah false dari awal (karena hasil refresh), gak usah jalanin timer
+    if (!isVisible) return;
+
     // Splash screen bakal tayang selama 2.5 detik, habis itu ngilang
     const timer = setTimeout(() => {
       setIsVisible(false);
+      // 🔥 FIX: Catat di sessionStorage kalau user udah liat splash screen-nya
+      sessionStorage.setItem('hasSeenSplash', 'true');
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isVisible]);
+
+  // Kalau udah gak perlu muncul, langsung return null biar elemennya hilang total dari DOM
+  if (!isVisible) return null;
 
   return (
     <AnimatePresence>
@@ -37,7 +52,6 @@ export default function CustomSplash() {
         >
           {/* 🔥 LOGO PNG (TANPA BAYANGAN) 🔥 */}
           <motion.img
-            // Pastiin URL ini bener ngarah ke lokasi gambar hope_splash.png lu
             src="/hope_splash.png" 
             alt="HopeHype Logo"
             initial={{ scale: 0.5, opacity: 0 }}
@@ -47,7 +61,6 @@ export default function CustomSplash() {
               width: '120px', 
               height: '120px',
               objectFit: 'contain',
-              // filter: 'drop-shadow(0px 10px 20px rgba(31, 60, 255, 0.15))' // 🔥 Bayangan DIHAPUS
             }}
           />
 

@@ -11,11 +11,13 @@
   background: var(--bg-main); 
   border-bottom: 1px solid var(--border-card);
 }
+
+/* 🔥 FIX WARNA TEKS HEADER: dari white ke var(--text-main) 🔥 */
 .media-header h2 { 
   margin: 0; 
   font-size: 16px; 
   font-weight: 700; 
-  color: white; 
+  color: var(--text-main); 
   margin-left: 10px; 
 }
 

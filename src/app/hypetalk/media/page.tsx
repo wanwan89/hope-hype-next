@@ -75,7 +75,8 @@ export default function MediaChatPage() {
   return (
     <div className="media-page-wrapper">
       <header className="media-header">
-        <button onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'white', display: 'flex', cursor: 'pointer' }}>
+        {/* 🔥 FIX WARNA ICON BACK: dari 'white' ke 'var(--text-main)' 🔥 */}
+        <button onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', display: 'flex', cursor: 'pointer' }}>
           <span className="material-icons">arrow_back</span>
         </button>
         <h2>{targetProfile ? `Media dengan ${targetProfile.username}` : 'Memuat...'}</h2>

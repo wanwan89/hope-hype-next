@@ -6,6 +6,7 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
 import { sendPushAndAppNotif } from '@/lib/notif'; 
+import { motion, AnimatePresence } from 'framer-motion'; 
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -59,7 +60,9 @@ export default function Gallerypost() {
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   
+  // 🔥 MAP UNTUK MENYIMPAN TEMAN YANG MELIKE/MEREPOST (BUBBLE) 🔥
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
+  const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
 
   const [floatingLikes, setFloatingLikes] = useState<Array<{ id: number, x: number, y: number, avatar: string, delay: string }>>([]);
 
@@ -81,6 +84,10 @@ export default function Gallerypost() {
 
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
+
+  // 🔥 STATE MODAL REPOST NOTE 🔥
+  const [repostModal, setRepostModal] = useState<{isOpen: boolean, postId: string, creatorId: string} | null>(null);
+  const [repostNote, setRepostNote] = useState("");
 
   useEffect(() => {
     return () => {
@@ -135,19 +142,6 @@ export default function Gallerypost() {
     window.addEventListener('changeCategory', handleCategoryChange);
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, [currentUser, mutualUsers]);
-
-  useEffect(() => {
-    const hash = window.location.hash; 
-    if (hash && posts.length > 0 && !isLoading) {
-      const timer = setTimeout(() => {
-        const element = document.querySelector(hash);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 800); 
-      return () => clearTimeout(timer);
-    }
-  }, [posts, isLoading]);
 
   const initGallery = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -212,36 +206,45 @@ export default function Gallerypost() {
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
         
+        // 🔥 AMBIL DATA LIKERS & REPOSTERS (Termasuk Catatan) 🔥
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
-          supabase.from("likes").select("post_id, user_id, profiles:user_id(username, avatar_url)").in("post_id", postIds),
+          supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
-          supabase.from("reposts").select("post_id").in("post_id", postIds),
+          supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
           supabase.from("bookmarks").select("post_id").in("post_id", postIds)
         ]);
 
         const newCounts: any = {};
         const newLikersMap: any = {}; 
+        const newRepostersMap: any = {};
 
         postIds.forEach(id => { 
           newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 }; 
           newLikersMap[id] = []; 
+          newRepostersMap[id] = [];
         });
         
         likesRes.data?.forEach(l => { 
           if(newCounts[l.post_id]) {
             newCounts[l.post_id].likes++; 
-            if (newLikersMap[l.post_id].length < 10 && l.profiles) {
-              newLikersMap[l.post_id].push(l.profiles);
-            }
+            if (l.profiles) newLikersMap[l.post_id].push(l.profiles);
           }
         });
         
         commentsRes.data?.forEach(c => { if(newCounts[c.post_id]) newCounts[c.post_id].comments++; });
-        repostsRes.data?.forEach(r => { if(newCounts[r.post_id]) newCounts[r.post_id].reposts++; });
+        
+        repostsRes.data?.forEach(r => { 
+          if(newCounts[r.post_id]) {
+            newCounts[r.post_id].reposts++; 
+            if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note });
+          }
+        });
+
         savesRes.data?.forEach(s => { if(newCounts[s.post_id]) newCounts[s.post_id].saves++; });
         
         setCounts(prev => isLoadMore ? { ...prev, ...newCounts } : newCounts);
         setLikersMap(prev => isLoadMore ? { ...prev, ...newLikersMap } : newLikersMap);
+        setRepostersMap(prev => isLoadMore ? { ...prev, ...newRepostersMap } : newRepostersMap);
 
         if (userObj) {
           const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
@@ -273,7 +276,6 @@ export default function Gallerypost() {
     }
   };
 
-  // 🔥 FUNGSI BARU: LANGSUNG BUKA GLOBAL SHARE MODAL 🔥
   const openShareOptions = (post: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
       window.openGlobalShare(
@@ -369,7 +371,6 @@ export default function Gallerypost() {
     
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0; 
-      
       if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
 
       const avatar = currentUser?.avatar_url || '/asets/png/profile.webp';
@@ -382,7 +383,6 @@ export default function Gallerypost() {
       ];
       
       setFloatingLikes(prev => [...prev, ...newLikes]);
-      
       setTimeout(() => {
         setFloatingLikes(prev => prev.filter(item => !newLikes.some(nl => nl.id === item.id)));
       }, 1500);
@@ -393,7 +393,6 @@ export default function Gallerypost() {
 
     } else {
       lastTapRef.current[postId] = now;
-      
       if (imageUrl) {
         setTimeout(() => {
           if (lastTapRef.current[postId] === now) {
@@ -405,10 +404,24 @@ export default function Gallerypost() {
     }
   };
 
-  const handleRepost = async (postId: string, creatorId: string) => {
+  const openRepostModal = (postId: string, creatorId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
     const isReposted = myRepostedPosts.has(postId);
+    
+    if (isReposted) {
+      // Jika sudah di repost, klik lagi untuk batal (Un-repost)
+      handleConfirmRepost(postId, creatorId, true);
+    } else {
+      // Jika belum, buka modal untuk nulis catatan
+      setRepostNote("");
+      setRepostModal({ isOpen: true, postId, creatorId });
+    }
+  };
+
+  const handleConfirmRepost = async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     const numericPostId = parseInt(postId);
+    const finalNote = repostNote.trim().substring(0, 15); // Batasi 15 huruf
+    setRepostModal(null); // Tutup modal
 
     setAnimatingReposts(prev => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts(prev => {
@@ -419,20 +432,20 @@ export default function Gallerypost() {
 
     setMyRepostedPosts(prev => {
       const newSet = new Set(prev);
-      isReposted ? newSet.delete(postId) : newSet.add(postId);
+      isUnrepost ? newSet.delete(postId) : newSet.add(postId);
       return newSet;
     });
 
     setCounts(prev => ({
       ...prev,
-      [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isReposted ? -1 : 1)) }
+      [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) }
     }));
 
     try {
-      if (isReposted) {
+      if (isUnrepost) {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
       } else {
-        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id });
+        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id, note: finalNote });
         if (error && error.code !== '23505') throw error;
       }
     } catch (err) { console.error("Repost error", err); }
@@ -655,7 +668,7 @@ export default function Gallerypost() {
 
       <button 
         className={`icon-btn repost-btn btn-press ${myRepostedPosts.has(postIdStr) ? 'reposted' : ''}`} 
-        onClick={() => handleRepost(postIdStr, post.creator_id)}
+        onClick={() => openRepostModal(postIdStr, post.creator_id)}
       >
         <svg viewBox="0 0 24 24" className={`icon ${animatingReposts.has(postIdStr) ? 'spin-anim' : ''}`} fill="currentColor" style={{ color: myRepostedPosts.has(postIdStr) ? "#1f3cff" : "inherit", transition: '0.2s' }}>
           <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/>
@@ -725,103 +738,76 @@ export default function Gallerypost() {
   return (
     <section>
       <style>{`
-        @keyframes marqueeMusic {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-100%); }
-        }
+        @keyframes marqueeMusic { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .btn-press:active { transform: scale(0.85); }
-        
         .check-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        
         .heart-pop.active { animation: heartPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); fill: #ff2e63; }
         @keyframes heartPop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
-        
         .spin-anim { animation: spinRep 0.5s ease-in-out; }
         @keyframes spinRep { 100% { transform: rotate(360deg); } }
-
-        .pure-spinner {
-          width: 30px; height: 30px; border: 3px solid var(--border-card); 
-          border-top-color: #1f3cff; border-radius: 50%;
-          animation: pureSpin 1s linear infinite;
-        }
+        .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
 
-        /* 🔥 CSS ANIMASI PROFIL TERBANG (FLOATING LOVE LIKES) 🔥 */
-        .floating-like-container {
-          position: fixed;
-          pointer-events: none;
-          z-index: 9999999;
-          animation: floatUpLove 1.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .floating-avatar {
-          width: 48px; height: 48px; border-radius: 50%; border: 2.5px solid #ff2e63;
-          object-fit: cover; box-shadow: 0 4px 15px rgba(255,46,99,0.5);
-          background-color: var(--bg-main);
-        }
-        .floating-heart {
-          position: absolute; bottom: -4px; right: -4px;
-          color: #ff2e63; background: white; border-radius: 50%; padding: 2px;
-          font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        @keyframes floatUpLove {
-          0% { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 0; }
-          15% { transform: translate(-50%, -50%) scale(1.3) rotate(15deg); opacity: 1; }
-          30% { transform: translate(-50%, -60%) scale(1) rotate(-5deg); opacity: 1; }
-          100% { transform: translate(-50%, -200px) scale(1.2) rotate(0deg); opacity: 0; }
-        }
+        .floating-like-container { position: fixed; pointer-events: none; z-index: 9999999; animation: floatUpLove 1.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; display: flex; align-items: center; justify-content: center; }
+        .floating-avatar { width: 48px; height: 48px; border-radius: 50%; border: 2.5px solid #ff2e63; object-fit: cover; box-shadow: 0 4px 15px rgba(255,46,99,0.5); background-color: var(--bg-main); }
+        .floating-heart { position: absolute; bottom: -4px; right: -4px; color: #ff2e63; background: white; border-radius: 50%; padding: 2px; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        @keyframes floatUpLove { 0% { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 0; } 15% { transform: translate(-50%, -50%) scale(1.3) rotate(15deg); opacity: 1; } 30% { transform: translate(-50%, -60%) scale(1) rotate(-5deg); opacity: 1; } 100% { transform: translate(-50%, -200px) scale(1.2) rotate(0deg); opacity: 0; } }
 
-        /* 🔥 CSS ANIMASI BUBBLE LIKERS MENGAPUNG (OWNER VIEW) 🔥 */
-        .liker-bubble-wrapper {
-          position: absolute;
-          bottom: 20px;
-          right: 20px;
-          display: flex;
-          flex-direction: column-reverse;
-          align-items: flex-end;
-          gap: 10px;
-          pointer-events: none;
-          z-index: 5;
-        }
-        .liker-bubble {
-          position: relative;
-          animation: floatBubble 6s ease-in-out infinite alternate;
-          opacity: 0.9;
-        }
-        .liker-bubble img {
-          width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
-          border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-        }
-        .liker-mini-heart {
-          position: absolute; bottom: -2px; right: -2px;
-          background: #ff2e63; color: white; border-radius: 50%; padding: 2px;
-          font-size: 10px; border: 1.5px solid white;
-        }
-        @keyframes floatBubble {
-          0% { transform: translateY(0) translateX(0); }
-          33% { transform: translateY(-10px) translateX(-5px); }
-          66% { transform: translateY(-5px) translateX(5px); }
-          100% { transform: translateY(-15px) translateX(0); }
-        }
+        /* 🔥 BUBBLE UNTUK OWNER (MUTUALS MAX 3) 🔥 */
+        .liker-bubble-wrapper { position: absolute; bottom: 60px; right: 15px; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; pointer-events: none; z-index: 5; }
+        .liker-bubble { position: relative; animation: floatBubble 4s ease-in-out infinite alternate; opacity: 0.95; cursor: pointer; pointer-events: auto; }
+        .liker-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        
+        /* 🔥 BUBBLE UNTUK NON-OWNER (MUTUALS MAX 2 + BISA ADA CATATAN) 🔥 */
+        .nonowner-bubble-wrapper { position: absolute; bottom: 60px; left: 15px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px; pointer-events: none; z-index: 5; }
+        .nonowner-bubble { position: relative; animation: floatBubbleOpposite 4s ease-in-out infinite alternate; opacity: 0.95; cursor: pointer; pointer-events: auto; display: flex; align-items: center; gap: 8px; }
+        .nonowner-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .note-bubble { background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); }
+        
+        .liker-mini-icon { position: absolute; bottom: -2px; right: -2px; color: white; border-radius: 50%; padding: 2px; font-size: 10px; border: 1px solid white; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
+        .liker-mini-icon.heart { background: #ff2e63; }
+        .liker-mini-icon.repeat { background: #1f3cff; }
+
+        @keyframes floatBubble { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(-4px); } 66% { transform: translateY(-4px) translateX(4px); } 100% { transform: translateY(-12px) translateX(0); } }
+        @keyframes floatBubbleOpposite { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(4px); } 66% { transform: translateY(-4px) translateX(-4px); } 100% { transform: translateY(-12px) translateX(0); } }
       `}</style>
 
       {/* RENDER ELEMENT FLOATING LIKES DI TINGKAT PALING ATAS */}
       {floatingLikes.map(like => (
-        <div 
-          key={like.id} 
-          className="floating-like-container" 
-          style={{ left: like.x, top: like.y, animationDelay: like.delay }}
-        >
+        <div key={like.id} className="floating-like-container" style={{ left: like.x, top: like.y, animationDelay: like.delay }}>
           <div style={{ position: 'relative' }}>
             <img src={like.avatar} className="floating-avatar" alt="liker" />
             <span className="material-icons floating-heart">favorite</span>
           </div>
         </div>
       ))}
+
+      {/* 🔥 MODAL REPOST NOTE 🔥 */}
+      <AnimatePresence>
+        {repostModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRepostModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99998 }} />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-secondary)', borderRadius: '20px', padding: '20px', zIndex: 99999, width: '90%', maxWidth: '340px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: 'var(--text-main)', textAlign: 'center' }}>Repost Postingan</h3>
+              <input 
+                type="text" 
+                placeholder="Tambahkan catatan... (opsional)" 
+                maxLength={15}
+                value={repostNote}
+                onChange={(e) => setRepostNote(e.target.value)}
+                style={{ width: '100%', padding: '12px 15px', borderRadius: '12px', border: '1px solid var(--border-card)', background: 'var(--bg-main)', color: 'var(--text-main)', outline: 'none', marginBottom: '10px' }}
+              />
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right', marginBottom: '20px' }}>{repostNote.length}/15</div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setRepostModal(null)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--border-card)', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}>Batal</button>
+                <button onClick={() => handleConfirmRepost(repostModal.postId, repostModal.creatorId, false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#1f3cff', color: 'white', fontWeight: 600, cursor: 'pointer' }}>Repost</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
@@ -854,8 +840,23 @@ export default function Gallerypost() {
             const photoList = post.image_url ? post.image_url.split(',') : [];
             const isVideoPost = !!post.video_url;
             
-            // Ambil daftar orang yang ngelike khusus buat post ini
+            // Logika Menggabungkan & Memfilter Bubble Profil
             const likers = likersMap[postIdStr] || [];
+            const reposters = repostersMap[postIdStr] || [];
+            
+            // Filter hanya teman yang muncul di bubble
+            const mutualLikers = likers.filter(l => mutualUsers.has(l.id));
+            const mutualReposters = reposters.filter(r => mutualUsers.has(r.id));
+            
+            // Kumpulkan untuk non-owner (max 2)
+            const combinedMutualInteractors = [];
+            let rCount = 0; let lCount = 0;
+            
+            // Prioritaskan masukin reposter pertama, lalu liker, dst sampai kuota 2
+            if (mutualReposters[rCount]) combinedMutualInteractors.push({ ...mutualReposters[rCount++], type: 'repost' });
+            if (mutualLikers[lCount] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualLikers[lCount++], type: 'like' });
+            if (mutualReposters[rCount] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualReposters[rCount++], type: 'repost' });
+            if (mutualLikers[lCount] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualLikers[lCount++], type: 'like' });
 
             return (
               <div key={post.id} id={`post-${post.id}`} data-postid={post.id} className="card" style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
@@ -883,22 +884,11 @@ export default function Gallerypost() {
                           className="btn-press"
                           onClick={toggleMute}
                           style={{
-                            position: 'absolute',
-                            bottom: '12px',
-                            left: '12px',
-                            zIndex: 2, 
-                            background: 'rgba(0,0,0,0.6)',
-                            backdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            color: 'white',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+                            position: 'absolute', bottom: '12px', left: '12px', zIndex: 2, 
+                            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '32px',
+                            height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
                           }}
                         >
                           <span className="material-icons" style={{ fontSize: '18px' }}>
@@ -907,17 +897,32 @@ export default function Gallerypost() {
                         </button>
                       )}
 
-                      {/* 🔥 EFEK MENGAPUNG (BUBBLE LIKERS) KHUSUS JIKA USER ADALAH PEMILIK POSTINGAN 🔥 */}
-                      {isOwner && likers.length > 0 && (
+                      {/* 🔥 RENDER BUBBLE OWNER (Max 3 Teman Liker) 🔥 */}
+                      {isOwner && mutualLikers.length > 0 && (
                         <div className="liker-bubble-wrapper">
-                          {likers.slice(0, 3).map((liker, index) => (
-                            <div 
-                              key={index} 
-                              className="liker-bubble" 
-                              style={{ animationDelay: `${index * 1.5}s`, transform: `translateX(${index * -5}px)` }}
-                            >
+                          {mutualLikers.slice(0, 3).map((liker, index) => (
+                            <div key={index} className="liker-bubble" onClick={() => router.push(`/data?id=${liker.id}`)} style={{ animationDelay: `${index * 1.5}s`, transform: `translateX(${index * -5}px)` }}>
                               <img src={liker.avatar_url || '/asets/png/profile.webp'} alt="liker" />
-                              <span className="material-icons liker-mini-heart">favorite</span>
+                              <span className="material-icons liker-mini-icon heart">favorite</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 🔥 RENDER BUBBLE NON-OWNER (Max 2 Teman Liker/Reposter + Note) 🔥 */}
+                      {!isOwner && combinedMutualInteractors.length > 0 && (
+                        <div className="nonowner-bubble-wrapper">
+                          {combinedMutualInteractors.map((interactor, index) => (
+                            <div key={index} className="nonowner-bubble" onClick={() => router.push(`/data?id=${interactor.id}`)} style={{ animationDelay: `${index * 1.2}s` }}>
+                              <div style={{ position: 'relative' }}>
+                                <img src={interactor.avatar_url || '/asets/png/profile.webp'} alt="interactor" />
+                                {interactor.type === 'like' ? (
+                                   <span className="material-icons liker-mini-icon heart">favorite</span>
+                                ) : (
+                                   <span className="material-icons liker-mini-icon repeat">repeat</span>
+                                )}
+                              </div>
+                              {interactor.note && <div className="note-bubble">"{interactor.note}"</div>}
                             </div>
                           ))}
                         </div>
@@ -928,35 +933,17 @@ export default function Gallerypost() {
                           const index = Math.round(target.scrollLeft / target.offsetWidth);
                           const dots = document.querySelectorAll(`.dots-${post.id} .dot`);
                           dots.forEach((d, i) => i === index ? d.classList.add('active') : d.classList.remove('active'));
-                          
                           const counterEl = document.getElementById(`slide-counter-${post.id}`);
                           if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
                       }}>
                         {isVideoPost ? (
-                          <div 
-                            className="carousel-item" 
-                            onClick={(e) => handleMediaClick(e, postIdStr, post.creator_id)}
-                            style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)', cursor: 'pointer' }}
-                          >
-                            <video 
-                              src={post.video_url} 
-                              className="post-video-element"
-                              poster={getOptimizedImage(post.image_url)}
-                              playsInline loop muted
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }}
-                            />
+                          <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, post.creator_id)} style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
+                            <video src={post.video_url} className="post-video-element" poster={getOptimizedImage(post.image_url)} playsInline loop muted style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }} />
                           </div>
                         ) : (
                           photoList.map((url: string, i: number) => (
                             <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
-                              <img 
-                                src={getOptimizedImage(url)} 
-                                className="active" 
-                                loading={i === 0 ? "eager" : "lazy"} 
-                                alt={`Postingan Galeri ${i + 1}`} 
-                                onClick={(e) => handleMediaClick(e, postIdStr, post.creator_id, getOptimizedImage(url))} 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer' }}
-                              />
+                              <img src={getOptimizedImage(url)} className="active" loading={i === 0 ? "eager" : "lazy"} alt={`Postingan Galeri ${i + 1}`} onClick={(e) => handleMediaClick(e, postIdStr, post.creator_id, getOptimizedImage(url))} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer' }} />
                             </div>
                           ))
                         )}
@@ -979,11 +966,7 @@ export default function Gallerypost() {
                           </h2>
                           {renderFollowButton(post.creator_id)}
                         </div>
-                        <button 
-                          className="options-btn btn-press" 
-                          aria-label="Opsi Postingan" 
-                          onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}
-                        >
+                        <button className="options-btn btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}>
                           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
                       </div>
@@ -995,18 +978,7 @@ export default function Gallerypost() {
                       <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span>{formattedDate}</span>
                         {post.is_ad && (
-                          <span style={{ 
-                            background: 'rgba(255,255,255,0.2)', 
-                            backdropFilter: 'blur(4px)', 
-                            padding: '2px 8px', 
-                            borderRadius: '10px', 
-                            fontSize: '10px', 
-                            fontWeight: 700, 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '2px', 
-                            color: '#fff' 
-                          }}>
+                          <span style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: '#fff' }}>
                             <span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan
                           </span>
                         )}
@@ -1058,17 +1030,7 @@ export default function Gallerypost() {
                           className="btn-press"
                           onClick={toggleMute}
                           style={{
-                            background: 'var(--bg-secondary)',
-                            border: '1px solid var(--border-card)',
-                            color: 'var(--text-main)',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            zIndex: 2
+                            background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', color: 'var(--text-main)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2
                           }}
                         >
                           <span className="material-icons" style={{ fontSize: '18px' }}>

@@ -417,6 +417,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+        
+        {/* 🔥 FIX: UPDATE LINK ICON DAN SPLESH SESUAI PEMBARUAN KAMU 🔥 */}
+        <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
+        <link rel="apple-touch-icon" href="/logohypeco.png" />
+        <link rel="apple-touch-startup-image" href="/hope_splash.png" />
+
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
