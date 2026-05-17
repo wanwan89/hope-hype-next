@@ -19,14 +19,9 @@ const getOptimizedImage = (url: string) => {
 // 🔥 FILTER KATA KASAR (ANTI TOXIC) 🔥
 const BAD_WORDS = ["anjing", "bangsat", "kontol", "babi", "memek", "jembut", "ngentot", "bgsd", "njing", "tolol", "goblok"];
 const containsBadWords = (text: string) => {
-  // Ubah ke lowercase dan hapus simbol/tanda baca biar filternya lebih akurat
   const lowerText = text.toLowerCase().replace(/[^a-z0-9 ]/g, ''); 
-  const words = lowerText.split(/\s+/); // Pecah jadi perkata
-  
-  // Cek apakah ada kata yang persis sama dengan kata kasar, atau ada yang diselipin
-  return BAD_WORDS.some(badWord => 
-    words.includes(badWord) || lowerText.includes(badWord)
-  );
+  const words = lowerText.split(/\s+/); 
+  return BAD_WORDS.some(badWord => words.includes(badWord) || lowerText.includes(badWord));
 };
 
 export default function CommentModalpost() {
@@ -64,6 +59,14 @@ export default function CommentModalpost() {
   const currentPostIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null); 
 
+  // 🔥 STATE BARU UNTUK FITUR OWNER (TABS & SORTING) 🔥
+  const [activeTab, setActiveTab] = useState<'comment' | 'likes_all' | 'likes_friends'>('comment');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  
+  const [postLikers, setPostLikers] = useState<any[]>([]);
+  const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
+  const [isLoadingLikers, setIsLoadingLikers] = useState(false);
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -94,7 +97,8 @@ export default function CommentModalpost() {
           return;
         }
 
-        setMyUserId(session.user.id);
+        const userId = session.user.id;
+        setMyUserId(userId);
 
         const postId = btn.dataset.post || null;
         const creatorId = btn.dataset.creator || null;
@@ -102,14 +106,60 @@ export default function CommentModalpost() {
         setCurrentPostId(postId);
         setCurrentCreatorId(creatorId);
         setIsActive(true);
+        setActiveTab('comment'); // Reset tab
         document.body.style.overflow = "hidden";
         
-        if (postId) loadComments(postId, session.user.id);
+        if (postId) {
+          loadComments(postId, userId);
+          // Jika owner yang buka, cek data mutuals juga
+          if (creatorId === userId) {
+            checkMutuals(userId);
+          }
+        }
       }
     };
     document.body.addEventListener("click", handleBodyClick);
     return () => document.body.removeEventListener("click", handleBodyClick);
   }, []);
+
+  // 🔥 FUNGSI CEK TEMAN MUTUAL (UNTUK TAB LIKES) 🔥
+  const checkMutuals = async (userId: string) => {
+    try {
+      const [followsRes, followersRes] = await Promise.all([
+        supabase.from('followers').select('following_id').eq('follower_id', userId),
+        supabase.from('followers').select('follower_id').eq('following_id', userId)
+      ]);
+      if (followsRes.data && followersRes.data) {
+        const followingSet = new Set(followsRes.data.map(f => String(f.following_id)));
+        const followerSet = new Set(followersRes.data.map(f => String(f.follower_id)));
+        const mutuals = new Set([...followingSet].filter(x => followerSet.has(x)));
+        setMutualUsers(mutuals);
+      }
+    } catch (err) { console.error("Error cek mutuals", err); }
+  };
+
+  // 🔥 FUNGSI LOAD LIKERS 🔥
+  const loadLikers = async () => {
+    if (!currentPostId) return;
+    setIsLoadingLikers(true);
+    try {
+      const { data } = await supabase
+        .from('likes')
+        .select('user_id, created_at, profiles(id, username, full_name, avatar_url, role)')
+        .eq('post_id', currentPostId)
+        .order('created_at', { ascending: false });
+        
+      setPostLikers(data || []);
+    } catch (err) { console.error("Error load likers", err); }
+    setIsLoadingLikers(false);
+  };
+
+  // Panggil loadLikers tiap kali ganti tab ke likes
+  useEffect(() => {
+    if ((activeTab === 'likes_all' || activeTab === 'likes_friends') && currentPostId && postLikers.length === 0) {
+      loadLikers();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const handleInsertGift = async (e: any) => {
@@ -158,7 +208,7 @@ export default function CommentModalpost() {
     const { data: commsData } = await supabase.from("comments")
       .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
       .eq("post_id", postId)
-      .order("created_at", { ascending: true }); // Tetap urut waktu dulu
+      .order("created_at", { ascending: true }); // Default ascending dari query
 
     if (commsData && commsData.length > 0) {
       const commentIds = commsData.map(c => c.id);
@@ -169,17 +219,7 @@ export default function CommentModalpost() {
       allLikesData?.forEach(like => { newCounts[String(like.comment_id)] += 1; });
       setCommentLikesCount(newCounts);
 
-      // 🔥 FIX: URUTKAN KOMENTAR BERDASARKAN LIKE TERBANYAK 🔥
-      const sortedComments = [...commsData].sort((a, b) => {
-         const likesA = newCounts[String(a.id)] || 0;
-         const likesB = newCounts[String(b.id)] || 0;
-         if (likesA === likesB) {
-            // Kalau likes-nya sama, yang lebih lama (awal) yang di atas
-            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-         }
-         return likesB - likesA; // Yang paling banyak like di atas
-      });
-      setComments(sortedComments);
+      setComments(commsData); // Simpan raw-nya aja, sorting dipindah ke render biar dinamis
 
       if (userId) {
         const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
@@ -202,6 +242,7 @@ export default function CommentModalpost() {
     setInputValue("");
     setShowMentions(false);
     setIsActionSheetOpen(false);
+    setPostLikers([]);
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -279,10 +320,9 @@ export default function CommentModalpost() {
 
       let finalContent = inputValue.trim();
 
-      // 🔥 FIX: PENCEGAHAN KATA KASAR YANG LEBIH STRICT 🔥
       if (containsBadWords(finalContent)) {
         showNotif("Komentar ditolak! Mengandung bahasa yang tidak pantas.", "error");
-        return; // Stop fungsi, komentar tidak masuk ke database
+        return; 
       }
 
       const parentId = replyToId;
@@ -330,7 +370,6 @@ export default function CommentModalpost() {
         }
 
         if (newComment) {
-          // Komentar baru taruh di atas aja (sementara sampai di-refresh lagi)
           setComments(prev => [newComment, ...prev]);
           setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
         }
@@ -600,137 +639,201 @@ export default function CommentModalpost() {
     );
   };
 
-  const parents = comments.filter(c => !c.parent_id);
-
   const getPlaceholder = () => {
     if (isSubmitting) return t('sending');
     if (replyToUsername) return t('replying_to', { username: replyToUsername });
     return t('write_comment');
   };
 
+  const isOwner = currentCreatorId === myUserId;
+
+  // 🔥 FILTER DAN SORTING KOMENTAR 🔥
+  const parents = comments.filter(c => !c.parent_id);
+  const sortedParents = [...parents].sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+  });
+
   return (
     <>
+      <style>{`
+        /* Style untuk Tab Header dan Tombol Sortir */
+        .c-owner-tabs { display: flex; border-bottom: 1px solid var(--border-card); overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+        .c-owner-tabs::-webkit-scrollbar { display: none; }
+        .c-tab { flex: 1; text-align: center; padding: 12px; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
+        .c-tab.active { color: #1f3cff; border-bottom-color: #1f3cff; }
+        .c-filter-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid var(--border-card); }
+        .c-filter-btn { display: flex; align-items: center; gap: 4px; background: var(--bg-secondary); border: none; color: var(--text-main); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px; cursor: pointer; }
+        
+        .c-liker-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid var(--border-card); }
+        .c-liker-left { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .c-liker-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .c-liker-name { font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; }
+        .c-liker-time { font-size: 12px; color: var(--text-muted); }
+      `}</style>
+
       <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick}>
         <div className="comment-box" onClick={(e) => e.stopPropagation()}>
           <div className="modal-drag-indicator"></div>
           
-          <div className="comment-header">
-            {t('comments_title')}
-          </div>
-          
-          <div className="comment-list" id="commentListContainer">
-            {isLoading ? (
-              <div className="loading-text">{t('loading_comments')}</div>
-            ) : comments.length === 0 ? (
-              <div className="empty-text">{t('empty_comments')}</div>
-            ) : (
-              parents.map(p => {
-                const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
-                const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
-                const remainingChilds = firstCreatorReply ? allChilds.filter(c => c.id !== firstCreatorReply.id) : allChilds;
-                const isExpanded = expandedReplies[p.id];
+          {/* HEADER BERUBAH JIKA PEMILIK POSTINGAN */}
+          {isOwner ? (
+            <div className="c-owner-tabs">
+              <div className={`c-tab ${activeTab === 'comment' ? 'active' : ''}`} onClick={() => setActiveTab('comment')}>Komentar</div>
+              <div className={`c-tab ${activeTab === 'likes_all' ? 'active' : ''}`} onClick={() => setActiveTab('likes_all')}>Suka</div>
+              <div className={`c-tab ${activeTab === 'likes_friends' ? 'active' : ''}`} onClick={() => setActiveTab('likes_friends')}>Suka (Teman)</div>
+            </div>
+          ) : (
+            <div className="comment-header">{t('comments_title')}</div>
+          )}
 
-                return (
-                  <div className="comment-thread" key={p.id}>
-                    {renderComment(p, false)}
-
-                    {firstCreatorReply && (
-                      <div className="replies-container">
-                        <div className="reply-group">
-                          <div className="thread-line" style={{ height: 'calc(100% - 10px)', top: '10px' }}></div>
-                          <div className="comment-item-wrap reply">
-                            <span className="reply-curve" style={{ top: '15px' }}></span>
-                            {renderComment(firstCreatorReply, true)}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {remainingChilds.length > 0 && (
-                      <div className="replies-container">
-                        <div className="view-replies-btn" onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}>
-                          <span className="btn-line"></span>
-                          {isExpanded ? t('hide_replies') : t('show_replies_count', { count: remainingChilds.length })}
-                        </div>
-
-                        {isExpanded && (
-                          <div className="reply-group">
-                            <div className="thread-line"></div>
-                            {remainingChilds.map(c => (
-                              <div className="comment-item-wrap reply" key={c.id}>
-                                <span className="reply-curve"></span>
-                                {renderComment(c, true)}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="comment-input-wrap">
-            {showMentions && (
-              <div className="mention-popup">
-                {mentionResults.length > 0 ? (
-                  mentionResults.map(user => (
-                    <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
-                      <img src={getOptimizedImage(user.avatar_url) || '/asets/png/profile.webp'} loading="lazy" alt={user.username} />
-                      <div className="mention-info">
-                        <span className="mention-name">{user.username}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="mention-empty">Tidak ditemukan...</div>
-                )}
-              </div>
-            )}
-
-            <div className="input-container">
-              <input 
-                ref={inputRef}
-                type="text" 
-                className="comment-input" 
-                placeholder={getPlaceholder()} 
-                autoComplete="off"
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={(e) => {
-                  if (showMentions && e.key === "Enter") {
-                    e.preventDefault();
-                    if (mentionResults.length > 0) handleSelectMention(mentionResults[0].username);
-                  } else {
-                    handleKeyDown(e);
-                  }
-                }}
-                disabled={isSubmitting}
-              />
-              <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
-                <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+          {activeTab === 'comment' && (
+            <div className="c-filter-bar">
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>{comments.length} Komentar</span>
+              <button className="c-filter-btn" onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}>
+                <span className="material-icons" style={{ fontSize: '14px' }}>sort</span>
+                {sortOrder === 'newest' ? 'Terbaru' : 'Terlama'}
               </button>
             </div>
+          )}
+          
+          <div className="comment-list" id="commentListContainer">
+            {/* RENDER LIST LIKERS JIKA BUKAN TAB KOMENTAR */}
+            {activeTab !== 'comment' ? (
+               isLoadingLikers ? (
+                  <div className="loading-text">Memuat daftar suka...</div>
+               ) : (
+                  (() => {
+                    const filteredLikers = activeTab === 'likes_friends' ? postLikers.filter(l => mutualUsers.has(l.user_id)) : postLikers;
+                    
+                    if (filteredLikers.length === 0) return <div className="empty-text">Belum ada yang menyukai</div>;
+                    
+                    return filteredLikers.map(liker => (
+                      <div className="c-liker-item" key={liker.user_id}>
+                        <div className="c-liker-left" onClick={() => window.location.href = `/data?id=${liker.user_id}`}>
+                          <img className="c-liker-avatar" src={getOptimizedImage(liker.profiles?.avatar_url) || '/asets/png/profile.webp'} alt="av" />
+                          <div>
+                            <div className="c-liker-name">
+                              {liker.profiles?.username} 
+                              <span dangerouslySetInnerHTML={{ __html: getUserBadge(liker.profiles?.role || 'user') }} />
+                            </div>
+                            <div className="c-liker-time">{formatTimeAgo(liker.created_at)}</div>
+                          </div>
+                        </div>
+                        <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>favorite</span>
+                      </div>
+                    ));
+                  })()
+               )
+            ) : (
+              /* RENDER KOMENTAR SEPERTI BIASA */
+              isLoading ? (
+                <div className="loading-text">{t('loading_comments')}</div>
+              ) : sortedParents.length === 0 ? (
+                <div className="empty-text">{t('empty_comments')}</div>
+              ) : (
+                sortedParents.map(p => {
+                  const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
+                  const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
+                  const remainingChilds = firstCreatorReply ? allChilds.filter(c => c.id !== firstCreatorReply.id) : allChilds;
+                  const isExpanded = expandedReplies[p.id];
+
+                  return (
+                    <div className="comment-thread" key={p.id}>
+                      {renderComment(p, false)}
+
+                      {firstCreatorReply && (
+                        <div className="replies-container">
+                          <div className="reply-group">
+                            <div className="thread-line" style={{ height: 'calc(100% - 10px)', top: '10px' }}></div>
+                            <div className="comment-item-wrap reply">
+                              <span className="reply-curve" style={{ top: '15px' }}></span>
+                              {renderComment(firstCreatorReply, true)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {remainingChilds.length > 0 && (
+                        <div className="replies-container">
+                          <div className="view-replies-btn" onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}>
+                            <span className="btn-line"></span>
+                            {isExpanded ? t('hide_replies') : t('show_replies_count', { count: remainingChilds.length })}
+                          </div>
+
+                          {isExpanded && (
+                            <div className="reply-group">
+                              <div className="thread-line"></div>
+                              {remainingChilds.map(c => (
+                                <div className="comment-item-wrap reply" key={c.id}>
+                                  <span className="reply-curve"></span>
+                                  {renderComment(c, true)}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )
+            )}
           </div>
+
+          {/* INPUT HANYA MUNCUL DI TAB KOMENTAR */}
+          {activeTab === 'comment' && (
+            <div className="comment-input-wrap">
+              {showMentions && (
+                <div className="mention-popup">
+                  {mentionResults.length > 0 ? (
+                    mentionResults.map(user => (
+                      <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
+                        <img src={getOptimizedImage(user.avatar_url) || '/asets/png/profile.webp'} loading="lazy" alt={user.username} />
+                        <div className="mention-info">
+                          <span className="mention-name">{user.username}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="mention-empty">Tidak ditemukan...</div>
+                  )}
+                </div>
+              )}
+
+              <div className="input-container">
+                <input 
+                  ref={inputRef}
+                  type="text" 
+                  className="comment-input" 
+                  placeholder={getPlaceholder()} 
+                  autoComplete="off"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => {
+                    if (showMentions && e.key === "Enter") {
+                      e.preventDefault();
+                      if (mentionResults.length > 0) handleSelectMention(mentionResults[0].username);
+                    } else {
+                      handleKeyDown(e);
+                    }
+                  }}
+                  disabled={isSubmitting}
+                />
+                <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
+                  <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 🔥 FIX 3: ACTION SHEET DESAIN NETRAL (Sesuai Tema) 🔥 */}
       <style>{`
-        /* Timpa warna bawaan tombol supaya ngikutin warna standar lu (Teks putih/hitam, gak warna-warni) */
-        .c-action-btn.danger {
-          color: var(--text-main) !important;
-          background: transparent !important;
-          border-bottom: 1px solid var(--border-card) !important;
-        }
+        .c-action-btn.danger { color: var(--text-main) !important; background: transparent !important; border-bottom: 1px solid var(--border-card) !important; }
         .c-action-btn.danger .material-icons { color: var(--text-main) !important; }
-        
-        .c-action-btn.warning {
-          color: var(--text-main) !important;
-          background: transparent !important;
-        }
+        .c-action-btn.warning { color: var(--text-main) !important; background: transparent !important; }
         .c-action-btn.warning .material-icons { color: var(--text-main) !important; }
       `}</style>
       

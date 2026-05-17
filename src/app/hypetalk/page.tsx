@@ -26,9 +26,18 @@ export default function HypetalkPage() {
   const [groupName, setGroupName] = useState(''); 
 
   const [typingStatus, setTypingStatus] = useState<Record<string, string>>({});
-
+  
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [isBlocking, setIsBlocking] = useState(false);
+
+  // --- STATES BARU (ONLINE STATUS & PRIVASI) ---
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
+  const [privacySettings, setPrivacySettings] = useState({ 
+    show_online: true, 
+    last_seen: 'public' // 'public', 'mutuals', 'nobody'
+  });
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -45,6 +54,35 @@ export default function HypetalkPage() {
     };
   }, []);
 
+  // --- REALTIME ONLINE PRESENCE ---
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    // Load muted chats dari local storage
+    const savedMutes = localStorage.getItem(`muted_chats_${currentUser.id}`);
+    if (savedMutes) setMutedChats(new Set(JSON.parse(savedMutes)));
+
+    // Jika user menonaktifkan status onlinenya, jangan broadcast kehadirannya
+    if (!privacySettings.show_online) return;
+
+    const presenceChannel = supabase.channel('global_online_users', {
+      config: { presence: { key: currentUser.id } }
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        setOnlineUsers(new Set(Object.keys(state)));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => { supabase.removeChannel(presenceChannel); };
+  }, [currentUser, privacySettings.show_online]);
+
   const initUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return router.push('/login');
@@ -59,6 +97,11 @@ export default function HypetalkPage() {
         zodiak: profile.zodiak || '',
         pekerjaan: profile.pekerjaan || '',
         hobi: profile.hobi || ''
+      });
+      // Load privacy dari database jika ada (gunakan default jika null)
+      setPrivacySettings({
+        show_online: profile.show_online !== false, 
+        last_seen: profile.last_seen || 'public'
       });
     }
 
@@ -272,6 +315,38 @@ export default function HypetalkPage() {
     finally { setIsSavingBio(false); }
   };
 
+  const handleSavePrivacy = async () => {
+    setIsSavingPrivacy(true);
+    try {
+      await supabase.from("profiles").update({ 
+        show_online: privacySettings.show_online,
+        last_seen: privacySettings.last_seen
+      }).eq("id", currentUser.id);
+      
+      showNotif("Pengaturan Privasi tersimpan!", "success");
+      closeModal();
+    } catch (err) { 
+      showNotif("Gagal menyimpan privasi.", "error"); 
+    } finally { 
+      setIsSavingPrivacy(false); 
+    }
+  };
+
+  const handleToggleMute = (targetId: string) => {
+    setMutedChats(prev => {
+      const newMutes = new Set(prev);
+      if (newMutes.has(targetId)) {
+        newMutes.delete(targetId);
+        showNotif("Notifikasi diaktifkan kembali", "success");
+      } else {
+        newMutes.add(targetId);
+        showNotif("Obrolan disenyapkan", "info");
+      }
+      localStorage.setItem(`muted_chats_${currentUser.id}`, JSON.stringify(Array.from(newMutes)));
+      return newMutes;
+    });
+  };
+
   const handleCariDoi = async () => {
     if (sisaLimitDoi <= 0) return openModal('limit-doi');
     if (!currentUser?.gender) return openModal('bio');
@@ -370,46 +445,18 @@ export default function HypetalkPage() {
     }
   };
 
-  const startCallFromLobby = async (targetProfile: any) => {
-    if (!currentUser) return;
-    
-    const ids = [currentUser.id, targetProfile.id].sort();
-    const callRoomId = `pv_${ids[0]}_${ids[1]}`;
-    
-    closeModal();
-    showNotif("Memanggil " + targetProfile.username, "info");
-
-    supabase.functions.invoke('send-chat-notif', { 
-      body: { record: { sender_id: currentUser.id, receiver_id: targetProfile.id, content: "📞 Memanggil...", type: 'call', room_id: callRoomId } } 
-    });
-
-    await supabase.from('messages').insert([{ 
-      room_id: callRoomId, 
-      user_id: currentUser.id, 
-      message: `📞 Memanggil ${targetProfile.username}...`, 
-      is_system: true 
-    }]);
-
-    router.push(`/hypetalk/room?from=${targetProfile.id}`);
-  };
-
   const filteredChats = chats.filter(c => (c.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()));
 
   const renderReadReceipt = (chat: any) => {
     if (!currentUser || chat.lastMsgUserId !== currentUser.id || chat.type !== 'private') return null;
-
     const isRead = chat.lastMsgStatus === 'read';
-
     return (
       <span style={{ marginRight: '4px', display: 'flex', alignItems: 'center' }}>
         {isRead ? (
-          // DOUBLE TICK BIRU (UDAH DIBACA)
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#00a2ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M7 12l3 3 7-7" />
-            <path d="M2 12l3 3 7-7" />
+            <path d="M7 12l3 3 7-7" /><path d="M2 12l3 3 7-7" />
           </svg>
         ) : (
-          // SINGLE TICK ABU-ABU (TERKIRIM)
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12l5 5L20 7" />
           </svg>
@@ -530,7 +577,6 @@ export default function HypetalkPage() {
         .req-text p { margin: 0; font-size: 12px; color: var(--text-muted); }
         .message-request-banner .arrow { color: var(--text-muted); }
 
-        /* 🔥 CSS SKELETON LOADER 🔥 */
         @keyframes skeletonPulse {
           0% { opacity: 0.6; }
           50% { opacity: 0.3; }
@@ -541,6 +587,21 @@ export default function HypetalkPage() {
           border-radius: 4px;
           animation: skeletonPulse 1.5s infinite ease-in-out;
         }
+
+        /* IOS Toggle Switch CSS */
+        .ios-toggle {
+          position: relative; width: 44px; height: 24px; appearance: none; background: #444; outline: none; border-radius: 20px; transition: 0.4s; cursor: pointer;
+        }
+        .ios-toggle:checked { background: #2ecc71; }
+        .ios-toggle::before {
+          content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; top: 2px; left: 2px; background: white; transition: 0.4s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .ios-toggle:checked::before { transform: translateX(20px); }
+
+        .settings-row {
+          display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-card);
+        }
+        .settings-row:last-child { border-bottom: none; }
       `}</style>
 
       <header className="tg-header">
@@ -576,7 +637,6 @@ export default function HypetalkPage() {
         )}
 
         {isLoading ? (
-          /* 🔥 SKELETON UI LOADING 🔥 */
           <>
             {[...Array(6)].map((_, index) => (
               <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
@@ -592,40 +652,51 @@ export default function HypetalkPage() {
             ))}
           </>
         ) : (
-          filteredChats.map(chat => (
-            <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
-              <div className="tg-avatar global-avatar" onClick={(e) => handleAvatarClick(e, chat.id, chat.type)}>
-                {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
-              </div>
-              <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div className="tg-chat-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
-                    {chat.name}
-                    {chat.type === 'group' && <span className="material-icons" style={{ fontSize: '15px', color: '#1da1f2', marginLeft: '4px' }}>groups</span>}
-                    {chat.type === 'private' && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} style={{ marginLeft: '4px' }} />}
-                  </h4>
-                  <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#1DA1F2' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
-                    {chat.time}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="tg-preview-container" style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                    
-                    {!typingStatus[chat.id] && renderReadReceipt(chat)}
+          filteredChats.map(chat => {
+            const isMuted = mutedChats.has(chat.id);
+            const isOnline = onlineUsers.has(chat.id);
 
-                    <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#1DA1F2' : 'var(--text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {typingStatus[chat.id] ? `${typingStatus[chat.id]} sedang mengetik...` : chat.preview}
-                    </p>
-                  </div>
-                  {chat.unread > 0 && (
-                    <div style={{ background: '#1DA1F2', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
-                      {chat.unread}
-                    </div>
+            return (
+              <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat)}>
+                <div className="tg-avatar global-avatar" style={{ position: 'relative' }} onClick={(e) => handleAvatarClick(e, chat.id, chat.type)}>
+                  {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
+                  
+                  {/* 🔥 ONLINE INDICATOR (DOT HIJAU) 🔥 */}
+                  {isOnline && chat.type === 'private' && (
+                    <div style={{ position: 'absolute', bottom: '0px', right: '0px', width: '13px', height: '13px', backgroundColor: '#2ecc71', borderRadius: '50%', border: '2.5px solid var(--bg-main)', zIndex: 2 }}></div>
                   )}
                 </div>
+
+                <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div className="tg-chat-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <h4 className="tg-name" style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
+                      {chat.name}
+                      {chat.type === 'group' && <span className="material-icons" style={{ fontSize: '15px', color: '#1da1f2', marginLeft: '4px' }}>groups</span>}
+                      {chat.type === 'private' && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} style={{ marginLeft: '4px' }} />}
+                      {/* 🔥 MUTE ICON 🔥 */}
+                      {isMuted && <span className="material-icons" style={{ fontSize: '14px', color: 'var(--text-muted)', marginLeft: '6px' }}>notifications_off</span>}
+                    </h4>
+                    <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#1DA1F2' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
+                      {chat.time}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="tg-preview-container" style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                      {!typingStatus[chat.id] && renderReadReceipt(chat)}
+                      <p className="tg-preview" style={{ margin: 0, color: typingStatus[chat.id] ? '#1DA1F2' : 'var(--text-muted)', fontStyle: typingStatus[chat.id] ? 'italic' : 'normal', fontWeight: typingStatus[chat.id] ? 600 : 400, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {typingStatus[chat.id] ? `${typingStatus[chat.id]} sedang mengetik...` : chat.preview}
+                      </p>
+                    </div>
+                    {chat.unread > 0 && !isMuted && (
+                      <div style={{ background: '#1DA1F2', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
+                        {chat.unread}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </main>
 
@@ -646,10 +717,12 @@ export default function HypetalkPage() {
         <div className="sidebar-menu">
           <button className="menu-item" onClick={() => openModal('group')}><span className="material-icons">group_add</span> Buat Grup Baru</button>
           <button className="menu-item btn-cari-doi" onClick={handleCariDoi}><span className="material-icons">favorite</span> Cari Doi Sekarang <span className="limit-badge">{sisaLimitDoi}/10</span></button>
+          {/* 🔥 MENU PRIVASI BARU 🔥 */}
+          <button className="menu-item" onClick={() => openModal('privacy-settings')} style={{ marginTop: '10px' }}><span className="material-icons">security</span> Privasi & Status</button>
         </div>
       </aside>
 
-      {/* MODAL USER PROFILE */}
+      {/* MODAL USER PROFILE (UPDATED DENGAN INFO ICON) */}
       {activeModal === 'user-profile' && selectedProfile && (
         <div className="tg-modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={closeModal}>
           <div className="wa-profile-card" onClick={(e) => e.stopPropagation()}>
@@ -666,9 +739,12 @@ export default function HypetalkPage() {
               <button onClick={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }} className="wa-action-btn" style={{ color: '#1da1f2' }}>
                 <span className="material-icons" style={{ fontSize: '24px' }}>chat</span> Chat
               </button>
-              <button onClick={() => startCallFromLobby(selectedProfile)} className="wa-action-btn" style={{ color: '#2ecc71' }}>
-                <span className="material-icons" style={{ fontSize: '24px' }}>call</span> Telpon
+              
+              {/* 🔥 TOMBOL INFO BARU (MENGGANTIKAN TOMBOL TELPON) 🔥 */}
+              <button onClick={() => setActiveModal('chat-info')} className="wa-action-btn" style={{ color: '#2ecc71' }}>
+                <span className="material-icons" style={{ fontSize: '24px' }}>info</span> Info
               </button>
+
               <button onClick={() => handleBlockUser(selectedProfile.id)} disabled={isBlocking} className="wa-action-btn" style={{ color: '#ff4757', opacity: isBlocking ? 0.5 : 1 }}>
                 <span className="material-icons" style={{ fontSize: '24px' }}>block</span> Blokir
               </button>
@@ -677,7 +753,83 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL DOI CARD */}
+      {/* 🔥 MODAL INFO CHAT (MUTE & MEDIA) 🔥 */}
+      {activeModal === 'chat-info' && selectedProfile && (
+        <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
+          <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <img src={selectedProfile.avatar_url || "/asets/png/profile.webp"} style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover' }} />
+                <h3 style={{ margin: 0 }}>Info {selectedProfile.username}</h3>
+              </div>
+              <button className="close-modal-btn" onClick={() => setActiveModal('user-profile')}><span className="material-icons">arrow_back</span></button>
+            </div>
+            
+            <div className="settings-row" style={{ marginTop: '10px' }}>
+              <div>
+                <strong style={{ display: 'block', fontSize: '15px' }}>Senyapkan Notifikasi</strong>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Mute pesan dari obrolan ini</span>
+              </div>
+              <input type="checkbox" className="ios-toggle" checked={mutedChats.has(selectedProfile.id)} onChange={() => handleToggleMute(selectedProfile.id)} />
+            </div>
+
+            <div className="settings-row" style={{ padding: '16px 0', borderBottom: 'none' }}>
+              <button 
+                onClick={() => { closeModal(); router.push(`/hypetalk/media?userId=${selectedProfile.id}`); }} 
+                style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', color: 'var(--text-main)', padding: '14px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="material-icons" style={{ color: '#1f3cff' }}>perm_media</span>
+                  <span style={{ fontWeight: '600' }}>Media, Tautan, dan Dokumen</span>
+                </div>
+                <span className="material-icons" style={{ color: 'var(--text-muted)' }}>chevron_right</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔥 MODAL PRIVASI DAN STATUS ONLINE 🔥 */}
+      {activeModal === 'privacy-settings' && (
+        <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
+          <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header"><h3>Privasi & Status</h3><button className="close-modal-btn" onClick={closeModal}><span className="material-icons">close</span></button></div>
+            
+            <div className="settings-row" style={{ marginTop: '10px' }}>
+              <div>
+                <strong style={{ display: 'block', fontSize: '15px' }}>Tampilkan Status Online</strong>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Munculkan titik hijau saat Anda aktif</span>
+              </div>
+              <input 
+                type="checkbox" 
+                className="ios-toggle" 
+                checked={privacySettings.show_online} 
+                onChange={(e) => setPrivacySettings({ ...privacySettings, show_online: e.target.checked })} 
+              />
+            </div>
+
+            <div style={{ padding: '15px 0', borderBottom: '1px solid var(--border-card)' }}>
+              <strong style={{ display: 'block', fontSize: '15px', marginBottom: '8px' }}>Siapa yang bisa melihat "Terakhir Dilihat"?</strong>
+              <div className="input-group" style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '4px 10px' }}>
+                <span className="material-icons" style={{ color: 'var(--text-muted)' }}>visibility</span>
+                <select 
+                  value={privacySettings.last_seen} 
+                  onChange={(e) => setPrivacySettings({ ...privacySettings, last_seen: e.target.value })}
+                  style={{ width: '100%', background: 'transparent', color: 'var(--text-main)', border: 'none', padding: '10px', outline: 'none' }}
+                >
+                  <option value="public">Semua Orang</option>
+                  <option value="mutuals">Hanya Teman (Saling Mengikuti)</option>
+                  <option value="nobody">Tidak Ada</option>
+                </select>
+              </div>
+            </div>
+
+            <button className="action-btn" style={{ marginTop: '20px' }} onClick={handleSavePrivacy} disabled={isSavingPrivacy}>Simpan Pengaturan</button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL LAINNYA BAWAAN (DOI, BIO, SEARCH, GROUP) */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
@@ -697,7 +849,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL SEARCH/NEW CHAT */}
       {activeModal === 'search' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -711,7 +862,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL GROUP */}
       {activeModal === 'group' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -725,7 +875,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL BIO */}
       {activeModal === 'bio' && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -749,9 +898,7 @@ export default function HypetalkPage() {
             <div className="radar-ring"></div>
             <div className="radar-ring delay-1"></div>
             <div className="radar-ring delay-2"></div>
-            
             <span className="material-icons radar-center-icon">person_search</span>
-            
             <div className="plane-container">
               <svg className="plane-svg" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </div>

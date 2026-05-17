@@ -31,7 +31,7 @@ function ProfileContent() {
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
   
   const [isFollowing, setIsFollowing] = useState(false);
-  const [isFollowedBy, setIsFollowedBy] = useState(false); // 🔥 STATE BARU: Cek apakah di-folback
+  const [isFollowedBy, setIsFollowedBy] = useState(false); 
   const [hasStory, setHasStory] = useState(false); 
   const [storyIdToGo, setStoryIdToGo] = useState<string | null>(null); 
 
@@ -44,6 +44,8 @@ function ProfileContent() {
   // Modals & Sheets
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // 🔥 UBAH MODAL JADI FULL SCREEN 🔥
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
   
@@ -71,6 +73,7 @@ function ProfileContent() {
       setIsEditModalOpen(false);
       setIsSidebarOpen(false);
       setIsActionSheetOpen(false);
+      setIsFollowModalOpen(false);
     };
   }, []);
 
@@ -92,7 +95,7 @@ function ProfileContent() {
     let isComponentActive = true;
 
     if (profile && isMounted && blockStatus === 'none') {
-      const isMutual = isFollowing && isFollowedBy; // 🔥 LOGIKA BARU: Harus saling follow
+      const isMutual = isFollowing && isFollowedBy; 
 
       if (profile.is_private && myId !== profile.id && !isMutual) {
         if (isComponentActive) setPosts([]); 
@@ -189,11 +192,9 @@ function ProfileContent() {
       }
 
       if (currentUserId && currentUserId !== targetId) {
-        // Cek apakah KITA mem-follow DIA
         const { data: isF } = await supabase.from('followers').select('id').match({ follower_id: currentUserId, following_id: targetId }).maybeSingle();
         if (isComponentActive) setIsFollowing(!!isF);
 
-        // 🔥 LOGIKA BARU: Cek apakah DIA mem-follow KITA
         const { data: isFB } = await supabase.from('followers').select('id').match({ follower_id: targetId, following_id: currentUserId }).maybeSingle();
         if (isComponentActive) setIsFollowedBy(!!isFB);
       }
@@ -260,9 +261,11 @@ function ProfileContent() {
   // 🔥 3. EVENT HANDLERS 🔥
   // ==========================================
   
+  // 🔥 LOGIKA BARU KLIK POSTINGAN (KUNCI DI CREATOR_ID) 🔥
   const handleOpenPost = (postId: string) => {
-    if (!postId) return;
-    router.push(`/post?id=${postId}#post-${postId}`);
+    if (!postId || !profile?.id) return;
+    // Bawa param creator_id agar feed di halaman post difilter hanya milik user ini
+    router.push(`/post?creator_id=${profile.id}&id=${postId}#post-${postId}`);
   };
 
   const handleAvatarClick = () => {
@@ -423,25 +426,13 @@ function ProfileContent() {
   }
 
   return (
-    <div className="profile-page-container">
+    <div className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`}>
       
       <style>{`
-        .avatar-container {
-          margin: 0 auto 12px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
+        .avatar-container { margin: 0 auto 12px; display: flex; justify-content: center; align-items: center; }
         
         .story-ring, .normal-ring {
-          width: 90px;
-          height: 90px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          overflow: hidden;
+          width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;
         }
 
         .story-ring {
@@ -449,36 +440,12 @@ function ProfileContent() {
           animation: pulseStory 2s infinite alternate;
         }
         
-        .normal-ring {
-          border: 2px solid var(--border-color);
-          background: transparent;
-        }
+        .normal-ring { border: 2px solid var(--border-color); background: transparent; }
+        .profile-avatar-img { width: 82px; height: 82px; border-radius: 50%; object-fit: cover; border: 3.5px solid var(--bg-main); background: var(--bg-secondary); }
 
-        .profile-avatar-img {
-          width: 82px;
-          height: 82px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 3.5px solid var(--bg-main);
-          background: var(--bg-secondary);
-        }
+        @keyframes pulseStory { 0% { filter: brightness(1); } 100% { filter: brightness(1.2); } }
 
-        @keyframes pulseStory {
-          0% { filter: brightness(1); }
-          100% { filter: brightness(1.2); }
-        }
-
-        .edit-avatar-preview {
-          width: 95px;
-          height: 95px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 3px solid var(--primary-blue);
-          cursor: pointer;
-          margin-bottom: 15px;
-          background: var(--bg-secondary);
-          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
+        .edit-avatar-preview { width: 95px; height: 95px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-blue); cursor: pointer; margin-bottom: 15px; background: var(--bg-secondary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
       `}</style>
 
       <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px' }}>
@@ -540,7 +507,6 @@ function ProfileContent() {
                     <span className="material-icons" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '4px' }}>chat</span>
                     Chat
                   </button>
-                  {/* Tampilan tombol berubah jika mutual */}
                   <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleFollow}>
                     {isFollowing ? (isMutual ? 'Berteman' : 'Mengikuti') : t('follow', 'Ikuti')}
                   </button>
@@ -562,7 +528,6 @@ function ProfileContent() {
           )}
         </section>
 
-        {/* 🔥 TABS MUNCUL KALAU: Bukan private, Diri sendiri, ATAU Mutual (saling follow) */}
         {(!profile.is_private || isMe || isMutual) && (
           <div className="profile-tabs">
             <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
@@ -578,7 +543,6 @@ function ProfileContent() {
            {isLoadingPosts ? (
               Array(9).fill(0).map((_, i) => <div key={i} className="skeleton-grid-item"></div>)
            ) : profile.is_private && !isMutual && !isMe ? (
-              /* 🔥 INFO JIKA PRIVATE TAPI BELUM MUTUAL 🔥 */
               <div className="no-posts-v2">
                 <div className="no-posts-icon-circle"><span className="material-icons">lock</span></div>
                 <h3>Akun Private</h3>
@@ -679,16 +643,16 @@ function ProfileContent() {
         </>
       )}
 
-      {/* --- MODAL EDIT PROFIL --- */}
-      <div className={`p-sidebar-overlay ${isEditModalOpen ? 'active' : ''}`} onClick={() => setIsEditModalOpen(false)} />
-      <aside className={`p-follow-sheet ${isEditModalOpen ? 'open' : ''}`} style={{height: 'auto', maxHeight: '90dvh', paddingBottom: '30px'}}>
-         <div className="follow-sheet-header">
-            <div className="drag-handle"></div>
+      {/* 🔥 MODAL EDIT PROFIL FULL SCREEN 🔥 */}
+      <div className={`full-screen-modal ${isEditModalOpen ? 'open' : ''}`}>
+         <div className="full-screen-header">
+            <button className="icon-btn-header" onClick={() => setIsEditModalOpen(false)}><span className="material-icons">arrow_back</span></button>
             <h3>{t('edit_profile_modal', 'Edit Profil')}</h3>
-            <span className="material-icons close-icon" onClick={() => setIsEditModalOpen(false)}>close</span>
+            <button className="icon-btn-header text-btn" onClick={handleSaveSettings} disabled={isSaving}>
+              {isSaving ? <span className="material-icons spinner">sync</span> : 'Simpan'}
+            </button>
          </div>
-         <div className="follow-sheet-body" style={{padding: '0 20px'}}>
-            
+         <div className="full-screen-body">
             <div className="edit-avatar-section">
                <div className="edit-avatar-wrapper" onClick={() => fileInputRef.current?.click()}>
                  <img src={previewUrl || '/asets/png/profile.webp'} alt="Avatar" className="edit-avatar-preview" />
@@ -721,24 +685,24 @@ function ProfileContent() {
                <label>{t('link_label', 'Tautan / Website')}</label>
                <input type="text" value={editData.website} onChange={e => setEditData({...editData, website: e.target.value})} placeholder="misal: instagram.com/hope" />
             </div>
-
-            <button className="btn-save-profile" onClick={handleSaveSettings} disabled={isSaving}>
-               {isSaving ? t('saving', 'Menyimpan...') : t('save_changes', 'Simpan Perubahan')}
-            </button>
          </div>
-      </aside>
+      </div>
 
-      {/* --- MODAL FOLLOWERS / FOLLOWING --- */}
-      <div className={`p-sidebar-overlay ${isFollowModalOpen ? 'active' : ''}`} onClick={() => setIsFollowModalOpen(false)} />
-      <aside className={`p-follow-sheet ${isFollowModalOpen ? 'open' : ''}`}>
-        <div className="follow-sheet-header">
-           <div className="drag-handle"></div>
+      {/* 🔥 MODAL FOLLOWERS / FOLLOWING FULL SCREEN 🔥 */}
+      <div className={`full-screen-modal ${isFollowModalOpen ? 'open' : ''}`}>
+        <div className="full-screen-header">
+           <button className="icon-btn-header" onClick={() => setIsFollowModalOpen(false)}><span className="material-icons">arrow_back</span></button>
            <h3>{followModalType === 'followers' ? t('followers', 'Pengikut') : t('following', 'Mengikuti')}</h3>
-           <span className="material-icons close-icon" onClick={() => setIsFollowModalOpen(false)}>close</span>
+           <div style={{width: '24px'}}></div>
         </div>
-        <div className="follow-sheet-body">
+        <div className="full-screen-body no-padding">
            {isFollowLoading ? (
-              Array(5).fill(0).map((_, i) => <div key={i} className="follow-item-skeleton"><div className="skeleton-avatar"></div><div className="skeleton-text"></div></div>)
+              Array(8).fill(0).map((_, i) => <div key={i} className="follow-item-skeleton"><div className="skeleton-avatar"></div><div className="skeleton-text"></div></div>)
+           ) : followList.length === 0 ? (
+              <div className="empty-follow-state">
+                <span className="material-icons">group_off</span>
+                <p>Belum ada {followModalType === 'followers' ? 'pengikut' : 'yang diikuti'}.</p>
+              </div>
            ) : (
               followList.map(user => (
                  <div key={user.id} className="follow-item" onClick={() => { setIsFollowModalOpen(false); router.push(`/data?id=${user.id}`); }}>
@@ -752,7 +716,7 @@ function ProfileContent() {
               ))
            )}
         </div>
-      </aside>
+      </div>
 
       {/* --- ACTION SHEET (LAPORKAN / BLOKIR) --- */}
       <div className={`p-sidebar-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)} />
