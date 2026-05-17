@@ -54,6 +54,7 @@ export default function NotificationsPage() {
   const loadNotifications = async (userId: string) => {
     setIsLoading(true);
     try {
+      // 1. Cek Postingan Pending
       const { count: pendingPosts } = await supabase
         .from('posts')
         .select('*', { count: 'exact', head: true })
@@ -62,6 +63,7 @@ export default function NotificationsPage() {
       
       setPendingCount(pendingPosts || 0);
 
+      // 2. Ambil Notifikasi Dasar & Data Interaksi (Likes, Comments, Reposts, Saves)
       const { data: dbNotifs } = await supabase
         .from('notifications')
         .select('*')
@@ -73,11 +75,22 @@ export default function NotificationsPage() {
       const myPosts = myPostsRes.data || [];
       const postIds = myPosts.map(p => p.id);
 
+      // Ambil ID Komentar milik user
+      const myCommentsRes = await supabase.from('comments').select('id, post_id').eq('user_id', userId);
+      const myComments = myCommentsRes.data || [];
+      const commentIds = myComments.map(c => c.id);
+
       let likesData: any[] = [];
       let commentsData: any[] = [];
       let repostsData: any[] = [];
       let savesData: any[] = [];
+      
+      // Data Baru
+      let coinTransData: any[] = [];
+      let commentLikesData: any[] = [];
+      let paymentsData: any[] = [];
 
+      // A. Data Terkait Postingan
       if (postIds.length > 0) {
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from('likes').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
@@ -92,12 +105,38 @@ export default function NotificationsPage() {
         savesData = savesRes.data || [];
       }
 
+      // B. Data Terkait Transaksi, Komentar & Pembayaran
+      const promisesExtra = [];
+      
+      // Ambil transaksi koin masuk (amount > 0) ke user ini
+      promisesExtra.push(supabase.from('coin_transactions').select('*').eq('user_id', userId).gt('amount', 0).order('created_at', { ascending: false }).limit(20));
+      
+      // Ambil like pada komentar milik user ini
+      if (commentIds.length > 0) {
+         promisesExtra.push(supabase.from('comment_likes').select('id, comment_id, created_at, user_id').in('comment_id', commentIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(20));
+      } else {
+         promisesExtra.push(Promise.resolve({ data: [] }));
+      }
+      
+      // Ambil riwayat pembayaran (withdrawal/topup) user ini
+      promisesExtra.push(supabase.from('payments').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
+
+      const [coinRes, commentLikesRes, paymentsRes] = await Promise.all(promisesExtra);
+      coinTransData = coinRes.data || [];
+      commentLikesData = commentLikesRes.data || [];
+      paymentsData = paymentsRes.data || [];
+
+      // 3. Kumpulkan semua Actor ID untuk mengambil data Profil
       const allActorIds = new Set<string>();
       (dbNotifs || []).forEach(n => { if (n.actor_id) allActorIds.add(n.actor_id); });
       likesData.forEach(l => allActorIds.add(l.user_id));
       commentsData.forEach(c => allActorIds.add(c.user_id));
       repostsData.forEach(r => allActorIds.add(r.user_id));
       savesData.forEach(s => allActorIds.add(s.user_id));
+      commentLikesData.forEach(cl => allActorIds.add(cl.user_id));
+      
+      // (Asumsi coin_transactions dan payments tidak butuh profil actor karena sistem yang memberi, 
+      // KECUALI jika transaksi tersebut P2P transfer yang punya sender_id, bisa ditambahkan logikanya).
 
       let profilesMap: Record<string, any> = {};
       if (allActorIds.size > 0) {
@@ -107,6 +146,7 @@ export default function NotificationsPage() {
         }
       }
 
+      // 4. Format Seluruh Data menjadi Standar Objek Notifikasi
       const formattedLikes = likesData.map((l: any) => ({
         id: `like-${l.id}`, type: 'like', post_id: l.post_id, user_id: userId, actor_id: l.user_id,
         created_at: l.created_at, is_read: true, actor: profilesMap[l.user_id], postData: myPosts.find(p => p.id === l.post_id)
@@ -128,6 +168,30 @@ export default function NotificationsPage() {
         created_at: s.created_at, is_read: true, actor: profilesMap[s.user_id], postData: myPosts.find(p => p.id === s.post_id)
       }));
 
+      // A. Format Comment Likes
+      const formattedCommentLikes = commentLikesData.map((cl: any) => {
+        const relatedComment = myComments.find(c => c.id === cl.comment_id);
+        return {
+          id: `comment_like-${cl.id}`, type: 'comment_like', post_id: relatedComment?.post_id, 
+          actor_id: cl.user_id, created_at: cl.created_at, is_read: true, 
+          actor: profilesMap[cl.user_id], postData: myPosts.find(p => p.id === relatedComment?.post_id)
+        };
+      });
+
+      // B. Format Coin Transactions (System)
+      const formattedCoins = coinTransData.map((ct: any) => ({
+        id: `coin-${ct.id}`, type: 'coin_receive', amount: ct.amount, description: ct.description,
+        created_at: ct.created_at, is_read: true,
+        actor: { username: 'HypeSystem', avatar_url: '/asets/png/logo.png' } // Atau ikon sistem yang kamu punya
+      }));
+
+      // C. Format Payments (System)
+      const formattedPayments = paymentsData.map((py: any) => ({
+        id: `pay-${py.id}`, type: 'payment_status', status: py.status, amount: py.amount,
+        created_at: py.created_at, is_read: true,
+        actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' } 
+      }));
+
       const normalizedDbNotifs = (dbNotifs || []).map(n => {
         const isFollow = n.message?.toLowerCase().includes('mengikuti') || n.type === 'follow';
         return {
@@ -137,12 +201,16 @@ export default function NotificationsPage() {
         };
       });
 
+      // 5. Gabungkan dan Urutkan
       const allRaw = [
         ...normalizedDbNotifs, 
         ...formattedLikes, 
         ...formattedComments,
         ...formattedReposts, 
         ...formattedSaves, 
+        ...formattedCommentLikes,
+        ...formattedCoins,
+        ...formattedPayments
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setRawNotifs(allRaw);
@@ -190,19 +258,18 @@ export default function NotificationsPage() {
 
     // 2. Arahkan URL sesuai Tipe Notifikasi
     if (notif.type === 'follow' && notif.actor_id) {
-      // Buka Profil Orang
       router.push(`/data?id=${notif.actor_id}`); 
       
-    } else if (notif.type === 'comment' && notif.post_id) {
-      // Ke Postingan + Memicu pop-up Komentar otomatis lewat parameter URL
+    } else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) {
       router.push(`/?search=${notif.post_id}&openComment=true#post-${notif.post_id}`); 
       
     } else if (notif.type === 'story_like' && notif.story_id) {
-      // Ke Story Player
       router.push(`/story/${notif.story_id}`);
       
+    } else if (notif.type === 'payment_status' || notif.type === 'coin_receive') {
+      router.push(`/settings/wallet`); // Sesuaikan rute halaman dompet/koin kamu
+
     } else if (notif.post_id) {
-      // Ke Postingan Biasa (Like, Save, Repost)
       router.push(`/?search=${notif.post_id}#post-${notif.post_id}`); 
     }
   };
@@ -241,11 +308,12 @@ export default function NotificationsPage() {
       case 'repost': return { icon: 'repeat', color: '#1DA1F2' }; 
       case 'save': return { icon: 'bookmark', color: '#f59e0b' }; 
       case 'story_like': return { icon: 'favorite', color: '#ff2e63' }; 
-      case 'gift': return { icon: 'card_giftcard', color: '#f59e0b' };
+      case 'gift': 
+      case 'coin_receive': return { icon: 'monetization_on', color: '#f59e0b' };
       case 'follow': return { icon: 'person_add', color: '#8b5cf6' };
       case 'mention': return { icon: 'alternate_email', color: '#1DA1F2' }; 
       case 'post_approved': return { icon: 'verified', color: '#10b981' }; 
-      case 'payment_pending': return { icon: 'credit_card', color: '#8b5cf6' };
+      case 'payment_status': return { icon: 'account_balance_wallet', color: '#8b5cf6' };
       default: return { icon: 'notifications', color: '#3b82f6' };
     }
   };
@@ -260,7 +328,7 @@ export default function NotificationsPage() {
 
   const filteredNotifs = rawNotifs.filter(n => {
     if (activeTab === 'all') return true;
-    if (activeTab === 'like') return n.type === 'like' || n.type === 'repost' || n.type === 'save';
+    if (activeTab === 'like') return n.type === 'like' || n.type === 'repost' || n.type === 'save' || n.type === 'comment_like';
     if (activeTab === 'comment') return n.type === 'comment' || n.type === 'reply';
     if (activeTab === 'follow') return n.type === 'follow';
     return true;
@@ -358,14 +426,15 @@ export default function NotificationsPage() {
           </div>
         ) : (
           filteredNotifs.map(notif => {
-            const { icon, color } = getIconAndColor(notif.type);
-            const actorName = notif.actor?.username || "Seseorang";
+            const { icon: typeIcon, color } = getIconAndColor(notif.type);
+            const actorName = notif.actor?.username || "Sistem";
             const actorAvatar = notif.actor?.avatar_url || "/asets/png/profile.webp";
-            const isFollowing = myFollowings.has(notif.actor_id);
+            const isFollowing = notif.actor_id ? myFollowings.has(notif.actor_id) : false;
             
             let messageHtml = "";
-            let actionIcon = "";
+            let actionIcon = typeIcon;
             let thumbUrl = null;
+            let iconColor = color;
 
             if (notif.postData) {
                const imgs = notif.postData.image_url ? notif.postData.image_url.split(',') : [];
@@ -373,18 +442,23 @@ export default function NotificationsPage() {
             }
 
             if (notif.type === 'like') {
-              messageHtml = `menyukai postinganmu.`; actionIcon = 'favorite';
+              messageHtml = `menyukai postinganmu.`; 
+            } else if (notif.type === 'comment_like') {
+              messageHtml = `menyukai komentarmu.`; 
             } else if (notif.type === 'comment') {
-              messageHtml = `berkomentar: <span style="color:var(--text-muted)">"${notif.message}"</span>`; actionIcon = 'chat_bubble';
+              messageHtml = `berkomentar: <span style="color:var(--text-muted)">"${notif.message}"</span>`; 
             } else if (notif.type === 'repost') {
-              messageHtml = `membagikan ulang karyamu.`; actionIcon = 'repeat';
+              messageHtml = `membagikan ulang karyamu.`; 
             } else if (notif.type === 'save') {
-              messageHtml = `menyimpan karyamu.`; actionIcon = 'bookmark';
+              messageHtml = `menyimpan karyamu.`; 
             } else if (notif.type === 'follow') {
-              messageHtml = `mulai mengikuti Anda.`; actionIcon = 'person_add';
+              messageHtml = `mulai mengikuti Anda.`; 
+            } else if (notif.type === 'coin_receive') {
+              messageHtml = `Anda menerima koin: <strong style="color:#f59e0b">+${notif.amount}</strong><br/><span style="font-size: 12px; color:var(--text-muted)">${notif.description || 'Top up / Reward'}</span>`; 
+            } else if (notif.type === 'payment_status') {
+              messageHtml = `Status pembayaran Rp ${notif.amount?.toLocaleString('id-ID')} Anda saat ini: <strong style="text-transform: capitalize">${notif.status}</strong>.`; 
             } else {
               messageHtml = notif.message?.replace(/<b>(.*?)<\/b>/g, '') || "Ada notifikasi baru untukmu.";
-              actionIcon = 'notifications';
             }
 
             return (
@@ -395,15 +469,15 @@ export default function NotificationsPage() {
                 style={{ padding: '12px 15px', display: 'flex', alignItems: 'flex-start', gap: '12px', borderBottom: '1px solid var(--border-card)', cursor: 'pointer', position: 'relative' }}
               >
                 <div style={{ position: 'relative' }}>
-                  <img src={actorAvatar} alt={actorName} className="notif-avatar" onClick={(e) => { e.stopPropagation(); router.push(`/data?id=${notif.actor_id}`); }} />
-                  <div style={{ position: 'absolute', bottom: -4, right: -4, background: notif.type === 'like' ? '#ff2e63' : notif.type === 'comment' ? '#10b981' : notif.type === 'follow' ? '#8b5cf6' : '#3b82f6', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-main)' }}>
+                  <img src={actorAvatar} alt={actorName} className="notif-avatar" onClick={(e) => { e.stopPropagation(); if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`); }} />
+                  <div style={{ position: 'absolute', bottom: -4, right: -4, background: iconColor, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-main)' }}>
                     <span className="material-icons" style={{ fontSize: '11px', color: 'white' }}>{actionIcon}</span>
                   </div>
                 </div>
                 
                 <div className="notif-content" style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.4' }}>
-                    <strong style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); router.push(`/data?id=${notif.actor_id}`); }}>{actorName}</strong> {messageHtml && <span dangerouslySetInnerHTML={{ __html: messageHtml }} />}
+                    <strong style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); if(notif.actor_id) router.push(`/data?id=${notif.actor_id}`); }}>{actorName}</strong> {messageHtml && <span dangerouslySetInnerHTML={{ __html: messageHtml }} />}
                   </div>
                   <span className="notif-date" style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>{formatDate(notif.created_at)}</span>
                 </div>

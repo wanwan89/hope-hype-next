@@ -110,13 +110,24 @@ function StoryViewerContent() {
   async function recordView(sId: string) {
     if (!currentUserId) return;
     const currentStory = allUserStories[currentIndex];
+    
+    // Cegah user nge-view story-nya sendiri
     if (currentStory && currentStory.creator_id === currentUserId) return;
 
-    const { data } = await supabase.from('story_views')
-      .select('id').match({ story_id: sId, user_id: currentUserId }).maybeSingle();
-    
-    if (!data) {
-      await supabase.from('story_views').insert({ story_id: sId, user_id: currentUserId });
+    try {
+      const { data } = await supabase.from('story_views')
+        .select('id').match({ story_id: sId, user_id: currentUserId }).maybeSingle();
+      
+      if (!data) {
+        const { error } = await supabase.from('story_views').insert({ story_id: sId, user_id: currentUserId });
+        if (error) {
+          console.error("❌ GAGAL MASUKIN VIEW KE DATABASE:", error.message);
+        } else {
+          console.log("✅ View berhasil dicatat!");
+        }
+      }
+    } catch (err) {
+      console.error("❌ ERROR KONEKSI VIEW:", err);
     }
   }
 
@@ -196,17 +207,30 @@ function StoryViewerContent() {
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!currentUserId) return alert("Login dulu bro!");
+    if (!currentUserId) return showNotif("Login dulu bro!", "error");
     
     const sId = allUserStories[currentIndex].id;
     const newLikeStatus = !isLiked;
-    setIsLiked(newLikeStatus);
+    setIsLiked(newLikeStatus); // Langsung ubah UI biar cepet (Optimistic UI)
 
-    if (newLikeStatus) {
-      if (navigator.vibrate) navigator.vibrate(50);
-      await supabase.from('story_likes').insert({ story_id: sId, user_id: currentUserId });
-    } else {
-      await supabase.from('story_likes').delete().match({ story_id: sId, user_id: currentUserId });
+    try {
+      if (newLikeStatus) {
+        if (navigator.vibrate) navigator.vibrate(50);
+        const { error } = await supabase.from('story_likes').insert({ story_id: sId, user_id: currentUserId });
+        
+        if (error) {
+          console.error("❌ GAGAL MASUKIN LIKE KE DATABASE:", error.message);
+          setIsLiked(false); // Kalau error database, kembalikan warna love ke semula
+          showNotif("Gagal menyukai story", "error");
+        } else {
+          console.log("✅ Like berhasil masuk!");
+        }
+      } else {
+        const { error } = await supabase.from('story_likes').delete().match({ story_id: sId, user_id: currentUserId });
+        if (error) console.error("❌ GAGAL HAPUS LIKE:", error.message);
+      }
+    } catch (err) {
+      console.error("❌ ERROR KONEKSI LIKE:", err);
     }
   };
 
