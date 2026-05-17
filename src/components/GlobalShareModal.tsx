@@ -3,13 +3,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showNotif } from '@/lib/ui-utils';
-import { Copy, X, Share2, Send, Lock, Unlock, MessageSquareOff, Trash2, Facebook, Twitter } from 'lucide-react';
+import { Copy, X, Send, Lock, Unlock, MessageSquareOff, Trash2, Twitter, Download, Flag } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import './GlobalShareModal.css';
 
 declare global {
   interface Window {
-    // 🔥 UPDATE: Tambah parameter postId, isOwner, isPrivate untuk kontrol kreator
     openGlobalShare?: (
       url?: string, 
       title?: string, 
@@ -148,7 +147,6 @@ export default function GlobalShareModal() {
     if (!shareData.postId) return;
     const newStatus = !shareData.isPrivate;
     try {
-      // Asumsi ada kolom is_private di tabel posts
       await supabase.from('posts').update({ is_private: newStatus }).eq('id', shareData.postId);
       setShareData(prev => ({ ...prev, isPrivate: newStatus }));
       showNotif(newStatus ? 'Postingan menjadi Privat' : 'Postingan menjadi Publik', 'success');
@@ -185,23 +183,6 @@ export default function GlobalShareModal() {
     const url = encodeURIComponent(shareData.url);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
     closeModal();
-  };
-
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: shareData.title,
-          text: shareData.text,
-          url: shareData.url,
-        });
-        closeModal();
-      } catch (err) {
-        console.log('User cancelled');
-      }
-    } else {
-      copyLink();
-    }
   };
 
   if (!isOpen) return null;
@@ -278,7 +259,7 @@ export default function GlobalShareModal() {
           <div className="sheet-handle" onClick={closeModal} style={{ margin: '15px auto' }}></div>
           
           <div className="share-header" style={{ padding: '0 20px 15px 20px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Bagikan Tautan</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Bagikan</h3>
             <button className="close-share" onClick={closeModal} style={{ background: 'var(--bg-secondary)', border: 'none', borderRadius: '50%', padding: '6px', color: 'var(--text-main)' }}>
               <X size={20} />
             </button>
@@ -307,8 +288,8 @@ export default function GlobalShareModal() {
 
             <div className="g-divider"></div>
 
-            {/* 🔥 BARIS 2: SOSIAL MEDIA & COPY LINK 🔥 */}
-            <div className="g-section-title">Sosial Media</div>
+            {/* 🔥 BARIS 2: SOSIAL MEDIA & TINDAKAN (UNDUH & LAPOR) 🔥 */}
+            <div className="g-section-title">Bagikan & Tindakan</div>
             <div className="g-scroll-row">
               
               <div className="g-scroll-item" onClick={shareToWhatsApp}>
@@ -331,10 +312,19 @@ export default function GlobalShareModal() {
                 <span className="g-item-name">Salin</span>
               </div>
 
-              <div className="g-scroll-item" onClick={handleNativeShare}>
-                <div className="g-icon-circle"><Share2 size={24} /></div>
-                <span className="g-item-name">Lainnya</span>
+              {/* 🔥 TOMBOL UNDUH 🔥 */}
+              <div className="g-scroll-item" onClick={() => { showNotif("Fitur unduh segera tersedia", "info"); closeModal(); }}>
+                <div className="g-icon-circle"><Download size={24} /></div>
+                <span className="g-item-name">Unduh</span>
               </div>
+
+              {/* 🔥 TOMBOL LAPOR (MUNCUL JIKA BUKAN PEMILIK) 🔥 */}
+              {!shareData.isOwner && (
+                <div className="g-scroll-item" onClick={() => { showNotif("Laporan dikirim untuk ditinjau", "info"); closeModal(); }}>
+                  <div className="g-icon-circle danger"><Flag size={24} /></div>
+                  <span className="g-item-name" style={{ color: '#ff4757' }}>Laporkan</span>
+                </div>
+              )}
 
             </div>
 
@@ -357,7 +347,7 @@ export default function GlobalShareModal() {
                     <span className="g-item-name">Komentar Off</span>
                   </div>
 
-                  <div className="g-scroll-item" onClick={() => { showNotif("Fitur hapus dialihkan ke opsi post", "warning"); closeModal(); }}>
+                  <div className="g-scroll-item" onClick={() => { showNotif("Gunakan menu edit/hapus di profil", "warning"); closeModal(); }}>
                     <div className="g-icon-circle danger"><Trash2 size={24} /></div>
                     <span className="g-item-name" style={{ color: '#ff4757' }}>Hapus</span>
                   </div>

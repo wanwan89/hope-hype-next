@@ -58,11 +58,9 @@ export default function HypetalkPage() {
   useEffect(() => {
     if (!currentUser) return;
     
-    // Load muted chats dari local storage
     const savedMutes = localStorage.getItem(`muted_chats_${currentUser.id}`);
     if (savedMutes) setMutedChats(new Set(JSON.parse(savedMutes)));
 
-    // Jika user menonaktifkan status onlinenya, jangan broadcast kehadirannya
     if (!privacySettings.show_online) return;
 
     const presenceChannel = supabase.channel('global_online_users', {
@@ -98,7 +96,6 @@ export default function HypetalkPage() {
         pekerjaan: profile.pekerjaan || '',
         hobi: profile.hobi || ''
       });
-      // Load privacy dari database jika ada (gunakan default jika null)
       setPrivacySettings({
         show_online: profile.show_online !== false, 
         last_seen: profile.last_seen || 'public'
@@ -661,9 +658,13 @@ export default function HypetalkPage() {
                 <div className="tg-avatar global-avatar" style={{ position: 'relative' }} onClick={(e) => handleAvatarClick(e, chat.id, chat.type)}>
                   {chat.type === 'global' ? <span className="material-icons">public</span> : <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />}
                   
-                  {/* 🔥 ONLINE INDICATOR (DOT HIJAU) 🔥 */}
-                  {isOnline && chat.type === 'private' && (
-                    <div style={{ position: 'absolute', bottom: '0px', right: '0px', width: '13px', height: '13px', backgroundColor: '#2ecc71', borderRadius: '50%', border: '2.5px solid var(--bg-main)', zIndex: 2 }}></div>
+                  {/* 🔥 ONLINE/OFFLINE INDICATOR (DOT HIJAU/ABU) 🔥 */}
+                  {chat.type === 'private' && (
+                    <div style={{ 
+                      position: 'absolute', bottom: '0px', right: '0px', width: '13px', height: '13px', 
+                      backgroundColor: isOnline ? '#2ecc71' : '#8a8b91', // Abu-abu jika tidak aktif
+                      borderRadius: '50%', border: '2.5px solid var(--bg-main)', zIndex: 2 
+                    }}></div>
                   )}
                 </div>
 
@@ -673,7 +674,6 @@ export default function HypetalkPage() {
                       {chat.name}
                       {chat.type === 'group' && <span className="material-icons" style={{ fontSize: '15px', color: '#1da1f2', marginLeft: '4px' }}>groups</span>}
                       {chat.type === 'private' && <span dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }} style={{ marginLeft: '4px' }} />}
-                      {/* 🔥 MUTE ICON 🔥 */}
                       {isMuted && <span className="material-icons" style={{ fontSize: '14px', color: 'var(--text-muted)', marginLeft: '6px' }}>notifications_off</span>}
                     </h4>
                     <span className="tg-time" style={{ fontSize: '11px', color: chat.unread > 0 ? '#1DA1F2' : 'var(--text-muted)', fontWeight: chat.unread > 0 ? 'bold' : 'normal', flexShrink: 0, marginLeft: '8px' }}>
@@ -716,9 +716,11 @@ export default function HypetalkPage() {
         </div>
         <div className="sidebar-menu">
           <button className="menu-item" onClick={() => openModal('group')}><span className="material-icons">group_add</span> Buat Grup Baru</button>
-          <button className="menu-item btn-cari-doi" onClick={handleCariDoi}><span className="material-icons">favorite</span> Cari Doi Sekarang <span className="limit-badge">{sisaLimitDoi}/10</span></button>
-          {/* 🔥 MENU PRIVASI BARU 🔥 */}
-          <button className="menu-item" onClick={() => openModal('privacy-settings')} style={{ marginTop: '10px' }}><span className="material-icons">security</span> Privasi & Status</button>
+          
+          {/* 🔥 MENU PRIVASI (ICON GEMBOK, PINDAH KE SINI) 🔥 */}
+          <button className="menu-item" onClick={() => openModal('privacy-settings')}><span className="material-icons">lock</span> Privasi & Status</button>
+
+          <button className="menu-item btn-cari-doi" onClick={handleCariDoi} style={{ marginTop: '10px' }}><span className="material-icons">favorite</span> Cari Doi Sekarang <span className="limit-badge">{sisaLimitDoi}/10</span></button>
         </div>
       </aside>
 
@@ -740,7 +742,6 @@ export default function HypetalkPage() {
                 <span className="material-icons" style={{ fontSize: '24px' }}>chat</span> Chat
               </button>
               
-              {/* 🔥 TOMBOL INFO BARU (MENGGANTIKAN TOMBOL TELPON) 🔥 */}
               <button onClick={() => setActiveModal('chat-info')} className="wa-action-btn" style={{ color: '#2ecc71' }}>
                 <span className="material-icons" style={{ fontSize: '24px' }}>info</span> Info
               </button>
@@ -829,7 +830,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* MODAL LAINNYA BAWAAN (DOI, BIO, SEARCH, GROUP) */}
       {activeModal === 'doi-card' && foundDoi && (
         <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={closeModal}>
           <div className="tg-modal-content doi-result-card" onClick={(e) => e.stopPropagation()}>
@@ -891,7 +891,6 @@ export default function HypetalkPage() {
         </div>
       )}
 
-      {/* ANIMASI DOI (RADAR SVG) */}
       {isSearchingDoi && (
         <div className="doi-search-overlay">
           <div className="radar-wrapper">

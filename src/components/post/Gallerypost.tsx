@@ -6,7 +6,6 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation'; 
 import { sendPushAndAppNotif } from '@/lib/notif'; 
-import { motion, AnimatePresence } from 'framer-motion'; 
 import './Gallery.css';
 
 // Kompres Gambar Cloudinary
@@ -17,25 +16,6 @@ const getOptimizedImage = (url: string) => {
     return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_800/');
   }
   return cleanUrl;
-};
-
-const getWatermarkedUrl = (originalUrl: string, username: string, isVideo: boolean) => {
-  if (!originalUrl || !originalUrl.includes('res.cloudinary.com')) return originalUrl;
-
-  const cleanUsername = encodeURIComponent(username);
-  const logoId = "logo_hope"; 
-  const outroId = "outro_hope"; 
-  const movingLogoGifId = "logo_moving_hope"; 
-
-  if (isVideo) {
-    const movingOverlay = `l_video:${movingLogoGifId},w_0.3,c_fit,so_0,eo_100p,g_center`;
-    const spliceTransform = `l_video:${outroId}/c_pad,w_1.0,h_1.0,fl_relative,b_black/l_text:Arial_30_bold:@${cleanUsername}/co_white,g_center,y_60/fl_layer_apply/fl_splice`;
-    return originalUrl.replace('/upload/', `/upload/${movingOverlay}/${spliceTransform}/fl_attachment:HopeHype_Video`);
-  } else {
-    const convertToGif = "f_gif,du_3"; 
-    const movingOverlayOnImage = `l_${movingLogoGifId},w_0.3,c_fit,g_center`;
-    return originalUrl.replace('/upload/', `/upload/${convertToGif}/${movingOverlayOnImage}/fl_attachment:HopeHype_Image`);
-  }
 };
 
 const formatRelativeTime = (dateString: string) => {
@@ -79,7 +59,6 @@ export default function Gallerypost() {
   const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   
-  // 🔥 STATE BARU: Menyimpan data orang-orang yang me-like untuk setiap postingan 🔥
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
 
   const [floatingLikes, setFloatingLikes] = useState<Array<{ id: number, x: number, y: number, avatar: string, delay: string }>>([]);
@@ -102,9 +81,6 @@ export default function Gallerypost() {
 
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
-
-  const [optionsModal, setOptionsModal] = useState<{isOpen: boolean, postId: string, isOwner: boolean, creatorId: string, url: string, isVideo: boolean, username: string} | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -210,7 +186,7 @@ export default function Gallerypost() {
       const to = from + POSTS_PER_PAGE - 1;
 
       let query = supabase.from("posts")
-        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
+        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .range(from, to); 
@@ -236,7 +212,6 @@ export default function Gallerypost() {
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
         
-        // 🔥 FIX: Ambil detail siapa saja yang me-like untuk postingan sendiri 🔥
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from("likes").select("post_id, user_id, profiles:user_id(username, avatar_url)").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -255,7 +230,6 @@ export default function Gallerypost() {
         likesRes.data?.forEach(l => { 
           if(newCounts[l.post_id]) {
             newCounts[l.post_id].likes++; 
-            // Simpan data liker (khusus maksimal 10 orang buat efek terbang biar ga ngelag)
             if (newLikersMap[l.post_id].length < 10 && l.profiles) {
               newLikersMap[l.post_id].push(l.profiles);
             }
@@ -299,69 +273,19 @@ export default function Gallerypost() {
     }
   };
 
-  const executeDownload = async () => {
-    if (!optionsModal) return;
-    setIsDownloading(true);
-    setOptionsModal(null); 
-
-    try {
-      const watermarkedUrl = getWatermarkedUrl(optionsModal.url, optionsModal.username, optionsModal.isVideo);
-      
-      const response = await fetch(watermarkedUrl);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `HopeHype-${optionsModal.username}-${Date.now()}.${optionsModal.isVideo ? 'mp4' : 'jpg'}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
-      
-      showNotif(t('Berhasil diunduh!'), "success");
-    } catch (err) {
-      console.error(err);
-      showNotif(t('Gagal mengunduh file.'), "error");
-    } finally {
-      setIsDownloading(false);
+  // 🔥 FUNGSI BARU: LANGSUNG BUKA GLOBAL SHARE MODAL 🔥
+  const openShareOptions = (post: any, isOwner: boolean) => {
+    if (window.openGlobalShare) {
+      window.openGlobalShare(
+        `${window.location.origin}/post?id=${post.id}`, 
+        "Postingan HypeTalk", 
+        "Lihat karya keren ini di HypeTalk!", 
+        post.profiles?.username || 'User', 
+        post.id, 
+        isOwner, 
+        post.is_private || false 
+      );
     }
-  };
-
-  const handleDeletePost = async () => {
-    if (!optionsModal || !optionsModal.isOwner) return;
-    
-    if (window.confirmDeletePost) {
-      window.confirmDeletePost(optionsModal.postId);
-      setOptionsModal(null);
-      return;
-    }
-
-    if (confirm("Yakin ingin menghapus postingan ini?")) {
-      try {
-        await supabase.from("posts").delete().eq("id", optionsModal.postId);
-        setPosts(prev => prev.filter(p => p.id !== optionsModal.postId));
-        showNotif("Postingan berhasil dihapus", "success");
-      } catch (err) {
-        showNotif("Gagal menghapus postingan", "error");
-      }
-      setOptionsModal(null);
-    }
-  };
-
-  const openOptionsModal = (post: any, isOwner: boolean) => {
-    const photoList = post.image_url ? post.image_url.split(',') : [];
-    const targetUrl = photoList.length > 0 ? photoList[0] : post.video_url;
-
-    setOptionsModal({
-      isOpen: true,
-      postId: post.id,
-      isOwner,
-      creatorId: post.creator_id,
-      url: targetUrl || '',
-      isVideo: !!post.video_url,
-      username: post.profiles?.username || 'User'
-    });
   };
 
   const handleFollowToggle = async (e: any, creatorId: string) => {
@@ -899,75 +823,6 @@ export default function Gallerypost() {
         </div>
       ))}
 
-      {isDownloading && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.1)', zIndex: 999999 }}>
-          <motion.div 
-             initial={{ width: '0%' }}
-             animate={{ width: '100%' }}
-             transition={{ duration: 1.5, ease: "linear", repeat: Infinity }}
-             style={{ height: '100%', background: '#1f3cff', boxShadow: '0 0 10px #1f3cff' }}
-          />
-        </div>
-      )}
-
-      <AnimatePresence>
-        {optionsModal && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setOptionsModal(null)}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99998 }}
-            />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              style={{ 
-                position: 'fixed', bottom: 0, left: 0, right: 0, 
-                background: 'var(--bg-secondary)', borderTopLeftRadius: '24px', 
-                borderTopRightRadius: '24px', zIndex: 99999, 
-                padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))'
-              }}
-            >
-              <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '0 auto 20px' }} />
-              
-              <button onClick={() => {
-                if (window.openGlobalShare) {
-                  // Panggil modal share baru dengan fitur kreator
-                  window.openGlobalShare(
-                    `${window.location.origin}/post?id=${optionsModal.postId}`, // Otomatis ngambil URL web lu
-                    "Postingan HypeTalk", 
-                    "Lihat karya keren ini di HypeTalk!", 
-                    optionsModal.username, 
-                    optionsModal.postId, 
-                    optionsModal.isOwner, 
-                    false 
-                  );
-                }
-                setOptionsModal(null); // Tutup popup titik tiga
-              }} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                <span className="material-icons">share</span> Bagikan Karya
-              </button>
-
-              {optionsModal.url && (
-                <button onClick={executeDownload} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <span className="material-icons">download</span> Unduh
-                </button>
-              )}
-              
-              {optionsModal.isOwner ? (
-                 <button onClick={handleDeletePost} style={{ width: '100%', padding: '16px', background: 'rgba(255,71,87,0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                   <span className="material-icons">delete</span> Hapus Postingan
-                 </button>
-              ) : (
-                 <button onClick={() => { setOptionsModal(null); showNotif("Laporan dikirim untuk ditinjau.", "info"); }} style={{ width: '100%', padding: '16px', background: 'var(--bg-input)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ff4757', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                   <span className="material-icons">flag</span> Laporkan
-                 </button>
-              )}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
       <div className={`image-preview-overlay ${activePreviewImage ? 'active' : ''}`} onClick={() => setActivePreviewImage(null)}>
         <div className="image-preview-content">
           {activePreviewImage && <img src={activePreviewImage} alt="Preview" />}
@@ -1127,7 +982,7 @@ export default function Gallerypost() {
                         <button 
                           className="options-btn btn-press" 
                           aria-label="Opsi Postingan" 
-                          onClick={(e) => { e.stopPropagation(); openOptionsModal(post, isOwner); }}
+                          onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}
                         >
                           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
@@ -1187,7 +1042,7 @@ export default function Gallerypost() {
                           </span>
                         </div>
                       </div>
-                      <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openOptionsModal(post, isOwner); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                       </button>
                     </div>
