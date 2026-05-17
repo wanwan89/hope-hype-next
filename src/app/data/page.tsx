@@ -87,7 +87,6 @@ function ProfileContent() {
     return () => {
       isComponentActive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlId, urlUser, isMounted]);
 
   useEffect(() => { 
@@ -106,7 +105,6 @@ function ProfileContent() {
     return () => {
       isComponentActive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, profile, isMounted, blockStatus, isFollowing, isFollowedBy]);
 
   const loadProfile = async (isComponentActive: boolean = true) => {
@@ -206,7 +204,6 @@ function ProfileContent() {
     if (!profile) return;
     const isMe = myId === profile.id;
 
-    // 🔥 GUARD KEAMANAN: Jangan load data jika privasi nyala dan bukan pemilik akun 🔥
     if (type === 'like' && !isMe && profile.hide_likes) {
       if (isComponentActive) { setPosts([]); setIsLoadingPosts(false); }
       return;
@@ -292,8 +289,12 @@ function ProfileContent() {
   // 🔥 3. EVENT HANDLERS 🔥
   // ==========================================
   
+  // 🔥 FIX LOGIKA KLIK POST: Jika Draft, berikan notifikasi (Bukan Pindah Halaman) 🔥
   const handleOpenPost = (postId: string) => {
     if (!postId || !profile?.id) return;
+    if (activeTab === 'draft') {
+      return showNotif("Ini adalah draf postingan Anda", "info");
+    }
     router.push(`/post?creator_id=${profile.id}&id=${postId}#post-${postId}`);
   };
 
@@ -414,9 +415,6 @@ function ProfileContent() {
 
   const navTo = (path: string) => { setIsSidebarOpen(false); router.push(path); };
 
-  // ==========================================
-  // 🔥 4. RENDER UI 🔥
-  // ==========================================
   if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)' }}></div>;
 
   const isMe = myId === profile.id;
@@ -448,6 +446,7 @@ function ProfileContent() {
           <span className="material-icons" style={{fontSize: '60px', color: '#ef4444'}}>block</span>
           <h3 style={{color: 'var(--text-dark)', marginTop: '10px'}}>Anda Memblokir Pengguna Ini</h3>
           <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px'}}>Anda tidak akan melihat postingan atau menerima pesan dari mereka.</p>
+          <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px'}}>Anda tidak akan melihat postingan atau menerima pesan dari mereka.</p>
           <button onClick={handleUnblockUser} style={{background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-dark)', padding: '10px 20px', borderRadius: '10px', fontWeight: 'bold'}}>Buka Blokir</button>
         </div>
       </div>
@@ -457,6 +456,7 @@ function ProfileContent() {
   return (
     <div className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`}>
       
+      {/* 🔥 FIX CSS: MENAMBAHKAN GAYA UNTUK MODAL SHEET YANG HILANG & MENGHAPUS GARIS BIRU TAB 🔥 */}
       <style>{`
         .avatar-container { margin: 0 auto 12px; display: flex; justify-content: center; align-items: center; }
         .story-ring, .normal-ring { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
@@ -464,16 +464,45 @@ function ProfileContent() {
         .normal-ring { border: 2px solid var(--border-color); background: transparent; }
         .profile-avatar-img { width: 82px; height: 82px; border-radius: 50%; object-fit: cover; border: 3.5px solid var(--bg-main); background: var(--bg-secondary); }
         @keyframes pulseStory { 0% { filter: brightness(1); } 100% { filter: brightness(1.2); } }
-        .edit-avatar-preview { width: 95px; height: 95px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-blue); cursor: pointer; margin-bottom: 15px; background: var(--bg-secondary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .edit-avatar-preview { width: 95px; height: 95px; border-radius: 50%; object-fit: cover; border: 3px solid #1f3cff; cursor: pointer; margin-bottom: 15px; background: var(--bg-secondary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
         .profile-tabs { display: flex; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid var(--border-card); scrollbar-width: none; }
         .profile-tabs::-webkit-scrollbar { display: none; }
         .profile-tab-item { padding: 14px 20px; color: var(--text-muted); font-weight: 600; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s; }
-        .profile-tab-item.active { color: var(--text-main); border-bottom-color: #1f3cff; }
+        
+        /* 🔥 REMOVE BLUE LINE: Diganti efek tebal teks agar minimalis 🔥 */
+        .profile-tab-item.active { color: var(--text-main); font-weight: 800; border-bottom: 2px solid transparent; }
+
+        /* 🔥 CSS FIX UNTUK FULL SCREEN MODAL (EDIT PROFIL & FOLLOW LIST) 🔥 */
+        .full-screen-modal {
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: var(--bg-main); z-index: 99999;
+          transform: translateY(100%); transition: transform 0.3s ease-in-out;
+          display: flex; flex-direction: column; opacity: 0; pointer-events: none;
+        }
+        .full-screen-modal.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .full-screen-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border-card); background: var(--bg-main); }
+        .full-screen-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg-main); }
+        .full-screen-body.no-padding { padding: 0; }
+        .icon-btn-header { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; }
+        .icon-btn-header.text-btn { color: #1f3cff; font-weight: 700; font-size: 15px; }
+
+        /* 🔥 CSS FIX UNTUK ACTION SHEET (LAPORKAN/BLOKIR) 🔥 */
+        .p-follow-sheet {
+          position: fixed; bottom: 0; left: 0; right: 0;
+          background: var(--bg-secondary); border-top-left-radius: 24px; border-top-right-radius: 24px;
+          z-index: 99999; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          max-height: 85dvh; display: flex; flex-direction: column;
+        }
+        .p-follow-sheet.open { transform: translateY(0); }
+        .follow-sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border-card); }
+        .follow-sheet-body { padding: 15px 20px; overflow-y: auto; }
+        .drag-handle { width: 40px; height: 5px; background: var(--border-card); border-radius: 10px; margin: 0 auto 5px; }
+        .close-icon { color: var(--text-muted); cursor: pointer; }
+        .noscroll { overflow: hidden !important; touch-action: none; }
       `}</style>
 
-      <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px' }}>
-        
+      <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', padding: '15px 20px' }}>
         {!isMe ? (
           <button className="header-btn" onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
             <span className="material-icons">arrow_back</span>
@@ -494,18 +523,12 @@ function ProfileContent() {
         ) : (
           <div style={{ width: '24px' }}></div> 
         )}
-
       </header>
 
       <div className="profile-top-section">
         <section className="profile-info">
-          
           <div className="avatar-container">
-            <div 
-              className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} 
-              onClick={handleAvatarClick}
-              style={{ cursor: hasStory ? 'pointer' : 'default' }}
-            >
+            <div className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} onClick={handleAvatarClick} style={{ cursor: hasStory ? 'pointer' : 'default' }}>
               <img className="profile-avatar-img" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
             </div>
           </div>
@@ -543,9 +566,7 @@ function ProfileContent() {
           <p className="profile-bio">{profile.bio || t('no_bio', 'Belum ada bio')}</p>
           
           {profile.website && (
-            <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} 
-               target="_blank" rel="noopener noreferrer" 
-               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '10px', color: '#8e8e8e', fontWeight: '500', marginTop: '4px', textDecoration: 'none' }}>
+            <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '10px', color: '#8e8e8e', fontWeight: '500', marginTop: '4px', textDecoration: 'none' }}>
                <span className="material-icons" style={{ fontSize: '12px' }}>link</span>
                {profile.website.replace(/^https?:\/\//, '').split('/')[0]}
             </a>
@@ -555,24 +576,18 @@ function ProfileContent() {
         {(!profile.is_private || isMe || isMutual) && (
           <div className="profile-tabs">
             <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
-            
-            {/* 🔥 TABS KHUSUS OWNER (DRAFT & PRIVATE) 🔥 */}
             {isMe && (
               <>
                 <div className={`profile-tab-item ${activeTab === 'draft' ? 'active' : ''}`} onClick={() => setActiveTab('draft')}>Draft</div>
                 <div className={`profile-tab-item ${activeTab === 'private' ? 'active' : ''}`} onClick={() => setActiveTab('private')}>Privat</div>
               </>
             )}
-
-            {/* 🔥 TABS LIKES & REPOSTS HANYA MUNCUL JIKA TIDAK DI-HIDE OLEH OWNER 🔥 */}
             {(isMe || !profile.hide_likes) && (
               <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Suka')}</div>
             )}
-            
             {(isMe || !profile.hide_reposts) && (
               <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>{t('tab_repost', 'Repost')}</div>
             )}
-
             <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved', 'Simpan')}</div>
           </div>
         )}
@@ -590,59 +605,26 @@ function ProfileContent() {
               </div>
            ) : posts.length === 0 ? (
               <div className="no-posts-v2">
-                <div className="no-posts-icon-circle">
-                  <span className="material-icons">
-                    {activeTab === 'draft' ? 'edit_document' : activeTab === 'private' ? 'lock' : 'auto_awesome'}
-                  </span>
-                </div>
-                <h3>
-                  {activeTab === 'draft' ? 'Belum ada draf' : 
-                   activeTab === 'private' ? 'Tidak ada postingan privat' : 
-                   t('no_posts', 'Belum ada postingan')}
-                </h3>
+                <div className="no-posts-icon-circle"><span className="material-icons">{activeTab === 'draft' ? 'edit_document' : activeTab === 'private' ? 'lock' : 'auto_awesome'}</span></div>
+                <h3>{activeTab === 'draft' ? 'Belum ada draf' : activeTab === 'private' ? 'Tidak ada postingan privat' : t('no_posts', 'Belum ada postingan')}</h3>
                 {isMe && activeTab === 'post' && <button className="btn-action btn-primary" onClick={() => router.push('/create')}>{t('create_post', 'Buat Postingan')}</button>}
               </div>
            ) : (
             posts.map(post => {
               const allImages = post.image_url ? post.image_url.split(',') : [];
               const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
-              
               const isVideo = !!post.video_url;
 
               return (
-                  <div 
-                    key={post.id} 
-                    className="grid-item" 
-                    style={{ cursor: 'pointer', position: 'relative' }} 
-                    onClick={() => handleOpenPost(post.id)}
-                  >
+                  <div key={post.id} className="grid-item" style={{ cursor: 'pointer', position: 'relative' }} onClick={() => handleOpenPost(post.id)}>
                     {thumbUrl || isVideo ? (
                         <>
-                          {thumbUrl ? (
-                            <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          )}
-                          
-                          {isVideo ? (
-                            <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>
-                              play_circle_filled
-                            </span>
-                          ) : allImages.length > 1 ? (
-                            <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>
-                              filter_none
-                            </span>
-                          ) : null}
-
-                          <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
-                            <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>
-                            {post.views || 0}
-                          </div>
+                          {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                          {isVideo ? <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span> : allImages.length > 1 ? <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span> : null}
+                          <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}><span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>{post.views || 0}</div>
                         </>
                     ) : (
-                        <div className="grid-no-img">
-                          <span className="material-icons">article</span>
-                        </div>
+                        <div className="grid-no-img"><span className="material-icons">article</span></div>
                     )}
                   </div>
               );
@@ -656,42 +638,24 @@ function ProfileContent() {
         <>
           <div className={`p-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
           <aside className={`p-sidebar-panel ${isSidebarOpen ? 'open' : ''}`}>
-            <div className="sidebar-search-container">
-              <div className="sidebar-search">
-                <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
-                <input 
-                  type="text" 
-                  placeholder={t('search_placeholder', 'Cari...')} 
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                      router.push(`/?search=${encodeURIComponent(e.currentTarget.value.trim())}`);
-                      setIsSidebarOpen(false);
-                    }
-                  }}
-                />
-              </div>
-            </div>
+            <div className="sidebar-search-container"><div className="sidebar-search"><span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span><input type="text" placeholder={t('search_placeholder', 'Cari...')} onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { router.push(`/?search=${encodeURIComponent(e.currentTarget.value.trim())}`); setIsSidebarOpen(false); } }} /></div></div>
             <div className="menu-category-label">{t('wallet_assets', 'Aset Dompet')}</div>
             <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}><div className="icon-wrapper"><span className="material-icons">toll</span></div><div className="menu-text">{t('hypecoin_balance', 'Saldo Hypecoin')}</div><div className="arrow-right">›</div></div>
             <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}><div className="icon-wrapper"><span className="material-icons">receipt_long</span></div><div className="menu-text">{t('transaction_history', 'Riwayat Transaksi')}</div><div className="arrow-right">›</div></div>
             <div className="menu-item-tiktok" onClick={() => navTo('/vip')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">diamond</span></div><div className="menu-text">{t('vip_subscription', 'Langganan VIP')}</div><div className="arrow-right">›</div></div>
-            
             <div className="menu-category-label">{t('mission_rewards', 'Misi & Hadiah')}</div>
             <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}><div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div><div className="menu-text">{t('mission_center', 'Pusat Misi')}</div><div className="arrow-right">›</div></div>
-            
             <hr className="menu-divider" />
             <div className="menu-category-label">{t('personal_tools', 'Alat Pribadi')}</div>
             <div className="menu-item-tiktok" onClick={() => navTo('/settings')}><div className="icon-wrapper"><span className="material-icons">settings</span></div><div className="menu-text">{t('settings', 'Pengaturan')}</div><div className="arrow-right">›</div></div>
             <div className="menu-item-tiktok" onClick={() => navTo('/contact')}><div className="icon-wrapper"><span className="material-icons">support_agent</span></div><div className="menu-text">{t('contact_us', 'Hubungi Kami')}</div><div className="arrow-right">›</div></div>
-            
             <div className="menu-item-tiktok" onClick={handleShareProfile}><div className="icon-wrapper"><span className="material-icons">ios_share</span></div><div className="menu-text">{t('share_profile', 'Bagikan Profil')}</div><div className="arrow-right">›</div></div>
-            
             <div className="menu-item-tiktok logout" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}><div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div><div className="menu-text">{t('logout', 'Keluar')}</div></div>
           </aside>
         </>
       )}
 
-      {/* 🔥 MODAL EDIT PROFIL FULL SCREEN 🔥 */}
+      {/* --- MODAL EDIT PROFIL FULL SCREEN --- */}
       <div className={`full-screen-modal ${isEditModalOpen ? 'open' : ''}`}>
          <div className="full-screen-header">
             <button className="icon-btn-header" onClick={() => setIsEditModalOpen(false)}><span className="material-icons">arrow_back</span></button>
@@ -713,30 +677,14 @@ function ProfileContent() {
                   ))}
                </div>
             </div>
-            
-            <div className="edit-form-group">
-               <label>Nama Tampilan</label>
-               <input type="text" value={editData.full_name} onChange={e => setEditData({...editData, full_name: e.target.value})} placeholder="Nama lengkap kamu" />
-            </div>
-
-            <div className="edit-form-group">
-               <label>{t('username_label', 'Username')}</label>
-               <input type="text" value={editData.username} onChange={e => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})} placeholder="Gunakan huruf kecil" />
-            </div>
-            
-            <div className="edit-form-group">
-               <label>{t('bio_label', 'Bio')}</label>
-               <textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} placeholder="Tulis sesuatu tentangmu..." rows={3} />
-            </div>
-            
-            <div className="edit-form-group">
-               <label>{t('link_label', 'Tautan / Website')}</label>
-               <input type="text" value={editData.website} onChange={e => setEditData({...editData, website: e.target.value})} placeholder="misal: instagram.com/hope" />
-            </div>
+            <div className="edit-form-group"><label>Nama Tampilan</label><input type="text" value={editData.full_name} onChange={e => setEditData({...editData, full_name: e.target.value})} placeholder="Nama lengkap kamu" /></div>
+            <div className="edit-form-group"><label>{t('username_label', 'Username')}</label><input type="text" value={editData.username} onChange={e => setEditData({...editData, username: e.target.value.toLowerCase().replace(/\s/g, '')})} placeholder="Gunakan huruf kecil" /></div>
+            <div className="edit-form-group"><label>{t('bio_label', 'Bio')}</label><textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} placeholder="Tulis sesuatu tentangmu..." rows={3} /></div>
+            <div className="edit-form-group"><label>{t('link_label', 'Tautan / Website')}</label><input type="text" value={editData.website} onChange={e => setEditData({...editData, website: e.target.value})} placeholder="misal: instagram.com/hope" /></div>
          </div>
       </div>
 
-      {/* 🔥 MODAL FOLLOWERS / FOLLOWING FULL SCREEN 🔥 */}
+      {/* --- MODAL FOLLOWERS / FOLLOWING FULL SCREEN --- */}
       <div className={`full-screen-modal ${isFollowModalOpen ? 'open' : ''}`}>
         <div className="full-screen-header">
            <button className="icon-btn-header" onClick={() => setIsFollowModalOpen(false)}><span className="material-icons">arrow_back</span></button>
@@ -747,10 +695,7 @@ function ProfileContent() {
            {isFollowLoading ? (
               Array(8).fill(0).map((_, i) => <div key={i} className="follow-item-skeleton"><div className="skeleton-avatar"></div><div className="skeleton-text"></div></div>)
            ) : followList.length === 0 ? (
-              <div className="empty-follow-state">
-                <span className="material-icons">group_off</span>
-                <p>Belum ada {followModalType === 'followers' ? 'pengikut' : 'yang diikuti'}.</p>
-              </div>
+              <div className="empty-follow-state"><span className="material-icons">group_off</span><p>Belum ada {followModalType === 'followers' ? 'pengikut' : 'yang diikuti'}.</p></div>
            ) : (
               followList.map(user => (
                  <div key={user.id} className="follow-item" onClick={() => { setIsFollowModalOpen(false); router.push(`/data?id=${user.id}`); }}>
@@ -768,19 +713,15 @@ function ProfileContent() {
 
       {/* --- ACTION SHEET (LAPORKAN / BLOKIR) --- */}
       <div className={`p-sidebar-overlay ${isActionSheetOpen ? 'active' : ''}`} onClick={() => setIsActionSheetOpen(false)} />
-      <aside className={`p-follow-sheet ${isActionSheetOpen ? 'open' : ''}`} style={{ height: 'auto', paddingBottom: '30px' }}>
+      <aside className={`p-follow-sheet ${isActionSheetOpen ? 'open' : ''}`}>
         <div className="follow-sheet-header">
            <div className="drag-handle"></div>
            <h3>Tindakan</h3>
            <span className="material-icons close-icon" onClick={() => setIsActionSheetOpen(false)}>close</span>
         </div>
-        <div className="follow-sheet-body" style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-           <button onClick={handleReportUser} style={{ width: '100%', padding: '16px', background: 'var(--bg-secondary)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-dark)', cursor: 'pointer' }}>
-             Laporkan Pengguna
-           </button>
-           <button onClick={handleBlockUser} style={{ width: '100%', padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ef4444', cursor: 'pointer' }}>
-             Blokir Pengguna
-           </button>
+        <div className="follow-sheet-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+           <button onClick={handleReportUser} style={{ width: '100%', padding: '16px', background: 'var(--bg-secondary)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer' }}>Laporkan Pengguna</button>
+           <button onClick={handleBlockUser} style={{ width: '100%', padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 600, color: '#ef4444', cursor: 'pointer' }}>Blokir Pengguna</button>
         </div>
       </aside>
 
@@ -790,14 +731,8 @@ function ProfileContent() {
 
 export default function ProfilePage() { 
   return (
-    <Suspense 
-      fallback={
-        <div style={{ height: '100dvh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main, #01070A)' }}>
-        </div>
-      }
-    >
+    <Suspense fallback={<div style={{ height: '100dvh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main, #01070A)' }}></div>}>
       <ProfileContent />
     </Suspense>
   ); 
 }
-
