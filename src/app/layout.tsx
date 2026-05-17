@@ -9,11 +9,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR & FIREBASE PUSH + LOCAL NOTIFICATIONS 🔥
+// 🔥 IMPORT CAPACITOR PUSH NOTIFICATIONS 🔥
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app'; 
 import { PushNotifications } from '@capacitor/push-notifications';
-import { LocalNotifications } from '@capacitor/local-notifications';
 
 // 🔥 IMPORT TOP LOADER 🔥
 import NextTopLoader from 'nextjs-toploader';
@@ -128,7 +127,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP PUSH NOTIFICATION & LOCAL NOTIF 🔥 ---
+  // --- 🔥 SETUP PUSH NOTIFICATION NATIVE 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -137,26 +136,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android' || platform === 'ios') {
-          console.log("📱 Native Detected: Menghubungkan Firebase & Local Notifications...");
+          console.log("📱 Native Detected: Menghubungkan Firebase FCM...");
 
-          // 1. Minta Izin Kirim Notif (Push & Local)
+          // 1. Minta Izin Kirim Notif Push
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
           
-          let permLocal = await LocalNotifications.checkPermissions();
-          if (permLocal.display === 'prompt') permLocal = await LocalNotifications.requestPermissions();
-
           // 2. Bikin Channel Khusus di Android buat maksa SLIDE DOWN (Heads-up)
           if (platform === 'android') {
-            await LocalNotifications.createChannel({
-              id: 'hype_high_channel',
+            await PushNotifications.createChannel({
+              id: 'hype_high_channel', // Wajib sama kayak di Edge Function
               name: 'Panggilan & Chat HypeTalk',
-              description: 'Channel penting untuk notifikasi dengan foto profil',
+              description: 'Channel penting untuk notifikasi chat dan panggilan masuk',
               importance: 5, // 5 = MAX (Wajib buat Slide Down)
               visibility: 1, // Muncul di lockscreen
               sound: 'suara_panggilan', 
               vibration: true,
             });
+            console.log("✅ Channel Android hype_high_channel dibuat/diperbarui.");
           }
 
           // 3. Daftarkan token ke Firebase
@@ -173,42 +170,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           });
 
-          // 🔥 5. TANGKAP SILENT DATA & RAKIT NOTIF LOKAL (Biar ada Foto) 🔥
-          PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-            console.log('Data Silent FCM Masuk:', notification);
-            
-            // Ambil data kiriman dari Edge Function
-            const payloadData = notification.data || {};
-
-            if (payloadData && payloadData.title) {
-              // Jadwalkan notifikasi lokal langsung saat itu juga
-              await LocalNotifications.schedule({
-                notifications: [
-                  {
-                    id: Math.floor(Math.random() * 100000), 
-                    title: payloadData.title,
-                    body: payloadData.body,
-                    channelId: 'hype_high_channel', 
-                    // FOTO PROFIL BUNDAR DI KANAN
-                    largeIcon: payloadData.avatarUrl ? payloadData.avatarUrl : undefined, 
-                    smallIcon: payloadData.iconType || 'ic_stat_chat', 
-                    extra: { // Data yang dibawa saat notif diklik
-                      roomId: payloadData.roomId,
-                      senderId: payloadData.senderId,
-                      postId: payloadData.postId,
-                      type: payloadData.type
-                    }
-                  }
-                ]
-              });
-            }
+          // 5. Tangkap event kalau notif masuk pas app lagi DIBUKA (Foreground)
+          // Biasanya biarin kosong aja kalau lu udah punya custom popup in-app
+          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            console.log('Notifikasi masuk saat app kebuka:', notification);
           });
 
-          // 6. Deteksi Jika Notifikasi Lokal Di-klik User
-          LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-            console.log('Notifikasi Lokal diklik:', action);
+          // 🔥 6. DETEKSI KLIK NOTIFIKASI NATIVE (SAAT APP MATI / BACKGROUND) 🔥
+          PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+            console.log('Notifikasi native diklik:', action);
             
-            const data = action.notification.extra;
+            // Ambil payload data yang dikirim bareng notifikasi dari server
+            const data = action.notification.data;
 
             if (data && data.roomId) {
               const targetUserId = data.senderId;
@@ -242,7 +215,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
          PushNotifications.removeAllListeners();
-         LocalNotifications.removeAllListeners();
       }
     };
   }, [router, myProfile]); 
