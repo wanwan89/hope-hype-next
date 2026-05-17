@@ -37,7 +37,8 @@ function ProfileContent() {
 
   const [blockStatus, setBlockStatus] = useState<'none' | 'blocked_by_me' | 'blocking_me'>('none');
   
-  const [activeTab, setActiveTab] = useState<'post' | 'draft' | 'private' | 'like' | 'repost' | 'simpan'>('post');
+  // 🔥 TAB STATE: Draft dihapus dari enum tab karena gabung di 'post' 🔥
+  const [activeTab, setActiveTab] = useState<'post' | 'private' | 'like' | 'repost' | 'simpan'>('post');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
 
@@ -204,6 +205,7 @@ function ProfileContent() {
     if (!profile) return;
     const isMe = myId === profile.id;
 
+    // 🔥 GUARD: Jika privasi nyala dan bukan isMe, kosongin datanya biar aman dari hacker (inspect) 🔥
     if (type === 'like' && !isMe && profile.hide_likes) {
       if (isComponentActive) { setPosts([]); setIsLoadingPosts(false); }
       return;
@@ -220,30 +222,22 @@ function ProfileContent() {
 
     try {
       if (type === 'post') {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('id, image_url, video_url, views') 
-          .eq('creator_id', profile.id) 
-          .eq('status', 'approved')
-          .eq('is_private', false) 
-          .order('created_at', { ascending: false });
-        if (data && !error && isComponentActive) setPosts(data);
-      }
-      
-      else if (type === 'draft') {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('id, image_url, video_url, views') 
-          .eq('creator_id', profile.id) 
-          .eq('status', 'draft') 
-          .order('created_at', { ascending: false });
-        if (data && !error && isComponentActive) setPosts(data);
+        if (isMe) {
+          // 🔥 FETCH DRAFTS & APPROVED KHUSUS UNTUK OWNER 🔥
+          const { data: drafts } = await supabase.from('posts').select('id, image_url, video_url, views, status').eq('creator_id', profile.id).eq('status', 'draft').order('created_at', { ascending: false });
+          const { data: approveds } = await supabase.from('posts').select('id, image_url, video_url, views, status').eq('creator_id', profile.id).eq('status', 'approved').eq('is_private', false).order('created_at', { ascending: false });
+          if (isComponentActive) setPosts([...(drafts || []), ...(approveds || [])]);
+        } else {
+          // 🔥 FETCH APPROVED KHUSUS UNTUK PENGUNJUNG 🔥
+          const { data, error } = await supabase.from('posts').select('id, image_url, video_url, views, status').eq('creator_id', profile.id).eq('status', 'approved').eq('is_private', false).order('created_at', { ascending: false });
+          if (data && !error && isComponentActive) setPosts(data);
+        }
       }
 
       else if (type === 'private') {
         const { data, error } = await supabase
           .from('posts')
-          .select('id, image_url, video_url, views') 
+          .select('id, image_url, video_url, views, status') 
           .eq('creator_id', profile.id) 
           .eq('is_private', true) 
           .order('created_at', { ascending: false });
@@ -269,7 +263,7 @@ function ProfileContent() {
             if (postIds.length > 0) {
               const { data: pData, error: pError } = await supabase
                 .from('posts')
-                .select('id, image_url, video_url, views') 
+                .select('id, image_url, video_url, views, status') 
                 .in('id', postIds)
                 .order('created_at', { ascending: false });
               
@@ -289,13 +283,14 @@ function ProfileContent() {
   // 🔥 3. EVENT HANDLERS 🔥
   // ==========================================
   
-  // 🔥 FIX LOGIKA KLIK POST: Jika Draft, berikan notifikasi (Bukan Pindah Halaman) 🔥
-  const handleOpenPost = (postId: string) => {
-    if (!postId || !profile?.id) return;
-    if (activeTab === 'draft') {
-      return showNotif("Ini adalah draf postingan Anda", "info");
+  // 🔥 KLIK POSTANGAN: Kalo draft pindah ke create, kalo post buka detail 🔥
+  const handlePostClick = (postId: string, status: string) => {
+    if (!postId) return;
+    if (status === 'draft') {
+      router.push(`/create?draft_id=${postId}`); 
+    } else {
+      router.push(`/post?creator_id=${profile?.id}&id=${postId}#post-${postId}`);
     }
-    router.push(`/post?creator_id=${profile.id}&id=${postId}#post-${postId}`);
   };
 
   const handleAvatarClick = () => {
@@ -446,7 +441,6 @@ function ProfileContent() {
           <span className="material-icons" style={{fontSize: '60px', color: '#ef4444'}}>block</span>
           <h3 style={{color: 'var(--text-dark)', marginTop: '10px'}}>Anda Memblokir Pengguna Ini</h3>
           <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px'}}>Anda tidak akan melihat postingan atau menerima pesan dari mereka.</p>
-          <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px'}}>Anda tidak akan melihat postingan atau menerima pesan dari mereka.</p>
           <button onClick={handleUnblockUser} style={{background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-dark)', padding: '10px 20px', borderRadius: '10px', fontWeight: 'bold'}}>Buka Blokir</button>
         </div>
       </div>
@@ -455,8 +449,6 @@ function ProfileContent() {
 
   return (
     <div className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`}>
-      
-      {/* 🔥 FIX CSS: MENAMBAHKAN GAYA UNTUK MODAL SHEET YANG HILANG & MENGHAPUS GARIS BIRU TAB 🔥 */}
       <style>{`
         .avatar-container { margin: 0 auto 12px; display: flex; justify-content: center; align-items: center; }
         .story-ring, .normal-ring { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
@@ -468,18 +460,10 @@ function ProfileContent() {
         
         .profile-tabs { display: flex; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid var(--border-card); scrollbar-width: none; }
         .profile-tabs::-webkit-scrollbar { display: none; }
-        .profile-tab-item { padding: 14px 20px; color: var(--text-muted); font-weight: 600; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s; }
-        
-        /* 🔥 REMOVE BLUE LINE: Diganti efek tebal teks agar minimalis 🔥 */
+        .profile-tab-item { padding: 14px 20px; color: var(--text-muted); font-weight: 600; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s; display: flex; align-items: center; gap: 4px; }
         .profile-tab-item.active { color: var(--text-main); font-weight: 800; border-bottom: 2px solid transparent; }
 
-        /* 🔥 CSS FIX UNTUK FULL SCREEN MODAL (EDIT PROFIL & FOLLOW LIST) 🔥 */
-        .full-screen-modal {
-          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-          background: var(--bg-main); z-index: 99999;
-          transform: translateY(100%); transition: transform 0.3s ease-in-out;
-          display: flex; flex-direction: column; opacity: 0; pointer-events: none;
-        }
+        .full-screen-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-main); z-index: 99999; transform: translateY(100%); transition: transform 0.3s ease-in-out; display: flex; flex-direction: column; opacity: 0; pointer-events: none; }
         .full-screen-modal.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
         .full-screen-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border-card); background: var(--bg-main); }
         .full-screen-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg-main); }
@@ -487,13 +471,7 @@ function ProfileContent() {
         .icon-btn-header { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; }
         .icon-btn-header.text-btn { color: #1f3cff; font-weight: 700; font-size: 15px; }
 
-        /* 🔥 CSS FIX UNTUK ACTION SHEET (LAPORKAN/BLOKIR) 🔥 */
-        .p-follow-sheet {
-          position: fixed; bottom: 0; left: 0; right: 0;
-          background: var(--bg-secondary); border-top-left-radius: 24px; border-top-right-radius: 24px;
-          z-index: 99999; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          max-height: 85dvh; display: flex; flex-direction: column;
-        }
+        .p-follow-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-secondary); border-top-left-radius: 24px; border-top-right-radius: 24px; z-index: 99999; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 85dvh; display: flex; flex-direction: column; }
         .p-follow-sheet.open { transform: translateY(0); }
         .follow-sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border-card); }
         .follow-sheet-body { padding: 15px 20px; overflow-y: auto; }
@@ -502,7 +480,7 @@ function ProfileContent() {
         .noscroll { overflow: hidden !important; touch-action: none; }
       `}</style>
 
-      <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', padding: '15px 20px' }}>
+      <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px' }}>
         {!isMe ? (
           <button className="header-btn" onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
             <span className="material-icons">arrow_back</span>
@@ -575,19 +553,26 @@ function ProfileContent() {
 
         {(!profile.is_private || isMe || isMutual) && (
           <div className="profile-tabs">
+            {/* TAB POST */}
             <div className={`profile-tab-item ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>{t('tab_post', 'Karya')}</div>
+            
+            {/* TAB PRIVAT (Hanya Owner) */}
             {isMe && (
-              <>
-                <div className={`profile-tab-item ${activeTab === 'draft' ? 'active' : ''}`} onClick={() => setActiveTab('draft')}>Draft</div>
-                <div className={`profile-tab-item ${activeTab === 'private' ? 'active' : ''}`} onClick={() => setActiveTab('private')}>Privat</div>
-              </>
+               <div className={`profile-tab-item ${activeTab === 'private' ? 'active' : ''}`} onClick={() => setActiveTab('private')}>Privat</div>
             )}
-            {(isMe || !profile.hide_likes) && (
-              <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>{t('tab_like', 'Suka')}</div>
-            )}
-            {(isMe || !profile.hide_reposts) && (
-              <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>{t('tab_repost', 'Repost')}</div>
-            )}
+            
+            {/* 🔥 TAB LIKE DENGAN INDIKATOR GEMBOK JIKA PRIVATE 🔥 */}
+            <div className={`profile-tab-item ${activeTab === 'like' ? 'active' : ''}`} onClick={() => setActiveTab('like')}>
+              {t('tab_like', 'Suka')}
+              {!isMe && profile.hide_likes && <span className="material-icons" style={{fontSize: '14px', color: 'var(--text-muted)'}}>lock</span>}
+            </div>
+            
+            {/* 🔥 TAB REPOST DENGAN INDIKATOR GEMBOK JIKA PRIVATE 🔥 */}
+            <div className={`profile-tab-item ${activeTab === 'repost' ? 'active' : ''}`} onClick={() => setActiveTab('repost')}>
+              {t('tab_repost', 'Repost')}
+              {!isMe && profile.hide_reposts && <span className="material-icons" style={{fontSize: '14px', color: 'var(--text-muted)'}}>lock</span>}
+            </div>
+
             <div className={`profile-tab-item ${activeTab === 'simpan' ? 'active' : ''}`} onClick={() => setActiveTab('simpan')}>{t('tab_saved', 'Simpan')}</div>
           </div>
         )}
@@ -603,10 +588,17 @@ function ProfileContent() {
                 <h3>Akun Private</h3>
                 <p>Harus saling mengikuti (berteman) untuk melihat postingan dan karya mereka.</p>
               </div>
+           ) : (activeTab === 'like' && !isMe && profile.hide_likes) || (activeTab === 'repost' && !isMe && profile.hide_reposts) ? (
+              /* 🔥 INFO JIKA TAB LIKE/REPOST DI-PRIVATE OLEH USER LAIN 🔥 */
+              <div className="no-posts-v2">
+                <div className="no-posts-icon-circle"><span className="material-icons">lock</span></div>
+                <h3>Aktivitas Privat</h3>
+                <p>Pengguna menyembunyikan riwayat aktivitas ini.</p>
+              </div>
            ) : posts.length === 0 ? (
               <div className="no-posts-v2">
-                <div className="no-posts-icon-circle"><span className="material-icons">{activeTab === 'draft' ? 'edit_document' : activeTab === 'private' ? 'lock' : 'auto_awesome'}</span></div>
-                <h3>{activeTab === 'draft' ? 'Belum ada draf' : activeTab === 'private' ? 'Tidak ada postingan privat' : t('no_posts', 'Belum ada postingan')}</h3>
+                <div className="no-posts-icon-circle"><span className="material-icons">{activeTab === 'private' ? 'lock' : 'auto_awesome'}</span></div>
+                <h3>{activeTab === 'private' ? 'Tidak ada postingan privat' : t('no_posts', 'Belum ada postingan')}</h3>
                 {isMe && activeTab === 'post' && <button className="btn-action btn-primary" onClick={() => router.push('/create')}>{t('create_post', 'Buat Postingan')}</button>}
               </div>
            ) : (
@@ -614,17 +606,31 @@ function ProfileContent() {
               const allImages = post.image_url ? post.image_url.split(',') : [];
               const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
               const isVideo = !!post.video_url;
+              const isDraft = post.status === 'draft'; // 🔥 DETEKSI STATUS DRAFT
 
               return (
-                  <div key={post.id} className="grid-item" style={{ cursor: 'pointer', position: 'relative' }} onClick={() => handleOpenPost(post.id)}>
+                  <div key={post.id} className="grid-item" style={{ cursor: 'pointer', position: 'relative' }} onClick={() => handlePostClick(post.id, post.status)}>
+                    {/* 🔥 TANDA KHUSUS DRAFT 🔥 */}
+                    {isDraft && (
+                      <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(255, 193, 7, 0.9)', color: '#000', fontSize: '10px', fontWeight: '800', padding: '3px 6px', borderRadius: '6px', zIndex: 3, boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }}>
+                        DRAF
+                      </div>
+                    )}
+
                     {thumbUrl || isVideo ? (
                         <>
                           {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                           {isVideo ? <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span> : allImages.length > 1 ? <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span> : null}
-                          <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}><span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>{post.views || 0}</div>
+                          
+                          {/* 🔥 HILANGKAN VIEW UNTUK DRAFT 🔥 */}
+                          {!isDraft && (
+                            <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}><span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>{post.views || 0}</div>
+                          )}
                         </>
                     ) : (
-                        <div className="grid-no-img"><span className="material-icons">article</span></div>
+                        <div className="grid-no-img">
+                          <span className="material-icons">{isDraft ? 'edit_document' : 'article'}</span>
+                        </div>
                     )}
                   </div>
               );

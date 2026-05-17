@@ -65,6 +65,7 @@ export default function Gallerypost() {
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
 
   const [floatingLikes, setFloatingLikes] = useState<Array<{ id: number, x: number, y: number, avatar: string, delay: string }>>([]);
+  const [poppingHeart, setPoppingHeart] = useState<string | null>(null); // 🔥 STATE BARU UNTUK EFEK MELETUP 🔥
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const observerTarget = useRef<HTMLDivElement | null>(null);
@@ -206,7 +207,6 @@ export default function Gallerypost() {
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map(p => p.id);
         
-        // 🔥 AMBIL DATA LIKERS & REPOSTERS (Termasuk Catatan) 🔥
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -377,16 +377,25 @@ export default function Gallerypost() {
       const x = e.clientX;
       const y = e.clientY;
       
+      // Efek Gelembung Terbang Kecil
       const newLikes = [
         { id: Date.now(), x: x - 20, y: y - 10, avatar, delay: '0s' },
         { id: Date.now() + 1, x: x + 25, y: y + 15, avatar, delay: '0.1s' }
       ];
-      
       setFloatingLikes(prev => [...prev, ...newLikes]);
+      
+      // 🔥 EFEK MELETUP BESAR DI TENGAH 🔥
+      setPoppingHeart(postId);
+
       setTimeout(() => {
         setFloatingLikes(prev => prev.filter(item => !newLikes.some(nl => nl.id === item.id)));
       }, 1500);
 
+      setTimeout(() => {
+        setPoppingHeart(null);
+      }, 1000);
+
+      // Otomatis Like jika belum dilike
       if (!myLikedPosts.has(postId)) {
         handleLike(postId, creatorId);
       }
@@ -409,10 +418,8 @@ export default function Gallerypost() {
     const isReposted = myRepostedPosts.has(postId);
     
     if (isReposted) {
-      // Jika sudah di repost, klik lagi untuk batal (Un-repost)
       handleConfirmRepost(postId, creatorId, true);
     } else {
-      // Jika belum, buka modal untuk nulis catatan
       setRepostNote("");
       setRepostModal({ isOpen: true, postId, creatorId });
     }
@@ -420,8 +427,8 @@ export default function Gallerypost() {
 
   const handleConfirmRepost = async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     const numericPostId = parseInt(postId);
-    const finalNote = repostNote.trim().substring(0, 15); // Batasi 15 huruf
-    setRepostModal(null); // Tutup modal
+    const finalNote = repostNote.trim().substring(0, 15);
+    setRepostModal(null); 
 
     setAnimatingReposts(prev => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts(prev => {
@@ -772,6 +779,28 @@ export default function Gallerypost() {
 
         @keyframes floatBubble { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(-4px); } 66% { transform: translateY(-4px) translateX(4px); } 100% { transform: translateY(-12px) translateX(0); } }
         @keyframes floatBubbleOpposite { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(4px); } 66% { transform: translateY(-4px) translateX(-4px); } 100% { transform: translateY(-12px) translateX(0); } }
+
+        /* 🔥 CSS EFEK MELETUP BIG HEART 🔥 */
+        .big-pop-heart {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) scale(0);
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 100px;
+          z-index: 10;
+          pointer-events: none;
+          opacity: 0;
+          animation: popHeartAnim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          filter: drop-shadow(0 4px 15px rgba(0,0,0,0.3));
+        }
+        @keyframes popHeartAnim {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+          15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          30% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          100% { transform: translate(-50%, -100%) scale(0); opacity: 0; }
+        }
       `}</style>
 
       {/* RENDER ELEMENT FLOATING LIKES DI TINGKAT PALING ATAS */}
@@ -791,15 +820,30 @@ export default function Gallerypost() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRepostModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99998 }} />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-secondary)', borderRadius: '20px', padding: '20px', zIndex: 99999, width: '90%', maxWidth: '340px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
               <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: 'var(--text-main)', textAlign: 'center' }}>Repost Postingan</h3>
+              
+              {/* 🔥 INPUT TEKS REPOST DIRAPIKAN DI TENGAH 🔥 */}
               <input 
                 type="text" 
                 placeholder="Tambahkan catatan... (opsional)" 
                 maxLength={15}
                 value={repostNote}
                 onChange={(e) => setRepostNote(e.target.value)}
-                style={{ width: '100%', padding: '12px 15px', borderRadius: '12px', border: '1px solid var(--border-card)', background: 'var(--bg-main)', color: 'var(--text-main)', outline: 'none', marginBottom: '10px' }}
+                style={{ 
+                  width: '100%', 
+                  padding: '15px', 
+                  borderRadius: '12px', 
+                  border: '1px solid var(--border-card)', 
+                  background: 'var(--bg-main)', 
+                  color: 'var(--text-main)', 
+                  outline: 'none', 
+                  marginBottom: '10px',
+                  textAlign: 'center', // Agar teks pas di tengah
+                  fontSize: '16px',
+                  fontWeight: 600
+                }}
               />
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right', marginBottom: '20px' }}>{repostNote.length}/15</div>
+              
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={() => setRepostModal(null)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--border-card)', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}>Batal</button>
                 <button onClick={() => handleConfirmRepost(repostModal.postId, repostModal.creatorId, false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#1f3cff', color: 'white', fontWeight: 600, cursor: 'pointer' }}>Repost</button>
@@ -840,19 +884,15 @@ export default function Gallerypost() {
             const photoList = post.image_url ? post.image_url.split(',') : [];
             const isVideoPost = !!post.video_url;
             
-            // Logika Menggabungkan & Memfilter Bubble Profil
             const likers = likersMap[postIdStr] || [];
             const reposters = repostersMap[postIdStr] || [];
             
-            // Filter hanya teman yang muncul di bubble
             const mutualLikers = likers.filter(l => mutualUsers.has(l.id));
             const mutualReposters = reposters.filter(r => mutualUsers.has(r.id));
             
-            // Kumpulkan untuk non-owner (max 2)
             const combinedMutualInteractors = [];
             let rCount = 0; let lCount = 0;
             
-            // Prioritaskan masukin reposter pertama, lalu liker, dst sampai kuota 2
             if (mutualReposters[rCount]) combinedMutualInteractors.push({ ...mutualReposters[rCount++], type: 'repost' });
             if (mutualLikers[lCount] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualLikers[lCount++], type: 'like' });
             if (mutualReposters[rCount] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualReposters[rCount++], type: 'repost' });
@@ -865,6 +905,11 @@ export default function Gallerypost() {
                     <div className="slider" style={{ position: 'relative' }}>
                       {getMusicHtml(post, true)}
                       
+                      {/* 🔥 EFEK BIG POPPING HEART (MUNCUL DI TENGAH FOTO/VIDEO) 🔥 */}
+                      {poppingHeart === postIdStr && (
+                        <span className="material-icons big-pop-heart">favorite</span>
+                      )}
+
                       <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
                         {isVideoPost && (
                           <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
@@ -897,7 +942,6 @@ export default function Gallerypost() {
                         </button>
                       )}
 
-                      {/* 🔥 RENDER BUBBLE OWNER (Max 3 Teman Liker) 🔥 */}
                       {isOwner && mutualLikers.length > 0 && (
                         <div className="liker-bubble-wrapper">
                           {mutualLikers.slice(0, 3).map((liker, index) => (
@@ -909,7 +953,6 @@ export default function Gallerypost() {
                         </div>
                       )}
 
-                      {/* 🔥 RENDER BUBBLE NON-OWNER (Max 2 Teman Liker/Reposter + Note) 🔥 */}
                       {!isOwner && combinedMutualInteractors.length > 0 && (
                         <div className="nonowner-bubble-wrapper">
                           {combinedMutualInteractors.map((interactor, index) => (
