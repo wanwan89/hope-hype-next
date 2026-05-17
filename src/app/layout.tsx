@@ -9,9 +9,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script'; 
 
-// 🔥 IMPORT CAPACITOR (LIVEKIT UDAH DIHAPUS DARI SINI BIAR GAK BENTROK SAMA CHATAREA) 🔥
+// 🔥 IMPORT CAPACITOR & FIREBASE PUSH NOTIFICATIONS 🔥
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app'; 
+import { PushNotifications } from '@capacitor/push-notifications';
 
 // 🔥 IMPORT TOP LOADER 🔥
 import NextTopLoader from 'nextjs-toploader';
@@ -42,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [myProfile, setMyProfile] = useState<any>(null);
 
   // 🔥 FONDASI TOKEN
-  const onesignalIdRef = useRef<string | null>(null);
+  const fcmTokenRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null); 
 
@@ -52,7 +53,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       try {
         const platform = Capacitor.getPlatform();
         if (platform === 'android' || platform === 'ios') {
-          // Menggunakan dynamic import agar aman saat di-build Vercel
           const { SplashScreen } = await import('@capacitor/splash-screen');
           await SplashScreen.hide();
         }
@@ -90,15 +90,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // 🔥 FUNGSI UPDATE TOKEN KE DATABASE 🔥
   const updatePushToken = async (userId: string, token: string) => {
     try {
+      // Kita tetap pakai kolom 'push_token' di database biar ga usah ganti schema
       const { error } = await supabase
         .from('profiles')
         .update({ push_token: token })
         .eq('id', userId);
         
       if (error) throw error;
-      console.log("✅ OneSignal Subscription ID berhasil disimpen!");
+      console.log("✅ FCM Token berhasil disimpen ke Database!");
     } catch (err: any) {
-      console.error("❌ Gagal simpan ID ke DB:", err.message);
+      console.error("❌ Gagal simpan FCM Token ke DB:", err.message);
     }
   };
 
@@ -110,8 +111,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
         if (data) {
           setMyProfile(data);
-          if (onesignalIdRef.current) {
-            updatePushToken(session.user.id, onesignalIdRef.current);
+          if (fcmTokenRef.current) {
+            updatePushToken(session.user.id, fcmTokenRef.current);
           }
         }
       }
@@ -132,7 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP ONESIGNAL 🔥 ---
+  // --- 🔥 SETUP FIREBASE CLOUD MESSAGING (FCM) 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -141,31 +142,51 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android' || platform === 'ios') {
-          console.log("📱 Native Detected: Menghubungkan OneSignal...");
+          console.log("📱 Native Detected: Menghubungkan Firebase Push Notifications...");
 
-          const OneSignal = (await import('onesignal-cordova-plugin')).default;
+          // 1. Minta Izin Kirim Notif ke User
+          let permStatus = await PushNotifications.checkPermissions();
+          if (permStatus.receive === 'prompt') {
+            permStatus = await PushNotifications.requestPermissions();
+          }
 
-          OneSignal.initialize("a2e3be25-3ffb-4678-a41c-17aae778e4b5");
-          OneSignal.Notifications.requestPermission(true);
+          // 2. Kalau diizinkan, daftarkan HP ke Firebase FCM
+          if (permStatus.receive === 'granted') {
+            await PushNotifications.register();
+          } else {
+            console.warn("User tidak memberikan izin push notification.");
+          }
 
-          setTimeout(() => {
-            const subscriptionId = OneSignal.User.pushSubscription.id;
-            if (subscriptionId) {
-              onesignalIdRef.current = subscriptionId;
-              if (myProfile?.id) {
-                updatePushToken(myProfile.id, subscriptionId);
-              }
+          // 3. Tangkap Token FCM dan simpan
+          PushNotifications.addListener('registration', (token) => {
+            console.log("🔥 FCM Token didapat:", token.value);
+            fcmTokenRef.current = token.value; 
+            if (myProfile?.id) {
+              updatePushToken(myProfile.id, token.value);
             }
-          }, 5000);
+          });
 
-          OneSignal.Notifications.addEventListener('click', async (event: any) => {
-            const data = event.notification.additionalData;
-            const actionId = event.result?.actionId; 
+          PushNotifications.addListener('registrationError', (error: any) => {
+            console.error("❌ Gagal mendaftar FCM:", JSON.stringify(error));
+          });
+
+          // 4. Deteksi Notifikasi Masuk Saat App Terbuka (Foreground)
+          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+             console.log('Notifikasi masuk saat app terbuka:', notification);
+             // Karena ada notif in-app khusus chat/call, kita bisa abaikan notif sistem ini
+          });
+
+          // 5. Deteksi Kalau Notifikasi di-Klik sama User (Buka App dari Notif)
+          PushNotifications.addListener('pushNotificationActionPerformed', async (notification) => {
+            console.log('Notifikasi diklik:', notification);
+            
+            // Payload data dari Firebase ada di dalam notification.notification.data
+            const data = notification.notification.data;
+            const actionId = notification.actionId; // Kalau user klik tombol aksi (tergantung plugin action yg dipakai)
 
             if (data && data.roomId) {
               const targetUserId = data.senderId || data.callerId;
 
-              // 🔥 FIX 1: Deteksi jenis klik notifikasi 🔥
               if (actionId === "reject") {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
@@ -177,15 +198,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   }]);
                 }
               } else if (actionId === "answer") {
-                // Tombol angkat dipencet langsung dari notif HP
                 router.push(`/hypetalk/room?from=${targetUserId}&answerCall=true`);
               } else {
-                // User cuma tap notifikasinya buat buka HP tanpa pencet tombol spesifik
                 router.push(`/hypetalk/room?from=${targetUserId}&incomingCall=true`); 
               }
             }
           });
 
+          // Handle Back Button Hardware Android
           App.addListener('backButton', ({ canGoBack }) => {
             if (canGoBack) {
               window.history.back();
@@ -196,11 +216,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         }
       } catch (error) {
-        console.warn("⚠️ OneSignal/Native API error:", error);
+        console.warn("⚠️ Firebase Native API error:", error);
       }
     };
 
     initNativeFeatures();
+
+    // Cleanup: Cabut listener kalau komponen dibongkar
+    return () => {
+      if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
+         PushNotifications.removeAllListeners();
+      }
+    };
   }, [router, myProfile]); 
 
   // --- LOGIKA HALAMAN & RINGTONE ---
@@ -283,7 +310,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   };
 
-  // 🔥 FIX 2: Bawa parameter 'answerCall' dari Popup In-App 🔥
   const handleAngkatGlobal = async () => {
     if (!globalIncomingCall) return;
     const callerId = globalIncomingCall.callerId;
@@ -340,7 +366,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="global-msg-popup" onClick={handleMessageClick}>
           <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
           <div className="global-msg-content">
-            <div className="global-msg-header"><span className="global-msg-title">{globalMessageNotif.senderName}</span><span className="global-msg-badge">Baru</span></div>
+            <div className="global-msg-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>mark_chat_unread</span>
+                <span className="global-msg-title">{globalMessageNotif.senderName}</span>
+              </div>
+              <span className="global-msg-badge">Baru</span>
+            </div>
             <div className="global-msg-text">{globalMessageNotif.message}</div>
           </div>
         </div>
@@ -351,7 +383,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <img src={globalIncomingCall.callerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="caller" />
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <div style={{ color: 'white', fontWeight: 'bold' }}>{globalIncomingCall.callerName}</div>
-            <div style={{ color: '#2ecc71', fontSize: '12px' }}><span className="material-icons" style={{ fontSize: '12px' }}>ring_volume</span> Memanggil...</div>
+            <div style={{ color: '#2ecc71', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span className="material-icons" style={{ fontSize: '14px' }}>phone_in_talk</span> Panggilan Masuk...
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={handleTolakGlobal} className="global-call-btn" style={{ background: '#ff4757' }}><span className="material-icons">call_end</span></button>
