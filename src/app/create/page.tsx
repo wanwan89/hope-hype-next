@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop'; 
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/navigation';
+// 🔥 FIX: IMPORT useSearchParams 🔥
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import './Create.css'; 
 
@@ -15,6 +16,10 @@ const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 export default function CreatePostPage() {
   const { t } = useTranslation();
   const router = useRouter(); 
+  const searchParams = useSearchParams();
+
+  // 🔥 TANGKAP ID DRAFT DARI URL 🔥
+  const draftId = searchParams?.get('draft_id');
 
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
@@ -26,9 +31,11 @@ export default function CreatePostPage() {
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); 
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]); 
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); 
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null); // Menyimpan URL gambar draf lama
 
   const [rawVideoFile, setRawVideoFile] = useState<File | null>(null);
   const [rawVideoUrl, setRawVideoUrl] = useState<string | null>(null);
+  const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null); // Menyimpan URL video draf lama
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoStart, setVideoStart] = useState(0); 
   const [coverTime, setCoverTime] = useState(0); 
@@ -67,9 +74,47 @@ export default function CreatePostPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
-  // 🔥 STATE UNTUK FITUR IKLAN 🔥
   const [isBusinessUser, setIsBusinessUser] = useState(false);
   const [isAd, setIsAd] = useState(false);
+
+  // 🔥 EFEK: LOAD DATA DRAFT JIKA ADA draft_id DI URL 🔥
+  useEffect(() => {
+    if (draftId) {
+      const fetchDraft = async () => {
+        const { data, error } = await supabase.from('posts').select('*').eq('id', draftId).single();
+        if (data) {
+          setCaption(data.bio || '');
+          setCategory(data.category || 'Karya');
+          setIsAd(data.is_ad || false);
+
+          if (data.video_url) {
+            setPostType('video');
+            setExistingVideoUrl(data.video_url);
+            setExistingImageUrl(data.image_url); // Biasanya cover video disimpan di image_url
+            setCoverUrlPreview(data.image_url);
+            setRawVideoUrl(data.video_url);
+          } else if (data.image_url) {
+            setPostType('image');
+            setExistingImageUrl(data.image_url);
+            setPreviewUrls(data.image_url.split(','));
+          } else {
+            setPostType('text');
+          }
+
+          if (data.audio_src) {
+            setSelectedMusic({
+              previewUrl: data.audio_src,
+              trackName: data.title,
+              artistName: data.artist
+            });
+          }
+
+          setStep('post'); // Langsung bawa ke halaman caption
+        }
+      };
+      fetchDraft();
+    }
+  }, [draftId]);
 
   useEffect(() => {
     const checkUserStatus = async () => {
@@ -181,6 +226,7 @@ export default function CreatePostPage() {
       setRawImagesQueue(results); 
       setImageForCrop(results[0]); 
       setStep('edit'); 
+      setExistingImageUrl(null); // Reset draf image jika user milih gambar baru
     });
   };
 
@@ -223,6 +269,7 @@ export default function CreatePostPage() {
   const handleRemovePreview = (index: number) => {
     setCroppedImages(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    if (previewUrls.length <= 1) setExistingImageUrl(null); 
   };
 
   const generateVideoThumbnails = async (url: string, duration: number) => {
@@ -259,6 +306,8 @@ export default function CreatePostPage() {
     const objUrl = URL.createObjectURL(file);
     setRawVideoUrl(objUrl);
     setVideoThumbnails([]); 
+    setExistingVideoUrl(null); // Reset draf video jika user milih video baru
+    setExistingImageUrl(null);
     setStep('edit'); 
   };
 
@@ -268,7 +317,7 @@ export default function CreatePostPage() {
       setVideoDuration(duration);
       setVideoStart(0);
       setCoverTime(0);
-      if (rawVideoUrl) generateVideoThumbnails(rawVideoUrl, duration);
+      if (rawVideoUrl && !existingVideoUrl) generateVideoThumbnails(rawVideoUrl, duration);
     }
   };
 
@@ -325,6 +374,8 @@ export default function CreatePostPage() {
     setCoverBlob(null);
     setCoverUrlPreview(null);
     setVideoThumbnails([]);
+    setExistingVideoUrl(null);
+    setExistingImageUrl(null);
     setStep('post'); 
   };
 
@@ -370,11 +421,11 @@ export default function CreatePostPage() {
     });
   };
 
-  // 🔥 UPDATE: FUNGSI SUBMIT DENGAN STATUS (APPROVED / DRAFT) 🔥
+  // 🔥 UPDATE LOGIKA SUBMIT UNTUK HANDLE UPDATE DRAFT 🔥
   const submitPostAction = async (isDraft: boolean = false) => {
-    if (postType === 'image' && croppedImages.length === 0 && !caption.trim()) return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
-    if (postType === 'video' && !rawVideoFile) return showNotif("Pilih video terlebih dahulu!", "warning");
-    if (destination === "story" && postType === 'image' && croppedImages.length > 1) return showNotif("Story hanya bisa upload 1 foto!", "warning");
+    if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim()) return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
+    if (postType === 'video' && !rawVideoFile && !existingVideoUrl) return showNotif("Pilih video terlebih dahulu!", "warning");
+    if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1))) return showNotif("Story hanya bisa upload 1 foto!", "warning");
 
     setIsSubmitting(true);
     setUploadProgress(0);
@@ -391,9 +442,11 @@ export default function CreatePostPage() {
         }
       }
 
-      let finalImageUrl: string | null = null;
-      let finalVideoUrl: string | null = null;
+      // Pakai existing URL (dari draf) dulu, bakal ketimpa kalau user upload file baru
+      let finalImageUrl: string | null = existingImageUrl;
+      let finalVideoUrl: string | null = existingVideoUrl;
 
+      // Cuma upload ke Cloudinary kalau ada file BARU yang dipilih
       if (postType === 'image' && croppedImages.length > 0) {
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
         const uploadResults = await Promise.all(uploadPromises);
@@ -438,7 +491,8 @@ export default function CreatePostPage() {
         });
       } else {
         const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-        const { data: newPost } = await supabase.from("posts").insert({
+        
+        const postPayload = {
           creator_id: myUserId,
           name: prof?.username || "User",
           bio: caption.trim(),
@@ -448,14 +502,21 @@ export default function CreatePostPage() {
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
-          status: isDraft ? "draft" : "approved", // 🔥 STATUS BERGANTUNG TOMBOL YANG DIKLIK 🔥
+          status: isDraft ? "draft" : "approved",
           is_ad: isBusinessUser ? isAd : false 
-        }).select('id').single();
-        
-        if (newPost) newPostId = newPost.id;
+        };
+
+        // 🔥 JIKA PUNYA ID DRAFT: LAKUKAN UPDATE BUKAN INSERT 🔥
+        if (draftId) {
+          await supabase.from("posts").update(postPayload).eq('id', draftId);
+          newPostId = draftId;
+        } else {
+          const { data: newPost } = await supabase.from("posts").insert(postPayload).select('id').single();
+          if (newPost) newPostId = newPost.id;
+        }
       }
 
-      // Notifikasi Mentions hanya jalan jika postingan BUKAN Draft
+      // Notifikasi Mentions hanya jalan jika postingan di publish (bukan draft)
       if (!isDraft && (newPostId || destination === "story")) {
         const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         if (mentionedUsernames.length > 0) {
@@ -642,12 +703,13 @@ export default function CreatePostPage() {
             <button type="button" onClick={handleClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
               <span className="material-icons">arrow_back</span>
             </button>
-            <h2 style={{ color: 'var(--text-main)', fontSize: '18px', fontWeight: 700, margin: 0 }}>Buat Postingan</h2>
+            <h2 style={{ color: 'var(--text-main)', fontSize: '18px', fontWeight: 700, margin: 0 }}>
+              {draftId ? 'Lanjutkan Draf' : 'Buat Postingan'}
+            </h2>
             <div style={{ width: 28 }}></div> 
           </div>
 
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
-            {/* 🔥 MENGGANTI FORM SUBMIT DENGAN BUTTON ONCLICK BIASA BIAR FLEKSIBEL 🔥 */}
             <div className="post-form">
 
               <div className="destination-container">
@@ -669,7 +731,7 @@ export default function CreatePostPage() {
 
               <div className="post-type-toggle" style={{ display: 'flex', gap: '8px', marginTop: '20px', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '14px' }}>
                 {['image', 'video', 'text'].map(type => (
-                   <button key={type} type="button" className={`type-btn ${postType === type ? 'active' : ''}`} onClick={() => { setPostType(type as any); setCroppedImages([]); setPreviewUrls([]); handleRemoveVideo(); }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: postType === type ? 'var(--bg-input)' : 'transparent', color: postType === type ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s' }}>{type === 'image' ? 'Foto' : type === 'video' ? 'Video' : 'Teks'}</button>
+                   <button key={type} type="button" className={`type-btn ${postType === type ? 'active' : ''}`} onClick={() => { setPostType(type as any); setCroppedImages([]); setPreviewUrls([]); handleRemoveVideo(); setExistingImageUrl(null); setExistingVideoUrl(null); }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: postType === type ? 'var(--bg-input)' : 'transparent', color: postType === type ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s' }}>{type === 'image' ? 'Foto' : type === 'video' ? 'Video' : 'Teks'}</button>
                 ))}
               </div>
 
@@ -677,7 +739,7 @@ export default function CreatePostPage() {
                 <div style={{ marginTop: '20px' }}>
                   <input type="file" ref={fileInputRef} accept="image/*" multiple hidden onChange={handleFileChange} />
                   {previewUrls.length === 0 ? (
-                    <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ width: '100%', height: '200px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}><div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}><span className="material-icons" style={{ fontSize: '40px', marginBottom: '10px', color: '#1f3cff' }}>add_photo_alternate</span><div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>Pilih Foto (Max 3)</div></div></div>
+                    <div className="post-upload-area" onClick={() => fileInputRef.current?.click()} style={{ width: '100%', height: '200px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}><div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}><span className="material-icons" style={{ fontSize: '40px', marginBottom: '10px', color: '#1f3cff' }}>add_photo_alternate</span><div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>{existingImageUrl ? 'Ganti Foto Draf' : 'Pilih Foto (Max 3)'}</div></div></div>
                   ) : (
                     <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }}>
                       {previewUrls.map((url, i) => (<div key={i} style={{ position: 'relative', width: '120px', height: '160px', flexShrink: 0 }}><img src={url} alt={`Preview ${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} /><button type="button" onClick={() => handleRemovePreview(i)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '25px', height: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><span className="material-icons" style={{ fontSize: '14px' }}>close</span></button></div>))}
@@ -691,7 +753,7 @@ export default function CreatePostPage() {
                 <div style={{ marginTop: '20px' }}>
                   <input type="file" ref={videoInputRef} accept="video/*" hidden onChange={handleVideoSelect} />
                   {!coverPreviewUrl ? (
-                    <div className="post-upload-area" onClick={() => videoInputRef.current?.click()} style={{ width: '100%', height: '300px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}><div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}><span className="material-icons" style={{ fontSize: '50px', marginBottom: '10px', color: '#1f3cff' }}>videocam</span><div className="post-upload-text" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-main)' }}>Pilih Video Vertikal</div><div style={{ fontSize: '12px', marginTop: '5px' }}>(Max 50MB)</div></div></div>
+                    <div className="post-upload-area" onClick={() => videoInputRef.current?.click()} style={{ width: '100%', height: '300px', background: 'var(--bg-secondary)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px dashed var(--border-card)' }}><div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}><span className="material-icons" style={{ fontSize: '50px', marginBottom: '10px', color: '#1f3cff' }}>videocam</span><div className="post-upload-text" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-main)' }}>{existingVideoUrl ? 'Ganti Video Draf' : 'Pilih Video Vertikal'}</div><div style={{ fontSize: '12px', marginTop: '5px' }}>(Max 50MB)</div></div></div>
                   ) : (
                     <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000' }}><img src={coverPreviewUrl} alt="Cover Preview" style={{ width: '100%', display: 'block', aspectRatio: '2/3', objectFit: 'cover' }} /><div style={{ position: 'absolute', top: '15px', left: '15px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '6px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><span className="material-icons" style={{ fontSize: '16px' }}>play_circle_filled</span> Trimmed (15s)</div><button type="button" onClick={handleRemoveVideo} style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}><span className="material-icons" style={{ fontSize: '20px' }}>delete</span></button></div>
                   )}
@@ -861,7 +923,7 @@ export default function CreatePostPage() {
                   )}
                   
                   <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>
-                    {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : t('btn_submit_post')}
+                    {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : (draftId ? 'Publikasikan Draf' : t('btn_submit_post'))}
                   </span>
                 </button>
               </div>

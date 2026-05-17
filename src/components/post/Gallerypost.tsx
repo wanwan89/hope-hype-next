@@ -64,8 +64,7 @@ export default function Gallerypost() {
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
 
-  const [floatingLikes, setFloatingLikes] = useState<Array<{ id: number, x: number, y: number, avatar: string, delay: string }>>([]);
-  const [poppingHeart, setPoppingHeart] = useState<string | null>(null); // 🔥 STATE BARU UNTUK EFEK MELETUP 🔥
+  const [poppingHeart, setPoppingHeart] = useState<string | null>(null); // 🔥 STATE UNTUK EFEK MELETUP (LOVE MERAH) 🔥
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const observerTarget = useRef<HTMLDivElement | null>(null);
@@ -373,23 +372,8 @@ export default function Gallerypost() {
       lastTapRef.current[postId] = 0; 
       if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
 
-      const avatar = currentUser?.avatar_url || '/asets/png/profile.webp';
-      const x = e.clientX;
-      const y = e.clientY;
-      
-      // Efek Gelembung Terbang Kecil
-      const newLikes = [
-        { id: Date.now(), x: x - 20, y: y - 10, avatar, delay: '0s' },
-        { id: Date.now() + 1, x: x + 25, y: y + 15, avatar, delay: '0.1s' }
-      ];
-      setFloatingLikes(prev => [...prev, ...newLikes]);
-      
-      // 🔥 EFEK MELETUP BESAR DI TENGAH 🔥
+      // 🔥 FIX: MUNCULKAN HANYA EFEK LOVE MERAH MELETUP SAAT DOUBLE TAP 🔥
       setPoppingHeart(postId);
-
-      setTimeout(() => {
-        setFloatingLikes(prev => prev.filter(item => !newLikes.some(nl => nl.id === item.id)));
-      }, 1500);
 
       setTimeout(() => {
         setPoppingHeart(null);
@@ -757,11 +741,6 @@ export default function Gallerypost() {
         .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
 
-        .floating-like-container { position: fixed; pointer-events: none; z-index: 9999999; animation: floatUpLove 1.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; display: flex; align-items: center; justify-content: center; }
-        .floating-avatar { width: 48px; height: 48px; border-radius: 50%; border: 2.5px solid #ff2e63; object-fit: cover; box-shadow: 0 4px 15px rgba(255,46,99,0.5); background-color: var(--bg-main); }
-        .floating-heart { position: absolute; bottom: -4px; right: -4px; color: #ff2e63; background: white; border-radius: 50%; padding: 2px; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        @keyframes floatUpLove { 0% { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 0; } 15% { transform: translate(-50%, -50%) scale(1.3) rotate(15deg); opacity: 1; } 30% { transform: translate(-50%, -60%) scale(1) rotate(-5deg); opacity: 1; } 100% { transform: translate(-50%, -200px) scale(1.2) rotate(0deg); opacity: 0; } }
-
         /* 🔥 BUBBLE UNTUK OWNER (MUTUALS MAX 3) 🔥 */
         .liker-bubble-wrapper { position: absolute; bottom: 60px; right: 15px; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; pointer-events: none; z-index: 5; }
         .liker-bubble { position: relative; animation: floatBubble 4s ease-in-out infinite alternate; opacity: 0.95; cursor: pointer; pointer-events: auto; }
@@ -780,46 +759,47 @@ export default function Gallerypost() {
         @keyframes floatBubble { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(-4px); } 66% { transform: translateY(-4px) translateX(4px); } 100% { transform: translateY(-12px) translateX(0); } }
         @keyframes floatBubbleOpposite { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(4px); } 66% { transform: translateY(-4px) translateX(-4px); } 100% { transform: translateY(-12px) translateX(0); } }
 
-        /* 🔥 CSS EFEK MELETUP BIG HEART 🔥 */
+        /* 🔥 CSS EFEK MELETUP BIG HEART (HANYA LOVE MERAH) 🔥 */
         .big-pop-heart {
           position: absolute;
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%) scale(0);
-          color: rgba(255, 255, 255, 0.9);
-          font-size: 100px;
+          color: #ff2e63; /* Warna merah full */
+          font-size: 120px; /* Ukuran lebih besar */
           z-index: 10;
           pointer-events: none;
           opacity: 0;
-          animation: popHeartAnim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-          filter: drop-shadow(0 4px 15px rgba(0,0,0,0.3));
+          animation: popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          filter: drop-shadow(0 4px 15px rgba(0,0,0,0.4));
         }
         @keyframes popHeartAnim {
           0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-          15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-          30% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          15% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+          30% { transform: translate(-50%, -50%) scale(0.95); opacity: 1; }
           70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
           100% { transform: translate(-50%, -100%) scale(0); opacity: 0; }
         }
       `}</style>
 
-      {/* RENDER ELEMENT FLOATING LIKES DI TINGKAT PALING ATAS */}
-      {floatingLikes.map(like => (
-        <div key={like.id} className="floating-like-container" style={{ left: like.x, top: like.y, animationDelay: like.delay }}>
-          <div style={{ position: 'relative' }}>
-            <img src={like.avatar} className="floating-avatar" alt="liker" />
-            <span className="material-icons floating-heart">favorite</span>
-          </div>
-        </div>
-      ))}
-
       {/* 🔥 MODAL REPOST NOTE 🔥 */}
       <AnimatePresence>
         {repostModal && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRepostModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99998 }} />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-secondary)', borderRadius: '20px', padding: '20px', zIndex: 99999, width: '90%', maxWidth: '340px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
-              <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: 'var(--text-main)', textAlign: 'center' }}>Repost Postingan</h3>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRepostModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', zIndex: 99998 }} />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: '-50%', x: '-50%' }} 
+              animate={{ scale: 1, opacity: 1, y: '-50%', x: '-50%' }} 
+              exit={{ scale: 0.9, opacity: 0, y: '-50%', x: '-50%' }} 
+              style={{ 
+                position: 'fixed', top: '50%', left: '50%', 
+                background: 'var(--bg-secondary)', borderRadius: '24px', padding: '24px', 
+                zIndex: 99999, width: '85%', maxWidth: '340px', 
+                boxShadow: '0 15px 40px rgba(0,0,0,0.6)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center' // Memaksa isi ke tengah
+              }}
+            >
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', color: 'var(--text-main)', textAlign: 'center', fontWeight: 800 }}>Repost Karya Ini</h3>
               
               {/* 🔥 INPUT TEKS REPOST DIRAPIKAN DI TENGAH 🔥 */}
               <input 
@@ -830,23 +810,26 @@ export default function Gallerypost() {
                 onChange={(e) => setRepostNote(e.target.value)}
                 style={{ 
                   width: '100%', 
-                  padding: '15px', 
-                  borderRadius: '12px', 
-                  border: '1px solid var(--border-card)', 
+                  padding: '16px', 
+                  borderRadius: '16px', 
+                  border: '2px solid var(--border-card)', 
                   background: 'var(--bg-main)', 
                   color: 'var(--text-main)', 
                   outline: 'none', 
-                  marginBottom: '10px',
-                  textAlign: 'center', // Agar teks pas di tengah
+                  marginBottom: '8px',
+                  textAlign: 'center', 
                   fontSize: '16px',
-                  fontWeight: 600
+                  fontWeight: 700,
+                  transition: 'border-color 0.2s'
                 }}
+                onFocus={(e) => e.target.style.borderColor = '#1f3cff'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--border-card)'}
               />
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right', marginBottom: '20px' }}>{repostNote.length}/15</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'right', width: '100%', marginBottom: '24px', fontWeight: 600 }}>{repostNote.length}/15</div>
               
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => setRepostModal(null)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--border-card)', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}>Batal</button>
-                <button onClick={() => handleConfirmRepost(repostModal.postId, repostModal.creatorId, false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#1f3cff', color: 'white', fontWeight: 600, cursor: 'pointer' }}>Repost</button>
+              <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+                <button onClick={() => setRepostModal(null)} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', background: 'var(--border-card)', color: 'var(--text-main)', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.1s' }} onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'} onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}>Batal</button>
+                <button onClick={() => handleConfirmRepost(repostModal.postId, repostModal.creatorId, false)} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', background: '#1f3cff', color: 'white', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.1s' }} onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'} onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}>Repost</button>
               </div>
             </motion.div>
           </>
