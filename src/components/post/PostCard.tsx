@@ -112,10 +112,10 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             )}
 
-            {/* 🔥 PANGGIL KOMPONEN FLOATING BUBBLES DI SINI 🔥 */}
+            {/* 🔥 KOMPONEN FLOATING BUBBLES BERSIH TANPA KODE GANDA 🔥 */}
             <FloatingBubbles 
-              likers={isOwner ? mutualLikers : []} // Kalau owner, tunjukin likers di kanan
-              reposters={!isOwner ? mutualReposters : []} // Kalau bukan owner, tunjukin reposters di kiri (atau gabungin suka-suka)
+              likers={isOwner ? mutualLikers : []} 
+              reposters={!isOwner ? mutualReposters : []} 
             />
 
             <div className="photo-carousel" onScroll={(e) => {
@@ -184,7 +184,12 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
 
             <div className="actions">
-              <a href={`/data?id=${post.creator_id}`} className="primary btn-press" style={{ display: 'inline-block' }}>{t('view_detail')}</a>
+              <button 
+                onClick={() => router.push(`/data?id=${post.creator_id}`)} 
+                className="primary btn-press" 
+                style={{ display: 'inline-block', border: 'none', background: '#1f3cff', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                {t('view_detail')}
+              </button>
               <EngagementButtons postId={postIdStr} creatorId={post.creator_id} counts={counts}
                 mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
                 animatingReposts={animatingReposts}
@@ -238,7 +243,12 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
 
           <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
-            <a href={`/data?id=${post.creator_id}`} className="btn-press" style={{ fontSize: '13px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>{t('view_detail')}</a>
+            <button 
+              onClick={() => router.push(`/data?id=${post.creator_id}`)} 
+              className="btn-press" 
+              style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'transparent', border: 'none', fontWeight: 600, display: 'inline-block', cursor: 'pointer', padding: 0 }}>
+              {t('view_detail')}
+            </button>
             <EngagementButtons postId={postIdStr} creatorId={post.creator_id} counts={counts}
               mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
               animatingReposts={animatingReposts}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers'; 
+import { Virtuoso } from 'react-virtuoso'; // 🔥 IMPORT VIRTUOSO
 import './Gallery.css';
 
 // Helper functions
@@ -45,11 +46,9 @@ export default function Gallerypost() {
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
   
-  const observerTarget = useRef<HTMLDivElement | null>(null);
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
-  const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
-  const observerRef = useRef<IntersectionObserver | null>(null); // Buat autoplay
+  const observerRef = useRef<IntersectionObserver | null>(null); 
   
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
@@ -72,19 +71,19 @@ export default function Gallerypost() {
     };
   }, []);
 
-  // --- Observer untuk load more ---
+  // 🔥 Pantau DOM biar AutoPlay Video tetep jalan di Virtuoso 🔥
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
-          handleLoadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    if (observerTarget.current) observer.observe(observerTarget.current);
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, isLoading, page, currentCategory, mutualUsers]);
+    const gallery = document.getElementById('mainGallery');
+    if (!gallery) return;
+
+    const mutationObserver = new MutationObserver(() => {
+      initAutoPlayObserver();
+      initViewTrackingObserver();
+    });
+
+    mutationObserver.observe(gallery, { childList: true, subtree: true });
+    return () => mutationObserver.disconnect();
+  }, []);
 
   // --- Comment refresh listener ---
   useEffect(() => {
@@ -269,10 +268,6 @@ export default function Gallerypost() {
       if (isLoadMore) setPosts((prev) => [...prev, ...fetchedPosts]);
       else setPosts(fetchedPosts);
 
-      setTimeout(() => {
-        initAutoPlayObserver();
-        initViewTrackingObserver();
-      }, 500);
     } catch (err) {
       console.error(err);
     } finally {
@@ -289,7 +284,7 @@ export default function Gallerypost() {
     }
   };
 
-  const openShareOptions = (post: any, isOwner: boolean) => {
+  const openShareOptions = useCallback((post: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
       window.openGlobalShare(
         `${window.location.origin}/post?id=${post.id}`,
@@ -301,9 +296,9 @@ export default function Gallerypost() {
         post.is_private || false
       );
     }
-  };
+  }, []);
 
-  const handleFollowToggle = async (e: any, creatorId: string) => {
+  const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
     if (currentUser.id === creatorId) return;
@@ -335,9 +330,9 @@ export default function Gallerypost() {
         }
       }
     } catch (err) { console.error("Follow error", err); }
-  };
+  }, [currentUser, followedUsers]);
 
-  const handleLike = async (postId: string, creatorId: string) => {
+  const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
     const isLiked = myLikedPosts.has(postId);
     const numericPostId = parseInt(postId);
@@ -364,9 +359,9 @@ export default function Gallerypost() {
         }
       }
     } catch (err) { console.error("Like error", err); }
-  };
+  }, [currentUser, myLikedPosts]);
 
-  const handleMediaClick = (e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
+  const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
 
@@ -389,9 +384,9 @@ export default function Gallerypost() {
         }, 360);
       }
     }
-  };
+  }, [currentUser, myLikedPosts, handleLike]);
 
-  const handleConfirmRepost = async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
+  const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
@@ -424,9 +419,9 @@ export default function Gallerypost() {
         if (error && error.code !== "23505") throw error;
       }
     } catch (err) { console.error("Repost error", err); }
-  };
+  }, [currentUser, repostNote]);
 
-  const handleSave = async (postId: string) => {
+  const handleSave = useCallback(async (postId: string) => {
     if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
     const isSaved = mySavedPosts.has(postId);
     const numericPostId = parseInt(postId);
@@ -450,15 +445,15 @@ export default function Gallerypost() {
         if (error && error.code !== "23505") throw error;
       }
     } catch (err) { console.error("Save error", err); }
-  };
+  }, [currentUser, mySavedPosts]);
 
-  const toggleMute = (e: React.MouseEvent) => {
+  const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const nextMuted = !isGloballyMuted;
     setIsGloballyMuted(nextMuted);
     isMutedRef.current = nextMuted;
     document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = nextMuted; });
-  };
+  }, [isGloballyMuted]);
 
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -561,106 +556,118 @@ export default function Gallerypost() {
         ) : posts.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>{t('no_posts_found')}</p>
         ) : (
-          posts.map((post, index) => (
-            <React.Fragment key={post.id}>
-              
-              {/* 🔥 SLIDER REKOMENDASI POSTINGAN 🔥 */}
-              {index === randomSliderIndex && suggestedPosts.length > 0 && (
-                <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
-                    <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
-                  </div>
-                  
-                  <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px' }}>
-                    {suggestedPosts.map(sp => {
-                      const img = sp.image_url ? sp.image_url.split(',')[0] : '';
-                      return (
-                        <div 
-                          key={`sugg-${sp.id}`} 
-                          // 🔥 FIX: Pake ?id= aja tanpa perlu creator_id
-                          onClick={() => router.push(`/post?id=${sp.id}`)}
-                          style={{ 
-                            minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
-                            overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', 
-                            cursor: 'pointer', display: 'flex', flexDirection: 'column'
-                          }}
-                        >
-                          <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
-                            <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                          <div style={{ padding: '10px' }}>
-                            <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                              {sp.bio || 'Tanpa Caption'}
-                            </p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {sp.profiles?.username}
-                              </span>
+          <Virtuoso
+            useWindowScroll
+            data={posts}
+            endReached={handleLoadMore}
+            overscan={500}
+            itemContent={(index, post) => (
+              <React.Fragment key={post.id}>
+                
+                {/* 🔥 SLIDER REKOMENDASI POSTINGAN 🔥 */}
+                {index === randomSliderIndex && suggestedPosts.length > 0 && (
+                  <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
+                      <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
+                      <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
+                    </div>
+                    
+                    <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px' }}>
+                      {suggestedPosts.map(sp => {
+                        const img = sp.image_url ? sp.image_url.split(',')[0] : '';
+                        return (
+                          <div 
+                            key={`sugg-${sp.id}`} 
+                            // 🔥 FIX: Ubah sp.id jadi string biar aman dilempar ke router
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/post?id=${sp.id.toString()}`);
+                            }}
+                            style={{ 
+                              minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
+                              overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', 
+                              cursor: 'pointer', display: 'flex', flexDirection: 'column'
+                            }}
+                          >
+                            <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
+                              <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                            <div style={{ padding: '10px' }}>
+                              <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                {sp.bio || 'Tanpa Caption'}
+                              </p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {sp.profiles?.username}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
+                )}
+
+                {/* 🔥 SLIDER REKOMENDASI TEMAN 🔥 */}
+                {index === randomFriendIndex && (
+                   <SuggestedUsers myId={currentUser?.id} followedUsers={followedUsers} />
+                )}
+
+                {/* POSTINGAN UTAMA (PostCard) */}
+                <PostCard
+                  post={post}
+                  currentUser={currentUser}
+                  counts={counts}
+                  myLikedPosts={myLikedPosts}
+                  myRepostedPosts={myRepostedPosts}
+                  mySavedPosts={mySavedPosts}
+                  followedUsers={followedUsers}
+                  mutualUsers={mutualUsers}
+                  animatingFollows={animatingFollows}
+                  animatingReposts={animatingReposts}
+                  isGloballyMuted={isGloballyMuted}
+                  poppingHeart={poppingHeart}
+                  activePreviewImage={activePreviewImage}
+                  likersMap={likersMap} 
+                  repostersMap={repostersMap}
+                  handleLike={handleLike}
+                  handleSave={handleSave}
+                  openRepostModal={(id, cid) => {
+                    if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
+                    if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                    else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                  }}
+                  handleMediaClick={handleMediaClick}
+                  toggleMute={toggleMute}
+                  openShareOptions={openShareOptions}
+                  handleFollowToggle={handleFollowToggle}
+                  setActivePreviewImage={setActivePreviewImage}
+                  router={router}
+                  t={t}
+                />
+
+              </React.Fragment>
+            )}
+            components={{
+              Footer: () => (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
+                  {isLoadingMore ? (
+                    <div className="pure-spinner"></div>
+                  ) : hasMore ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>
+                      Tidak ada postingan lagi
+                    </span>
+                  )}
                 </div>
-              )}
-
-              {/* 🔥 SLIDER REKOMENDASI TEMAN 🔥 */}
-              {index === randomFriendIndex && (
-                 <SuggestedUsers myId={currentUser?.id} followedUsers={followedUsers} />
-              )}
-
-              {/* POSTINGAN UTAMA (PostCard) */}
-              <PostCard
-                post={post}
-                currentUser={currentUser}
-                counts={counts}
-                myLikedPosts={myLikedPosts}
-                myRepostedPosts={myRepostedPosts}
-                mySavedPosts={mySavedPosts}
-                followedUsers={followedUsers}
-                mutualUsers={mutualUsers}
-                animatingFollows={animatingFollows}
-                animatingReposts={animatingReposts}
-                isGloballyMuted={isGloballyMuted}
-                poppingHeart={poppingHeart}
-                activePreviewImage={activePreviewImage}
-                likersMap={likersMap} // 🔥 Data Liker Map masih ada buat dibaca sama PostCard
-                repostersMap={repostersMap}
-                handleLike={handleLike}
-                handleSave={handleSave}
-                openRepostModal={(id, cid) => {
-                  if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
-                  if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                  else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
-                }}
-                handleMediaClick={handleMediaClick}
-                toggleMute={toggleMute}
-                openShareOptions={openShareOptions}
-                handleFollowToggle={handleFollowToggle}
-                setActivePreviewImage={setActivePreviewImage}
-                router={router}
-                t={t}
-              />
-
-            </React.Fragment>
-          ))
+              )
+            }}
+          />
         )}
-
-        <div ref={observerTarget} style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
-          {isLoadingMore ? (
-            <div className="pure-spinner"></div>
-          ) : hasMore ? (
-            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
-          ) : (
-            <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>
-              Tidak ada postingan lagi
-            </span>
-          )}
-        </div>
       </div>
     </section>
   );

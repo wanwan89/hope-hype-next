@@ -22,6 +22,7 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
 
   // 🔥 URUTKAN POSTINGAN & LIMIT PIN MAKSIMAL 3 🔥
   const sortedPosts = [...publishedPostsRaw].sort((a, b) => {
+    // Paksa jadi angka untuk perbandingan yang pasti
     const aPinned = a.is_pinned === true ? 1 : 0;
     const bPinned = b.is_pinned === true ? 1 : 0;
     return bPinned - aPinned; 
@@ -146,12 +147,13 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             key={post.id} 
             className="grid-item" 
             style={{ cursor: 'pointer', position: 'relative' }} 
-            // 🔥 FIX NAVIGASI: Langsung potong kompas pakai URL yang benar!
+            // 🔥 FIX NAVIGASI: Ubah id jadi string dengan aman
             onClick={() => {
+              const safeId = post.id.toString();
               if (post.status === 'draft') {
-                router.push(`/create?draft_id=${post.id}`);
+                router.push(`/create?draft_id=${safeId}`);
               } else {
-                router.push(`/post?id=${post.id}`);
+                router.push(`/post?id=${safeId}`);
               }
             }}
           >
