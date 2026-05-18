@@ -1,17 +1,17 @@
-'use client'; 
+'use client';
 
-import '@/lib/i18n'; 
+import '@/lib/i18n';
 import i18n from '@/lib/i18n';
 import { I18nextProvider } from 'react-i18next';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'; 
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import Script from 'next/script'; 
+import Script from 'next/script';
 
 // 🔥 IMPORT CAPACITOR PUSH NOTIFICATIONS 🔥
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app'; 
+import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
 
 // 🔥 IMPORT TOP LOADER 🔥
@@ -22,7 +22,7 @@ import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
 import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
-import Navbar from "@/components/layout/Navbar"; 
+import Navbar from "@/components/layout/Navbar";
 import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
@@ -32,19 +32,19 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter(); 
+  const router = useRouter();
   const prevPathnameRef = useRef(pathname);
 
   // --- STATE LAMA ---
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
-  const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null); 
+  const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [myProfile, setMyProfile] = useState<any>(null);
 
   // 🔥 FONDASI TOKEN
   const fcmTokenRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
-  const msgNotifTimerRef = useRef<any>(null); 
+  const msgNotifTimerRef = useRef<any>(null);
 
   // --- 🔥 TENDANG SPLASH SCREEN BAWAAN HP 🔥 ---
   useEffect(() => {
@@ -52,11 +52,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       try {
         const platform = Capacitor.getPlatform();
         if (platform === 'android' || platform === 'ios') {
-          const { SplashScreen } = await import('@capacitor/splash-screen');
-          await SplashScreen.hide();
+          // 🔥 Dynamic import dengan fallback agar tidak gagal build
+          const splashModule = await import('@capacitor/splash-screen').catch(() => null);
+          if (splashModule?.SplashScreen) {
+            await splashModule.SplashScreen.hide();
+          }
         }
       } catch (e) {
-        // console.warn("Splash screen native tidak aktif");
+        // Abaikan error
       }
     };
 
@@ -78,7 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isStandaloneApp = isVoicePage || isStoryPage || isDailyCekPage;
   const hasNavbar = isHomePage || isNotifPage || isPostPage || isVoicePage;
   const isFullscreenPage = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage;
-  const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage; 
+  const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage;
   const hideNavbar = isStoryPage || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
@@ -89,7 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         .from('profiles')
         .update({ push_token: token })
         .eq('id', userId);
-        
+
       if (error) throw error;
       console.log("✅ FCM Token berhasil disimpen ke Database!");
     } catch (err: any) {
@@ -141,7 +144,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           // 1. Minta Izin Kirim Notif Push
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
-          
+
           // 2. Bikin Channel Khusus di Android buat maksa SLIDE DOWN (Heads-up)
           if (platform === 'android') {
             await PushNotifications.createChannel({
@@ -150,7 +153,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               description: 'Channel penting untuk notifikasi chat dan panggilan masuk',
               importance: 5, // 5 = MAX (Wajib buat Slide Down)
               visibility: 1, // Muncul di lockscreen
-              sound: 'suara_panggilan', 
+              sound: 'suara_panggilan',
               vibration: true,
             });
             console.log("✅ Channel Android hype_high_channel dibuat/diperbarui.");
@@ -164,14 +167,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           // 4. Tangkap Token FCM dan simpan
           PushNotifications.addListener('registration', (token) => {
             console.log("🔥 FCM Token didapat:", token.value);
-            fcmTokenRef.current = token.value; 
+            fcmTokenRef.current = token.value;
             if (myProfile?.id) {
               updatePushToken(myProfile.id, token.value);
             }
           });
 
           // 5. Tangkap event kalau notif masuk pas app lagi DIBUKA (Foreground)
-          // Biasanya biarin kosong aja kalau lu udah punya custom popup in-app
           PushNotifications.addListener('pushNotificationReceived', (notification) => {
             console.log('Notifikasi masuk saat app kebuka:', notification);
           });
@@ -179,15 +181,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           // 🔥 6. DETEKSI KLIK NOTIFIKASI NATIVE (SAAT APP MATI / BACKGROUND) 🔥
           PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
             console.log('Notifikasi native diklik:', action);
-            
-            // Ambil payload data yang dikirim bareng notifikasi dari server
+
             const data = action.notification.data;
 
             if (data && data.roomId) {
               const targetUserId = data.senderId;
-              
+
               if (data.type === 'call') {
-                router.push(`/hypetalk/room?from=${targetUserId}&incomingCall=true`); 
+                router.push(`/hypetalk/room?from=${targetUserId}&incomingCall=true`);
               } else {
                 router.push(`/hypetalk/room?from=${targetUserId}`);
               }
@@ -214,10 +215,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // Cleanup listener
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
-         PushNotifications.removeAllListeners();
+        PushNotifications.removeAllListeners();
       }
     };
-  }, [router, myProfile]); 
+  }, [router, myProfile]);
 
   // --- LOGIKA HALAMAN & RINGTONE ---
   useEffect(() => {
@@ -240,7 +241,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ringtoneRef.current.play().catch(() => {});
       } else {
         ringtoneRef.current.pause();
-        ringtoneRef.current.currentTime = 0; 
+        ringtoneRef.current.currentTime = 0;
       }
     }
   }, [globalIncomingCall]);
@@ -258,7 +259,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           const newMsg = payload.new;
           if (newMsg && newMsg.room_id?.includes(myUserId) && newMsg.user_id !== myUserId) {
             if (newMsg.is_system && newMsg.message.includes("Memanggil")) {
-              if (window.location.href.includes('/hypetalk')) return; 
+              if (window.location.href.includes('/hypetalk')) return;
               const { data: p } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newMsg.user_id).single();
               setGlobalIncomingCall({ callerId: p?.id, callerName: p?.username, callerAvatar: p?.avatar_url, roomId: newMsg.room_id });
             }
@@ -290,11 +291,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     setGlobalIncomingCall(null);
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      await supabase.from('messages').insert([{ 
-        room_id: currentRoomId, 
-        user_id: session.user.id, 
-        message: `Panggilan Ditolak`, 
-        is_system: true 
+      await supabase.from('messages').insert([{
+        room_id: currentRoomId,
+        user_id: session.user.id,
+        message: `Panggilan Ditolak`,
+        is_system: true
       }]);
     }
   };
@@ -335,7 +336,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       root.style.overflow = body.style.overflow = 'visible';
       body.style.position = 'static';
     }
-  }, [pathname, isStandaloneApp]); 
+  }, [pathname, isStandaloneApp]);
 
   // --- RENDER CONTENT HELPER ---
   const renderUI = () => (
@@ -382,7 +383,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       )}
-      
+
       {!hideSidebar && <Sidebar />}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         {isHomePage && <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}><SearchWrapper /></div>}
@@ -390,7 +391,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
       </div>
-      
+
       {!hideNavbar && <Navbar />}
     </>
   );
@@ -417,7 +418,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
-        
+
         {/* 🔥 FIX: UPDATE LINK ICON DAN SPLESH SESUAI PEMBARUAN KAMU 🔥 */}
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
@@ -437,10 +438,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
-        
+
         <CustomSplash />
 
-        <NextTopLoader 
+        <NextTopLoader
           color="#1f3cff"
           showSpinner={false}
           shadow="0 0 10px #1f3cff,0 0 5px #1f3cff"

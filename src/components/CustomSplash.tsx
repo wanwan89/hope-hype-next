@@ -1,8 +1,9 @@
 'use client';
 
+import React, { useEffect, useState } from 'react'; // ⬅️ tambahkan React
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
 
+// ... sisa kode TIDAK BERUBAH sama sekali
 export default function CustomSplash() {
   // 🔥 FIX: Cek sessionStorage langsung di awal state biar gak kedip pas direfresh
   const [isVisible, setIsVisible] = useState(() => {
