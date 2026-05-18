@@ -11,20 +11,28 @@ export default function SuggestedUsers({ myId, followedUsers }: { myId: string |
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!myId) return;
-      setIsLoading(true);
+      setIsLoading(true); // Mulai loading
 
       try {
-        // Ambil profil acak (limit 10)
-        const { data } = await supabase
+        // Ambil profil acak (limit 20)
+        let query = supabase
           .from('profiles')
           .select('id, username, avatar_url, full_name')
-          .neq('id', myId) // Jangan tampilkan diri sendiri
           .limit(20);
 
+        // Kalau ada user yang login, jangan tampilkan akunnya sendiri
+        if (myId) {
+          query = query.neq('id', myId);
+        }
+
+        const { data } = await query;
+
         if (data) {
-          // Filter user yang SUDAH di-follow, biar gak muncul lagi
-          const notFollowedYet = data.filter(user => !followedUsers.has(user.id));
+          // Filter: Kalau login, buang user yang udah di-follow. Kalau belum login, tampilin semua.
+          const notFollowedYet = myId 
+            ? data.filter(user => !followedUsers.has(user.id)) 
+            : data;
+            
           // Acak urutannya dan ambil 8 teratas
           const shuffled = notFollowedYet.sort(() => 0.5 - Math.random()).slice(0, 8);
           setSuggestions(shuffled);
@@ -32,6 +40,7 @@ export default function SuggestedUsers({ myId, followedUsers }: { myId: string |
       } catch (err) {
         console.error(err);
       } finally {
+        // Pastikan loading dimatikan apapun yang terjadi!
         setIsLoading(false);
       }
     };

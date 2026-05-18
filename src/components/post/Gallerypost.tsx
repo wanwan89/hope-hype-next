@@ -668,8 +668,9 @@ export default function Gallerypost() {
           posts.map((post, index) => (
             <React.Fragment key={post.id}>
               
-              {/* 🔥 SELIPIN SLIDER REKOMENDASI DI SINI (SETELAH POSTINGAN KE-2) 🔥 */}
-              {index === 2 && suggestedPosts.length > 0 && (
+{/* 🔥 SELIPIN SLIDER REKOMENDASI DI SINI 🔥 */}
+{index === 0 && suggestedPosts.length > 0 && (
+
                 <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
