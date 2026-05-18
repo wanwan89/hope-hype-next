@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { useRouter } from 'next/navigation';
 
 type Props = {
   isMe: boolean;
@@ -10,6 +11,8 @@ type Props = {
 };
 
 const ProfileHeader: React.FC<Props> = ({ isMe, username, isPrivate, onBack, onMenuClick }) => {
+  const router = useRouter();
+
   return (
     <header className="profile-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px' }}>
       {!isMe ? (
@@ -19,17 +22,32 @@ const ProfileHeader: React.FC<Props> = ({ isMe, username, isPrivate, onBack, onM
       ) : (
         <div style={{ width: '24px' }}></div>
       )}
+      
       <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-main)' }}>
         Hii {username}
         {isPrivate && <span className="material-icons" style={{fontSize: '14px', color: 'var(--text-secondary)'}}>lock</span>}
       </h2>
-      {isMe ? (
-        <button className="header-btn" onClick={onMenuClick} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
-          <span className="material-icons">menu</span>
-        </button>
-      ) : (
-        <div style={{ width: '24px' }}></div>
-      )}
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        {/* 🔥 IKON TAMBAH TEMAN (HANYA MUNCUL JIKA INI PROFIL SENDIRI) 🔥 */}
+        {isMe && (
+          <button 
+            className="header-btn" 
+            onClick={() => router.push('/discover')} 
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}
+          >
+            <span className="material-icons">person_add</span>
+          </button>
+        )}
+        
+        {isMe ? (
+          <button className="header-btn" onClick={onMenuClick} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
+            <span className="material-icons">menu</span>
+          </button>
+        ) : (
+          <div style={{ width: '24px' }}></div>
+        )}
+      </div>
     </header>
   );
 };

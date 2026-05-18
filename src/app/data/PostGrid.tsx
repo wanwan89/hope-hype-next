@@ -79,19 +79,49 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
 
   return (
     <div className="post-grid">
-      {/* 🔥 KOTAK KHUSUS FOLDER DRAF (HANYA MUNCUL BUAT OWNER) 🔥 */}
+      
+      {/* 🔥 KOTAK KHUSUS FOLDER DRAF DENGAN PREVIEW (HANYA MUNCUL BUAT OWNER) 🔥 */}
       {isMe && activeTab === 'post' && draftPosts.length > 0 && (
         <div 
           className="grid-item" 
           style={{ 
-            cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', 
-            alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', 
-            border: '2px dashed var(--border-card)' 
+            cursor: 'pointer', position: 'relative', overflow: 'hidden', 
+            background: 'var(--bg-secondary)', border: '2px dashed #f59e0b' 
           }} 
           onClick={() => router.push('/drafts')}
         >
-          <span className="material-icons" style={{ fontSize: '32px', color: '#f59e0b', marginBottom: '8px' }}>inventory_2</span>
-          <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)' }}>Draf ({draftPosts.length})</span>
+          {/* Badge Jumlah Draf di Kiri Atas */}
+          <div style={{ position: 'absolute', top: '6px', left: '6px', zIndex: 5, background: 'rgba(245, 158, 11, 0.9)', color: '#000', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+            <span className="material-icons" style={{ fontSize: '14px' }}>inventory_2</span>
+            {draftPosts.length} Draf
+          </div>
+
+          {/* Render Preview Gambar/Video dari Draf Terakhir */}
+          {(() => {
+            const latestDraft = draftPosts[0];
+            const draftImages = latestDraft.image_url ? latestDraft.image_url.split(',') : [];
+            const draftThumbUrl = draftImages.length > 0 ? draftImages[0].trim() : null;
+            const draftIsVideo = !!latestDraft.video_url;
+
+            return (
+              <>
+                {draftThumbUrl ? (
+                  <img src={draftThumbUrl} alt="draft preview" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.5)' }} />
+                ) : draftIsVideo ? (
+                  <video src={latestDraft.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.5)' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-icons" style={{ fontSize: '40px', color: 'var(--text-muted)', opacity: 0.5 }}>article</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          {/* Teks Tengah */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, pointerEvents: 'none' }}>
+             <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff', textShadow: '0 2px 5px rgba(0,0,0,0.8)' }}>Lihat Draf</span>
+          </div>
         </div>
       )}
 
@@ -108,10 +138,17 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             style={{ cursor: 'pointer', position: 'relative' }} 
             onClick={() => router.push(`/post?id=${post.id}`)} 
           >
-            {/* 🔥 IKON PIN UNTUK POSTINGAN YANG DISEMATKAN 🔥 */}
+            {/* 🔥 LENCANA JELAS UNTUK POSTINGAN YANG DISEMATKAN 🔥 */}
             {post.is_pinned && (
-              <div style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 3, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }}>
-                <span className="material-icons" style={{ fontSize: '14px', color: '#fff', transform: 'rotate(45deg)' }}>push_pin</span>
+              <div style={{ 
+                position: 'absolute', top: '6px', right: '6px', zIndex: 3, 
+                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', 
+                padding: '4px 8px', borderRadius: '12px', display: 'flex', 
+                alignItems: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <span className="material-icons" style={{ fontSize: '12px', color: '#fff', transform: 'rotate(45deg)' }}>push_pin</span>
+                <span style={{ fontSize: '10px', color: '#fff', fontWeight: 700 }}>Disematkan</span>
               </div>
             )}
 
@@ -119,9 +156,10 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
               <>
                 {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 
-                {isVideo ? (
+                {/* Ikon tambahan kalau video / multi-gambar */}
+                {!post.is_pinned && isVideo ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span>
-                ) : allImages.length > 1 ? (
+                ) : !post.is_pinned && allImages.length > 1 ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span>
                 ) : null}
                 

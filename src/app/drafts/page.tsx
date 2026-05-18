@@ -71,16 +71,16 @@ export default function DraftsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main, #080808)', color: 'var(--text-main, #fff)', paddingBottom: '40px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', paddingBottom: '40px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
-      {/* HEADER */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(8, 8, 8, 0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '15px', padding: '15px 20px', borderBottom: '1px solid var(--border-card, rgba(255,255,255,0.05))' }}>
-        <button onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main, #fff)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+      {/* HEADER (Sudah Adaptif Terang/Gelap) */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', display: 'flex', alignItems: 'center', gap: '15px', padding: '15px 20px', borderBottom: '1px solid var(--border-card)' }}>
+        <button onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
         </button>
         <div>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Draf Postingan</h2>
-          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-muted, #aaa)', fontWeight: 600 }}>{drafts.length} item tersimpan</p>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>Draf Postingan</h2>
+          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{drafts.length} item tersimpan</p>
         </div>
       </div>
 
@@ -90,17 +90,17 @@ export default function DraftsPage() {
         {isLoading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
             {Array(6).fill(0).map((_, i) => (
-              <div key={i} style={{ aspectRatio: '3/4', background: 'var(--bg-secondary, #111)', borderRadius: '12px', animation: 'pulse 1.5s infinite alternate' }} />
+              <div key={i} style={{ aspectRatio: '3/4', background: 'var(--bg-secondary)', borderRadius: '12px', animation: 'pulse 1.5s infinite alternate' }} />
             ))}
           </div>
         ) : drafts.length === 0 ? (
           
           /* EMPTY STATE */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', textAlign: 'center', color: 'var(--text-muted, #aaa)' }}>
-            <div style={{ background: 'var(--bg-secondary, #111)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid var(--border-card)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ background: 'var(--bg-secondary)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid var(--border-card)' }}>
               <span className="material-icons" style={{ fontSize: '32px', color: 'var(--text-muted)' }}>inventory_2</span>
             </div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-main, #fff)', fontWeight: 800 }}>Draf Kosong</h3>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-main)', fontWeight: 800 }}>Draf Kosong</h3>
             <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5 }}>Kamu tidak memiliki draf postingan saat ini.</p>
           </div>
         ) : (
@@ -122,7 +122,7 @@ export default function DraftsPage() {
                     exit={{ opacity: 0, scale: 0.8, y: 20 }}
                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                     onClick={() => router.push(`/create?draft_id=${draft.id}`)} // 🔥 KEMBALI EDIT
-                    style={{ position: 'relative', aspectRatio: '3/4', background: 'var(--bg-secondary, #111)', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--border-card, rgba(255,255,255,0.05))' }}
+                    style={{ position: 'relative', aspectRatio: '3/4', background: 'var(--bg-secondary)', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--border-card)' }}
                   >
                     {/* Media Preview */}
                     {coverUrl || isVideo ? (
@@ -130,8 +130,8 @@ export default function DraftsPage() {
                         {coverUrl ? (
                           <img src={getOptimizedImage(coverUrl)} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span className="material-icons" style={{ color: '#fff', opacity: 0.3, fontSize: '30px' }}>videocam</span>
+                          <div style={{ width: '100%', height: '100%', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span className="material-icons" style={{ color: 'var(--text-muted)', opacity: 0.5, fontSize: '30px' }}>videocam</span>
                           </div>
                         )}
                         {isVideo && (
@@ -140,7 +140,7 @@ export default function DraftsPage() {
                       </>
                     ) : (
                       /* Text-only preview */
-                      <div style={{ width: '100%', height: '100%', padding: '10px', fontSize: '11px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: 'var(--text-main)' }}>
+                      <div style={{ width: '100%', height: '100%', padding: '10px', fontSize: '11px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: 'var(--text-main)', background: 'var(--bg-secondary)' }}>
                         <div style={{ display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHighlight: '1.4', wordBreak: 'break-word', fontWeight: 600 }}>
                           {draft.bio || "Teks Kosong"}
                         </div>
@@ -148,15 +148,15 @@ export default function DraftsPage() {
                       </div>
                     )}
 
-                    {/* Tombol Category Badge */}
-                    <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '2px 6px', borderRadius: '6px', fontSize: '9px', fontWeight: 800, color: '#aaa' }}>
+                    {/* Tombol Category Badge (Adaptif) */}
+                    <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'var(--bg-main)', border: '1px solid var(--border-card)', padding: '2px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 800, color: 'var(--text-main)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                       {draft.category || 'Karya'}
                     </div>
 
                     {/* 🔥 TOMBOL SAMPAH (HAPUS) 🔥 */}
                     <button
                       onClick={(e) => handleDeleteDraft(e, draft.id)}
-                      style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(239, 68, 68, 0.85)', color: '#fff', border: 'none', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', transition: 'transform 0.1s' }}
+                      style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', transition: 'transform 0.1s' }}
                       onMouseDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
                       onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
                     >
