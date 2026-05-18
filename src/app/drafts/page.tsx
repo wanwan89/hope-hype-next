@@ -97,7 +97,7 @@ export default function DraftsPage() {
           
           /* EMPTY STATE */
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', textAlign: 'center', color: 'var(--text-muted, #aaa)' }}>
-            <div style={{ background: 'var(--bg-secondary, #111)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justify-content: 'center', marginBottom: '16px', border: '1px solid var(--border-card)' }}>
+            <div style={{ background: 'var(--bg-secondary, #111)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid var(--border-card)' }}>
               <span className="material-icons" style={{ fontSize: '32px', color: 'var(--text-muted)' }}>inventory_2</span>
             </div>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-main, #fff)', fontWeight: 800 }}>Draf Kosong</h3>
@@ -156,7 +156,7 @@ export default function DraftsPage() {
                     {/* 🔥 TOMBOL SAMPAH (HAPUS) 🔥 */}
                     <button
                       onClick={(e) => handleDeleteDraft(e, draft.id)}
-                      style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(239, 68, 68, 0.85)', color: '#fff', border: 'none', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justify-content: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', transition: 'transform 0.1s' }}
+                      style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(239, 68, 68, 0.85)', color: '#fff', border: 'none', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', transition: 'transform 0.1s' }}
                       onMouseDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
                       onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
                     >
