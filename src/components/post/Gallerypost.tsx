@@ -9,7 +9,7 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
-import SuggestedUsers from './SuggestedUsers'; // 🔥 IMPORT REKOMENDASI TEMAN
+import SuggestedUsers from './SuggestedUsers'; 
 import './Gallery.css';
 
 // Helper functions
@@ -22,29 +22,11 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-const formatRelativeTime = (dateString: string) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffInSeconds < 60) return "Baru saja";
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes} menit lalu`;
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} jam lalu`;
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays} hari lalu`;
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 4) return `${diffInWeeks} minggu lalu`;
-  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-};
-
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
 
   const [posts, setPosts] = useState<any[]>([]);
-  
-  // 🔥 STATE BUAT REKOMENDASI POSTINGAN & POSISI RANDOM 🔥
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
   const [randomSliderIndex, setRandomSliderIndex] = useState(2);
   const [randomFriendIndex, setRandomFriendIndex] = useState(4);
@@ -62,11 +44,13 @@ export default function Gallerypost() {
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  
   const observerTarget = useRef<HTMLDivElement | null>(null);
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const observerRef = useRef<IntersectionObserver | null>(null); // Buat autoplay
+  
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
   const [currentCategory, setCurrentCategory] = useState("all");
@@ -83,6 +67,7 @@ export default function Gallerypost() {
   useEffect(() => {
     return () => {
       if (viewObserverRef.current) viewObserverRef.current.disconnect();
+      if (observerRef.current) observerRef.current.disconnect();
       Object.values(viewTimersRef.current).forEach(clearTimeout);
     };
   }, []);
@@ -119,11 +104,6 @@ export default function Gallerypost() {
     return () => window.removeEventListener('commentAdded', handleCommentRefresh);
   }, []);
 
-  // --- Init gallery ---
-  useEffect(() => {
-    initGallery();
-  }, []);
-
   // --- Category change listener ---
   useEffect(() => {
     const handleCategoryChange = (e: any) => {
@@ -135,6 +115,11 @@ export default function Gallerypost() {
     window.addEventListener('changeCategory', handleCategoryChange);
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, [currentUser, mutualUsers]);
+
+  // --- Init gallery ---
+  useEffect(() => {
+    initGallery();
+  }, []);
 
   const initGallery = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -158,30 +143,25 @@ export default function Gallerypost() {
       }
     }
     await fetchPosts("all", user, 1, false, currentMutuals);
-    await fetchSuggestedPosts(); // 🔥 Tarik data rekomendasi
+    await fetchSuggestedPosts(); 
   };
 
-  // 🔥 FUNGSI NARIK DATA REKOMENDASI POSTINGAN & SET POSISI RANDOM 🔥
   const fetchSuggestedPosts = async () => {
     try {
       const { data } = await supabase
         .from('posts')
-        .select('id, image_url, bio, profiles:creator_id (username, avatar_url)')
+        .select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)')
         .eq('status', 'approved')
         .eq('is_private', false)
-        .neq('image_url', null) // Pastikan ada gambarnya
+        .neq('image_url', null) 
         .limit(20);
 
       if (data) {
-        // Acak dan ambil 6 postingan acak
         const shuffled = data.sort(() => 0.5 - Math.random()).slice(0, 6);
         setSuggestedPosts(shuffled);
 
-        // Posisi random untuk Slider Postingan (di index 1 atau 2, BUKAN 0)
         const randomPos = Math.floor(Math.random() * 2) + 1; 
         setRandomSliderIndex(randomPos);
-
-        // Posisi random untuk Slider Teman (di index 3 atau 4, biar gak tabrakan)
         const randomFriendPos = Math.floor(Math.random() * 2) + 3; 
         setRandomFriendIndex(randomFriendPos);
       }
@@ -206,16 +186,12 @@ export default function Gallerypost() {
 
       let query = supabase
         .from("posts")
-        .select(
-          `id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`
-        )
+        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .range(from, to);
 
-      if (category && category !== "all") {
-        query = query.ilike("category", `%${category.trim()}%`);
-      }
+      if (category && category !== "all") query = query.ilike("category", `%${category.trim()}%`);
 
       const { data: rawPosts, error } = await query;
       if (error) throw error;
@@ -355,16 +331,10 @@ export default function Gallerypost() {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
         if (error && error.code !== "23505") throw error;
         if (!error) {
-          await sendPushAndAppNotif({
-            senderId: currentUser.id,
-            receiverId: creatorId,
-            type: "follow",
-          });
+          await sendPushAndAppNotif({ senderId: currentUser.id, receiverId: creatorId, type: "follow" });
         }
       }
-    } catch (err) {
-      console.error("Follow error", err);
-    }
+    } catch (err) { console.error("Follow error", err); }
   };
 
   const handleLike = async (postId: string, creatorId: string) => {
@@ -390,17 +360,10 @@ export default function Gallerypost() {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
         if (error && error.code !== "23505") throw error;
         if (!error && creatorId !== currentUser.id) {
-          await sendPushAndAppNotif({
-            senderId: currentUser.id,
-            receiverId: creatorId,
-            type: "like",
-            postId: postId,
-          });
+          await sendPushAndAppNotif({ senderId: currentUser.id, receiverId: creatorId, type: "like", postId: postId });
         }
       }
-    } catch (err) {
-      console.error("Like error", err);
-    }
+    } catch (err) { console.error("Like error", err); }
   };
 
   const handleMediaClick = (e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
@@ -414,9 +377,7 @@ export default function Gallerypost() {
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
 
-      if (!myLikedPosts.has(postId)) {
-        handleLike(postId, creatorId);
-      }
+      if (!myLikedPosts.has(postId)) handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
       if (imageUrl) {
@@ -462,9 +423,7 @@ export default function Gallerypost() {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id, note: finalNote });
         if (error && error.code !== "23505") throw error;
       }
-    } catch (err) {
-      console.error("Repost error", err);
-    }
+    } catch (err) { console.error("Repost error", err); }
   };
 
   const handleSave = async (postId: string) => {
@@ -490,9 +449,7 @@ export default function Gallerypost() {
         const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
         if (error && error.code !== "23505") throw error;
       }
-    } catch (err) {
-      console.error("Save error", err);
-    }
+    } catch (err) { console.error("Save error", err); }
   };
 
   const toggleMute = (e: React.MouseEvent) => {
@@ -500,15 +457,11 @@ export default function Gallerypost() {
     const nextMuted = !isGloballyMuted;
     setIsGloballyMuted(nextMuted);
     isMutedRef.current = nextMuted;
-
-    document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-      el.muted = nextMuted;
-    });
+    document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = nextMuted; });
   };
 
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
-
     observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -540,13 +493,11 @@ export default function Gallerypost() {
       },
       { threshold: 0.6 }
     );
-
     document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
   };
 
   const initViewTrackingObserver = () => {
     if (viewObserverRef.current) viewObserverRef.current.disconnect();
-
     viewObserverRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -562,9 +513,7 @@ export default function Gallerypost() {
                   const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
                   const currentViews = data?.views || 0;
                   await supabase.from("posts").update({ views: currentViews + 1 }).eq("id", postId);
-                } catch (err) {
-                  console.error("Gagal hitung view", err);
-                }
+                } catch (err) { console.error("Gagal hitung view", err); }
               }, 2000);
             }
           } else {
@@ -577,54 +526,17 @@ export default function Gallerypost() {
       },
       { threshold: 0.6 }
     );
-
-    document.querySelectorAll(".card[data-postid]").forEach((card) => {
-      viewObserverRef.current?.observe(card);
-    });
+    document.querySelectorAll(".card[data-postid]").forEach((card) => { viewObserverRef.current?.observe(card); });
   };
 
   // --- RENDER ---
   return (
     <section>
       <style>{`
-        @keyframes marqueeMusic { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .btn-press:active { transform: scale(0.85); }
-        .check-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        .heart-pop.active { animation: heartPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); fill: #ff2e63; }
-        @keyframes heartPop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
-        .spin-anim { animation: spinRep 0.5s ease-in-out; }
-        @keyframes spinRep { 100% { transform: rotate(360deg); } }
         .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
-        .liker-bubble-wrapper { position: absolute; bottom: 60px; right: 15px; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; pointer-events: none; z-index: 5; }
-        .liker-bubble { position: relative; animation: floatBubble 4s ease-in-out infinite alternate; opacity: 0.95; cursor: pointer; pointer-events: auto; }
-        .liker-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
-        .nonowner-bubble-wrapper { position: absolute; bottom: 60px; left: 15px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px; pointer-events: none; z-index: 5; }
-        .nonowner-bubble { position: relative; animation: floatBubbleOpposite 4s ease-in-out infinite alternate; opacity: 0.95; cursor: pointer; pointer-events: auto; display: flex; align-items: center; gap: 8px; }
-        .nonowner-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
-        .note-bubble { background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); }
-        .liker-mini-icon { position: absolute; bottom: -2px; right: -2px; color: white; border-radius: 50%; padding: 2px; font-size: 10px; border: 1px solid white; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
-        .liker-mini-icon.heart { background: #ff2e63; }
-        .liker-mini-icon.repeat { background: #1f3cff; }
-        @keyframes floatBubble { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(-4px); } 66% { transform: translateY(-4px) translateX(4px); } 100% { transform: translateY(-12px) translateX(0); } }
-        @keyframes floatBubbleOpposite { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(4px); } 66% { transform: translateY(-4px) translateX(-4px); } 100% { transform: translateY(-12px) translateX(0); } }
-        .big-pop-heart {
-          position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
-          color: #ff2e63; font-size: 120px; z-index: 10; pointer-events: none; opacity: 0;
-          animation: popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-          filter: drop-shadow(0 4px 15px rgba(0,0,0,0.4));
-        }
-        @keyframes popHeartAnim {
-          0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-          15% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
-          30% { transform: translate(-50%, -50%) scale(0.95); opacity: 1; }
-          70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-          100% { transform: translate(-50%, -100%) scale(0); opacity: 0; }
-        }
-        
-        /* 🔥 STYLE UNTUK SLIDER REKOMENDASI 🔥 */
         .slider-recommendation::-webkit-scrollbar { display: none; }
       `}</style>
 
@@ -635,11 +547,7 @@ export default function Gallerypost() {
         note={repostNote}
         setNote={setRepostNote}
         onClose={() => setRepostModal(null)}
-        onConfirm={() => {
-          if (repostModal) {
-            handleConfirmRepost(repostModal.postId, repostModal.creatorId, false);
-          }
-        }}
+        onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }}
       />
 
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
@@ -656,10 +564,9 @@ export default function Gallerypost() {
           posts.map((post, index) => (
             <React.Fragment key={post.id}>
               
-              {/* 🔥 SELIPIN SLIDER REKOMENDASI POSTINGAN DI POSISI RANDOM 🔥 */}
+              {/* 🔥 SLIDER REKOMENDASI POSTINGAN 🔥 */}
               {index === randomSliderIndex && suggestedPosts.length > 0 && (
                 <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-                  
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
                     <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
@@ -671,7 +578,8 @@ export default function Gallerypost() {
                       return (
                         <div 
                           key={`sugg-${sp.id}`} 
-                          onClick={() => router.push(`/post?id=${sp.id}`)}
+                          // 🔥 FIX: Navigasi URL yang benar untuk buka postingan (pakai creator_id & id)
+                          onClick={() => router.push(`/post?creator_id=${sp.creator_id}&id=${sp.id}`)}
                           style={{ 
                             minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
                             overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', 
@@ -681,12 +589,10 @@ export default function Gallerypost() {
                           <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
                             <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
-                          
                           <div style={{ padding: '10px' }}>
                             <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                               {sp.bio || 'Tanpa Caption'}
                             </p>
-                            
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -701,7 +607,7 @@ export default function Gallerypost() {
                 </div>
               )}
 
-              {/* 🔥 SELIPIN SLIDER REKOMENDASI TEMAN DI POSISI RANDOM 🔥 */}
+              {/* 🔥 SLIDER REKOMENDASI TEMAN 🔥 */}
               {index === randomFriendIndex && (
                  <SuggestedUsers myId={currentUser?.id} followedUsers={followedUsers} />
               )}
@@ -721,19 +627,14 @@ export default function Gallerypost() {
                 isGloballyMuted={isGloballyMuted}
                 poppingHeart={poppingHeart}
                 activePreviewImage={activePreviewImage}
-                likersMap={likersMap}
+                likersMap={likersMap} // 🔥 Data Liker Map masih ada buat dibaca sama PostCard
                 repostersMap={repostersMap}
                 handleLike={handleLike}
                 handleSave={handleSave}
                 openRepostModal={(id, cid) => {
                   if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
-                  const isReposted = myRepostedPosts.has(id);
-                  if (isReposted) {
-                    handleConfirmRepost(id, cid, true);
-                  } else {
-                    setRepostNote("");
-                    setRepostModal({ isOpen: true, postId: id, creatorId: cid });
-                  }
+                  if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                  else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
                 }}
                 handleMediaClick={handleMediaClick}
                 toggleMute={toggleMute}

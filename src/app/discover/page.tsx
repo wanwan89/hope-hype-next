@@ -164,8 +164,8 @@ export default function DiscoverFriendsPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', paddingBottom: '40px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
       
-      {/* HEADER */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(var(--bg-main-rgb, 8,8,8), 0.8)', backdropFilter: 'blur(15px)', display: 'flex', alignItems: 'center', gap: '15px', padding: '15px 20px', borderBottom: '1px solid var(--border-card)' }}>
+      {/* 🔥 HEADER (Sudah Adaptif Terang/Gelap) 🔥 */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', display: 'flex', alignItems: 'center', gap: '15px', padding: '15px 20px', borderBottom: '1px solid var(--border-card)' }}>
         <button onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
         </button>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
 import MusicMarquee from './MusicMarquee';
+import FloatingBubbles from './FloatingBubbles'; // 🔥 IMPORT KOMPONEN BUBBLES
 import { getUserBadge } from '@/lib/ui-utils';
 import { formatRelativeTime, getOptimizedImage } from '@/lib/helpers';
 
@@ -53,17 +54,14 @@ const PostCard: React.FC<PostCardProps> = ({
   const postIdStr = String(post.id);
   const photoList = post.image_url ? post.image_url.split(',') : [];
   const isVideoPost = !!post.video_url;
+  
+  // Ambil likers dan reposters mentah
   const likers = likersMap[postIdStr] || [];
   const reposters = repostersMap[postIdStr] || [];
+
+  // Filter yang mutual doang buat ditampilin di bubble
   const mutualLikers = likers.filter((l: any) => mutualUsers.has(l.id));
   const mutualReposters = reposters.filter((r: any) => mutualUsers.has(r.id));
-
-  const combinedMutualInteractors: any[] = [];
-  let rIdx = 0, lIdx = 0;
-  if (mutualReposters[rIdx]) combinedMutualInteractors.push({ ...mutualReposters[rIdx++], type: 'repost' });
-  if (mutualLikers[lIdx] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualLikers[lIdx++], type: 'like' });
-  if (mutualReposters[rIdx] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualReposters[rIdx++], type: 'repost' });
-  if (mutualLikers[lIdx] && combinedMutualInteractors.length < 2) combinedMutualInteractors.push({ ...mutualLikers[lIdx++], type: 'like' });
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
@@ -114,34 +112,11 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             )}
 
-            {isOwner && mutualLikers.length > 0 && (
-              <div className="liker-bubble-wrapper">
-                {mutualLikers.slice(0, 3).map((liker: any, i: number) => (
-                  <div key={i} className="liker-bubble" onClick={() => router.push(`/data?id=${liker.id}`)}
-                    style={{ animationDelay: `${i * 1.5}s`, transform: `translateX(${i * -5}px)` }}>
-                    <img src={liker.avatar_url || '/asets/png/profile.webp'} alt="liker" />
-                    <span className="material-icons liker-mini-icon heart">favorite</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!isOwner && combinedMutualInteractors.length > 0 && (
-              <div className="nonowner-bubble-wrapper">
-                {combinedMutualInteractors.map((interactor: any, i: number) => (
-                  <div key={i} className="nonowner-bubble" onClick={() => router.push(`/data?id=${interactor.id}`)}
-                    style={{ animationDelay: `${i * 1.2}s` }}>
-                    <div style={{ position: 'relative' }}>
-                      <img src={interactor.avatar_url || '/asets/png/profile.webp'} alt="interactor" />
-                      {interactor.type === 'like'
-                        ? <span className="material-icons liker-mini-icon heart">favorite</span>
-                        : <span className="material-icons liker-mini-icon repeat">repeat</span>}
-                    </div>
-                    {interactor.note && <div className="note-bubble">"{interactor.note}"</div>}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* 🔥 PANGGIL KOMPONEN FLOATING BUBBLES DI SINI 🔥 */}
+            <FloatingBubbles 
+              likers={isOwner ? mutualLikers : []} // Kalau owner, tunjukin likers di kanan
+              reposters={!isOwner ? mutualReposters : []} // Kalau bukan owner, tunjukin reposters di kiri (atau gabungin suka-suka)
+            />
 
             <div className="photo-carousel" onScroll={(e) => {
               const target = e.target as HTMLDivElement;

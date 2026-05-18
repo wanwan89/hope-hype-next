@@ -22,9 +22,10 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
 
   // 🔥 URUTKAN POSTINGAN: YANG DI-PIN TARUH PALING ATAS 🔥
   const publishedPosts = [...publishedPostsRaw].sort((a, b) => {
-    if (a.is_pinned && !b.is_pinned) return -1;
-    if (!a.is_pinned && b.is_pinned) return 1;
-    return 0; // Sisanya tetap sesuai urutan waktu dari database
+    // Paksa jadi angka untuk perbandingan yang pasti
+    const aPinned = a.is_pinned === true ? 1 : 0;
+    const bPinned = b.is_pinned === true ? 1 : 0;
+    return bPinned - aPinned; 
   });
 
   if (isLoadingPosts) {
@@ -136,10 +137,11 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             key={post.id} 
             className="grid-item" 
             style={{ cursor: 'pointer', position: 'relative' }} 
-            onClick={() => router.push(`/post?id=${post.id}`)} 
+            // 🔥 FIX: Pakai onPostClick bawaan parent biar link & scroll anchor-nya jalan! 🔥
+            onClick={() => onPostClick(post.id, post.status)} 
           >
             {/* 🔥 LENCANA JELAS UNTUK POSTINGAN YANG DISEMATKAN 🔥 */}
-            {post.is_pinned && (
+            {post.is_pinned === true && (
               <div style={{ 
                 position: 'absolute', top: '6px', right: '6px', zIndex: 3, 
                 background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', 

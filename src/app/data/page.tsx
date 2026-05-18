@@ -235,13 +235,15 @@ function ProfileContent() {
         if (isMe) {
           const { data: drafts } = await supabase
             .from('posts')
-            .select('id, image_url, video_url, views, status')
+            // 🔥 TAMBAH is_pinned 🔥
+            .select('id, image_url, video_url, views, status, is_pinned')
             .eq('creator_id', profile.id)
             .eq('status', 'draft')
             .order('created_at', { ascending: false });
           const { data: approveds } = await supabase
             .from('posts')
-            .select('id, image_url, video_url, views, status')
+            // 🔥 TAMBAH is_pinned 🔥
+            .select('id, image_url, video_url, views, status, is_pinned')
             .eq('creator_id', profile.id)
             .eq('status', 'approved')
             .eq('is_private', false)
@@ -250,7 +252,8 @@ function ProfileContent() {
         } else {
           const { data, error } = await supabase
             .from('posts')
-            .select('id, image_url, video_url, views, status')
+            // 🔥 TAMBAH is_pinned 🔥
+            .select('id, image_url, video_url, views, status, is_pinned')
             .eq('creator_id', profile.id)
             .eq('status', 'approved')
             .eq('is_private', false)
@@ -260,7 +263,8 @@ function ProfileContent() {
       } else if (type === 'private') {
         const { data, error } = await supabase
           .from('posts')
-          .select('id, image_url, video_url, views, status')
+          // 🔥 TAMBAH is_pinned 🔥
+          .select('id, image_url, video_url, views, status, is_pinned')
           .eq('creator_id', profile.id)
           .eq('is_private', true)
           .order('created_at', { ascending: false });
@@ -283,7 +287,8 @@ function ProfileContent() {
             if (postIds.length > 0) {
               const { data: pData, error: pError } = await supabase
                 .from('posts')
-                .select('id, image_url, video_url, views, status')
+                // 🔥 TAMBAH is_pinned 🔥
+                .select('id, image_url, video_url, views, status, is_pinned')
                 .in('id', postIds)
                 .order('created_at', { ascending: false });
               if (pData && !pError && isComponentActive) setPosts(pData);
