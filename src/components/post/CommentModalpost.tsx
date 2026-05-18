@@ -38,6 +38,7 @@ export default function CommentModalpost() {
   
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
   const [currentCreatorId, setCurrentCreatorId] = useState<string | null>(null);
+  const [isCommentsDisabled, setIsCommentsDisabled] = useState(false); // 🔥 STATE STATUS KOMENTAR 🔥
   
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyToUsername, setReplyToUsername] = useState<string | null>(null);
@@ -59,7 +60,6 @@ export default function CommentModalpost() {
   const currentPostIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null); 
 
-  // 🔥 STATE BARU UNTUK FITUR OWNER (TABS & SORTING) 🔥
   const [activeTab, setActiveTab] = useState<'comment' | 'likes_all' | 'likes_friends'>('comment');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   
@@ -106,12 +106,12 @@ export default function CommentModalpost() {
         setCurrentPostId(postId);
         setCurrentCreatorId(creatorId);
         setIsActive(true);
-        setActiveTab('comment'); // Reset tab
+        setActiveTab('comment'); 
         document.body.style.overflow = "hidden";
         
         if (postId) {
           loadComments(postId, userId);
-          // Jika owner yang buka, cek data mutuals juga
+          checkPostSettings(postId); // 🔥 CEK STATUS KOMENTAR SAAT MODAL DIBUKA 🔥
           if (creatorId === userId) {
             checkMutuals(userId);
           }
@@ -122,7 +122,21 @@ export default function CommentModalpost() {
     return () => document.body.removeEventListener("click", handleBodyClick);
   }, []);
 
-  // 🔥 FUNGSI CEK TEMAN MUTUAL (UNTUK TAB LIKES) 🔥
+  // 🔥 FUNGSI CEK STATUS MATIKAN KOMENTAR 🔥
+  const checkPostSettings = async (postId: string) => {
+    try {
+      const { data } = await supabase
+        .from('posts')
+        .select('comments_disabled')
+        .eq('id', postId)
+        .single();
+      
+      setIsCommentsDisabled(!!data?.comments_disabled);
+    } catch (err) {
+      console.error("Gagal cek status komentar", err);
+    }
+  };
+
   const checkMutuals = async (userId: string) => {
     try {
       const [followsRes, followersRes] = await Promise.all([
@@ -138,7 +152,6 @@ export default function CommentModalpost() {
     } catch (err) { console.error("Error cek mutuals", err); }
   };
 
-  // 🔥 FUNGSI LOAD LIKERS 🔥
   const loadLikers = async () => {
     if (!currentPostId) return;
     setIsLoadingLikers(true);
@@ -154,7 +167,6 @@ export default function CommentModalpost() {
     setIsLoadingLikers(false);
   };
 
-  // Panggil loadLikers tiap kali ganti tab ke likes
   useEffect(() => {
     if ((activeTab === 'likes_all' || activeTab === 'likes_friends') && currentPostId && postLikers.length === 0) {
       loadLikers();
@@ -208,7 +220,7 @@ export default function CommentModalpost() {
     const { data: commsData } = await supabase.from("comments")
       .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
       .eq("post_id", postId)
-      .order("created_at", { ascending: true }); // Default ascending dari query
+      .order("created_at", { ascending: true });
 
     if (commsData && commsData.length > 0) {
       const commentIds = commsData.map(c => c.id);
@@ -219,7 +231,7 @@ export default function CommentModalpost() {
       allLikesData?.forEach(like => { newCounts[String(like.comment_id)] += 1; });
       setCommentLikesCount(newCounts);
 
-      setComments(commsData); // Simpan raw-nya aja, sorting dipindah ke render biar dinamis
+      setComments(commsData); 
 
       if (userId) {
         const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
@@ -316,7 +328,7 @@ export default function CommentModalpost() {
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim() && !isSubmitting && !showMentions) {
       e.preventDefault();
-      if (!currentPostId) return;
+      if (!currentPostId || isCommentsDisabled) return; // 🔥 CEK DISINI JUGA 🔥
 
       let finalContent = inputValue.trim();
 
@@ -580,7 +592,8 @@ export default function CommentModalpost() {
 
           <div className="comment-actions">
             <span className="comment-time">{formatTimeAgo(comment.created_at)}</span>
-            {!isGift && (
+            {/* 🔥 CEK JIKA KOMENTAR DISABLED, HILANGKAN TOMBOL BALAS 🔥 */}
+            {!isGift && !isCommentsDisabled && (
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
@@ -647,7 +660,6 @@ export default function CommentModalpost() {
 
   const isOwner = currentCreatorId === myUserId;
 
-  // 🔥 FILTER DAN SORTING KOMENTAR 🔥
   const parents = comments.filter(c => !c.parent_id);
   const sortedParents = [...parents].sort((a, b) => {
     const timeA = new Date(a.created_at).getTime();
@@ -658,7 +670,6 @@ export default function CommentModalpost() {
   return (
     <>
       <style>{`
-        /* Style untuk Tab Header dan Tombol Sortir */
         .c-owner-tabs { display: flex; border-bottom: 1px solid var(--border-card); overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
         .c-owner-tabs::-webkit-scrollbar { display: none; }
         .c-tab { flex: 1; text-align: center; padding: 12px; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
@@ -677,7 +688,6 @@ export default function CommentModalpost() {
         <div className="comment-box" onClick={(e) => e.stopPropagation()}>
           <div className="modal-drag-indicator"></div>
           
-          {/* HEADER BERUBAH JIKA PEMILIK POSTINGAN */}
           {isOwner ? (
             <div className="c-owner-tabs">
               <div className={`c-tab ${activeTab === 'comment' ? 'active' : ''}`} onClick={() => setActiveTab('comment')}>Komentar</div>
@@ -699,7 +709,6 @@ export default function CommentModalpost() {
           )}
           
           <div className="comment-list" id="commentListContainer">
-            {/* RENDER LIST LIKERS JIKA BUKAN TAB KOMENTAR */}
             {activeTab !== 'comment' ? (
                isLoadingLikers ? (
                   <div className="loading-text">Memuat daftar suka...</div>
@@ -727,7 +736,6 @@ export default function CommentModalpost() {
                   })()
                )
             ) : (
-              /* RENDER KOMENTAR SEPERTI BIASA */
               isLoading ? (
                 <div className="loading-text">{t('loading_comments')}</div>
               ) : sortedParents.length === 0 ? (
@@ -782,50 +790,56 @@ export default function CommentModalpost() {
             )}
           </div>
 
-          {/* INPUT HANYA MUNCUL DI TAB KOMENTAR */}
+          {/* 🔥 LOGIKA INPUT / PERINGATAN KOMENTAR DISABLED 🔥 */}
           {activeTab === 'comment' && (
-            <div className="comment-input-wrap">
-              {showMentions && (
-                <div className="mention-popup">
-                  {mentionResults.length > 0 ? (
-                    mentionResults.map(user => (
-                      <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
-                        <img src={getOptimizedImage(user.avatar_url) || '/asets/png/profile.webp'} loading="lazy" alt={user.username} />
-                        <div className="mention-info">
-                          <span className="mention-name">{user.username}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="mention-empty">Tidak ditemukan...</div>
-                  )}
-                </div>
-              )}
-
-              <div className="input-container">
-                <input 
-                  ref={inputRef}
-                  type="text" 
-                  className="comment-input" 
-                  placeholder={getPlaceholder()} 
-                  autoComplete="off"
-                  value={inputValue}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                    if (showMentions && e.key === "Enter") {
-                      e.preventDefault();
-                      if (mentionResults.length > 0) handleSelectMention(mentionResults[0].username);
-                    } else {
-                      handleKeyDown(e);
-                    }
-                  }}
-                  disabled={isSubmitting}
-                />
-                <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
-                  <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
-                </button>
+            isCommentsDisabled ? (
+              <div style={{ padding: '15px', textAlign: 'center', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-card)', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600 }}>
+                Komentar dinonaktifkan oleh kreator.
               </div>
-            </div>
+            ) : (
+              <div className="comment-input-wrap">
+                {showMentions && (
+                  <div className="mention-popup">
+                    {mentionResults.length > 0 ? (
+                      mentionResults.map(user => (
+                        <div key={user.id} className="mention-item" onClick={() => handleSelectMention(user.username)}>
+                          <img src={getOptimizedImage(user.avatar_url) || '/asets/png/profile.webp'} loading="lazy" alt={user.username} />
+                          <div className="mention-info">
+                            <span className="mention-name">{user.username}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="mention-empty">Tidak ditemukan...</div>
+                    )}
+                  </div>
+                )}
+
+                <div className="input-container">
+                  <input 
+                    ref={inputRef}
+                    type="text" 
+                    className="comment-input" 
+                    placeholder={getPlaceholder()} 
+                    autoComplete="off"
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                      if (showMentions && e.key === "Enter") {
+                        e.preventDefault();
+                        if (mentionResults.length > 0) handleSelectMention(mentionResults[0].username);
+                      } else {
+                        handleKeyDown(e);
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  />
+                  <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
+                    <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+                  </button>
+                </div>
+              </div>
+            )
           )}
         </div>
       </div>

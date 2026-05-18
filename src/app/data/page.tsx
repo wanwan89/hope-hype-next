@@ -595,10 +595,17 @@ function ProfileContent() {
 
       <ActionSheet
         isOpen={isActionSheetOpen}
+        isMutual={isMutual} // 🔥 Kirim status berteman ke ActionSheet
         onClose={() => setIsActionSheetOpen(false)}
+        onSetNickname={() => {
+          // 🔥 Logika pop-up atau input ganti nama nanti bisa ditaruh di sini
+          setIsActionSheetOpen(false);
+          showNotif("Fitur ganti nama panggilan segera hadir!", "info");
+        }}
         onReport={handleReportUser}
         onBlock={handleBlockUser}
       />
+
     </div>
   );
 }

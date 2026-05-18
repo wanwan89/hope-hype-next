@@ -16,6 +16,17 @@ type Props = {
 const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, profile, activeTab, onPostClick, t }) => {
   const router = useRouter();
 
+  // 🔥 PISAHKAN DRAF DAN POSTINGAN PUBLIK 🔥
+  const draftPosts = posts.filter(p => p.status === 'draft');
+  const publishedPostsRaw = posts.filter(p => p.status !== 'draft');
+
+  // 🔥 URUTKAN POSTINGAN: YANG DI-PIN TARUH PALING ATAS 🔥
+  const publishedPosts = [...publishedPostsRaw].sort((a, b) => {
+    if (a.is_pinned && !b.is_pinned) return -1;
+    if (!a.is_pinned && b.is_pinned) return 1;
+    return 0; // Sisanya tetap sesuai urutan waktu dari database
+  });
+
   if (isLoadingPosts) {
     return (
       <div className="post-grid">
@@ -68,32 +79,59 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
 
   return (
     <div className="post-grid">
-      {posts.map(post => {
+      {/* 🔥 KOTAK KHUSUS FOLDER DRAF (HANYA MUNCUL BUAT OWNER) 🔥 */}
+      {isMe && activeTab === 'post' && draftPosts.length > 0 && (
+        <div 
+          className="grid-item" 
+          style={{ 
+            cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', 
+            alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', 
+            border: '2px dashed var(--border-card)' 
+          }} 
+          onClick={() => router.push('/drafts')}
+        >
+          <span className="material-icons" style={{ fontSize: '32px', color: '#f59e0b', marginBottom: '8px' }}>inventory_2</span>
+          <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)' }}>Draf ({draftPosts.length})</span>
+        </div>
+      )}
+
+      {/* 🔥 RENDER POSTINGAN YANG SUDAH DI-PUBLISH 🔥 */}
+      {publishedPosts.map(post => {
         const allImages = post.image_url ? post.image_url.split(',') : [];
         const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
         const isVideo = !!post.video_url;
-        const isDraft = post.status === 'draft';
 
         return (
-          <div key={post.id} className="grid-item" style={{ cursor: 'pointer', position: 'relative' }} onClick={() => onPostClick(post.id, post.status)}>
-            {isDraft && (
-              <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(255, 193, 7, 0.9)', color: '#000', fontSize: '10px', fontWeight: '800', padding: '3px 6px', borderRadius: '6px', zIndex: 3, boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }}>
-                DRAF
+          <div 
+            key={post.id} 
+            className="grid-item" 
+            style={{ cursor: 'pointer', position: 'relative' }} 
+            onClick={() => router.push(`/post?id=${post.id}`)} 
+          >
+            {/* 🔥 IKON PIN UNTUK POSTINGAN YANG DISEMATKAN 🔥 */}
+            {post.is_pinned && (
+              <div style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 3, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }}>
+                <span className="material-icons" style={{ fontSize: '14px', color: '#fff', transform: 'rotate(45deg)' }}>push_pin</span>
               </div>
             )}
+
             {thumbUrl || isVideo ? (
               <>
                 {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                {isVideo ? <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span> : allImages.length > 1 ? <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span> : null}
-                {!isDraft && (
-                  <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
-                    <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>{post.views || 0}
-                  </div>
-                )}
+                
+                {isVideo ? (
+                  <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span>
+                ) : allImages.length > 1 ? (
+                  <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span>
+                ) : null}
+                
+                <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+                  <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>{post.views || 0}
+                </div>
               </>
             ) : (
-              <div className="grid-no-img">
-                <span className="material-icons">{isDraft ? 'edit_document' : 'article'}</span>
+              <div className="grid-no-img" style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)' }}>
+                <span className="material-icons" style={{ fontSize: '32px', color: 'var(--text-muted)' }}>article</span>
               </div>
             )}
           </div>
