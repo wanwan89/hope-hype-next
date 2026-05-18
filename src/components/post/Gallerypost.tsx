@@ -9,6 +9,7 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
+import SuggestedUsers from './SuggestedUsers'; // 🔥 IMPORT REKOMENDASI TEMAN
 import './Gallery.css';
 
 // Helper functions
@@ -42,8 +43,11 @@ export default function Gallerypost() {
   const router = useRouter();
 
   const [posts, setPosts] = useState<any[]>([]);
-  // 🔥 STATE BARU BUAT POSTINGAN REKOMENDASI SLIDER 🔥
+  
+  // 🔥 STATE BUAT REKOMENDASI POSTINGAN & POSISI RANDOM 🔥
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
+  const [randomSliderIndex, setRandomSliderIndex] = useState(2);
+  const [randomFriendIndex, setRandomFriendIndex] = useState(4);
   
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -154,10 +158,10 @@ export default function Gallerypost() {
       }
     }
     await fetchPosts("all", user, 1, false, currentMutuals);
-    await fetchSuggestedPosts(); // 🔥 Tarik data rekomendasi slider
+    await fetchSuggestedPosts(); // 🔥 Tarik data rekomendasi
   };
 
-  // 🔥 FUNGSI NARIK DATA REKOMENDASI POSTINGAN 🔥
+  // 🔥 FUNGSI NARIK DATA REKOMENDASI POSTINGAN & SET POSISI RANDOM 🔥
   const fetchSuggestedPosts = async () => {
     try {
       const { data } = await supabase
@@ -172,6 +176,14 @@ export default function Gallerypost() {
         // Acak dan ambil 6 postingan acak
         const shuffled = data.sort(() => 0.5 - Math.random()).slice(0, 6);
         setSuggestedPosts(shuffled);
+
+        // Posisi random untuk Slider Postingan (di index 1 atau 2, BUKAN 0)
+        const randomPos = Math.floor(Math.random() * 2) + 1; 
+        setRandomSliderIndex(randomPos);
+
+        // Posisi random untuk Slider Teman (di index 3 atau 4, biar gak tabrakan)
+        const randomFriendPos = Math.floor(Math.random() * 2) + 3; 
+        setRandomFriendIndex(randomFriendPos);
       }
     } catch (err) {
       console.error('Gagal fetch rekomendasi:', err);
@@ -268,37 +280,13 @@ export default function Gallerypost() {
         setRepostersMap((prev) => (isLoadMore ? { ...prev, ...newRepostersMap } : newRepostersMap));
 
         if (userObj) {
-          const { data: myLikes } = await supabase
-            .from("likes")
-            .select("post_id")
-            .eq("user_id", userObj.id)
-            .in("post_id", postIds);
-          const { data: myReposts } = await supabase
-            .from("reposts")
-            .select("post_id")
-            .eq("user_id", userObj.id)
-            .in("post_id", postIds);
-          const { data: mySaves } = await supabase
-            .from("bookmarks")
-            .select("post_id")
-            .eq("user_id", userObj.id)
-            .in("post_id", postIds);
+          const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
+          const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
+          const { data: mySaves } = await supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
 
-          setMyLikedPosts(
-            isLoadMore
-              ? new Set([...myLikedPosts, ...(myLikes?.map((l) => String(l.post_id)) || [])])
-              : new Set(myLikes?.map((l) => String(l.post_id)))
-          );
-          setMyRepostedPosts(
-            isLoadMore
-              ? new Set([...myRepostedPosts, ...(myReposts?.map((r) => String(r.post_id)) || [])])
-              : new Set(myReposts?.map((r) => String(r.post_id)))
-          );
-          setMySavedPosts(
-            isLoadMore
-              ? new Set([...mySavedPosts, ...(mySaves?.map((s) => String(s.post_id)) || [])])
-              : new Set(mySaves?.map((s) => String(s.post_id)))
-          );
+          setMyLikedPosts(isLoadMore ? new Set([...myLikedPosts, ...(myLikes?.map((l) => String(l.post_id)) || [])]) : new Set(myLikes?.map((l) => String(l.post_id))));
+          setMyRepostedPosts(isLoadMore ? new Set([...myRepostedPosts, ...(myReposts?.map((r) => String(r.post_id)) || [])]) : new Set(myReposts?.map((r) => String(r.post_id))));
+          setMySavedPosts(isLoadMore ? new Set([...mySavedPosts, ...(mySaves?.map((s) => String(s.post_id)) || [])]) : new Set(mySaves?.map((s) => String(s.post_id))));
         }
       }
 
@@ -668,9 +656,8 @@ export default function Gallerypost() {
           posts.map((post, index) => (
             <React.Fragment key={post.id}>
               
-{/* 🔥 SELIPIN SLIDER REKOMENDASI DI SINI 🔥 */}
-{index === 0 && suggestedPosts.length > 0 && (
-
+              {/* 🔥 SELIPIN SLIDER REKOMENDASI POSTINGAN DI POSISI RANDOM 🔥 */}
+              {index === randomSliderIndex && suggestedPosts.length > 0 && (
                 <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
@@ -680,7 +667,6 @@ export default function Gallerypost() {
                   
                   <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px' }}>
                     {suggestedPosts.map(sp => {
-                      // Ambil gambar pertama kalau ada banyak koma
                       const img = sp.image_url ? sp.image_url.split(',')[0] : '';
                       return (
                         <div 
@@ -692,12 +678,10 @@ export default function Gallerypost() {
                             cursor: 'pointer', display: 'flex', flexDirection: 'column'
                           }}
                         >
-                          {/* Gambar Postingan */}
                           <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
                             <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
                           
-                          {/* Info Caption & User */}
                           <div style={{ padding: '10px' }}>
                             <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                               {sp.bio || 'Tanpa Caption'}
@@ -715,6 +699,11 @@ export default function Gallerypost() {
                     })}
                   </div>
                 </div>
+              )}
+
+              {/* 🔥 SELIPIN SLIDER REKOMENDASI TEMAN DI POSISI RANDOM 🔥 */}
+              {index === randomFriendIndex && (
+                 <SuggestedUsers myId={currentUser?.id} followedUsers={followedUsers} />
               )}
 
               {/* POSTINGAN UTAMA (PostCard) */}
