@@ -1,5 +1,4 @@
 'use client';
-
 import React from 'react';
 
 type MusicMarqueeProps = {
@@ -57,4 +56,4 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true }) =
   );
 };
 
-export default React.memo(MusicMarquee);
+export default MusicMarquee;

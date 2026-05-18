@@ -1,5 +1,4 @@
 'use client';
-
 import React from 'react';
 
 type FollowButtonProps = {
@@ -51,4 +50,4 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   );
 };
 
-export default React.memo(FollowButton);
+export default FollowButton;

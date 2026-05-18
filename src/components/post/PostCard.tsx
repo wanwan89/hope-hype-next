@@ -1,12 +1,11 @@
 'use client';
-
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
 import MusicMarquee from './MusicMarquee';
-import ImagePreview from './ImagePreview';
 import { getUserBadge } from '@/lib/ui-utils';
-import { formatRelativeTime, getOptimizedImage } from '@/lib/helpers'; // pastikan helpers diekspor
+import { formatRelativeTime, getOptimizedImage } from '@/lib/helpers';
 
 type PostCardProps = {
   post: any;
@@ -59,7 +58,6 @@ const PostCard: React.FC<PostCardProps> = ({
   const mutualLikers = likers.filter((l: any) => mutualUsers.has(l.id));
   const mutualReposters = reposters.filter((r: any) => mutualUsers.has(r.id));
 
-  // Gabungkan mutual reposters & likers untuk bubble non-owner
   const combinedMutualInteractors: any[] = [];
   let rIdx = 0, lIdx = 0;
   if (mutualReposters[rIdx]) combinedMutualInteractors.push({ ...mutualReposters[rIdx++], type: 'repost' });
@@ -116,7 +114,6 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             )}
 
-            {/* Bubble mutual untuk owner */}
             {isOwner && mutualLikers.length > 0 && (
               <div className="liker-bubble-wrapper">
                 {mutualLikers.slice(0, 3).map((liker: any, i: number) => (
@@ -129,7 +126,6 @@ const PostCard: React.FC<PostCardProps> = ({
               </div>
             )}
 
-            {/* Bubble mutual untuk non-owner */}
             {!isOwner && combinedMutualInteractors.length > 0 && (
               <div className="nonowner-bubble-wrapper">
                 {combinedMutualInteractors.map((interactor: any, i: number) => (
@@ -222,7 +218,6 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
         </>
       ) : (
-        // Postingan tanpa media
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${post.creator_id}`)}>

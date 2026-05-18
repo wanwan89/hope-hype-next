@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 
 type ImagePreviewProps = {
   imageUrl: string | null;

@@ -1,5 +1,4 @@
 'use client';
-
 import React from 'react';
 
 type EngagementButtonsProps = {
@@ -58,4 +57,4 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
   );
 };
 
-export default React.memo(EngagementButtons);
+export default EngagementButtons;
