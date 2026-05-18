@@ -11,9 +11,31 @@ import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import './Gallery.css';
 
-// Fungsi helper (tetap di sini)
-const getOptimizedImage = (url: string) => { /* sama persis */ };
-const formatRelativeTime = (dateString: string) => { /* sama persis */ };
+// Helper functions
+const getOptimizedImage = (url: string) => {
+  if (!url) return '';
+  let cleanUrl = url.trim();
+  if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
+    return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_800/');
+  }
+  return cleanUrl;
+};
+
+const formatRelativeTime = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diffInSeconds < 60) return "Baru saja";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} menit lalu`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} jam lalu`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} hari lalu`;
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) return `${diffInWeeks} minggu lalu`;
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
 export default function Gallerypost() {
   const { t } = useTranslation();
@@ -28,7 +50,7 @@ export default function Gallerypost() {
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
-  const [counts, setCounts] = useState<Record<string, { likes: number, comments: number, reposts: number, saves: number }>>({});
+  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; reposts: number; saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
@@ -47,16 +69,548 @@ export default function Gallerypost() {
   const POSTS_PER_PAGE = 15;
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
-  const [repostModal, setRepostModal] = useState<{isOpen: boolean, postId: string, creatorId: string} | null>(null);
+  const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
-  // ... semua useEffect, fungsi fetchPosts, handleLike, handleFollowToggle, dll sama persis ...
-  // (tidak diubah satu karakter pun, cuma dipindahkan ke sini)
+  // --- Cleanup observers ---
+  useEffect(() => {
+    return () => {
+      if (viewObserverRef.current) viewObserverRef.current.disconnect();
+      Object.values(viewTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
 
+  // --- Observer untuk load more ---
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, isLoading, page, currentCategory, mutualUsers]);
+
+  // --- Comment refresh listener ---
+  useEffect(() => {
+    const handleCommentRefresh = (e: any) => {
+      const postId = String(e.detail.postId);
+      if (postId) {
+        setCounts((prev) => ({
+          ...prev,
+          [postId]: {
+            ...prev[postId],
+            comments: (prev[postId]?.comments || 0) + 1,
+          },
+        }));
+      }
+    };
+    window.addEventListener('commentAdded', handleCommentRefresh);
+    return () => window.removeEventListener('commentAdded', handleCommentRefresh);
+  }, []);
+
+  // --- Init gallery ---
+  useEffect(() => {
+    initGallery();
+  }, []);
+
+  // --- Category change listener ---
+  useEffect(() => {
+    const handleCategoryChange = (e: any) => {
+      const newCat = e.detail.category;
+      setCurrentCategory(newCat);
+      setPage(1);
+      fetchPosts(newCat, currentUser, 1, false, mutualUsers);
+    };
+    window.addEventListener('changeCategory', handleCategoryChange);
+    return () => window.removeEventListener('changeCategory', handleCategoryChange);
+  }, [currentUser, mutualUsers]);
+
+  const initGallery = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user || null;
+    setCurrentUser(user);
+
+    let currentMutuals = new Set<string>();
+    if (user) {
+      const [followsRes, followersRes] = await Promise.all([
+        supabase.from('followers').select('following_id').eq('follower_id', user.id),
+        supabase.from('followers').select('follower_id').eq('following_id', user.id),
+      ]);
+      if (followsRes.data) {
+        const followingSet = new Set(followsRes.data.map((f) => String(f.following_id)));
+        setFollowedUsers(followingSet);
+        if (followersRes.data) {
+          const followerSet = new Set(followersRes.data.map((f) => String(f.follower_id)));
+          currentMutuals = new Set([...followingSet].filter((x) => followerSet.has(x)));
+          setMutualUsers(currentMutuals);
+        }
+      }
+    }
+    await fetchPosts("all", user, 1, false, currentMutuals);
+  };
+
+  const fetchPosts = async (
+    category = "all",
+    userObj = currentUser,
+    pageNumber = 1,
+    isLoadMore = false,
+    mutuals = mutualUsers
+  ) => {
+    if (isLoadMore) setIsLoadingMore(true);
+    else setIsLoading(true);
+
+    try {
+      const from = (pageNumber - 1) * POSTS_PER_PAGE;
+      const to = from + POSTS_PER_PAGE - 1;
+
+      let query = supabase
+        .from("posts")
+        .select(
+          `id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`
+        )
+        .eq("status", "approved")
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (category && category !== "all") {
+        query = query.ilike("category", `%${category.trim()}%`);
+      }
+
+      const { data: rawPosts, error } = await query;
+      if (error) throw error;
+
+      let fetchedPosts = (rawPosts || []).filter((post) => {
+        if (!post.profiles?.is_private) return true;
+        if (userObj && post.creator_id === userObj.id) return true;
+        if (userObj && mutuals.has(post.creator_id)) return true;
+        return false;
+      });
+
+      setHasMore((rawPosts || []).length === POSTS_PER_PAGE);
+
+      if (category === "all" && !isLoadMore) {
+        fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
+      }
+
+      if (fetchedPosts.length > 0) {
+        const postIds = fetchedPosts.map((p) => p.id);
+
+        const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
+          supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
+          supabase.from("comments").select("post_id").in("post_id", postIds),
+          supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
+          supabase.from("bookmarks").select("post_id").in("post_id", postIds),
+        ]);
+
+        const newCounts: any = {};
+        const newLikersMap: any = {};
+        const newRepostersMap: any = {};
+
+        postIds.forEach((id) => {
+          newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
+          newLikersMap[id] = [];
+          newRepostersMap[id] = [];
+        });
+
+        likesRes.data?.forEach((l) => {
+          if (newCounts[l.post_id]) {
+            newCounts[l.post_id].likes++;
+            if (l.profiles) newLikersMap[l.post_id].push(l.profiles);
+          }
+        });
+
+        commentsRes.data?.forEach((c) => {
+          if (newCounts[c.post_id]) newCounts[c.post_id].comments++;
+        });
+
+        repostsRes.data?.forEach((r) => {
+          if (newCounts[r.post_id]) {
+            newCounts[r.post_id].reposts++;
+            if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note });
+          }
+        });
+
+        savesRes.data?.forEach((s) => {
+          if (newCounts[s.post_id]) newCounts[s.post_id].saves++;
+        });
+
+        setCounts((prev) => (isLoadMore ? { ...prev, ...newCounts } : newCounts));
+        setLikersMap((prev) => (isLoadMore ? { ...prev, ...newLikersMap } : newLikersMap));
+        setRepostersMap((prev) => (isLoadMore ? { ...prev, ...newRepostersMap } : newRepostersMap));
+
+        if (userObj) {
+          const { data: myLikes } = await supabase
+            .from("likes")
+            .select("post_id")
+            .eq("user_id", userObj.id)
+            .in("post_id", postIds);
+          const { data: myReposts } = await supabase
+            .from("reposts")
+            .select("post_id")
+            .eq("user_id", userObj.id)
+            .in("post_id", postIds);
+          const { data: mySaves } = await supabase
+            .from("bookmarks")
+            .select("post_id")
+            .eq("user_id", userObj.id)
+            .in("post_id", postIds);
+
+          setMyLikedPosts(
+            isLoadMore
+              ? new Set([...myLikedPosts, ...(myLikes?.map((l) => String(l.post_id)) || [])])
+              : new Set(myLikes?.map((l) => String(l.post_id)))
+          );
+          setMyRepostedPosts(
+            isLoadMore
+              ? new Set([...myRepostedPosts, ...(myReposts?.map((r) => String(r.post_id)) || [])])
+              : new Set(myReposts?.map((r) => String(r.post_id)))
+          );
+          setMySavedPosts(
+            isLoadMore
+              ? new Set([...mySavedPosts, ...(mySaves?.map((s) => String(s.post_id)) || [])])
+              : new Set(mySaves?.map((s) => String(s.post_id)))
+          );
+        }
+      }
+
+      if (isLoadMore) setPosts((prev) => [...prev, ...fetchedPosts]);
+      else setPosts(fetchedPosts);
+
+      setTimeout(() => {
+        initAutoPlayObserver();
+        initViewTrackingObserver();
+      }, 500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPosts(currentCategory, currentUser, nextPage, true, mutualUsers);
+    }
+  };
+
+  const openShareOptions = (post: any, isOwner: boolean) => {
+    if (window.openGlobalShare) {
+      window.openGlobalShare(
+        `${window.location.origin}/post?id=${post.id}`,
+        "Postingan HypeTalk",
+        "Lihat karya keren ini di HypeTalk!",
+        post.profiles?.username || "User",
+        post.id,
+        isOwner,
+        post.is_private || false
+      );
+    }
+  };
+
+  const handleFollowToggle = async (e: any, creatorId: string) => {
+    e.stopPropagation();
+    if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (currentUser.id === creatorId) return;
+
+    const isFollowing = followedUsers.has(creatorId);
+    setAnimatingFollows((prev) => new Set(prev).add(creatorId));
+    setTimeout(() => {
+      setAnimatingFollows((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(creatorId);
+        return newSet;
+      });
+    }, 200);
+
+    setFollowedUsers((prev) => {
+      const newSet = new Set(prev);
+      isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId);
+      return newSet;
+    });
+
+    try {
+      if (isFollowing) {
+        await supabase.from("followers").delete().match({ follower_id: currentUser.id, following_id: creatorId });
+      } else {
+        const { error } = await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
+        if (error && error.code !== "23505") throw error;
+        if (!error) {
+          await sendPushAndAppNotif({
+            senderId: currentUser.id,
+            receiverId: creatorId,
+            type: "follow",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Follow error", err);
+    }
+  };
+
+  const handleLike = async (postId: string, creatorId: string) => {
+    if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
+    const isLiked = myLikedPosts.has(postId);
+    const numericPostId = parseInt(postId);
+
+    setMyLikedPosts((prev) => {
+      const newSet = new Set(prev);
+      isLiked ? newSet.delete(postId) : newSet.add(postId);
+      return newSet;
+    });
+
+    setCounts((prev) => ({
+      ...prev,
+      [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) },
+    }));
+
+    try {
+      if (isLiked) {
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      } else {
+        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
+        if (error && error.code !== "23505") throw error;
+        if (!error && creatorId !== currentUser.id) {
+          await sendPushAndAppNotif({
+            senderId: currentUser.id,
+            receiverId: creatorId,
+            type: "like",
+            postId: postId,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Like error", err);
+    }
+  };
+
+  const handleMediaClick = (e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
+    const now = Date.now();
+    const lastTapTime = lastTapRef.current[postId] || 0;
+
+    if (now - lastTapTime < 350) {
+      lastTapRef.current[postId] = 0;
+      if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
+
+      setPoppingHeart(postId);
+      setTimeout(() => setPoppingHeart(null), 1000);
+
+      if (!myLikedPosts.has(postId)) {
+        handleLike(postId, creatorId);
+      }
+    } else {
+      lastTapRef.current[postId] = now;
+      if (imageUrl) {
+        setTimeout(() => {
+          if (lastTapRef.current[postId] === now) {
+            setActivePreviewImage(imageUrl);
+            lastTapRef.current[postId] = 0;
+          }
+        }, 360);
+      }
+    }
+  };
+
+  const handleConfirmRepost = async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
+    const numericPostId = parseInt(postId);
+    const finalNote = repostNote.trim().substring(0, 15);
+    setRepostModal(null);
+
+    setAnimatingReposts((prev) => new Set(prev).add(postId));
+    setTimeout(() =>
+      setAnimatingReposts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      }), 500
+    );
+
+    setMyRepostedPosts((prev) => {
+      const newSet = new Set(prev);
+      isUnrepost ? newSet.delete(postId) : newSet.add(postId);
+      return newSet;
+    });
+
+    setCounts((prev) => ({
+      ...prev,
+      [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) },
+    }));
+
+    try {
+      if (isUnrepost) {
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      } else {
+        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id, note: finalNote });
+        if (error && error.code !== "23505") throw error;
+      }
+    } catch (err) {
+      console.error("Repost error", err);
+    }
+  };
+
+  const handleSave = async (postId: string) => {
+    if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
+    const isSaved = mySavedPosts.has(postId);
+    const numericPostId = parseInt(postId);
+
+    setMySavedPosts((prev) => {
+      const newSet = new Set(prev);
+      isSaved ? newSet.delete(postId) : newSet.add(postId);
+      return newSet;
+    });
+
+    setCounts((prev) => ({
+      ...prev,
+      [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) },
+    }));
+
+    try {
+      if (isSaved) {
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+      } else {
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
+        if (error && error.code !== "23505") throw error;
+      }
+    } catch (err) {
+      console.error("Save error", err);
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextMuted = !isGloballyMuted;
+    setIsGloballyMuted(nextMuted);
+    isMutedRef.current = nextMuted;
+
+    document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+      el.muted = nextMuted;
+    });
+  };
+
+  const initAutoPlayObserver = () => {
+    if (observerRef.current) observerRef.current.disconnect();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const audio = entry.target.querySelector(".post-audio-element") as HTMLAudioElement;
+          const video = entry.target.querySelector(".post-video-element") as HTMLVideoElement;
+
+          if (entry.isIntersecting) {
+            if (audio) {
+              document.querySelectorAll(".post-audio-element").forEach((el) => {
+                if (el !== audio) (el as HTMLAudioElement).pause();
+              });
+              audio.currentTime = 0;
+              audio.volume = 1.0;
+              audio.muted = isMutedRef.current;
+              audio.play().catch(() => {});
+            }
+            if (video) {
+              document.querySelectorAll(".post-video-element").forEach((el) => {
+                if (el !== video) (el as HTMLVideoElement).pause();
+              });
+              video.muted = isMutedRef.current;
+              video.play().catch(() => {});
+            }
+          } else {
+            if (audio) audio.pause();
+            if (video) video.pause();
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+
+    document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
+  };
+
+  const initViewTrackingObserver = () => {
+    if (viewObserverRef.current) viewObserverRef.current.disconnect();
+
+    viewObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const postId = entry.target.getAttribute("data-postid");
+          if (!postId) return;
+
+          if (entry.isIntersecting) {
+            if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
+              viewTimersRef.current[postId] = setTimeout(async () => {
+                viewedPostsRef.current.add(postId);
+                delete viewTimersRef.current[postId];
+                try {
+                  const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
+                  const currentViews = data?.views || 0;
+                  await supabase.from("posts").update({ views: currentViews + 1 }).eq("id", postId);
+                } catch (err) {
+                  console.error("Gagal hitung view", err);
+                }
+              }, 2000);
+            }
+          } else {
+            if (viewTimersRef.current[postId]) {
+              clearTimeout(viewTimersRef.current[postId]);
+              delete viewTimersRef.current[postId];
+            }
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+
+    document.querySelectorAll(".card[data-postid]").forEach((card) => {
+      viewObserverRef.current?.observe(card);
+    });
+  };
+
+  // --- RENDER ---
   return (
     <section>
-      {/* CSS tetap pakai <style> seperti sebelumnya */}
-      <style>{`...`}</style>
+      <style>{`
+        @keyframes marqueeMusic { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .btn-press:active { transform: scale(0.85); }
+        .check-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .heart-pop.active { animation: heartPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); fill: #ff2e63; }
+        @keyframes heartPop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+        .spin-anim { animation: spinRep 0.5s ease-in-out; }
+        @keyframes spinRep { 100% { transform: rotate(360deg); } }
+        .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
+        @keyframes pureSpin { 100% { transform: rotate(360deg); } }
+        .liker-bubble-wrapper { position: absolute; bottom: 60px; right: 15px; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; pointer-events: none; z-index: 5; }
+        .liker-bubble { position: relative; animation: floatBubble 4s ease-in-out infinite alternate; opacity: 0.95; cursor: pointer; pointer-events: auto; }
+        .liker-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .nonowner-bubble-wrapper { position: absolute; bottom: 60px; left: 15px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px; pointer-events: none; z-index: 5; }
+        .nonowner-bubble { position: relative; animation: floatBubbleOpposite 4s ease-in-out infinite alternate; opacity: 0.95; cursor: pointer; pointer-events: auto; display: flex; align-items: center; gap: 8px; }
+        .nonowner-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .note-bubble { background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); }
+        .liker-mini-icon { position: absolute; bottom: -2px; right: -2px; color: white; border-radius: 50%; padding: 2px; font-size: 10px; border: 1px solid white; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
+        .liker-mini-icon.heart { background: #ff2e63; }
+        .liker-mini-icon.repeat { background: #1f3cff; }
+        @keyframes floatBubble { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(-4px); } 66% { transform: translateY(-4px) translateX(4px); } 100% { transform: translateY(-12px) translateX(0); } }
+        @keyframes floatBubbleOpposite { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(4px); } 66% { transform: translateY(-4px) translateX(-4px); } 100% { transform: translateY(-12px) translateX(0); } }
+        .big-pop-heart {
+          position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+          color: #ff2e63; font-size: 120px; z-index: 10; pointer-events: none; opacity: 0;
+          animation: popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          filter: drop-shadow(0 4px 15px rgba(0,0,0,0.4));
+        }
+        @keyframes popHeartAnim {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+          15% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+          30% { transform: translate(-50%, -50%) scale(0.95); opacity: 1; }
+          70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          100% { transform: translate(-50%, -100%) scale(0); opacity: 0; }
+        }
+      `}</style>
 
       <RepostModal
         isOpen={!!repostModal}
@@ -83,7 +637,7 @@ export default function Gallerypost() {
         ) : posts.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>{t('no_posts_found')}</p>
         ) : (
-          posts.map(post => (
+          posts.map((post) => (
             <PostCard
               key={post.id}
               post={post}
@@ -124,7 +678,6 @@ export default function Gallerypost() {
           ))
         )}
 
-        {/* elemen observer scroll */}
         <div ref={observerTarget} style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
           {isLoadingMore ? (
             <div className="pure-spinner"></div>
