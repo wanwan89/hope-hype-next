@@ -77,7 +77,6 @@ function NavbarContent() {
   const isRoomPage = pathname?.startsWith('/hypetalk/room');
   
   // 🔥 FIX DETEKSI VOICE ROOM 🔥
-  // Kalau URL-nya /voice dan bawa parameter "id" (artinya lagi masuk ke dalam room)
   const isInsideVoiceRoom = pathname === '/voice' && searchParams?.get('id') !== null;
 
   const isSaldoPage = pathname?.includes('/saldo');
@@ -86,7 +85,6 @@ function NavbarContent() {
   const isHistoryCoinPage = pathname?.includes('/historycoin');
   const isWithdrawPage = pathname?.includes('/withdraw');
 
-  // 🔥 Masukin isInsideVoiceRoom ke sini, JANGAN isVoicePage yang general
   const isHiddenPage =
     isLoginPage ||
     isDailyCekPage ||
@@ -223,7 +221,6 @@ function NavbarContent() {
 
   return (
     <>
-      {/* Navbar full width bottom */}
       <div
         style={{
           position: 'fixed',
@@ -261,7 +258,8 @@ function NavbarContent() {
             const isClicked = clickedItem === item.name;
             const isAnimating = animatingIcon === item.name;
 
-            const normalColor = isActive ? '#1f3cff' : 'var(--text-muted)';
+            // 🔥 UBAH WARNA DI SINI: Gunakan var(--text-main) agar hitam saat terang & putih saat gelap 🔥
+            const normalColor = isActive ? '#1f3cff' : 'var(--text-main)';
 
             return (
               <Link
@@ -323,9 +321,11 @@ function NavbarContent() {
                           justifyContent: 'center',
                         }}
                       >
+                        {/* 🔥 TAMBAHKAN PROPERTI fill DI SINI 🔥 */}
                         <Icon
                           size={24}
                           color={normalColor}
+                          fill={isActive ? normalColor : 'none'}
                           strokeWidth={isActive ? 2.5 : 2}
                         />
                       </div>
