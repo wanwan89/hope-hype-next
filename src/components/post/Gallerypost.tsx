@@ -578,8 +578,8 @@ export default function Gallerypost() {
                       return (
                         <div 
                           key={`sugg-${sp.id}`} 
-                          // 🔥 FIX: Navigasi URL yang benar untuk buka postingan (pakai creator_id & id)
-                          onClick={() => router.push(`/post?creator_id=${sp.creator_id}&id=${sp.id}`)}
+                          // 🔥 FIX: Pake ?id= aja tanpa perlu creator_id
+                          onClick={() => router.push(`/post?id=${sp.id}`)}
                           style={{ 
                             minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
                             overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', 

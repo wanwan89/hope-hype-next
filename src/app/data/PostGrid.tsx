@@ -20,12 +20,24 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
   const draftPosts = posts.filter(p => p.status === 'draft');
   const publishedPostsRaw = posts.filter(p => p.status !== 'draft');
 
-  // 🔥 URUTKAN POSTINGAN: YANG DI-PIN TARUH PALING ATAS 🔥
-  const publishedPosts = [...publishedPostsRaw].sort((a, b) => {
-    // Paksa jadi angka untuk perbandingan yang pasti
+  // 🔥 URUTKAN POSTINGAN & LIMIT PIN MAKSIMAL 3 🔥
+  const sortedPosts = [...publishedPostsRaw].sort((a, b) => {
     const aPinned = a.is_pinned === true ? 1 : 0;
     const bPinned = b.is_pinned === true ? 1 : 0;
     return bPinned - aPinned; 
+  });
+
+  let pinCount = 0;
+  const publishedPosts = sortedPosts.map(post => {
+    if (post.is_pinned === true) {
+      if (pinCount < 3) {
+        pinCount++;
+        return { ...post, visually_pinned: true }; // Masih dapet kuota pin
+      } else {
+        return { ...post, visually_pinned: false }; // Udah lebih dari 3, cabut lencananya
+      }
+    }
+    return { ...post, visually_pinned: false };
   });
 
   if (isLoadingPosts) {
@@ -91,13 +103,11 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
           }} 
           onClick={() => router.push('/drafts')}
         >
-          {/* Badge Jumlah Draf di Kiri Atas */}
           <div style={{ position: 'absolute', top: '6px', left: '6px', zIndex: 5, background: 'rgba(245, 158, 11, 0.9)', color: '#000', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
             <span className="material-icons" style={{ fontSize: '14px' }}>inventory_2</span>
             {draftPosts.length} Draf
           </div>
 
-          {/* Render Preview Gambar/Video dari Draf Terakhir */}
           {(() => {
             const latestDraft = draftPosts[0];
             const draftImages = latestDraft.image_url ? latestDraft.image_url.split(',') : [];
@@ -119,7 +129,6 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             );
           })()}
 
-          {/* Teks Tengah */}
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, pointerEvents: 'none' }}>
              <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff', textShadow: '0 2px 5px rgba(0,0,0,0.8)' }}>Lihat Draf</span>
           </div>
@@ -137,11 +146,17 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             key={post.id} 
             className="grid-item" 
             style={{ cursor: 'pointer', position: 'relative' }} 
-            // 🔥 FIX: Pakai onPostClick bawaan parent biar link & scroll anchor-nya jalan! 🔥
-            onClick={() => onPostClick(post.id, post.status)} 
+            // 🔥 FIX NAVIGASI: Langsung potong kompas pakai URL yang benar!
+            onClick={() => {
+              if (post.status === 'draft') {
+                router.push(`/create?draft_id=${post.id}`);
+              } else {
+                router.push(`/post?id=${post.id}`);
+              }
+            }}
           >
-            {/* 🔥 LENCANA JELAS UNTUK POSTINGAN YANG DISEMATKAN 🔥 */}
-            {post.is_pinned === true && (
+            {/* 🔥 LENCANA JELAS UNTUK POSTINGAN YANG DISEMATKAN (MAX 3) 🔥 */}
+            {post.visually_pinned && (
               <div style={{ 
                 position: 'absolute', top: '6px', right: '6px', zIndex: 3, 
                 background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', 
@@ -159,9 +174,9 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
                 {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 
                 {/* Ikon tambahan kalau video / multi-gambar */}
-                {!post.is_pinned && isVideo ? (
+                {!post.visually_pinned && isVideo ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span>
-                ) : !post.is_pinned && allImages.length > 1 ? (
+                ) : !post.visually_pinned && allImages.length > 1 ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span>
                 ) : null}
                 

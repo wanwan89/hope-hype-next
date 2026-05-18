@@ -165,13 +165,33 @@ export default function GlobalShareModal() {
   };
 
   const togglePin = async () => {
-    if (!shareData.postId) return;
+    if (!shareData.postId || !myId) return;
     const newStatus = !postSettings.isPinned;
+
     try {
+      // 🔥 CEK KUOTA PIN (MAKSIMAL 3) JIKA MAU MENYEMATKAN 🔥
+      if (newStatus === true) {
+        const { count, error: countError } = await supabase
+          .from('posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('creator_id', myId)
+          .eq('is_pinned', true);
+
+        if (countError) throw countError;
+
+        if (count && count >= 3) {
+          showNotif('Batas maksimal sematan! Lepas sematan lain terlebih dahulu.', 'warning');
+          return; // Hentikan fungsi
+        }
+      }
+
+      // Update database kalau kuota aman
       await supabase.from('posts').update({ is_pinned: newStatus }).eq('id', shareData.postId);
       setPostSettings(prev => ({ ...prev, isPinned: newStatus }));
       showNotif(newStatus ? 'Postingan disematkan' : 'Sematan dilepas', 'success');
-    } catch (err) { showNotif('Gagal menyematkan', 'error'); }
+    } catch (err) { 
+      showNotif('Gagal merubah sematan', 'error'); 
+    }
   };
 
   const toggleComments = async () => {

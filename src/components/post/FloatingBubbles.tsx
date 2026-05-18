@@ -35,7 +35,7 @@ export default function FloatingBubbles({ likers, reposters }: Props) {
     // Pastikan bubble muncul kalau ada data baru
     setIsVisible(true);
 
-    // Set timer 3 detik (3000 ms) buat ngilangin bubble
+    // Set timer 3 detik (3000 ms) buat ngilangin bubble perlahan
     const timer = setTimeout(() => {
       setIsVisible(false);
     }, 3000);
@@ -49,6 +49,27 @@ export default function FloatingBubbles({ likers, reposters }: Props) {
 
   return (
     <>
+      {/* 🔥 CSS KHUSUS BUBBLE (Biar gak rusak dipanggil di halaman manapun) 🔥 */}
+      <style>{`
+        .liker-bubble-wrapper { position: absolute; bottom: 60px; right: 15px; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; pointer-events: none; z-index: 20; }
+        .liker-bubble { position: relative; animation: floatBubble 4s ease-in-out infinite alternate, popIn 0.3s ease-out; opacity: 0.95; cursor: pointer; pointer-events: auto; }
+        .liker-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        
+        .nonowner-bubble-wrapper { position: absolute; bottom: 60px; left: 15px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px; pointer-events: none; z-index: 20; }
+        .nonowner-bubble { position: relative; animation: floatBubbleOpposite 4s ease-in-out infinite alternate, popIn 0.3s ease-out; opacity: 0.95; cursor: pointer; pointer-events: auto; display: flex; align-items: center; gap: 8px; }
+        .nonowner-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        
+        .note-bubble { background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); }
+        
+        .liker-mini-icon { position: absolute; bottom: -2px; right: -2px; color: white; border-radius: 50%; padding: 2px; font-size: 10px; border: 1px solid white; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
+        .liker-mini-icon.heart { background: #ff2e63; }
+        .liker-mini-icon.repeat { background: #1f3cff; }
+        
+        @keyframes floatBubble { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(-4px); } 66% { transform: translateY(-4px) translateX(4px); } 100% { transform: translateY(-12px) translateX(0); } }
+        @keyframes floatBubbleOpposite { 0% { transform: translateY(0) translateX(0); } 33% { transform: translateY(-8px) translateX(4px); } 66% { transform: translateY(-4px) translateX(-4px); } 100% { transform: translateY(-12px) translateX(0); } }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 0.95; } }
+      `}</style>
+
       {/* 🔥 BUBBLE LIKERS (MELAYANG DI KANAN BAWAH) 🔥 */}
       {displayLikers.length > 0 && (
         <div className="liker-bubble-wrapper">
