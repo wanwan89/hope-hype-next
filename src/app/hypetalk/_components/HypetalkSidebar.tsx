@@ -2,14 +2,15 @@
 import React from 'react';
 
 type Props = {
+  isOpen: boolean;
   currentUser: any;
   sisaLimitDoi: number;
   onOpenModal: (name: string) => void;
   onCariDoi: () => void;
 };
 
-const HypetalkSidebar: React.FC<Props> = ({ currentUser, sisaLimitDoi, onOpenModal, onCariDoi }) => (
-  <aside className="tg-sidebar open">
+const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, sisaLimitDoi, onOpenModal, onCariDoi }) => (
+  <aside className={`tg-sidebar ${isOpen ? 'open' : ''}`}>
     <div className="sidebar-header">
       <img className="side-avatar" src={currentUser?.avatar_url || "/asets/png/profile.webp"} alt="me" />
       <div className="sidebar-user-info">
