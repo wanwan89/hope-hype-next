@@ -10,7 +10,7 @@ import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers'; 
-import { Virtuoso } from 'react-virtuoso'; // 🔥 IMPORT VIRTUOSO
+import { Virtuoso } from 'react-virtuoso'; 
 import './Gallery.css';
 
 // Helper functions
@@ -46,7 +46,9 @@ export default function Gallerypost() {
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
   
+  // 🔥 FIX 1: Balikin viewedPostsRef yang hilang 🔥
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
+  const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
   const observerRef = useRef<IntersectionObserver | null>(null); 
   
@@ -149,6 +151,7 @@ export default function Gallerypost() {
     try {
       const { data } = await supabase
         .from('posts')
+        // Pastikan kolom penting ke-load
         .select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)')
         .eq('status', 'approved')
         .eq('is_private', false)
@@ -185,6 +188,7 @@ export default function Gallerypost() {
 
       let query = supabase
         .from("posts")
+        // 🔥 Pastikan title dan artist ditarik biar lagu nongol 🔥
         .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
@@ -576,17 +580,14 @@ export default function Gallerypost() {
                       {suggestedPosts.map(sp => {
                         const img = sp.image_url ? sp.image_url.split(',')[0] : '';
                         return (
-                          <div 
+                          // 🔥 FIX 2: BUNGKUS PAKAI <a> BIAR BROWSER YANG URUS NAVIGASI 🔥
+                          <a 
                             key={`sugg-${sp.id}`} 
-                            // 🔥 FIX: Ubah sp.id jadi string biar aman dilempar ke router
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/post?id=${sp.id.toString()}`);
-                            }}
+                            href={`/post?id=${sp.id}`}
                             style={{ 
                               minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
                               overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', 
-                              cursor: 'pointer', display: 'flex', flexDirection: 'column'
+                              cursor: 'pointer', display: 'flex', flexDirection: 'column', textDecoration: 'none'
                             }}
                           >
                             <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
@@ -603,7 +604,7 @@ export default function Gallerypost() {
                                 </span>
                               </div>
                             </div>
-                          </div>
+                          </a>
                         );
                       })}
                     </div>

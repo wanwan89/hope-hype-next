@@ -141,15 +141,17 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
         const allImages = post.image_url ? post.image_url.split(',') : [];
         const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
         const isVideo = !!post.video_url;
+        
+        // 🔥 FIX TIPE DATA: Jadikan string secara eksplisit
+        const safeId = String(post.id);
 
         return (
           <div 
-            key={post.id} 
+            key={safeId} 
             className="grid-item" 
             style={{ cursor: 'pointer', position: 'relative' }} 
-            // 🔥 FIX NAVIGASI: Ubah id jadi string dengan aman
+            // 🔥 FIX NAVIGASI: Kirim ID yang udah aman ke fungsi bawaan parent
             onClick={() => {
-              const safeId = post.id.toString();
               if (post.status === 'draft') {
                 router.push(`/create?draft_id=${safeId}`);
               } else {

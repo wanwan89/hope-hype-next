@@ -51,7 +51,11 @@ const PostCard: React.FC<PostCardProps> = ({
     : avatarUrl;
   const formattedDate = formatRelativeTime(post.created_at);
   const isOwner = currentUser && currentUser.id === post.creator_id;
-  const postIdStr = String(post.id);
+  
+  // 🔥 FIX TIPE DATA: Pastikan ID jadi String biar router Next.js ga mabok
+  const postIdStr = String(post.id); 
+  const creatorIdStr = String(post.creator_id);
+
   const photoList = post.image_url ? post.image_url.split(',') : [];
   const isVideoPost = !!post.video_url;
   
@@ -60,8 +64,8 @@ const PostCard: React.FC<PostCardProps> = ({
   const reposters = repostersMap[postIdStr] || [];
 
   // Filter yang mutual doang buat ditampilin di bubble
-  const mutualLikers = likers.filter((l: any) => mutualUsers.has(l.id));
-  const mutualReposters = reposters.filter((r: any) => mutualUsers.has(r.id));
+  const mutualLikers = likers.filter((l: any) => mutualUsers.has(String(l.id)));
+  const mutualReposters = reposters.filter((r: any) => mutualUsers.has(String(r.id)));
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
@@ -80,7 +84,7 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   return (
-    <div key={post.id} id={`post-${post.id}`} data-postid={post.id} className="card"
+    <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
       style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
       {(photoList.length > 0 || isVideoPost) ? (
         <>
@@ -100,7 +104,7 @@ const PostCard: React.FC<PostCardProps> = ({
               {photoList.length > 1 && !isVideoPost && (
                 <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
                   <span className="material-icons" style={{ fontSize: '12px' }}>collections</span>
-                  <span id={`slide-counter-${post.id}`}>1/{photoList.length}</span>
+                  <span id={`slide-counter-${postIdStr}`}>1/{photoList.length}</span>
                 </div>
               )}
             </div>
@@ -121,14 +125,14 @@ const PostCard: React.FC<PostCardProps> = ({
             <div className="photo-carousel" onScroll={(e) => {
               const target = e.target as HTMLDivElement;
               const index = Math.round(target.scrollLeft / target.offsetWidth);
-              document.querySelectorAll(`.dots-${post.id} .dot`).forEach((d, i) => {
+              document.querySelectorAll(`.dots-${postIdStr} .dot`).forEach((d, i) => {
                 d.classList.toggle('active', i === index);
               });
-              const counterEl = document.getElementById(`slide-counter-${post.id}`);
+              const counterEl = document.getElementById(`slide-counter-${postIdStr}`);
               if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
             }}>
               {isVideoPost ? (
-                <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, post.creator_id)}
+                <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
                   style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
                   <video src={post.video_url} className="post-video-element" poster={getOptimizedImage(post.image_url)}
                     playsInline loop muted style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }} />
@@ -137,7 +141,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 photoList.map((url: string, i: number) => (
                   <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
                     <img src={getOptimizedImage(url)} loading={i === 0 ? "eager" : "lazy"} alt={`Postingan Galeri ${i + 1}`}
-                      onClick={(e) => handleMediaClick(e, postIdStr, post.creator_id, getOptimizedImage(url))}
+                      onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr, getOptimizedImage(url))}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer' }} />
                   </div>
                 ))
@@ -145,7 +149,7 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
 
             {photoList.length > 1 && !isVideoPost && (
-              <div className={`carousel-dots dots-${post.id}`} style={{ zIndex: 2 }}>
+              <div className={`carousel-dots dots-${postIdStr}`} style={{ zIndex: 2 }}>
                 {photoList.map((_: any, i: number) => (
                   <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
                 ))}
@@ -156,12 +160,12 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="overlay">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <h2 className="name" onClick={() => router.push(`/data?id=${post.creator_id}`)}
+                <h2 className="name" onClick={() => router.push(`/data?id=${creatorIdStr}`)}
                   style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   {post.profiles?.full_name || post.profiles?.username || "User"}
                   <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                 </h2>
-                <FollowButton creatorId={post.creator_id} currentUser={currentUser} followedUsers={followedUsers}
+                <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers}
                   mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
               </div>
               <button className="options-btn btn-press" aria-label="Opsi Postingan"
@@ -184,13 +188,14 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
 
             <div className="actions">
+              {/* 🔥 FIX NAVIGASI: Tombol "Lihat Detail" harusnya pergi ke halaman post (bukan profil kreator) */}
               <button 
-                onClick={() => router.push(`/data?id=${post.creator_id}`)} 
+                onClick={() => router.push(`/post?id=${postIdStr}`)} 
                 className="primary btn-press" 
                 style={{ display: 'inline-block', border: 'none', background: '#1f3cff', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 {t('view_detail')}
               </button>
-              <EngagementButtons postId={postIdStr} creatorId={post.creator_id} counts={counts}
+              <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts}
                 mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
                 animatingReposts={animatingReposts}
                 handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
@@ -200,13 +205,13 @@ const PostCard: React.FC<PostCardProps> = ({
       ) : (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${post.creator_id}`)}>
+            <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
               <img src={optimizedAvatar} alt="Avatar Profil" loading="lazy" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
                   {post.profiles?.full_name || post.profiles?.username || "User"}
                   <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-                  <FollowButton creatorId={post.creator_id} currentUser={currentUser} followedUsers={followedUsers}
+                  <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers}
                     mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -243,13 +248,14 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
 
           <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
+            {/* 🔥 FIX NAVIGASI: Tombol "Lihat Detail" harusnya pergi ke halaman post (bukan profil kreator) */}
             <button 
-              onClick={() => router.push(`/data?id=${post.creator_id}`)} 
+              onClick={() => router.push(`/post?id=${postIdStr}`)} 
               className="btn-press" 
               style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'transparent', border: 'none', fontWeight: 600, display: 'inline-block', cursor: 'pointer', padding: 0 }}>
               {t('view_detail')}
             </button>
-            <EngagementButtons postId={postIdStr} creatorId={post.creator_id} counts={counts}
+            <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts}
               mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
               animatingReposts={animatingReposts}
               handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
