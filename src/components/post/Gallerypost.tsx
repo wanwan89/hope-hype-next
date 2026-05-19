@@ -93,7 +93,13 @@ export default function Gallerypost() {
   const isMutedRef = useRef(true);
   const POSTS_PER_PAGE = 15;
 
-  const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
+  // 🔥 State modal sekarang punya flag isUnrepost
+  const [repostModal, setRepostModal] = useState<{ 
+    isOpen: boolean; 
+    postId: string; 
+    creatorId: string; 
+    isUnrepost: boolean; // <-- Tambahan
+  } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
   // Refs untuk mengatasi masalah async di React Strict Mode
@@ -299,7 +305,6 @@ export default function Gallerypost() {
     }
   }, []);
 
-  // 🔥 KELUARKAN SEMUA API CALL DARI SETSTATE BIAR GAK ERROR 23505 🔥
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
@@ -310,10 +315,8 @@ export default function Gallerypost() {
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
 
-    // Update UI Optimistik
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
-    // Eksekusi API di luar state updater
     try {
       if (isFollowing) {
         await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
@@ -331,11 +334,9 @@ export default function Gallerypost() {
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
 
-    // Update UI Optimistik
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
 
-    // Eksekusi API
     try {
       if (isLiked) {
         await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
@@ -372,20 +373,22 @@ export default function Gallerypost() {
     }
   }, [handleLike]);
 
-  const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+  // 🔥 PERBAIKAN: handleConfirmRepost menerima isUnrepost dari state modal
+  const handleConfirmRepost = useCallback(async () => {
+    if (!repostModal || !currentUserRef.current) return;
+    const { postId, creatorId, isUnrepost } = repostModal;
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
-    // Animasi Repost
+    // Animasi
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
-    // 1. Simpan State Lama Buat Jaga-Jaga (Rollback)
+    // Simpan state lama untuk rollback
     const wasReposted = myRepostedPostsRef.current.has(postId);
 
-    // 2. Update UI Optimistik Dulu Biar Cepat
+    // Update UI optimistik
     setMyRepostedPosts((prev) => { 
       const n = new Set(prev); 
       isUnrepost ? n.delete(postId) : n.add(postId); 
@@ -400,46 +403,56 @@ export default function Gallerypost() {
       } 
     }));
 
-    // 3. Tembak ke Database
     try {
       if (isUnrepost) {
+        // Batal repost → hapus dari tabel reposts
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
+        // Repost baru → insert
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
         
-        // 4. Kalau Database Nolak (Duplicate), Kembalikan UI ke Semula! (Rollback)
         if (error) {
-           console.error("Gagal Repost:", error.message);
-           
-           // Balikin state-nya kalau ternyata error
-           setMyRepostedPosts((prev) => { 
-             const n = new Set(prev); 
-             wasReposted ? n.add(postId) : n.delete(postId); 
-             return n; 
-           });
-           
-           setCounts((prev) => ({ 
-             ...prev, 
-             [postId]: { 
-               ...prev[postId], 
-               reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) // kurangin lagi angka yang terlanjur nambah
-             } 
-           }));
+          console.error("Gagal Repost:", error.message);
+          // Rollback optimistik jika gagal (misal duplicate)
+          setMyRepostedPosts((prev) => { 
+            const n = new Set(prev); 
+            wasReposted ? n.add(postId) : n.delete(postId); 
+            return n; 
+          });
+          setCounts((prev) => ({ 
+            ...prev, 
+            [postId]: { 
+              ...prev[postId], 
+              reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) 
+            } 
+          }));
         }
       }
     } catch (err) {}
-  }, [repostNote]);
+  }, [repostModal, repostNote]);
+
+  // 🔥 PERBAIKAN: openRepostModal mengecek apakah sudah direpost
+  const openRepostModal = useCallback((postId: string, creatorId: string) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+    
+    const alreadyReposted = myRepostedPostsRef.current.has(postId);
+    setRepostNote("");
+    setRepostModal({
+      isOpen: true,
+      postId,
+      creatorId,
+      isUnrepost: alreadyReposted  // <-- kunci perbaikan
+    });
+  }, []);
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
 
-    // Update UI Optimistik
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
 
-    // Eksekusi API
     try {
       if (isSaved) {
         await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
@@ -538,7 +551,17 @@ export default function Gallerypost() {
         .slider-recommendation::-webkit-scrollbar { display: none; }
       `}</style>
 
-      <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
+      {/* 🔥 RepostModal sekarang menerima isUnrepost */}
+      <RepostModal 
+        isOpen={!!repostModal} 
+        postId={repostModal?.postId || ''} 
+        creatorId={repostModal?.creatorId || ''} 
+        note={repostNote} 
+        setNote={setRepostNote} 
+        onClose={() => setRepostModal(null)} 
+        onConfirm={handleConfirmRepost}  // Tidak perlu argumen lagi
+        isUnrepost={repostModal?.isUnrepost || false} // <-- Props baru
+      />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
       <div className="gallery" id="mainGallery">
@@ -593,7 +616,7 @@ export default function Gallerypost() {
                   repostersMap={repostersMap}
                   handleLike={handleLike}
                   handleSave={handleSave}
-                  openRepostModal={(id, cid) => { if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin')); setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }}
+                  openRepostModal={openRepostModal}  // 🔥 pakai yang sudah diperbaiki
                   handleMediaClick={handleMediaClick}
                   toggleMute={toggleMute}
                   openShareOptions={openShareOptions}
