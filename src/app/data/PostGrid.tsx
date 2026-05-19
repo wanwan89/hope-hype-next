@@ -158,7 +158,8 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
               if (post.status === 'draft') {
                 router.push(`/create?draft_id=${safeId}`);
               } else {
-                router.push(`/post?id=${safeId}`);
+                // 🔥 FIX: TAMBAHKAN FROM DAN USERID 🔥
+                router.push(`/post?id=${safeId}&from=profile&userId=${post.creator_id}`);
               }
             }}
           >

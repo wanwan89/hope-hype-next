@@ -13,16 +13,17 @@ export default function PostPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
+  
   const postIdFromUrl = searchParams.get('id');
-  const source = searchParams.get('from');        // 'profile' atau lainnya
-  const userIdParam = searchParams.get('userId'); // hanya jika from=profile
+  const source = searchParams.get('from');        // e.g. 'profile', 'home'
+  const userIdParam = searchParams.get('userId'); 
 
   const [post, setPost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
-  // Interaksi seperti gallery
+  // States interaksi
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
@@ -43,19 +44,19 @@ export default function PostPage() {
 
   const lastTapRef = useRef<Record<string, number>>({});
 
-  // Untuk mode profil: daftar postingan user & navigasi
+  // Mode Profil (Daftar post & Carousel Navigasi)
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [activePostIndex, setActivePostIndex] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string>('');
 
-  // Observer autoplay
+  // Observer
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const activeMediaRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  // Inisialisasi
   useEffect(() => {
     if (postIdFromUrl) {
       initializePage();
@@ -70,7 +71,6 @@ export default function PostPage() {
     const user = session?.user || null;
     setCurrentUser(user);
 
-    // Ambil data relasi
     if (user) {
       const [followsRes, followersRes] = await Promise.all([
         supabase.from('followers').select('following_id').eq('follower_id', user.id),
@@ -84,7 +84,6 @@ export default function PostPage() {
       }
     }
 
-    // Tentukan mode: profil atau default
     if (source === 'profile') {
       await loadProfileMode(user);
     } else {
@@ -92,25 +91,18 @@ export default function PostPage() {
     }
   };
 
-  // Mode profil: ambil semua postingan user tersebut
   const loadProfileMode = async (user: any) => {
-    const targetUserId = userIdParam || user?.id; // fallback ke user sendiri jika tidak ada
+    const targetUserId = userIdParam || user?.id; 
     if (!targetUserId) {
       setIsLoading(false);
       return;
     }
 
-    // Ambil username untuk judul jika bukan milik sendiri
     if (targetUserId !== user?.id) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', targetUserId)
-        .single();
+      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
       if (profileData) setProfileUsername(profileData.username);
     }
 
-    // Ambil semua postingan user tersebut (approved)
     const { data: postsData, error } = await supabase
       .from('posts')
       .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
@@ -124,7 +116,6 @@ export default function PostPage() {
       return;
     }
 
-    // Filter privasi
     const filtered = postsData.filter(p => {
       if (!p.profiles?.is_private) return true;
       if (user && p.creator_id === user.id) return true;
@@ -134,14 +125,13 @@ export default function PostPage() {
 
     setUserPosts(filtered);
 
-    // Cari index post yang diminta
     const idx = filtered.findIndex(p => String(p.id) === postIdFromUrl);
     const startIdx = idx >= 0 ? idx : 0;
     setActivePostIndex(startIdx);
+    
     const activePost = filtered[startIdx] || null;
     setPost(activePost);
 
-    // Ambil interaksi untuk post yang aktif
     if (activePost) {
       await fetchPostInteractions(activePost.id, user);
     }
@@ -149,7 +139,6 @@ export default function PostPage() {
     setIsLoading(false);
   };
 
-  // Mode default: satu post
   const loadSinglePost = async (id: string, user: any) => {
     try {
       const { data: postData, error } = await supabase
@@ -182,28 +171,29 @@ export default function PostPage() {
       supabase.from('bookmarks').select('user_id').eq('post_id', postId),
     ]);
 
-    setCounts({
+    setCounts(prev => ({
+      ...prev,
       [pid]: {
         likes: likesRes.data?.length || 0,
         comments: commentsRes.count || 0,
         reposts: repostsRes.data?.length || 0,
         saves: savesRes.data?.length || 0,
       }
-    });
-    setLikersMap({ [pid]: likesRes.data?.map(l => l.profiles) || [] });
-    setRepostersMap({ [pid]: repostsRes.data?.map(r => ({ ...r.profiles, note: r.note })) || [] });
+    }));
+    setLikersMap(prev => ({ ...prev, [pid]: likesRes.data?.map(l => l.profiles) || [] }));
+    setRepostersMap(prev => ({ ...prev, [pid]: repostsRes.data?.map(r => ({ ...r.profiles, note: r.note })) || [] }));
 
     if (user) {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
       const saved = savesRes.data?.some(s => String(s.user_id) === user.id) || false;
-      setMyLikedPosts(new Set(liked ? [pid] : []));
-      setMyRepostedPosts(new Set(reposted ? [pid] : []));
-      setMySavedPosts(new Set(saved ? [pid] : []));
+      
+      setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
+      setMyRepostedPosts(prev => { const n = new Set(prev); if (reposted) n.add(pid); return n; });
+      setMySavedPosts(prev => { const n = new Set(prev); if (saved) n.add(pid); return n; });
     }
   };
 
-  // Navigasi untuk mode profil
   const navigateProfilePost = useCallback((direction: 'prev' | 'next') => {
     if (userPosts.length === 0) return;
     let newIndex = activePostIndex;
@@ -213,26 +203,29 @@ export default function PostPage() {
     const newPost = userPosts[newIndex];
     setActivePostIndex(newIndex);
     setPost(newPost);
-    // Update URL tanpa reload
+    
     const newUrl = `/post?id=${newPost.id}&from=profile&userId=${newPost.creator_id}`;
     router.replace(newUrl, { scroll: false });
-    // Ambil interaksi baru
+    
     fetchPostInteractions(newPost.id, currentUserRef.current);
   }, [activePostIndex, userPosts, router]);
 
-  // --- Handler interaksi (sama persis dengan galerypost, menggunakan ref) ---
+  // --- Handlers Interaksi ---
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     if (currentUserRef.current.id === creatorId) return;
+    
     const isFollowing = followedUsers.has(creatorId);
     setAnimatingFollows(new Set([creatorId]));
     setTimeout(() => setAnimatingFollows(new Set()), 200);
+    
     setFollowedUsers(prev => {
       const newSet = new Set(prev);
       isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId);
       return newSet;
     });
+    
     try {
       if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
       else {
@@ -246,8 +239,10 @@ export default function PostPage() {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const isLiked = myLikedPosts.has(postId);
     const numericPostId = parseInt(postId);
+    
     setMyLikedPosts(prev => { const newSet = new Set(prev); isLiked ? newSet.delete(postId) : newSet.add(postId); return newSet; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
+    
     try {
       if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else {
@@ -314,47 +309,57 @@ export default function PostPage() {
     }
   }, []);
 
-  // --- Autoplay observer untuk halaman detail ---
+  // 🔥 FIX OBSERVER MEDIA (Anti-Reset) 🔥
   useEffect(() => {
     if (!post) return;
-    // Tunggu render card
     const timer = setTimeout(() => {
       if (observerRef.current) observerRef.current.disconnect();
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          entries.forEach(entry => {
-            const card = entry.target;
-            const audio = card.querySelector(".post-audio-element") as HTMLAudioElement;
-            const video = card.querySelector(".post-video-element") as HTMLVideoElement;
-            const media = audio || video;
-            if (!media) return;
-            if (entry.isIntersecting) {
+
+      observerRef.current = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const card = entry.target;
+          const postId = card.getAttribute("data-postid");
+          const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
+          
+          if (!media || !postId) return;
+
+          if (entry.isIntersecting) {
+            // Kalau belum diputar, tarik ke 0
+            if (!activeMediaRef.current.has(postId)) {
+              activeMediaRef.current.add(postId);
               media.muted = isMutedRef.current;
               media.currentTime = 0;
               media.play().catch(() => {});
             } else {
-              media.pause();
+              // Kalau udah diputar, lanjutin aja (jangan set currentTime)
+              media.muted = isMutedRef.current;
+              if (media.paused) media.play().catch(() => {});
             }
-          });
-        },
-        { threshold: 0.6 }
-      );
+          } else {
+            media.pause();
+            // Optional: Kalau lu mau tiap video keluar layar di-reset ulang dari 0 saat masuk lagi, 
+            // hapus activeMediaRef di sini. Kalau mau dia nge-resume, biarin aja.
+            // activeMediaRef.current.delete(postId); 
+          }
+        });
+      }, { threshold: 0.6 });
+
       const cardEl = document.querySelector('.card');
       if (cardEl) observerRef.current.observe(cardEl);
-    }, 100);
-    return () => {
-      clearTimeout(timer);
-      observerRef.current?.disconnect();
-    };
-  }, [post]);
+    }, 200);
 
-  // --- JUDUL DINAMIS ---
-  let title = "Detail Postingan";
+    return () => { clearTimeout(timer); observerRef.current?.disconnect(); };
+  }, [post]); // Trigger ualng tiap kali post berganti (saat prev/next)
+
+  // --- LOGIKA JUDUL DINAMIS ---
+  let headerTitle = "Detail Postingan";
+  
   if (source === 'profile') {
-    if (userIdParam && userIdParam !== currentUser?.id) {
-      title = `Postingan ${profileUsername || 'User'}`;
-    } else {
-      title = "Postingan Anda";
+    // Kalo source dari profile
+    if (userIdParam && currentUser && userIdParam === currentUser.id) {
+       headerTitle = "Postingan Anda";
+    } else if (userIdParam) {
+       headerTitle = `Postingan ${profileUsername || 'User'}`;
     }
   }
 
@@ -365,7 +370,7 @@ export default function PostPage() {
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
         </button>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>{title}</h2>
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>{headerTitle}</h2>
         {source === 'profile' && userPosts.length > 1 && (
           <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 10px', borderRadius: '20px' }}>
             {activePostIndex + 1} / {userPosts.length}
@@ -376,9 +381,9 @@ export default function PostPage() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* NAVIGASI MODE PROFIL */}
+      {/* NAVIGASI PREV/NEXT KHUSUS MODE PROFIL */}
       {source === 'profile' && userPosts.length > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px 0', maxWidth: '600px', margin: '0 auto' }}>
           <button
             onClick={() => navigateProfilePost('prev')}
             style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '8px 16px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -394,8 +399,8 @@ export default function PostPage() {
         </div>
       )}
 
-      {/* RENDER KONTEN */}
-      <div style={{ marginTop: '10px' }}>
+      {/* RENDER KONTEN POSTINGAN */}
+      <div style={{ marginTop: '10px', maxWidth: '600px', margin: '10px auto' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center' }}>
             <div className="pure-spinner" style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
@@ -404,7 +409,6 @@ export default function PostPage() {
           <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
             <span className="material-icons" style={{ fontSize: '48px', marginBottom: '10px' }}>error_outline</span>
             <h3>Postingan Tidak Ditemukan</h3>
-            <p>Mungkin postingan ini sudah dihapus atau tidak tersedia.</p>
           </div>
         ) : (
           <div className="gallery">

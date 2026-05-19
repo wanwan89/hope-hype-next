@@ -22,32 +22,41 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// 🔥 FIX: Memoization tingkat tinggi biar komponen lain ga ikut kerender 🔥
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
-  
-  // Cek apakah animasi love ini milik card ini, bukan card lain
-  const isPoppingPrev = prevProps.poppingHeart === pid;
-  const isPoppingNext = nextProps.poppingHeart === pid;
 
-  return (
-    prevProps.post === nextProps.post &&
-    prevProps.counts[pid]?.likes === nextProps.counts[pid]?.likes &&
-    prevProps.counts[pid]?.comments === nextProps.counts[pid]?.comments &&
-    prevProps.counts[pid]?.reposts === nextProps.counts[pid]?.reposts &&
-    prevProps.counts[pid]?.saves === nextProps.counts[pid]?.saves &&
-    prevProps.myLikedPosts.has(pid) === nextProps.myLikedPosts.has(pid) &&
-    prevProps.myRepostedPosts.has(pid) === nextProps.myRepostedPosts.has(pid) &&
-    prevProps.mySavedPosts.has(pid) === nextProps.mySavedPosts.has(pid) &&
-    prevProps.followedUsers.has(prevProps.post.creator_id) === nextProps.followedUsers.has(nextProps.post.creator_id) &&
-    prevProps.mutualUsers.has(prevProps.post.creator_id) === nextProps.mutualUsers.has(nextProps.post.creator_id) &&
-    prevProps.animatingFollows.has(prevProps.post.creator_id) === nextProps.animatingFollows.has(nextProps.post.creator_id) &&
-    prevProps.animatingReposts.has(pid) === nextProps.animatingReposts.has(pid) &&
-    prevProps.isGloballyMuted === nextProps.isGloballyMuted &&
-    isPoppingPrev === isPoppingNext && // <--- FIX JITU: Hindari re-render masal saat 1 di-love
-    prevProps.likersMap[pid]?.length === nextProps.likersMap[pid]?.length &&
-    prevProps.repostersMap[pid]?.length === nextProps.repostersMap[pid]?.length
-  );
+  // 1. Cek Data Inti Postingan (Reference check)
+  if (prevProps.post !== nextProps.post) return false;
+
+  // 2. Cek Status Interaksi User (Set comparison)
+  // has() method adalah O(1), jadi sangat cepat.
+  if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
+  if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
+  if (prevProps.mySavedPosts.has(pid) !== nextProps.mySavedPosts.has(pid)) return false;
+
+  // 3. Cek Counts (Likes/Comments/Reposts/Saves)
+  const prevCount = prevProps.counts[pid];
+  const nextCount = nextProps.counts[pid];
+  if (JSON.stringify(prevCount) !== JSON.stringify(nextCount)) return false;
+
+  // 4. Cek Animasi & UI State
+  if (prevProps.poppingHeart !== nextProps.poppingHeart && (prevProps.poppingHeart === pid || nextProps.poppingHeart === pid)) return false;
+  if (prevProps.animatingFollows.has(prevProps.post.creator_id) !== nextProps.animatingFollows.has(nextProps.post.creator_id)) return false;
+  if (prevProps.animatingReposts.has(pid) !== nextProps.animatingReposts.has(pid)) return false;
+  if (prevProps.isGloballyMuted !== nextProps.isGloballyMuted) return false;
+  if (prevProps.activePreviewImage !== nextProps.activePreviewImage) return false;
+
+  // 5. Cek Relasi User (Follow/Mutual)
+  if (prevProps.followedUsers.has(prevProps.post.creator_id) !== nextProps.followedUsers.has(nextProps.post.creator_id)) return false;
+  if (prevProps.mutualUsers.has(prevProps.post.creator_id) !== nextProps.mutualUsers.has(nextProps.post.creator_id)) return false;
+
+  // 6. Cek Data Interaksi (Likers/Reposters map)
+  // Kita cuma cek length kalau mau performa tinggi, tapi kalau mau akurat banget, 
+  // cek referensi map-nya (karena kita set state baru tiap ada perubahan)
+  if (prevProps.likersMap[pid] !== nextProps.likersMap[pid]) return false;
+  if (prevProps.repostersMap[pid] !== nextProps.repostersMap[pid]) return false;
+
+  return true;
 });
 
 export default function Gallerypost() {
