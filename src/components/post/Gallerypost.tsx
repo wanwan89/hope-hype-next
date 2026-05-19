@@ -22,10 +22,9 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// 🔥 Memoization tingkat tinggi biar video nggak kereset 🔥
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
-  
+
   if (prevProps.post !== nextProps.post) return false;
   if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
   if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
@@ -97,9 +96,16 @@ export default function Gallerypost() {
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
+  // Refs untuk mengatasi masalah async di React Strict Mode
+  const myLikedPostsRef = useRef(myLikedPosts);
+  const myRepostedPostsRef = useRef(myRepostedPosts);
+  const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+  useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
+  useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
+  useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
   useEffect(() => {
@@ -293,32 +299,29 @@ export default function Gallerypost() {
     }
   }, []);
 
+  // 🔥 KELUARKAN SEMUA API CALL DARI SETSTATE BIAR GAK ERROR 23505 🔥
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     if (currentUserRef.current.id === creatorId) return;
 
     const isFollowing = followedUsersRef.current.has(creatorId);
+    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
-    setTimeout(() => {
-      setAnimatingFollows((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(creatorId);
-        return newSet;
-      });
-    }, 200);
+    setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
 
-    setFollowedUsers((prev) => {
-      const newSet = new Set(prev);
-      isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId);
-      return newSet;
-    });
+    // Update UI Optimistik
+    setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
+    // Eksekusi API di luar state updater
     try {
-      if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      else {
+      if (isFollowing) {
+        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
+      } else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        if (!error || error.code === '23505') {
+          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        }
       }
     } catch (err) {}
   }, []);
@@ -326,26 +329,23 @@ export default function Gallerypost() {
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
+    const isLiked = myLikedPostsRef.current.has(postId);
 
-    setMyLikedPosts((prev) => {
-      const newSet = new Set(prev);
-      const isLiked = newSet.has(postId);
-      
+    // Update UI Optimistik
+    setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
+
+    // Eksekusi API
+    try {
       if (isLiked) {
-        newSet.delete(postId);
-        setCounts((c) => ({ ...c, [postId]: { ...c[postId], likes: Math.max(0, (c[postId]?.likes || 0) - 1) } }));
-        supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        newSet.add(postId);
-        setCounts((c) => ({ ...c, [postId]: { ...c[postId], likes: (c[postId]?.likes || 0) + 1 } }));
-        supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }).then(({ error }) => {
-          if (!error && creatorId !== currentUserRef.current.id) {
-            sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
-          }
-        });
+        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (!error && creatorId !== currentUserRef.current.id) {
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
+        }
       }
-      return newSet;
-    });
+    } catch (err) {}
   }, []);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
@@ -373,46 +373,49 @@ export default function Gallerypost() {
   }, [handleLike]);
 
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
+    // Animasi
     setAnimatingReposts((prev) => new Set(prev).add(postId));
-    setTimeout(() => setAnimatingReposts((prev) => { const newSet = new Set(prev); newSet.delete(postId); return newSet; }), 500);
+    setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
-    setMyRepostedPosts((prev) => {
-      const newSet = new Set(prev);
+    // Update UI Optimistik
+    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
+    // Eksekusi API
+    try {
       if (isUnrepost) {
-        newSet.delete(postId);
-        setCounts((c) => ({ ...c, [postId]: { ...c[postId], reposts: Math.max(0, (c[postId]?.reposts || 0) - 1) } }));
-        supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        newSet.add(postId);
-        setCounts((c) => ({ ...c, [postId]: { ...c[postId], reposts: (c[postId]?.reposts || 0) + 1 } }));
-        supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote }).then();
+        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
+        // Abaikan duplicate key error
+        if (error && error.code !== "23505") console.error(error);
       }
-      return newSet;
-    });
+    } catch (err) {}
   }, [repostNote]);
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
+    const isSaved = mySavedPostsRef.current.has(postId);
 
-    setMySavedPosts((prev) => {
-      const newSet = new Set(prev);
-      const isSaved = newSet.has(postId);
+    // Update UI Optimistik
+    setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+
+    // Eksekusi API
+    try {
       if (isSaved) {
-        newSet.delete(postId);
-        setCounts((c) => ({ ...c, [postId]: { ...c[postId], saves: Math.max(0, (c[postId]?.saves || 0) - 1) } }));
-        supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        newSet.add(postId);
-        setCounts((c) => ({ ...c, [postId]: { ...c[postId], saves: (c[postId]?.saves || 0) + 1 } }));
-        supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (error && error.code !== "23505") console.error(error);
       }
-      return newSet;
-    });
+    } catch (err) {}
   }, []);
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
@@ -439,7 +442,6 @@ export default function Gallerypost() {
 
           if (entry.isIntersecting) {
             if (!activeMediaRef.current.has(postId)) {
-              
               document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
                 if (el !== media && !el.paused) el.pause();
               });
@@ -543,7 +545,6 @@ export default function Gallerypost() {
                 <MemoizedPostCard
                   post={post}
                   currentUser={currentUser}
-                  // 🔥 TAMBAHKAN INI BIAR FLOATING BUBBLES AMAN 🔥
                   isOwner={currentUser?.id === post.creator_id}
                   counts={counts}
                   myLikedPosts={myLikedPosts}

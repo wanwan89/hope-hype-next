@@ -8,8 +8,6 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
-
-// 🔥 INI DIA BIANG KEROKNYA: LUPA IMPORT CSS KEMARIN WKWK 🔥
 import '@/components/post/Gallery.css';
 
 export default function PostPage() {
@@ -57,9 +55,17 @@ export default function PostPage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const activeMediaRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
+  // Refs untuk optimisasi API call di luar setState
+  const myLikedPostsRef = useRef(myLikedPosts);
+  const myRepostedPostsRef = useRef(myRepostedPosts);
+  const mySavedPostsRef = useRef(mySavedPosts);
+  const followedUsersRef = useRef(followedUsers);
+
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+  useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
+  useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
+  useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
+  useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
   useEffect(() => {
     if (postIdFromUrl) {
@@ -225,88 +231,114 @@ export default function PostPage() {
     fetchPostInteractions(newPost.id, currentUserRef.current);
   }, [activePostIndex, userPosts, router]);
 
+  // 🔥 EXTRACT API CALLS FROM SETSTATE (Safe against duplicate error 23505) 🔥
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     if (currentUserRef.current.id === creatorId) return;
+
+    const isFollowing = followedUsersRef.current.has(creatorId);
     
-    const isFollowing = followedUsers.has(creatorId);
-    setAnimatingFollows(new Set([creatorId]));
-    setTimeout(() => setAnimatingFollows(new Set()), 200);
-    
-    setFollowedUsers(prev => {
-      const newSet = new Set(prev);
-      isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId);
-      return newSet;
-    });
-    
+    setAnimatingFollows((prev) => new Set(prev).add(creatorId));
+    setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
+
+    setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
+
     try {
-      if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      else {
-        supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId }).then();
-        sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+      if (isFollowing) {
+        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
+      } else {
+        const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
+        if (!error || error.code === '23505') {
+          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        }
       }
     } catch (err) {}
-  }, [followedUsers]);
+  }, []);
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    const isLiked = myLikedPosts.has(postId);
     const numericPostId = parseInt(postId);
-    
-    setMyLikedPosts(prev => { const newSet = new Set(prev); isLiked ? newSet.delete(postId) : newSet.add(postId); return newSet; });
-    setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
-    
+    const isLiked = myLikedPostsRef.current.has(postId);
+
+    setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
+
     try {
-      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else {
-        supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }).then(({ error }) => {
-          if (!error && creatorId !== currentUserRef.current.id) sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
-        });
+      if (isLiked) {
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (!error && creatorId !== currentUserRef.current.id) {
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        }
       }
     } catch (err) {}
-  }, [myLikedPosts]);
+  }, []);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
+
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
-      if (!myLikedPosts.has(postId)) handleLike(postId, creatorId);
+      handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
-      if (imageUrl) setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
+      if (imageUrl) {
+        setTimeout(() => {
+          if (lastTapRef.current[postId] === now) {
+            setActivePreviewImage(imageUrl);
+            lastTapRef.current[postId] = 0;
+          }
+        }, 360);
+      }
     }
-  }, [myLikedPosts, handleLike]);
+  }, [handleLike]);
 
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
-    setAnimatingReposts(new Set([postId]));
-    setTimeout(() => setAnimatingReposts(new Set()), 500);
-    setMyRepostedPosts(prev => { const newSet = new Set(prev); isUnrepost ? newSet.delete(postId) : newSet.add(postId); return newSet; });
-    setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
+    setAnimatingReposts((prev) => new Set(prev).add(postId));
+    setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
+
+    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
     try {
-      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
+      if (isUnrepost) {
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
+        if (error && error.code !== "23505") console.error(error);
+      }
     } catch (err) {}
   }, [repostNote]);
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    const isSaved = mySavedPosts.has(postId);
     const numericPostId = parseInt(postId);
-    setMySavedPosts(prev => { const newSet = new Set(prev); isSaved ? newSet.delete(postId) : newSet.add(postId); return newSet; });
-    setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+    const isSaved = mySavedPostsRef.current.has(postId);
+
+    setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+
     try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      if (isSaved) {
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (error && error.code !== "23505") console.error(error);
+      }
     } catch (err) {}
-  }, [mySavedPosts]);
+  }, []);
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -401,7 +433,7 @@ export default function PostPage() {
         </div>
       )}
 
-      {/* 🔥 FIX 1: WADAH KARTU YANG PERFECT FIT 🔥 */}
+      {/* 🔥 KONTEN POSTINGAN FULL WIDTH / EDGE TO EDGE 🔥 */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
