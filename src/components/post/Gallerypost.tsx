@@ -22,9 +22,14 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// 🔥 MEMOIZED POSTCARD BIAR VIDEO GA KERESET PAS LIKE/REPOST 🔥
+// 🔥 FIX: Memoization tingkat tinggi biar komponen lain ga ikut kerender 🔥
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
+  
+  // Cek apakah animasi love ini milik card ini, bukan card lain
+  const isPoppingPrev = prevProps.poppingHeart === pid;
+  const isPoppingNext = nextProps.poppingHeart === pid;
+
   return (
     prevProps.post === nextProps.post &&
     prevProps.counts[pid]?.likes === nextProps.counts[pid]?.likes &&
@@ -35,11 +40,13 @@ const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
     prevProps.myRepostedPosts.has(pid) === nextProps.myRepostedPosts.has(pid) &&
     prevProps.mySavedPosts.has(pid) === nextProps.mySavedPosts.has(pid) &&
     prevProps.followedUsers.has(prevProps.post.creator_id) === nextProps.followedUsers.has(nextProps.post.creator_id) &&
+    prevProps.mutualUsers.has(prevProps.post.creator_id) === nextProps.mutualUsers.has(nextProps.post.creator_id) &&
     prevProps.animatingFollows.has(prevProps.post.creator_id) === nextProps.animatingFollows.has(nextProps.post.creator_id) &&
     prevProps.animatingReposts.has(pid) === nextProps.animatingReposts.has(pid) &&
     prevProps.isGloballyMuted === nextProps.isGloballyMuted &&
-    prevProps.poppingHeart === nextProps.poppingHeart &&
-    prevProps.activePreviewImage === nextProps.activePreviewImage
+    isPoppingPrev === isPoppingNext && // <--- FIX JITU: Hindari re-render masal saat 1 di-love
+    prevProps.likersMap[pid]?.length === nextProps.likersMap[pid]?.length &&
+    prevProps.repostersMap[pid]?.length === nextProps.repostersMap[pid]?.length
   );
 });
 
@@ -55,11 +62,13 @@ export default function Gallerypost() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
+  
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
+  
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; reposts: number; saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
@@ -70,7 +79,10 @@ export default function Gallerypost() {
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+  
   const observerRef = useRef<IntersectionObserver | null>(null);
+  // 🔥 FIX 1: Memori Permanen untuk Autoplay biar nggak amnesia 🔥
+  const activeMediaRef = useRef<Set<string>>(new Set());
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
@@ -86,17 +98,12 @@ export default function Gallerypost() {
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
-  const myLikedPostsRef = useRef(myLikedPosts);
-  const myRepostedPostsRef = useRef(myRepostedPosts);
-  const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
-  useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
-  useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
-  useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
+  // --- Cleanup observers ---
   useEffect(() => {
     return () => {
       if (viewObserverRef.current) viewObserverRef.current.disconnect();
@@ -105,9 +112,11 @@ export default function Gallerypost() {
     };
   }, []);
 
+  // Pantau DOM biar AutoPlay Video tetap jalan di Virtuoso
   useEffect(() => {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
+
     let timeout: NodeJS.Timeout;
     const mutationObserver = new MutationObserver(() => {
       clearTimeout(timeout);
@@ -116,9 +125,41 @@ export default function Gallerypost() {
         initViewTrackingObserver();
       }, 300);
     });
+
     mutationObserver.observe(gallery, { childList: true, subtree: true });
-    return () => { mutationObserver.disconnect(); clearTimeout(timeout); };
+    return () => {
+      mutationObserver.disconnect();
+      clearTimeout(timeout);
+    };
   }, []);
+
+  useEffect(() => {
+    const handleCommentRefresh = (e: any) => {
+      const postId = String(e.detail.postId);
+      if (postId) {
+        setCounts((prev) => ({
+          ...prev,
+          [postId]: {
+            ...prev[postId],
+            comments: (prev[postId]?.comments || 0) + 1,
+          },
+        }));
+      }
+    };
+    window.addEventListener('commentAdded', handleCommentRefresh);
+    return () => window.removeEventListener('commentAdded', handleCommentRefresh);
+  }, []);
+
+  useEffect(() => {
+    const handleCategoryChange = (e: any) => {
+      const newCat = e.detail.category;
+      setCurrentCategory(newCat);
+      setPage(1);
+      fetchPosts(newCat, currentUser, 1, false, mutualUsers);
+    };
+    window.addEventListener('changeCategory', handleCategoryChange);
+    return () => window.removeEventListener('changeCategory', handleCategoryChange);
+  }, [currentUser, mutualUsers]);
 
   useEffect(() => {
     initGallery();
@@ -135,11 +176,14 @@ export default function Gallerypost() {
         supabase.from('followers').select('following_id').eq('follower_id', user.id),
         supabase.from('followers').select('follower_id').eq('following_id', user.id),
       ]);
-      if (followsRes.data) setFollowedUsers(new Set(followsRes.data.map((f) => String(f.following_id))));
-      if (followsRes.data && followersRes.data) {
-        const followerSet = new Set(followersRes.data.map((f) => String(f.follower_id)));
-        currentMutuals = new Set([...followingSet].filter((x) => followerSet.has(x)));
-        setMutualUsers(currentMutuals);
+      if (followsRes.data) {
+        const followingSet = new Set(followsRes.data.map((f) => String(f.following_id)));
+        setFollowedUsers(followingSet);
+        if (followersRes.data) {
+          const followerSet = new Set(followersRes.data.map((f) => String(f.follower_id)));
+          currentMutuals = new Set([...followingSet].filter((x) => followerSet.has(x)));
+          setMutualUsers(currentMutuals);
+        }
       }
     }
     await fetchPosts("all", user, 1, false, currentMutuals);
@@ -177,10 +221,14 @@ export default function Gallerypost() {
       });
 
       setHasMore((rawPosts || []).length === POSTS_PER_PAGE);
-      if (category === "all" && !isLoadMore) fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
+
+      if (category === "all" && !isLoadMore) {
+        fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
+      }
 
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map((p) => p.id);
+
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
@@ -191,11 +239,27 @@ export default function Gallerypost() {
         const newCounts: any = {};
         const newLikersMap: any = {};
         const newRepostersMap: any = {};
-        postIds.forEach((id) => { newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 }; newLikersMap[id] = []; newRepostersMap[id] = []; });
 
-        likesRes.data?.forEach((l) => { if (newCounts[l.post_id]) { newCounts[l.post_id].likes++; if (l.profiles) newLikersMap[l.post_id].push(l.profiles); } });
+        postIds.forEach((id) => {
+          newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
+          newLikersMap[id] = [];
+          newRepostersMap[id] = [];
+        });
+
+        likesRes.data?.forEach((l) => {
+          if (newCounts[l.post_id]) {
+            newCounts[l.post_id].likes++;
+            if (l.profiles) newLikersMap[l.post_id].push(l.profiles);
+          }
+        });
+
         commentsRes.data?.forEach((c) => { if (newCounts[c.post_id]) newCounts[c.post_id].comments++; });
-        repostsRes.data?.forEach((r) => { if (newCounts[r.post_id]) { newCounts[r.post_id].reposts++; if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note }); } });
+        repostsRes.data?.forEach((r) => {
+          if (newCounts[r.post_id]) {
+            newCounts[r.post_id].reposts++;
+            if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note });
+          }
+        });
         savesRes.data?.forEach((s) => { if (newCounts[s.post_id]) newCounts[s.post_id].saves++; });
 
         setCounts((prev) => (isLoadMore ? { ...prev, ...newCounts } : newCounts));
@@ -206,14 +270,16 @@ export default function Gallerypost() {
           const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           const { data: mySaves } = await supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
+
           setMyLikedPosts(isLoadMore ? new Set([...myLikedPosts, ...(myLikes?.map((l) => String(l.post_id)) || [])]) : new Set(myLikes?.map((l) => String(l.post_id))));
           setMyRepostedPosts(isLoadMore ? new Set([...myRepostedPosts, ...(myReposts?.map((r) => String(r.post_id)) || [])]) : new Set(myReposts?.map((r) => String(r.post_id))));
           setMySavedPosts(isLoadMore ? new Set([...mySavedPosts, ...(mySaves?.map((s) => String(s.post_id)) || [])]) : new Set(mySaves?.map((s) => String(s.post_id))));
         }
       }
+
       if (isLoadMore) setPosts((prev) => [...prev, ...fetchedPosts]);
       else setPosts(fetchedPosts);
-    } catch (err) { } finally { setIsLoading(false); setIsLoadingMore(false); }
+    } catch (err) {} finally { setIsLoading(false); setIsLoadingMore(false); }
   };
 
   const handleLoadMore = () => {
@@ -225,7 +291,9 @@ export default function Gallerypost() {
   };
 
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
-    if (window.openGlobalShare) window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
+    if (window.openGlobalShare) {
+      window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
+    }
   }, []);
 
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
@@ -234,10 +302,21 @@ export default function Gallerypost() {
     if (currentUserRef.current.id === creatorId) return;
 
     const isFollowing = followedUsersRef.current.has(creatorId);
-    setAnimatingFollows(new Set([creatorId]));
-    setTimeout(() => setAnimatingFollows(new Set()), 200);
+    setAnimatingFollows((prev) => new Set(prev).add(creatorId));
+    setTimeout(() => {
+      setAnimatingFollows((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(creatorId);
+        return newSet;
+      });
+    }, 200);
 
-    setFollowedUsers((prev) => { const newSet = new Set(prev); isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId); return newSet; });
+    setFollowedUsers((prev) => {
+      const newSet = new Set(prev);
+      isFollowing ? newSet.delete(creatorId) : newSet.add(creatorId);
+      return newSet;
+    });
+
     try {
       if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
       else {
@@ -249,33 +328,50 @@ export default function Gallerypost() {
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    const isLiked = myLikedPostsRef.current.has(postId);
     const numericPostId = parseInt(postId);
 
-    setMyLikedPosts((prev) => { const newSet = new Set(prev); isLiked ? newSet.delete(postId) : newSet.add(postId); return newSet; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
-
-    try {
-      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else {
-        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
+    setMyLikedPosts((prev) => {
+      const newSet = new Set(prev);
+      const isLiked = newSet.has(postId);
+      
+      if (isLiked) {
+        newSet.delete(postId);
+        setCounts((c) => ({ ...c, [postId]: { ...c[postId], likes: Math.max(0, (c[postId]?.likes || 0) - 1) } }));
+        supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+      } else {
+        newSet.add(postId);
+        setCounts((c) => ({ ...c, [postId]: { ...c[postId], likes: (c[postId]?.likes || 0) + 1 } }));
+        supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }).then(({ error }) => {
+          if (!error && creatorId !== currentUserRef.current.id) {
+            sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
+          }
+        });
       }
-    } catch (err) {}
+      return newSet;
+    });
   }, []);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
+
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
-      if (!myLikedPostsRef.current.has(postId)) handleLike(postId, creatorId);
+      handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
-      if (imageUrl) setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
+      if (imageUrl) {
+        setTimeout(() => {
+          if (lastTapRef.current[postId] === now) {
+            setActivePreviewImage(imageUrl);
+            lastTapRef.current[postId] = 0;
+          }
+        }, 360);
+      }
     }
   }, [handleLike]);
 
@@ -283,30 +379,43 @@ export default function Gallerypost() {
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
-    setAnimatingReposts(new Set([postId]));
-    setTimeout(() => setAnimatingReposts(new Set()), 500);
 
-    setMyRepostedPosts((prev) => { const newSet = new Set(prev); isUnrepost ? newSet.delete(postId) : newSet.add(postId); return newSet; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+    setAnimatingReposts((prev) => new Set(prev).add(postId));
+    setTimeout(() => setAnimatingReposts((prev) => { const newSet = new Set(prev); newSet.delete(postId); return newSet; }), 500);
 
-    try {
-      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
-    } catch (err) {}
+    setMyRepostedPosts((prev) => {
+      const newSet = new Set(prev);
+      if (isUnrepost) {
+        newSet.delete(postId);
+        setCounts((c) => ({ ...c, [postId]: { ...c[postId], reposts: Math.max(0, (c[postId]?.reposts || 0) - 1) } }));
+        supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+      } else {
+        newSet.add(postId);
+        setCounts((c) => ({ ...c, [postId]: { ...c[postId], reposts: (c[postId]?.reposts || 0) + 1 } }));
+        supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote }).then();
+      }
+      return newSet;
+    });
   }, [repostNote]);
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    const isSaved = mySavedPostsRef.current.has(postId);
     const numericPostId = parseInt(postId);
 
-    setMySavedPosts((prev) => { const newSet = new Set(prev); isSaved ? newSet.delete(postId) : newSet.add(postId); return newSet; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
-
-    try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-    } catch (err) {}
+    setMySavedPosts((prev) => {
+      const newSet = new Set(prev);
+      const isSaved = newSet.has(postId);
+      if (isSaved) {
+        newSet.delete(postId);
+        setCounts((c) => ({ ...c, [postId]: { ...c[postId], saves: Math.max(0, (c[postId]?.saves || 0) - 1) } }));
+        supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+      } else {
+        newSet.add(postId);
+        setCounts((c) => ({ ...c, [postId]: { ...c[postId], saves: (c[postId]?.saves || 0) + 1 } }));
+        supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }).then();
+      }
+      return newSet;
+    });
   }, []);
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
@@ -319,37 +428,49 @@ export default function Gallerypost() {
     });
   }, []);
 
+  // 🔥 FIX 2: Mesin AutoPlay dengan Memori Kuat 🔥
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
-    const activeMediaRef = new Set<string>();
 
-    observerRef.current = new IntersectionObserver((entries) => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
         entries.forEach((entry) => {
           const card = entry.target;
           const postId = card.getAttribute("data-postid");
-          const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
+          const audio = card.querySelector(".post-audio-element") as HTMLAudioElement;
+          const video = card.querySelector(".post-video-element") as HTMLVideoElement;
+          const media = audio || video; 
+
           if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            if (!activeMediaRef.has(postId)) {
+            // Cek di memori permanen, apakah media ini udah jalan?
+            if (!activeMediaRef.current.has(postId)) {
+              
+              // Matiin semua media lain secara fisik
               document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
                 if (el !== media && !el.paused) el.pause();
               });
-              activeMediaRef.add(postId);
+
+              activeMediaRef.current.add(postId); // Simpan ke memori
               media.muted = isMutedRef.current;
-              media.currentTime = 0; 
+              media.currentTime = 0; // Mulai dari awal cuma saat PERTAMA MUNCUL di layar
               media.play().catch(() => {});
             } else {
+              // Kalo udah ada di memori, pastiin aja dia jalan (TANPA ngubah currentTime ke 0)
               media.muted = isMutedRef.current;
               if (media.paused) media.play().catch(()=>{});
             }
           } else {
+            // Kalau videonya keluar layar, pause dan lupakan dari memori
             media.pause();
-            activeMediaRef.delete(postId);
+            activeMediaRef.current.delete(postId);
           }
         });
-      }, { threshold: 0.6 }
+      },
+      { threshold: 0.6 }
     );
+
     document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
   };
 
@@ -359,6 +480,7 @@ export default function Gallerypost() {
         entries.forEach((entry) => {
           const postId = entry.target.getAttribute("data-postid");
           if (!postId) return;
+
           if (entry.isIntersecting) {
             if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
               viewTimersRef.current[postId] = setTimeout(async () => {
@@ -379,7 +501,7 @@ export default function Gallerypost() {
         });
       }, { threshold: 0.6 }
     );
-    document.querySelectorAll(".card[data-postid]").forEach((card) => viewObserverRef.current?.observe(card));
+    document.querySelectorAll(".card[data-postid]").forEach((card) => { viewObserverRef.current?.observe(card); });
   };
 
   return (
@@ -427,6 +549,7 @@ export default function Gallerypost() {
                   </div>
                 )}
                 {index === randomFriendIndex && <SuggestedUsers myId={currentUser?.id} followedUsers={followedUsers} />}
+                
                 <MemoizedPostCard
                   post={post}
                   currentUser={currentUser}
