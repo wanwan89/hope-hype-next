@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
@@ -63,6 +63,16 @@ const PostCard: React.FC<PostCardProps> = ({
   const mutualLikers = likers.filter((l: any) => mutualUsers.has(String(l.id)));
   const mutualReposters = reposters.filter((r: any) => mutualUsers.has(String(r.id)));
 
+  // 🔥 FIX AUDIO/VIDEO RESET: Simpan referensi ke media element biar gak hilang
+  const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Kalau isGloballyMuted berubah, langsung terapin ke elemen tanpa nunggu render ulang parent
+    if (mediaRef.current) {
+      mediaRef.current.muted = isGloballyMuted;
+    }
+  }, [isGloballyMuted]);
+
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
     return text.split(/(@\w+|#\w+)/g).map((part, i) => {
@@ -79,7 +89,6 @@ const PostCard: React.FC<PostCardProps> = ({
     });
   };
 
-  // ========== CSS Animasi untuk Big Pop Heart ==========
   const bigHeartStyle = `
     @keyframes popHeartAnim {
       0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
@@ -107,15 +116,13 @@ const PostCard: React.FC<PostCardProps> = ({
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
       style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
       
-      {/* Style untuk animasi big heart (hanya dipasang di sini) */}
       <style>{bigHeartStyle}</style>
 
       {(photoList.length > 0 || isVideoPost) ? (
         <>
           <div className="slider" style={{ position: 'relative' }}>
-            <MusicMarquee post={post} isOverlay />
+            <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
-            {/* 🔥 LOVE BESAR DOUBLE TAP 🔥 */}
             {poppingHeart === postIdStr && (
               <span className="material-icons big-pop-heart">favorite</span>
             )}
@@ -147,10 +154,13 @@ const PostCard: React.FC<PostCardProps> = ({
             />
 
             <div className="photo-carousel" onScroll={(e) => {
+              // 🔥 FIX SLIDER: Hindari re-render parent saat nge-slide. Mainin DOM langsung.
               const target = e.target as HTMLDivElement;
               const index = Math.round(target.scrollLeft / target.offsetWidth);
-              document.querySelectorAll(`.dots-${postIdStr} .dot`).forEach((d, i) => {
-                d.classList.toggle('active', i === index);
+              const dots = document.querySelectorAll(`.dots-${postIdStr} .dot`);
+              dots.forEach((d, i) => {
+                if (i === index) d.classList.add('active');
+                else d.classList.remove('active');
               });
               const counterEl = document.getElementById(`slide-counter-${postIdStr}`);
               if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
@@ -158,8 +168,16 @@ const PostCard: React.FC<PostCardProps> = ({
               {isVideoPost ? (
                 <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
                   style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
-                  <video src={post.video_url} className="post-video-element" poster={getOptimizedImage(post.image_url)}
-                    playsInline loop muted style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }} />
+                  <video 
+                    ref={mediaRef as React.RefObject<HTMLVideoElement>} // Pasang ref biar kebal
+                    src={post.video_url} 
+                    className="post-video-element" 
+                    poster={getOptimizedImage(post.image_url)}
+                    playsInline 
+                    loop 
+                    muted={isGloballyMuted} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }} 
+                  />
                 </div>
               ) : (
                 photoList.map((url: string, i: number) => (
@@ -256,7 +274,6 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           </div>
 
-          {/* Untuk postingan tanpa media, love besar juga bisa muncul di sini jika diperlukan */}
           {poppingHeart === postIdStr && (
             <div style={{ position: 'relative', height: '0' }}>
               <span className="material-icons big-pop-heart">favorite</span>
@@ -269,7 +286,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
           {post.audio_src && (
             <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <MusicMarquee post={post} isOverlay={false} />
+              <MusicMarquee post={post} isOverlay={false} mediaRef={mediaRef} />
               <button className="btn-press" onClick={toggleMute}
                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', color: 'var(--text-main)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}>
                 <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
@@ -295,4 +312,13 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
-export default React.memo(PostCard);
+// PENTING: Pake props comparison spesifik buat cegah re-render gila-gilaan
+export default React.memo(PostCard, (prev, next) => {
+  return (
+    prev.post.id === next.post.id &&
+    prev.isGloballyMuted === next.isGloballyMuted &&
+    prev.poppingHeart === next.poppingHeart &&
+    prev.counts[prev.post.id]?.likes === next.counts[next.post.id]?.likes &&
+    prev.counts[prev.post.id]?.comments === next.counts[next.post.id]?.comments
+  );
+});

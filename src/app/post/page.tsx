@@ -13,13 +13,12 @@ export default function PostPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const postIdFromUrl = searchParams.get('id'); // Ambil ID dari URL (?id=...)
+  const postIdFromUrl = searchParams.get('id');
 
   const [post, setPost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // States buat interaksi (sama kayak di Gallery)
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
@@ -35,9 +34,26 @@ export default function PostPage() {
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
+  
+  // State untuk audio/video
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
+  const isMutedRef = useRef(true);
   
   const lastTapRef = useRef<Record<string, number>>({});
+  
+  // 🔥 REF UNTUK OBSERVER 🔥
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const viewObserverRef = useRef<IntersectionObserver | null>(null);
+  const viewedPostsRef = useRef<Set<string>>(new Set());
+  const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  useEffect(() => {
+    return () => {
+      if (viewObserverRef.current) viewObserverRef.current.disconnect();
+      if (observerRef.current) observerRef.current.disconnect();
+      Object.values(viewTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     if (postIdFromUrl) {
@@ -47,6 +63,17 @@ export default function PostPage() {
     }
   }, [postIdFromUrl]);
 
+  // 🔥 JALANKAN AUTOPLAY SETELAH POSTINGAN BERHASIL RENDER 🔥
+  useEffect(() => {
+    if (post) {
+      const timeout = setTimeout(() => {
+        initAutoPlayObserver();
+        initViewTrackingObserver();
+      }, 500); // Kasih jeda biar elemen HTML-nya jadi dulu
+      return () => clearTimeout(timeout);
+    }
+  }, [post]);
+
   const fetchSinglePost = async (id: string) => {
     setIsLoading(true);
     try {
@@ -54,7 +81,6 @@ export default function PostPage() {
       const user = session?.user || null;
       setCurrentUser(user);
 
-      // 1. Ambil relasi teman (Followers/Mutuals)
       let currentMutuals = new Set<string>();
       if (user) {
         const [followsRes, followersRes] = await Promise.all([
@@ -69,7 +95,6 @@ export default function PostPage() {
         }
       }
 
-      // 2. Ambil 1 Postingan aja
       const { data: postData, error } = await supabase
         .from('posts')
         .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
@@ -82,7 +107,6 @@ export default function PostPage() {
         return;
       }
 
-      // 3. Ambil data Like, Comment, Repost untuk postingan ini
       const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
         supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', id),
         supabase.from('comments').select('id', { count: 'exact' }).eq('post_id', id),
@@ -117,7 +141,6 @@ export default function PostPage() {
     }
   };
 
-  // --- Fungsi Interaksi (Sama kayak Gallerypost) ---
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
@@ -205,10 +228,13 @@ export default function PostPage() {
     } catch (err) {}
   }, [currentUser, mySavedPosts]);
 
+  // 🔥 FUNGSI MUTE JUGA DI-UPDATE BIAR REF-NYA IKUT 🔥
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsGloballyMuted(!isGloballyMuted);
-    document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = !isGloballyMuted; });
+    const nextMuted = !isGloballyMuted;
+    setIsGloballyMuted(nextMuted);
+    isMutedRef.current = nextMuted;
+    document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = nextMuted; });
   }, [isGloballyMuted]);
 
   const openShareOptions = useCallback((postToShare: any, isOwner: boolean) => {
@@ -216,6 +242,75 @@ export default function PostPage() {
       window.openGlobalShare(`${window.location.origin}/post?id=${postToShare.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", postToShare.profiles?.username || "User", postToShare.id, isOwner, postToShare.is_private || false);
     }
   }, []);
+
+  // 🔥 MESIN PEMUTAR OTOMATIS 🔥
+  const initAutoPlayObserver = () => {
+    if (observerRef.current) observerRef.current.disconnect();
+
+    const playedElements = new WeakSet<HTMLMediaElement>();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const audio = entry.target.querySelector(".post-audio-element") as HTMLAudioElement;
+          const video = entry.target.querySelector(".post-video-element") as HTMLVideoElement;
+          const media = audio || video;
+
+          if (!media) return;
+
+          if (entry.isIntersecting) {
+            if (playedElements.has(media)) {
+              media.muted = isMutedRef.current;
+              if (media.paused) media.play().catch(() => {});
+              return;
+            }
+
+            playedElements.add(media);
+            media.muted = isMutedRef.current;
+            media.play().catch(() => {});
+          } else {
+            media.pause();
+            playedElements.delete(media);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
+  };
+
+  const initViewTrackingObserver = () => {
+    if (viewObserverRef.current) viewObserverRef.current.disconnect();
+    viewObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const postId = entry.target.getAttribute("data-postid");
+          if (!postId) return;
+
+          if (entry.isIntersecting) {
+            if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
+              viewTimersRef.current[postId] = setTimeout(async () => {
+                viewedPostsRef.current.add(postId);
+                delete viewTimersRef.current[postId];
+                try {
+                  const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
+                  const currentViews = data?.views || 0;
+                  await supabase.from("posts").update({ views: currentViews + 1 }).eq("id", postId);
+                } catch (err) {}
+              }, 2000);
+            }
+          } else {
+            if (viewTimersRef.current[postId]) {
+              clearTimeout(viewTimersRef.current[postId]);
+              delete viewTimersRef.current[postId];
+            }
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    document.querySelectorAll(".card[data-postid]").forEach((card) => { viewObserverRef.current?.observe(card); });
+  };
 
   return (
     <div style={{ paddingBottom: '80px', background: 'var(--bg-main)', minHeight: '100vh' }}>

@@ -4,10 +4,10 @@ import React from 'react';
 type MusicMarqueeProps = {
   post: any;
   isOverlay?: boolean;
+  mediaRef?: React.RefObject<any>; // 🔥 Tambahin ini
 };
 
-const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true }) => {
-  // Pastikan nggak render kalau nggak ada file audio sama sekali
+const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, mediaRef }) => {
   if (!post.audio_src) return null;
 
   let cleanAudio = (post.audio_src || "").trim();
@@ -16,7 +16,6 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true }) =
   }
   const finalAudio = cleanAudio.startsWith("http") ? cleanAudio : `/songs/${cleanAudio}`;
 
-  // Ambil teks judul dan artis, kasih fallback biar gak kosong banget
   const songTitle = post.title || 'Untitled';
   const songArtist = post.artist || 'Unknown Artist';
   const fullText = `${songTitle} — ${songArtist}`;
@@ -41,7 +40,6 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true }) =
         border: isOverlay ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-card)'
       }}
     >
-      {/* 🔥 INJECT CSS ANIMASI LANGSUNG DI SINI BIAR GAK PERNAH HILANG 🔥 */}
       <style>{`
         @keyframes slideMusicText {
           0% { transform: translateX(100%); }
@@ -71,7 +69,14 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true }) =
         </div>
       </div>
 
-      <audio className="post-audio-element" loop preload="none" playsInline style={{ display: 'none' }}>
+      <audio 
+        ref={mediaRef} // 🔥 Sambungin ref ke sini
+        className="post-audio-element" 
+        loop 
+        preload="none" 
+        playsInline 
+        style={{ display: 'none' }}
+      >
         <source src={finalAudio} type="audio/mpeg" />
       </audio>
     </div>
