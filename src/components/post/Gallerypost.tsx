@@ -22,37 +22,28 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
+// 🔥 Memoization tingkat tinggi biar video nggak kereset 🔥
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
-
-  // 1. Cek Data Inti Postingan (Reference check)
+  
   if (prevProps.post !== nextProps.post) return false;
-
-  // 2. Cek Status Interaksi User (Set comparison)
-  // has() method adalah O(1), jadi sangat cepat.
   if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
   if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
   if (prevProps.mySavedPosts.has(pid) !== nextProps.mySavedPosts.has(pid)) return false;
 
-  // 3. Cek Counts (Likes/Comments/Reposts/Saves)
   const prevCount = prevProps.counts[pid];
   const nextCount = nextProps.counts[pid];
   if (JSON.stringify(prevCount) !== JSON.stringify(nextCount)) return false;
 
-  // 4. Cek Animasi & UI State
   if (prevProps.poppingHeart !== nextProps.poppingHeart && (prevProps.poppingHeart === pid || nextProps.poppingHeart === pid)) return false;
   if (prevProps.animatingFollows.has(prevProps.post.creator_id) !== nextProps.animatingFollows.has(nextProps.post.creator_id)) return false;
   if (prevProps.animatingReposts.has(pid) !== nextProps.animatingReposts.has(pid)) return false;
   if (prevProps.isGloballyMuted !== nextProps.isGloballyMuted) return false;
   if (prevProps.activePreviewImage !== nextProps.activePreviewImage) return false;
 
-  // 5. Cek Relasi User (Follow/Mutual)
   if (prevProps.followedUsers.has(prevProps.post.creator_id) !== nextProps.followedUsers.has(nextProps.post.creator_id)) return false;
   if (prevProps.mutualUsers.has(prevProps.post.creator_id) !== nextProps.mutualUsers.has(nextProps.post.creator_id)) return false;
 
-  // 6. Cek Data Interaksi (Likers/Reposters map)
-  // Kita cuma cek length kalau mau performa tinggi, tapi kalau mau akurat banget, 
-  // cek referensi map-nya (karena kita set state baru tiap ada perubahan)
   if (prevProps.likersMap[pid] !== nextProps.likersMap[pid]) return false;
   if (prevProps.repostersMap[pid] !== nextProps.repostersMap[pid]) return false;
 
@@ -90,7 +81,6 @@ export default function Gallerypost() {
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
   
   const observerRef = useRef<IntersectionObserver | null>(null);
-  // 🔥 FIX 1: Memori Permanen untuk Autoplay biar nggak amnesia 🔥
   const activeMediaRef = useRef<Set<string>>(new Set());
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
@@ -112,7 +102,6 @@ export default function Gallerypost() {
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // --- Cleanup observers ---
   useEffect(() => {
     return () => {
       if (viewObserverRef.current) viewObserverRef.current.disconnect();
@@ -121,7 +110,6 @@ export default function Gallerypost() {
     };
   }, []);
 
-  // Pantau DOM biar AutoPlay Video tetap jalan di Virtuoso
   useEffect(() => {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
@@ -437,7 +425,6 @@ export default function Gallerypost() {
     });
   }, []);
 
-  // 🔥 FIX 2: Mesin AutoPlay dengan Memori Kuat 🔥
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
 
@@ -446,32 +433,26 @@ export default function Gallerypost() {
         entries.forEach((entry) => {
           const card = entry.target;
           const postId = card.getAttribute("data-postid");
-          const audio = card.querySelector(".post-audio-element") as HTMLAudioElement;
-          const video = card.querySelector(".post-video-element") as HTMLVideoElement;
-          const media = audio || video; 
+          const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement; 
 
           if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            // Cek di memori permanen, apakah media ini udah jalan?
             if (!activeMediaRef.current.has(postId)) {
               
-              // Matiin semua media lain secara fisik
               document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
                 if (el !== media && !el.paused) el.pause();
               });
 
-              activeMediaRef.current.add(postId); // Simpan ke memori
+              activeMediaRef.current.add(postId); 
               media.muted = isMutedRef.current;
-              media.currentTime = 0; // Mulai dari awal cuma saat PERTAMA MUNCUL di layar
+              media.currentTime = 0; 
               media.play().catch(() => {});
             } else {
-              // Kalo udah ada di memori, pastiin aja dia jalan (TANPA ngubah currentTime ke 0)
               media.muted = isMutedRef.current;
               if (media.paused) media.play().catch(()=>{});
             }
           } else {
-            // Kalau videonya keluar layar, pause dan lupakan dari memori
             media.pause();
             activeMediaRef.current.delete(postId);
           }
@@ -562,6 +543,8 @@ export default function Gallerypost() {
                 <MemoizedPostCard
                   post={post}
                   currentUser={currentUser}
+                  // 🔥 TAMBAHKAN INI BIAR FLOATING BUBBLES AMAN 🔥
+                  isOwner={currentUser?.id === post.creator_id}
                   counts={counts}
                   myLikedPosts={myLikedPosts}
                   myRepostedPosts={myRepostedPosts}
