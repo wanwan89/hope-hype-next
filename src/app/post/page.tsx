@@ -15,8 +15,7 @@ export default function PostPage() {
   const searchParams = useSearchParams();
   
   const postIdFromUrl = searchParams.get('id');
-  const source = searchParams.get('from');        // e.g. 'profile', 'home'
-  const userIdParam = searchParams.get('userId'); 
+  const source = searchParams.get('from'); // 'profile' atau 'home'
 
   const [post, setPost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,11 +47,13 @@ export default function PostPage() {
   // Mode profil
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [activePostIndex, setActivePostIndex] = useState(0);
-  const [profileUsername, setProfileUsername] = useState<string>('');
 
-  // Observer
+  // Observers
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const viewObserverRef = useRef<IntersectionObserver | null>(null);
   const activeMediaRef = useRef<Set<string>>(new Set());
+  const viewedPostsRef = useRef<Set<string>>(new Set());
+  const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   useEffect(() => {
     currentUserRef.current = currentUser;
@@ -64,7 +65,7 @@ export default function PostPage() {
     } else {
       setIsLoading(false);
     }
-  }, [postIdFromUrl, source, userIdParam]);
+  }, [postIdFromUrl, source]);
 
   const initializePage = async () => {
     setIsLoading(true);
@@ -93,23 +94,23 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
-    let targetUserId = userIdParam;
-    if (targetUserId === 'undefined' || !targetUserId) {
-      targetUserId = user?.id; // fallback ke user sendiri
-    }
-    
-    if (!targetUserId) {
+    // 🔥 FIX 2: Supaya nggak error 'undefined', kita tanya langsung ke postingan aslinya
+    // Siapa sih yang bikin postingan ini?
+    const { data: exactPost, error: exactErr } = await supabase
+      .from('posts')
+      .select('creator_id')
+      .eq('id', postIdFromUrl)
+      .single();
+
+    if (exactErr || !exactPost) {
+      setPost(null);
       setIsLoading(false);
       return;
     }
 
-    if (targetUserId !== user?.id) {
-      if(targetUserId !== 'undefined') {
-         const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
-         if (profileData) setProfileUsername(profileData.username);
-      }
-    }
+    const targetUserId = exactPost.creator_id; // PASTI valid, nggak bakal undefined!
 
+    // Tarik semua postingan dari creator tersebut
     const { data: postsData, error } = await supabase
       .from('posts')
       .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
@@ -211,7 +212,7 @@ export default function PostPage() {
     setActivePostIndex(newIndex);
     setPost(newPost);
     
-    const newUrl = `/post?id=${newPost.id}&from=profile&userId=${newPost.creator_id}`;
+    const newUrl = `/post?id=${newPost.id}&from=profile`; // Cukup pakai ini
     router.replace(newUrl, { scroll: false });
     
     fetchPostInteractions(newPost.id, currentUserRef.current);
@@ -236,8 +237,8 @@ export default function PostPage() {
     try {
       if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
       else {
-        const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId }).then();
+        sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
     } catch (err) {}
   }, [followedUsers]);
@@ -253,8 +254,9 @@ export default function PostPage() {
     try {
       if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else {
-        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }).then(({ error }) => {
+          if (!error && creatorId !== currentUserRef.current.id) sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        });
       }
     } catch (err) {}
   }, [myLikedPosts]);
@@ -316,18 +318,19 @@ export default function PostPage() {
     }
   }, []);
 
-  // --- OBSERVER MEDIA (Anti-Reset) ---
+  // 🔥 FIX 3: Autoplay Observer yang Pasti Nempel 🔥
   useEffect(() => {
     if (!post) return;
     
     const timer = setTimeout(() => {
       if (observerRef.current) observerRef.current.disconnect();
+      if (viewObserverRef.current) viewObserverRef.current.disconnect();
 
+      // 1. Observer untuk Autoplay Media
       observerRef.current = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           const card = entry.target;
           const postId = card.getAttribute("data-postid");
-          
           const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
           
           if (!media || !postId) return;
@@ -348,25 +351,56 @@ export default function PostPage() {
         });
       }, { threshold: 0.5 });
 
-      const cardEl = document.getElementById(`post-${post.id}`);
-      if (cardEl) observerRef.current.observe(cardEl);
+      // 2. Observer untuk nambah View
+      viewObserverRef.current = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const postId = entry.target.getAttribute("data-postid");
+          if (!postId) return;
+
+          if (entry.isIntersecting) {
+            if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
+              viewTimersRef.current[postId] = setTimeout(async () => {
+                viewedPostsRef.current.add(postId);
+                delete viewTimersRef.current[postId];
+                try {
+                  const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
+                  await supabase.from("posts").update({ views: (data?.views || 0) + 1 }).eq("id", postId);
+                } catch (err) {}
+              }, 2000);
+            }
+          } else {
+            if (viewTimersRef.current[postId]) {
+              clearTimeout(viewTimersRef.current[postId]);
+              delete viewTimersRef.current[postId];
+            }
+          }
+        });
+      }, { threshold: 0.6 });
+
+      // Ikat ke SEMUA Card yang ada
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => {
+         observerRef.current?.observe(card);
+         viewObserverRef.current?.observe(card);
+      });
       
-    }, 300);
+    }, 400); // 400ms kasih jeda bernafas buat DOM
 
     return () => { 
       clearTimeout(timer); 
       observerRef.current?.disconnect(); 
+      viewObserverRef.current?.disconnect();
     };
-  }, [post]);
+  }, [post]); 
 
   // --- LOGIKA JUDUL DINAMIS ---
   let headerTitle = "Detail Postingan";
   
-  if (source === 'profile') {
-    if (!userIdParam || userIdParam === 'undefined' || (currentUser && userIdParam === currentUser.id)) {
+  if (source === 'profile' && post) {
+    if (currentUser && post.creator_id === currentUser.id) {
        headerTitle = "Postingan Anda";
     } else {
-       headerTitle = `Postingan ${profileUsername || 'User'}`;
+       headerTitle = `Postingan ${post.profiles?.username || 'User'}`;
     }
   }
 
@@ -418,7 +452,8 @@ export default function PostPage() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div>
+          <div className="gallery" id="mainGallery">
+             {/* 🔥 FIX 1: class="gallery" Dibalikin biar stylingnya rapi sesuai aslinya 🔥 */}
             <PostCard
               post={post}
               currentUser={currentUser}
