@@ -15,7 +15,7 @@ export default function PostPage() {
   const searchParams = useSearchParams();
   
   const postIdFromUrl = searchParams.get('id');
-  const source = searchParams.get('from');        // e.g. 'profile', 'home'
+  const source = searchParams.get('from');        
   const userIdParam = searchParams.get('userId'); 
 
   const [post, setPost] = useState<any>(null);
@@ -23,7 +23,7 @@ export default function PostPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
-  // States interaksi
+  // States Interaksi
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
@@ -39,12 +39,13 @@ export default function PostPage() {
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
+  
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
 
   const lastTapRef = useRef<Record<string, number>>({});
 
-  // Mode Profil (Daftar post & Carousel Navigasi)
+  // Mode profil
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [activePostIndex, setActivePostIndex] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string>('');
@@ -92,15 +93,23 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
-    const targetUserId = userIdParam || user?.id; 
+    // 🔥 FIX 2: Mencegah string "undefined" dilempar ke Supabase 🔥
+    let targetUserId = userIdParam;
+    if (targetUserId === 'undefined' || !targetUserId) {
+      targetUserId = user?.id; // fallback ke user sendiri kalau URL nya rusak
+    }
+    
     if (!targetUserId) {
       setIsLoading(false);
       return;
     }
 
     if (targetUserId !== user?.id) {
-      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
-      if (profileData) setProfileUsername(profileData.username);
+      // Pastikan targetUserId bukan "undefined" text sebelum ke Supabase
+      if(targetUserId !== 'undefined') {
+         const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
+         if (profileData) setProfileUsername(profileData.username);
+      }
     }
 
     const { data: postsData, error } = await supabase
@@ -309,9 +318,10 @@ export default function PostPage() {
     }
   }, []);
 
-  // 🔥 FIX OBSERVER MEDIA (Anti-Reset) 🔥
+  // 🔥 FIX 3: OBSERVER MEDIA YANG LEBIH AGRESIF UNTUK 1 POSTINGAN 🔥
   useEffect(() => {
     if (!post) return;
+    
     const timer = setTimeout(() => {
       if (observerRef.current) observerRef.current.disconnect();
 
@@ -319,46 +329,49 @@ export default function PostPage() {
         entries.forEach(entry => {
           const card = entry.target;
           const postId = card.getAttribute("data-postid");
+          
+          // Cari spesifik audio/video di dalam card ini
           const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
           
           if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            // Kalau belum diputar, tarik ke 0
+            // Kita lagi di mode detail (1 post aja), jadi selalu play kalau kelihatan
             if (!activeMediaRef.current.has(postId)) {
               activeMediaRef.current.add(postId);
               media.muted = isMutedRef.current;
               media.currentTime = 0;
               media.play().catch(() => {});
             } else {
-              // Kalau udah diputar, lanjutin aja (jangan set currentTime)
               media.muted = isMutedRef.current;
               if (media.paused) media.play().catch(() => {});
             }
           } else {
             media.pause();
-            // Optional: Kalau lu mau tiap video keluar layar di-reset ulang dari 0 saat masuk lagi, 
-            // hapus activeMediaRef di sini. Kalau mau dia nge-resume, biarin aja.
-            // activeMediaRef.current.delete(postId); 
           }
         });
-      }, { threshold: 0.6 });
+      }, { threshold: 0.5 }); // Jalanin pas 50% keliatan
 
-      const cardEl = document.querySelector('.card');
+      // Tarik card setelah render
+      const cardEl = document.getElementById(`post-${post.id}`);
       if (cardEl) observerRef.current.observe(cardEl);
-    }, 200);
+      
+    }, 300); // Tunggu DOM nya bener-bener jadi dulu
 
-    return () => { clearTimeout(timer); observerRef.current?.disconnect(); };
-  }, [post]); // Trigger ualng tiap kali post berganti (saat prev/next)
+    return () => { 
+      clearTimeout(timer); 
+      observerRef.current?.disconnect(); 
+    };
+  }, [post]); // Akan ke-trigger ulang setiap kali post berganti (prev/next)
 
   // --- LOGIKA JUDUL DINAMIS ---
   let headerTitle = "Detail Postingan";
   
   if (source === 'profile') {
-    // Kalo source dari profile
-    if (userIdParam && currentUser && userIdParam === currentUser.id) {
+    // Kalau userIdParam "undefined" string, itu error dari klik, kita anggap itu profil kita sendiri
+    if (!userIdParam || userIdParam === 'undefined' || (currentUser && userIdParam === currentUser.id)) {
        headerTitle = "Postingan Anda";
-    } else if (userIdParam) {
+    } else {
        headerTitle = `Postingan ${profileUsername || 'User'}`;
     }
   }
@@ -411,7 +424,8 @@ export default function PostPage() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div className="gallery">
+          {/* 🔥 FIX 1: Hapus class="gallery" biar styling card ga hancur berantakan 🔥 */}
+          <div>
             <PostCard
               post={post}
               currentUser={currentUser}
