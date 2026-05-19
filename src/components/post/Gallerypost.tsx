@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,42 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
+// ---------- PostCard wrapper with deep memoization ----------
+const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
+  const pid = prevProps.post.id;
+  // Only re-render if data for THIS post changed
+  return (
+    prevProps.post === nextProps.post &&
+    prevProps.counts[pid]?.likes === nextProps.counts[pid]?.likes &&
+    prevProps.counts[pid]?.comments === nextProps.counts[pid]?.comments &&
+    prevProps.counts[pid]?.reposts === nextProps.counts[pid]?.reposts &&
+    prevProps.counts[pid]?.saves === nextProps.counts[pid]?.saves &&
+    prevProps.myLikedPosts.has(pid) === nextProps.myLikedPosts.has(pid) &&
+    prevProps.myRepostedPosts.has(pid) === nextProps.myRepostedPosts.has(pid) &&
+    prevProps.mySavedPosts.has(pid) === nextProps.mySavedPosts.has(pid) &&
+    prevProps.followedUsers.has(prevProps.post.creator_id) === nextProps.followedUsers.has(nextProps.post.creator_id) &&
+    prevProps.mutualUsers.has(prevProps.post.creator_id) === nextProps.mutualUsers.has(nextProps.post.creator_id) &&
+    prevProps.animatingFollows.has(prevProps.post.creator_id) === nextProps.animatingFollows.has(nextProps.post.creator_id) &&
+    prevProps.animatingReposts.has(pid) === nextProps.animatingReposts.has(pid) &&
+    prevProps.isGloballyMuted === nextProps.isGloballyMuted &&
+    prevProps.poppingHeart === nextProps.poppingHeart &&
+    prevProps.activePreviewImage === nextProps.activePreviewImage &&
+    // Stable handler references (always true because we made them stable)
+    prevProps.handleLike === nextProps.handleLike &&
+    prevProps.handleSave === nextProps.handleSave &&
+    prevProps.openRepostModal === nextProps.openRepostModal &&
+    prevProps.handleMediaClick === nextProps.handleMediaClick &&
+    prevProps.toggleMute === nextProps.toggleMute &&
+    prevProps.openShareOptions === nextProps.openShareOptions &&
+    prevProps.handleFollowToggle === nextProps.handleFollowToggle &&
+    prevProps.setActivePreviewImage === nextProps.setActivePreviewImage &&
+    prevProps.router === nextProps.router &&
+    prevProps.t === nextProps.t &&
+    prevProps.likersMap[pid]?.length === nextProps.likersMap[pid]?.length &&
+    prevProps.repostersMap[pid]?.length === nextProps.repostersMap[pid]?.length
+  );
+});
+
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -34,6 +70,7 @@ export default function Gallerypost() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const currentUserRef = useRef<any>(null);
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
@@ -57,14 +94,31 @@ export default function Gallerypost() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  
-  // 🔥 PASTIKAN DEFAULT MUTED TRUE BIAR BROWSER NGIJININ AUTOPLAY 🔥
+
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
   const POSTS_PER_PAGE = 15;
-  
+
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
+
+  // ---------- Refs to keep handlers stable ----------
+  const myLikedPostsRef = useRef(myLikedPosts);
+  const myRepostedPostsRef = useRef(myRepostedPosts);
+  const mySavedPostsRef = useRef(mySavedPosts);
+  const followedUsersRef = useRef(followedUsers);
+  const mutualUsersRef = useRef(mutualUsers);
+  const countsRef = useRef(counts);
+  const isGloballyMutedRef = useRef(isGloballyMuted);
+
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+  useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
+  useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
+  useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
+  useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
+  useEffect(() => { mutualUsersRef.current = mutualUsers; }, [mutualUsers]);
+  useEffect(() => { countsRef.current = counts; }, [counts]);
+  useEffect(() => { isGloballyMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
   // --- Cleanup observers ---
   useEffect(() => {
@@ -80,7 +134,6 @@ export default function Gallerypost() {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
 
-    // 🔥 Kasih debounce/jeda dikit biar Virtuoso kelar ngerender 🔥
     let timeout: NodeJS.Timeout;
     const mutationObserver = new MutationObserver(() => {
       clearTimeout(timeout);
@@ -296,6 +349,7 @@ export default function Gallerypost() {
     }
   };
 
+  // ---------- Stable handlers using refs ----------
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
       window.openGlobalShare(
@@ -312,10 +366,10 @@ export default function Gallerypost() {
 
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
-    if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
-    if (currentUser.id === creatorId) return;
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (currentUserRef.current.id === creatorId) return;
 
-    const isFollowing = followedUsers.has(creatorId);
+    const isFollowing = followedUsersRef.current.has(creatorId);
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => {
       setAnimatingFollows((prev) => {
@@ -333,20 +387,20 @@ export default function Gallerypost() {
 
     try {
       if (isFollowing) {
-        await supabase.from("followers").delete().match({ follower_id: currentUser.id, following_id: creatorId });
+        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
       } else {
-        const { error } = await supabase.from("followers").insert({ follower_id: currentUser.id, following_id: creatorId });
+        const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
         if (error && error.code !== "23505") throw error;
         if (!error) {
-          await sendPushAndAppNotif({ senderId: currentUser.id, receiverId: creatorId, type: "follow" });
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
         }
       }
     } catch (err) { console.error("Follow error", err); }
-  }, [currentUser, followedUsers]);
+  }, []);
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
-    if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
-    const isLiked = myLikedPosts.has(postId);
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    const isLiked = myLikedPostsRef.current.has(postId);
     const numericPostId = parseInt(postId);
 
     setMyLikedPosts((prev) => {
@@ -362,16 +416,16 @@ export default function Gallerypost() {
 
     try {
       if (isLiked) {
-        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUser.id });
+        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
         if (error && error.code !== "23505") throw error;
-        if (!error && creatorId !== currentUser.id) {
-          await sendPushAndAppNotif({ senderId: currentUser.id, receiverId: creatorId, type: "like", postId: postId });
+        if (!error && creatorId !== currentUserRef.current.id) {
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
         }
       }
     } catch (err) { console.error("Like error", err); }
-  }, [currentUser, myLikedPosts]);
+  }, []);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
@@ -379,12 +433,12 @@ export default function Gallerypost() {
 
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
-      if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
+      if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
 
-      if (!myLikedPosts.has(postId)) handleLike(postId, creatorId);
+      if (!myLikedPostsRef.current.has(postId)) handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
       if (imageUrl) {
@@ -396,7 +450,7 @@ export default function Gallerypost() {
         }, 360);
       }
     }
-  }, [currentUser, myLikedPosts, handleLike]);
+  }, [handleLike]);
 
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     const numericPostId = parseInt(postId);
@@ -425,17 +479,17 @@ export default function Gallerypost() {
 
     try {
       if (isUnrepost) {
-        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUser.id, note: finalNote });
+        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
         if (error && error.code !== "23505") throw error;
       }
     } catch (err) { console.error("Repost error", err); }
-  }, [currentUser, repostNote]);
+  }, [repostNote]); // repostNote is local, stable enough
 
   const handleSave = useCallback(async (postId: string) => {
-    if (!currentUser) return window.dispatchEvent(new CustomEvent("openLogin"));
-    const isSaved = mySavedPosts.has(postId);
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    const isSaved = mySavedPostsRef.current.has(postId);
     const numericPostId = parseInt(postId);
 
     setMySavedPosts((prev) => {
@@ -451,29 +505,29 @@ export default function Gallerypost() {
 
     try {
       if (isSaved) {
-        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUser.id });
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUser.id });
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
         if (error && error.code !== "23505") throw error;
       }
     } catch (err) { console.error("Save error", err); }
-  }, [currentUser, mySavedPosts]);
+  }, []);
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextMuted = !isGloballyMuted;
+    const nextMuted = !isGloballyMutedRef.current;
     setIsGloballyMuted(nextMuted);
-    isMutedRef.current = nextMuted; // Update ref secepat kilat
+    isMutedRef.current = nextMuted;
     document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
       el.muted = nextMuted; 
     });
-  }, [isGloballyMuted]);
+  }, []);
 
-  // 🔥 FIX 1: AutoPlay Observer yang Anti-Reset 🔥
+  // 🔥 AutoPlay Observer yang Anti-Reset
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
 
-    const activeMediaRef = new Set<string>(); // Cukup inget ID-nya
+    const activeMediaRef = new Set<string>();
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -487,10 +541,7 @@ export default function Gallerypost() {
           if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            // Kalau udah dicatat aktif, jangan di-play dari awal
             if (!activeMediaRef.has(postId)) {
-              
-              // Matiin semua media lain secara fisik
               document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
                 if (el !== media && !el.paused) {
                   el.pause();
@@ -499,26 +550,20 @@ export default function Gallerypost() {
 
               activeMediaRef.add(postId);
               media.muted = isMutedRef.current;
-              // Tarik waktu ke 0 cuma saat pertama kali MASUK layar
               media.currentTime = 0; 
               
-              media.play().catch(() => {
-                 // Sembunyiin error DOM kalau dipaksa play sebelum user interaksi
-              });
+              media.play().catch(() => {});
             } else {
-              // Udah aktif? Cukup pastiin dia play (tanpa reset currentTime)
               media.muted = isMutedRef.current;
               if (media.paused) media.play().catch(()=>{});
             }
-
           } else {
-            // Keluar layar
             media.pause();
             activeMediaRef.delete(postId);
           }
         });
       },
-      { threshold: 0.6 } // Trigger saat 60% postingan kelihatan
+      { threshold: 0.6 }
     );
 
     document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
@@ -609,13 +654,12 @@ export default function Gallerypost() {
                       {suggestedPosts.map(sp => {
                         const img = sp.image_url ? sp.image_url.split(',')[0] : '';
                         return (
-                          // 🔥 FIX 2: Klik Rekomendasi (Ubah pake Jurus Nuklir sekalian) 🔥
                           <div 
                             key={`sugg-${String(sp.id)}`} 
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              window.location.href = `/post?id=${String(sp.id)}`;
+                              window.location.href = `/post?id=${String(sp.id)}&from=home`;
                             }}
                             style={{ 
                               minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
@@ -649,8 +693,8 @@ export default function Gallerypost() {
                    <SuggestedUsers myId={currentUser?.id} followedUsers={followedUsers} />
                 )}
 
-                {/* POSTINGAN UTAMA (PostCard) */}
-                <PostCard
+                {/* POSTINGAN UTAMA (PostCard) dengan Memoized */}
+                <MemoizedPostCard
                   post={post}
                   currentUser={currentUser}
                   counts={counts}
@@ -669,8 +713,8 @@ export default function Gallerypost() {
                   handleLike={handleLike}
                   handleSave={handleSave}
                   openRepostModal={(id, cid) => {
-                    if (!currentUser) return window.dispatchEvent(new CustomEvent('openLogin'));
-                    if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                    if (myRepostedPostsRef.current.has(id)) handleConfirmRepost(id, cid, true);
                     else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
                   }}
                   handleMediaClick={handleMediaClick}
