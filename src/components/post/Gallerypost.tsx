@@ -456,10 +456,10 @@ export default function Gallerypost() {
     document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = nextMuted; });
   }, [isGloballyMuted]);
 
-  // 🔥 FIX: Observer auto-play dengan WeakSet agar tidak me-reset elemen yang sama
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
 
+    // 🔥 MEMORI BIAR VIDEO/AUDIO GA KERESET 🔥
     const playedElements = new WeakSet<HTMLMediaElement>();
 
     observerRef.current = new IntersectionObserver(
@@ -467,20 +467,19 @@ export default function Gallerypost() {
         entries.forEach((entry) => {
           const audio = entry.target.querySelector(".post-audio-element") as HTMLAudioElement;
           const video = entry.target.querySelector(".post-video-element") as HTMLVideoElement;
-          const media = audio || video;
+          const media = audio || video; // Ambil mana yang ada
+
           if (!media) return;
 
           if (entry.isIntersecting) {
-            // Jika sudah ada di set, jangan reset
+            // Kalau media udah jalan, jangan di-reset waktunya!
             if (playedElements.has(media)) {
               media.muted = isMutedRef.current;
-              if (media.paused) {
-                media.play().catch(() => {});
-              }
+              if (media.paused) media.play().catch(() => {});
               return;
             }
 
-            // Hentikan semua media lain
+            // Matiin media lain yang gak di layar
             document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
               if (el !== media) {
                 el.pause();
@@ -488,13 +487,12 @@ export default function Gallerypost() {
               }
             });
 
-            // Tandai dan mainkan
+            // Putar media yang baru masuk layar
             playedElements.add(media);
-            media.currentTime = 0;
-            media.volume = 1.0;
             media.muted = isMutedRef.current;
             media.play().catch(() => {});
           } else {
+            // Kalau keluar layar, pause
             media.pause();
             playedElements.delete(media);
           }
@@ -502,7 +500,6 @@ export default function Gallerypost() {
       },
       { threshold: 0.6 }
     );
-
     document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
   };
 
@@ -591,16 +588,18 @@ export default function Gallerypost() {
                       {suggestedPosts.map(sp => {
                         const img = sp.image_url ? sp.image_url.split(',')[0] : '';
                         return (
+                          // 🔥 FIX KLIK REKOMENDASI (Ganti <a> jadi <div> & cegah tabrakan event) 🔥
                           <div 
-                            key={`sugg-${sp.id}`} 
+                            key={`sugg-${String(sp.id)}`} 
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
-                              router.push(`/post?id=${sp.id}`);
+                              router.push(`/post?id=${String(sp.id)}`);
                             }}
                             style={{ 
                               minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
                               overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', 
-                              cursor: 'pointer', display: 'flex', flexDirection: 'column', textDecoration: 'none'
+                              cursor: 'pointer', display: 'flex', flexDirection: 'column'
                             }}
                           >
                             <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
@@ -621,7 +620,7 @@ export default function Gallerypost() {
                         );
                       })}
                     </div>
-                  </div>
+
                 )}
 
                 {/* 🔥 SLIDER REKOMENDASI TEMAN 🔥 */}

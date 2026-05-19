@@ -16,24 +16,33 @@ type Props = {
 const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, profile, activeTab, onPostClick, t }) => {
   const router = useRouter();
 
-  // Pisahkan draft dan published
+  // 🔥 PISAHKAN DRAF DAN POSTINGAN PUBLIK 🔥
   const draftPosts = posts.filter(p => p.status === 'draft');
   const publishedPostsRaw = posts.filter(p => p.status !== 'draft');
 
-  // Urutkan: pinned di atas (max 3)
-  const sortedPosts = [...publishedPostsRaw].sort((a, b) => (b.is_pinned === true ? 1 : 0) - (a.is_pinned === true ? 1 : 0));
-  let pinCount = 0;
-  const publishedPosts = sortedPosts.map(post => {
-    if (post.is_pinned === true) {
-      if (pinCount < 3) {
+  // 🔥 LOGIKA PIN: HANYA BERLAKU DI TAB 'POST' (MAKS 3) 🔥
+  let publishedPosts: any[] = [];
+
+  if (activeTab === 'post') {
+    // Kalau di tab postingan utama, urutkan yang di-pin ke atas
+    const sortedPosts = [...publishedPostsRaw].sort((a, b) => {
+      const aPinned = a.is_pinned === true ? 1 : 0;
+      const bPinned = b.is_pinned === true ? 1 : 0;
+      return bPinned - aPinned; 
+    });
+
+    let pinCount = 0;
+    publishedPosts = sortedPosts.map(post => {
+      if (post.is_pinned === true && pinCount < 3) {
         pinCount++;
-        return { ...post, visually_pinned: true };
-      } else {
-        return { ...post, visually_pinned: false };
+        return { ...post, visually_pinned: true }; // Masuk kuota pin
       }
-    }
-    return { ...post, visually_pinned: false };
-  });
+      return { ...post, visually_pinned: false }; // Sisa postingan biasa
+    });
+  } else {
+    // Tab lain (Like, Repost, Private, dsb) nggak boleh ada pin, biarkan urutan asli
+    publishedPosts = publishedPostsRaw.map(post => ({ ...post, visually_pinned: false }));
+  }
 
   if (isLoadingPosts) {
     return (
@@ -87,7 +96,8 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
 
   return (
     <div className="post-grid">
-      {/* Folder Draft (hanya untuk owner) */}
+      
+      {/* 🔥 KOTAK KHUSUS FOLDER DRAF DENGAN PREVIEW (HANYA MUNCUL BUAT OWNER DI TAB POST) 🔥 */}
       {isMe && activeTab === 'post' && draftPosts.length > 0 && (
         <div 
           className="grid-item" 
@@ -129,11 +139,13 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
         </div>
       )}
 
-      {/* Postingan Published */}
+      {/* 🔥 RENDER POSTINGAN YANG SUDAH DI-PUBLISH 🔥 */}
       {publishedPosts.map(post => {
         const allImages = post.image_url ? post.image_url.split(',') : [];
         const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
         const isVideo = !!post.video_url;
+        
+        // 🔥 JADIKAN STRING EKSPLISIT BIAR AMAN 🔥
         const safeId = String(post.id);
 
         return (
@@ -141,9 +153,16 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             key={safeId} 
             className="grid-item" 
             style={{ cursor: 'pointer', position: 'relative' }} 
-            onClick={() => onPostClick(safeId, post.status)}
+            // 🔥 POTONG KOMPAS LANGSUNG PAKAI ROUTER.PUSH 🔥
+            onClick={() => {
+              if (post.status === 'draft') {
+                router.push(`/create?draft_id=${safeId}`);
+              } else {
+                router.push(`/post?id=${safeId}`);
+              }
+            }}
           >
-            {/* Pin badge */}
+            {/* 🔥 LENCANA JELAS UNTUK POSTINGAN YANG DISEMATKAN (HANYA TAB POST, MAX 3) 🔥 */}
             {post.visually_pinned && (
               <div style={{ 
                 position: 'absolute', top: '6px', right: '6px', zIndex: 3, 
@@ -161,6 +180,7 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
               <>
                 {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 
+                {/* Ikon tambahan kalau video / multi-gambar */}
                 {!post.visually_pinned && isVideo ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span>
                 ) : !post.visually_pinned && allImages.length > 1 ? (
