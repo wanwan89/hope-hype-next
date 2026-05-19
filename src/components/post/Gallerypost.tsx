@@ -378,22 +378,54 @@ export default function Gallerypost() {
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
-    // Animasi
+    // Animasi Repost
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
-    // Update UI Optimistik
-    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+    // 1. Simpan State Lama Buat Jaga-Jaga (Rollback)
+    const wasReposted = myRepostedPostsRef.current.has(postId);
 
-    // Eksekusi API
+    // 2. Update UI Optimistik Dulu Biar Cepat
+    setMyRepostedPosts((prev) => { 
+      const n = new Set(prev); 
+      isUnrepost ? n.delete(postId) : n.add(postId); 
+      return n; 
+    });
+    
+    setCounts((prev) => ({ 
+      ...prev, 
+      [postId]: { 
+        ...prev[postId], 
+        reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) 
+      } 
+    }));
+
+    // 3. Tembak ke Database
     try {
       if (isUnrepost) {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
-        // Abaikan duplicate key error
-        if (error && error.code !== "23505") console.error(error);
+        
+        // 4. Kalau Database Nolak (Duplicate), Kembalikan UI ke Semula! (Rollback)
+        if (error) {
+           console.error("Gagal Repost:", error.message);
+           
+           // Balikin state-nya kalau ternyata error
+           setMyRepostedPosts((prev) => { 
+             const n = new Set(prev); 
+             wasReposted ? n.add(postId) : n.delete(postId); 
+             return n; 
+           });
+           
+           setCounts((prev) => ({ 
+             ...prev, 
+             [postId]: { 
+               ...prev[postId], 
+               reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) // kurangin lagi angka yang terlanjur nambah
+             } 
+           }));
+        }
       }
     } catch (err) {}
   }, [repostNote]);
