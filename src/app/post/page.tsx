@@ -9,6 +9,9 @@ import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
 
+// 🔥 INI DIA BIANG KEROKNYA: LUPA IMPORT CSS KEMARIN WKWK 🔥
+import '@/components/post/Gallery.css';
+
 export default function PostPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -41,6 +44,7 @@ export default function PostPage() {
   
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
+
   const lastTapRef = useRef<Record<string, number>>({});
 
   // Mode profil
@@ -92,7 +96,6 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
-    // 🔥 FIX 1: TANYA KE DATABASE LANGSUNG! (Anti-salah profil) 🔥
     const { data: exactPost, error: errExact } = await supabase
       .from('posts')
       .select('creator_id')
@@ -105,13 +108,11 @@ export default function PostPage() {
       return;
     }
 
-    const targetUserId = exactPost.creator_id; // PASTI AKURAT 100%
+    const targetUserId = exactPost.creator_id; 
 
-    // Tentukan apakah ini profil kita sendiri atau orang lain
     const isMe = user && targetUserId === user.id;
     setIsMyOwnProfile(isMe);
 
-    // Ambil username buat header kalau ini profil orang lain
     if (!isMe) {
       const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
       if (profileData) setProfileUsername(profileData.username);
@@ -224,7 +225,6 @@ export default function PostPage() {
     fetchPostInteractions(newPost.id, currentUserRef.current);
   }, [activePostIndex, userPosts, router]);
 
-  // --- Handlers Interaksi ---
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
@@ -243,8 +243,8 @@ export default function PostPage() {
     try {
       if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
       else {
-        const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId }).then();
+        sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
     } catch (err) {}
   }, [followedUsers]);
@@ -260,8 +260,9 @@ export default function PostPage() {
     try {
       if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else {
-        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }).then(({ error }) => {
+          if (!error && creatorId !== currentUserRef.current.id) sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        });
       }
     } catch (err) {}
   }, [myLikedPosts]);
@@ -323,7 +324,6 @@ export default function PostPage() {
     }
   }, []);
 
-  // --- OBSERVER MEDIA ---
   useEffect(() => {
     if (!post) return;
     
@@ -333,6 +333,7 @@ export default function PostPage() {
       observerRef.current = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           const media = entry.target.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
+          
           if (!media) return;
 
           if (entry.isIntersecting) {
@@ -347,7 +348,7 @@ export default function PostPage() {
       const cardEl = document.getElementById(`post-${post.id}`);
       if (cardEl) observerRef.current.observe(cardEl);
       
-    }, 400);
+    }, 500);
 
     return () => { 
       clearTimeout(timer); 
@@ -355,7 +356,6 @@ export default function PostPage() {
     };
   }, [post]);
 
-  // --- LOGIKA JUDUL DINAMIS ---
   let headerTitle = "Detail Postingan";
   if (source === 'profile' && post) {
     if (isMyOwnProfile) {
@@ -366,7 +366,7 @@ export default function PostPage() {
   }
 
   return (
-    <div style={{ paddingBottom: '80px', background: 'var(--bg-main)', minHeight: '100vh' }}>
+    <div style={{ paddingBottom: '80px', background: 'var(--bg-main)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -401,10 +401,10 @@ export default function PostPage() {
         </div>
       )}
 
-      {/* 🔥 FIX 2: STRUKTUR HTML "EDGE-TO-EDGE" MURNI KAYA DI BERANDA 🔥 */}
-      <div style={{ width: '100%', marginTop: '10px' }}>
+      {/* 🔥 FIX 1: WADAH KARTU YANG PERFECT FIT 🔥 */}
+      <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
-          <div style={{ padding: '20px', textAlign: 'center' }}>
+          <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
             <div className="pure-spinner" style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
           </div>
         ) : !post ? (
@@ -413,7 +413,7 @@ export default function PostPage() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div className="gallery" id="mainGallery" style={{ width: '100%', margin: 0, padding: 0 }}>
+          <div className="gallery" id="mainGallery" style={{ flex: 1, position: 'relative', height: 'calc(100vh - 130px)', width: '100%' }}>
             <PostCard
               post={post}
               currentUser={currentUser}
