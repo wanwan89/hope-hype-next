@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
 import MusicMarquee from './MusicMarquee';
-import FloatingBubbles from './FloatingBubbles'; // 🔥 IMPORT KOMPONEN BUBBLES
+import FloatingBubbles from './FloatingBubbles';
 import { getUserBadge } from '@/lib/ui-utils';
 import { formatRelativeTime, getOptimizedImage } from '@/lib/helpers';
 
@@ -52,18 +52,14 @@ const PostCard: React.FC<PostCardProps> = ({
   const formattedDate = formatRelativeTime(post.created_at);
   const isOwner = currentUser && currentUser.id === post.creator_id;
   
-  // 🔥 FIX TIPE DATA: Pastikan ID jadi String biar router Next.js ga mabok
-  const postIdStr = String(post.id); 
+  const postIdStr = String(post.id);
   const creatorIdStr = String(post.creator_id);
 
   const photoList = post.image_url ? post.image_url.split(',') : [];
   const isVideoPost = !!post.video_url;
   
-  // Ambil likers dan reposters mentah
   const likers = likersMap[postIdStr] || [];
   const reposters = repostersMap[postIdStr] || [];
-
-  // Filter yang mutual doang buat ditampilin di bubble
   const mutualLikers = likers.filter((l: any) => mutualUsers.has(String(l.id)));
   const mutualReposters = reposters.filter((r: any) => mutualUsers.has(String(r.id)));
 
@@ -83,14 +79,43 @@ const PostCard: React.FC<PostCardProps> = ({
     });
   };
 
+  // ========== CSS Animasi untuk Big Pop Heart ==========
+  const bigHeartStyle = `
+    @keyframes popHeartAnim {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+      15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+      30% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+      70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
+    }
+    .big-pop-heart {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      color: #ff2e63;
+      font-size: 120px;
+      z-index: 15;
+      pointer-events: none;
+      opacity: 0;
+      animation: popHeartAnim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      filter: drop-shadow(0 4px 15px rgba(0,0,0,0.5));
+    }
+  `;
+
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
       style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
+      
+      {/* Style untuk animasi big heart (hanya dipasang di sini) */}
+      <style>{bigHeartStyle}</style>
+
       {(photoList.length > 0 || isVideoPost) ? (
         <>
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay />
 
+            {/* 🔥 LOVE BESAR DOUBLE TAP 🔥 */}
             {poppingHeart === postIdStr && (
               <span className="material-icons big-pop-heart">favorite</span>
             )}
@@ -116,7 +141,6 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             )}
 
-            {/* 🔥 KOMPONEN FLOATING BUBBLES BERSIH TANPA KODE GANDA 🔥 */}
             <FloatingBubbles 
               likers={isOwner ? mutualLikers : []} 
               reposters={!isOwner ? mutualReposters : []} 
@@ -188,7 +212,6 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
 
             <div className="actions">
-              {/* 🔥 FIX NAVIGASI: Tombol "Lihat Detail" harusnya pergi ke halaman post (bukan profil kreator) */}
               <button 
                 onClick={() => router.push(`/post?id=${postIdStr}`)} 
                 className="primary btn-press" 
@@ -233,6 +256,13 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           </div>
 
+          {/* Untuk postingan tanpa media, love besar juga bisa muncul di sini jika diperlukan */}
+          {poppingHeart === postIdStr && (
+            <div style={{ position: 'relative', height: '0' }}>
+              <span className="material-icons big-pop-heart">favorite</span>
+            </div>
+          )}
+
           <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px', wordBreak: 'break-word' }}>
             {renderBioWithMentions(post.bio?.trim())}
           </div>
@@ -248,7 +278,6 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
 
           <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
-            {/* 🔥 FIX NAVIGASI: Tombol "Lihat Detail" harusnya pergi ke halaman post (bukan profil kreator) */}
             <button 
               onClick={() => router.push(`/post?id=${postIdStr}`)} 
               className="btn-press" 

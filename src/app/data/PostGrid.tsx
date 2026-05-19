@@ -16,26 +16,20 @@ type Props = {
 const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, profile, activeTab, onPostClick, t }) => {
   const router = useRouter();
 
-  // 🔥 PISAHKAN DRAF DAN POSTINGAN PUBLIK 🔥
+  // Pisahkan draft dan published
   const draftPosts = posts.filter(p => p.status === 'draft');
   const publishedPostsRaw = posts.filter(p => p.status !== 'draft');
 
-  // 🔥 URUTKAN POSTINGAN & LIMIT PIN MAKSIMAL 3 🔥
-  const sortedPosts = [...publishedPostsRaw].sort((a, b) => {
-    // Paksa jadi angka untuk perbandingan yang pasti
-    const aPinned = a.is_pinned === true ? 1 : 0;
-    const bPinned = b.is_pinned === true ? 1 : 0;
-    return bPinned - aPinned; 
-  });
-
+  // Urutkan: pinned di atas (max 3)
+  const sortedPosts = [...publishedPostsRaw].sort((a, b) => (b.is_pinned === true ? 1 : 0) - (a.is_pinned === true ? 1 : 0));
   let pinCount = 0;
   const publishedPosts = sortedPosts.map(post => {
     if (post.is_pinned === true) {
       if (pinCount < 3) {
         pinCount++;
-        return { ...post, visually_pinned: true }; // Masih dapet kuota pin
+        return { ...post, visually_pinned: true };
       } else {
-        return { ...post, visually_pinned: false }; // Udah lebih dari 3, cabut lencananya
+        return { ...post, visually_pinned: false };
       }
     }
     return { ...post, visually_pinned: false };
@@ -93,8 +87,7 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
 
   return (
     <div className="post-grid">
-      
-      {/* 🔥 KOTAK KHUSUS FOLDER DRAF DENGAN PREVIEW (HANYA MUNCUL BUAT OWNER) 🔥 */}
+      {/* Folder Draft (hanya untuk owner) */}
       {isMe && activeTab === 'post' && draftPosts.length > 0 && (
         <div 
           className="grid-item" 
@@ -136,13 +129,11 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
         </div>
       )}
 
-      {/* 🔥 RENDER POSTINGAN YANG SUDAH DI-PUBLISH 🔥 */}
+      {/* Postingan Published */}
       {publishedPosts.map(post => {
         const allImages = post.image_url ? post.image_url.split(',') : [];
         const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
         const isVideo = !!post.video_url;
-        
-        // 🔥 FIX TIPE DATA: Jadikan string secara eksplisit
         const safeId = String(post.id);
 
         return (
@@ -150,16 +141,9 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             key={safeId} 
             className="grid-item" 
             style={{ cursor: 'pointer', position: 'relative' }} 
-            // 🔥 FIX NAVIGASI: Kirim ID yang udah aman ke fungsi bawaan parent
-            onClick={() => {
-              if (post.status === 'draft') {
-                router.push(`/create?draft_id=${safeId}`);
-              } else {
-                router.push(`/post?id=${safeId}`);
-              }
-            }}
+            onClick={() => onPostClick(safeId, post.status)}
           >
-            {/* 🔥 LENCANA JELAS UNTUK POSTINGAN YANG DISEMATKAN (MAX 3) 🔥 */}
+            {/* Pin badge */}
             {post.visually_pinned && (
               <div style={{ 
                 position: 'absolute', top: '6px', right: '6px', zIndex: 3, 
@@ -177,7 +161,6 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
               <>
                 {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 
-                {/* Ikon tambahan kalau video / multi-gambar */}
                 {!post.visually_pinned && isVideo ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span>
                 ) : !post.visually_pinned && allImages.length > 1 ? (

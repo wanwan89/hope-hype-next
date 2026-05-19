@@ -9,8 +9,8 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
-import SuggestedUsers from './SuggestedUsers'; 
-import { Virtuoso } from 'react-virtuoso'; 
+import SuggestedUsers from './SuggestedUsers';
+import { Virtuoso } from 'react-virtuoso';
 import './Gallery.css';
 
 // Helper functions
@@ -31,7 +31,7 @@ export default function Gallerypost() {
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
   const [randomSliderIndex, setRandomSliderIndex] = useState(2);
   const [randomFriendIndex, setRandomFriendIndex] = useState(4);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
@@ -45,13 +45,12 @@ export default function Gallerypost() {
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
-  
-  // 🔥 FIX 1: Balikin viewedPostsRef yang hilang 🔥
+
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
-  const observerRef = useRef<IntersectionObserver | null>(null); 
-  
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
   const [currentCategory, setCurrentCategory] = useState("all");
@@ -73,7 +72,7 @@ export default function Gallerypost() {
     };
   }, []);
 
-  // 🔥 Pantau DOM biar AutoPlay Video tetep jalan di Virtuoso 🔥
+  // Pantau DOM biar AutoPlay Video tetap jalan di Virtuoso
   useEffect(() => {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
@@ -144,27 +143,26 @@ export default function Gallerypost() {
       }
     }
     await fetchPosts("all", user, 1, false, currentMutuals);
-    await fetchSuggestedPosts(); 
+    await fetchSuggestedPosts();
   };
 
   const fetchSuggestedPosts = async () => {
     try {
       const { data } = await supabase
         .from('posts')
-        // Pastikan kolom penting ke-load
         .select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)')
         .eq('status', 'approved')
         .eq('is_private', false)
-        .neq('image_url', null) 
+        .neq('image_url', null)
         .limit(20);
 
       if (data) {
         const shuffled = data.sort(() => 0.5 - Math.random()).slice(0, 6);
         setSuggestedPosts(shuffled);
 
-        const randomPos = Math.floor(Math.random() * 2) + 1; 
+        const randomPos = Math.floor(Math.random() * 2) + 1;
         setRandomSliderIndex(randomPos);
-        const randomFriendPos = Math.floor(Math.random() * 2) + 3; 
+        const randomFriendPos = Math.floor(Math.random() * 2) + 3;
         setRandomFriendIndex(randomFriendPos);
       }
     } catch (err) {
@@ -188,7 +186,6 @@ export default function Gallerypost() {
 
       let query = supabase
         .from("posts")
-        // 🔥 Pastikan title dan artist ditarik biar lagu nongol 🔥
         .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
@@ -459,39 +456,53 @@ export default function Gallerypost() {
     document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = nextMuted; });
   }, [isGloballyMuted]);
 
+  // 🔥 FIX: Observer auto-play dengan WeakSet agar tidak me-reset elemen yang sama
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
+
+    const playedElements = new WeakSet<HTMLMediaElement>();
+
     observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           const audio = entry.target.querySelector(".post-audio-element") as HTMLAudioElement;
           const video = entry.target.querySelector(".post-video-element") as HTMLVideoElement;
+          const media = audio || video;
+          if (!media) return;
 
           if (entry.isIntersecting) {
-            if (audio) {
-              document.querySelectorAll(".post-audio-element").forEach((el) => {
-                if (el !== audio) (el as HTMLAudioElement).pause();
-              });
-              audio.currentTime = 0;
-              audio.volume = 1.0;
-              audio.muted = isMutedRef.current;
-              audio.play().catch(() => {});
+            // Jika sudah ada di set, jangan reset
+            if (playedElements.has(media)) {
+              media.muted = isMutedRef.current;
+              if (media.paused) {
+                media.play().catch(() => {});
+              }
+              return;
             }
-            if (video) {
-              document.querySelectorAll(".post-video-element").forEach((el) => {
-                if (el !== video) (el as HTMLVideoElement).pause();
-              });
-              video.muted = isMutedRef.current;
-              video.play().catch(() => {});
-            }
+
+            // Hentikan semua media lain
+            document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+              if (el !== media) {
+                el.pause();
+                playedElements.delete(el);
+              }
+            });
+
+            // Tandai dan mainkan
+            playedElements.add(media);
+            media.currentTime = 0;
+            media.volume = 1.0;
+            media.muted = isMutedRef.current;
+            media.play().catch(() => {});
           } else {
-            if (audio) audio.pause();
-            if (video) video.pause();
+            media.pause();
+            playedElements.delete(media);
           }
         });
       },
       { threshold: 0.6 }
     );
+
     document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
   };
 
@@ -580,10 +591,12 @@ export default function Gallerypost() {
                       {suggestedPosts.map(sp => {
                         const img = sp.image_url ? sp.image_url.split(',')[0] : '';
                         return (
-                          // 🔥 FIX 2: BUNGKUS PAKAI <a> BIAR BROWSER YANG URUS NAVIGASI 🔥
-                          <a 
+                          <div 
                             key={`sugg-${sp.id}`} 
-                            href={`/post?id=${sp.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/post?id=${sp.id}`);
+                            }}
                             style={{ 
                               minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
                               overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', 
@@ -604,7 +617,7 @@ export default function Gallerypost() {
                                 </span>
                               </div>
                             </div>
-                          </a>
+                          </div>
                         );
                       })}
                     </div>
