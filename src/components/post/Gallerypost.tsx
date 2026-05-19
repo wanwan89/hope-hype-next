@@ -57,9 +57,12 @@ export default function Gallerypost() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const POSTS_PER_PAGE = 15;
+  
+  // 🔥 PASTIKAN DEFAULT MUTED TRUE BIAR BROWSER NGIJININ AUTOPLAY 🔥
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
+  const POSTS_PER_PAGE = 15;
+  
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
@@ -77,13 +80,21 @@ export default function Gallerypost() {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
 
+    // 🔥 Kasih debounce/jeda dikit biar Virtuoso kelar ngerender 🔥
+    let timeout: NodeJS.Timeout;
     const mutationObserver = new MutationObserver(() => {
-      initAutoPlayObserver();
-      initViewTrackingObserver();
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        initAutoPlayObserver();
+        initViewTrackingObserver();
+      }, 300);
     });
 
     mutationObserver.observe(gallery, { childList: true, subtree: true });
-    return () => mutationObserver.disconnect();
+    return () => {
+      mutationObserver.disconnect();
+      clearTimeout(timeout);
+    };
   }, []);
 
   // --- Comment refresh listener ---
@@ -452,49 +463,64 @@ export default function Gallerypost() {
     e.stopPropagation();
     const nextMuted = !isGloballyMuted;
     setIsGloballyMuted(nextMuted);
-    isMutedRef.current = nextMuted;
-    document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = nextMuted; });
+    isMutedRef.current = nextMuted; // Update ref secepat kilat
+    document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
+      el.muted = nextMuted; 
+    });
   }, [isGloballyMuted]);
 
+  // 🔥 FIX 1: AutoPlay Observer yang Anti-Reset 🔥
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
 
-    const playedElements = new WeakSet<HTMLMediaElement>();
+    const activeMediaRef = new Set<string>(); // Cukup inget ID-nya
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const audio = entry.target.querySelector(".post-audio-element") as HTMLAudioElement;
-          const video = entry.target.querySelector(".post-video-element") as HTMLVideoElement;
+          const card = entry.target;
+          const postId = card.getAttribute("data-postid");
+          const audio = card.querySelector(".post-audio-element") as HTMLAudioElement;
+          const video = card.querySelector(".post-video-element") as HTMLVideoElement;
           const media = audio || video; 
 
-          if (!media) return;
+          if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            if (playedElements.has(media)) {
+            // Kalau udah dicatat aktif, jangan di-play dari awal
+            if (!activeMediaRef.has(postId)) {
+              
+              // Matiin semua media lain secara fisik
+              document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+                if (el !== media && !el.paused) {
+                  el.pause();
+                }
+              });
+
+              activeMediaRef.add(postId);
               media.muted = isMutedRef.current;
-              if (media.paused) media.play().catch(() => {});
-              return;
+              // Tarik waktu ke 0 cuma saat pertama kali MASUK layar
+              media.currentTime = 0; 
+              
+              media.play().catch(() => {
+                 // Sembunyiin error DOM kalau dipaksa play sebelum user interaksi
+              });
+            } else {
+              // Udah aktif? Cukup pastiin dia play (tanpa reset currentTime)
+              media.muted = isMutedRef.current;
+              if (media.paused) media.play().catch(()=>{});
             }
 
-            document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-              if (el !== media) {
-                el.pause();
-                playedElements.delete(el);
-              }
-            });
-
-            playedElements.add(media);
-            media.muted = isMutedRef.current;
-            media.play().catch(() => {});
           } else {
+            // Keluar layar
             media.pause();
-            playedElements.delete(media);
+            activeMediaRef.delete(postId);
           }
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.6 } // Trigger saat 60% postingan kelihatan
     );
+
     document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
   };
 
@@ -583,12 +609,13 @@ export default function Gallerypost() {
                       {suggestedPosts.map(sp => {
                         const img = sp.image_url ? sp.image_url.split(',')[0] : '';
                         return (
+                          // 🔥 FIX 2: Klik Rekomendasi (Ubah pake Jurus Nuklir sekalian) 🔥
                           <div 
                             key={`sugg-${String(sp.id)}`} 
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              router.push(`/post?id=${String(sp.id)}`);
+                              window.location.href = `/post?id=${String(sp.id)}`;
                             }}
                             style={{ 
                               minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', 
