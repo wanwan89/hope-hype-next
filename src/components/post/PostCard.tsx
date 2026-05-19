@@ -312,7 +312,8 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
-// Ganti bagian React.memo dengan ini:
+// Ganti bagian React.memo di PALING BAWAH file PostCard.tsx dengan ini:
+
 export default React.memo(PostCard, (prev, next) => {
   const pid = prev.post.id;
   const cid = prev.post.creator_id; // ID Pembuat Postingan
@@ -322,15 +323,24 @@ export default React.memo(PostCard, (prev, next) => {
     prev.isGloballyMuted === next.isGloballyMuted &&
     prev.poppingHeart === next.poppingHeart &&
     prev.activePreviewImage === next.activePreviewImage &&
+    
     // Gunakan cid untuk ngecek status follow/mutual
     prev.followedUsers.has(cid) === next.followedUsers.has(cid) &&
     prev.mutualUsers.has(cid) === next.mutualUsers.has(cid) &&
     prev.animatingFollows.has(cid) === next.animatingFollows.has(cid) &&
+    
     // Gunakan pid untuk cek interaksi post
     prev.counts[pid]?.likes === next.counts[pid]?.likes &&
     prev.counts[pid]?.comments === next.counts[pid]?.comments &&
+    // 🔥 INI YANG KEMARIN KETINGGALAN WKWK 🔥
+    prev.counts[pid]?.reposts === next.counts[pid]?.reposts && 
+    prev.counts[pid]?.saves === next.counts[pid]?.saves && 
+    
     prev.myLikedPosts.has(pid) === next.myLikedPosts.has(pid) &&
     prev.myRepostedPosts.has(pid) === next.myRepostedPosts.has(pid) &&
+    // 🔥 INI JUGA KETINGGALAN 🔥
+    prev.mySavedPosts.has(pid) === next.mySavedPosts.has(pid) && 
+    
     prev.animatingReposts.has(pid) === next.animatingReposts.has(pid) &&
     prev.likersMap[pid]?.length === next.likersMap[pid]?.length &&
     prev.repostersMap[pid]?.length === next.repostersMap[pid]?.length
