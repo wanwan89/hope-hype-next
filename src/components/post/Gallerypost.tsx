@@ -459,7 +459,6 @@ export default function Gallerypost() {
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
 
-    // 🔥 MEMORI BIAR VIDEO/AUDIO GA KERESET 🔥
     const playedElements = new WeakSet<HTMLMediaElement>();
 
     observerRef.current = new IntersectionObserver(
@@ -467,19 +466,17 @@ export default function Gallerypost() {
         entries.forEach((entry) => {
           const audio = entry.target.querySelector(".post-audio-element") as HTMLAudioElement;
           const video = entry.target.querySelector(".post-video-element") as HTMLVideoElement;
-          const media = audio || video; // Ambil mana yang ada
+          const media = audio || video; 
 
           if (!media) return;
 
           if (entry.isIntersecting) {
-            // Kalau media udah jalan, jangan di-reset waktunya!
             if (playedElements.has(media)) {
               media.muted = isMutedRef.current;
               if (media.paused) media.play().catch(() => {});
               return;
             }
 
-            // Matiin media lain yang gak di layar
             document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
               if (el !== media) {
                 el.pause();
@@ -487,12 +484,10 @@ export default function Gallerypost() {
               }
             });
 
-            // Putar media yang baru masuk layar
             playedElements.add(media);
             media.muted = isMutedRef.current;
             media.play().catch(() => {});
           } else {
-            // Kalau keluar layar, pause
             media.pause();
             playedElements.delete(media);
           }
@@ -588,7 +583,6 @@ export default function Gallerypost() {
                       {suggestedPosts.map(sp => {
                         const img = sp.image_url ? sp.image_url.split(',')[0] : '';
                         return (
-                          // 🔥 FIX KLIK REKOMENDASI (Ganti <a> jadi <div> & cegah tabrakan event) 🔥
                           <div 
                             key={`sugg-${String(sp.id)}`} 
                             onClick={(e) => {
@@ -620,7 +614,7 @@ export default function Gallerypost() {
                         );
                       })}
                     </div>
-
+                  </div>
                 )}
 
                 {/* 🔥 SLIDER REKOMENDASI TEMAN 🔥 */}
