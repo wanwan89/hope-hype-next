@@ -312,13 +312,25 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
-// PENTING: Pake props comparison spesifik buat cegah re-render gila-gilaan
 export default React.memo(PostCard, (prev, next) => {
+  const pid = prev.post.id;
   return (
-    prev.post.id === next.post.id &&
+    prev.post === next.post && // objek post sama
     prev.isGloballyMuted === next.isGloballyMuted &&
     prev.poppingHeart === next.poppingHeart &&
-    prev.counts[prev.post.id]?.likes === next.counts[next.post.id]?.likes &&
-    prev.counts[prev.post.id]?.comments === next.counts[next.post.id]?.comments
+    prev.activePreviewImage === next.activePreviewImage &&
+    prev.counts[pid]?.likes === next.counts[pid]?.likes &&
+    prev.counts[pid]?.comments === next.counts[pid]?.comments &&
+    prev.counts[pid]?.reposts === next.counts[pid]?.reposts &&
+    prev.counts[pid]?.saves === next.counts[pid]?.saves &&
+    prev.myLikedPosts.has(pid) === next.myLikedPosts.has(pid) &&
+    prev.myRepostedPosts.has(pid) === next.myRepostedPosts.has(pid) &&
+    prev.mySavedPosts.has(pid) === next.mySavedPosts.has(pid) &&
+    prev.followedUsers.has(pid) === next.followedUsers.has(pid) &&
+    prev.mutualUsers.has(pid) === next.mutualUsers.has(pid) &&
+    prev.animatingFollows.has(pid) === next.animatingFollows.has(pid) &&
+    prev.animatingReposts.has(pid) === next.animatingReposts.has(pid) &&
+    prev.likersMap[pid]?.length === next.likersMap[pid]?.length &&
+    prev.repostersMap[pid]?.length === next.repostersMap[pid]?.length
   );
 });
