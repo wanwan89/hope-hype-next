@@ -15,7 +15,8 @@ export default function PostPage() {
   const searchParams = useSearchParams();
   
   const postIdFromUrl = searchParams.get('id');
-  const source = searchParams.get('from'); 
+  const source = searchParams.get('from');        // e.g. 'profile', 'home'
+  const userIdParam = searchParams.get('userId'); 
 
   const [post, setPost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +64,7 @@ export default function PostPage() {
     } else {
       setIsLoading(false);
     }
-  }, [postIdFromUrl, source]);
+  }, [postIdFromUrl, source, userIdParam]);
 
   const initializePage = async () => {
     setIsLoading(true);
@@ -92,24 +93,21 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
-    // 🔥 FIX 2: Supaya nggak error 'undefined' atau salah profil, tanya langsung ke databasenya!
-    const { data: exactPost, error: errExact } = await supabase
-      .from('posts')
-      .select('creator_id')
-      .eq('id', postIdFromUrl)
-      .single();
-
-    if (errExact || !exactPost) {
-      setPost(null);
+    let targetUserId = userIdParam;
+    if (targetUserId === 'undefined' || !targetUserId) {
+      targetUserId = user?.id; // fallback ke user sendiri
+    }
+    
+    if (!targetUserId) {
       setIsLoading(false);
       return;
     }
 
-    const targetUserId = exactPost.creator_id; // Ini PASTI valid
-
     if (targetUserId !== user?.id) {
-       const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
-       if (profileData) setProfileUsername(profileData.username);
+      if(targetUserId !== 'undefined') {
+         const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
+         if (profileData) setProfileUsername(profileData.username);
+      }
     }
 
     const { data: postsData, error } = await supabase
@@ -213,7 +211,7 @@ export default function PostPage() {
     setActivePostIndex(newIndex);
     setPost(newPost);
     
-    const newUrl = `/post?id=${newPost.id}&from=profile`;
+    const newUrl = `/post?id=${newPost.id}&from=profile&userId=${newPost.creator_id}`;
     router.replace(newUrl, { scroll: false });
     
     fetchPostInteractions(newPost.id, currentUserRef.current);
@@ -318,7 +316,7 @@ export default function PostPage() {
     }
   }, []);
 
-  // 🔥 FIX 3: Observer Media yang Sabar Nunggu DOM Siap 🔥
+  // --- OBSERVER MEDIA ---
   useEffect(() => {
     if (!post) return;
     
@@ -344,7 +342,7 @@ export default function PostPage() {
       const cardEl = document.getElementById(`post-${post.id}`);
       if (cardEl) observerRef.current.observe(cardEl);
       
-    }, 500); // 500ms adalah sweet spot biar videonya ke-load dulu
+    }, 500);
 
     return () => { 
       clearTimeout(timer); 
@@ -354,6 +352,7 @@ export default function PostPage() {
 
   // --- LOGIKA JUDUL DINAMIS ---
   let headerTitle = "Detail Postingan";
+  
   if (source === 'profile' && post) {
     if (currentUser && post.creator_id === currentUser.id) {
        headerTitle = "Postingan Anda";
@@ -382,7 +381,7 @@ export default function PostPage() {
 
       {/* NAVIGASI PREV/NEXT KHUSUS MODE PROFIL */}
       {source === 'profile' && userPosts.length > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px 0', maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px 0', width: '100%' }}>
           <button
             onClick={() => navigateProfilePost('prev')}
             style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '8px 16px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -398,8 +397,8 @@ export default function PostPage() {
         </div>
       )}
 
-      {/* 🔥 FIX 1: KANDANG PEMBUNGKUS BIAR KARTUNYA GAK MELAR 🔥 */}
-      <div style={{ marginTop: '10px', maxWidth: '500px', margin: '10px auto', padding: '0 10px' }}>
+      {/* 🔥 KONTEN POSTINGAN FULL WIDTH / EDGE TO EDGE 🔥 */}
+      <div style={{ width: '100%', marginTop: '10px' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center' }}>
             <div className="pure-spinner" style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
@@ -410,7 +409,7 @@ export default function PostPage() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div className="gallery" id="mainGallery">
+          <div id="mainGallery" style={{ width: '100%' }}>
             <PostCard
               post={post}
               currentUser={currentUser}
