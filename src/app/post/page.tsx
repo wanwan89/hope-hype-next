@@ -15,8 +15,7 @@ export default function PostPage() {
   const searchParams = useSearchParams();
   
   const postIdFromUrl = searchParams.get('id');
-  const source = searchParams.get('from');        // e.g. 'profile', 'home'
-  const userIdParam = searchParams.get('userId'); 
+  const source = searchParams.get('from'); 
 
   const [post, setPost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,13 +41,13 @@ export default function PostPage() {
   
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
-
   const lastTapRef = useRef<Record<string, number>>({});
 
   // Mode profil
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [activePostIndex, setActivePostIndex] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string>('');
+  const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
 
   // Observer
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -64,7 +63,7 @@ export default function PostPage() {
     } else {
       setIsLoading(false);
     }
-  }, [postIdFromUrl, source, userIdParam]);
+  }, [postIdFromUrl, source]);
 
   const initializePage = async () => {
     setIsLoading(true);
@@ -93,21 +92,29 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
-    let targetUserId = userIdParam;
-    if (targetUserId === 'undefined' || !targetUserId) {
-      targetUserId = user?.id; // fallback ke user sendiri
-    }
-    
-    if (!targetUserId) {
+    // 🔥 FIX 1: TANYA KE DATABASE LANGSUNG! (Anti-salah profil) 🔥
+    const { data: exactPost, error: errExact } = await supabase
+      .from('posts')
+      .select('creator_id')
+      .eq('id', postIdFromUrl)
+      .single();
+
+    if (errExact || !exactPost) {
+      setPost(null);
       setIsLoading(false);
       return;
     }
 
-    if (targetUserId !== user?.id) {
-      if(targetUserId !== 'undefined') {
-         const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
-         if (profileData) setProfileUsername(profileData.username);
-      }
+    const targetUserId = exactPost.creator_id; // PASTI AKURAT 100%
+
+    // Tentukan apakah ini profil kita sendiri atau orang lain
+    const isMe = user && targetUserId === user.id;
+    setIsMyOwnProfile(isMe);
+
+    // Ambil username buat header kalau ini profil orang lain
+    if (!isMe) {
+      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
+      if (profileData) setProfileUsername(profileData.username);
     }
 
     const { data: postsData, error } = await supabase
@@ -211,7 +218,7 @@ export default function PostPage() {
     setActivePostIndex(newIndex);
     setPost(newPost);
     
-    const newUrl = `/post?id=${newPost.id}&from=profile&userId=${newPost.creator_id}`;
+    const newUrl = `/post?id=${newPost.id}&from=profile`;
     router.replace(newUrl, { scroll: false });
     
     fetchPostInteractions(newPost.id, currentUserRef.current);
@@ -326,7 +333,6 @@ export default function PostPage() {
       observerRef.current = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           const media = entry.target.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
-          
           if (!media) return;
 
           if (entry.isIntersecting) {
@@ -338,11 +344,10 @@ export default function PostPage() {
         });
       }, { threshold: 0.5 });
 
-      // Ikat ke elemen spesifik!
       const cardEl = document.getElementById(`post-${post.id}`);
       if (cardEl) observerRef.current.observe(cardEl);
       
-    }, 500);
+    }, 400);
 
     return () => { 
       clearTimeout(timer); 
@@ -352,9 +357,8 @@ export default function PostPage() {
 
   // --- LOGIKA JUDUL DINAMIS ---
   let headerTitle = "Detail Postingan";
-  
   if (source === 'profile' && post) {
-    if (currentUser && post.creator_id === currentUser.id) {
+    if (isMyOwnProfile) {
        headerTitle = "Postingan Anda";
     } else {
        headerTitle = `Postingan ${profileUsername || post.profiles?.username || 'User'}`;
@@ -397,7 +401,7 @@ export default function PostPage() {
         </div>
       )}
 
-      {/* 🔥 KONTEN POSTINGAN FULL WIDTH / EDGE TO EDGE 🔥 */}
+      {/* 🔥 FIX 2: STRUKTUR HTML "EDGE-TO-EDGE" MURNI KAYA DI BERANDA 🔥 */}
       <div style={{ width: '100%', marginTop: '10px' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -409,7 +413,7 @@ export default function PostPage() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div id="mainGallery" style={{ width: '100%' }}>
+          <div className="gallery" id="mainGallery" style={{ width: '100%', margin: 0, padding: 0 }}>
             <PostCard
               post={post}
               currentUser={currentUser}
