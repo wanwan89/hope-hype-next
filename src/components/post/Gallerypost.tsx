@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
@@ -23,10 +23,9 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// Memoized PostCard untuk cegah audio restart
+// ---------- Optimized Memo Wrapper ----------
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
-
   if (prevProps.post !== nextProps.post) return false;
   if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
   if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
@@ -51,6 +50,57 @@ const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   return true;
 });
 
+// Memo untuk slider rekomendasi
+const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
+  if (!posts.length) return null;
+  return (
+    <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
+        <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
+        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
+      </div>
+      <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px' }}>
+        {posts.map(sp => {
+          const img = sp.image_url ? sp.image_url.split(',')[0] : '';
+          return (
+            <div
+              key={`sugg-${String(sp.id)}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/post?id=${String(sp.id)}&from=home`; }}
+              style={{
+                minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px',
+                overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start',
+                cursor: 'pointer', display: 'flex', flexDirection: 'column'
+              }}
+            >
+              <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
+                <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div style={{ padding: '10px' }}>
+                <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {sp.bio || 'Tanpa Caption'}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {sp.profiles?.username}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+MemoizedSlider.displayName = 'MemoizedSlider';
+
+// Memo untuk SuggestedUsers
+const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) => 
+  prev.myId === next.myId && prev.followedUsers === next.followedUsers
+);
+
+// ---------- Gallerypost ----------
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -63,13 +113,13 @@ export default function Gallerypost() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
-  
+
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
-  
+
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; reposts: number; saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
@@ -80,7 +130,7 @@ export default function Gallerypost() {
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
-  
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const activeMediaRef = useRef<Set<string>>(new Set());
 
@@ -95,16 +145,14 @@ export default function Gallerypost() {
   const isMutedRef = useRef(true);
   const POSTS_PER_PAGE = 15;
 
-  // State modal dengan flag isUnrepost
-  const [repostModal, setRepostModal] = useState<{ 
-    isOpen: boolean; 
-    postId: string; 
-    creatorId: string; 
+  const [repostModal, setRepostModal] = useState<{
+    isOpen: boolean;
+    postId: string;
+    creatorId: string;
     isUnrepost: boolean;
   } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
-  // Refs untuk menghindari closure basi
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -125,26 +173,15 @@ export default function Gallerypost() {
     };
   }, []);
 
-  // MutationObserver untuk re-attach Autoplay & View saat Virtuoso render
+  // Observer dipasang ulang hanya saat posts berubah, bukan setiap DOM mutate
   useEffect(() => {
-    const gallery = document.getElementById('mainGallery');
-    if (!gallery) return;
-
-    let timeout: NodeJS.Timeout;
-    const mutationObserver = new MutationObserver(() => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        initAutoPlayObserver();
-        initViewTrackingObserver();
-      }, 300);
-    });
-
-    mutationObserver.observe(gallery, { childList: true, subtree: true });
-    return () => {
-      mutationObserver.disconnect();
-      clearTimeout(timeout);
-    };
-  }, []);
+    if (posts.length === 0) return;
+    const timer = setTimeout(() => {
+      initAutoPlayObserver();
+      initViewTrackingObserver();
+    }, 400); // sedikit jeda agar Virtuoso selesai render
+    return () => clearTimeout(timer);
+  }, [posts]);
 
   // Event listener comment
   useEffect(() => {
@@ -153,10 +190,7 @@ export default function Gallerypost() {
       if (postId) {
         setCounts((prev) => ({
           ...prev,
-          [postId]: {
-            ...prev[postId],
-            comments: (prev[postId]?.comments || 0) + 1,
-          },
+          [postId]: { ...prev[postId], comments: (prev[postId]?.comments || 0) + 1 },
         }));
       }
     };
@@ -176,10 +210,7 @@ export default function Gallerypost() {
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, [currentUser, mutualUsers]);
 
-  // Init
-  useEffect(() => {
-    initGallery();
-  }, []);
+  useEffect(() => { initGallery(); }, []);
 
   const initGallery = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -208,7 +239,8 @@ export default function Gallerypost() {
 
   const fetchSuggestedPosts = async () => {
     try {
-      const { data } = await supabase.from('posts').select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)').eq('status', 'approved').eq('is_private', false).neq('image_url', null).limit(20);
+      const { data } = await supabase.from('posts').select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)')
+        .eq('status', 'approved').eq('is_private', false).neq('image_url', null).limit(20);
       if (data) {
         setSuggestedPosts(data.sort(() => 0.5 - Math.random()).slice(0, 6));
         setRandomSliderIndex(Math.floor(Math.random() * 2) + 1);
@@ -225,7 +257,8 @@ export default function Gallerypost() {
       const from = (pageNumber - 1) * POSTS_PER_PAGE;
       const to = from + POSTS_PER_PAGE - 1;
 
-      let query = supabase.from("posts").select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`).eq("status", "approved").order("created_at", { ascending: false }).range(from, to);
+      let query = supabase.from("posts").select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
+        .eq("status", "approved").order("created_at", { ascending: false }).range(from, to);
       if (category && category !== "all") query = query.ilike("category", `%${category.trim()}%`);
 
       const { data: rawPosts } = await query;
@@ -237,65 +270,47 @@ export default function Gallerypost() {
       });
 
       setHasMore((rawPosts || []).length === POSTS_PER_PAGE);
-
-      if (category === "all" && !isLoadMore) {
-        fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
-      }
+      if (category === "all" && !isLoadMore) fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
 
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map((p) => p.id);
-
-        // 🔥 PERBAIKAN: Gunakan RPC untuk bookmark (bypass RLS)
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
           supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
-          supabase.rpc('get_bookmark_counts', { post_ids: postIds }) // <-- pakai RPC
+          supabase.rpc('get_bookmark_counts', { post_ids: postIds }),
         ]);
 
         const newCounts: any = {};
         const newLikersMap: any = {};
         const newRepostersMap: any = {};
-
         postIds.forEach((id) => {
           newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
           newLikersMap[id] = [];
           newRepostersMap[id] = [];
         });
 
-        likesRes.data?.forEach((l) => {
-          if (newCounts[l.post_id]) {
-            newCounts[l.post_id].likes++;
-            if (l.profiles) newLikersMap[l.post_id].push(l.profiles);
-          }
-        });
-
+        likesRes.data?.forEach((l) => { if (newCounts[l.post_id]) { newCounts[l.post_id].likes++; if (l.profiles) newLikersMap[l.post_id].push(l.profiles); } });
         commentsRes.data?.forEach((c) => { if (newCounts[c.post_id]) newCounts[c.post_id].comments++; });
-        repostsRes.data?.forEach((r) => {
-          if (newCounts[r.post_id]) {
-            newCounts[r.post_id].reposts++;
-            if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note });
-          }
-        });
-
-        // Proses hasil RPC savesRes: { post_id, count }
-        (savesRes.data || []).forEach((s: any) => {
-          if (newCounts[s.post_id]) newCounts[s.post_id].saves = Number(s.count);
-        });
+        repostsRes.data?.forEach((r) => { if (newCounts[r.post_id]) { newCounts[r.post_id].reposts++; if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note }); } });
+        (savesRes.data || []).forEach((s: any) => { if (newCounts[s.post_id]) newCounts[s.post_id].saves = Number(s.count); });
 
         setCounts((prev) => (isLoadMore ? { ...prev, ...newCounts } : newCounts));
         setLikersMap((prev) => (isLoadMore ? { ...prev, ...newLikersMap } : newLikersMap));
         setRepostersMap((prev) => (isLoadMore ? { ...prev, ...newRepostersMap } : newRepostersMap));
 
         if (userObj) {
-          const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
-          const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
-          // Untuk mySaves tetap gunakan tabel langsung karena hanya untuk user login (RLS memperbolehkan)
-          const { data: mySaves } = await supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
-
-          setMyLikedPosts(isLoadMore ? new Set([...myLikedPosts, ...(myLikes?.map((l) => String(l.post_id)) || [])]) : new Set(myLikes?.map((l) => String(l.post_id))));
-          setMyRepostedPosts(isLoadMore ? new Set([...myRepostedPosts, ...(myReposts?.map((r) => String(r.post_id)) || [])]) : new Set(myReposts?.map((r) => String(r.post_id))));
-          setMySavedPosts(isLoadMore ? new Set([...mySavedPosts, ...(mySaves?.map((s) => String(s.post_id)) || [])]) : new Set(mySaves?.map((s) => String(s.post_id))));
+          const [myLikes, myReposts, mySaves] = await Promise.all([
+            supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
+            supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
+            supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
+          ]);
+          const likeIds = new Set(myLikes.data?.map(l => String(l.post_id)));
+          const repostIds = new Set(myReposts.data?.map(r => String(r.post_id)));
+          const saveIds = new Set(mySaves.data?.map(s => String(s.post_id)));
+          setMyLikedPosts(isLoadMore ? new Set([...myLikedPosts, ...likeIds]) : likeIds);
+          setMyRepostedPosts(isLoadMore ? new Set([...myRepostedPosts, ...repostIds]) : repostIds);
+          setMySavedPosts(isLoadMore ? new Set([...mySavedPosts, ...saveIds]) : saveIds);
         }
       }
 
@@ -312,7 +327,7 @@ export default function Gallerypost() {
     }
   };
 
-  // Stable handlers
+  // Handlers (tetap seperti sebelumnya, tidak berubah)
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
       window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
@@ -323,22 +338,15 @@ export default function Gallerypost() {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     if (currentUserRef.current.id === creatorId) return;
-
     const isFollowing = followedUsersRef.current.has(creatorId);
-    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
-
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
-
     try {
-      if (isFollowing) {
-        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      } else {
+      if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
+      else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error || error.code === '23505') {
-          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
-        }
+        if (!error || error.code === '23505') { if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" }); }
       }
     } catch (err) {}
   }, []);
@@ -347,18 +355,13 @@ export default function Gallerypost() {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
-
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
-
     try {
-      if (isLiked) {
-        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
+      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
-        }
+        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
       }
     } catch (err) {}
   }, []);
@@ -366,75 +369,38 @@ export default function Gallerypost() {
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
-
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
       if (imageUrl) {
-        setTimeout(() => {
-          if (lastTapRef.current[postId] === now) {
-            setActivePreviewImage(imageUrl);
-            lastTapRef.current[postId] = 0;
-          }
-        }, 360);
+        setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
       }
     }
   }, [handleLike]);
 
-  // 🔥 handleConfirmRepost sekarang menggunakan state modal
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
     const { postId, creatorId, isUnrepost } = repostModal;
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
-
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
-
     const wasReposted = myRepostedPostsRef.current.has(postId);
-
-    setMyRepostedPosts((prev) => { 
-      const n = new Set(prev); 
-      isUnrepost ? n.delete(postId) : n.add(postId); 
-      return n; 
-    });
-    
-    setCounts((prev) => ({ 
-      ...prev, 
-      [postId]: { 
-        ...prev[postId], 
-        reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) 
-      } 
-    }));
-
+    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
     try {
-      if (isUnrepost) {
-        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
+      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
-        
         if (error) {
-          console.error("Gagal Repost:", error.message);
-          // Rollback
-          setMyRepostedPosts((prev) => { 
-            const n = new Set(prev); 
-            wasReposted ? n.add(postId) : n.delete(postId); 
-            return n; 
-          });
-          setCounts((prev) => ({ 
-            ...prev, 
-            [postId]: { 
-              ...prev[postId], 
-              reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) 
-            } 
-          }));
+          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
+          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
         }
       }
     } catch (err) {}
@@ -442,32 +408,20 @@ export default function Gallerypost() {
 
   const openRepostModal = useCallback((postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-    
     const alreadyReposted = myRepostedPostsRef.current.has(postId);
     setRepostNote("");
-    setRepostModal({
-      isOpen: true,
-      postId,
-      creatorId,
-      isUnrepost: alreadyReposted
-    });
+    setRepostModal({ isOpen: true, postId, creatorId, isUnrepost: alreadyReposted });
   }, []);
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
-
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
-
     try {
-      if (isSaved) {
-        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
-        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (error && error.code !== "23505") console.error(error);
-      }
+      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else { const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }); if (error && error.code !== "23505") console.error(error); }
     } catch (err) {}
   }, []);
 
@@ -481,72 +435,56 @@ export default function Gallerypost() {
     });
   }, []);
 
-  // Observer autoplay
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const card = entry.target;
-          const postId = card.getAttribute("data-postid");
-          const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement; 
-
-          if (!media || !postId) return;
-
-          if (entry.isIntersecting) {
-            if (!activeMediaRef.current.has(postId)) {
-              document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-                if (el !== media && !el.paused) el.pause();
-              });
-
-              activeMediaRef.current.add(postId); 
-              media.muted = isMutedRef.current;
-              media.currentTime = 0; 
-              media.play().catch(() => {});
-            } else {
-              media.muted = isMutedRef.current;
-              if (media.paused) media.play().catch(()=>{});
-            }
+    observerRef.current = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const card = entry.target;
+        const postId = card.getAttribute("data-postid");
+        const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
+        if (!media || !postId) return;
+        if (entry.isIntersecting) {
+          if (!activeMediaRef.current.has(postId)) {
+            document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { if (el !== media && !el.paused) el.pause(); });
+            activeMediaRef.current.add(postId);
+            media.muted = isMutedRef.current;
+            media.currentTime = 0;
+            media.play().catch(() => {});
           } else {
-            media.pause();
-            activeMediaRef.current.delete(postId);
+            media.muted = isMutedRef.current;
+            if (media.paused) media.play().catch(() => {});
           }
-        });
-      },
-      { threshold: 0.6 }
-    );
-
+        } else {
+          media.pause();
+          activeMediaRef.current.delete(postId);
+        }
+      });
+    }, { threshold: 0.6 });
     document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
   };
 
   const initViewTrackingObserver = () => {
     if (viewObserverRef.current) viewObserverRef.current.disconnect();
     viewObserverRef.current = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          const postId = entry.target.getAttribute("data-postid");
-          if (!postId) return;
-
-          if (entry.isIntersecting) {
-            if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
-              viewTimersRef.current[postId] = setTimeout(async () => {
-                viewedPostsRef.current.add(postId);
-                delete viewTimersRef.current[postId];
-                try {
-                  const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
-                  await supabase.from("posts").update({ views: (data?.views || 0) + 1 }).eq("id", postId);
-                } catch (err) {}
-              }, 2000);
-            }
-          } else {
-            if (viewTimersRef.current[postId]) {
-              clearTimeout(viewTimersRef.current[postId]);
+      entries.forEach((entry) => {
+        const postId = entry.target.getAttribute("data-postid");
+        if (!postId) return;
+        if (entry.isIntersecting) {
+          if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
+            viewTimersRef.current[postId] = setTimeout(async () => {
+              viewedPostsRef.current.add(postId);
               delete viewTimersRef.current[postId];
-            }
+              try {
+                const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
+                await supabase.from("posts").update({ views: (data?.views || 0) + 1 }).eq("id", postId);
+              } catch (err) {}
+            }, 2000);
           }
-        });
-      }, { threshold: 0.6 }
-    );
+        } else {
+          if (viewTimersRef.current[postId]) { clearTimeout(viewTimersRef.current[postId]); delete viewTimersRef.current[postId]; }
+        }
+      });
+    }, { threshold: 0.6 });
     document.querySelectorAll(".card[data-postid]").forEach((card) => { viewObserverRef.current?.observe(card); });
   };
 
@@ -560,13 +498,13 @@ export default function Gallerypost() {
         .slider-recommendation::-webkit-scrollbar { display: none; }
       `}</style>
 
-      <RepostModal 
-        isOpen={!!repostModal} 
-        postId={repostModal?.postId || ''} 
-        creatorId={repostModal?.creatorId || ''} 
-        note={repostNote} 
-        setNote={setRepostNote} 
-        onClose={() => setRepostModal(null)} 
+      <RepostModal
+        isOpen={!!repostModal}
+        postId={repostModal?.postId || ''}
+        creatorId={repostModal?.creatorId || ''}
+        note={repostNote}
+        setNote={setRepostNote}
+        onClose={() => setRepostModal(null)}
         onConfirm={handleConfirmRepost}
         isUnrepost={repostModal?.isUnrepost || false}
       />
@@ -582,29 +520,11 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            overscan={500}
+            overscan={200} // lebih rendah agar rendering lebih ringan
             itemContent={(index, post) => (
               <React.Fragment key={post.id}>
-                {index === randomSliderIndex && suggestedPosts.length > 0 && (
-                  <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}><span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span><h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3></div>
-                    <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px' }}>
-                      {suggestedPosts.map(sp => {
-                        const img = sp.image_url ? sp.image_url.split(',')[0] : '';
-                        return (
-                          <div key={`sugg-${String(sp.id)}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/post?id=${String(sp.id)}&from=home`; }} style={{ minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}><img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
-                            <div style={{ padding: '10px' }}><p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sp.bio || 'Tanpa Caption'}</p>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" /><span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sp.profiles?.username}</span></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {index === randomFriendIndex && <SuggestedUsers myId={currentUser?.id} followedUsers={followedUsers} />}
-                
+                {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
+                {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
                 <MemoizedPostCard
                   post={post}
                   currentUser={currentUser}
@@ -620,7 +540,7 @@ export default function Gallerypost() {
                   isGloballyMuted={isGloballyMuted}
                   poppingHeart={poppingHeart}
                   activePreviewImage={activePreviewImage}
-                  likersMap={likersMap} 
+                  likersMap={likersMap}
                   repostersMap={repostersMap}
                   handleLike={handleLike}
                   handleSave={handleSave}

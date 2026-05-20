@@ -1,158 +1,61 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/navigation';
 import { sendPushAndAppNotif } from '@/lib/notif';
-import PostCard from './PostCard';
-import RepostModal from './RepostModal';
-import ImagePreview from './ImagePreview';
-import SuggestedUsers from './SuggestedUsers';
-import { Virtuoso } from 'react-virtuoso';
-import './Gallery.css';
+import PostCard from '@/components/post/PostCard';
+import RepostModal from '@/components/post/RepostModal';
+import ImagePreview from '@/components/post/ImagePreview';
+import '@/components/post/Gallery.css';
 
-// Helper
-const getOptimizedImage = (url: string) => {
-  if (!url) return '';
-  let cleanUrl = url.trim();
-  if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
-    return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_800/');
-  }
-  return cleanUrl;
-};
-
-// ---------- Optimized Memo Wrapper ----------
-const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
-  const pid = prevProps.post.id;
-  if (prevProps.post !== nextProps.post) return false;
-  if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
-  if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
-  if (prevProps.mySavedPosts.has(pid) !== nextProps.mySavedPosts.has(pid)) return false;
-
-  const prevCount = prevProps.counts[pid];
-  const nextCount = nextProps.counts[pid];
-  if (JSON.stringify(prevCount) !== JSON.stringify(nextCount)) return false;
-
-  if (prevProps.poppingHeart !== nextProps.poppingHeart && (prevProps.poppingHeart === pid || nextProps.poppingHeart === pid)) return false;
-  if (prevProps.animatingFollows.has(prevProps.post.creator_id) !== nextProps.animatingFollows.has(nextProps.post.creator_id)) return false;
-  if (prevProps.animatingReposts.has(pid) !== nextProps.animatingReposts.has(pid)) return false;
-  if (prevProps.isGloballyMuted !== nextProps.isGloballyMuted) return false;
-  if (prevProps.activePreviewImage !== nextProps.activePreviewImage) return false;
-
-  if (prevProps.followedUsers.has(prevProps.post.creator_id) !== nextProps.followedUsers.has(nextProps.post.creator_id)) return false;
-  if (prevProps.mutualUsers.has(prevProps.post.creator_id) !== nextProps.mutualUsers.has(nextProps.post.creator_id)) return false;
-
-  if (prevProps.likersMap[pid] !== nextProps.likersMap[pid]) return false;
-  if (prevProps.repostersMap[pid] !== nextProps.repostersMap[pid]) return false;
-
-  return true;
-});
-
-// Memo untuk slider rekomendasi
-const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
-  if (!posts.length) return null;
-  return (
-    <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
-        <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
-        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
-      </div>
-      <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px' }}>
-        {posts.map(sp => {
-          const img = sp.image_url ? sp.image_url.split(',')[0] : '';
-          return (
-            <div
-              key={`sugg-${String(sp.id)}`}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/post?id=${String(sp.id)}&from=home`; }}
-              style={{
-                minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px',
-                overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start',
-                cursor: 'pointer', display: 'flex', flexDirection: 'column'
-              }}
-            >
-              <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
-                <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-              <div style={{ padding: '10px' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {sp.bio || 'Tanpa Caption'}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {sp.profiles?.username}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-});
-MemoizedSlider.displayName = 'MemoizedSlider';
-
-// Memo untuk SuggestedUsers
-const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) => 
-  prev.myId === next.myId && prev.followedUsers === next.followedUsers
-);
-
-// ---------- Gallerypost ----------
-export default function Gallerypost() {
+export default function PostPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const postIdFromUrl = searchParams.get('id');
+  const source = searchParams.get('from'); 
 
-  const [posts, setPosts] = useState<any[]>([]);
-  const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
-  const [randomSliderIndex, setRandomSliderIndex] = useState(2);
-  const [randomFriendIndex, setRandomFriendIndex] = useState(4);
-
+  const [post, setPost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
+  // States Interaksi
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
-
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; reposts: number; saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
+
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
+  const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
+  const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
+  const [repostNote, setRepostNote] = useState("");
+  
+  const [isGloballyMuted, setIsGloballyMuted] = useState(true);
+  const isMutedRef = useRef(true);
 
-  const viewObserverRef = useRef<IntersectionObserver | null>(null);
-  const viewedPostsRef = useRef<Set<string>>(new Set());
-  const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const lastTapRef = useRef<Record<string, number>>({});
 
+  // Mode profil
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [activePostIndex, setActivePostIndex] = useState(0);
+  const [profileUsername, setProfileUsername] = useState<string>('');
+  const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
+
+  // Observer autoplay
   const observerRef = useRef<IntersectionObserver | null>(null);
   const activeMediaRef = useRef<Set<string>>(new Set());
 
-  const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
-  const lastTapRef = useRef<Record<string, number>>({});
-  const [currentCategory, setCurrentCategory] = useState("all");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  const [isGloballyMuted, setIsGloballyMuted] = useState(true);
-  const isMutedRef = useRef(true);
-  const POSTS_PER_PAGE = 15;
-
-  const [repostModal, setRepostModal] = useState<{
-    isOpen: boolean;
-    postId: string;
-    creatorId: string;
-    isUnrepost: boolean;
-  } | null>(null);
-  const [repostNote, setRepostNote] = useState("");
-
+  // Refs untuk menghindari closure basi
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -164,189 +67,197 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // Cleanup observers
   useEffect(() => {
-    return () => {
-      if (viewObserverRef.current) viewObserverRef.current.disconnect();
-      if (observerRef.current) observerRef.current.disconnect();
-      Object.values(viewTimersRef.current).forEach(clearTimeout);
-    };
-  }, []);
+    if (postIdFromUrl) {
+      initializePage();
+    } else {
+      setIsLoading(false);
+    }
+  }, [postIdFromUrl, source]);
 
-  // Observer dipasang ulang hanya saat posts berubah, bukan setiap DOM mutate
-  useEffect(() => {
-    if (posts.length === 0) return;
-    const timer = setTimeout(() => {
-      initAutoPlayObserver();
-      initViewTrackingObserver();
-    }, 400); // sedikit jeda agar Virtuoso selesai render
-    return () => clearTimeout(timer);
-  }, [posts]);
-
-  // Event listener comment
-  useEffect(() => {
-    const handleCommentRefresh = (e: any) => {
-      const postId = String(e.detail.postId);
-      if (postId) {
-        setCounts((prev) => ({
-          ...prev,
-          [postId]: { ...prev[postId], comments: (prev[postId]?.comments || 0) + 1 },
-        }));
-      }
-    };
-    window.addEventListener('commentAdded', handleCommentRefresh);
-    return () => window.removeEventListener('commentAdded', handleCommentRefresh);
-  }, []);
-
-  // Category change
-  useEffect(() => {
-    const handleCategoryChange = (e: any) => {
-      const newCat = e.detail.category;
-      setCurrentCategory(newCat);
-      setPage(1);
-      fetchPosts(newCat, currentUser, 1, false, mutualUsers);
-    };
-    window.addEventListener('changeCategory', handleCategoryChange);
-    return () => window.removeEventListener('changeCategory', handleCategoryChange);
-  }, [currentUser, mutualUsers]);
-
-  useEffect(() => { initGallery(); }, []);
-
-  const initGallery = async () => {
+  const initializePage = async () => {
+    setIsLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user || null;
     setCurrentUser(user);
 
-    let currentMutuals = new Set<string>();
     if (user) {
       const [followsRes, followersRes] = await Promise.all([
         supabase.from('followers').select('following_id').eq('follower_id', user.id),
         supabase.from('followers').select('follower_id').eq('following_id', user.id),
       ]);
-      if (followsRes.data) {
-        const followingSet = new Set(followsRes.data.map((f) => String(f.following_id)));
-        setFollowedUsers(followingSet);
-        if (followersRes.data) {
-          const followerSet = new Set(followersRes.data.map((f) => String(f.follower_id)));
-          currentMutuals = new Set([...followingSet].filter((x) => followerSet.has(x)));
-          setMutualUsers(currentMutuals);
-        }
+      if (followsRes.data) setFollowedUsers(new Set(followsRes.data.map(f => String(f.following_id))));
+      if (followsRes.data && followersRes.data) {
+        const followerSet = new Set(followersRes.data.map(f => String(f.follower_id)));
+        const mutuals = new Set(followsRes.data.map(f => String(f.following_id)).filter(x => followerSet.has(x)));
+        setMutualUsers(mutuals);
       }
     }
-    await fetchPosts("all", user, 1, false, currentMutuals);
-    await fetchSuggestedPosts();
+
+    if (source === 'profile') {
+      await loadProfileMode(user);
+    } else {
+      await loadSinglePost(postIdFromUrl!, user);
+    }
   };
 
-  const fetchSuggestedPosts = async () => {
+  const loadProfileMode = async (user: any) => {
+    const { data: exactPost, error: errExact } = await supabase
+      .from('posts')
+      .select('creator_id')
+      .eq('id', postIdFromUrl)
+      .single();
+
+    if (errExact || !exactPost) {
+      setPost(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const targetUserId = exactPost.creator_id; 
+
+    const isMe = user && targetUserId === user.id;
+    setIsMyOwnProfile(isMe);
+
+    if (!isMe) {
+      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
+      if (profileData) setProfileUsername(profileData.username);
+    }
+
+    const { data: postsData, error } = await supabase
+      .from('posts')
+      .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
+      .eq('creator_id', targetUserId)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+
+    if (error || !postsData) {
+      setPost(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const filtered = postsData.filter(p => {
+      if (!p.profiles?.is_private) return true;
+      if (user && p.creator_id === user.id) return true;
+      if (user && mutualUsers.has(p.creator_id)) return true;
+      return false;
+    });
+
+    setUserPosts(filtered);
+
+    const idx = filtered.findIndex(p => String(p.id) === postIdFromUrl);
+    const startIdx = idx >= 0 ? idx : 0;
+    setActivePostIndex(startIdx);
+    
+    const activePost = filtered[startIdx] || null;
+    setPost(activePost);
+
+    if (activePost) {
+      await fetchPostInteractions(activePost.id, user);
+    }
+
+    setIsLoading(false);
+  };
+
+  const loadSinglePost = async (id: string, user: any) => {
     try {
-      const { data } = await supabase.from('posts').select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)')
-        .eq('status', 'approved').eq('is_private', false).neq('image_url', null).limit(20);
-      if (data) {
-        setSuggestedPosts(data.sort(() => 0.5 - Math.random()).slice(0, 6));
-        setRandomSliderIndex(Math.floor(Math.random() * 2) + 1);
-        setRandomFriendIndex(Math.floor(Math.random() * 2) + 3);
-      }
-    } catch (err) {}
-  };
+      const { data: postData, error } = await supabase
+        .from('posts')
+        .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
+        .eq('id', id)
+        .single();
 
-  const fetchPosts = async (category = "all", userObj = currentUser, pageNumber = 1, isLoadMore = false, mutuals = mutualUsers) => {
-    if (isLoadMore) setIsLoadingMore(true);
-    else setIsLoading(true);
-
-    try {
-      const from = (pageNumber - 1) * POSTS_PER_PAGE;
-      const to = from + POSTS_PER_PAGE - 1;
-
-      let query = supabase.from("posts").select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
-        .eq("status", "approved").order("created_at", { ascending: false }).range(from, to);
-      if (category && category !== "all") query = query.ilike("category", `%${category.trim()}%`);
-
-      const { data: rawPosts } = await query;
-      let fetchedPosts = (rawPosts || []).filter((post) => {
-        if (!post.profiles?.is_private) return true;
-        if (userObj && post.creator_id === userObj.id) return true;
-        if (userObj && mutuals.has(post.creator_id)) return true;
-        return false;
-      });
-
-      setHasMore((rawPosts || []).length === POSTS_PER_PAGE);
-      if (category === "all" && !isLoadMore) fetchedPosts = [...fetchedPosts].sort(() => Math.random() - 0.5);
-
-      if (fetchedPosts.length > 0) {
-        const postIds = fetchedPosts.map((p) => p.id);
-        const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
-          supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
-          supabase.from("comments").select("post_id").in("post_id", postIds),
-          supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
-          supabase.rpc('get_bookmark_counts', { post_ids: postIds }),
-        ]);
-
-        const newCounts: any = {};
-        const newLikersMap: any = {};
-        const newRepostersMap: any = {};
-        postIds.forEach((id) => {
-          newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
-          newLikersMap[id] = [];
-          newRepostersMap[id] = [];
-        });
-
-        likesRes.data?.forEach((l) => { if (newCounts[l.post_id]) { newCounts[l.post_id].likes++; if (l.profiles) newLikersMap[l.post_id].push(l.profiles); } });
-        commentsRes.data?.forEach((c) => { if (newCounts[c.post_id]) newCounts[c.post_id].comments++; });
-        repostsRes.data?.forEach((r) => { if (newCounts[r.post_id]) { newCounts[r.post_id].reposts++; if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note }); } });
-        (savesRes.data || []).forEach((s: any) => { if (newCounts[s.post_id]) newCounts[s.post_id].saves = Number(s.count); });
-
-        setCounts((prev) => (isLoadMore ? { ...prev, ...newCounts } : newCounts));
-        setLikersMap((prev) => (isLoadMore ? { ...prev, ...newLikersMap } : newLikersMap));
-        setRepostersMap((prev) => (isLoadMore ? { ...prev, ...newRepostersMap } : newRepostersMap));
-
-        if (userObj) {
-          const [myLikes, myReposts, mySaves] = await Promise.all([
-            supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
-            supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
-            supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds),
-          ]);
-          const likeIds = new Set(myLikes.data?.map(l => String(l.post_id)));
-          const repostIds = new Set(myReposts.data?.map(r => String(r.post_id)));
-          const saveIds = new Set(mySaves.data?.map(s => String(s.post_id)));
-          setMyLikedPosts(isLoadMore ? new Set([...myLikedPosts, ...likeIds]) : likeIds);
-          setMyRepostedPosts(isLoadMore ? new Set([...myRepostedPosts, ...repostIds]) : repostIds);
-          setMySavedPosts(isLoadMore ? new Set([...mySavedPosts, ...saveIds]) : saveIds);
-        }
+      if (error || !postData) {
+        setPost(null);
+        setIsLoading(false);
+        return;
       }
 
-      if (isLoadMore) setPosts((prev) => [...prev, ...fetchedPosts]);
-      else setPosts(fetchedPosts);
-    } catch (err) {} finally { setIsLoading(false); setIsLoadingMore(false); }
-  };
-
-  const handleLoadMore = () => {
-    if (!isLoadingMore && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchPosts(currentCategory, currentUser, nextPage, true, mutualUsers);
+      setPost(postData);
+      await fetchPostInteractions(postData.id, user);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Handlers (tetap seperti sebelumnya, tidak berubah)
-  const openShareOptions = useCallback((post: any, isOwner: boolean) => {
-    if (window.openGlobalShare) {
-      window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
-    }
-  }, []);
+  const fetchPostInteractions = async (postId: string | number, user: any) => {
+    const pid = String(postId);
+    // 🔥 PERBAIKAN: Gunakan RPC untuk bookmark
+    const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
+      supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
+      supabase.from('comments').select('id', { count: 'exact' }).eq('post_id', postId),
+      supabase.from('reposts').select('user_id, note, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
+      supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
+    ]);
 
+    setCounts(prev => ({
+      ...prev,
+      [pid]: {
+        likes: likesRes.data?.length || 0,
+        comments: commentsRes.count || 0,
+        reposts: repostsRes.data?.length || 0,
+        saves: (savesRes.data && savesRes.data[0]?.count) || 0,
+      }
+    }));
+    setLikersMap(prev => ({ ...prev, [pid]: likesRes.data?.map(l => l.profiles) || [] }));
+    setRepostersMap(prev => ({ ...prev, [pid]: repostsRes.data?.map(r => ({ ...r.profiles, note: r.note })) || [] }));
+
+    if (user) {
+      const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
+      const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
+      const saved = savesRes.data?.some(s => String(s.user_id) === user.id) || false; // untuk user login tetap bisa pakai data dari bookmarks yang sudah terbatas RLS
+      // Namun karena savesRes sekarang RPC, kita tidak dapat informasi user_id. Kita ambil dari tabel bookmarks langsung untuk user.
+      // Gunakan query terpisah untuk mengecek apakah user sudah save.
+      // Kita modif sedikit: ambil user bookmark dari tabel bookmarks (yang sudah RLS)
+      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).single();
+      const isSavedByUser = !!userBookmark;
+      
+      setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
+      setMyRepostedPosts(prev => { const n = new Set(prev); if (reposted) n.add(pid); return n; });
+      setMySavedPosts(prev => { const n = new Set(prev); if (isSavedByUser) n.add(pid); return n; });
+    }
+  };
+
+  const navigateProfilePost = useCallback((direction: 'prev' | 'next') => {
+    if (userPosts.length === 0) return;
+    let newIndex = activePostIndex;
+    if (direction === 'prev') newIndex = (activePostIndex - 1 + userPosts.length) % userPosts.length;
+    else newIndex = (activePostIndex + 1) % userPosts.length;
+
+    const newPost = userPosts[newIndex];
+    setActivePostIndex(newIndex);
+    setPost(newPost);
+    
+    const newUrl = `/post?id=${newPost.id}&from=profile`;
+    router.replace(newUrl, { scroll: false });
+    
+    fetchPostInteractions(newPost.id, currentUserRef.current);
+  }, [activePostIndex, userPosts, router]);
+
+  // Handler interaksi (sama dengan galery)
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     if (currentUserRef.current.id === creatorId) return;
+
     const isFollowing = followedUsersRef.current.has(creatorId);
+    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
+
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
+
     try {
-      if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      else {
+      if (isFollowing) {
+        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
+      } else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error || error.code === '23505') { if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" }); }
+        if (!error || error.code === '23505') {
+          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        }
       }
     } catch (err) {}
   }, []);
@@ -355,13 +266,18 @@ export default function Gallerypost() {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
+
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
+
     try {
-      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else {
+      if (isLiked) {
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        if (!error && creatorId !== currentUserRef.current.id) {
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        }
       }
     } catch (err) {}
   }, []);
@@ -369,59 +285,92 @@ export default function Gallerypost() {
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
+
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
       if (imageUrl) {
-        setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
+        setTimeout(() => {
+          if (lastTapRef.current[postId] === now) {
+            setActivePreviewImage(imageUrl);
+            lastTapRef.current[postId] = 0;
+          }
+        }, 360);
       }
     }
   }, [handleLike]);
 
-  const handleConfirmRepost = useCallback(async () => {
-    if (!repostModal || !currentUserRef.current) return;
-    const { postId, creatorId, isUnrepost } = repostModal;
+  const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
+
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
+
     const wasReposted = myRepostedPostsRef.current.has(postId);
-    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
+    setMyRepostedPosts((prev) => { 
+      const n = new Set(prev); 
+      isUnrepost ? n.delete(postId) : n.add(postId); 
+      return n; 
+    });
+    
+    setCounts((prev) => ({ 
+      ...prev, 
+      [postId]: { 
+        ...prev[postId], 
+        reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) 
+      } 
+    }));
+
     try {
-      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else {
+      if (isUnrepost) {
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
+        
         if (error) {
-          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
-          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
+          console.error("Gagal Repost:", error.message);
+          setMyRepostedPosts((prev) => { 
+            const n = new Set(prev); 
+            wasReposted ? n.add(postId) : n.delete(postId); 
+            return n; 
+          });
+          setCounts((prev) => ({ 
+            ...prev, 
+            [postId]: { 
+              ...prev[postId], 
+              reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) 
+            } 
+          }));
         }
       }
     } catch (err) {}
-  }, [repostModal, repostNote]);
-
-  const openRepostModal = useCallback((postId: string, creatorId: string) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-    const alreadyReposted = myRepostedPostsRef.current.has(postId);
-    setRepostNote("");
-    setRepostModal({ isOpen: true, postId, creatorId, isUnrepost: alreadyReposted });
-  }, []);
+  }, [repostNote]);
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
+
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+
     try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else { const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }); if (error && error.code !== "23505") console.error(error); }
+      if (isSaved) {
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (error && error.code !== "23505") console.error(error);
+      }
     } catch (err) {}
   }, []);
 
@@ -435,130 +384,140 @@ export default function Gallerypost() {
     });
   }, []);
 
-  const initAutoPlayObserver = () => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        const card = entry.target;
-        const postId = card.getAttribute("data-postid");
-        const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
-        if (!media || !postId) return;
-        if (entry.isIntersecting) {
-          if (!activeMediaRef.current.has(postId)) {
-            document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { if (el !== media && !el.paused) el.pause(); });
-            activeMediaRef.current.add(postId);
-            media.muted = isMutedRef.current;
-            media.currentTime = 0;
-            media.play().catch(() => {});
-          } else {
+  const openShareOptions = useCallback((postToShare: any, isOwner: boolean) => {
+    if (window.openGlobalShare) {
+      window.openGlobalShare(`${window.location.origin}/post?id=${postToShare.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", postToShare.profiles?.username || "User", postToShare.id, isOwner, postToShare.is_private || false);
+    }
+  }, []);
+
+  // Observer autoplay khusus halaman detail
+  useEffect(() => {
+    if (!post) return;
+    
+    const timer = setTimeout(() => {
+      if (observerRef.current) observerRef.current.disconnect();
+
+      observerRef.current = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const media = entry.target.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
+          
+          if (!media) return;
+
+          if (entry.isIntersecting) {
             media.muted = isMutedRef.current;
             if (media.paused) media.play().catch(() => {});
+          } else {
+            media.pause();
           }
-        } else {
-          media.pause();
-          activeMediaRef.current.delete(postId);
-        }
-      });
-    }, { threshold: 0.6 });
-    document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
-  };
+        });
+      }, { threshold: 0.5 });
 
-  const initViewTrackingObserver = () => {
-    if (viewObserverRef.current) viewObserverRef.current.disconnect();
-    viewObserverRef.current = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        const postId = entry.target.getAttribute("data-postid");
-        if (!postId) return;
-        if (entry.isIntersecting) {
-          if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
-            viewTimersRef.current[postId] = setTimeout(async () => {
-              viewedPostsRef.current.add(postId);
-              delete viewTimersRef.current[postId];
-              try {
-                const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
-                await supabase.from("posts").update({ views: (data?.views || 0) + 1 }).eq("id", postId);
-              } catch (err) {}
-            }, 2000);
-          }
-        } else {
-          if (viewTimersRef.current[postId]) { clearTimeout(viewTimersRef.current[postId]); delete viewTimersRef.current[postId]; }
-        }
-      });
-    }, { threshold: 0.6 });
-    document.querySelectorAll(".card[data-postid]").forEach((card) => { viewObserverRef.current?.observe(card); });
-  };
+      const cardEl = document.getElementById(`post-${post.id}`);
+      if (cardEl) observerRef.current.observe(cardEl);
+      
+    }, 500);
+
+    return () => { 
+      clearTimeout(timer); 
+      observerRef.current?.disconnect(); 
+    };
+  }, [post]);
+
+  let headerTitle = "Detail Postingan";
+  if (source === 'profile' && post) {
+    if (isMyOwnProfile) {
+       headerTitle = "Postingan Anda";
+    } else {
+       headerTitle = `Postingan ${profileUsername || post.profiles?.username || 'User'}`;
+    }
+  }
 
   return (
-    <section>
-      <style>{`
-        .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .btn-press:active { transform: scale(0.85); }
-        .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
-        @keyframes pureSpin { 100% { transform: rotate(360deg); } }
-        .slider-recommendation::-webkit-scrollbar { display: none; }
-      `}</style>
-
-      <RepostModal
-        isOpen={!!repostModal}
-        postId={repostModal?.postId || ''}
-        creatorId={repostModal?.creatorId || ''}
-        note={repostNote}
-        setNote={setRepostNote}
-        onClose={() => setRepostModal(null)}
-        onConfirm={handleConfirmRepost}
-        isUnrepost={repostModal?.isUnrepost || false}
-      />
-      <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
-
-      <div className="gallery" id="mainGallery">
-        {isLoading ? (
-          <div className="gallery-skeleton-wrapper"><div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer" /></div></div>
-        ) : posts.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>{t('no_posts_found')}</p>
-        ) : (
-          <Virtuoso
-            useWindowScroll
-            data={posts}
-            endReached={handleLoadMore}
-            overscan={200} // lebih rendah agar rendering lebih ringan
-            itemContent={(index, post) => (
-              <React.Fragment key={post.id}>
-                {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
-                {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
-                <MemoizedPostCard
-                  post={post}
-                  currentUser={currentUser}
-                  isOwner={currentUser?.id === post.creator_id}
-                  counts={counts}
-                  myLikedPosts={myLikedPosts}
-                  myRepostedPosts={myRepostedPosts}
-                  mySavedPosts={mySavedPosts}
-                  followedUsers={followedUsers}
-                  mutualUsers={mutualUsers}
-                  animatingFollows={animatingFollows}
-                  animatingReposts={animatingReposts}
-                  isGloballyMuted={isGloballyMuted}
-                  poppingHeart={poppingHeart}
-                  activePreviewImage={activePreviewImage}
-                  likersMap={likersMap}
-                  repostersMap={repostersMap}
-                  handleLike={handleLike}
-                  handleSave={handleSave}
-                  openRepostModal={openRepostModal}
-                  handleMediaClick={handleMediaClick}
-                  toggleMute={toggleMute}
-                  openShareOptions={openShareOptions}
-                  handleFollowToggle={handleFollowToggle}
-                  setActivePreviewImage={setActivePreviewImage}
-                  router={router}
-                  t={t}
-                />
-              </React.Fragment>
-            )}
-            components={{ Footer: () => (<div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>{isLoadingMore ? <div className="pure-spinner"></div> : hasMore ? <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span> : <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>Tidak ada postingan lagi</span>}</div>) }}
-          />
+    <div style={{ paddingBottom: '80px', background: 'var(--bg-main)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* HEADER */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <span className="material-icons">arrow_back</span>
+        </button>
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>{headerTitle}</h2>
+        {source === 'profile' && userPosts.length > 1 && (
+          <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 10px', borderRadius: '20px' }}>
+            {activePostIndex + 1} / {userPosts.length}
+          </span>
         )}
       </div>
-    </section>
+
+      <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
+      <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
+
+      {/* NAVIGASI PREV/NEXT KHUSUS MODE PROFIL */}
+      {source === 'profile' && userPosts.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px 0', width: '100%' }}>
+          <button
+            onClick={() => navigateProfilePost('prev')}
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '8px 16px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            <span className="material-icons" style={{ fontSize: '18px' }}>chevron_left</span> Sebelumnya
+          </button>
+          <button
+            onClick={() => navigateProfilePost('next')}
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '8px 16px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            Selanjutnya <span className="material-icons" style={{ fontSize: '18px' }}>chevron_right</span>
+          </button>
+        </div>
+      )}
+
+      {/* KONTEN */}
+      <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        {isLoading ? (
+          <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
+            <div className="pure-spinner" style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
+          </div>
+        ) : !post ? (
+          <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
+            <span className="material-icons" style={{ fontSize: '48px', marginBottom: '10px' }}>error_outline</span>
+            <h3>Postingan Tidak Ditemukan</h3>
+          </div>
+        ) : (
+          <div className="gallery" id="mainGallery" style={{ flex: 1, position: 'relative', height: 'calc(100vh - 130px)', width: '100%' }}>
+            <PostCard
+              post={post}
+              currentUser={currentUser}
+              counts={counts}
+              myLikedPosts={myLikedPosts}
+              myRepostedPosts={myRepostedPosts}
+              mySavedPosts={mySavedPosts}
+              followedUsers={followedUsers}
+              mutualUsers={mutualUsers}
+              animatingFollows={animatingFollows}
+              animatingReposts={animatingReposts}
+              isGloballyMuted={isGloballyMuted}
+              poppingHeart={poppingHeart}
+              activePreviewImage={activePreviewImage}
+              likersMap={likersMap} 
+              repostersMap={repostersMap}
+              handleLike={handleLike}
+              handleSave={handleSave}
+              openRepostModal={(id, cid) => {
+                if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+              }}
+              handleMediaClick={handleMediaClick}
+              toggleMute={toggleMute}
+              openShareOptions={openShareOptions}
+              handleFollowToggle={handleFollowToggle}
+              setActivePreviewImage={setActivePreviewImage}
+              router={router}
+              t={t}
+            />
+          </div>
+        )}
+      </div>
+      <style>{`
+        @keyframes pureSpin { 100% { transform: rotate(360deg); } }
+      `}</style>
+    </div>
   );
 }
