@@ -65,66 +65,70 @@ export function getUserBadge(role: string): string {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
 
-  // -- CROWN BADGES dengan SVG inline dan animasi --
-  if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") {
-    // Definisikan animasi unik untuk setiap crown
-    const crownStyles = `
-      <style>
-        @keyframes crown1-spin {
-          0%   { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes crown2-pulse {
-          0%, 100% { transform: scale(1); }
-          50%      { transform: scale(1.2); }
-        }
-        @keyframes crown3-shake {
-          0%, 100% { transform: translateX(0); }
-          20%      { transform: translateX(-2px); }
-          40%      { transform: translateX(2px); }
-          60%      { transform: translateX(-2px); }
-          80%      { transform: translateX(2px); }
-        }
-        .crown-badge {
-          display: inline-flex;
-          align-items: center;
-          margin-left: 5px;
-          vertical-align: middle;
-          animation-duration: 2s;
-          animation-iteration-count: infinite;
-          animation-timing-function: ease-in-out;
-        }
-        .crown1-anim { animation-name: crown1-spin; }
-        .crown2-anim { animation-name: crown2-pulse; }
-        .crown3-anim { animation-name: crown3-shake; }
-      </style>`;
+// -- CROWN BADGES dengan SVG statis & tooltip animasi --
+if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") {
+  // Style tooltip (hanya ditambahkan sekali, tidak masalah jika terduplikasi)
+  const crownStyles = `
+    <style>
+      .crown-badge-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        margin-left: 5px;
+        vertical-align: middle;
+        cursor: default;
+      }
+      .crown-tooltip {
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%) translateY(6px);
+        background: #1f2937;
+        color: #f9fafb;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+        pointer-events: none;
+        line-height: 1.2;
+      }
+      .crown-badge-wrapper:hover .crown-tooltip {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+      }
+    </style>`;
 
-    // Tentukan warna dan kelas animasi
-    let fillColor = "";
-    let animClass = "";
-    if (roleLower === "crown1") {
-      fillColor = "#EF4444";  // Merah
-      animClass = "crown1-anim";
-    } else if (roleLower === "crown2") {
-      fillColor = "#EAB308";  // Kuning
-      animClass = "crown2-anim";
-    } else {
-      fillColor = "#3B82F6";  // Biru
-      animClass = "crown3-anim";
-    }
-
-    badge += crownStyles;
-    badge += `
-      <span class="crown-badge ${animClass}">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${fillColor}">
-          <g fill="${fillColor}">
-            <path d="m14.092 10.75l-.75 2.5H9.908l.75-2.5h3.434Z"/>
-            <path fill-rule="evenodd" d="M3.464 3.464C2 4.93 2 7.286 2 12c0 4.714 0 7.071 1.464 8.535C4.93 22 7.286 22 12 22c4.714 0 7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464Zm7.752 2.818a.75.75 0 0 1 .502.934l-.61 2.034h3.434l.74-2.465a.75.75 0 0 1 1.436.43l-.61 2.035H18a.75.75 0 0 1 0 1.5h-2.342l-.75 2.5H17a.75.75 0 0 1 0 1.5h-2.542l-.74 2.465a.75.75 0 0 1-1.436-.43l.61-2.035H9.458l-.74 2.465a.75.75 0 1 1-1.436-.43l.61-2.035H6a.75.75 0 0 1 0-1.5h2.342l.75-2.5H7a.75.75 0 0 1 0-1.5h2.542l.74-2.465a.75.75 0 0 1 .934-.503Z" clip-rule="evenodd"/>
-          </g>
-        </svg>
-      </span>`;
+  // Tentukan warna SVG & teks tooltip
+  let fillColor = "";
+  let tooltipText = "";
+  if (roleLower === "crown1") {
+    fillColor = "#EF4444";  // merah
+    tooltipText = "BEAST";
+  } else if (roleLower === "crown2") {
+    fillColor = "#EAB308";  // kuning
+    tooltipText = "PRO";
+  } else {
+    fillColor = "#3B82F6";  // biru
+    tooltipText = "LEGEND";
   }
 
+  badge += crownStyles;
+  badge += `
+    <span class="crown-badge-wrapper">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${fillColor}">
+        <g fill="${fillColor}">
+          <path d="m14.092 10.75l-.75 2.5H9.908l.75-2.5h3.434Z"/>
+          <path fill-rule="evenodd" d="M3.464 3.464C2 4.93 2 7.286 2 12c0 4.714 0 7.071 1.464 8.535C4.93 22 7.286 22 12 22c4.714 0 7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464Zm7.752 2.818a.75.75 0 0 1 .502.934l-.61 2.034h3.434l.74-2.465a.75.75 0 0 1 1.436.43l-.61 2.035H18a.75.75 0 0 1 0 1.5h-2.342l-.75 2.5H17a.75.75 0 0 1 0 1.5h-2.542l-.74 2.465a.75.75 0 0 1-1.436-.43l.61-2.035H9.458l-.74 2.465a.75.75 0 1 1-1.436-.43l.61-2.035H6a.75.75 0 0 1 0-1.5h2.342l.75-2.5H7a.75.75 0 0 1 0-1.5h2.542l.74-2.465a.75.75 0 0 1 .934-.503Z" clip-rule="evenodd"/>
+        </g>
+      </svg>
+      <span class="crown-tooltip">${tooltipText}</span>
+    </span>`;
+}
   return badge;
 }
 
