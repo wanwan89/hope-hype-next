@@ -131,8 +131,9 @@ export default function Gallerypost() {
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const autoPlayObserverRef = useRef<IntersectionObserver | null>(null);
   const activeMediaRef = useRef<Set<string>>(new Set());
+  const isMutedRef = useRef(true);
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
@@ -142,7 +143,6 @@ export default function Gallerypost() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
-  const isMutedRef = useRef(true);
   const POSTS_PER_PAGE = 15;
 
   const [repostModal, setRepostModal] = useState<{
@@ -158,30 +158,108 @@ export default function Gallerypost() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
+  // ref untuk sinkronisasi observer (supaya tidak dipanggil berulang)
+  const syncPendingRef = useRef(false);
+
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
   useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
+  useEffect(() => { isMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
-  // Cleanup observers
+  // Buat observer SEKALI
   useEffect(() => {
+    // Autoplay observer
+    autoPlayObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const card = entry.target;
+          const postId = card.getAttribute("data-postid");
+          const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
+          if (!media || !postId) return;
+
+          if (entry.isIntersecting) {
+            if (!activeMediaRef.current.has(postId)) {
+              document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+                if (el !== media && !el.paused) el.pause();
+              });
+              activeMediaRef.current.add(postId);
+              media.muted = isMutedRef.current;
+              media.currentTime = 0;
+              media.play().catch(() => {});
+            } else {
+              media.muted = isMutedRef.current;
+              if (media.paused) media.play().catch(() => {});
+            }
+          } else {
+            media.pause();
+            activeMediaRef.current.delete(postId);
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+
+    // View tracking observer
+    viewObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const postId = entry.target.getAttribute("data-postid");
+          if (!postId) return;
+          if (entry.isIntersecting) {
+            if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
+              viewTimersRef.current[postId] = setTimeout(async () => {
+                viewedPostsRef.current.add(postId);
+                delete viewTimersRef.current[postId];
+                try {
+                  const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
+                  await supabase.from("posts").update({ views: (data?.views || 0) + 1 }).eq("id", postId);
+                } catch (err) {}
+              }, 2000);
+            }
+          } else {
+            if (viewTimersRef.current[postId]) {
+              clearTimeout(viewTimersRef.current[postId]);
+              delete viewTimersRef.current[postId];
+            }
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+
+    // Sinkronkan card yang sudah ada (awal load)
+    const timer = setTimeout(() => syncObservers(), 100);
     return () => {
-      if (viewObserverRef.current) viewObserverRef.current.disconnect();
-      if (observerRef.current) observerRef.current.disconnect();
-      Object.values(viewTimersRef.current).forEach(clearTimeout);
+      clearTimeout(timer);
+      autoPlayObserverRef.current?.disconnect();
+      viewObserverRef.current?.disconnect();
     };
   }, []);
 
-  // Observer dipasang ulang hanya saat posts berubah, bukan setiap DOM mutate
-  useEffect(() => {
-    if (posts.length === 0) return;
-    const timer = setTimeout(() => {
-      initAutoPlayObserver();
-      initViewTrackingObserver();
-    }, 400); // sedikit jeda agar Virtuoso selesai render
-    return () => clearTimeout(timer);
-  }, [posts]);
+  // Fungsi sinkronisasi observer ke semua card yang belum diobservasi
+  const syncObservers = useCallback(() => {
+    const gallery = document.getElementById('mainGallery');
+    if (!gallery) return;
+    const cards = gallery.querySelectorAll<HTMLElement>('.card[data-postid]:not([data-observed])');
+    cards.forEach(card => {
+      autoPlayObserverRef.current?.observe(card);
+      viewObserverRef.current?.observe(card);
+      card.setAttribute('data-observed', 'true');
+    });
+  }, []);
+
+  // Dipanggil setiap kali Virtuoso selesai render item
+  const handleItemsRendered = useCallback(() => {
+    if (!syncPendingRef.current) {
+      syncPendingRef.current = true;
+      requestAnimationFrame(() => {
+        syncObservers();
+        syncPendingRef.current = false;
+      });
+    }
+  }, [syncObservers]);
 
   // Event listener comment
   useEffect(() => {
@@ -327,7 +405,7 @@ export default function Gallerypost() {
     }
   };
 
-  // Handlers (tetap seperti sebelumnya, tidak berubah)
+  // Handlers (tidak berubah)
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
       window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
@@ -435,59 +513,6 @@ export default function Gallerypost() {
     });
   }, []);
 
-  const initAutoPlayObserver = () => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        const card = entry.target;
-        const postId = card.getAttribute("data-postid");
-        const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
-        if (!media || !postId) return;
-        if (entry.isIntersecting) {
-          if (!activeMediaRef.current.has(postId)) {
-            document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { if (el !== media && !el.paused) el.pause(); });
-            activeMediaRef.current.add(postId);
-            media.muted = isMutedRef.current;
-            media.currentTime = 0;
-            media.play().catch(() => {});
-          } else {
-            media.muted = isMutedRef.current;
-            if (media.paused) media.play().catch(() => {});
-          }
-        } else {
-          media.pause();
-          activeMediaRef.current.delete(postId);
-        }
-      });
-    }, { threshold: 0.6 });
-    document.querySelectorAll(".card").forEach((card) => observerRef.current?.observe(card));
-  };
-
-  const initViewTrackingObserver = () => {
-    if (viewObserverRef.current) viewObserverRef.current.disconnect();
-    viewObserverRef.current = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        const postId = entry.target.getAttribute("data-postid");
-        if (!postId) return;
-        if (entry.isIntersecting) {
-          if (!viewedPostsRef.current.has(postId) && !viewTimersRef.current[postId]) {
-            viewTimersRef.current[postId] = setTimeout(async () => {
-              viewedPostsRef.current.add(postId);
-              delete viewTimersRef.current[postId];
-              try {
-                const { data } = await supabase.from("posts").select("views").eq("id", postId).single();
-                await supabase.from("posts").update({ views: (data?.views || 0) + 1 }).eq("id", postId);
-              } catch (err) {}
-            }, 2000);
-          }
-        } else {
-          if (viewTimersRef.current[postId]) { clearTimeout(viewTimersRef.current[postId]); delete viewTimersRef.current[postId]; }
-        }
-      });
-    }, { threshold: 0.6 });
-    document.querySelectorAll(".card[data-postid]").forEach((card) => { viewObserverRef.current?.observe(card); });
-  };
-
   return (
     <section>
       <style>{`
@@ -520,7 +545,8 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            overscan={200} // lebih rendah agar rendering lebih ringan
+            overscan={200}
+            itemsRendered={handleItemsRendered}  // 🚀 sinkronisasi observer saat item dirender
             itemContent={(index, post) => (
               <React.Fragment key={post.id}>
                 {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
