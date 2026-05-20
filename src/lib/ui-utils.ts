@@ -65,9 +65,9 @@ export function getUserBadge(role: string): string {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
 
-// -- CROWN BADGES dengan SVG statis & tooltip animasi --
+// -- CROWN BADGES dengan SVG statis & teks animasi keluar ke kanan --
 if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") {
-  // Style tooltip (hanya ditambahkan sekali, tidak masalah jika terduplikasi)
+  // CSS untuk animasi teks berulang dari dalam SVG
   const crownStyles = `
     <style>
       .crown-badge-wrapper {
@@ -76,59 +76,82 @@ if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") 
         align-items: center;
         margin-left: 5px;
         vertical-align: middle;
-        cursor: default;
+        width: 18px;
+        height: 18px;
+        overflow: hidden; /* penting: agar teks tidak terlihat di luar ikon */
+        flex-shrink: 0;
       }
-      .crown-tooltip {
+      .crown-icon {
         position: absolute;
-        bottom: 120%;
-        left: 50%;
-        transform: translateX(-50%) translateY(6px);
-        background: #1f2937;
-        color: #f9fafb;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 10px;
-        font-weight: 700;
-        white-space: nowrap;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
-        pointer-events: none;
-        line-height: 1.2;
+        inset: 0;
+        width: 100%;
+        height: 100%;
       }
-      .crown-badge-wrapper:hover .crown-tooltip {
-        opacity: 1;
-        visibility: visible;
-        transform: translateX(-50%) translateY(0);
+      .crown-text {
+        position: absolute;
+        left: -100%; /* mulai dari luar kiri (dalam area ikon) */
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 8px;
+        font-weight: 900;
+        white-space: nowrap;
+        line-height: 1;
+        color: #ffffff;
+        text-shadow: 0 0 4px rgba(0,0,0,0.7);
+        animation: crown-text-slide 2s ease-in-out infinite;
+        z-index: 2;
+      }
+      @keyframes crown-text-slide {
+        0% {
+          left: -100%;
+          opacity: 0;
+        }
+        15% {
+          opacity: 1;
+        }
+        50% {
+          left: 40%;
+          opacity: 1;
+        }
+        85% {
+          opacity: 0;
+        }
+        100% {
+          left: 110%;
+          opacity: 0;
+        }
       }
     </style>`;
 
-  // Tentukan warna SVG & teks tooltip
+  // Tentukan warna SVG & teks
   let fillColor = "";
-  let tooltipText = "";
+  let labelText = "";
   if (roleLower === "crown1") {
     fillColor = "#EF4444";  // merah
-    tooltipText = "BEAST";
+    labelText = "BEAST";
   } else if (roleLower === "crown2") {
     fillColor = "#EAB308";  // kuning
-    tooltipText = "PRO";
+    labelText = "PRO";
   } else {
     fillColor = "#3B82F6";  // biru
-    tooltipText = "LEGEND";
+    labelText = "LEGEND";
   }
 
   badge += crownStyles;
   badge += `
     <span class="crown-badge-wrapper">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${fillColor}">
+      <!-- SVG tetap diam sebagai background -->
+      <svg class="crown-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${fillColor}">
         <g fill="${fillColor}">
           <path d="m14.092 10.75l-.75 2.5H9.908l.75-2.5h3.434Z"/>
           <path fill-rule="evenodd" d="M3.464 3.464C2 4.93 2 7.286 2 12c0 4.714 0 7.071 1.464 8.535C4.93 22 7.286 22 12 22c4.714 0 7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464Zm7.752 2.818a.75.75 0 0 1 .502.934l-.61 2.034h3.434l.74-2.465a.75.75 0 0 1 1.436.43l-.61 2.035H18a.75.75 0 0 1 0 1.5h-2.342l-.75 2.5H17a.75.75 0 0 1 0 1.5h-2.542l-.74 2.465a.75.75 0 0 1-1.436-.43l.61-2.035H9.458l-.74 2.465a.75.75 0 1 1-1.436-.43l.61-2.035H6a.75.75 0 0 1 0-1.5h2.342l.75-2.5H7a.75.75 0 0 1 0-1.5h2.542l.74-2.465a.75.75 0 0 1 .934-.503Z" clip-rule="evenodd"/>
         </g>
       </svg>
-      <span class="crown-tooltip">${tooltipText}</span>
+      <!-- Teks yang bergerak berulang dari dalam ke kanan -->
+      <span class="crown-text">${labelText}</span>
     </span>`;
 }
+
   return badge;
 }
 
