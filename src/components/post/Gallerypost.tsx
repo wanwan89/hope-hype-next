@@ -13,6 +13,7 @@ import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
 import './Gallery.css';
 
+// Helper
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -22,6 +23,7 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
+// Memoized PostCard untuk cegah audio restart
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
 
@@ -93,16 +95,16 @@ export default function Gallerypost() {
   const isMutedRef = useRef(true);
   const POSTS_PER_PAGE = 15;
 
-  // 🔥 State modal sekarang punya flag isUnrepost
+  // State modal dengan flag isUnrepost
   const [repostModal, setRepostModal] = useState<{ 
     isOpen: boolean; 
     postId: string; 
     creatorId: string; 
-    isUnrepost: boolean; // <-- Tambahan
+    isUnrepost: boolean;
   } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
-  // Refs untuk mengatasi masalah async di React Strict Mode
+  // Refs untuk menghindari closure basi
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -114,6 +116,7 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
+  // Cleanup observers
   useEffect(() => {
     return () => {
       if (viewObserverRef.current) viewObserverRef.current.disconnect();
@@ -122,6 +125,7 @@ export default function Gallerypost() {
     };
   }, []);
 
+  // MutationObserver untuk re-attach Autoplay & View saat Virtuoso render
   useEffect(() => {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
@@ -142,6 +146,7 @@ export default function Gallerypost() {
     };
   }, []);
 
+  // Event listener comment
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
       const postId = String(e.detail.postId);
@@ -159,6 +164,7 @@ export default function Gallerypost() {
     return () => window.removeEventListener('commentAdded', handleCommentRefresh);
   }, []);
 
+  // Category change
   useEffect(() => {
     const handleCategoryChange = (e: any) => {
       const newCat = e.detail.category;
@@ -170,6 +176,7 @@ export default function Gallerypost() {
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, [currentUser, mutualUsers]);
 
+  // Init
   useEffect(() => {
     initGallery();
   }, []);
@@ -238,11 +245,12 @@ export default function Gallerypost() {
       if (fetchedPosts.length > 0) {
         const postIds = fetchedPosts.map((p) => p.id);
 
+        // 🔥 PERBAIKAN: Gunakan RPC untuk bookmark (bypass RLS)
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
           supabase.from("comments").select("post_id").in("post_id", postIds),
           supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
-          supabase.from("bookmarks").select("post_id").in("post_id", postIds),
+          supabase.rpc('get_bookmark_counts', { post_ids: postIds }) // <-- pakai RPC
         ]);
 
         const newCounts: any = {};
@@ -269,7 +277,11 @@ export default function Gallerypost() {
             if (r.profiles) newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note });
           }
         });
-        savesRes.data?.forEach((s) => { if (newCounts[s.post_id]) newCounts[s.post_id].saves++; });
+
+        // Proses hasil RPC savesRes: { post_id, count }
+        (savesRes.data || []).forEach((s: any) => {
+          if (newCounts[s.post_id]) newCounts[s.post_id].saves = Number(s.count);
+        });
 
         setCounts((prev) => (isLoadMore ? { ...prev, ...newCounts } : newCounts));
         setLikersMap((prev) => (isLoadMore ? { ...prev, ...newLikersMap } : newLikersMap));
@@ -278,6 +290,7 @@ export default function Gallerypost() {
         if (userObj) {
           const { data: myLikes } = await supabase.from("likes").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
           const { data: myReposts } = await supabase.from("reposts").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
+          // Untuk mySaves tetap gunakan tabel langsung karena hanya untuk user login (RLS memperbolehkan)
           const { data: mySaves } = await supabase.from("bookmarks").select("post_id").eq("user_id", userObj.id).in("post_id", postIds);
 
           setMyLikedPosts(isLoadMore ? new Set([...myLikedPosts, ...(myLikes?.map((l) => String(l.post_id)) || [])]) : new Set(myLikes?.map((l) => String(l.post_id))));
@@ -299,6 +312,7 @@ export default function Gallerypost() {
     }
   };
 
+  // Stable handlers
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
       window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
@@ -373,7 +387,7 @@ export default function Gallerypost() {
     }
   }, [handleLike]);
 
-  // 🔥 PERBAIKAN: handleConfirmRepost menerima isUnrepost dari state modal
+  // 🔥 handleConfirmRepost sekarang menggunakan state modal
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
     const { postId, creatorId, isUnrepost } = repostModal;
@@ -381,14 +395,11 @@ export default function Gallerypost() {
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
-    // Animasi
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
-    // Simpan state lama untuk rollback
     const wasReposted = myRepostedPostsRef.current.has(postId);
 
-    // Update UI optimistik
     setMyRepostedPosts((prev) => { 
       const n = new Set(prev); 
       isUnrepost ? n.delete(postId) : n.add(postId); 
@@ -405,15 +416,13 @@ export default function Gallerypost() {
 
     try {
       if (isUnrepost) {
-        // Batal repost → hapus dari tabel reposts
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        // Repost baru → insert
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
         
         if (error) {
           console.error("Gagal Repost:", error.message);
-          // Rollback optimistik jika gagal (misal duplicate)
+          // Rollback
           setMyRepostedPosts((prev) => { 
             const n = new Set(prev); 
             wasReposted ? n.add(postId) : n.delete(postId); 
@@ -431,7 +440,6 @@ export default function Gallerypost() {
     } catch (err) {}
   }, [repostModal, repostNote]);
 
-  // 🔥 PERBAIKAN: openRepostModal mengecek apakah sudah direpost
   const openRepostModal = useCallback((postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
     
@@ -441,7 +449,7 @@ export default function Gallerypost() {
       isOpen: true,
       postId,
       creatorId,
-      isUnrepost: alreadyReposted  // <-- kunci perbaikan
+      isUnrepost: alreadyReposted
     });
   }, []);
 
@@ -473,6 +481,7 @@ export default function Gallerypost() {
     });
   }, []);
 
+  // Observer autoplay
   const initAutoPlayObserver = () => {
     if (observerRef.current) observerRef.current.disconnect();
 
@@ -551,7 +560,6 @@ export default function Gallerypost() {
         .slider-recommendation::-webkit-scrollbar { display: none; }
       `}</style>
 
-      {/* 🔥 RepostModal sekarang menerima isUnrepost */}
       <RepostModal 
         isOpen={!!repostModal} 
         postId={repostModal?.postId || ''} 
@@ -559,8 +567,8 @@ export default function Gallerypost() {
         note={repostNote} 
         setNote={setRepostNote} 
         onClose={() => setRepostModal(null)} 
-        onConfirm={handleConfirmRepost}  // Tidak perlu argumen lagi
-        isUnrepost={repostModal?.isUnrepost || false} // <-- Props baru
+        onConfirm={handleConfirmRepost}
+        isUnrepost={repostModal?.isUnrepost || false}
       />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
@@ -616,7 +624,7 @@ export default function Gallerypost() {
                   repostersMap={repostersMap}
                   handleLike={handleLike}
                   handleSave={handleSave}
-                  openRepostModal={openRepostModal}  // 🔥 pakai yang sudah diperbaiki
+                  openRepostModal={openRepostModal}
                   handleMediaClick={handleMediaClick}
                   toggleMute={toggleMute}
                   openShareOptions={openShareOptions}

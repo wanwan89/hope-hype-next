@@ -51,11 +51,11 @@ export default function PostPage() {
   const [profileUsername, setProfileUsername] = useState<string>('');
   const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
 
-  // Observer
+  // Observer autoplay
   const observerRef = useRef<IntersectionObserver | null>(null);
   const activeMediaRef = useRef<Set<string>>(new Set());
 
-  // Refs untuk optimisasi API call di luar setState
+  // Refs untuk menghindari closure basi
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -185,11 +185,12 @@ export default function PostPage() {
 
   const fetchPostInteractions = async (postId: string | number, user: any) => {
     const pid = String(postId);
+    // 🔥 PERBAIKAN: Gunakan RPC untuk bookmark
     const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
       supabase.from('comments').select('id', { count: 'exact' }).eq('post_id', postId),
       supabase.from('reposts').select('user_id, note, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
-      supabase.from('bookmarks').select('user_id').eq('post_id', postId),
+      supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
     ]);
 
     setCounts(prev => ({
@@ -198,7 +199,7 @@ export default function PostPage() {
         likes: likesRes.data?.length || 0,
         comments: commentsRes.count || 0,
         reposts: repostsRes.data?.length || 0,
-        saves: savesRes.data?.length || 0,
+        saves: (savesRes.data && savesRes.data[0]?.count) || 0,
       }
     }));
     setLikersMap(prev => ({ ...prev, [pid]: likesRes.data?.map(l => l.profiles) || [] }));
@@ -207,11 +208,16 @@ export default function PostPage() {
     if (user) {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
-      const saved = savesRes.data?.some(s => String(s.user_id) === user.id) || false;
+      const saved = savesRes.data?.some(s => String(s.user_id) === user.id) || false; // untuk user login tetap bisa pakai data dari bookmarks yang sudah terbatas RLS
+      // Namun karena savesRes sekarang RPC, kita tidak dapat informasi user_id. Kita ambil dari tabel bookmarks langsung untuk user.
+      // Gunakan query terpisah untuk mengecek apakah user sudah save.
+      // Kita modif sedikit: ambil user bookmark dari tabel bookmarks (yang sudah RLS)
+      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).single();
+      const isSavedByUser = !!userBookmark;
       
       setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
       setMyRepostedPosts(prev => { const n = new Set(prev); if (reposted) n.add(pid); return n; });
-      setMySavedPosts(prev => { const n = new Set(prev); if (saved) n.add(pid); return n; });
+      setMySavedPosts(prev => { const n = new Set(prev); if (isSavedByUser) n.add(pid); return n; });
     }
   };
 
@@ -231,7 +237,7 @@ export default function PostPage() {
     fetchPostInteractions(newPost.id, currentUserRef.current);
   }, [activePostIndex, userPosts, router]);
 
-  // 🔥 EXTRACT API CALLS FROM SETSTATE (Safe against duplicate error 23505) 🔥
+  // Handler interaksi (sama dengan galery)
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
@@ -306,14 +312,11 @@ export default function PostPage() {
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
-    // Animasi Repost
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
-    // 1. Simpan State Lama Buat Jaga-Jaga (Rollback)
     const wasReposted = myRepostedPostsRef.current.has(postId);
 
-    // 2. Update UI Optimistik Dulu Biar Cepat
     setMyRepostedPosts((prev) => { 
       const n = new Set(prev); 
       isUnrepost ? n.delete(postId) : n.add(postId); 
@@ -328,31 +331,26 @@ export default function PostPage() {
       } 
     }));
 
-    // 3. Tembak ke Database
     try {
       if (isUnrepost) {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
         
-        // 4. Kalau Database Nolak (Duplicate), Kembalikan UI ke Semula! (Rollback)
         if (error) {
-           console.error("Gagal Repost:", error.message);
-           
-           // Balikin state-nya kalau ternyata error
-           setMyRepostedPosts((prev) => { 
-             const n = new Set(prev); 
-             wasReposted ? n.add(postId) : n.delete(postId); 
-             return n; 
-           });
-           
-           setCounts((prev) => ({ 
-             ...prev, 
-             [postId]: { 
-               ...prev[postId], 
-               reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) // kurangin lagi angka yang terlanjur nambah
-             } 
-           }));
+          console.error("Gagal Repost:", error.message);
+          setMyRepostedPosts((prev) => { 
+            const n = new Set(prev); 
+            wasReposted ? n.add(postId) : n.delete(postId); 
+            return n; 
+          });
+          setCounts((prev) => ({ 
+            ...prev, 
+            [postId]: { 
+              ...prev[postId], 
+              reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) 
+            } 
+          }));
         }
       }
     } catch (err) {}
@@ -392,6 +390,7 @@ export default function PostPage() {
     }
   }, []);
 
+  // Observer autoplay khusus halaman detail
   useEffect(() => {
     if (!post) return;
     
@@ -469,7 +468,7 @@ export default function PostPage() {
         </div>
       )}
 
-      {/* 🔥 KONTEN POSTINGAN FULL WIDTH / EDGE TO EDGE 🔥 */}
+      {/* KONTEN */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
