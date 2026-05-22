@@ -312,37 +312,42 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
-// Ganti bagian React.memo di PALING BAWAH file PostCard.tsx dengan ini:
-
+// 🔥 FULL FIX REACT.MEMO UNTUK POSTCARD 🔥
 export default React.memo(PostCard, (prev, next) => {
   const pid = prev.post.id;
-  const cid = prev.post.creator_id; // ID Pembuat Postingan
+  const cid = prev.post.creator_id;
 
-  return (
-    prev.post === next.post &&
-    prev.isGloballyMuted === next.isGloballyMuted &&
-    prev.poppingHeart === next.poppingHeart &&
-    prev.activePreviewImage === next.activePreviewImage &&
-    
-    // Gunakan cid untuk ngecek status follow/mutual
-    prev.followedUsers.has(cid) === next.followedUsers.has(cid) &&
-    prev.mutualUsers.has(cid) === next.mutualUsers.has(cid) &&
-    prev.animatingFollows.has(cid) === next.animatingFollows.has(cid) &&
-    
-    // Gunakan pid untuk cek interaksi post
-    prev.counts[pid]?.likes === next.counts[pid]?.likes &&
-    prev.counts[pid]?.comments === next.counts[pid]?.comments &&
-    // 🔥 INI YANG KEMARIN KETINGGALAN WKWK 🔥
-    prev.counts[pid]?.reposts === next.counts[pid]?.reposts && 
-    prev.counts[pid]?.saves === next.counts[pid]?.saves && 
-    
-    prev.myLikedPosts.has(pid) === next.myLikedPosts.has(pid) &&
-    prev.myRepostedPosts.has(pid) === next.myRepostedPosts.has(pid) &&
-    // 🔥 INI JUGA KETINGGALAN 🔥
-    prev.mySavedPosts.has(pid) === next.mySavedPosts.has(pid) && 
-    
-    prev.animatingReposts.has(pid) === next.animatingReposts.has(pid) &&
-    prev.likersMap[pid]?.length === next.likersMap[pid]?.length &&
-    prev.repostersMap[pid]?.length === next.repostersMap[pid]?.length
-  );
+  // 1. Cek perubahan data utama postingan atau pengaturan global
+  if (prev.post !== next.post) return false;
+  if (prev.activePreviewImage !== next.activePreviewImage) return false;
+  if (prev.isGloballyMuted !== next.isGloballyMuted) return false;
+
+  // 2. Cek Animasi Popping Heart (hanya re-render jika kartu ini yang kena efek)
+  const isPoppingPrev = prev.poppingHeart === pid;
+  const isPoppingNext = next.poppingHeart === pid;
+  if (isPoppingPrev !== isPoppingNext) return false;
+
+  // 3. Cek perubahan angka interaksi
+  if (prev.counts[pid]?.likes !== next.counts[pid]?.likes) return false;
+  if (prev.counts[pid]?.comments !== next.counts[pid]?.comments) return false;
+  if (prev.counts[pid]?.reposts !== next.counts[pid]?.reposts) return false;
+  if (prev.counts[pid]?.saves !== next.counts[pid]?.saves) return false;
+
+  // 4. Cek perubahan status interaksi (Like/Repost/Save punya currentUser)
+  if (prev.myLikedPosts.has(pid) !== next.myLikedPosts.has(pid)) return false;
+  if (prev.myRepostedPosts.has(pid) !== next.myRepostedPosts.has(pid)) return false;
+  if (prev.mySavedPosts.has(pid) !== next.mySavedPosts.has(pid)) return false;
+  
+  if (prev.animatingReposts.has(pid) !== next.animatingReposts.has(pid)) return false;
+
+  // 5. Cek status Follow/Mutual (Gunakan cid, bukan pid)
+  if (prev.followedUsers.has(cid) !== next.followedUsers.has(cid)) return false;
+  if (prev.mutualUsers.has(cid) !== next.mutualUsers.has(cid)) return false;
+  if (prev.animatingFollows.has(cid) !== next.animatingFollows.has(cid)) return false;
+
+  // 6. Cek perubahan Floating Bubbles (orang lain yang like/repost)
+  if (prev.likersMap[pid]?.length !== next.likersMap[pid]?.length) return false;
+  if (prev.repostersMap[pid]?.length !== next.repostersMap[pid]?.length) return false;
+
+  return true;
 });

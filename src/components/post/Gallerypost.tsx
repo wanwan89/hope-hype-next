@@ -27,6 +27,7 @@ const getOptimizedImage = (url: string) => {
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
   if (prevProps.post !== nextProps.post) return false;
+  if (prevProps.isOwner !== nextProps.isOwner) return false; // 🔥 FIX: Pastikan cek isOwner juga
   if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
   if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
   if (prevProps.mySavedPosts.has(pid) !== nextProps.mySavedPosts.has(pid)) return false;
@@ -158,7 +159,6 @@ export default function Gallerypost() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
-  // ref untuk sinkronisasi observer (supaya tidak dipanggil berulang)
   const syncPendingRef = useRef(false);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
@@ -170,7 +170,6 @@ export default function Gallerypost() {
 
   // Buat observer SEKALI
   useEffect(() => {
-    // Autoplay observer
     autoPlayObserverRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -201,7 +200,6 @@ export default function Gallerypost() {
       { threshold: 0.6 }
     );
 
-    // View tracking observer
     viewObserverRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -229,7 +227,6 @@ export default function Gallerypost() {
       { threshold: 0.6 }
     );
 
-    // Sinkronkan card yang sudah ada (awal load)
     const timer = setTimeout(() => syncObservers(), 100);
     return () => {
       clearTimeout(timer);
@@ -238,7 +235,6 @@ export default function Gallerypost() {
     };
   }, []);
 
-  // Fungsi sinkronisasi observer ke semua card yang belum diobservasi
   const syncObservers = useCallback(() => {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
@@ -250,7 +246,6 @@ export default function Gallerypost() {
     });
   }, []);
 
-  // Dipanggil setiap kali Virtuoso selesai render item
   const handleItemsRendered = useCallback(() => {
     if (!syncPendingRef.current) {
       syncPendingRef.current = true;
@@ -261,7 +256,6 @@ export default function Gallerypost() {
     }
   }, [syncObservers]);
 
-  // Event listener comment
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
       const postId = String(e.detail.postId);
@@ -276,7 +270,6 @@ export default function Gallerypost() {
     return () => window.removeEventListener('commentAdded', handleCommentRefresh);
   }, []);
 
-  // Category change
   useEffect(() => {
     const handleCategoryChange = (e: any) => {
       const newCat = e.detail.category;
@@ -405,7 +398,6 @@ export default function Gallerypost() {
     }
   };
 
-  // Handlers (tidak berubah)
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
       window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
@@ -545,8 +537,8 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            overscan={200}
-            itemsRendered={handleItemsRendered}  // 🚀 sinkronisasi observer saat item dirender
+            overscan={2500} // 🔥 FIX: Diperbesar dari 200 jadi 2500 biar gambar di-load lebih awal sebelum muncul di layar!
+            itemsRendered={handleItemsRendered}
             itemContent={(index, post) => (
               <React.Fragment key={post.id}>
                 {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
