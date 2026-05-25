@@ -182,7 +182,8 @@ const PostCard: React.FC<PostCardProps> = ({
               ) : (
                 photoList.map((url: string, i: number) => (
                   <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
-                    <img src={getOptimizedImage(url)} loading={i === 0 ? "eager" : "lazy"} alt={`Postingan Galeri ${i + 1}`}
+                    {/* 🔥 HILANGKAN LOADING LAZY, GANTI JADI DECODING ASYNC 🔥 */}
+                    <img src={getOptimizedImage(url)} decoding="async" alt={`Postingan Galeri ${i + 1}`}
                       onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr, getOptimizedImage(url))}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer' }} />
                   </div>
@@ -247,7 +248,8 @@ const PostCard: React.FC<PostCardProps> = ({
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
-              <img src={optimizedAvatar} alt="Avatar Profil" loading="lazy" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
+              {/* 🔥 HILANGKAN LOADING LAZY DI AVATAR JUGA 🔥 */}
+              <img src={optimizedAvatar} alt="Avatar Profil" decoding="async" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
                   {post.profiles?.full_name || post.profiles?.username || "User"}

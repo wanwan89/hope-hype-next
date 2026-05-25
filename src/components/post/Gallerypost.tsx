@@ -27,7 +27,7 @@ const getOptimizedImage = (url: string) => {
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
   if (prevProps.post !== nextProps.post) return false;
-  if (prevProps.isOwner !== nextProps.isOwner) return false; // 🔥 FIX: Pastikan cek isOwner juga
+  if (prevProps.isOwner !== nextProps.isOwner) return false;
   if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
   if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
   if (prevProps.mySavedPosts.has(pid) !== nextProps.mySavedPosts.has(pid)) return false;
@@ -159,7 +159,8 @@ export default function Gallerypost() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
-  const syncPendingRef = useRef(false);
+  // Buffer timer untuk scroll cepat
+  const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
@@ -168,7 +169,7 @@ export default function Gallerypost() {
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
   useEffect(() => { isMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
-  // Buat observer SEKALI
+  // 🔥 INIT OBSERVER SEKALI SAJA 🔥
   useEffect(() => {
     autoPlayObserverRef.current = new IntersectionObserver(
       (entries) => {
@@ -179,25 +180,32 @@ export default function Gallerypost() {
           if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            if (!activeMediaRef.current.has(postId)) {
-              document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-                if (el !== media && !el.paused) el.pause();
-              });
-              activeMediaRef.current.add(postId);
-              media.muted = isMutedRef.current;
-              media.currentTime = 0;
-              media.play().catch(() => {});
-            } else {
-              media.muted = isMutedRef.current;
-              if (media.paused) media.play().catch(() => {});
-            }
+            // Mencegah video langsung main pas lagi scroll brutal
+            if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+            
+            scrollDebounceRef.current = setTimeout(() => {
+              if (!activeMediaRef.current.has(postId)) {
+                // Pause media lain
+                document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+                  if (el !== media && !el.paused) el.pause();
+                });
+                activeMediaRef.current.add(postId);
+                media.muted = isMutedRef.current;
+                media.currentTime = 0;
+                media.play().catch(() => {});
+              } else {
+                media.muted = isMutedRef.current;
+                if (media.paused) media.play().catch(() => {});
+              }
+            }, 150); // Jeda 150ms buat nunggu scroll beneran berhenti/pelan
+            
           } else {
             media.pause();
             activeMediaRef.current.delete(postId);
           }
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.6 } // Video main kalau udah 60% keliatan di layar
     );
 
     viewObserverRef.current = new IntersectionObserver(
@@ -227,14 +235,14 @@ export default function Gallerypost() {
       { threshold: 0.6 }
     );
 
-    const timer = setTimeout(() => syncObservers(), 100);
     return () => {
-      clearTimeout(timer);
       autoPlayObserverRef.current?.disconnect();
       viewObserverRef.current?.disconnect();
+      if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
     };
   }, []);
 
+  // Fungsi mengikat observer secara manual ke DOM
   const syncObservers = useCallback(() => {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
@@ -246,14 +254,10 @@ export default function Gallerypost() {
     });
   }, []);
 
+  // Memanggil sinkronisasi setiap Virtuoso selesai render
   const handleItemsRendered = useCallback(() => {
-    if (!syncPendingRef.current) {
-      syncPendingRef.current = true;
-      requestAnimationFrame(() => {
-        syncObservers();
-        syncPendingRef.current = false;
-      });
-    }
+    // Pakai setTimeout 50ms buat mastiin DOM kelar dilukis browser
+    setTimeout(syncObservers, 50);
   }, [syncObservers]);
 
   useEffect(() => {
@@ -408,15 +412,22 @@ export default function Gallerypost() {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     if (currentUserRef.current.id === creatorId) return;
+
     const isFollowing = followedUsersRef.current.has(creatorId);
+    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
+
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
+
     try {
-      if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      else {
+      if (isFollowing) {
+        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
+      } else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error || error.code === '23505') { if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" }); }
+        if (!error || error.code === '23505') {
+          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        }
       }
     } catch (err) {}
   }, []);
@@ -425,13 +436,18 @@ export default function Gallerypost() {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
+
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
+
     try {
-      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else {
+      if (isLiked) {
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        if (!error && creatorId !== currentUserRef.current.id) {
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
+        }
       }
     } catch (err) {}
   }, []);
@@ -439,16 +455,23 @@ export default function Gallerypost() {
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
+
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
       if (imageUrl) {
-        setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
+        setTimeout(() => {
+          if (lastTapRef.current[postId] === now) {
+            setActivePreviewImage(imageUrl);
+            lastTapRef.current[postId] = 0;
+          }
+        }, 360);
       }
     }
   }, [handleLike]);
@@ -459,14 +482,18 @@ export default function Gallerypost() {
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
+
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
+
     const wasReposted = myRepostedPostsRef.current.has(postId);
     setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
     try {
-      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else {
+      if (isUnrepost) {
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
         if (error) {
           setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
@@ -487,11 +514,17 @@ export default function Gallerypost() {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
+
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+
     try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else { const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id }); if (error && error.code !== "23505") console.error(error); }
+      if (isSaved) {
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (error && error.code !== "23505") console.error(error);
+      }
     } catch (err) {}
   }, []);
 
@@ -537,7 +570,9 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            overscan={2500} // 🔥 FIX: Diperbesar dari 200 jadi 2500 biar gambar di-load lebih awal sebelum muncul di layar!
+            // 🔥 FIX: Trik "Bohongin" Virtuoso biar ngira HP lebih panjang, jadi dia pre-render 3-5 item ke depan! 🔥
+            increaseViewportBy={{ top: 0, bottom: 2500 }}
+            overscan={800} // Cukup 800px aja buat buffer standar, sisanya diurus sama trik di atas
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => (
               <React.Fragment key={post.id}>

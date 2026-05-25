@@ -39,6 +39,9 @@ function NavbarContent() {
 
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  
+  // 🔥 STATE BARU UNTUK MENYIMPAN FOTO PROFIL 🔥
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
@@ -72,13 +75,8 @@ function NavbarContent() {
   const isContactPage = pathname?.includes('/contact');
   const isCreatePage = pathname?.startsWith('/create');
   const isSearchPage = pathname?.startsWith('/search');
-
-  // Room private chat
   const isRoomPage = pathname?.startsWith('/hypetalk/room');
-  
-  // 🔥 FIX DETEKSI VOICE ROOM 🔥
   const isInsideVoiceRoom = pathname === '/voice' && searchParams?.get('id') !== null;
-
   const isSaldoPage = pathname?.includes('/saldo');
   const isStoryPage = pathname?.includes('/story');
   const isPendingPage = pathname?.includes('/pending');
@@ -101,18 +99,35 @@ function NavbarContent() {
     isHistoryCoinPage ||
     isWithdrawPage;
 
-  // --- LOGIKA BADGE PESAN & NOTIFIKASI ---
+  // --- LOGIKA BADGE PESAN & NOTIFIKASI + AMBIL FOTO PROFIL ---
   useEffect(() => {
     let isMounted = true;
     let badgeChannel: any;
 
-    const fetchBadges = async () => {
+    const fetchBadgesAndUser = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
       const userId = session.user.id;
 
+      // 🔥 AMBIL DATA AVATAR USER DARI PROFILES 🔥
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', userId)
+        .single();
+
+      if (isMounted && profile?.avatar_url) {
+        let url = profile.avatar_url;
+        // Optimasi gambar Cloudinary khusus Navbar biar ringan
+        if (url.includes('res.cloudinary.com') && !url.includes('f_auto')) {
+          url = url.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
+        }
+        setAvatarUrl(url);
+      }
+
+      // Menghitung chat yang belum dibaca
       const { count: chatCount } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
@@ -122,6 +137,7 @@ function NavbarContent() {
 
       if (isMounted && chatCount !== null) setUnreadChatCount(chatCount);
 
+      // Menghitung notifikasi yang belum dibaca
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -130,49 +146,26 @@ function NavbarContent() {
 
       if (isMounted && notifCount !== null) setUnreadNotifCount(notifCount);
 
+      // Channel Realtime
       const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
       badgeChannel = supabase
         .channel(uniqueChannelName)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages' },
-          (payload) => {
-            if (
-              payload.new.room_id.includes(userId) &&
-              payload.new.user_id !== userId
-            ) {
-              setUnreadChatCount((prev) => prev + 1);
-            }
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+          if (payload.new.room_id.includes(userId) && payload.new.user_id !== userId) {
+            setUnreadChatCount((prev) => prev + 1);
           }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'messages' },
-          (payload) => {
-            if (
-              payload.new.status === 'read' &&
-              payload.old.status !== 'read'
-            ) {
-              setUnreadChatCount((prev) => Math.max(0, prev - 1));
-            }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+          if (payload.new.status === 'read' && payload.old.status !== 'read') {
+            setUnreadChatCount((prev) => Math.max(0, prev - 1));
           }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'notifications' },
-          (payload) => {
-            if (payload.new.user_id === userId)
-              setUnreadNotifCount((prev) => prev + 1);
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'notifications' },
-          (payload) => {
-            if (payload.new.is_read === true && payload.new.user_id === userId)
-              checkRemainingNotifs(userId);
-          }
-        )
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+          if (payload.new.user_id === userId) setUnreadNotifCount((prev) => prev + 1);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
+          if (payload.new.is_read === true && payload.new.user_id === userId) checkRemainingNotifs(userId);
+        })
         .subscribe();
     };
 
@@ -185,7 +178,7 @@ function NavbarContent() {
       if (isMounted && count !== null) setUnreadNotifCount(count);
     };
 
-    fetchBadges();
+    fetchBadgesAndUser();
 
     return () => {
       isMounted = false;
@@ -230,8 +223,7 @@ function NavbarContent() {
           zIndex: 9000,
           display: 'flex',
           justifyContent: 'center',
-          transition:
-            'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease',
+          transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease',
           transform: showNavbar ? 'translateY(0)' : 'translateY(150%)',
           opacity: showNavbar ? 1 : 0,
           pointerEvents: showNavbar ? 'auto' : 'none',
@@ -258,7 +250,6 @@ function NavbarContent() {
             const isClicked = clickedItem === item.name;
             const isAnimating = animatingIcon === item.name;
 
-            // 🔥 UBAH WARNA DI SINI: Gunakan var(--text-main) agar hitam saat terang & putih saat gelap 🔥
             const normalColor = isActive ? '#1f3cff' : 'var(--text-main)';
 
             return (
@@ -291,8 +282,7 @@ function NavbarContent() {
                       : isActive
                       ? 'scale(1.15)'
                       : 'scale(1)',
-                    transition:
-                      'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   }}
                 >
                   <AnimatePresence mode="wait">
@@ -312,7 +302,36 @@ function NavbarContent() {
                       >
                         <CircularChase />
                       </motion.div>
+                    ) : item.name === 'Profil' && avatarUrl ? (
+                      // 🔥 RENDER FOTO PROFIL JIKA DATA AVATAR ADA 🔥
+                      <div
+                        key="avatar"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          padding: '2px', // Jarak antara foto dan border aktif
+                          border: isActive ? `2px solid ${normalColor}` : '2px solid transparent',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <img
+                          src={avatarUrl}
+                          alt="Profil"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: isActive ? 'none' : '1px solid var(--border-card)',
+                          }}
+                        />
+                      </div>
                     ) : (
+                      // Render Icon Bawaan Jika Bukan Profil Atau Foto Belum Load
                       <div
                         key="icon"
                         style={{
@@ -321,11 +340,10 @@ function NavbarContent() {
                           justifyContent: 'center',
                         }}
                       >
-                        {/* 🔥 TAMBAHKAN PROPERTI fill DI SINI 🔥 */}
                         <Icon
                           size={24}
                           color={normalColor}
-                          fill={isActive ? normalColor : 'none'}
+                          fill={isActive && item.name !== 'Profil' ? normalColor : 'none'}
                           strokeWidth={isActive ? 2.5 : 2}
                         />
                       </div>
