@@ -18,7 +18,8 @@ export default function PostPage() {
   const postIdFromUrl = searchParams.get('id');
   const source = searchParams.get('from'); 
 
-  const [post, setPost] = useState<any>(null);
+  // Pake userPosts untuk nampung semua postingan, entah itu 1 (single) atau banyak (profile mode)
+  const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
@@ -46,14 +47,11 @@ export default function PostPage() {
   const lastTapRef = useRef<Record<string, number>>({});
 
   // Mode profil
-  const [userPosts, setUserPosts] = useState<any[]>([]);
-  const [activePostIndex, setActivePostIndex] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string>('');
   const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
 
   // Observer autoplay
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const activeMediaRef = useRef<Set<string>>(new Set());
 
   // Refs untuk menghindari closure basi
   const myLikedPostsRef = useRef(myLikedPosts);
@@ -109,7 +107,7 @@ export default function PostPage() {
       .single();
 
     if (errExact || !exactPost) {
-      setPost(null);
+      setUserPosts([]);
       setIsLoading(false);
       return;
     }
@@ -132,7 +130,7 @@ export default function PostPage() {
       .order('created_at', { ascending: false });
 
     if (error || !postsData) {
-      setPost(null);
+      setUserPosts([]);
       setIsLoading(false);
       return;
     }
@@ -146,16 +144,8 @@ export default function PostPage() {
 
     setUserPosts(filtered);
 
-    const idx = filtered.findIndex(p => String(p.id) === postIdFromUrl);
-    const startIdx = idx >= 0 ? idx : 0;
-    setActivePostIndex(startIdx);
-    
-    const activePost = filtered[startIdx] || null;
-    setPost(activePost);
-
-    if (activePost) {
-      await fetchPostInteractions(activePost.id, user);
-    }
+    // Ambil interaksi untuk semua postingan secara paralel
+    await Promise.all(filtered.map(post => fetchPostInteractions(post.id, user)));
 
     setIsLoading(false);
   };
@@ -169,12 +159,12 @@ export default function PostPage() {
         .single();
 
       if (error || !postData) {
-        setPost(null);
+        setUserPosts([]);
         setIsLoading(false);
         return;
       }
 
-      setPost(postData);
+      setUserPosts([postData]);
       await fetchPostInteractions(postData.id, user);
     } catch (err) {
       console.error(err);
@@ -185,7 +175,6 @@ export default function PostPage() {
 
   const fetchPostInteractions = async (postId: string | number, user: any) => {
     const pid = String(postId);
-    // 🔥 PERBAIKAN: Gunakan RPC untuk bookmark
     const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
       supabase.from('comments').select('id', { count: 'exact' }).eq('post_id', postId),
@@ -208,10 +197,6 @@ export default function PostPage() {
     if (user) {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
-      const saved = savesRes.data?.some(s => String(s.user_id) === user.id) || false; // untuk user login tetap bisa pakai data dari bookmarks yang sudah terbatas RLS
-      // Namun karena savesRes sekarang RPC, kita tidak dapat informasi user_id. Kita ambil dari tabel bookmarks langsung untuk user.
-      // Gunakan query terpisah untuk mengecek apakah user sudah save.
-      // Kita modif sedikit: ambil user bookmark dari tabel bookmarks (yang sudah RLS)
       const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).single();
       const isSavedByUser = !!userBookmark;
       
@@ -221,21 +206,18 @@ export default function PostPage() {
     }
   };
 
-  const navigateProfilePost = useCallback((direction: 'prev' | 'next') => {
-    if (userPosts.length === 0) return;
-    let newIndex = activePostIndex;
-    if (direction === 'prev') newIndex = (activePostIndex - 1 + userPosts.length) % userPosts.length;
-    else newIndex = (activePostIndex + 1) % userPosts.length;
-
-    const newPost = userPosts[newIndex];
-    setActivePostIndex(newIndex);
-    setPost(newPost);
-    
-    const newUrl = `/post?id=${newPost.id}&from=profile`;
-    router.replace(newUrl, { scroll: false });
-    
-    fetchPostInteractions(newPost.id, currentUserRef.current);
-  }, [activePostIndex, userPosts, router]);
+  // 🔥 Logika untuk nge-scroll ke postingan yang spesifik pas pertama load
+  useEffect(() => {
+    if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
+      setTimeout(() => {
+        const container = document.getElementById('mainGallery');
+        const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
+        if (container && targetPost) {
+          container.scrollTo({ top: targetPost.offsetTop, behavior: 'auto' });
+        }
+      }, 300);
+    }
+  }, [isLoading, userPosts, postIdFromUrl]);
 
   // Handler interaksi (sama dengan galery)
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
@@ -390,9 +372,9 @@ export default function PostPage() {
     }
   }, []);
 
-  // Observer autoplay khusus halaman detail
+  // 🔥 Observer autoplay buat list postingan yang scrollable
   useEffect(() => {
-    if (!post) return;
+    if (userPosts.length === 0) return;
     
     const timer = setTimeout(() => {
       if (observerRef.current) observerRef.current.disconnect();
@@ -400,7 +382,6 @@ export default function PostPage() {
       observerRef.current = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           const media = entry.target.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
-          
           if (!media) return;
 
           if (entry.isIntersecting) {
@@ -410,10 +391,13 @@ export default function PostPage() {
             media.pause();
           }
         });
-      }, { threshold: 0.5 });
+      }, { threshold: 0.5 }); // mutar video kalau 50% keliatan di layar
 
-      const cardEl = document.getElementById(`post-${post.id}`);
-      if (cardEl) observerRef.current.observe(cardEl);
+      // Pasang observer ke setiap div post-wrapper
+      userPosts.forEach(p => {
+        const wrapperEl = document.getElementById(`post-wrapper-${p.id}`);
+        if (wrapperEl) observerRef.current?.observe(wrapperEl);
+      });
       
     }, 500);
 
@@ -421,14 +405,14 @@ export default function PostPage() {
       clearTimeout(timer); 
       observerRef.current?.disconnect(); 
     };
-  }, [post]);
+  }, [userPosts]);
 
   let headerTitle = "Detail Postingan";
-  if (source === 'profile' && post) {
+  if (source === 'profile' && userPosts.length > 0) {
     if (isMyOwnProfile) {
        headerTitle = "Postingan Anda";
     } else {
-       headerTitle = `Postingan ${profileUsername || post.profiles?.username || 'User'}`;
+       headerTitle = `Postingan ${profileUsername || userPosts[0].profiles?.username || 'User'}`;
     }
   }
 
@@ -440,83 +424,85 @@ export default function PostPage() {
           <span className="material-icons">arrow_back</span>
         </button>
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>{headerTitle}</h2>
-        {source === 'profile' && userPosts.length > 1 && (
-          <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 10px', borderRadius: '20px' }}>
-            {activePostIndex + 1} / {userPosts.length}
-          </span>
-        )}
       </div>
 
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* NAVIGASI PREV/NEXT KHUSUS MODE PROFIL */}
-      {source === 'profile' && userPosts.length > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px 0', width: '100%' }}>
-          <button
-            onClick={() => navigateProfilePost('prev')}
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '8px 16px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <span className="material-icons" style={{ fontSize: '18px' }}>chevron_left</span> Sebelumnya
-          </button>
-          <button
-            onClick={() => navigateProfilePost('next')}
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '8px 16px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            Selanjutnya <span className="material-icons" style={{ fontSize: '18px' }}>chevron_right</span>
-          </button>
-        </div>
-      )}
-
-      {/* KONTEN */}
+      {/* KONTEN GALLERY SCROLLABLE */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
             <div className="pure-spinner" style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
           </div>
-        ) : !post ? (
+        ) : userPosts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
             <span className="material-icons" style={{ fontSize: '48px', marginBottom: '10px' }}>error_outline</span>
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div className="gallery" id="mainGallery" style={{ flex: 1, position: 'relative', height: 'calc(100vh - 130px)', width: '100%' }}>
-            <PostCard
-              post={post}
-              currentUser={currentUser}
-              counts={counts}
-              myLikedPosts={myLikedPosts}
-              myRepostedPosts={myRepostedPosts}
-              mySavedPosts={mySavedPosts}
-              followedUsers={followedUsers}
-              mutualUsers={mutualUsers}
-              animatingFollows={animatingFollows}
-              animatingReposts={animatingReposts}
-              isGloballyMuted={isGloballyMuted}
-              poppingHeart={poppingHeart}
-              activePreviewImage={activePreviewImage}
-              likersMap={likersMap} 
-              repostersMap={repostersMap}
-              handleLike={handleLike}
-              handleSave={handleSave}
-              openRepostModal={(id, cid) => {
-                if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
-              }}
-              handleMediaClick={handleMediaClick}
-              toggleMute={toggleMute}
-              openShareOptions={openShareOptions}
-              handleFollowToggle={handleFollowToggle}
-              setActivePreviewImage={setActivePreviewImage}
-              router={router}
-              t={t}
-            />
+          <div 
+            className="gallery" 
+            id="mainGallery" 
+            style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              scrollSnapType: 'y mandatory', // Biar snap halus pas di scroll per postingan
+              height: 'calc(100vh - 60px)', 
+              width: '100%' 
+            }}
+          >
+            {userPosts.map((p) => (
+              <div 
+                key={p.id} 
+                id={`post-wrapper-${p.id}`} 
+                style={{ 
+                  scrollSnapAlign: 'start', 
+                  height: '100%', 
+                  position: 'relative' 
+                }}
+              >
+                <PostCard
+                  post={p}
+                  currentUser={currentUser}
+                  counts={counts}
+                  myLikedPosts={myLikedPosts}
+                  myRepostedPosts={myRepostedPosts}
+                  mySavedPosts={mySavedPosts}
+                  followedUsers={followedUsers}
+                  mutualUsers={mutualUsers}
+                  animatingFollows={animatingFollows}
+                  animatingReposts={animatingReposts}
+                  isGloballyMuted={isGloballyMuted}
+                  poppingHeart={poppingHeart}
+                  activePreviewImage={activePreviewImage}
+                  likersMap={likersMap} 
+                  repostersMap={repostersMap}
+                  handleLike={handleLike}
+                  handleSave={handleSave}
+                  openRepostModal={(id, cid) => {
+                    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                    if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                    else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                  }}
+                  handleMediaClick={handleMediaClick}
+                  toggleMute={toggleMute}
+                  openShareOptions={openShareOptions}
+                  handleFollowToggle={handleFollowToggle}
+                  setActivePreviewImage={setActivePreviewImage}
+                  router={router}
+                  t={t}
+                />
+              </div>
+            ))}
           </div>
         )}
       </div>
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
+        /* Hide scrollbar for clean look */
+        #mainGallery::-webkit-scrollbar { display: none; }
+        #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );
