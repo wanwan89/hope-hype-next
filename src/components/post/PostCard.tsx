@@ -63,15 +63,47 @@ const PostCard: React.FC<PostCardProps> = ({
   const mutualLikers = likers.filter((l: any) => mutualUsers.has(String(l.id)));
   const mutualReposters = reposters.filter((r: any) => mutualUsers.has(String(r.id)));
 
-  // 🔥 FIX AUDIO/VIDEO RESET: Simpan referensi ke media element biar gak hilang
+  // Simpan referensi ke media element
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
 
+  // 🔥 FIX LOKAL AUTOPLAY: PostCard mengurus play/pause-nya sendiri! 🔥
   useEffect(() => {
-    // Kalau isGloballyMuted berubah, langsung terapin ke elemen tanpa nunggu render ulang parent
-    if (mediaRef.current) {
-      mediaRef.current.muted = isGloballyMuted;
-    }
-  }, [isGloballyMuted]);
+    const media = mediaRef.current;
+    if (!media) return;
+
+    // Pastikan status mute selalu up-to-date saat komponen mount atau berubah
+    media.muted = isGloballyMuted;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          media.muted = isGloballyMuted; 
+          const playPromise = media.play();
+          
+          if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+              console.warn("Autoplay diblokir browser, memaksa mute...", error);
+              // Kalau browser ngambek karena suara, kita mute paksa dan play lagi
+              media.muted = true;
+              media.play().catch(() => {});
+            });
+          }
+        } else {
+          // Pause kalau udah lewat (out of viewport)
+          media.pause();
+        }
+      });
+    }, { 
+      // Cukup 50% area video/audio terlihat, langsung mainkan!
+      threshold: 0.5 
+    });
+
+    observer.observe(media);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isGloballyMuted]); // Effect dipanggil lagi kalau user ngerubah status mute global
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
@@ -154,7 +186,6 @@ const PostCard: React.FC<PostCardProps> = ({
             />
 
             <div className="photo-carousel" onScroll={(e) => {
-              // 🔥 FIX SLIDER: Hindari re-render parent saat nge-slide. Mainin DOM langsung.
               const target = e.target as HTMLDivElement;
               const index = Math.round(target.scrollLeft / target.offsetWidth);
               const dots = document.querySelectorAll(`.dots-${postIdStr} .dot`);
@@ -169,11 +200,12 @@ const PostCard: React.FC<PostCardProps> = ({
                 <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
                   style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
                   <video 
-                    ref={mediaRef as React.RefObject<HTMLVideoElement>} // Pasang ref biar kebal
+                    ref={mediaRef as React.RefObject<HTMLVideoElement>} 
                     src={post.video_url} 
                     className="post-video-element" 
                     poster={getOptimizedImage(post.image_url)}
                     playsInline 
+                    autoPlay // Tambahan backup autoplay 
                     loop 
                     muted={isGloballyMuted} 
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }} 
@@ -182,7 +214,6 @@ const PostCard: React.FC<PostCardProps> = ({
               ) : (
                 photoList.map((url: string, i: number) => (
                   <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
-                    {/* 🔥 HILANGKAN LOADING LAZY, GANTI JADI DECODING ASYNC 🔥 */}
                     <img src={getOptimizedImage(url)} decoding="async" alt={`Postingan Galeri ${i + 1}`}
                       onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr, getOptimizedImage(url))}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer' }} />
@@ -248,7 +279,6 @@ const PostCard: React.FC<PostCardProps> = ({
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
-              {/* 🔥 HILANGKAN LOADING LAZY DI AVATAR JUGA 🔥 */}
               <img src={optimizedAvatar} alt="Avatar Profil" decoding="async" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
@@ -314,40 +344,32 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
-// 🔥 FULL FIX REACT.MEMO UNTUK POSTCARD 🔥
 export default React.memo(PostCard, (prev, next) => {
   const pid = prev.post.id;
   const cid = prev.post.creator_id;
 
-  // 1. Cek perubahan data utama postingan atau pengaturan global
   if (prev.post !== next.post) return false;
   if (prev.activePreviewImage !== next.activePreviewImage) return false;
   if (prev.isGloballyMuted !== next.isGloballyMuted) return false;
 
-  // 2. Cek Animasi Popping Heart (hanya re-render jika kartu ini yang kena efek)
   const isPoppingPrev = prev.poppingHeart === pid;
   const isPoppingNext = next.poppingHeart === pid;
   if (isPoppingPrev !== isPoppingNext) return false;
 
-  // 3. Cek perubahan angka interaksi
   if (prev.counts[pid]?.likes !== next.counts[pid]?.likes) return false;
   if (prev.counts[pid]?.comments !== next.counts[pid]?.comments) return false;
   if (prev.counts[pid]?.reposts !== next.counts[pid]?.reposts) return false;
   if (prev.counts[pid]?.saves !== next.counts[pid]?.saves) return false;
 
-  // 4. Cek perubahan status interaksi (Like/Repost/Save punya currentUser)
   if (prev.myLikedPosts.has(pid) !== next.myLikedPosts.has(pid)) return false;
   if (prev.myRepostedPosts.has(pid) !== next.myRepostedPosts.has(pid)) return false;
   if (prev.mySavedPosts.has(pid) !== next.mySavedPosts.has(pid)) return false;
-  
   if (prev.animatingReposts.has(pid) !== next.animatingReposts.has(pid)) return false;
 
-  // 5. Cek status Follow/Mutual (Gunakan cid, bukan pid)
   if (prev.followedUsers.has(cid) !== next.followedUsers.has(cid)) return false;
   if (prev.mutualUsers.has(cid) !== next.mutualUsers.has(cid)) return false;
   if (prev.animatingFollows.has(cid) !== next.animatingFollows.has(cid)) return false;
 
-  // 6. Cek perubahan Floating Bubbles (orang lain yang like/repost)
   if (prev.likersMap[pid]?.length !== next.likersMap[pid]?.length) return false;
   if (prev.repostersMap[pid]?.length !== next.repostersMap[pid]?.length) return false;
 

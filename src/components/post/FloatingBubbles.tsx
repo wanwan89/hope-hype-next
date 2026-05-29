@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+// 🔥 Tambahkan usePathname di sini
+import { useRouter, usePathname } from 'next/navigation';
 
 // Helper bawaan untuk optimasi gambar
 const getOptimizedImage = (url: string) => {
@@ -20,6 +21,8 @@ type Props = {
 
 export default function FloatingBubbles({ likers, reposters }: Props) {
   const router = useRouter();
+  // 🔥 Inisialisasi pengecek URL
+  const pathname = usePathname();
   
   // 🔥 Ref buat sensor layar & timer
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,8 +36,8 @@ export default function FloatingBubbles({ likers, reposters }: Props) {
   const displayReposters = reposters?.slice(0, 1) || [];
 
   useEffect(() => {
-    // Kalau gak ada yang like/repost, gak usah repot jalanin sensor
-    if (displayLikers.length === 0 && displayReposters.length === 0) return;
+    // Kalau gak ada yang like/repost, atau BUKAN di halaman /post, batalkan observer
+    if ((displayLikers.length === 0 && displayReposters.length === 0) || pathname !== '/post') return;
 
     // 🔥 Buat sensor yang mantau apakah postingan ini lagi diliatin di layar 🔥
     const observer = new IntersectionObserver(
@@ -71,7 +74,10 @@ export default function FloatingBubbles({ likers, reposters }: Props) {
       observer.disconnect();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [displayLikers.length, displayReposters.length]);
+  }, [displayLikers.length, displayReposters.length, pathname]); // 🔥 Masukkan pathname sebagai dependency
+
+  // 🔥 VALIDASI UTAMA: Kalau bukan di halaman post/page.tsx, JANGAN RENDER APAPUN 🔥
+  if (pathname !== '/post') return null;
 
   // Kalau gak ada data yang nge-like/repost sama sekali, render kosong aja
   if (displayLikers.length === 0 && displayReposters.length === 0) return null;
