@@ -100,11 +100,12 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
+    // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle()
     const { data: exactPost, error: errExact } = await supabase
       .from('posts')
       .select('creator_id')
       .eq('id', postIdFromUrl)
-      .single();
+      .maybeSingle(); 
 
     if (errExact || !exactPost) {
       setUserPosts([]);
@@ -118,7 +119,12 @@ export default function PostPage() {
     setIsMyOwnProfile(isMe);
 
     if (!isMe) {
-      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).single();
+      // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle()
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', targetUserId)
+        .maybeSingle(); 
       if (profileData) setProfileUsername(profileData.username);
     }
 
@@ -152,11 +158,12 @@ export default function PostPage() {
 
   const loadSinglePost = async (id: string, user: any) => {
     try {
+      // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle()
       const { data: postData, error } = await supabase
         .from('posts')
         .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error || !postData) {
         setUserPosts([]);
@@ -197,7 +204,15 @@ export default function PostPage() {
     if (user) {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
-      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).single();
+      
+      // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle() agar tidak error "The result contains 0 rows"
+      const { data: userBookmark } = await supabase
+        .from('bookmarks')
+        .select('user_id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .maybeSingle(); 
+        
       const isSavedByUser = !!userBookmark;
       
       setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
@@ -376,7 +391,6 @@ export default function PostPage() {
   useEffect(() => {
     if (userPosts.length === 0) return;
     
-    // Naikin dikit timeout-nya biar DOM bener-bener selesai render elemen media
     const timer = setTimeout(() => {
       if (observerRef.current) observerRef.current.disconnect();
 
@@ -384,7 +398,6 @@ export default function PostPage() {
 
       observerRef.current = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-          // Pakai querySelectorAll untuk ambil semua jika ada audio dan video sekaligus
           const mediaNodes = entry.target.querySelectorAll(".post-audio-element, .post-video-element");
 
           mediaNodes.forEach(node => {
@@ -394,16 +407,14 @@ export default function PostPage() {
             if (entry.isIntersecting) {
               media.muted = isMutedRef.current;
               
-              // Handle promise dari .play() untuk mengatasi error diblokir oleh browser
               const playPromise = media.play();
               if (playPromise !== undefined) {
                 playPromise.catch((error) => {
                   console.warn("Autoplay diblokir browser, memaksa mute...", error);
-                  // Kalau browser memblokir karena suara nyala, kita paksa mute dan play ulang
                   media.muted = true;
                   isMutedRef.current = true;
                   setIsGloballyMuted(true);
-                  media.play().catch(() => {}); // catch tambahan jaga-jaga kalau masih error
+                  media.play().catch(() => {});
                 });
               }
             } else {
@@ -412,11 +423,10 @@ export default function PostPage() {
           });
         });
       }, { 
-        root: container, // Ini penting! Biar observer bacanya dari kotak scroll, bukan layar penuh
-        threshold: 0.6   // Video/Audio diputar saat 60% areanya sudah kelihatan
+        root: container, 
+        threshold: 0.6   
       });
 
-      // Pasang observer ke setiap div post-wrapper
       userPosts.forEach(p => {
         const wrapperEl = document.getElementById(`post-wrapper-${p.id}`);
         if (wrapperEl) observerRef.current?.observe(wrapperEl);
