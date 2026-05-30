@@ -18,6 +18,9 @@ function SearchContent() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [recommendedPosts, setRecommendedPosts] = useState<any[]>([]);
+  
+  // 🔥 STATE BARU UNTUK PENCARIAN POPULER 🔥
+  const [trendingKeywords, setTrendingKeywords] = useState<string[]>([]);
 
   useEffect(() => {
     setLocalQuery(query);
@@ -35,13 +38,62 @@ function SearchContent() {
     initUser();
   }, []);
 
+  // 🔥 LOGIKA UNTUK MENENTUKAN APA YANG HARUS DI-FETCH 🔥
   useEffect(() => {
     if (query) {
       fetchSearchResults();
     } else {
-      setIsLoading(false);
+      fetchTrendingSearches();
     }
   }, [query]);
+
+  // 🔥 FUNGSI BARU: MENGAMBIL HASHTAG TERPOPULER DARI POSTINGAN TERBARU 🔥
+  const fetchTrendingSearches = async () => {
+    setIsLoading(true);
+    try {
+      // Ambil 100 postingan terbaru
+      const { data } = await supabase
+        .from('posts')
+        .select('bio')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      const hashtagCounts: Record<string, number> = {};
+
+      if (data) {
+        data.forEach(post => {
+          if (post.bio) {
+            // Ekstrak kata yang dimulai dengan #
+            const tags = post.bio.match(/#[\w]+/g);
+            if (tags) {
+              tags.forEach((tag: string) => {
+                hashtagCounts[tag] = (hashtagCounts[tag] || 0) + 1;
+              });
+            }
+          }
+        });
+      }
+
+      // Urutkan berdasarkan yang paling banyak muncul dan ambil 8 teratas
+      const sortedTags = Object.entries(hashtagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(entry => entry[0])
+        .slice(0, 8);
+
+      // Jika database masih kosong/tidak ada hashtag, beri default bawaan
+      if (sortedTags.length > 0) {
+        setTrendingKeywords(sortedTags);
+      } else {
+        setTrendingKeywords(['#HopeHype', '#Trending', '#Musik', '#Viral']);
+      }
+    } catch (error) {
+      console.error("Trending Error:", error);
+      setTrendingKeywords(['#HopeHype', '#Trending', '#Musik', '#Viral']);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchSearchResults = async () => {
     setIsLoading(true);
@@ -52,7 +104,6 @@ function SearchContent() {
       // 1. CARI PROFIL & 3 POSTINGAN TERBAIKNYA
       // ==========================================
       if (!isHashtag) {
-        // 🔥 Tambahkan is_private di query
         const { data: userData } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, bio, is_private')
@@ -182,140 +233,181 @@ function SearchContent() {
           </div>
         )}
 
-        {isLoading ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>Mencari...</div>
-        ) : (
-          <>
-            {/* ================================
-                BAGIAN 1: KREATOR & 3 POSTINGAN
-            ================================= */}
-            {users.length > 0 && (
-              <div style={{ marginBottom: '30px' }}>
-                <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>KREATOR DITEMUKAN</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  {users.map(user => {
-                    const isFollowing = followedUsers.has(user.id);
-                    const isMe = currentUser?.id === user.id;
+        {/* 🔥 TAMPILAN PENCARIAN POPULER (MUNCUL JIKA TIDAK ADA QUERY) 🔥 */}
+        {!query && (
+          <div style={{ marginTop: '10px' }}>
+            <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="material-icons" style={{ color: '#ff2e63', fontSize: '18px' }}>local_fire_department</span>
+              SEDANG POPULER
+            </h3>
+            
+            {isLoading ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Memuat tren...</div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                {trendingKeywords.map((kw, i) => (
+                  <div 
+                    key={i}
+                    onClick={() => {
+                      setLocalQuery(kw);
+                      router.push(`/search?q=${encodeURIComponent(kw)}`);
+                    }}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      backdropFilter: 'blur(10px)',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--text-main)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      transition: 'transform 0.15s ease'
+                    }}
+                    onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                    onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>tag</span>
+                    {kw.replace('#', '')}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-                    return (
-                      <div key={user.id} style={{ background: 'var(--bg-card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${user.id}`)}>
-                          <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}`} alt="avatar" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
-                          <div style={{ flex: 1 }}>
-                            {/* 🔥 ICON PRIVATE DITAMBAHKAN DI SEBELAH NAMA 🔥 */}
-                            <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              {user.username}
-                              {user.is_private && <span className="material-icons" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>lock</span>}
-                            </div>
-                            <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                              {user.bio || 'Kreator HypeTalk'}
-                            </div>
-                          </div>
+        {/* ================================
+            HASIL PENCARIAN (MUNCUL JIKA ADA QUERY)
+        ================================= */}
+        {query && (
+          isLoading ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>Mencari...</div>
+          ) : (
+            <>
+              {users.length > 0 && (
+                <div style={{ marginBottom: '30px' }}>
+                  <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>KREATOR DITEMUKAN</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {users.map(user => {
+                      const isFollowing = followedUsers.has(user.id);
+                      const isMe = currentUser?.id === user.id;
+
+                      return (
+                        <div key={user.id} style={{ background: 'var(--bg-card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
                           
-                          {!isMe && (
-                            <button 
-                              onClick={(e) => handleFollowToggle(e, user.id)}
-                              style={{ 
-                                background: isFollowing ? 'var(--bg-secondary)' : '#1f3cff', 
-                                color: isFollowing ? 'var(--text-main)' : '#fff', 
-                                border: isFollowing ? '1px solid var(--border-card)' : 'none', 
-                                padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' 
-                              }}
-                            >
-                              {isFollowing ? 'Mengikuti' : 'Ikuti'}
-                            </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${user.id}`)}>
+                            <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}`} alt="avatar" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {user.username}
+                                {user.is_private && <span className="material-icons" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>lock</span>}
+                              </div>
+                              <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                {user.bio || 'Kreator HypeTalk'}
+                              </div>
+                            </div>
+                            
+                            {!isMe && (
+                              <button 
+                                onClick={(e) => handleFollowToggle(e, user.id)}
+                                style={{ 
+                                  background: isFollowing ? 'var(--bg-secondary)' : '#1f3cff', 
+                                  color: isFollowing ? 'var(--text-main)' : '#fff', 
+                                  border: isFollowing ? '1px solid var(--border-card)' : 'none', 
+                                  padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' 
+                                }}
+                              >
+                                {isFollowing ? 'Mengikuti' : 'Ikuti'}
+                              </button>
+                            )}
+                          </div>
+
+                          {user.is_private && !isMe ? (
+                            <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-main)', borderRadius: '12px', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border-card)' }}>
+                              <span className="material-icons" style={{ fontSize: '24px', marginBottom: '4px' }}>lock</span>
+                              <div style={{ fontSize: '12px', fontWeight: 600 }}>Akun ini privat</div>
+                            </div>
+                          ) : (
+                            user.recentPosts?.length > 0 && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
+                                {user.recentPosts.map((rp: any) => (
+                                  <div 
+                                    key={rp.id} 
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/#post-${rp.id}`); }}
+                                    style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-secondary)' }}
+                                  >
+                                    <img src={getThumbnail(rp)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post" />
+                                    {rp.video_url && (
+                                      <span className="material-icons" style={{ position: 'absolute', top: '4px', right: '4px', color: '#fff', fontSize: '16px', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', padding: '2px' }}>play_arrow</span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )
                           )}
                         </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-                        {/* 🔥 LOGIKA SEMBUNYIKAN POSTINGAN JIKA PRIVATE 🔥 */}
-                        {user.is_private && !isMe ? (
-                          <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-main)', borderRadius: '12px', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border-card)' }}>
-                            <span className="material-icons" style={{ fontSize: '24px', marginBottom: '4px' }}>lock</span>
-                            <div style={{ fontSize: '12px', fontWeight: 600 }}>Akun ini privat</div>
+              {posts.length > 0 && (
+                <div>
+                  <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>POSTINGAN TERKAIT</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {posts.map(post => (
+                      <div 
+                        key={post.id} 
+                        onClick={() => router.push(`/#post-${post.id}`)}
+                        style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}
+                      >
+                        <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {post.video_url && (
+                          <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '4px', display: 'flex' }}>
+                            <span className="material-icons" style={{ color: '#fff', fontSize: '14px' }}>play_arrow</span>
                           </div>
-                        ) : (
-                          user.recentPosts?.length > 0 && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
-                              {user.recentPosts.map((rp: any) => (
-                                <div 
-                                  key={rp.id} 
-                                  onClick={(e) => { e.stopPropagation(); router.push(`/#post-${rp.id}`); }}
-                                  style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-secondary)' }}
-                                >
-                                  <img src={getThumbnail(rp)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post" />
-                                  {rp.video_url && (
-                                    <span className="material-icons" style={{ position: 'absolute', top: '4px', right: '4px', color: '#fff', fontSize: '16px', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', padding: '2px' }}>play_arrow</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )
                         )}
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ================================
-                BAGIAN 2: POSTINGAN TERKAIT
-            ================================= */}
-            {posts.length > 0 && (
-              <div>
-                <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>POSTINGAN TERKAIT</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                  {posts.map(post => (
-                    <div 
-                      key={post.id} 
-                      onClick={() => router.push(`/#post-${post.id}`)}
-                      style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}
-                    >
-                      <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      {post.video_url && (
-                        <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '4px', display: 'flex' }}>
-                          <span className="material-icons" style={{ color: '#fff', fontSize: '14px' }}>play_arrow</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+              {posts.length === 0 && recommendedPosts.length > 0 && (
+                <div style={{ marginTop: '20px' }}>
+                  <div style={{ textAlign: 'center', padding: '20px 0 40px 0' }}>
+                    <span className="material-icons" style={{ fontSize: '48px', color: 'var(--border-card)' }}>search_off</span>
+                    <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginTop: '10px' }}>Tidak ada hasil yang cocok.</p>
+                  </div>
+
+                  <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, textAlign: 'center' }}>🔥 MUNGKIN ANDA SUKA</h3>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {recommendedPosts.map(post => (
+                      <div 
+                        key={post.id} 
+                        onClick={() => router.push(`/#post-${post.id}`)}
+                        style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}
+                      >
+                        <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {post.video_url && (
+                          <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '4px', display: 'flex' }}>
+                            <span className="material-icons" style={{ color: '#fff', fontSize: '14px' }}>play_arrow</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* ================================
-                BAGIAN 3: MUNGKIN ANDA SUKA (JIKA KOSONG)
-            ================================= */}
-            {posts.length === 0 && recommendedPosts.length > 0 && (
-              <div style={{ marginTop: '20px' }}>
-                <div style={{ textAlign: 'center', padding: '20px 0 40px 0' }}>
-                  <span className="material-icons" style={{ fontSize: '48px', color: 'var(--border-card)' }}>search_off</span>
-                  <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginTop: '10px' }}>Tidak ada hasil yang cocok.</p>
-                </div>
-
-                <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, textAlign: 'center' }}>🔥 MUNGKIN ANDA SUKA</h3>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                  {recommendedPosts.map(post => (
-                    <div 
-                      key={post.id} 
-                      onClick={() => router.push(`/#post-${post.id}`)}
-                      style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}
-                    >
-                      <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      {post.video_url && (
-                        <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '4px', display: 'flex' }}>
-                          <span className="material-icons" style={{ color: '#fff', fontSize: '14px' }}>play_arrow</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </>
+              )}
+            </>
+          )
         )}
       </div>
     </div>

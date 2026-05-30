@@ -15,9 +15,6 @@ export default function SearchWrapperpost() {
   const [stories, setStories] = useState<any[]>([]);
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
-  
-  // 🔥 STATE BARU BUAT NANGKEP KETIKAN SEARCH 🔥
-  const [searchQuery, setSearchQuery] = useState("");
 
   const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/view');
 
@@ -59,14 +56,6 @@ export default function SearchWrapperpost() {
     }, 500); 
   };
 
-  // 🔥 FUNGSI BARU BUAT PINDAH HALAMAN PAS ENTER 🔥
-  const handleSearchEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim() !== "") {
-      // Hilangkan spasi berlebih dan pindah halaman
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
-
   if (!mounted || isHidden) return null;
 
   return (
@@ -83,13 +72,14 @@ export default function SearchWrapperpost() {
         </button>
 
         <div className="brutal-input-container">
+          {/* 🔥 UBAH BAGIAN INI 🔥 */}
           <input
             type="text"
             placeholder={t('search_placeholder')}
             className="brutal-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearchEnter} // Panggil fungsi pas enter dipencet
+            readOnly // Mencegah keyboard HP muncul sesaat
+            onClick={() => router.push('/search')} // Langsung pindah saat diklik
+            style={{ cursor: 'pointer' }} // Memberi tahu user ini bisa diklik
           />
         </div>
 
