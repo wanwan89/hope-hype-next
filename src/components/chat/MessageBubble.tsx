@@ -12,7 +12,7 @@ export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{color: '#8e8e93'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>;
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
   if (status === 'delivered') return <span className="status-icon delivered" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
-  if (status === 'read') return <span className="status-icon read" style={{color: '#4fc3f7'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  if (status === 'read') return <span className="status-icon read" style={{color: 'var(--primary-blue, #4fc3f7)'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
   return <span className="status-icon sent" style={{color: '#8e8e93'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
@@ -33,14 +33,13 @@ const renderTextWithLinks = (text: string) => {
   return parts.map((part, i) => {
     if (part.match(urlRegex)) {
       return (
-        <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', textDecoration: 'underline', wordBreak: 'break-all' }} onClick={(e) => e.stopPropagation()}>{part}</a>
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-blue, #1DA1F2)', textDecoration: 'underline', wordBreak: 'break-all' }} onClick={(e) => e.stopPropagation()}>{part}</a>
       );
     }
     return <span key={i}>{part}</span>;
   });
 };
 
-// 🔥 FUNGSI FORMAT WAKTU CHAT SEPARATOR 🔥
 const formatChatDate = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -52,30 +51,24 @@ const formatChatDate = (dateString: string) => {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   const timeStr = `${hours}:${minutes}`;
 
-  // Hari ini
   if (date.toDateString() === now.toDateString()) {
     return `Hari ini, ${timeStr}`;
   }
   
-  // Kemarin
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) {
     return `Kemarin, ${timeStr}`;
   }
 
-  // Dalam minggu yang sama (Nama Hari)
   if (diffDays < 7) {
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     return `${days[date.getDay()]}, ${timeStr}`;
   }
 
-  // Lebih dari seminggu (Tanggal Lengkap)
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${timeStr}`;
 };
 
-
-// Tambah prop `showDateSeparator` dari parent (ChatRoom)
 export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUser, isFirstUnread, unreadCount, showDateSeparator }: any) {
   const { t } = useTranslation(); 
   const router = useRouter(); 
@@ -94,10 +87,9 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
 
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
-  
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-
   const [isPlaying, setIsPlaying] = useState(false);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -159,7 +151,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     let diff = touchCurrentX.current - touchStartX.current;
     const now = Date.now();
     
-    // Double tap buat buka reaction
     if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted && !msg.is_system) {
       setShowReactions(true);
       if (navigator.vibrate) navigator.vibrate(20);
@@ -308,10 +299,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
   return (
     <>
       <style>{`
-        @keyframes spinLoading {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
         .reaction-menu {
           position: absolute;
           top: -48px;
@@ -341,7 +328,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
         }
       `}</style>
 
-      {/* 🔥 1. WAKTU CHAT SEPARATOR (Misal: Kamis, 21:00) 🔥 */}
       {showDateSeparator && (
         <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 8px' }}>
           <div style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
@@ -350,11 +336,10 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
         </div>
       )}
 
-      {/* PEMBATAS "X PESAN BARU" */}
       {isFirstUnread && unreadCount > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0 10px', width: '100%' }}>
           <div style={{ flex: 1, height: '1px', background: 'var(--border-color)', opacity: 0.5 }}></div>
-          <div style={{ background: 'rgba(31, 60, 255, 0.1)', color: '#1f3cff', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', margin: '0 10px' }}>
+          <div style={{ background: 'rgba(31, 60, 255, 0.1)', color: 'var(--primary-blue, #1f3cff)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', margin: '0 10px' }}>
             {unreadCount} Pesan Baru
           </div>
           <div style={{ flex: 1, height: '1px', background: 'var(--border-color)', opacity: 0.5 }}></div>
@@ -363,7 +348,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
 
       <div className="hype-chat-scope" style={{ position: 'relative' }}>
         
-        {/* PREVIEW FOTO */}
         <AnimatePresence>
           {previewImage && (
             <motion.div
@@ -404,8 +388,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
           style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
         >
 
-          {/* 🔥 2. PERBAIKAN MENU REACTION BUBBLE 🔥 */}
-          {/* Reaction menu sekarang diposisikan relatif terhadap bubble chat-nya biar pas posisinya */}
           {showReactions && !msg.is_system && (
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowReactions(false)} />
@@ -488,11 +470,22 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                   </div>
                 )}
 
+                {/* 🔥 PERUBAHAN VN: ANIMASI LOADING FRAMER & WARNA TEMA 🔥 */}
                 {msg.audio_url && !isDeleted && (
                   <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
-                    <button onClick={toggleVN} className="vn-play-btn" disabled={msg.status === 'sending'}>
+                    <button onClick={toggleVN} className="vn-play-btn" disabled={msg.status === 'sending'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {msg.status === 'sending' ? (
-                        <span className="material-icons" style={{ fontSize: '16px', color: 'white', animation: 'spinLoading 1s linear infinite' }}>autorenew</span>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            border: '2px solid rgba(255, 255, 255, 0.3)',
+                            borderTopColor: '#ffffff',
+                            borderRadius: '50%',
+                          }}
+                        />
                       ) : isPlaying ? (
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                       ) : (
@@ -506,7 +499,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                           key={i} 
                           animate={{ height: `${heightPercent}%` }}
                           transition={{ duration: 0.1 }}
-                          style={{ width: '3px', background: isPlaying ? '#1f3cff' : '#8e8e93', borderRadius: '2px' }} 
+                          style={{ width: '3px', background: isPlaying ? 'var(--primary-blue, #1f3cff)' : 'var(--text-muted, #8e8e93)', borderRadius: '2px' }} 
                         />
                       ))}
                     </div>

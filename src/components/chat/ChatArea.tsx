@@ -32,7 +32,7 @@ export default function ChatArea() {
   const groupId = searchParams?.get('group');
   const groupName = searchParams?.get('gname');
   
-  // 🔥 FIX 1: Tangkap 3 tipe parameter panggilan 🔥
+  // Tangkap 3 tipe parameter panggilan
   const autoCall = searchParams?.get('autoCall');
   const answerCall = searchParams?.get('answerCall');
   const incomingCall = searchParams?.get('incomingCall');
@@ -173,7 +173,6 @@ export default function ChatArea() {
     await fetchMessages(currentRoom, session.user.id); 
     setupRealtime(currentRoom, session.user, prof);
 
-    // 🔥 FIX 2: CEK APAKAH PANGGILAN BENERAN MASIH ADA? 🔥
     const { data: lastMsg } = await supabase.from('messages')
       .select('*').eq('room_id', currentRoom).order('created_at', { ascending: false }).limit(1).maybeSingle();
     
@@ -980,14 +979,28 @@ export default function ChatArea() {
                  }
               }
 
-              let showDateSeparator = false;
-              if (idx === messages.length - 1) {
-                showDateSeparator = true; 
-              } else {
-                const currDate = new Date(msg.created_at).toDateString();
-                const nextDate = new Date(messages[idx + 1].created_at).toDateString();
-                if (currDate !== nextDate) showDateSeparator = true;
-              }
+          // GANTI JADI SEPERTI INI
+          let showDateSeparator = false;
+          if (idx === 0) {
+            // Selalu munculkan separator di pesan paling pertama
+            showDateSeparator = true; 
+          } else {
+            const prevMsg = messages[idx - 1];
+            
+            // Cek perubahan hari
+            const currDate = new Date(msg.created_at).toDateString();
+            const prevDate = new Date(prevMsg.created_at).toDateString();
+            
+            // Cek selisih waktu
+            const prevTime = new Date(prevMsg.created_at).getTime();
+            const currTime = new Date(msg.created_at).getTime();
+            const diffInHours = (currTime - prevTime) / (1000 * 60 * 60);
+
+            // Munculkan separator jika beda hari ATAU jaraknya 5 jam lebih
+            if (currDate !== prevDate || diffInHours >= 5) {
+              showDateSeparator = true;
+            }
+          }
 
               return (
                 <MessageBubble 
@@ -1098,8 +1111,9 @@ export default function ChatArea() {
                 </div>
               ) : (
                 <div className="slim-input-wrapper">
+                  {/* Ikon stiker yang dibuat selalu warna biru tema */}
                   <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
-                    <span className="material-icons" style={{ color: isStickerOpen ? '#1f3cff' : '' }}>sentiment_satisfied_alt</span>
+                    <span className="material-icons" style={{ color: 'var(--primary-blue)' }}>sentiment_satisfied_alt</span>
                   </button>
                   
                   <textarea 
@@ -1114,8 +1128,12 @@ export default function ChatArea() {
                     }}
                   />
                   
+                  {/* FIX: Ikon lampiran diubah menjadi icon kamera SVG */}
                   <button className="action-icon-btn" onClick={handlePhotoClick} disabled={isUploadingImg}>
-                    <span className="material-icons">attach_file</span>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                      <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
                   </button>
                   <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
                 </div>
@@ -1174,13 +1192,15 @@ export default function ChatArea() {
               <img src={pendingImagePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="preview full" />
             </div>
 
-            <div style={{ padding: '20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              <div className="slim-input-wrapper" style={{ background: 'var(--bg-main)' }}>
+            {/* FIX: Layout khusus form chat saat edit/preview foto dirapihkan agar tidak tertutup */}
+            <div style={{ padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              <div className="slim-input-wrapper" style={{ flex: 1, background: 'var(--bg-secondary)' }}>
                 <textarea 
                   placeholder="Tambahkan keterangan..." 
                   value={imageCaption}
                   onChange={(e) => setImageCaption(e.target.value)}
                   rows={1}
+                  style={{ width: '100%', padding: '8px 4px', fontSize: '15px' }}
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
