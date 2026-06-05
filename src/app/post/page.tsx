@@ -100,7 +100,6 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
-    // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle()
     const { data: exactPost, error: errExact } = await supabase
       .from('posts')
       .select('creator_id')
@@ -119,7 +118,6 @@ export default function PostPage() {
     setIsMyOwnProfile(isMe);
 
     if (!isMe) {
-      // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle()
       const { data: profileData } = await supabase
         .from('profiles')
         .select('username')
@@ -158,7 +156,6 @@ export default function PostPage() {
 
   const loadSinglePost = async (id: string, user: any) => {
     try {
-      // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle()
       const { data: postData, error } = await supabase
         .from('posts')
         .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
@@ -205,7 +202,6 @@ export default function PostPage() {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
       
-      // 🔥 PERBAIKAN: Ganti .single() jadi .maybeSingle() agar tidak error "The result contains 0 rows"
       const { data: userBookmark } = await supabase
         .from('bookmarks')
         .select('user_id')
@@ -221,7 +217,7 @@ export default function PostPage() {
     }
   };
 
-  // 🔥 Logika untuk nge-scroll ke postingan yang spesifik pas pertama load
+  // Logika untuk nge-scroll ke postingan yang spesifik pas pertama load
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
       setTimeout(() => {
@@ -387,7 +383,7 @@ export default function PostPage() {
     }
   }, []);
 
-  // 🔥 Observer autoplay buat list postingan yang scrollable (DIPERBAIKI) 🔥
+  // Observer autoplay buat list postingan yang scrollable
   useEffect(() => {
     if (userPosts.length === 0) return;
     
@@ -485,57 +481,119 @@ export default function PostPage() {
               width: '100%' 
             }}
           >
-            {userPosts.map((p) => (
-              <div 
-                key={p.id} 
-                id={`post-wrapper-${p.id}`} 
-                style={{ 
-                  scrollSnapAlign: 'start', 
-                  height: '100%', 
-                  position: 'relative' 
-                }}
-              >
-                <PostCard
-                  post={p}
-                  currentUser={currentUser}
-                  counts={counts}
-                  myLikedPosts={myLikedPosts}
-                  myRepostedPosts={myRepostedPosts}
-                  mySavedPosts={mySavedPosts}
-                  followedUsers={followedUsers}
-                  mutualUsers={mutualUsers}
-                  animatingFollows={animatingFollows}
-                  animatingReposts={animatingReposts}
-                  isGloballyMuted={isGloballyMuted}
-                  poppingHeart={poppingHeart}
-                  activePreviewImage={activePreviewImage}
-                  likersMap={likersMap} 
-                  repostersMap={repostersMap}
-                  handleLike={handleLike}
-                  handleSave={handleSave}
-                  openRepostModal={(id, cid) => {
-                    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                    if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                    else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+            {userPosts.map((p) => {
+              // 🔥 LOGIKA BARU: Cek jika postingan hanya berupa teks atau teks + audio
+              const isTextOrAudio = !p.image_url && !p.video_url;
+
+              return (
+                <div 
+                  key={p.id} 
+                  id={`post-wrapper-${p.id}`} 
+                  style={{ 
+                    scrollSnapAlign: 'start', 
+                    height: '100%', 
+                    position: 'relative' 
                   }}
-                  handleMediaClick={handleMediaClick}
-                  toggleMute={toggleMute}
-                  openShareOptions={openShareOptions}
-                  handleFollowToggle={handleFollowToggle}
-                  setActivePreviewImage={setActivePreviewImage}
-                  router={router}
-                  t={t}
-                />
-              </div>
-            ))}
+                  // 🔥 Menyisipkan class wrapper dinamis berdasarkan jenis konten
+                  className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}
+                >
+                  <PostCard
+                    post={p}
+                    currentUser={currentUser}
+                    counts={counts}
+                    myLikedPosts={myLikedPosts}
+                    myRepostedPosts={myRepostedPosts}
+                    mySavedPosts={mySavedPosts}
+                    followedUsers={followedUsers}
+                    mutualUsers={mutualUsers}
+                    animatingFollows={animatingFollows}
+                    animatingReposts={animatingReposts}
+                    isGloballyMuted={isGloballyMuted}
+                    poppingHeart={poppingHeart}
+                    activePreviewImage={activePreviewImage}
+                    likersMap={likersMap} 
+                    repostersMap={repostersMap}
+                    handleLike={handleLike}
+                    handleSave={handleSave}
+                    openRepostModal={(id, cid) => {
+                      if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                      if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                      else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                    }}
+                    handleMediaClick={handleMediaClick}
+                    toggleMute={toggleMute}
+                    openShareOptions={openShareOptions}
+                    handleFollowToggle={handleFollowToggle}
+                    setActivePreviewImage={setActivePreviewImage}
+                    router={router}
+                    t={t}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+      
+      {/* STYLING UPDATE: Ditambahkan agar sinkron dengan gallery utama */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         /* Hide scrollbar for clean look */
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 🔥 CSS agar Feed Full Edge-to-Edge 🔥 */
+        .gallery {
+          width: 100% !important;
+          max-width: 100% !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* 📸 STYLE UNTUK MEDIA POST (FOTO/VIDEO): Tetap Full Edge-to-Edge Tanpa Jarak Pinggir 📸 */
+        .media-post-card-wp [data-postid] {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          margin-bottom: 12px !important; 
+          border-left: none !important;
+          border-right: none !important;
+          border-radius: 0 !important; 
+        }
+        .media-post-card-wp [data-postid] img,
+        .media-post-card-wp [data-postid] video,
+        .media-post-card-wp [data-postid] .post-media-wrapper {
+          width: 100% !important;
+          border-radius: 0 !important;
+        }
+
+        /* 📝 STYLE KHUSUS FEED TEKS & AUDIO: Sisi melengkung, memiliki padding pinggir agar terlihat seperti card bubble 📝 */
+        .text-post-card-wp {
+          width: 100% !important;
+          padding: 0 12px !important; /* Memberikan space jarak dari tepi screen HP */
+          box-sizing: border-box !important;
+        }
+        .text-post-card-wp [data-postid] {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-bottom: 14px !important;
+          border-radius: 20px !important; /* 🔥 Membuat sisinya melengkung cantik beda dari foto */
+          border: 1px solid var(--border-card) !important;
+          overflow: hidden !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+        }
+
+        /* 👤 FIX: Paksa semua foto profile di dalam gallery (baik text/audio maupun media) menjadi BULAT sempurna 👤 */
+        .text-post-card-wp [data-postid] img,
+        .text-post-card-wp [data-postid] .avatar,
+        .text-post-card-wp [data-postid] [class*="avatar"],
+        .media-post-card-wp [data-postid] .avatar,
+        .media-post-card-wp [data-postid] [class*="avatar"] {
+          border-radius: 50% !important; /* 🔥 Mengubah bentuk kotak menjadi lingkaran murni */
+          aspect-ratio: 1 / 1 !important;
+          object-fit: cover !important;
+        }
       `}</style>
     </div>
   );
