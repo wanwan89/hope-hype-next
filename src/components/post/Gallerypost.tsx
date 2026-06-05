@@ -539,7 +539,6 @@ export default function Gallerypost() {
   }, []);
 
   return (
-    // 1. Tambahkan inline style pada section agar membentang 100% tanpa hambatan kontainer induk
     <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0 }}>
       <style>{`
         .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
@@ -548,7 +547,7 @@ export default function Gallerypost() {
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         .slider-recommendation::-webkit-scrollbar { display: none; }
 
-        /* 🔥 Tambahan CSS agar Feed Full Edge-to-Edge 🔥 */
+        /* 🔥 CSS agar Feed Full Edge-to-Edge 🔥 */
         .gallery {
           width: 100% !important;
           max-width: 100% !important;
@@ -556,24 +555,48 @@ export default function Gallerypost() {
           margin: 0 !important;
         }
 
-        /* Memaksa setiap card postingan virtuoso memenuhi lebar layar tanpa jarak samping */
-        .gallery [data-postid] {
+        /* 📸 STYLE UNTUK MEDIA POST (FOTO/VIDEO): Tetap Full Edge-to-Edge Tanpa Jarak Pinggir 📸 */
+        .media-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
           margin-left: 0 !important;
           margin-right: 0 !important;
-          margin-bottom: 12px !important; /* Jarak antar post vertikal saja */
+          margin-bottom: 12px !important; 
           border-left: none !important;
           border-right: none !important;
-          border-radius: 0 !important; /* Menghilangkan sudut melengkung agar bersih di ujung layar */
+          border-radius: 0 !important; 
         }
-
-        /* Memastikan gambar/video di dalam komponen PostCard ikut meluas penuh */
-        .gallery [data-postid] img,
-        .gallery [data-postid] video,
-        .gallery [data-postid] .post-media-wrapper {
+        .media-post-card-wp [data-postid] img,
+        .media-post-card-wp [data-postid] video,
+        .media-post-card-wp [data-postid] .post-media-wrapper {
           width: 100% !important;
           border-radius: 0 !important;
+        }
+
+        /* 📝 STYLE KHUSUS FEED TEKS: Sisi melengkung, memiliki padding pinggir agar terlihat seperti card bubble 📝 */
+        .text-post-card-wp {
+          width: 100% !important;
+          padding: 0 12px !important; /* Memberikan space jarak dari tepi screen HP */
+          box-sizing: border-box !important;
+        }
+        .text-post-card-wp [data-postid] {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-bottom: 14px !important;
+          border-radius: 20px !important; /* 🔥 Membuat sisinya melengkung cantik beda dari foto */
+          border: 1px solid var(--border-card) !important;
+          overflow: hidden !important;
+          background: var(--bg-secondary) !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+        }
+
+        /* 👤 FIX: Paksa foto profile di dalam feed teks menjadi BULAT sempurna 👤 */
+        .text-post-card-wp [data-postid] img,
+        .text-post-card-wp [data-postid] .avatar,
+        .text-post-card-wp [data-postid] [class*="avatar"] {
+          border-radius: 50% !important; /* 🔥 Mengubah bentuk kotak menjadi lingkaran murni */
+          aspect-ratio: 1 / 1 !important;
+          object-fit: cover !important;
         }
       `}</style>
 
@@ -602,40 +625,49 @@ export default function Gallerypost() {
             increaseViewportBy={{ top: 0, bottom: 2500 }}
             overscan={800} 
             itemsRendered={handleItemsRendered}
-            itemContent={(index, post) => (
-              <React.Fragment key={post.id}>
-                {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
-                {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
-                <MemoizedPostCard
-                  post={post}
-                  currentUser={currentUser}
-                  isOwner={currentUser?.id === post.creator_id}
-                  counts={counts}
-                  myLikedPosts={myLikedPosts}
-                  myRepostedPosts={myRepostedPosts}
-                  mySavedPosts={mySavedPosts}
-                  followedUsers={followedUsers}
-                  mutualUsers={mutualUsers}
-                  animatingFollows={animatingFollows}
-                  animatingReposts={animatingReposts}
-                  isGloballyMuted={isGloballyMuted}
-                  poppingHeart={poppingHeart}
-                  activePreviewImage={activePreviewImage}
-                  likersMap={likersMap}
-                  repostersMap={repostersMap}
-                  handleLike={handleLike}
-                  handleSave={handleSave}
-                  openRepostModal={openRepostModal}
-                  handleMediaClick={handleMediaClick}
-                  toggleMute={toggleMute}
-                  openShareOptions={openShareOptions}
-                  handleFollowToggle={handleFollowToggle}
-                  setActivePreviewImage={setActivePreviewImage}
-                  router={router}
-                  t={t}
-                />
-              </React.Fragment>
-            )}
+            itemContent={(index, post) => {
+              // Cek apakah post merupakan tipe teks murni (tidak punya image, video, maupun audio)
+              const isTextOnly = !post.image_url && !post.video_url && !post.audio_src;
+
+              return (
+                <React.Fragment key={post.id}>
+                  {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
+                  {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
+                  
+                  {/* Memisahkan wrapper class berdasarkan tipe post */}
+                  <div className={isTextOnly ? "text-post-card-wp" : "media-post-card-wp"}>
+                    <MemoizedPostCard
+                      post={post}
+                      currentUser={currentUser}
+                      isOwner={currentUser?.id === post.creator_id}
+                      counts={counts}
+                      myLikedPosts={myLikedPosts}
+                      myRepostedPosts={myRepostedPosts}
+                      mySavedPosts={mySavedPosts}
+                      followedUsers={followedUsers}
+                      mutualUsers={mutualUsers}
+                      animatingFollows={animatingFollows}
+                      animatingReposts={animatingReposts}
+                      isGloballyMuted={isGloballyMuted}
+                      poppingHeart={poppingHeart}
+                      activePreviewImage={activePreviewImage}
+                      likersMap={likersMap}
+                      repostersMap={repostersMap}
+                      handleLike={handleLike}
+                      handleSave={handleSave}
+                      openRepostModal={openRepostModal}
+                      handleMediaClick={handleMediaClick}
+                      toggleMute={toggleMute}
+                      openShareOptions={openShareOptions}
+                      handleFollowToggle={handleFollowToggle}
+                      setActivePreviewImage={setActivePreviewImage}
+                      router={router}
+                      t={t}
+                    />
+                  </div>
+                </React.Fragment>
+              );
+            }}
             components={{ Footer: () => (<div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>{isLoadingMore ? <div className="pure-spinner"></div> : hasMore ? <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span> : <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>Tidak ada postingan lagi</span>}</div>) }}
           />
         )}
