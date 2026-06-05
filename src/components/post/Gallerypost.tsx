@@ -573,7 +573,7 @@ export default function Gallerypost() {
           border-radius: 0 !important;
         }
 
-        /* 📝 STYLE KHUSUS FEED TEKS: Sisi melengkung, memiliki padding pinggir agar terlihat seperti card bubble 📝 */
+        /* 📝 STYLE KHUSUS FEED TEKS & AUDIO: Sisi melengkung, memiliki padding pinggir agar terlihat seperti card bubble 📝 */
         .text-post-card-wp {
           width: 100% !important;
           padding: 0 12px !important; /* Memberikan space jarak dari tepi screen HP */
@@ -586,14 +586,16 @@ export default function Gallerypost() {
           border-radius: 20px !important; /* 🔥 Membuat sisinya melengkung cantik beda dari foto */
           border: 1px solid var(--border-card) !important;
           overflow: hidden !important;
-          background: var(--bg-secondary) !important;
+          /* background: var(--bg-secondary) !important; 👈 DIHAPUS agar warnanya sama persis dengan feed lainnya */
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
         }
 
-        /* 👤 FIX: Paksa foto profile di dalam feed teks menjadi BULAT sempurna 👤 */
+        /* 👤 FIX: Paksa semua foto profile di dalam gallery (baik text/audio maupun media) menjadi BULAT sempurna 👤 */
         .text-post-card-wp [data-postid] img,
         .text-post-card-wp [data-postid] .avatar,
-        .text-post-card-wp [data-postid] [class*="avatar"] {
+        .text-post-card-wp [data-postid] [class*="avatar"],
+        .media-post-card-wp [data-postid] .avatar,
+        .media-post-card-wp [data-postid] [class*="avatar"] {
           border-radius: 50% !important; /* 🔥 Mengubah bentuk kotak menjadi lingkaran murni */
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
@@ -626,8 +628,8 @@ export default function Gallerypost() {
             overscan={800} 
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
-              // Cek apakah post merupakan tipe teks murni (tidak punya image, video, maupun audio)
-              const isTextOnly = !post.image_url && !post.video_url && !post.audio_src;
+              // 🔥 UBAH LOGIKANYA: Postingan dianggap berjenis text/bubble jika tidak memiliki image ataupun video (Audio/Lagu diperbolehkan masuk sini)
+              const isTextOrAudio = !post.image_url && !post.video_url;
 
               return (
                 <React.Fragment key={post.id}>
@@ -635,7 +637,7 @@ export default function Gallerypost() {
                   {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
                   
                   {/* Memisahkan wrapper class berdasarkan tipe post */}
-                  <div className={isTextOnly ? "text-post-card-wp" : "media-post-card-wp"}>
+                  <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
                     <MemoizedPostCard
                       post={post}
                       currentUser={currentUser}
