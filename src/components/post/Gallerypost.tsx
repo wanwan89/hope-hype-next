@@ -539,13 +539,42 @@ export default function Gallerypost() {
   }, []);
 
   return (
-    <section>
+    // 1. Tambahkan inline style pada section agar membentang 100% tanpa hambatan kontainer induk
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0 }}>
       <style>{`
         .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .btn-press:active { transform: scale(0.85); }
         .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         .slider-recommendation::-webkit-scrollbar { display: none; }
+
+        /* 🔥 Tambahan CSS agar Feed Full Edge-to-Edge 🔥 */
+        .gallery {
+          width: 100% !important;
+          max-width: 100% !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* Memaksa setiap card postingan virtuoso memenuhi lebar layar tanpa jarak samping */
+        .gallery [data-postid] {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          margin-bottom: 12px !important; /* Jarak antar post vertikal saja */
+          border-left: none !important;
+          border-right: none !important;
+          border-radius: 0 !important; /* Menghilangkan sudut melengkung agar bersih di ujung layar */
+        }
+
+        /* Memastikan gambar/video di dalam komponen PostCard ikut meluas penuh */
+        .gallery [data-postid] img,
+        .gallery [data-postid] video,
+        .gallery [data-postid] .post-media-wrapper {
+          width: 100% !important;
+          border-radius: 0 !important;
+        }
       `}</style>
 
       <RepostModal
@@ -570,9 +599,8 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            // 🔥 FIX: Trik "Bohongin" Virtuoso biar ngira HP lebih panjang, jadi dia pre-render 3-5 item ke depan! 🔥
             increaseViewportBy={{ top: 0, bottom: 2500 }}
-            overscan={800} // Cukup 800px aja buat buffer standar, sisanya diurus sama trik di atas
+            overscan={800} 
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => (
               <React.Fragment key={post.id}>
