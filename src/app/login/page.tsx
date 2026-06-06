@@ -275,7 +275,7 @@ export default function LoginPage() {
           onClick={handleGoogleLogin}
           disabled={isLoading}
         >
-          <svg ...> {/* Icon Google */} </svg>
+          <svg> {/* Icon Google */} </svg>
           Masuk dengan Google
         </button>
       </div>
