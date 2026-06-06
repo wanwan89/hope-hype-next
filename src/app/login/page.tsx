@@ -13,8 +13,7 @@ type Step =
   | 'input-email'
   | 'input-phone'
   | 'otp'
-  | 'find-account'
-  | 'find-account-result';
+  | 'find-account';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,6 +38,7 @@ export default function LoginPage() {
     username?: string;
     email?: string;
     phone?: string;
+    avatar_url?: string;
   } | null>(null);
 
   // --- Reset password ---
@@ -48,7 +48,7 @@ export default function LoginPage() {
   // Referensi untuk kotak OTP
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // ---------- Helper format nomor telepon ----------
+  // ---------- Helper format nomor & sensor username ----------
   const getFormattedPhone = (raw: string) => {
     let cleaned = raw.replace(/\s+/g, '');
     if (cleaned.startsWith('0')) cleaned = '+62' + cleaned.slice(1);
@@ -56,48 +56,34 @@ export default function LoginPage() {
     return cleaned;
   };
 
+  const maskUsername = (name?: string) => {
+    if (!name) return '';
+    if (name.length <= 5) return name.slice(0, 2) + '***';
+    const first = name.slice(0, 4);
+    const last = name.slice(-3);
+    return `${first}***${last}`;
+  };
+
   // ---------- Cek sesi & auto-create profile ----------
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
         const userId = session.user.id;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', userId)
-          .single();
+        const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).single();
 
         if (!profile) {
           const userMeta = session.user.user_metadata;
-          const rawName =
-            userMeta?.full_name ||
-            userMeta?.name ||
-            session.user.email?.split('@')[0] ||
-            session.user.phone?.replace('+', '') ||
-            'user_hype';
+          const rawName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || session.user.phone?.replace('+', '') || 'user_hype';
           const safeUsername = rawName.toLowerCase().replace(/\s+/g, '');
-          const safeAvatar =
-            userMeta?.avatar_url ||
-            userMeta?.picture ||
-            `https://api.dicebear.com/7.x/initials/svg?seed=${safeUsername}`;
+          const safeAvatar = userMeta?.avatar_url || userMeta?.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${safeUsername}`;
 
-          await supabase.from('profiles').insert([
-            {
-              id: userId,
-              username: safeUsername,
-              avatar_url: safeAvatar,
-              role: 'user',
-            },
-          ]);
+          await supabase.from('profiles').insert([{ id: userId, username: safeUsername, avatar_url: safeAvatar, role: 'user' }]);
         }
-
         router.push('/');
       }
     });
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    return () => authListener.subscription.unsubscribe();
   }, [router]);
 
   // ---------- OAuth (Google) ----------
@@ -109,43 +95,27 @@ export default function LoginPage() {
     });
   };
 
-  // ---------- Kirim OTP (email / telepon) ----------
+  // ---------- Kirim OTP ----------
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       if (step === 'input-email') {
-        if (!email) {
-          setIsLoading(false);
-          return showNotif(t('email_required'), 'warning');
-        }
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: true },
-        });
+        if (!email) throw new Error(t('email_required'));
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
         if (error) throw error;
         showNotif(t('otp_email_sent'), 'success');
       } else if (step === 'input-phone') {
-        if (!phone) {
-          setIsLoading(false);
-          return showNotif(t('phone_required'), 'warning');
-        }
+        if (!phone) throw new Error(t('phone_required'));
         const formatted = getFormattedPhone(phone);
         const { error } = await supabase.auth.signInWithOtp({
           phone: formatted,
-          options: {
-            channel: phoneChannel,
-            shouldCreateUser: true,
-          },
+          options: { channel: phoneChannel, shouldCreateUser: true },
         });
         if (error) throw error;
-        showNotif(
-          `Kode OTP dikirim melalui ${phoneChannel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`,
-          'success',
-        );
+        showNotif(`Kode OTP dikirim melalui ${phoneChannel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, 'success');
       }
-      // Pindah ke langkah verifikasi OTP
       setStep('otp');
     } catch (error: any) {
       showNotif(error.message, 'error');
@@ -154,7 +124,7 @@ export default function LoginPage() {
     }
   };
 
-  // ---------- Verifikasi OTP (kotak 6 digit) ----------
+  // ---------- Verifikasi OTP ----------
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = otpToken.trim();
@@ -172,7 +142,6 @@ export default function LoginPage() {
       const { error } = await supabase.auth.verifyOtp(verifyParams);
       if (error) throw error;
       showNotif(t('verify_success'), 'success');
-      // Redirect otomatis oleh onAuthStateChange
     } catch (error: any) {
       showNotif(error.message, 'error');
     } finally {
@@ -187,16 +156,10 @@ export default function LoginPage() {
     setSearchResult(null);
 
     try {
-      const identifier =
-        searchType === 'email'
-          ? searchEmail.trim()
-          : getFormattedPhone(searchPhone);
-      if (!identifier) {
-        setIsLoading(false);
-        return showNotif('Masukkan email atau nomor telepon', 'warning');
-      }
+      const identifier = searchType === 'email' ? searchEmail.trim() : getFormattedPhone(searchPhone);
+      if (!identifier) throw new Error('Masukkan email atau nomor telepon');
 
-      // Panggil API backend (wajib dibuat)
+      // Simulasi pemanggilan API (Ganti dengan endpoint API aslimu)
       const res = await fetch('/api/check-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -210,18 +173,18 @@ export default function LoginPage() {
           username: data.username,
           email: data.email,
           phone: data.phone,
+          avatar_url: data.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=hype', // Fallback image
         });
       } else {
         setSearchResult({ exists: false });
       }
-    } catch (error) {
-      showNotif('Gagal memeriksa akun', 'error');
+    } catch (error: any) {
+      showNotif(error.message || 'Gagal memeriksa akun', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Lanjut login setelah menemukan akun
   const handleLoginFoundAccount = () => {
     if (searchType === 'email') {
       setEmail(searchEmail);
@@ -252,127 +215,43 @@ export default function LoginPage() {
     }
   };
 
-  // ---------- Render berdasarkan step ----------
+  // =====================================================================
+  // RENDER BLOCKS
+  // =====================================================================
+
   const renderMethodSelection = () => (
     <>
       <div className="method-selection">
-        <button
-          className="method-btn"
-          onClick={() => setStep('input-email')}
-        >
-          <span className="material-icons">email</span>
-          Masuk dengan Email
+        <button className="method-btn" onClick={() => setStep('input-email')}>
+          <span className="material-icons">email</span> Masuk dengan Email
         </button>
-        <button
-          className="method-btn"
-          onClick={() => setStep('input-phone')}
-        >
-          <span className="material-icons">phone</span>
-          Masuk dengan Nomor Telepon
+        <button className="method-btn" onClick={() => setStep('input-phone')}>
+          <span className="material-icons">phone</span> Masuk dengan Nomor Telepon
         </button>
-<button
-  className="method-btn google-btn"
-  onClick={handleGoogleLogin}
-  disabled={isLoading}
->
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
-    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-  </svg>
-  Masuk dengan Google
-</button>
+        <button className="method-btn google-btn" onClick={handleGoogleLogin} disabled={isLoading}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Masuk dengan Google
+        </button>
       </div>
-
       <div className="auth-links">
-        <button className="link-btn" onClick={() => setStep('find-account')}>
-          Cari akun / Lupa akun?
-        </button>
-        <button className="link-btn" onClick={() => setShowForgotPassword(true)}>
-          Lupa kata sandi?
-        </button>
+        <button className="link-btn" onClick={() => setStep('find-account')}>Cari akun Anda</button>
+        <button className="link-btn" onClick={() => setShowForgotPassword(true)}>Lupa kata sandi?</button>
       </div>
     </>
   );
 
-  const renderEmailForm = () => (
-    <form onSubmit={handleSendOtp} className="auth-form">
-      <div className="input-group-auth">
-        <span className="material-icons">mail_outline</span>
-        <input
-          type="email"
-          placeholder="user@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
-      <button type="submit" className="btn-auth-main" disabled={isLoading}>
-        {isLoading ? 'Mengirim...' : 'Kirim Kode OTP'}
-      </button>
-      <button type="button" className="back-link" onClick={() => setStep('method-selection')}>
-        ← Kembali
-      </button>
-    </form>
-  );
-
-  const renderPhoneForm = () => (
-    <form onSubmit={handleSendOtp} className="auth-form">
-      <div className="input-group-auth">
-        <span className="material-icons">phone</span>
-        <input
-          type="tel"
-          placeholder="0812xxx atau +62812xxx"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          required
-        />
-      </div>
-      <div className="channel-selector">
-        <label>
-          <input
-            type="radio"
-            name="channel"
-            value="whatsapp"
-            checked={phoneChannel === 'whatsapp'}
-            onChange={() => setPhoneChannel('whatsapp')}
-          />
-          WhatsApp
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="channel"
-            value="sms"
-            checked={phoneChannel === 'sms'}
-            onChange={() => setPhoneChannel('sms')}
-          />
-          SMS
-        </label>
-      </div>
-      <button type="submit" className="btn-auth-main" disabled={isLoading}>
-        {isLoading ? 'Mengirim...' : 'Kirim Kode OTP'}
-      </button>
-      <button type="button" className="back-link" onClick={() => setStep('method-selection')}>
-        ← Kembali
-      </button>
-    </form>
-  );
-
   const renderOtpInput = () => {
-    // Fungsi untuk mengisi 6 digit kotak
     const handleOtpChange = (index: number, value: string) => {
-      if (!/^\d?$/.test(value)) return; // hanya angka
+      if (!/^\d?$/.test(value)) return;
       const newOtp = otpToken.split('');
       newOtp[index] = value;
-      const joined = newOtp.join('').slice(0, 6);
-      setOtpToken(joined);
-
-      // Auto-fokus ke kotak berikutnya
-      if (value && index < 5) {
-        otpInputRefs.current[index + 1]?.focus();
-      }
+      setOtpToken(newOtp.join('').slice(0, 6));
+      if (value && index < 5) otpInputRefs.current[index + 1]?.focus();
     };
 
     const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -382,8 +261,7 @@ export default function LoginPage() {
     };
 
     return (
-      <form onSubmit={handleVerifyOtp} className="otp-form">
-        <p style={{ textAlign: 'center' }}>Masukkan 6 digit kode OTP</p>
+      <form onSubmit={handleVerifyOtp} className="otp-form slide-in">
         <div className="otp-boxes">
           {Array.from({ length: 6 }).map((_, i) => (
             <input
@@ -403,101 +281,81 @@ export default function LoginPage() {
         <button type="submit" className="btn-auth-main" disabled={isLoading}>
           {isLoading ? 'Memverifikasi...' : 'Verifikasi & Masuk'}
         </button>
-        <button
-          type="button"
-          className="back-link"
-          onClick={() => {
-            setStep(email ? 'input-email' : 'input-phone');
-            setOtpToken('');
-          }}
-        >
-          ← Kembali / Ubah Tujuan
+        <button type="button" className="back-link" onClick={() => { setStep(email ? 'input-email' : 'input-phone'); setOtpToken(''); }}>
+          ← Ubah Tujuan
         </button>
       </form>
     );
   };
 
   const renderFindAccount = () => (
-    <form onSubmit={handleFindAccount} className="auth-form">
-      <h4>Cari akun Anda</h4>
-      <div className="tab-mini">
-        <button
-          type="button"
-          className={searchType === 'email' ? 'active' : ''}
-          onClick={() => setSearchType('email')}
-        >
-          Email
-        </button>
-        <button
-          type="button"
-          className={searchType === 'phone' ? 'active' : ''}
-          onClick={() => setSearchType('phone')}
-        >
-          Telepon
-        </button>
-      </div>
-
-      {searchType === 'email' ? (
-        <input
-          type="email"
-          placeholder="Email terdaftar"
-          value={searchEmail}
-          onChange={(e) => setSearchEmail(e.target.value)}
-          required
-        />
-      ) : (
-        <input
-          type="tel"
-          placeholder="Nomor telepon"
-          value={searchPhone}
-          onChange={(e) => setSearchPhone(e.target.value)}
-          required
-        />
+    <form onSubmit={handleFindAccount} className="auth-form slide-in">
+      <h4 style={{ marginBottom: '16px' }}>Cari akun Anda</h4>
+      
+      {/* Tampilan Avatar jika ketemu */}
+      {searchResult?.exists && searchResult.avatar_url && (
+        <div className="profile-preview-container fade-in-scale">
+          <img src={searchResult.avatar_url} alt="Profile" className="profile-preview-img" />
+        </div>
       )}
 
+      <div className="tab-mini">
+        <button type="button" className={searchType === 'email' ? 'active' : ''} onClick={() => setSearchType('email')}>Email</button>
+        <button type="button" className={searchType === 'phone' ? 'active' : ''} onClick={() => setSearchType('phone')}>Telepon</button>
+      </div>
+
+      {/* Input sudah dibungkus dengan input-group-auth agar ada CSS nya */}
+      <div className="input-group-auth">
+        {searchType === 'email' ? (
+          <input type="email" placeholder="Email terdaftar" value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} required />
+        ) : (
+          <input type="tel" placeholder="Nomor telepon" value={searchPhone} onChange={(e) => setSearchPhone(e.target.value)} required />
+        )}
+      </div>
+
       <button type="submit" className="btn-auth-main" disabled={isLoading}>
-        {isLoading ? 'Mencari...' : 'Cari Akun'}
+        {isLoading ? 'Mencari...' : 'Mencari...'}
       </button>
 
       {searchResult && (
-        <div className="search-result">
+        <div className="search-result fade-in-scale">
           {searchResult.exists ? (
             <>
-              <p>✅ Akun ditemukan: <strong>{searchResult.username}</strong></p>
-              <button type="button" onClick={handleLoginFoundAccount} className="btn-auth-main">
+              <div className="result-status">
+                <span className="material-icons" style={{ color: '#10b981', fontSize: '18px' }}>check_box</span>
+                <p>Akun ditemukan: <strong>{maskUsername(searchResult.username)}</strong></p>
+              </div>
+              <button type="button" onClick={handleLoginFoundAccount} className="btn-auth-main secondary-btn">
                 Lanjutkan Login
               </button>
             </>
           ) : (
-            <p>❌ Tidak ada akun dengan {searchType === 'email' ? 'email' : 'nomor'} tersebut.</p>
+            <p style={{ color: '#ef4444' }}>Tidak ada akun yang terdaftar.</p>
           )}
         </div>
       )}
 
-      <button type="button" className="back-link" onClick={() => setStep('method-selection')}>
-        ← Kembali
-      </button>
+      <button type="button" className="back-link" onClick={() => { setStep('method-selection'); setSearchResult(null); }}>← Kembali</button>
     </form>
   );
 
-  // ---------- Main Render ----------
+  // =====================================================================
+  // MAIN RENDER
+  // =====================================================================
+
   if (showForgotPassword) {
     return (
       <div className="auth-wrapper fade-in-scale">
         <div className="auth-container">
-          <h3>Lupa Kata Sandi</h3>
-          <input
-            type="email"
-            placeholder="Email terdaftar"
-            value={resetEmail}
-            onChange={(e) => setResetEmail(e.target.value)}
-          />
+          <h2 style={{ marginBottom: '20px' }}>Lupa Kata Sandi</h2>
+          {/* Input sudah dibungkus dengan input-group-auth */}
+          <div className="input-group-auth">
+            <input type="email" placeholder="Email terdaftar" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
+          </div>
           <button onClick={handleForgotPassword} className="btn-auth-main" disabled={isLoading}>
             Kirim Link Reset
           </button>
-          <button onClick={() => setShowForgotPassword(false)} className="back-link">
-            ← Kembali
-          </button>
+          <button onClick={() => setShowForgotPassword(false)} className="back-link">← Kembali</button>
         </div>
       </div>
     );
@@ -506,23 +364,36 @@ export default function LoginPage() {
   return (
     <div className="auth-wrapper fade-in-scale">
       <div className="auth-container">
-        {/* Header brand tetap */}
         <div className="auth-header">
-          <img src="/brand.png" alt="Hypeco" width="45" height="45" />
-          <h1>hypeco</h1>
+          <h1 style={{ fontSize: '32px' }}># hypeco</h1>
           <p>
-            {step === 'method-selection'
-              ? t('login_subtitle', 'Masuk ke HypeTalk hari ini.')
-              : step === 'otp'
-              ? t('otp_subtitle', 'Masukkan kode verifikasi')
-              : t('login_subtitle')}
+            {step === 'method-selection' ? 'Login dulu buat lanjut cari hype' :
+             step === 'otp' ? 'Masukkan kode verifikasi' : 'Login dulu buat lanjut cari hype'}
           </p>
         </div>
 
-        {/* Render sesuai step */}
         {step === 'method-selection' && renderMethodSelection()}
-        {step === 'input-email' && renderEmailForm()}
-        {step === 'input-phone' && renderPhoneForm()}
+        
+        {step === 'input-email' && (
+          <form onSubmit={handleSendOtp} className="auth-form slide-in">
+            <div className="input-group-auth"><input type="email" placeholder="user@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+            <button type="submit" className="btn-auth-main" disabled={isLoading}>{isLoading ? 'Mengirim...' : 'Kirim Kode OTP'}</button>
+            <button type="button" className="back-link" onClick={() => setStep('method-selection')}>← Kembali</button>
+          </form>
+        )}
+
+        {step === 'input-phone' && (
+          <form onSubmit={handleSendOtp} className="auth-form slide-in">
+            <div className="input-group-auth"><input type="tel" placeholder="0812xxx / +628..." value={phone} onChange={(e) => setPhone(e.target.value)} required /></div>
+            <div className="channel-selector">
+              <label><input type="radio" value="whatsapp" checked={phoneChannel === 'whatsapp'} onChange={() => setPhoneChannel('whatsapp')} /> WhatsApp</label>
+              <label><input type="radio" value="sms" checked={phoneChannel === 'sms'} onChange={() => setPhoneChannel('sms')} /> SMS</label>
+            </div>
+            <button type="submit" className="btn-auth-main" disabled={isLoading}>{isLoading ? 'Mengirim...' : 'Kirim Kode OTP'}</button>
+            <button type="button" className="back-link" onClick={() => setStep('method-selection')}>← Kembali</button>
+          </form>
+        )}
+
         {step === 'otp' && renderOtpInput()}
         {step === 'find-account' && renderFindAccount()}
       </div>

@@ -399,3 +399,81 @@ html.dark .input-group-auth input:-webkit-autofill {
   cursor: pointer;
   color: var(--text-main, #0f172a);
 }
+/* =========================================
+   STYLE TAMBAHAN: FOTO PROFIL & HASIL CARI
+   ========================================= */
+
+.profile-preview-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.profile-preview-img {
+  width: 90px;
+  height: 90px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--border-color, #333639);
+  background-color: var(--bg-hover, rgba(255, 255, 255, 0.05));
+  /* Sengaja tanpa box-shadow berlebih agar lebih clean */
+}
+
+.result-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.result-status p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-main, #e7e9ea);
+}
+
+/* Tombol sekunder dalam pencarian hasil */
+.btn-auth-main.secondary-btn {
+  background-color: var(--text-main, #e7e9ea);
+  color: var(--bg-main, #000000);
+}
+
+/* =========================================
+   PERBAIKAN TAB MINI (EMAIL | TELEPON)
+   ========================================= */
+
+.tab-mini {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tab-mini button {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border-color, #333639);
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main, #e7e9ea);
+  transition: all 0.2s ease;
+}
+
+.tab-mini button.active {
+  background: var(--text-main, #e7e9ea);
+  color: var(--bg-main, #000000);
+  border-color: var(--text-main, #e7e9ea);
+}
+
+/* Animasi tambahan agar perpindahan mulus */
+.slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
