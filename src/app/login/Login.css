@@ -1,288 +1,241 @@
 /* src/app/login/Login.css */
 
-/* VARIABEL WARNA (Terhubung dengan globals.css lu) */
+/* VARIABEL WARNA (Terhubung dengan globals.css) */
 :root {
-    --primary: #1f3cff;
-    --primary-hover: #152ac4;
+  --primary: #1f3cff;
+  --primary-hover: #152ac4;
 }
 
 .auth-wrapper {
-    min-height: 100dvh; 
-    width: 100%;
-    background-color: var(--bg-main, #ffffff); 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Plus Jakarta Sans', 'Poppins', -apple-system, sans-serif;
-    box-sizing: border-box;
+  min-height: 100dvh;
+  width: 100%;
+  background-color: var(--bg-main, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plus Jakarta Sans', 'Poppins', -apple-system, sans-serif;
+  box-sizing: border-box;
 }
 
 .auth-container {
-    width: 100%;
-    max-width: 440px; 
-    padding: 30px 24px 40px 24px; 
-    background-color: transparent; /* Seamless dengan wrapper */
-    display: flex;
-    flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  padding: 30px 24px 40px 24px;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
 }
 
-/* HEADER ALA TWITTER / THREADS */
+/* HEADER */
 .auth-header {
-    text-align: left;
-    margin-bottom: 32px;
+  text-align: left;
+  margin-bottom: 32px;
 }
 
 .auth-logo {
-    margin-bottom: 24px;
+  margin-bottom: 24px;
 }
 
 .auth-header h1 {
-    font-size: 40px; /* Diperbesar ala sosmed gede */
-    font-weight: 800;
-    margin-bottom: 8px;
-    color: var(--text-main, #0f172a);
-    letter-spacing: -1.5px;
-    line-height: 1.1;
+  font-size: 40px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--text-main, #0f172a);
+  letter-spacing: -1.5px;
+  line-height: 1.1;
 }
 
 .auth-header p {
-    font-size: 15px;
-    color: var(--text-muted, #64748b);
-    font-weight: 500;
+  font-size: 15px;
+  color: var(--text-muted, #64748b);
+  font-weight: 500;
 }
 
-/* INPUT DESIGN (SOLID, NO BACKGROUND) */
+/* FORM INPUT */
 .auth-form {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .input-group-auth {
-    position: relative;
-    background: transparent;
-    border: 1px solid var(--border-color, #cbd5e1);
-    border-radius: 8px; /* Lebih kotak, lebih profesional */
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    height: 56px; 
-    margin-bottom: 16px;
-    transition: all 0.2s ease;
+  position: relative;
+  background: transparent;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 56px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
 }
 
 .input-group-auth:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 1px var(--primary); /* Sharp focus outline */
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
 .input-group-auth .material-icons {
-    color: var(--text-muted, #94a3b8);
-    margin-right: 12px;
-    font-size: 20px;
-    transition: color 0.2s;
+  color: var(--text-muted, #94a3b8);
+  margin-right: 12px;
+  font-size: 20px;
+  transition: color 0.2s;
 }
 
 .input-group-auth:focus-within .material-icons {
-    color: var(--primary);
+  color: var(--primary);
 }
 
-.input-group-auth input, 
+.input-group-auth input,
 .input-group-auth select {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-size: 16px; 
-    color: var(--text-main, #0f172a);
-    width: 100%;
-    font-family: inherit;
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  color: var(--text-main, #0f172a);
+  width: 100%;
+  font-family: inherit;
 }
 
 .input-group-auth input::placeholder {
-    color: var(--placeholder-color, #94a3b8);
+  color: var(--placeholder-color, #94a3b8);
 }
 
-.input-group-auth select {
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-}
-
-.input-group-auth select option {
-    background-color: var(--bg-main, #ffffff);
-    color: var(--text-main, #0f172a);
-}
-
-.toggle-eye {
-    cursor: pointer;
-    margin-left: 10px;
-}
-.toggle-eye:hover { color: var(--text-main, #0f172a); }
-
-/* TOMBOL UTAMA (PILL SHAPE) */
+/* BUTTON UTAMA */
 .btn-auth-main {
-    height: 52px; 
-    background-color: var(--text-main, #0f172a); /* Contrast background */
-    color: var(--bg-main, #ffffff);
-    border: none;
-    border-radius: 30px; /* Pill shape */
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 8px;
-    transition: opacity 0.2s, transform 0.1s;
+  height: 52px;
+  background-color: var(--text-main, #0f172a);
+  color: var(--bg-main, #ffffff);
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s, transform 0.1s;
 }
 
 .btn-auth-main:hover {
-    opacity: 0.9;
+  opacity: 0.9;
 }
 
 .btn-auth-main:active {
-    transform: scale(0.98);
+  transform: scale(0.98);
 }
 
 .btn-auth-main:disabled {
-    opacity: 0.5;
-    pointer-events: none;
+  opacity: 0.5;
+  pointer-events: none;
 }
-
-/* LUPA KATA SANDI */
-.btn-forgot-pass {
-    background: transparent;
-    border: 1px solid var(--border-color, #cbd5e1);
-    color: var(--text-main, #0f172a);
-    height: 52px;
-    border-radius: 30px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 16px;
-    transition: background 0.2s;
-}
-.btn-forgot-pass:hover { background: var(--bg-hover, #f1f5f9); }
 
 /* DIVIDER */
 .divider-auth {
-    margin: 24px 0; 
-    position: relative;
-    text-align: center;
+  margin: 24px 0;
+  position: relative;
+  text-align: center;
 }
 
 .divider-auth::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: var(--border-color, #e2e8f0);
-    z-index: 1;
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color, #e2e8f0);
+  z-index: 1;
 }
 
 .divider-auth span {
-    background: var(--bg-main, #ffffff);
-    padding: 0 16px;
-    color: var(--text-muted, #64748b);
-    font-size: 14px;
-    position: relative;
-    z-index: 2;
+  background: var(--bg-main, #ffffff);
+  padding: 0 16px;
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+  position: relative;
+  z-index: 2;
 }
 
-/* TOMBOL GOOGLE */
+/* TOMBOL GOOGLE (standar) */
 .btn-google {
-    width: 100%;
-    height: 52px; 
-    background: transparent;
-    border: 1px solid var(--border-color, #cbd5e1);
-    border-radius: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text-main, #0f172a);
-    cursor: pointer;
-    transition: background 0.2s;
+  width: 100%;
+  height: 52px;
+  background: transparent;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
 .btn-google:hover {
-    background: var(--bg-hover, #f1f5f9);
+  background: var(--bg-hover, #f1f5f9);
 }
 
 /* FOOTER */
 .footer-auth {
-    margin-top: 32px; 
-    font-size: 14px;
-    color: var(--text-muted, #64748b);
-    text-align: left;
+  margin-top: 32px;
+  font-size: 14px;
+  color: var(--text-muted, #64748b);
+  text-align: left;
 }
 
 .footer-auth span {
-    color: var(--primary);
-    font-weight: 600;
-    cursor: pointer;
-    margin-left: 4px;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 4px;
 }
-.footer-auth span:hover { text-decoration: underline; }
-
-/* CHECKBOX SYARAT & KETENTUAN */
-.terms-area {
-    margin-bottom: 8px;
+.footer-auth span:hover {
+  text-decoration: underline;
 }
 
-.checkbox-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--text-main, #0f172a);
-    cursor: pointer;
-}
-
-.checkbox-container input {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--primary);
-    cursor: pointer;
-}
-
-/* ANIMASI SIMPLE */
+/* ANIMASI */
 .fade-in-scale {
-    animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.4s ease-out forwards;
 }
 @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.98); }
-    to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .slide-down {
-    animation: slideDown 0.3s ease-out forwards;
-    transform-origin: top;
+  animation: slideDown 0.3s ease-out forwards;
+  transform-origin: top;
 }
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* =========================================
-   🔥 SINKRONISASI DARK MODE (OLED STYLE) 🔥
+   DARK MODE (OLED STYLE)
    ========================================= */
-[data-theme='dark'] .auth-wrapper, 
+[data-theme='dark'] .auth-wrapper,
 html.dark .auth-wrapper {
-    --bg-main: #000000; /* PURE BLACK OLED */
-    --text-main: #e7e9ea;
-    --text-muted: #71767b;
-    --border-color: #333639;
-    --placeholder-color: #71767b;
-    --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-main: #000000;
+  --text-main: #e7e9ea;
+  --text-muted: #71767b;
+  --border-color: #333639;
+  --placeholder-color: #71767b;
+  --bg-hover: rgba(255, 255, 255, 0.05);
 }
 
 [data-theme='dark'] .input-group-auth input:-webkit-autofill,
 html.dark .input-group-auth input:-webkit-autofill {
-    -webkit-box-shadow: 0 0 0 30px #000000 inset !important;
-    -webkit-text-fill-color: #e7e9ea !important;
+  -webkit-box-shadow: 0 0 0 30px #000000 inset !important;
+  -webkit-text-fill-color: #e7e9ea !important;
 }
+
+/* =========================================
+   NEW: METHOD SELECTION (EMAIL / PHONE / GOOGLE)
+   ========================================= */
 .method-selection {
   display: flex;
   flex-direction: column;
@@ -294,19 +247,28 @@ html.dark .input-group-auth input:-webkit-autofill {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--border-card);
+  padding: 14px 16px;
+  border: 1px solid var(--border-color, #cbd5e1);
   border-radius: 12px;
-  background: var(--bg-card, #fff);
+  background: transparent;
   cursor: pointer;
   font-size: 16px;
-  transition: 0.2s;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .method-btn:hover {
-  background: var(--border-card);
+  background: var(--bg-hover, #f1f5f9);
+  border-color: var(--primary);
 }
 
+/* Google button khusus di method selection */
+.method-btn.google-btn svg {
+  flex-shrink: 0;
+}
+
+/* Links: Cari akun / Lupa kata sandi */
 .auth-links {
   display: flex;
   justify-content: space-between;
@@ -320,8 +282,14 @@ html.dark .input-group-auth input:-webkit-autofill {
   cursor: pointer;
   text-decoration: underline;
   font-size: 14px;
+  font-weight: 500;
 }
 
+.link-btn:hover {
+  opacity: 0.8;
+}
+
+/* OTP BOXES (6 digit) */
 .otp-boxes {
   display: flex;
   gap: 8px;
@@ -335,28 +303,38 @@ html.dark .input-group-auth input:-webkit-autofill {
   text-align: center;
   font-size: 24px;
   font-weight: bold;
-  border: 2px solid var(--border-card);
+  border: 2px solid var(--border-color, #cbd5e1);
   border-radius: 10px;
   outline: none;
+  background: transparent;
+  color: var(--text-main, #0f172a);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .otp-digit:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(0,112,243,0.2);
+  box-shadow: 0 0 0 2px rgba(31, 60, 255, 0.2);
 }
 
+/* Back button (teks di bawah form) */
 .back-link {
   display: block;
   margin-top: 12px;
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-muted, #64748b);
   cursor: pointer;
   font-size: 14px;
   text-align: center;
   width: 100%;
+  transition: color 0.2s;
 }
 
+.back-link:hover {
+  color: var(--text-main, #0f172a);
+}
+
+/* Tab mini untuk cari akun (Email / Telepon) */
 .tab-mini {
   display: flex;
   gap: 8px;
@@ -366,13 +344,58 @@ html.dark .input-group-auth input:-webkit-autofill {
 .tab-mini button {
   flex: 1;
   padding: 8px;
-  border: 1px solid var(--border-card);
+  border: 1px solid var(--border-color, #cbd5e1);
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main, #0f172a);
+  transition: 0.2s;
 }
 
 .tab-mini button.active {
-  background: var(--text-main);
-  color: var(--bg-main);
+  background: var(--text-main, #0f172a);
+  color: var(--bg-main, #ffffff);
+}
+
+/* Pencarian akun result */
+.search-result {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-hover, #f8fafc);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.search-result p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-main, #0f172a);
+}
+
+/* Lupa password container */
+.forgot-password-container {
+  text-align: left;
+}
+
+/* Utility: hilangkan outline default untuk input OTP */
+.otp-digit:focus-visible {
+  outline: none;
+}
+
+/* Channel selector (WhatsApp / SMS) */
+.channel-selector {
+  display: flex;
+  justify-content: space-around;
+  margin: 10px 0 16px;
+  font-size: 14px;
+}
+
+.channel-selector label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-main, #0f172a);
 }
