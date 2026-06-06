@@ -283,3 +283,96 @@ html.dark .input-group-auth input:-webkit-autofill {
     -webkit-box-shadow: 0 0 0 30px #000000 inset !important;
     -webkit-text-fill-color: #e7e9ea !important;
 }
+.method-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.method-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  background: var(--bg-card, #fff);
+  cursor: pointer;
+  font-size: 16px;
+  transition: 0.2s;
+}
+
+.method-btn:hover {
+  background: var(--border-card);
+}
+
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--primary, #0070f3);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 14px;
+}
+
+.otp-boxes {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.otp-digit {
+  width: 48px;
+  height: 56px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  border: 2px solid var(--border-card);
+  border-radius: 10px;
+  outline: none;
+}
+
+.otp-digit:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0,112,243,0.2);
+}
+
+.back-link {
+  display: block;
+  margin-top: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+  width: 100%;
+}
+
+.tab-mini {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tab-mini button {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--border-card);
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tab-mini button.active {
+  background: var(--text-main);
+  color: var(--bg-main);
+}
