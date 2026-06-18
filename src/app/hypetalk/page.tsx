@@ -317,7 +317,6 @@ export default function HypetalkPage() {
     });
   };
 
-  // --- INSTAN HYPE MATCH (TIDAK ADA DELAY RADAR) ---
   const handleHypeMatch = async () => {
     if (!currentUser?.gender) return openModal('bio');
     
@@ -325,7 +324,6 @@ export default function HypetalkPage() {
     const lawanJenis = currentUser.gender === "Pria" ? "Wanita" : "Pria";
 
     try {
-      // Ambil data lawan jenis secara realtime
       const { data: users } = await supabase
         .from("profiles")
         .select("*")
@@ -336,10 +334,9 @@ export default function HypetalkPage() {
         return showNotif("Belum ada pasangan yang cocok saat ini.", "info");
       }
 
-      // Acak urutan kartu
       const shuffledUsers = users.sort(() => Math.random() - 0.5);
       setPotentialMatches(shuffledUsers);
-      setIsHypeMatchOpen(true); // Langsung tampilkan deck kartu swipe
+      setIsHypeMatchOpen(true); 
     } catch (err) { 
       showNotif("Gagal mengambil data pasangan.", "error");
     }
@@ -402,9 +399,14 @@ export default function HypetalkPage() {
       .neq('status', 'read')
       .then();
 
-    if (chat.type === 'global') router.push('/hypetalk/room');
-    else if (chat.type === 'group') router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
-    else router.push(`/hypetalk/room?from=${chat.id}`);
+    // PERBAIKAN: Menambahkan parameter eksplisit untuk chat global
+    if (chat.type === 'global') {
+      router.push('/hypetalk/room?global=true'); 
+    } else if (chat.type === 'group') {
+      router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
+    } else {
+      router.push(`/hypetalk/room?from=${chat.id}`);
+    }
   };
 
   const handleAvatarClick = async (e: React.MouseEvent, chatId: string, chatType: string) => {
@@ -460,29 +462,7 @@ export default function HypetalkPage() {
   return (
     <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
       <style>{`
-        .tg-modal-overlay { background: rgba(0,0,0,0.85) !important; backdrop-filter: blur(5px) !important; }
-        .wa-profile-card { width: 100%; max-width: 280px; background: var(--bg-card); border-radius: 16px; overflow: hidden; box-shadow: none; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .wa-profile-img-container { width: 100%; padding-top: 100%; position: relative; background: var(--bg-secondary); }
-        .wa-profile-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-        .wa-profile-name-bar { position: absolute; bottom: 0; left: 0; width: 100%; padding: 24px 16px 12px; background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.8)); }
-        .wa-profile-actions { display: flex; justify-content: space-around; padding: 16px 10px; background: var(--bg-card); border-top: 1px solid var(--border-card); }
-        .wa-action-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: transform 0.2s; }
-        .wa-action-btn:active { transform: scale(0.9); }
-        .message-request-banner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-secondary); margin: 0 16px 10px 16px; border-radius: 12px; cursor: pointer; transition: transform 0.2s; }
-        .message-request-banner:active { transform: scale(0.98); }
-        .req-left { display: flex; align-items: center; gap: 12px; }
-        .req-left .material-icons { color: var(--primary); background: var(--primary-soft); padding: 8px; border-radius: 50%; }
-        .req-text h4 { margin: 0; font-size: 14px; color: var(--text-main); font-weight: 700; }
-        .req-text p { margin: 0; font-size: 12px; color: var(--text-muted); }
-        .message-request-banner .arrow { color: var(--text-muted); }
-        @keyframes skeletonPulse { 0% { opacity: 0.6; } 50% { opacity: 0.3; } 100% { opacity: 0.6; } }
-        .skeleton-box { background-color: var(--border-card, #2a2d31); border-radius: 4px; animation: skeletonPulse 1.5s infinite ease-in-out; }
-        .ios-toggle { position: relative; width: 44px; height: 24px; appearance: none; background: #444; outline: none; border-radius: 20px; transition: 0.4s; cursor: pointer; }
-        .ios-toggle:checked { background: #2ecc71; }
-        .ios-toggle::before { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; top: 2px; left: 2px; background: white; transition: 0.4s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .ios-toggle:checked::before { transform: translateX(20px); }
-        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-card); }
-        .settings-row:last-child { border-bottom: none; }
+        /* Menghapus block style ini karena sudah masuk dan di-scope di Hypetalk.css */
       `}</style>
 
       <HypetalkHeader
