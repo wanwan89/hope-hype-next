@@ -34,7 +34,6 @@ type PostCardProps = {
   setActivePreviewImage: (url: string | null) => void;
   router: ReturnType<typeof useRouter>;
   t: any;
-  // 🔥 Props baru untuk "Lihat Selengkapnya"
   isExpanded?: boolean;
   onToggleExpand?: (postId: string) => void;
 };
@@ -56,13 +55,13 @@ const PostCard: React.FC<PostCardProps> = ({
     : avatarUrl;
   const formattedDate = formatRelativeTime(post.created_at);
   const isOwner = currentUser && currentUser.id === post.creator_id;
-  
+
   const postIdStr = String(post.id);
   const creatorIdStr = String(post.creator_id);
 
   const photoList = post.image_url ? post.image_url.split(',') : [];
   const isVideoPost = !!post.video_url;
-  
+
   const likers = likersMap[postIdStr] || [];
   const reposters = repostersMap[postIdStr] || [];
   const mutualLikers = likers.filter((l: any) => mutualUsers.has(String(l.id)));
@@ -70,7 +69,6 @@ const PostCard: React.FC<PostCardProps> = ({
 
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
 
-  // 🔥 Autoplay observer (sebelumnya sudah ada, tidak berubah)
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -78,7 +76,7 @@ const PostCard: React.FC<PostCardProps> = ({
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          media.muted = isGloballyMuted; 
+          media.muted = isGloballyMuted;
           media.play().catch(() => {});
         } else {
           media.pause();
@@ -89,25 +87,21 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  // 🔥 Ref untuk caption & state untuk menentukan apakah tombol "Lihat Selengkapnya" diperlukan
   const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
   const [showMoreButton, setShowMoreButton] = useState(false);
 
   useEffect(() => {
     if (!isExpanded && captionRef.current) {
       const el = captionRef.current;
-      // Reset dulu agar bisa mengukur tinggi alami
       el.style.display = 'block';
       el.style.webkitLineClamp = 'unset';
       el.style.overflow = 'visible';
       const fullHeight = el.scrollHeight;
-      // Terapkan clamp 3 baris
       el.style.display = '-webkit-box';
       el.style.webkitLineClamp = '3';
       el.style.webkitBoxOrient = 'vertical';
       el.style.overflow = 'hidden';
-      // Jika tinggi penuh > tinggi yang terpotong, tampilkan tombol
-      setShowMoreButton(fullHeight > el.clientHeight + 2); // +2 toleransi
+      setShowMoreButton(fullHeight > el.clientHeight + 2);
     } else if (isExpanded) {
       setShowMoreButton(false);
     }
@@ -152,7 +146,6 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   `;
 
-  // Komponen kecil untuk tombol "Lihat Selengkapnya"
   const SeeMoreButton = () => (
     <span
       className="see-more-btn"
@@ -176,12 +169,11 @@ const PostCard: React.FC<PostCardProps> = ({
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
       style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
-      
+
       <style>{bigHeartStyle}</style>
 
       {(photoList.length > 0 || isVideoPost) ? (
         <>
-          {/* Bagian slider/gambar/video */}
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
@@ -210,9 +202,9 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             )}
 
-            <FloatingBubbles 
-              likers={isOwner ? mutualLikers : []} 
-              reposters={!isOwner ? mutualReposters : []} 
+            <FloatingBubbles
+              likers={isOwner ? mutualLikers : []}
+              reposters={!isOwner ? mutualReposters : []}
             />
 
             <div className="photo-carousel" onScroll={(e) => {
@@ -229,16 +221,16 @@ const PostCard: React.FC<PostCardProps> = ({
               {isVideoPost ? (
                 <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
                   style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
-                  <video 
-                    ref={mediaRef as React.RefObject<HTMLVideoElement>} 
-                    src={post.video_url} 
-                    className="post-video-element" 
+                  <video
+                    ref={mediaRef as React.RefObject<HTMLVideoElement>}
+                    src={post.video_url}
+                    className="post-video-element"
                     poster={getOptimizedImage(post.image_url)}
-                    playsInline 
-                    autoPlay 
-                    loop 
-                    muted={isGloballyMuted} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }} 
+                    playsInline
+                    autoPlay
+                    loop
+                    muted={isGloballyMuted}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }}
                   />
                 </div>
               ) : (
@@ -278,7 +270,6 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* 🔥 Caption dengan ref dan class post-bio, plus tombol "Lihat Selengkapnya" */}
             <p
               ref={captionRef as React.RefObject<HTMLParagraphElement>}
               className="post-bio"
@@ -305,9 +296,9 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
 
             <div className="actions">
-              <button 
-                onClick={() => router.push(`/post?id=${postIdStr}`)} 
-                className="primary btn-press" 
+              <button
+                onClick={() => router.push(`/post?id=${postIdStr}`)}
+                className="primary btn-press"
                 style={{ display: 'inline-block', border: 'none', background: '#1f3cff', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 {t('view_detail')}
               </button>
@@ -320,7 +311,6 @@ const PostCard: React.FC<PostCardProps> = ({
         </>
       ) : (
         <>
-          {/* Layout tanpa gambar/video */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
               <img src={optimizedAvatar} alt="Avatar Profil" decoding="async" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -356,7 +346,6 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           )}
 
-          {/* 🔥 Caption teks biasa dengan ref, class post-bio, dan tombol */}
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
             className="post-bio"
@@ -388,9 +377,9 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
 
           <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
-            <button 
-              onClick={() => router.push(`/post?id=${postIdStr}`)} 
-              className="btn-press" 
+            <button
+              onClick={() => router.push(`/post?id=${postIdStr}`)}
+              className="btn-press"
               style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'transparent', border: 'none', fontWeight: 600, display: 'inline-block', cursor: 'pointer', padding: 0 }}>
               {t('view_detail')}
             </button>
@@ -434,7 +423,6 @@ export default React.memo(PostCard, (prev, next) => {
   if (prev.likersMap[pid]?.length !== next.likersMap[pid]?.length) return false;
   if (prev.repostersMap[pid]?.length !== next.repostersMap[pid]?.length) return false;
 
-  // 🔥 Jangan lupa bandingkan isExpanded
   if (prev.isExpanded !== next.isExpanded) return false;
 
   return true;

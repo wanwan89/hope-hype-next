@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import { sendPushAndAppNotif } from '@/lib/notif';
@@ -48,7 +47,6 @@ const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   if (prevProps.likersMap[pid] !== nextProps.likersMap[pid]) return false;
   if (prevProps.repostersMap[pid] !== nextProps.repostersMap[pid]) return false;
 
-  // ⬇️ Jangan lupa bandingkan isExpanded
   if (prevProps.isExpanded !== nextProps.isExpanded) return false;
 
   return true;
@@ -100,7 +98,7 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
 MemoizedSlider.displayName = 'MemoizedSlider';
 
 // Memo untuk SuggestedUsers
-const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) => 
+const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) =>
   prev.myId === next.myId && prev.followedUsers === next.followedUsers
 );
 
@@ -157,7 +155,6 @@ export default function Gallerypost() {
   } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
-  // 🔥 State untuk caption "Lihat Selengkapnya" (expanded post)
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
   const myLikedPostsRef = useRef(myLikedPosts);
@@ -165,7 +162,6 @@ export default function Gallerypost() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
-  // Buffer timer untuk scroll cepat
   const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
@@ -175,7 +171,6 @@ export default function Gallerypost() {
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
   useEffect(() => { isMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
-  // 🔥 INIT OBSERVER SEKALI SAJA 🔥
   useEffect(() => {
     autoPlayObserverRef.current = new IntersectionObserver(
       (entries) => {
@@ -187,7 +182,6 @@ export default function Gallerypost() {
 
           if (entry.isIntersecting) {
             if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-            
             scrollDebounceRef.current = setTimeout(() => {
               if (!activeMediaRef.current.has(postId)) {
                 document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
@@ -202,7 +196,6 @@ export default function Gallerypost() {
                 if (media.paused) media.play().catch(() => {});
               }
             }, 150);
-            
           } else {
             media.pause();
             activeMediaRef.current.delete(postId);
@@ -246,7 +239,6 @@ export default function Gallerypost() {
     };
   }, []);
 
-  // Fungsi mengikat observer secara manual ke DOM
   const syncObservers = useCallback(() => {
     const gallery = document.getElementById('mainGallery');
     if (!gallery) return;
@@ -262,7 +254,6 @@ export default function Gallerypost() {
     setTimeout(syncObservers, 50);
   }, [syncObservers]);
 
-  // 🔥 Callback untuk toggle "Lihat Selengkapnya" (dari PostCard atau dari tombol internal)
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const newSet = new Set(prev);
@@ -429,10 +420,8 @@ export default function Gallerypost() {
     if (currentUserRef.current.id === creatorId) return;
 
     const isFollowing = followedUsersRef.current.has(creatorId);
-    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
-
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
     try {
@@ -451,10 +440,8 @@ export default function Gallerypost() {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
-
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
-
     try {
       if (isLiked) {
         await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
@@ -470,11 +457,9 @@ export default function Gallerypost() {
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
-
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-
       setPoppingHeart(postId);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
@@ -497,14 +482,11 @@ export default function Gallerypost() {
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
-
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
-
     const wasReposted = myRepostedPostsRef.current.has(postId);
     setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
-
     try {
       if (isUnrepost) {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
@@ -529,10 +511,8 @@ export default function Gallerypost() {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
-
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
-
     try {
       if (isSaved) {
         await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
@@ -565,7 +545,7 @@ export default function Gallerypost() {
         .gallery {
           width: 100% !important;
           max-width: 100% !important;
-          padding: 0 !important;
+          padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0 !important;
           margin: 0 !important;
         }
 
@@ -611,7 +591,6 @@ export default function Gallerypost() {
           object-fit: cover !important;
         }
 
-        /* Tombol Lihat Selengkapnya sekarang diatur oleh state, bukan DOM manual */
         .see-more-btn {
           color: #1f3cff;
           cursor: pointer;
@@ -649,7 +628,7 @@ export default function Gallerypost() {
             data={posts}
             endReached={handleLoadMore}
             increaseViewportBy={{ top: 0, bottom: 2500 }}
-            overscan={800} 
+            overscan={800}
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
               const isTextOrAudio = !post.image_url && !post.video_url;
@@ -659,7 +638,7 @@ export default function Gallerypost() {
                 <React.Fragment key={post.id}>
                   {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
                   {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
-                  
+
                   <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
                     <MemoizedPostCard
                       post={post}
@@ -688,8 +667,8 @@ export default function Gallerypost() {
                       setActivePreviewImage={setActivePreviewImage}
                       router={router}
                       t={t}
-                      isExpanded={isExpanded}            // ⬅️ prop baru
-                      onToggleExpand={handleToggleExpand} // ⬅️ prop baru (dipanggil dari PostCard)
+                      isExpanded={isExpanded}
+                      onToggleExpand={handleToggleExpand}
                     />
                   </div>
                 </React.Fragment>
