@@ -1,15 +1,14 @@
-'use client';
+  'use client';
 import React from 'react';
 
 type Props = {
   isOpen: boolean;
   currentUser: any;
-  sisaLimitDoi: number;
   onOpenModal: (name: string) => void;
-  onCariDoi: () => void;
+  onHypeMatch: () => void; // Diubah dari onCariDoi
 };
 
-const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, sisaLimitDoi, onOpenModal, onCariDoi }) => (
+const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, onOpenModal, onHypeMatch }) => (
   <aside className={`tg-sidebar ${isOpen ? 'open' : ''}`}>
     <div className="sidebar-header">
       <img className="side-avatar" src={currentUser?.avatar_url || "/asets/png/profile.webp"} alt="me" />
@@ -20,11 +19,19 @@ const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, sisaLimitDoi, o
       <button className="btn-edit-bio" onClick={() => onOpenModal('bio')}>Edit Biodata</button>
     </div>
     <div className="sidebar-menu">
-      <button className="menu-item" onClick={() => onOpenModal('group')}><span className="material-icons">group_add</span> Buat Grup Baru</button>
-      <button className="menu-item" onClick={() => onOpenModal('privacy-settings')}><span className="material-icons">lock</span> Privasi & Status</button>
-      <button className="menu-item btn-cari-doi" onClick={onCariDoi} style={{ marginTop: '10px' }}><span className="material-icons">favorite</span> Cari Doi Sekarang <span className="limit-badge">{sisaLimitDoi}/10</span></button>
+      <button className="menu-item" onClick={() => onOpenModal('group')}>
+        <span className="material-icons">group_add</span> Buat Grup Baru
+      </button>
+      <button className="menu-item" onClick={() => onOpenModal('privacy-settings')}>
+        <span className="material-icons">lock</span> Privasi & Status
+      </button>
+      {/* Bagian Hype Match yang sudah disesuaikan */}
+      <button className="menu-item btn-hype-match" onClick={onHypeMatch} style={{ marginTop: '10px' }}>
+        <span className="material-icons">favorite</span> Hype Match
+      </button>
     </div>
   </aside>
 );
 
 export default React.memo(HypetalkSidebar);
+ 
