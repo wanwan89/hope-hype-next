@@ -7,7 +7,7 @@ import { I18nextProvider } from 'react-i18next';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import Script from 'next/script';
+// ❌ Script eruda dihapus - tidak diimport lagi
 
 // 🔥 IMPORT CAPACITOR PUSH NOTIFICATIONS 🔥
 import { Capacitor } from '@capacitor/core';
@@ -52,7 +52,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       try {
         const platform = Capacitor.getPlatform();
         if (platform === 'android' || platform === 'ios') {
-          // 🔥 Dynamic import dengan fallback agar tidak gagal build
           const splashModule = await import('@capacitor/splash-screen').catch(() => null);
           if (splashModule?.SplashScreen) {
             await splashModule.SplashScreen.hide();
@@ -141,30 +140,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (platform === 'android' || platform === 'ios') {
           console.log("📱 Native Detected: Menghubungkan Firebase FCM...");
 
-          // 1. Minta Izin Kirim Notif Push
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
 
-          // 2. Bikin Channel Khusus di Android buat maksa SLIDE DOWN (Heads-up)
           if (platform === 'android') {
             await PushNotifications.createChannel({
-              id: 'hype_high_channel', // Wajib sama kayak di Edge Function
+              id: 'hype_high_channel',
               name: 'Panggilan & Chat HypeTalk',
               description: 'Channel penting untuk notifikasi chat dan panggilan masuk',
-              importance: 5, // 5 = MAX (Wajib buat Slide Down)
-              visibility: 1, // Muncul di lockscreen
+              importance: 5,
+              visibility: 1,
               sound: 'suara_panggilan',
               vibration: true,
             });
             console.log("✅ Channel Android hype_high_channel dibuat/diperbarui.");
           }
 
-          // 3. Daftarkan token ke Firebase
           if (permPush.receive === 'granted') {
             await PushNotifications.register();
           }
 
-          // 4. Tangkap Token FCM dan simpan
           PushNotifications.addListener('registration', (token) => {
             console.log("🔥 FCM Token didapat:", token.value);
             fcmTokenRef.current = token.value;
@@ -173,12 +168,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           });
 
-          // 5. Tangkap event kalau notif masuk pas app lagi DIBUKA (Foreground)
           PushNotifications.addListener('pushNotificationReceived', (notification) => {
             console.log('Notifikasi masuk saat app kebuka:', notification);
           });
 
-          // 🔥 6. DETEKSI KLIK NOTIFIKASI NATIVE (SAAT APP MATI / BACKGROUND) 🔥
           PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
             console.log('Notifikasi native diklik:', action);
 
@@ -195,7 +188,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           });
 
-          // Handle Back Button Hardware Android
           App.addListener('backButton', ({ canGoBack }) => {
             if (canGoBack) {
               window.history.back();
@@ -212,7 +204,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     initNativeFeatures();
 
-    // Cleanup listener
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
         PushNotifications.removeAllListeners();
@@ -343,11 +334,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <>
       <GlobalShareModal />
       {!isOnline && (
-        <div className="offline-global-overlay">
-          <div className="offline-card">
+        <div
+          className="offline-global-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999999,
+          }}
+        >
+          <div className="offline-card" style={{ textAlign: 'center', padding: '2rem', borderRadius: '1.5rem', background: 'rgba(20,20,25,0.95)', border: '1px solid rgba(255,255,255,0.1)', maxWidth: '320px', width: '90%' }}>
             <div className="offline-icon-ring"><span className="material-icons" style={{ fontSize: '32px' }}>wifi_off</span></div>
-            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800' }}>Koneksi Terputus</h3>
-            <p style={{ color: '#9ca3af', fontSize: '13px' }}>Sinyal lu ngilang Bree! HypeTalk butuh internet.</p>
+            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800', margin: '0.5rem 0 0.25rem' }}>Koneksi Terputus</h3>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Sinyal lu ngilang Bree! HypeTalk butuh internet.</p>
           </div>
         </div>
       )}
@@ -448,7 +451,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           zIndex={99999999}
         />
 
-        <Script src="https://cdn.jsdelivr.net/npm/eruda" strategy="lazyOnload" onLoad={() => { if (typeof window !== 'undefined' && (window as any).eruda) (window as any).eruda.init(); }} />
+        {/* ❌ Script eruda dihapus sepenuhnya */}
 
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
