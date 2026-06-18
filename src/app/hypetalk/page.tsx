@@ -13,11 +13,10 @@ import HypetalkSidebar from './_components/HypetalkSidebar';
 import UserProfileModal from './_components/UserProfileModal';
 import ChatInfoModal from './_components/ChatInfoModal';
 import PrivacySettingsModal from './_components/PrivacySettingsModal';
-import HypeMatchOverlay from './_components/HypeMatchOverlay'; // Diubah dari DoiCardModal
+import HypeMatchOverlay from './_components/HypeMatchOverlay'; 
 import SearchModal from './_components/SearchModal';
 import GroupModal from './_components/GroupModal';
 import BioModal from './_components/BioModal';
-import DoiSearchingOverlay from './_components/DoiSearchingOverlay';
 
 export default function HypetalkPage() {
   const router = useRouter();
@@ -30,9 +29,8 @@ export default function HypetalkPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [isSearchingDoi, setIsSearchingDoi] = useState(false);
-  const [potentialMatches, setPotentialMatches] = useState<any[]>([]); // Menyimpan daftar lawan jenis
-  const [isHypeMatchOpen, setIsHypeMatchOpen] = useState(false); // Mengatur overlay swipe kartu
+  const [potentialMatches, setPotentialMatches] = useState<any[]>([]); 
+  const [isHypeMatchOpen, setIsHypeMatchOpen] = useState(false); 
   const [bioForm, setBioForm] = useState({ umur: '', gender: 'Pria', zodiak: '', pekerjaan: '', hobi: '' });
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
@@ -319,44 +317,36 @@ export default function HypetalkPage() {
     });
   };
 
-  // --- LOGIK BARU HYPE MATCH ---
+  // --- INSTAN HYPE MATCH (TIDAK ADA DELAY RADAR) ---
   const handleHypeMatch = async () => {
     if (!currentUser?.gender) return openModal('bio');
     
     setIsSidebarOpen(false);
-    setIsSearchingDoi(true); // Memunculkan Radar Animasi bawaanmu
     const lawanJenis = currentUser.gender === "Pria" ? "Wanita" : "Pria";
 
-    // Beri jeda 3 detik biar efek radar berputar dulu, lalu ambil data dari Supabase
-    setTimeout(async () => {
-      try {
-        const { data: users } = await supabase
-          .from("profiles")
-          .select("*")
-          .neq("id", currentUser.id)
-          .eq("gender", lawanJenis);
+    try {
+      // Ambil data lawan jenis secara realtime
+      const { data: users } = await supabase
+        .from("profiles")
+        .select("*")
+        .neq("id", currentUser.id)
+        .eq("gender", lawanJenis);
 
-        setIsSearchingDoi(false); // Matikan radar
-
-        if (!users || users.length === 0) {
-          return showNotif("Belum ada pasangan yang cocok saat ini.", "info");
-        }
-
-        // Acak urutan daftar user agar seru saat di-swipe
-        const shuffledUsers = users.sort(() => Math.random() - 0.5);
-        setPotentialMatches(shuffledUsers);
-        setIsHypeMatchOpen(true); // Buka halaman tumpukan kartu swipe
-      } catch (err) { 
-        setIsSearchingDoi(false); 
-        showNotif("Gagal mencari data.", "error");
+      if (!users || users.length === 0) {
+        return showNotif("Belum ada pasangan yang cocok saat ini.", "info");
       }
-    }, 3000);
+
+      // Acak urutan kartu
+      const shuffledUsers = users.sort(() => Math.random() - 0.5);
+      setPotentialMatches(shuffledUsers);
+      setIsHypeMatchOpen(true); // Langsung tampilkan deck kartu swipe
+    } catch (err) { 
+      showNotif("Gagal mengambil data pasangan.", "error");
+    }
   };
 
-  // Fungsi saat user swipe KIRI (Tertarik)
   const handleLikeUser = async (targetId: string): Promise<boolean> => {
     try {
-      // Cek apakah target sudah memfollow kita duluan di tabel followers (Simulasi Mutual Match)
       const { data: isMutual } = await supabase
         .from('followers')
         .select('*')
@@ -364,17 +354,14 @@ export default function HypetalkPage() {
         .eq('following_id', currentUser.id)
         .maybeSingle();
 
-      // Tambahkan kita memfollow target ke tabel database
       await supabase.from('followers').insert([{ follower_id: currentUser.id, following_id: targetId }]);
-      
-      return !!isMutual; // Mengembalikan true jika match mutual terjadi
+      return !!isMutual; 
     } catch (err) {
       console.error(err);
       return false;
     }
   };
 
-  // Fungsi saat user swipe KANAN (Tidak tertarik)
   const handlePassUser = (targetId: string) => {
     console.log(`User ${targetId} dilewati`);
   };
@@ -481,18 +468,6 @@ export default function HypetalkPage() {
         .wa-profile-actions { display: flex; justify-content: space-around; padding: 16px 10px; background: var(--bg-card); border-top: 1px solid var(--border-card); }
         .wa-action-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: transform 0.2s; }
         .wa-action-btn:active { transform: scale(0.9); }
-        .doi-search-overlay { position: fixed; inset: 0; background: rgba(10,15,20,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100000; overflow: hidden; backdrop-filter: blur(10px); }
-        .radar-wrapper { position: relative; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; margin-bottom: 40px; }
-        .radar-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid #1DA1F2; opacity: 0; animation: radarPulse 2s linear infinite; }
-        .radar-ring.delay-1 { animation-delay: 0.6s; }
-        .radar-ring.delay-2 { animation-delay: 1.2s; }
-        @keyframes radarPulse { 0% { transform: scale(0.6); opacity: 1; border-width: 3px; } 100% { transform: scale(2.5); opacity: 0; border-width: 1px; } }
-        .radar-center-icon { font-size: 50px; color: white; z-index: 2; background: linear-gradient(135deg, #1DA1F2, #1f3cff); border-radius: 50%; padding: 18px; box-shadow: 0 0 25px rgba(29, 161, 242, 0.6); }
-        .plane-container { position: absolute; inset: -40px; animation: spinOrbit 3s linear infinite; pointer-events: none; }
-        .plane-container.reverse { inset: -70px; animation: spinOrbit 4.5s linear infinite reverse; }
-        @keyframes spinOrbit { 100% { transform: rotate(360deg); } }
-        .plane-svg { position: absolute; top: 0; left: 50%; transform: translateX(-50%) rotate(45deg); width: 24px; height: 24px; fill: #1DA1F2; filter: drop-shadow(0 0 5px rgba(29,161,242,0.8)); }
-        .search-title-glow { position: relative; z-index: 10; font-size: 18px; font-weight: bold; color: white; text-shadow: 0 0 15px rgba(29,161,242,0.8); letter-spacing: 1px; }
         .message-request-banner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-secondary); margin: 0 16px 10px 16px; border-radius: 12px; cursor: pointer; transition: transform 0.2s; }
         .message-request-banner:active { transform: scale(0.98); }
         .req-left { display: flex; align-items: center; gap: 12px; }
@@ -530,18 +505,17 @@ export default function HypetalkPage() {
         renderReadReceipt={renderReadReceipt}
       />
 
-      {!activeModal && !isSearchingDoi && !isHypeMatchOpen && (
+      {!activeModal && !isHypeMatchOpen && (
         <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
       )}
 
       <div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
       
-      {/* SINKRONISASI PEMANGGILAN SIDEBAR */}
       <HypetalkSidebar
         isOpen={isSidebarOpen}
         currentUser={currentUser}
         onOpenModal={openModal}
-        onHypeMatch={handleHypeMatch} // Properti sudah diarahkan dengan benar ke fungsi baru
+        onHypeMatch={handleHypeMatch} 
       />
 
       {activeModal === 'user-profile' && selectedProfile && (
@@ -575,7 +549,6 @@ export default function HypetalkPage() {
         />
       )}
 
-      {/* TAMPILKAN OVERLAY SWIPE KARTU HYPE MATCH */}
       {isHypeMatchOpen && (
         <HypeMatchOverlay
           currentUser={currentUser}
@@ -613,8 +586,6 @@ export default function HypetalkPage() {
           onClose={closeModal}
         />
       )}
-
-      {isSearchingDoi && <DoiSearchingOverlay />}
     </div>
   );
 }
