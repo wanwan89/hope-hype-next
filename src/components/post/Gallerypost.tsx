@@ -175,7 +175,6 @@ export default function Gallerypost() {
     autoPlayObserverRef.current = new IntersectionObserver(
       (entries) => {
         const now = Date.now();
-        // Throttle: jangan proses jika scroll terlalu cepat (< 200ms antar event)
         if (now - lastScrollTimeRef.current < 200) return;
         lastScrollTimeRef.current = now;
 
@@ -187,7 +186,6 @@ export default function Gallerypost() {
 
           if (entry.isIntersecting) {
             if (!activeMediaRef.current.has(postId)) {
-              // Pause semua media lain
               document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
                 if (el !== media && !el.paused) el.pause();
               });
@@ -605,8 +603,9 @@ export default function Gallerypost() {
           border: none;
           padding: 0;
           position: relative;
-          z-index: 5;
+          z-index: 10;
           pointer-events: auto;
+          user-select: none;
         }
         .see-more-btn:hover {
           opacity: 0.8;
@@ -636,7 +635,7 @@ export default function Gallerypost() {
             data={posts}
             endReached={handleLoadMore}
             increaseViewportBy={{ top: 0, bottom: 1200 }}
-            overscan={300}
+            overscan={600}
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
               const isTextOrAudio = !post.image_url && !post.video_url;
@@ -682,7 +681,20 @@ export default function Gallerypost() {
                 </React.Fragment>
               );
             }}
-            components={{ Footer: () => (<div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>{isLoadingMore ? <div className="pure-spinner"></div> : hasMore ? <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span> : <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>Tidak ada postingan lagi</span>}</div>) }}
+            components={{ Footer: () => (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
+                {isLoadingMore ? (
+                  <div className="pure-spinner"></div>
+                ) : hasMore ? (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>
+                    Tidak ada postingan lagi
+                  </span>
+                )}
+              </div>
+            )}}
           />
         )}
       </div>

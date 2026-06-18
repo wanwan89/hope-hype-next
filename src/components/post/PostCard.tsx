@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
@@ -68,7 +68,13 @@ const PostCard: React.FC<PostCardProps> = ({
   const mutualReposters = reposters.filter((r: any) => mutualUsers.has(String(r.id)));
 
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
+  const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
+  const [showMoreButton, setShowMoreButton] = useState(false);
 
+  // State untuk loading spinner di video
+  const [videoLoaded, setVideoLoaded] = useState(false);
+
+  // Autoplay observer
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -87,27 +93,27 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
-  const [showMoreButton, setShowMoreButton] = useState(false);
-
+  // Ukur tinggi caption setelah DOM selesai dipaint
   useEffect(() => {
-    if (!isExpanded && captionRef.current) {
-      const el = captionRef.current;
-      // Reset untuk mengukur tinggi asli
-      el.style.display = 'block';
-      el.style.webkitLineClamp = 'unset';
-      el.style.overflow = 'visible';
-      const fullHeight = el.scrollHeight;
-      // Kembalikan ke clamp 3 baris
-      el.style.display = '-webkit-box';
-      el.style.webkitLineClamp = '3';
-      el.style.webkitBoxOrient = 'vertical';
-      el.style.overflow = 'hidden';
-      // Jika tinggi asli > tinggi terpotong, tampilkan tombol
-      setShowMoreButton(fullHeight > el.clientHeight + 2);
-    } else if (isExpanded) {
-      setShowMoreButton(false);
-    }
+    const raf = requestAnimationFrame(() => {
+      if (!isExpanded && captionRef.current) {
+        const el = captionRef.current;
+        // Reset dulu
+        el.style.display = 'block';
+        el.style.webkitLineClamp = 'unset';
+        el.style.overflow = 'visible';
+        const fullHeight = el.scrollHeight;
+        // Kembalikan ke clamp 3 baris
+        el.style.display = '-webkit-box';
+        el.style.webkitLineClamp = '3';
+        el.style.webkitBoxOrient = 'vertical';
+        el.style.overflow = 'hidden';
+        setShowMoreButton(fullHeight > el.clientHeight + 2);
+      } else if (isExpanded) {
+        setShowMoreButton(false);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [post.bio, isExpanded]);
 
   const renderBioWithMentions = (text: string) => {
@@ -147,7 +153,21 @@ const PostCard: React.FC<PostCardProps> = ({
       animation: popHeartAnim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
       filter: drop-shadow(0 4px 15px rgba(0,0,0,0.5));
     }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .loading-spinner {
+      width: 28px; height: 28px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
   `;
+
+  const handleToggleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onToggleExpand(postIdStr);
+  }, [onToggleExpand, postIdStr]);
 
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
@@ -203,7 +223,12 @@ const PostCard: React.FC<PostCardProps> = ({
             }}>
               {isVideoPost ? (
                 <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
-                  style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
+                  style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: '#000', cursor: 'pointer' }}>
+                  {!videoLoaded && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                      <div className="loading-spinner" />
+                    </div>
+                  )}
                   <video
                     ref={mediaRef as React.RefObject<HTMLVideoElement>}
                     src={post.video_url}
@@ -213,17 +238,31 @@ const PostCard: React.FC<PostCardProps> = ({
                     autoPlay
                     loop
                     muted={isGloballyMuted}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }}
+                    onLoadedData={() => setVideoLoaded(true)}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none', opacity: videoLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
                   />
                 </div>
               ) : (
-                photoList.map((url: string, i: number) => (
-                  <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--bg-secondary)' }}>
-                    <img src={getOptimizedImage(url)} decoding="async" alt={`Postingan Galeri ${i + 1}`}
-                      onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr, getOptimizedImage(url))}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer' }} />
-                  </div>
-                ))
+                photoList.map((url: string, i: number) => {
+                  const [imgLoaded, setImgLoaded] = useState(false);
+                  return (
+                    <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: '#1a1a1a' }}>
+                      {!imgLoaded && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                          <div className="loading-spinner" />
+                        </div>
+                      )}
+                      <img
+                        src={getOptimizedImage(url)}
+                        decoding="async"
+                        alt={`Postingan Galeri ${i + 1}`}
+                        onLoad={() => setImgLoaded(true)}
+                        onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr, getOptimizedImage(url))}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+                      />
+                    </div>
+                  );
+                })
               )}
             </div>
 
@@ -268,15 +307,25 @@ const PostCard: React.FC<PostCardProps> = ({
               {renderBioWithMentions(post.bio?.trim())}
             </p>
             {showMoreButton && !isExpanded && (
-              <button
+              <span
+                role="button"
+                tabIndex={0}
                 className="see-more-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleExpand(postIdStr);
+                onClick={handleToggleClick}
+                style={{
+                  color: '#1f3cff',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  display: 'inline-block',
+                  marginTop: '4px',
+                  position: 'relative',
+                  zIndex: 10,
+                  pointerEvents: 'auto',
                 }}
               >
                 Lihat Selengkapnya
-              </button>
+              </span>
             )}
 
             <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -358,15 +407,25 @@ const PostCard: React.FC<PostCardProps> = ({
             {renderBioWithMentions(post.bio?.trim())}
           </div>
           {showMoreButton && !isExpanded && (
-            <button
+            <span
+              role="button"
+              tabIndex={0}
               className="see-more-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand(postIdStr);
+              onClick={handleToggleClick}
+              style={{
+                color: '#1f3cff',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 600,
+                display: 'inline-block',
+                marginTop: '4px',
+                position: 'relative',
+                zIndex: 10,
+                pointerEvents: 'auto',
               }}
             >
               Lihat Selengkapnya
-            </button>
+            </span>
           )}
 
           {post.audio_src && (
