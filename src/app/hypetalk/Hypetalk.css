@@ -570,3 +570,12 @@
   font-size: 12px;
   color: #ddd;
 }
+.info-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-tag .material-icons {
+  font-size: 14px;
+}

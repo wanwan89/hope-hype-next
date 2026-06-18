@@ -1,12 +1,18 @@
 'use client';
 import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
+// 1. Tambahkan field baru sesuai database (Umur, Pekerjaan, Hobi, Zodiak)
 type MatchUser = {
   id: string;
   username: string;
   avatar_url: string;
   bio: string;
   gender: string;
+  umur?: number | string;
+  pekerjaan?: string;
+  hobi?: string;
+  zodiak?: string;
 };
 
 type Props = {
@@ -18,17 +24,18 @@ type Props = {
 };
 
 const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLike, onPass, onClose }) => {
+  const router = useRouter(); // Inisialisasi router untuk pindah halaman chat
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
-  const [dragY, setDragY] = useState(0); // Tambahan untuk deteksi vertikal
+  const [dragY, setDragY] = useState(0); 
   const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
-  const [isShowingProfile, setIsShowingProfile] = useState(false); // State profil lengkap
+  const [isShowingProfile, setIsShowingProfile] = useState(false); 
   
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false });
 
   const activeUser = potentialMatches[currentIndex];
 
-  // Logic untuk layar sentuh (HP) & Mouse dengan X dan Y
   const handleDragStart = (clientX: number, clientY: number) => {
     dragRef.current = { startX: clientX, startY: clientY, isDragging: true };
   };
@@ -38,7 +45,6 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
     const currentDragX = clientX - dragRef.current.startX;
     const currentDragY = clientY - dragRef.current.startY;
     
-    // Jika profil sedang terbuka, kita hanya peduli swipe ke bawah untuk menutup
     if (isShowingProfile) {
       if (currentDragY > 0) setDragY(currentDragY);
       return;
@@ -52,20 +58,17 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
     if (!dragRef.current.isDragging) return;
     dragRef.current.isDragging = false;
 
-    const threshold = 100; // Jarak swipe minimum
+    const threshold = 100; 
 
-    // Jika sedang mode profil
     if (isShowingProfile) {
       if (dragY > threshold) {
-        setIsShowingProfile(false); // Tutup profil jika diswipe ke bawah
+        setIsShowingProfile(false); 
       }
       setDragY(0);
       return;
     }
 
-    // Deteksi arah dominan (Horizontal vs Vertikal)
     if (Math.abs(dragX) > Math.abs(dragY)) {
-      // Dominan Horizontal
       if (dragX < -threshold) {
         handleAction('like');
       } else if (dragX > threshold) {
@@ -75,9 +78,7 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
         setDragY(0);
       }
     } else {
-      // Dominan Vertikal
       if (dragY < -threshold) {
-        // Swipe Ke Atas: Buka Profil
         setIsShowingProfile(true);
         setDragX(0);
         setDragY(0);
@@ -91,11 +92,10 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
   const handleAction = async (action: 'like' | 'pass') => {
     if (!activeUser) return;
     
-    // Animasi membuang kartu ke samping
     setDragX(action === 'like' ? -500 : 500); 
 
     setTimeout(async () => {
-      setIsShowingProfile(false); // Reset status profil
+      setIsShowingProfile(false); 
       if (action === 'like') {
         const isMatch = await onLike(activeUser.id);
         if (isMatch) {
@@ -116,7 +116,13 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
     setCurrentIndex((prev) => prev + 1);
   };
 
-  // Jika Pop-up Match aktif
+  // 2. Fungsi untuk langsung nge-chat saat match
+  const handleStartChat = () => {
+    if (!matchedUser) return;
+    onClose(); // Tutup overlay swipe
+    router.push(`/hypetalk/room?from=${matchedUser.id}`); // Buka room chat private
+  };
+
   if (matchedUser) {
     return (
       <div className="match-popup-overlay glass-clean">
@@ -128,7 +134,7 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
             <span className="material-icons favorite-icon">favorite</span>
             <img src={matchedUser.avatar_url} alt="Them" className="avatar-circle" />
           </div>
-          <button className="btn-chat-now glass-clean" onClick={() => {/* Lanjut ke HopeTalk */}}>
+          <button className="btn-chat-now glass-clean" onClick={handleStartChat}>
             Mulai Obrolan
           </button>
           <button className="btn-keep-swiping" onClick={() => { setMatchedUser(null); nextCard(); }}>
@@ -150,7 +156,6 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
           <div 
             className={`match-card glass-clean ${isShowingProfile ? 'profile-open' : ''}`}
             style={{
-              // Hentikan pergerakan X jika profil sedang terbuka
               transform: isShowingProfile 
                 ? `translateY(${dragY}px)` 
                 : `translate(${dragX}px, ${dragY}px) rotate(${dragX * 0.05}deg)`,
@@ -166,12 +171,10 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
           >
             <div className="card-image-wrapper">
               <img src={activeUser.avatar_url} alt="avatar" draggable="false" />
-              {/* Indikator swipe transparan */}
               {!isShowingProfile && dragX < -50 && <div className="swipe-indicator like">TERTARIK</div>}
               {!isShowingProfile && dragX > 50 && <div className="swipe-indicator pass">LEWAT</div>}
             </div>
 
-            {/* Hint Swipe Up */}
             {!isShowingProfile && dragY === 0 && dragX === 0 && (
               <div className="swipe-up-hint">
                 <span className="material-icons">keyboard_double_arrow_up</span>
@@ -179,7 +182,6 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
               </div>
             )}
 
-            {/* Info Basic & Panel Detail Profil */}
             <div className={`card-info ${isShowingProfile ? 'expanded' : ''}`}>
               {isShowingProfile && (
                 <div className="swipe-down-hint">
@@ -188,7 +190,7 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
               )}
               
               <div className="info-header">
-                <h2>{activeUser.username}</h2>
+                <h2>{activeUser.username} {activeUser.umur ? <span style={{fontSize: '18px', fontWeight: 'normal'}}>{activeUser.umur}</span> : ''}</h2>
                 {isShowingProfile && <span className="gender-badge">{activeUser.gender}</span>}
               </div>
               
@@ -196,11 +198,24 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
                 {activeUser.bio || "Belum ada bio."}
               </p>
 
+              {/* 3. Render data ekstra dari database saat swipe ke atas */}
               {isShowingProfile && (
                 <div className="extra-info">
-                  {/* Tambahkan info lain kalau ada di database nantinya, contoh: Hobi, Zodiak */}
-                  <div className="info-tag">Mencari Teman Ngobrol</div>
-                  <div className="info-tag">Aktif Baru Saja</div>
+                  {activeUser.zodiak && (
+                    <div className="info-tag">
+                      <span className="material-icons">stars</span> {activeUser.zodiak}
+                    </div>
+                  )}
+                  {activeUser.pekerjaan && (
+                    <div className="info-tag">
+                      <span className="material-icons">work</span> {activeUser.pekerjaan}
+                    </div>
+                  )}
+                  {activeUser.hobi && (
+                    <div className="info-tag">
+                      <span className="material-icons">sports_esports</span> {activeUser.hobi}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -213,7 +228,6 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
         )}
       </div>
 
-      {/* Tombol Manual disembunyikan saat profil penuh terbuka biar lebih fokus */}
       {activeUser && !isShowingProfile && (
         <div className="action-buttons">
           <button className="btn-action btn-like glass-clean" onClick={() => handleAction('like')}>
