@@ -93,14 +93,17 @@ const PostCard: React.FC<PostCardProps> = ({
   useEffect(() => {
     if (!isExpanded && captionRef.current) {
       const el = captionRef.current;
+      // Reset untuk mengukur tinggi asli
       el.style.display = 'block';
       el.style.webkitLineClamp = 'unset';
       el.style.overflow = 'visible';
       const fullHeight = el.scrollHeight;
+      // Kembalikan ke clamp 3 baris
       el.style.display = '-webkit-box';
       el.style.webkitLineClamp = '3';
       el.style.webkitBoxOrient = 'vertical';
       el.style.overflow = 'hidden';
+      // Jika tinggi asli > tinggi terpotong, tampilkan tombol
       setShowMoreButton(fullHeight > el.clientHeight + 2);
     } else if (isExpanded) {
       setShowMoreButton(false);
@@ -145,26 +148,6 @@ const PostCard: React.FC<PostCardProps> = ({
       filter: drop-shadow(0 4px 15px rgba(0,0,0,0.5));
     }
   `;
-
-  const SeeMoreButton = () => (
-    <span
-      className="see-more-btn"
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggleExpand(postIdStr);
-      }}
-      style={{
-        color: '#1f3cff',
-        cursor: 'pointer',
-        fontSize: '12px',
-        fontWeight: 600,
-        display: 'inline-block',
-        marginTop: '4px',
-      }}
-    >
-      Lihat Selengkapnya
-    </span>
-  );
 
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
@@ -284,7 +267,17 @@ const PostCard: React.FC<PostCardProps> = ({
             >
               {renderBioWithMentions(post.bio?.trim())}
             </p>
-            {showMoreButton && !isExpanded && <SeeMoreButton />}
+            {showMoreButton && !isExpanded && (
+              <button
+                className="see-more-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpand(postIdStr);
+                }}
+              >
+                Lihat Selengkapnya
+              </button>
+            )}
 
             <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>{formattedDate}</span>
@@ -364,7 +357,17 @@ const PostCard: React.FC<PostCardProps> = ({
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
-          {showMoreButton && !isExpanded && <SeeMoreButton />}
+          {showMoreButton && !isExpanded && (
+            <button
+              className="see-more-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand(postIdStr);
+              }}
+            >
+              Lihat Selengkapnya
+            </button>
+          )}
 
           {post.audio_src && (
             <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>

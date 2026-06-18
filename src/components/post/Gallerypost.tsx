@@ -12,7 +12,6 @@ import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
 import './Gallery.css';
 
-// Helper
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -97,7 +96,6 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
 });
 MemoizedSlider.displayName = 'MemoizedSlider';
 
-// Memo untuk SuggestedUsers
 const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) =>
   prev.myId === next.myId && prev.followedUsers === next.followedUsers
 );
@@ -163,6 +161,7 @@ export default function Gallerypost() {
   const followedUsersRef = useRef(followedUsers);
 
   const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastScrollTimeRef = useRef(0);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
@@ -171,9 +170,15 @@ export default function Gallerypost() {
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
   useEffect(() => { isMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
+  // 🔥 Observer autoplay dengan throttle
   useEffect(() => {
     autoPlayObserverRef.current = new IntersectionObserver(
       (entries) => {
+        const now = Date.now();
+        // Throttle: jangan proses jika scroll terlalu cepat (< 200ms antar event)
+        if (now - lastScrollTimeRef.current < 200) return;
+        lastScrollTimeRef.current = now;
+
         entries.forEach((entry) => {
           const card = entry.target;
           const postId = card.getAttribute("data-postid");
@@ -181,21 +186,19 @@ export default function Gallerypost() {
           if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
-            scrollDebounceRef.current = setTimeout(() => {
-              if (!activeMediaRef.current.has(postId)) {
-                document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-                  if (el !== media && !el.paused) el.pause();
-                });
-                activeMediaRef.current.add(postId);
-                media.muted = isMutedRef.current;
-                media.currentTime = 0;
-                media.play().catch(() => {});
-              } else {
-                media.muted = isMutedRef.current;
-                if (media.paused) media.play().catch(() => {});
-              }
-            }, 150);
+            if (!activeMediaRef.current.has(postId)) {
+              // Pause semua media lain
+              document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+                if (el !== media && !el.paused) el.pause();
+              });
+              activeMediaRef.current.add(postId);
+              media.muted = isMutedRef.current;
+              media.currentTime = 0;
+              media.play().catch(() => {});
+            } else {
+              media.muted = isMutedRef.current;
+              if (media.paused) media.play().catch(() => {});
+            }
           } else {
             media.pause();
             activeMediaRef.current.delete(postId);
@@ -598,7 +601,12 @@ export default function Gallerypost() {
           font-weight: 600;
           display: inline-block;
           margin-top: 4px;
-          transition: opacity 0.2s;
+          background: none;
+          border: none;
+          padding: 0;
+          position: relative;
+          z-index: 5;
+          pointer-events: auto;
         }
         .see-more-btn:hover {
           opacity: 0.8;
@@ -627,8 +635,8 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            increaseViewportBy={{ top: 0, bottom: 2500 }}
-            overscan={800}
+            increaseViewportBy={{ top: 0, bottom: 1200 }}
+            overscan={300}
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
               const isTextOrAudio = !post.image_url && !post.video_url;
