@@ -48,6 +48,9 @@ const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   if (prevProps.likersMap[pid] !== nextProps.likersMap[pid]) return false;
   if (prevProps.repostersMap[pid] !== nextProps.repostersMap[pid]) return false;
 
+  // ⬇️ Jangan lupa bandingkan isExpanded
+  if (prevProps.isExpanded !== nextProps.isExpanded) return false;
+
   return true;
 });
 
@@ -154,6 +157,9 @@ export default function Gallerypost() {
   } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
+  // 🔥 State untuk caption "Lihat Selengkapnya" (expanded post)
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -252,48 +258,22 @@ export default function Gallerypost() {
     });
   }, []);
 
-  // ✨ Fungsi untuk menambahkan tombol "Lihat Selengkapnya" pada caption panjang
-  const setupTruncateCaptions = useCallback(() => {
-    const cards = document.querySelectorAll('.post-card');
-    cards.forEach((card: any) => {
-      // Cari elemen bio/caption (asumsi class "post-bio" di PostCard)
-      const bioEl = card.querySelector('.post-bio');
-      if (!bioEl) return;
-      
-      // Cegah duplikasi tombol
-      if (bioEl.nextElementSibling?.classList.contains('see-more-btn')) return;
+  const handleItemsRendered = useCallback(() => {
+    setTimeout(syncObservers, 50);
+  }, [syncObservers]);
 
-      // Batasi tampilan awal 3 baris
-      bioEl.style.display = '-webkit-box';
-      bioEl.style.webkitLineClamp = '3';
-      bioEl.style.webkitBoxOrient = 'vertical';
-      bioEl.style.overflow = 'hidden';
-
-      // Jika konten lebih panjang dari 3 baris, tambahkan tombol
-      if (bioEl.scrollHeight > bioEl.clientHeight) {
-        const btn = document.createElement('span');
-        btn.className = 'see-more-btn';
-        btn.style.cssText = 'color:#1f3cff; cursor:pointer; font-size:12px; font-weight:600; display:inline-block; margin-top:4px;';
-        btn.textContent = 'Lihat Selengkapnya';
-        btn.onclick = (e: Event) => {
-          e.stopPropagation();
-          bioEl.style.display = 'block';
-          bioEl.style.webkitLineClamp = 'unset';
-          bioEl.style.overflow = 'visible';
-          btn.remove();
-        };
-        bioEl.parentNode?.insertBefore(btn, bioEl.nextSibling);
+  // 🔥 Callback untuk toggle "Lihat Selengkapnya" (dari PostCard atau dari tombol internal)
+  const handleToggleExpand = useCallback((postId: string) => {
+    setExpandedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
       }
+      return newSet;
     });
   }, []);
-
-  // Memanggil sinkronisasi dan setup truncate setiap Virtuoso selesai render
-  const handleItemsRendered = useCallback(() => {
-    setTimeout(() => {
-      syncObservers();
-      setupTruncateCaptions();
-    }, 50);
-  }, [syncObservers, setupTruncateCaptions]);
 
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
@@ -589,7 +569,6 @@ export default function Gallerypost() {
           margin: 0 !important;
         }
 
-        /* Semua kartu sekarang memiliki ujung melengkung 16px */
         .media-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
@@ -598,13 +577,13 @@ export default function Gallerypost() {
           margin-bottom: 12px !important; 
           border-left: none !important;
           border-right: none !important;
-          border-radius: 16px !important; /* 🔥 LENGKUNG SEDIKIT */
+          border-radius: 16px !important;
         }
         .media-post-card-wp [data-postid] img,
         .media-post-card-wp [data-postid] video,
         .media-post-card-wp [data-postid] .post-media-wrapper {
           width: 100% !important;
-          border-radius: 16px 16px 0 0 !important; /* hanya atas yang melengkung agar tidak aneh */
+          border-radius: 16px 16px 0 0 !important;
         }
 
         .text-post-card-wp {
@@ -616,13 +595,12 @@ export default function Gallerypost() {
           width: 100% !important;
           max-width: 100% !important;
           margin-bottom: 14px !important;
-          border-radius: 20px !important; /* teks/audio lebih bulat */
+          border-radius: 20px !important;
           border: 1px solid var(--border-card) !important;
           overflow: hidden !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
         }
 
-        /* Avatar tetap bulat */
         .text-post-card-wp [data-postid] img,
         .text-post-card-wp [data-postid] .avatar,
         .text-post-card-wp [data-postid] [class*="avatar"],
@@ -633,8 +611,14 @@ export default function Gallerypost() {
           object-fit: cover !important;
         }
 
-        /* Style untuk tombol Lihat Selengkapnya */
+        /* Tombol Lihat Selengkapnya sekarang diatur oleh state, bukan DOM manual */
         .see-more-btn {
+          color: #1f3cff;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+          display: inline-block;
+          margin-top: 4px;
           transition: opacity 0.2s;
         }
         .see-more-btn:hover {
@@ -669,6 +653,7 @@ export default function Gallerypost() {
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
               const isTextOrAudio = !post.image_url && !post.video_url;
+              const isExpanded = expandedPosts.has(post.id);
 
               return (
                 <React.Fragment key={post.id}>
@@ -703,6 +688,8 @@ export default function Gallerypost() {
                       setActivePreviewImage={setActivePreviewImage}
                       router={router}
                       t={t}
+                      isExpanded={isExpanded}            // ⬅️ prop baru
+                      onToggleExpand={handleToggleExpand} // ⬅️ prop baru (dipanggil dari PostCard)
                     />
                   </div>
                 </React.Fragment>

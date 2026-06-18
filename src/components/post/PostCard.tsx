@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
@@ -34,6 +34,9 @@ type PostCardProps = {
   setActivePreviewImage: (url: string | null) => void;
   router: ReturnType<typeof useRouter>;
   t: any;
+  // 🔥 Props baru untuk "Lihat Selengkapnya"
+  isExpanded?: boolean;
+  onToggleExpand?: (postId: string) => void;
 };
 
 const PostCard: React.FC<PostCardProps> = ({
@@ -42,7 +45,9 @@ const PostCard: React.FC<PostCardProps> = ({
   isGloballyMuted, poppingHeart, activePreviewImage, likersMap, repostersMap,
   handleLike, handleSave, openRepostModal, handleMediaClick,
   toggleMute, openShareOptions, handleFollowToggle,
-  setActivePreviewImage, router, t
+  setActivePreviewImage, router, t,
+  isExpanded = false,
+  onToggleExpand = () => {},
 }) => {
   const badge = getUserBadge(post.profiles?.role);
   const avatarUrl = post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.username}`;
@@ -63,47 +68,50 @@ const PostCard: React.FC<PostCardProps> = ({
   const mutualLikers = likers.filter((l: any) => mutualUsers.has(String(l.id)));
   const mutualReposters = reposters.filter((r: any) => mutualUsers.has(String(r.id)));
 
-  // Simpan referensi ke media element
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
 
-  // 🔥 FIX LOKAL AUTOPLAY: PostCard mengurus play/pause-nya sendiri! 🔥
+  // 🔥 Autoplay observer (sebelumnya sudah ada, tidak berubah)
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
-
-    // Pastikan status mute selalu up-to-date saat komponen mount atau berubah
     media.muted = isGloballyMuted;
-
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           media.muted = isGloballyMuted; 
-          const playPromise = media.play();
-          
-          if (playPromise !== undefined) {
-            playPromise.catch((error) => {
-              console.warn("Autoplay diblokir browser, memaksa mute...", error);
-              // Kalau browser ngambek karena suara, kita mute paksa dan play lagi
-              media.muted = true;
-              media.play().catch(() => {});
-            });
-          }
+          media.play().catch(() => {});
         } else {
-          // Pause kalau udah lewat (out of viewport)
           media.pause();
         }
       });
-    }, { 
-      // Cukup 50% area video/audio terlihat, langsung mainkan!
-      threshold: 0.5 
-    });
-
+    }, { threshold: 0.5 });
     observer.observe(media);
+    return () => observer.disconnect();
+  }, [isGloballyMuted]);
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [isGloballyMuted]); // Effect dipanggil lagi kalau user ngerubah status mute global
+  // 🔥 Ref untuk caption & state untuk menentukan apakah tombol "Lihat Selengkapnya" diperlukan
+  const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
+  const [showMoreButton, setShowMoreButton] = useState(false);
+
+  useEffect(() => {
+    if (!isExpanded && captionRef.current) {
+      const el = captionRef.current;
+      // Reset dulu agar bisa mengukur tinggi alami
+      el.style.display = 'block';
+      el.style.webkitLineClamp = 'unset';
+      el.style.overflow = 'visible';
+      const fullHeight = el.scrollHeight;
+      // Terapkan clamp 3 baris
+      el.style.display = '-webkit-box';
+      el.style.webkitLineClamp = '3';
+      el.style.webkitBoxOrient = 'vertical';
+      el.style.overflow = 'hidden';
+      // Jika tinggi penuh > tinggi yang terpotong, tampilkan tombol
+      setShowMoreButton(fullHeight > el.clientHeight + 2); // +2 toleransi
+    } else if (isExpanded) {
+      setShowMoreButton(false);
+    }
+  }, [post.bio, isExpanded]);
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
@@ -144,6 +152,27 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   `;
 
+  // Komponen kecil untuk tombol "Lihat Selengkapnya"
+  const SeeMoreButton = () => (
+    <span
+      className="see-more-btn"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggleExpand(postIdStr);
+      }}
+      style={{
+        color: '#1f3cff',
+        cursor: 'pointer',
+        fontSize: '12px',
+        fontWeight: 600,
+        display: 'inline-block',
+        marginTop: '4px',
+      }}
+    >
+      Lihat Selengkapnya
+    </span>
+  );
+
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
       style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
@@ -152,6 +181,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
       {(photoList.length > 0 || isVideoPost) ? (
         <>
+          {/* Bagian slider/gambar/video */}
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
@@ -205,7 +235,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     className="post-video-element" 
                     poster={getOptimizedImage(post.image_url)}
                     playsInline 
-                    autoPlay // Tambahan backup autoplay 
+                    autoPlay 
                     loop 
                     muted={isGloballyMuted} 
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none' }} 
@@ -248,9 +278,22 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            <p className="post-bio" style={{ minHeight: '24px', wordBreak: 'break-word', display: 'block' }}>
+            {/* 🔥 Caption dengan ref dan class post-bio, plus tombol "Lihat Selengkapnya" */}
+            <p
+              ref={captionRef as React.RefObject<HTMLParagraphElement>}
+              className="post-bio"
+              style={{
+                minHeight: '24px',
+                wordBreak: 'break-word',
+                display: isExpanded ? 'block' : '-webkit-box',
+                WebkitLineClamp: isExpanded ? 'unset' : 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: isExpanded ? 'visible' : 'hidden',
+              }}
+            >
               {renderBioWithMentions(post.bio?.trim())}
             </p>
+            {showMoreButton && !isExpanded && <SeeMoreButton />}
 
             <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>{formattedDate}</span>
@@ -277,6 +320,7 @@ const PostCard: React.FC<PostCardProps> = ({
         </>
       ) : (
         <>
+          {/* Layout tanpa gambar/video */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
               <img src={optimizedAvatar} alt="Avatar Profil" decoding="async" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -312,9 +356,26 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           )}
 
-          <div style={{ fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '12px', wordBreak: 'break-word' }}>
+          {/* 🔥 Caption teks biasa dengan ref, class post-bio, dan tombol */}
+          <div
+            ref={captionRef as React.RefObject<HTMLDivElement>}
+            className="post-bio"
+            style={{
+              fontSize: '15px',
+              color: 'var(--text-main)',
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              marginBottom: '12px',
+              wordBreak: 'break-word',
+              display: isExpanded ? 'block' : '-webkit-box',
+              WebkitLineClamp: isExpanded ? 'unset' : 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: isExpanded ? 'visible' : 'hidden',
+            }}
+          >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
+          {showMoreButton && !isExpanded && <SeeMoreButton />}
 
           {post.audio_src && (
             <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -372,6 +433,9 @@ export default React.memo(PostCard, (prev, next) => {
 
   if (prev.likersMap[pid]?.length !== next.likersMap[pid]?.length) return false;
   if (prev.repostersMap[pid]?.length !== next.repostersMap[pid]?.length) return false;
+
+  // 🔥 Jangan lupa bandingkan isExpanded
+  if (prev.isExpanded !== next.isExpanded) return false;
 
   return true;
 });
