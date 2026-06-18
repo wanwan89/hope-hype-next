@@ -180,12 +180,10 @@ export default function Gallerypost() {
           if (!media || !postId) return;
 
           if (entry.isIntersecting) {
-            // Mencegah video langsung main pas lagi scroll brutal
             if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
             
             scrollDebounceRef.current = setTimeout(() => {
               if (!activeMediaRef.current.has(postId)) {
-                // Pause media lain
                 document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
                   if (el !== media && !el.paused) el.pause();
                 });
@@ -197,7 +195,7 @@ export default function Gallerypost() {
                 media.muted = isMutedRef.current;
                 if (media.paused) media.play().catch(() => {});
               }
-            }, 150); // Jeda 150ms buat nunggu scroll beneran berhenti/pelan
+            }, 150);
             
           } else {
             media.pause();
@@ -205,7 +203,7 @@ export default function Gallerypost() {
           }
         });
       },
-      { threshold: 0.6 } // Video main kalau udah 60% keliatan di layar
+      { threshold: 0.6 }
     );
 
     viewObserverRef.current = new IntersectionObserver(
@@ -254,11 +252,48 @@ export default function Gallerypost() {
     });
   }, []);
 
-  // Memanggil sinkronisasi setiap Virtuoso selesai render
+  // ✨ Fungsi untuk menambahkan tombol "Lihat Selengkapnya" pada caption panjang
+  const setupTruncateCaptions = useCallback(() => {
+    const cards = document.querySelectorAll('.post-card');
+    cards.forEach((card: any) => {
+      // Cari elemen bio/caption (asumsi class "post-bio" di PostCard)
+      const bioEl = card.querySelector('.post-bio');
+      if (!bioEl) return;
+      
+      // Cegah duplikasi tombol
+      if (bioEl.nextElementSibling?.classList.contains('see-more-btn')) return;
+
+      // Batasi tampilan awal 3 baris
+      bioEl.style.display = '-webkit-box';
+      bioEl.style.webkitLineClamp = '3';
+      bioEl.style.webkitBoxOrient = 'vertical';
+      bioEl.style.overflow = 'hidden';
+
+      // Jika konten lebih panjang dari 3 baris, tambahkan tombol
+      if (bioEl.scrollHeight > bioEl.clientHeight) {
+        const btn = document.createElement('span');
+        btn.className = 'see-more-btn';
+        btn.style.cssText = 'color:#1f3cff; cursor:pointer; font-size:12px; font-weight:600; display:inline-block; margin-top:4px;';
+        btn.textContent = 'Lihat Selengkapnya';
+        btn.onclick = (e: Event) => {
+          e.stopPropagation();
+          bioEl.style.display = 'block';
+          bioEl.style.webkitLineClamp = 'unset';
+          bioEl.style.overflow = 'visible';
+          btn.remove();
+        };
+        bioEl.parentNode?.insertBefore(btn, bioEl.nextSibling);
+      }
+    });
+  }, []);
+
+  // Memanggil sinkronisasi dan setup truncate setiap Virtuoso selesai render
   const handleItemsRendered = useCallback(() => {
-    // Pakai setTimeout 50ms buat mastiin DOM kelar dilukis browser
-    setTimeout(syncObservers, 50);
-  }, [syncObservers]);
+    setTimeout(() => {
+      syncObservers();
+      setupTruncateCaptions();
+    }, 50);
+  }, [syncObservers, setupTruncateCaptions]);
 
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
@@ -547,7 +582,6 @@ export default function Gallerypost() {
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         .slider-recommendation::-webkit-scrollbar { display: none; }
 
-        /* 🔥 CSS agar Feed Full Edge-to-Edge 🔥 */
         .gallery {
           width: 100% !important;
           max-width: 100% !important;
@@ -555,7 +589,7 @@ export default function Gallerypost() {
           margin: 0 !important;
         }
 
-        /* 📸 STYLE UNTUK MEDIA POST (FOTO/VIDEO): Tetap Full Edge-to-Edge Tanpa Jarak Pinggir 📸 */
+        /* Semua kartu sekarang memiliki ujung melengkung 16px */
         .media-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
@@ -564,41 +598,47 @@ export default function Gallerypost() {
           margin-bottom: 12px !important; 
           border-left: none !important;
           border-right: none !important;
-          border-radius: 0 !important; 
+          border-radius: 16px !important; /* 🔥 LENGKUNG SEDIKIT */
         }
         .media-post-card-wp [data-postid] img,
         .media-post-card-wp [data-postid] video,
         .media-post-card-wp [data-postid] .post-media-wrapper {
           width: 100% !important;
-          border-radius: 0 !important;
+          border-radius: 16px 16px 0 0 !important; /* hanya atas yang melengkung agar tidak aneh */
         }
 
-        /* 📝 STYLE KHUSUS FEED TEKS & AUDIO: Sisi melengkung, memiliki padding pinggir agar terlihat seperti card bubble 📝 */
         .text-post-card-wp {
           width: 100% !important;
-          padding: 0 12px !important; /* Memberikan space jarak dari tepi screen HP */
+          padding: 0 12px !important;
           box-sizing: border-box !important;
         }
         .text-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
           margin-bottom: 14px !important;
-          border-radius: 20px !important; /* 🔥 Membuat sisinya melengkung cantik beda dari foto */
+          border-radius: 20px !important; /* teks/audio lebih bulat */
           border: 1px solid var(--border-card) !important;
           overflow: hidden !important;
-          /* background: var(--bg-secondary) !important; 👈 DIHAPUS agar warnanya sama persis dengan feed lainnya */
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
         }
 
-        /* 👤 FIX: Paksa semua foto profile di dalam gallery (baik text/audio maupun media) menjadi BULAT sempurna 👤 */
+        /* Avatar tetap bulat */
         .text-post-card-wp [data-postid] img,
         .text-post-card-wp [data-postid] .avatar,
         .text-post-card-wp [data-postid] [class*="avatar"],
         .media-post-card-wp [data-postid] .avatar,
         .media-post-card-wp [data-postid] [class*="avatar"] {
-          border-radius: 50% !important; /* 🔥 Mengubah bentuk kotak menjadi lingkaran murni */
+          border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
+        }
+
+        /* Style untuk tombol Lihat Selengkapnya */
+        .see-more-btn {
+          transition: opacity 0.2s;
+        }
+        .see-more-btn:hover {
+          opacity: 0.8;
         }
       `}</style>
 
@@ -628,7 +668,6 @@ export default function Gallerypost() {
             overscan={800} 
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
-              // 🔥 UBAH LOGIKANYA: Postingan dianggap berjenis text/bubble jika tidak memiliki image ataupun video (Audio/Lagu diperbolehkan masuk sini)
               const isTextOrAudio = !post.image_url && !post.video_url;
 
               return (
@@ -636,7 +675,6 @@ export default function Gallerypost() {
                   {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
                   {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
                   
-                  {/* Memisahkan wrapper class berdasarkan tipe post */}
                   <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
                     <MemoizedPostCard
                       post={post}
