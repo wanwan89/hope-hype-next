@@ -13,7 +13,7 @@ import HypetalkSidebar from './_components/HypetalkSidebar';
 import UserProfileModal from './_components/UserProfileModal';
 import ChatInfoModal from './_components/ChatInfoModal';
 import PrivacySettingsModal from './_components/PrivacySettingsModal';
-import DoiCardModal from './_components/DoiCardModal';
+import HypeMatchOverlay from './_components/HypeMatchOverlay'; // Diubah dari DoiCardModal
 import SearchModal from './_components/SearchModal';
 import GroupModal from './_components/GroupModal';
 import BioModal from './_components/BioModal';
@@ -30,9 +30,9 @@ export default function HypetalkPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [sisaLimitDoi, setSisaLimitDoi] = useState(10);
   const [isSearchingDoi, setIsSearchingDoi] = useState(false);
-  const [foundDoi, setFoundDoi] = useState<any>(null);
+  const [potentialMatches, setPotentialMatches] = useState<any[]>([]); // Menyimpan daftar lawan jenis
+  const [isHypeMatchOpen, setIsHypeMatchOpen] = useState(false); // Mengatur overlay swipe kartu
   const [bioForm, setBioForm] = useState({ umur: '', gender: 'Pria', zodiak: '', pekerjaan: '', hobi: '' });
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
@@ -50,10 +50,6 @@ export default function HypetalkPage() {
 
   // ========== LIFECYCLE & INIT ==========
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedLimit = localStorage.getItem('doi_limit');
-      if (savedLimit) setSisaLimitDoi(parseInt(savedLimit));
-    }
     initUser();
   }, []);
 
@@ -323,25 +319,64 @@ export default function HypetalkPage() {
     });
   };
 
-  const handleCariDoi = async () => {
-    if (sisaLimitDoi <= 0) return openModal('limit-doi');
+  // --- LOGIK BARU HYPE MATCH ---
+  const handleHypeMatch = async () => {
     if (!currentUser?.gender) return openModal('bio');
-    const newLimit = sisaLimitDoi - 1;
-    setSisaLimitDoi(newLimit);
-    localStorage.setItem('doi_limit', String(newLimit));
+    
     setIsSidebarOpen(false);
-    setIsSearchingDoi(true);
+    setIsSearchingDoi(true); // Memunculkan Radar Animasi bawaanmu
     const lawanJenis = currentUser.gender === "Pria" ? "Wanita" : "Pria";
 
+    // Beri jeda 3 detik biar efek radar berputar dulu, lalu ambil data dari Supabase
     setTimeout(async () => {
       try {
-        const { data: users } = await supabase.from("profiles").select("*").neq("id", currentUser.id).eq("gender", lawanJenis);
-        setIsSearchingDoi(false);
-        if (!users || users.length === 0) return showNotif("Belum ada kecocokan saat ini.", "info");
-        setFoundDoi(users[Math.floor(Math.random() * users.length)]);
-        openModal('doi-card');
-      } catch (err) { setIsSearchingDoi(false); }
-    }, 4000);
+        const { data: users } = await supabase
+          .from("profiles")
+          .select("*")
+          .neq("id", currentUser.id)
+          .eq("gender", lawanJenis);
+
+        setIsSearchingDoi(false); // Matikan radar
+
+        if (!users || users.length === 0) {
+          return showNotif("Belum ada pasangan yang cocok saat ini.", "info");
+        }
+
+        // Acak urutan daftar user agar seru saat di-swipe
+        const shuffledUsers = users.sort(() => Math.random() - 0.5);
+        setPotentialMatches(shuffledUsers);
+        setIsHypeMatchOpen(true); // Buka halaman tumpukan kartu swipe
+      } catch (err) { 
+        setIsSearchingDoi(false); 
+        showNotif("Gagal mencari data.", "error");
+      }
+    }, 3000);
+  };
+
+  // Fungsi saat user swipe KIRI (Tertarik)
+  const handleLikeUser = async (targetId: string): Promise<boolean> => {
+    try {
+      // Cek apakah target sudah memfollow kita duluan di tabel followers (Simulasi Mutual Match)
+      const { data: isMutual } = await supabase
+        .from('followers')
+        .select('*')
+        .eq('follower_id', targetId)
+        .eq('following_id', currentUser.id)
+        .maybeSingle();
+
+      // Tambahkan kita memfollow target ke tabel database
+      await supabase.from('followers').insert([{ follower_id: currentUser.id, following_id: targetId }]);
+      
+      return !!isMutual; // Mengembalikan true jika match mutual terjadi
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  // Fungsi saat user swipe KANAN (Tidak tertarik)
+  const handlePassUser = (targetId: string) => {
+    console.log(`User ${targetId} dilewati`);
   };
 
   const handleSearchAndChat = async () => {
@@ -495,17 +530,18 @@ export default function HypetalkPage() {
         renderReadReceipt={renderReadReceipt}
       />
 
-      {!activeModal && !isSearchingDoi && (
+      {!activeModal && !isSearchingDoi && !isHypeMatchOpen && (
         <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
       )}
 
       <div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      
+      {/* SINKRONISASI PEMANGGILAN SIDEBAR */}
       <HypetalkSidebar
         isOpen={isSidebarOpen}
         currentUser={currentUser}
-        sisaLimitDoi={sisaLimitDoi}
         onOpenModal={openModal}
-        onCariDoi={handleCariDoi}
+        onHypeMatch={handleHypeMatch} // Properti sudah diarahkan dengan benar ke fungsi baru
       />
 
       {activeModal === 'user-profile' && selectedProfile && (
@@ -539,11 +575,14 @@ export default function HypetalkPage() {
         />
       )}
 
-      {activeModal === 'doi-card' && foundDoi && (
-        <DoiCardModal
-          doi={foundDoi}
-          onClose={closeModal}
-          onChat={() => router.push(`/hypetalk/room?from=${foundDoi.id}`)}
+      {/* TAMPILKAN OVERLAY SWIPE KARTU HYPE MATCH */}
+      {isHypeMatchOpen && (
+        <HypeMatchOverlay
+          currentUser={currentUser}
+          potentialMatches={potentialMatches}
+          onLike={handleLikeUser}
+          onPass={handlePassUser}
+          onClose={() => setIsHypeMatchOpen(false)}
         />
       )}
 
