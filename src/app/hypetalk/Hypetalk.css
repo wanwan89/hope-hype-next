@@ -465,3 +465,108 @@
 .btn-chat-now:active, .btn-keep-swiping:active {
   transform: scale(0.95);
 }
+ /* =========================================
+   HINT SWIPE & EXPANDED PROFILE
+========================================= */
+
+/* Animasi Hint Geser Ke Atas */
+.swipe-up-hint {
+  position: absolute;
+  bottom: 110px; /* Di atas nama/bio */
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  animation: bounceHint 2s infinite ease-in-out;
+  z-index: 10;
+}
+
+.swipe-up-hint .material-icons {
+  font-size: 24px;
+}
+
+.swipe-up-hint p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+@keyframes bounceHint {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-10px); opacity: 1; }
+}
+
+/* Transisi Card Info dari Bawah ke Atas */
+.card-info {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  height: auto;
+  min-height: 100px;
+}
+
+.card-info.expanded {
+  height: 70%; /* Saat di-swipe up, panel ini menutupi 70% kartu */
+  background: rgba(15, 20, 25, 0.85); /* Backrop yang lebih pekat tapi tetap tembus pandang */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-y: auto; /* Bisa di-scroll kalau bio-nya panjang */
+  padding-top: 20px;
+}
+
+/* Hint Tutup Profil (Swipe Down) */
+.swipe-down-hint {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.gender-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: white;
+}
+
+/* Bio Teks Maksimal 2 Baris vs Penuh */
+.bio-text {
+  transition: all 0.3s ease;
+}
+
+.bio-text.full {
+  -webkit-line-clamp: unset;
+  opacity: 1;
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+/* Tag Tambahan untuk Profil Lengkap */
+.extra-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.info-tag {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  color: #ddd;
+}
