@@ -9,6 +9,7 @@ type MatchUser = {
   gender: string;
 };
 
+
 type Props = {
   currentUser: any;
   potentialMatches: MatchUser[]; // Pastikan data yang dikirim ke sini sudah difilter lawan jenis dari backend
