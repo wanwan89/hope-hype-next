@@ -1,3 +1,4 @@
+// PostCard.tsx (final, overflow fix + carousel state + see more fix)
 'use client';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -95,14 +96,27 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  // Pengecekan teks terpotong (See More) yang jauh lebih ringan
+  // Pengecekan teks terpotong (See More) yang lebih akurat, bergantung pada isExpanded
   useEffect(() => {
     if (captionRef.current) {
       const el = captionRef.current;
-      // Cek apakah teks aslinya lebih tinggi dari kontainer yang dilimit CSS
-      setShowMoreButton(el.scrollHeight > el.clientHeight);
+      // Reset gaya sementara untuk mengukur tinggi asli
+      const prevDisplay = el.style.display;
+      const prevLineClamp = el.style.webkitLineClamp;
+      const prevOverflow = el.style.overflow;
+      el.style.display = 'block';
+      el.style.webkitLineClamp = 'unset';
+      el.style.overflow = 'visible';
+      const fullHeight = el.scrollHeight;
+      // Kembalikan ke clamp 3 baris (default)
+      el.style.display = prevDisplay;
+      el.style.webkitLineClamp = prevLineClamp;
+      el.style.overflow = prevOverflow;
+      // Bandingkan dengan tinggi yang terpotong (clientHeight saat clamp)
+      const clampedHeight = el.clientHeight;
+      setShowMoreButton(fullHeight > clampedHeight + 2);
     }
-  }, [post.bio]);
+  }, [post.bio, isExpanded]); // Dependensi isExpanded agar dihitung ulang saat toggle
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
@@ -126,9 +140,15 @@ const PostCard: React.FC<PostCardProps> = ({
     onToggleExpand(postIdStr);
   }, [onToggleExpand, postIdStr]);
 
+  // Style card dengan overflow dinamis
+  const cardStyle: React.CSSProperties = {
+    ...(!post.image_url && !post.video_url ? { padding: '16px' } : {}),
+    overflow: isExpanded ? 'visible' : 'hidden', // ✅ Fix utama
+  };
+
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
-      style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
+      style={cardStyle}>
 
       {(photoList.length > 0 || isVideoPost) ? (
         <>
@@ -148,7 +168,6 @@ const PostCard: React.FC<PostCardProps> = ({
               {photoList.length > 1 && !isVideoPost && (
                 <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
                   <span className="material-icons" style={{ fontSize: '12px' }}>collections</span>
-                  {/* Gunakan State React, bukan DOM Vanilla */}
                   <span>{currentSlide + 1}/{photoList.length}</span>
                 </div>
               )}
@@ -169,7 +188,6 @@ const PostCard: React.FC<PostCardProps> = ({
             <div className="photo-carousel" onScroll={(e) => {
               const target = e.target as HTMLDivElement;
               const index = Math.round(target.scrollLeft / target.offsetWidth);
-              // Update state untuk merubah dot dan angka
               setCurrentSlide(index);
             }}>
               {isVideoPost ? (
@@ -226,7 +244,7 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          <div className="overlay" style={{ pointerEvents: 'none' }}> 
+          <div className="overlay" style={{ pointerEvents: 'auto' }}> 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pointerEvents: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <h2 className="name" onClick={() => router.push(`/data?id=${creatorIdStr}`)}
