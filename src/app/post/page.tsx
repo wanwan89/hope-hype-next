@@ -18,7 +18,6 @@ export default function PostPage() {
   const postIdFromUrl = searchParams.get('id');
   const source = searchParams.get('from'); 
 
-  // Pake userPosts untuk nampung semua postingan, entah itu 1 (single) atau banyak (profile mode)
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -46,6 +45,9 @@ export default function PostPage() {
 
   const lastTapRef = useRef<Record<string, number>>({});
 
+  // 🔥 State untuk expand caption (Lihat Selengkapnya)
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+
   // Mode profil
   const [profileUsername, setProfileUsername] = useState<string>('');
   const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
@@ -53,7 +55,6 @@ export default function PostPage() {
   // Observer autoplay
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Refs untuk menghindari closure basi
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -148,7 +149,6 @@ export default function PostPage() {
 
     setUserPosts(filtered);
 
-    // Ambil interaksi untuk semua postingan secara paralel
     await Promise.all(filtered.map(post => fetchPostInteractions(post.id, user)));
 
     setIsLoading(false);
@@ -217,7 +217,6 @@ export default function PostPage() {
     }
   };
 
-  // Logika untuk nge-scroll ke postingan yang spesifik pas pertama load
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
       setTimeout(() => {
@@ -230,7 +229,19 @@ export default function PostPage() {
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
-  // Handler interaksi (sama dengan galery)
+  // 🔥 Callback untuk toggle expand caption
+  const handleToggleExpand = useCallback((postId: string) => {
+    setExpandedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  }, []);
+
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
@@ -476,14 +487,14 @@ export default function PostPage() {
             style={{ 
               flex: 1, 
               overflowY: 'auto', 
-              scrollSnapType: 'y mandatory', // Biar snap halus pas di scroll per postingan
+              scrollSnapType: 'y mandatory',
               height: 'calc(100vh - 60px)', 
               width: '100%' 
             }}
           >
             {userPosts.map((p) => {
-              // 🔥 LOGIKA BARU: Cek jika postingan hanya berupa teks atau teks + audio
               const isTextOrAudio = !p.image_url && !p.video_url;
+              const isExpanded = expandedPosts.has(p.id);
 
               return (
                 <div 
@@ -494,7 +505,6 @@ export default function PostPage() {
                     height: '100%', 
                     position: 'relative' 
                   }}
-                  // 🔥 Menyisipkan class wrapper dinamis berdasarkan jenis konten
                   className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}
                 >
                   <PostCard
@@ -527,6 +537,9 @@ export default function PostPage() {
                     setActivePreviewImage={setActivePreviewImage}
                     router={router}
                     t={t}
+                    // 🔥 Props untuk caption expand
+                    isExpanded={isExpanded}
+                    onToggleExpand={handleToggleExpand}
                   />
                 </div>
               );
@@ -535,22 +548,19 @@ export default function PostPage() {
         )}
       </div>
       
-      {/* STYLING UPDATE: Ditambahkan agar sinkron dengan gallery utama */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
-        /* Hide scrollbar for clean look */
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* 🔥 CSS agar Feed Full Edge-to-Edge 🔥 */
         .gallery {
           width: 100% !important;
           max-width: 100% !important;
-          padding: 0 !important;
+          padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0 !important;
           margin: 0 !important;
         }
 
-        /* 📸 STYLE UNTUK MEDIA POST (FOTO/VIDEO): Tetap Full Edge-to-Edge Tanpa Jarak Pinggir 📸 */
+        /* Media post: sudut melengkung 16px */
         .media-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
@@ -559,40 +569,59 @@ export default function PostPage() {
           margin-bottom: 12px !important; 
           border-left: none !important;
           border-right: none !important;
-          border-radius: 0 !important; 
+          border-radius: 16px !important;
         }
         .media-post-card-wp [data-postid] img,
         .media-post-card-wp [data-postid] video,
         .media-post-card-wp [data-postid] .post-media-wrapper {
           width: 100% !important;
-          border-radius: 0 !important;
+          border-radius: 16px 16px 0 0 !important;
         }
 
-        /* 📝 STYLE KHUSUS FEED TEKS & AUDIO: Sisi melengkung, memiliki padding pinggir agar terlihat seperti card bubble 📝 */
+        /* Text post: sudut lebih bulat 20px */
         .text-post-card-wp {
           width: 100% !important;
-          padding: 0 12px !important; /* Memberikan space jarak dari tepi screen HP */
+          padding: 0 12px !important;
           box-sizing: border-box !important;
         }
         .text-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
           margin-bottom: 14px !important;
-          border-radius: 20px !important; /* 🔥 Membuat sisinya melengkung cantik beda dari foto */
+          border-radius: 20px !important;
           border: 1px solid var(--border-card) !important;
           overflow: hidden !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
         }
 
-        /* 👤 FIX: Paksa semua foto profile di dalam gallery (baik text/audio maupun media) menjadi BULAT sempurna 👤 */
+        /* Avatar tetap bulat */
         .text-post-card-wp [data-postid] img,
         .text-post-card-wp [data-postid] .avatar,
         .text-post-card-wp [data-postid] [class*="avatar"],
         .media-post-card-wp [data-postid] .avatar,
         .media-post-card-wp [data-postid] [class*="avatar"] {
-          border-radius: 50% !important; /* 🔥 Mengubah bentuk kotak menjadi lingkaran murni */
+          border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
+        }
+
+        .see-more-btn {
+          color: #1f3cff;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+          display: inline-block;
+          margin-top: 4px;
+          background: none;
+          border: none;
+          padding: 0;
+          position: relative;
+          z-index: 10;
+          pointer-events: auto;
+          user-select: none;
+        }
+        .see-more-btn:hover {
+          opacity: 0.8;
         }
       `}</style>
     </div>
