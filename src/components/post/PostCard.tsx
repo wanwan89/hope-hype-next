@@ -1,4 +1,4 @@
-// PostCard.tsx (final, overflow fix + carousel state + see more fix)
+// PostCard.tsx (DEBUG VERSION with console logs)
 'use client';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -96,27 +96,27 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  // 🔥 Pengecekan teks terpotong (See More) yang lebih akurat dengan requestAnimationFrame
+  // 🔥 Pengecekan teks terpotong (See More) dengan DEBUG LOG
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
         const el = captionRef.current;
-        // Simpan style saat ini
         const prevDisplay = el.style.display;
         const prevLineClamp = el.style.webkitLineClamp;
         const prevOverflow = el.style.overflow;
-        // Reset untuk mengukur tinggi asli
         el.style.display = 'block';
         el.style.webkitLineClamp = 'unset';
         el.style.overflow = 'visible';
         const fullHeight = el.scrollHeight;
-        // Kembalikan ke kondisi sebelumnya
         el.style.display = prevDisplay;
         el.style.webkitLineClamp = prevLineClamp;
         el.style.overflow = prevOverflow;
-        // Bandingkan dengan tinggi yang terpotong (clientHeight setelah clamp)
         const clampedHeight = el.clientHeight;
-        setShowMoreButton(fullHeight > clampedHeight + 2);
+        const shouldShow = fullHeight > clampedHeight + 2;
+        console.log(
+          `[CAPTION MEASURE] postId: ${postIdStr}, fullHeight: ${fullHeight}, clampedHeight: ${clampedHeight}, showMoreButton: ${shouldShow}`
+        );
+        setShowMoreButton(shouldShow);
       }
     });
     return () => cancelAnimationFrame(raf);
@@ -139,6 +139,7 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   const handleToggleClick = useCallback((e: React.MouseEvent) => {
+    console.log(`[SEE MORE CLICKED] postId: ${postIdStr}`);
     e.stopPropagation();
     e.preventDefault();
     onToggleExpand(postIdStr);
@@ -270,8 +271,8 @@ const PostCard: React.FC<PostCardProps> = ({
             {/* BUNGKUS CAPTION (EXPANDABLE) */}
             <div 
               style={{
-                maxHeight: isExpanded ? 'none' : 'auto',   // 🔥 biarkan caption melebar penuh
-                overflowY: 'visible',                      // 🔥 tidak perlu scroll internal
+                maxHeight: isExpanded ? 'none' : 'auto',
+                overflowY: 'visible',
                 background: isExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
                 backdropFilter: isExpanded ? 'blur(10px)' : 'none',
                 padding: isExpanded ? '12px' : '0',
@@ -292,6 +293,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 {renderBioWithMentions(post.bio?.trim())}
               </p>
               
+              {console.log(`[RENDER SEE MORE] postId: ${postIdStr}, showMoreButton: ${showMoreButton}, isExpanded: ${isExpanded}`)}
               {showMoreButton && !isExpanded && (
                 <button className="see-more-btn" onClick={handleToggleClick}>
                   Lihat Selengkapnya
@@ -376,7 +378,6 @@ const PostCard: React.FC<PostCardProps> = ({
               lineHeight: 1.5,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
-              // 👇 style dinamis untuk clamp / expand
               display: isExpanded ? 'block' : '-webkit-box',
               WebkitLineClamp: isExpanded ? 'unset' : 3,
               WebkitBoxOrient: 'vertical',
@@ -386,6 +387,7 @@ const PostCard: React.FC<PostCardProps> = ({
             {renderBioWithMentions(post.bio?.trim())}
           </div>
 
+          {console.log(`[RENDER SEE MORE (text)] postId: ${postIdStr}, showMoreButton: ${showMoreButton}, isExpanded: ${isExpanded}`)}
           {showMoreButton && !isExpanded && (
             <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px' }}>
               Lihat Selengkapnya
