@@ -7,7 +7,7 @@ import { I18nextProvider } from 'react-i18next';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// ❌ Script eruda dihapus - tidak diimport lagi
+import Script from 'next/script';
 
 // 🔥 IMPORT CAPACITOR PUSH NOTIFICATIONS 🔥
 import { Capacitor } from '@capacitor/core';
@@ -451,7 +451,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           zIndex={99999999}
         />
 
-        {/* ❌ Script eruda dihapus sepenuhnya */}
+        {/* 🔥 ERUDA DEBUG CONSOLE (hanya untuk development) 🔥 */}
+        <Script
+          src="https://cdn.jsdelivr.net/npm/eruda"
+          strategy="lazyOnload"
+          onLoad={() => {
+            if (typeof window !== 'undefined' && (window as any).eruda) {
+              (window as any).eruda.init();
+            }
+          }}
+        />
 
         <I18nextProvider i18n={i18n}>
           <ThemeProvider>
