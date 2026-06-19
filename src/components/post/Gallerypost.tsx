@@ -1,4 +1,3 @@
-// Gallerypost.tsx (final, fix tombol + preload)
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
@@ -11,7 +10,7 @@ import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
-import './Gallery.css';
+import './Gallery.css'; // sudah di‑fix (overflow dihapus dari .card)
 
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
@@ -169,12 +168,10 @@ export default function Gallerypost() {
     const preload = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        // fetch profile secara parallel
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
           if (data) setCurrentUser(data);
         });
       }
-      // Fetch posts pertama sangat awal
       fetchPosts("all", session?.user, 1, false, new Set());
     };
     preload();
@@ -187,7 +184,7 @@ export default function Gallerypost() {
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
   useEffect(() => { isMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
-  // 🔥 Observer autoplay dengan throttle
+  // Observer autoplay dengan throttle
   useEffect(() => {
     autoPlayObserverRef.current = new IntersectionObserver(
       (entries) => {

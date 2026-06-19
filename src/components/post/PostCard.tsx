@@ -96,27 +96,31 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  // Pengecekan teks terpotong (See More) yang lebih akurat, bergantung pada isExpanded
+  // 🔥 Pengecekan teks terpotong (See More) yang lebih akurat dengan requestAnimationFrame
   useEffect(() => {
-    if (captionRef.current) {
-      const el = captionRef.current;
-      // Reset gaya sementara untuk mengukur tinggi asli
-      const prevDisplay = el.style.display;
-      const prevLineClamp = el.style.webkitLineClamp;
-      const prevOverflow = el.style.overflow;
-      el.style.display = 'block';
-      el.style.webkitLineClamp = 'unset';
-      el.style.overflow = 'visible';
-      const fullHeight = el.scrollHeight;
-      // Kembalikan ke clamp 3 baris (default)
-      el.style.display = prevDisplay;
-      el.style.webkitLineClamp = prevLineClamp;
-      el.style.overflow = prevOverflow;
-      // Bandingkan dengan tinggi yang terpotong (clientHeight saat clamp)
-      const clampedHeight = el.clientHeight;
-      setShowMoreButton(fullHeight > clampedHeight + 2);
-    }
-  }, [post.bio, isExpanded]); // Dependensi isExpanded agar dihitung ulang saat toggle
+    const raf = requestAnimationFrame(() => {
+      if (captionRef.current) {
+        const el = captionRef.current;
+        // Simpan style saat ini
+        const prevDisplay = el.style.display;
+        const prevLineClamp = el.style.webkitLineClamp;
+        const prevOverflow = el.style.overflow;
+        // Reset untuk mengukur tinggi asli
+        el.style.display = 'block';
+        el.style.webkitLineClamp = 'unset';
+        el.style.overflow = 'visible';
+        const fullHeight = el.scrollHeight;
+        // Kembalikan ke kondisi sebelumnya
+        el.style.display = prevDisplay;
+        el.style.webkitLineClamp = prevLineClamp;
+        el.style.overflow = prevOverflow;
+        // Bandingkan dengan tinggi yang terpotong (clientHeight setelah clamp)
+        const clampedHeight = el.clientHeight;
+        setShowMoreButton(fullHeight > clampedHeight + 2);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [post.bio, isExpanded]);
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
@@ -140,10 +144,10 @@ const PostCard: React.FC<PostCardProps> = ({
     onToggleExpand(postIdStr);
   }, [onToggleExpand, postIdStr]);
 
-  // Style card dengan overflow dinamis
+  // Style card dengan overflow dinamis (Fix utama)
   const cardStyle: React.CSSProperties = {
     ...(!post.image_url && !post.video_url ? { padding: '16px' } : {}),
-    overflow: isExpanded ? 'visible' : 'hidden', // ✅ Fix utama
+    overflow: isExpanded ? 'visible' : 'hidden',
   };
 
   return (
@@ -152,6 +156,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
       {(photoList.length > 0 || isVideoPost) ? (
         <>
+          {/* Slider / carousel */}
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
@@ -244,6 +249,7 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
+          {/* Overlay (caption, dll) */}
           <div className="overlay" style={{ pointerEvents: 'auto' }}> 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pointerEvents: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -261,11 +267,11 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* BUNGKUS CAPTION LEBIH BERSIH DAN MENGANDALKAN CSS */}
+            {/* BUNGKUS CAPTION (EXPANDABLE) */}
             <div 
               style={{
-                maxHeight: isExpanded ? '50vh' : 'auto',
-                overflowY: isExpanded ? 'auto' : 'visible',
+                maxHeight: isExpanded ? 'none' : 'auto',   // 🔥 biarkan caption melebar penuh
+                overflowY: 'visible',                      // 🔥 tidak perlu scroll internal
                 background: isExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
                 backdropFilter: isExpanded ? 'blur(10px)' : 'none',
                 padding: isExpanded ? '12px' : '0',
@@ -322,6 +328,7 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
         </>
       ) : (
+        // 🔥 LAYOUT UNTUK POSTINGAN TEKS / AUDIO
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
@@ -358,11 +365,23 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           )}
 
-          {/* CAPTION UNTUK POSTINGAN TEKS (MENGGUNAKAN CLASS CSS) */}
+          {/* 🔥 CAPTION TEKS DENGAN STYLE DINAMIS AGAR BISA EXPAND */}
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
             className={`post-bio ${isExpanded ? 'expanded' : ''}`}
-            style={{ marginBottom: '12px' }}
+            style={{
+              marginBottom: '12px',
+              fontSize: '15px',
+              color: 'var(--text-main)',
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              // 👇 style dinamis untuk clamp / expand
+              display: isExpanded ? 'block' : '-webkit-box',
+              WebkitLineClamp: isExpanded ? 'unset' : 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: isExpanded ? 'visible' : 'hidden',
+            }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>

@@ -8,7 +8,7 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
-import '@/components/post/Gallery.css';
+import '@/components/post/Gallery.css'; // sudah di‑fix
 
 export default function PostPage() {
   const { t } = useTranslation();
@@ -560,7 +560,6 @@ export default function PostPage() {
           margin: 0 !important;
         }
 
-        /* Media post: sudut melengkung 16px */
         .media-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
@@ -578,7 +577,6 @@ export default function PostPage() {
           border-radius: 16px 16px 0 0 !important;
         }
 
-        /* Text post: sudut lebih bulat 20px */
         .text-post-card-wp {
           width: 100% !important;
           padding: 0 12px !important;
@@ -594,7 +592,6 @@ export default function PostPage() {
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
         }
 
-        /* Avatar tetap bulat */
         .text-post-card-wp [data-postid] img,
         .text-post-card-wp [data-postid] .avatar,
         .text-post-card-wp [data-postid] [class*="avatar"],
