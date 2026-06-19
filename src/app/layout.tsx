@@ -350,7 +350,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="offline-card" style={{ textAlign: 'center', padding: '2rem', borderRadius: '1.5rem', background: 'rgba(20,20,25,0.95)', border: '1px solid rgba(255,255,255,0.1)', maxWidth: '320px', width: '90%' }}>
             <div className="offline-icon-ring"><span className="material-icons" style={{ fontSize: '32px' }}>wifi_off</span></div>
             <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800', margin: '0.5rem 0 0.25rem' }}>Koneksi Terputus</h3>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Sinyal lu ngilang Bree! HypeTalk butuh internet.</p>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>kamu sedang offline,aktifkan internet</p>
           </div>
         </div>
       )}

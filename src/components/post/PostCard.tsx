@@ -1,4 +1,3 @@
-// PostCard.tsx (final, fix tombol + loading spinner)
 'use client';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -72,10 +71,8 @@ const PostCard: React.FC<PostCardProps> = ({
   const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
   const [showMoreButton, setShowMoreButton] = useState(false);
 
-  // State untuk loading spinner di video
   const [videoLoaded, setVideoLoaded] = useState(false);
 
-  // Autoplay observer
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -94,22 +91,20 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  // Ukur tinggi caption setelah DOM selesai dipaint
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (!isExpanded && captionRef.current) {
         const el = captionRef.current;
-        // Reset dulu
         el.style.display = 'block';
         el.style.webkitLineClamp = 'unset';
         el.style.overflow = 'visible';
         const fullHeight = el.scrollHeight;
-        // Kembalikan ke clamp 3 baris
+        
         el.style.display = '-webkit-box';
         el.style.webkitLineClamp = '3';
         el.style.webkitBoxOrient = 'vertical';
         el.style.overflow = 'hidden';
-        // Tambahkan setTimeout kecil untuk memastikan perhitungan akurat
+        
         setTimeout(() => {
           if (captionRef.current) {
             setShowMoreButton(fullHeight > captionRef.current.clientHeight + 2);
@@ -166,6 +161,25 @@ const PostCard: React.FC<PostCardProps> = ({
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
+    }
+    .see-more-btn {
+      color: #7b8bff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-block;
+      margin-top: 6px;
+      background: none;
+      border: none;
+      padding: 0;
+      position: relative;
+      z-index: 20;
+      pointer-events: auto;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .text-post-card-wp .see-more-btn {
+      color: #1f3cff;
+      text-shadow: none;
     }
   `;
 
@@ -281,8 +295,9 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          <div className="overlay">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div className="overlay" style={{ pointerEvents: 'none' }}> 
+            {/* Supaya overlay transparan tidak memblokir klik foto di belakangnya */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pointerEvents: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <h2 className="name" onClick={() => router.push(`/data?id=${creatorIdStr}`)}
                   style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -298,45 +313,53 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            <p
-              ref={captionRef as React.RefObject<HTMLParagraphElement>}
-              className="post-bio"
+            {/* BUNGKUS CAPTION MEDIA DENGAN ANIMASI SLIDE UP */}
+            <div 
               style={{
-                minHeight: '24px',
-                wordBreak: 'break-word',
-                display: isExpanded ? 'block' : '-webkit-box',
-                WebkitLineClamp: isExpanded ? 'unset' : 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: isExpanded ? 'visible' : 'hidden',
+                maxHeight: isExpanded ? '50vh' : 'auto', // Beri ruang hingga setengah layar saat dibuka
+                overflowY: isExpanded ? 'auto' : 'visible',
+                background: isExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
+                backdropFilter: isExpanded ? 'blur(10px)' : 'none',
+                padding: isExpanded ? '12px' : '0',
+                borderRadius: '12px',
+                marginTop: '8px',
+                transition: 'all 0.3s ease-in-out',
+                pointerEvents: 'auto', // Aktifkan interaksi di dalam caption
+                zIndex: 20,
               }}
+              // Cegah scroll text merembet scroll layar utama
+              onWheel={(e) => isExpanded && e.stopPropagation()}
+              onTouchMove={(e) => isExpanded && e.stopPropagation()}
             >
-              {renderBioWithMentions(post.bio?.trim())}
-            </p>
-            {showMoreButton && !isExpanded && (
-              <button
-                className="see-more-btn"
-                onClick={handleToggleClick}
+              <p
+                ref={captionRef as React.RefObject<HTMLParagraphElement>}
+                className="post-bio"
                 style={{
-                  color: '#1f3cff',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  display: 'inline-block',
-                  marginTop: '4px',
-                  position: 'relative',
-                  zIndex: 10,
-                  pointerEvents: 'auto',
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '0',
-                  outline: 'none',
+                  minHeight: '24px',
+                  wordBreak: 'break-word',
+                  display: isExpanded ? 'block' : '-webkit-box',
+                  WebkitLineClamp: isExpanded ? 'unset' : 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: isExpanded ? 'visible' : 'hidden',
+                  margin: 0
                 }}
               >
-                Lihat Selengkapnya
-              </button>
-            )}
+                {renderBioWithMentions(post.bio?.trim())}
+              </p>
+              
+              {showMoreButton && !isExpanded && (
+                <button className="see-more-btn" onClick={handleToggleClick}>
+                  Lihat Selengkapnya
+                </button>
+              )}
+              {isExpanded && (
+                <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#ff7b9c' }}>
+                  Tutup
+                </button>
+              )}
+            </div>
 
-            <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', marginTop: '8px' }}>
               <span>{formattedDate}</span>
               {post.is_ad && (
                 <span style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: '#fff' }}>
@@ -345,7 +368,7 @@ const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
 
-            <div className="actions">
+            <div className="actions" style={{ pointerEvents: 'auto' }}>
               <button
                 onClick={() => router.push(`/post?id=${postIdStr}`)}
                 className="primary btn-press"
@@ -396,6 +419,7 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           )}
 
+          {/* CAPTION UNTUK POSTINGAN TEKS (MEMBESAR KE BAWAH) */}
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
             className="post-bio"
@@ -410,31 +434,20 @@ const PostCard: React.FC<PostCardProps> = ({
               WebkitLineClamp: isExpanded ? 'unset' : 3,
               WebkitBoxOrient: 'vertical',
               overflow: isExpanded ? 'visible' : 'hidden',
+              transition: 'all 0.3s ease', // Memberikan kesan halus saat teks terbongkar ke bawah
             }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
+
           {showMoreButton && !isExpanded && (
-            <button
-              className="see-more-btn"
-              onClick={handleToggleClick}
-              style={{
-                color: '#1f3cff',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 600,
-                display: 'inline-block',
-                marginTop: '4px',
-                position: 'relative',
-                zIndex: 10,
-                pointerEvents: 'auto',
-                background: 'transparent',
-                border: 'none',
-                padding: '0',
-                outline: 'none',
-              }}
-            >
+            <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px' }}>
               Lihat Selengkapnya
+            </button>
+          )}
+          {isExpanded && (
+            <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px', color: '#ff2e63' }}>
+              Lebih Sedikit
             </button>
           )}
 
@@ -448,7 +461,7 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           )}
 
-          <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '16px', paddingTop: '12px' }}>
+          <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '4px', paddingTop: '12px' }}>
             <button
               onClick={() => router.push(`/post?id=${postIdStr}`)}
               className="btn-press"
