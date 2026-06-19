@@ -69,10 +69,14 @@ const PostCard: React.FC<PostCardProps> = ({
 
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
+  
   const [showMoreButton, setShowMoreButton] = useState(false);
-
   const [videoLoaded, setVideoLoaded] = useState(false);
+  
+  // STATE BARU UNTUK CAROUSEL
+  const [currentSlide, setCurrentSlide] = useState(0);
 
+  // Observer untuk Video Autoplay
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -91,31 +95,14 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
+  // Pengecekan teks terpotong (See More) yang jauh lebih ringan
   useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      if (!isExpanded && captionRef.current) {
-        const el = captionRef.current;
-        el.style.display = 'block';
-        el.style.webkitLineClamp = 'unset';
-        el.style.overflow = 'visible';
-        const fullHeight = el.scrollHeight;
-        
-        el.style.display = '-webkit-box';
-        el.style.webkitLineClamp = '3';
-        el.style.webkitBoxOrient = 'vertical';
-        el.style.overflow = 'hidden';
-        
-        setTimeout(() => {
-          if (captionRef.current) {
-            setShowMoreButton(fullHeight > captionRef.current.clientHeight + 2);
-          }
-        }, 10);
-      } else if (isExpanded) {
-        setShowMoreButton(false);
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [post.bio, isExpanded]);
+    if (captionRef.current) {
+      const el = captionRef.current;
+      // Cek apakah teks aslinya lebih tinggi dari kontainer yang dilimit CSS
+      setShowMoreButton(el.scrollHeight > el.clientHeight);
+    }
+  }, [post.bio]);
 
   const renderBioWithMentions = (text: string) => {
     if (!text) return null;
@@ -133,56 +120,6 @@ const PostCard: React.FC<PostCardProps> = ({
     });
   };
 
-  const bigHeartStyle = `
-    @keyframes popHeartAnim {
-      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-      15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-      30% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
-      70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-      100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
-    }
-    .big-pop-heart {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0);
-      color: #ff2e63;
-      font-size: 120px;
-      z-index: 15;
-      pointer-events: none;
-      opacity: 0;
-      animation: popHeartAnim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-      filter: drop-shadow(0 4px 15px rgba(0,0,0,0.5));
-    }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-    .loading-spinner {
-      width: 28px; height: 28px;
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    .see-more-btn {
-      color: #7b8bff;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 700;
-      display: inline-block;
-      margin-top: 6px;
-      background: none;
-      border: none;
-      padding: 0;
-      position: relative;
-      z-index: 20;
-      pointer-events: auto;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-    .text-post-card-wp .see-more-btn {
-      color: #1f3cff;
-      text-shadow: none;
-    }
-  `;
-
   const handleToggleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -192,8 +129,6 @@ const PostCard: React.FC<PostCardProps> = ({
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
       style={(!post.image_url && !post.video_url) ? { padding: '16px' } : {}}>
-
-      <style>{bigHeartStyle}</style>
 
       {(photoList.length > 0 || isVideoPost) ? (
         <>
@@ -213,14 +148,15 @@ const PostCard: React.FC<PostCardProps> = ({
               {photoList.length > 1 && !isVideoPost && (
                 <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
                   <span className="material-icons" style={{ fontSize: '12px' }}>collections</span>
-                  <span id={`slide-counter-${postIdStr}`}>1/{photoList.length}</span>
+                  {/* Gunakan State React, bukan DOM Vanilla */}
+                  <span>{currentSlide + 1}/{photoList.length}</span>
                 </div>
               )}
             </div>
 
             {(isVideoPost || post.audio_src) && (
               <button className="btn-press" onClick={toggleMute}
-                style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 2, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+                style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 2, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
               </button>
             )}
@@ -233,13 +169,8 @@ const PostCard: React.FC<PostCardProps> = ({
             <div className="photo-carousel" onScroll={(e) => {
               const target = e.target as HTMLDivElement;
               const index = Math.round(target.scrollLeft / target.offsetWidth);
-              const dots = document.querySelectorAll(`.dots-${postIdStr} .dot`);
-              dots.forEach((d, i) => {
-                if (i === index) d.classList.add('active');
-                else d.classList.remove('active');
-              });
-              const counterEl = document.getElementById(`slide-counter-${postIdStr}`);
-              if (counterEl) counterEl.innerText = `${index + 1}/${photoList.length}`;
+              // Update state untuk merubah dot dan angka
+              setCurrentSlide(index);
             }}>
               {isVideoPost ? (
                 <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
@@ -289,14 +220,13 @@ const PostCard: React.FC<PostCardProps> = ({
             {photoList.length > 1 && !isVideoPost && (
               <div className={`carousel-dots dots-${postIdStr}`} style={{ zIndex: 2 }}>
                 {photoList.map((_: any, i: number) => (
-                  <div key={i} className={`dot ${i === 0 ? 'active' : ''}`} />
+                  <div key={i} className={`dot ${i === currentSlide ? 'active' : ''}`} />
                 ))}
               </div>
             )}
           </div>
 
           <div className="overlay" style={{ pointerEvents: 'none' }}> 
-            {/* Supaya overlay transparan tidak memblokir klik foto di belakangnya */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pointerEvents: 'auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <h2 className="name" onClick={() => router.push(`/data?id=${creatorIdStr}`)}
@@ -313,10 +243,10 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* BUNGKUS CAPTION MEDIA DENGAN ANIMASI SLIDE UP */}
+            {/* BUNGKUS CAPTION LEBIH BERSIH DAN MENGANDALKAN CSS */}
             <div 
               style={{
-                maxHeight: isExpanded ? '50vh' : 'auto', // Beri ruang hingga setengah layar saat dibuka
+                maxHeight: isExpanded ? '50vh' : 'auto',
                 overflowY: isExpanded ? 'auto' : 'visible',
                 background: isExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
                 backdropFilter: isExpanded ? 'blur(10px)' : 'none',
@@ -324,25 +254,16 @@ const PostCard: React.FC<PostCardProps> = ({
                 borderRadius: '12px',
                 marginTop: '8px',
                 transition: 'all 0.3s ease-in-out',
-                pointerEvents: 'auto', // Aktifkan interaksi di dalam caption
+                pointerEvents: 'auto',
                 zIndex: 20,
               }}
-              // Cegah scroll text merembet scroll layar utama
               onWheel={(e) => isExpanded && e.stopPropagation()}
               onTouchMove={(e) => isExpanded && e.stopPropagation()}
             >
               <p
                 ref={captionRef as React.RefObject<HTMLParagraphElement>}
-                className="post-bio"
-                style={{
-                  minHeight: '24px',
-                  wordBreak: 'break-word',
-                  display: isExpanded ? 'block' : '-webkit-box',
-                  WebkitLineClamp: isExpanded ? 'unset' : 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: isExpanded ? 'visible' : 'hidden',
-                  margin: 0
-                }}
+                className={`post-bio ${isExpanded ? 'expanded' : ''}`}
+                style={{ margin: 0 }}
               >
                 {renderBioWithMentions(post.bio?.trim())}
               </p>
@@ -419,23 +340,11 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           )}
 
-          {/* CAPTION UNTUK POSTINGAN TEKS (MEMBESAR KE BAWAH) */}
+          {/* CAPTION UNTUK POSTINGAN TEKS (MENGGUNAKAN CLASS CSS) */}
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
-            className="post-bio"
-            style={{
-              fontSize: '15px',
-              color: 'var(--text-main)',
-              lineHeight: 1.5,
-              whiteSpace: 'pre-wrap',
-              marginBottom: '12px',
-              wordBreak: 'break-word',
-              display: isExpanded ? 'block' : '-webkit-box',
-              WebkitLineClamp: isExpanded ? 'unset' : 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: isExpanded ? 'visible' : 'hidden',
-              transition: 'all 0.3s ease', // Memberikan kesan halus saat teks terbongkar ke bawah
-            }}
+            className={`post-bio ${isExpanded ? 'expanded' : ''}`}
+            style={{ marginBottom: '12px' }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
