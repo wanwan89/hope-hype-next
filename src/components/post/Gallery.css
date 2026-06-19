@@ -1,23 +1,96 @@
-.gallery { 
+/* Gallery.css - Full Fixed */
+
+.gallery {
   width: 100%;
-  max-width: 480px; 
-  margin: 0 auto; 
-  padding: 10px 15px calc(100px + env(safe-area-inset-bottom)); 
+  max-width: 100%; /* full edge-to-edge */
+  margin: 0 auto;
+  padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0;
   box-sizing: border-box;
 }
 
-.card { 
-  background: var(--bg-card); 
-  border-radius: 16px; 
-  margin-bottom: 25px; 
-  overflow: hidden; 
+.card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  margin-bottom: 25px;
+  overflow: hidden;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   border: 1px solid var(--border-card);
   display: flex;
   flex-direction: column;
   transition: transform 0.2s ease, background-color 0.3s ease;
-  -webkit-tap-highlight-color: transparent; 
+  -webkit-tap-highlight-color: transparent;
   scroll-margin-top: 100px;
+}
+
+/* Wrapper class dari Gallerypost.tsx untuk media post */
+.media-post-card-wp .card,
+.text-post-card-wp .card {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Media post (gambar/video) memiliki border-radius 16px */
+.media-post-card-wp .card {
+  border-radius: 16px;
+}
+.media-post-card-wp .card .slider img,
+.media-post-card-wp .card .slider video,
+.media-post-card-wp .card .post-media-wrapper {
+  border-radius: 16px 16px 0 0;
+}
+
+/* Text post (teks/audio) memiliki border-radius 20px */
+.text-post-card-wp .card {
+  border-radius: 20px;
+  margin-bottom: 14px;
+}
+
+/* Avatar selalu bulat */
+.text-post-card-wp .card img,
+.text-post-card-wp .card .avatar,
+.text-post-card-wp .card [class*="avatar"],
+.media-post-card-wp .card .avatar,
+.media-post-card-wp .card [class*="avatar"] {
+  border-radius: 50% !important;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+}
+
+/* Tombol Lihat Selengkapnya */
+.see-more-btn {
+  color: #1f3cff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  user-select: none;
+}
+.see-more-btn:hover {
+  opacity: 0.8;
+}
+
+/* Loading spinner untuk gambar/video */
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
 }
 
 /* ========================================== */
@@ -25,8 +98,8 @@
 /* ========================================== */
 
 .slider {
-  position: relative; 
-  width: 100%; 
+  position: relative;
+  width: 100%;
   background: #1a1a1a;
   overflow: hidden;
   display: flex;
@@ -45,13 +118,14 @@
   flex: 0 0 100%;
   width: 100%;
   scroll-snap-align: center;
+  position: relative; /* penting untuk overlay loading spinner */
 }
 
 .carousel-item img {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: contain; /* 🔥 FIX FOTO GAK KEPOTONG 🔥 */
+  object-fit: cover; /* ubah jadi cover agar penuh */
 }
 
 /* 🔥 FIX Z-INDEX DOTS 🔥 */
@@ -62,15 +136,15 @@
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
-  z-index: 5; 
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)); /* Biar kelihatan jelas di foto putih */
+  z-index: 5;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
 }
 
 .dot {
   width: 6px; height: 6px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.5);
-  transition: all 0.3s ease; 
+  transition: all 0.3s ease;
 }
 
 .dot.active {
@@ -79,32 +153,32 @@
   border-radius: 10px;
 }
 
-.watermark-overlay { 
-  position: absolute; 
-  bottom: 15px; 
-  left: 15px; 
-  width: 70px; 
+.watermark-overlay {
+  position: absolute;
+  bottom: 15px;
+  left: 15px;
+  width: 70px;
   opacity: 0.8;
-  pointer-events: none; 
-  z-index: 5; 
+  pointer-events: none;
+  z-index: 5;
 }
-.watermark-overlay img { 
-  width: 100%; 
-  height: auto; 
+.watermark-overlay img {
+  width: 100%;
+  height: auto;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
 .music-marquee-container {
   position: absolute;
   top: 12px;
-  left: 12px; 
+  left: 12px;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   color: white;
   border-radius: 20px;
   padding: 6px 12px;
-  z-index: 5; /* 🔥 AMAN DI BAWAH SEARCH BAR 🔥 */
-  max-width: 130px; 
+  z-index: 5;
+  max-width: 130px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
@@ -114,10 +188,10 @@
 .marquee-text {
   display: inline-block;
   white-space: nowrap;
-  font-size: 10px; 
+  font-size: 10px;
   font-weight: 700;
   padding-left: 100%;
-  animation: marquee-play 6s linear infinite; 
+  animation: marquee-play 6s linear infinite;
   will-change: transform;
 }
 
@@ -130,62 +204,63 @@
 /* 🔥 UI DETAILS 🔥                           */
 /* ========================================== */
 
-.overlay { 
-  padding: 16px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 4px; 
+.overlay {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.name { 
-  font-size: 15px; 
-  font-weight: 800; 
-  color: var(--text-main); 
+.name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.post-bio { 
-  font-size: 14px; 
+.post-bio {
+  font-size: 14px;
   color: var(--text-main);
-  line-height: 1.5; 
+  line-height: 1.5;
   margin: 4px 0;
+  /* default clamp akan diatur inline oleh JS, jadi jangan dipaksa di sini */
 }
 
-.post-date-wrapper { 
-  font-size: 11px; 
-  color: var(--text-muted); 
+.post-date-wrapper {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
-.actions { 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  margin-top: 12px; 
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
 }
 
-.primary { 
-  padding: 6px 16px; 
-  border-radius: 20px; 
-  background: #1f3cff; 
-  color: #fff !important; 
-  font-size: 12px; 
+.primary {
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: #1f3cff;
+  color: #fff !important;
+  font-size: 12px;
   font-weight: 800;
-  text-decoration: none; 
+  text-decoration: none;
 }
 
 .engagement-group { display: flex; gap: 18px; align-items: center; }
 
 .icon-btn, .options-btn {
-  background: transparent !important; 
-  border: none !important; 
+  background: transparent !important;
+  border: none !important;
   color: var(--text-main);
-  display: flex; 
-  align-items: center; 
-  gap: 6px; 
+  display: flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
-  padding: 0; 
+  padding: 0;
   outline: none;
   box-shadow: none !important;
   -webkit-tap-highlight-color: transparent;
@@ -198,8 +273,8 @@
 
 .icon { width: 22px; height: 22px; fill: var(--text-main); transition: fill 0.2s ease, transform 0.2s ease; }
 .icon-btn.liked .icon { fill: #ff2e63; }
-.icon-btn.reposted .icon { fill: #1f3cff; } 
-.icon-btn.active .icon { fill: #1f3cff; } 
+.icon-btn.reposted .icon { fill: #1f3cff; }
+.icon-btn.active .icon { fill: #1f3cff; }
 
 .save-count, .repost-count, .like-count, .comment-count {
   color: var(--text-main);

@@ -1,3 +1,4 @@
+// Gallerypost.tsx (final, fix tombol + preload)
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
@@ -163,6 +164,22 @@ export default function Gallerypost() {
   const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastScrollTimeRef = useRef(0);
 
+  // Preload data saat mount (aggresive)
+  useEffect(() => {
+    const preload = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // fetch profile secara parallel
+        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
+          if (data) setCurrentUser(data);
+        });
+      }
+      // Fetch posts pertama sangat awal
+      fetchPosts("all", session?.user, 1, false, new Set());
+    };
+    preload();
+  }, []);
+
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
   useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
@@ -291,8 +308,6 @@ export default function Gallerypost() {
     window.addEventListener('changeCategory', handleCategoryChange);
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, [currentUser, mutualUsers]);
-
-  useEffect(() => { initGallery(); }, []);
 
   const initGallery = async () => {
     const { data: { session } } = await supabase.auth.getSession();

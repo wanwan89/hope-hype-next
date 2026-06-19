@@ -1,3 +1,4 @@
+// PostCard.tsx (final, fix tombol + loading spinner)
 'use client';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -108,7 +109,12 @@ const PostCard: React.FC<PostCardProps> = ({
         el.style.webkitLineClamp = '3';
         el.style.webkitBoxOrient = 'vertical';
         el.style.overflow = 'hidden';
-        setShowMoreButton(fullHeight > el.clientHeight + 2);
+        // Tambahkan setTimeout kecil untuk memastikan perhitungan akurat
+        setTimeout(() => {
+          if (captionRef.current) {
+            setShowMoreButton(fullHeight > captionRef.current.clientHeight + 2);
+          }
+        }, 10);
       } else if (isExpanded) {
         setShowMoreButton(false);
       }
@@ -307,9 +313,7 @@ const PostCard: React.FC<PostCardProps> = ({
               {renderBioWithMentions(post.bio?.trim())}
             </p>
             {showMoreButton && !isExpanded && (
-              <span
-                role="button"
-                tabIndex={0}
+              <button
                 className="see-more-btn"
                 onClick={handleToggleClick}
                 style={{
@@ -322,10 +326,14 @@ const PostCard: React.FC<PostCardProps> = ({
                   position: 'relative',
                   zIndex: 10,
                   pointerEvents: 'auto',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '0',
+                  outline: 'none',
                 }}
               >
                 Lihat Selengkapnya
-              </span>
+              </button>
             )}
 
             <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -407,9 +415,7 @@ const PostCard: React.FC<PostCardProps> = ({
             {renderBioWithMentions(post.bio?.trim())}
           </div>
           {showMoreButton && !isExpanded && (
-            <span
-              role="button"
-              tabIndex={0}
+            <button
               className="see-more-btn"
               onClick={handleToggleClick}
               style={{
@@ -422,10 +428,14 @@ const PostCard: React.FC<PostCardProps> = ({
                 position: 'relative',
                 zIndex: 10,
                 pointerEvents: 'auto',
+                background: 'transparent',
+                border: 'none',
+                padding: '0',
+                outline: 'none',
               }}
             >
               Lihat Selengkapnya
-            </span>
+            </button>
           )}
 
           {post.audio_src && (
