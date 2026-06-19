@@ -10,7 +10,7 @@ import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
-import './Gallery.css'; // sudah di‑fix (overflow dihapus dari .card)
+import './Gallery.css';
 
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
@@ -21,7 +21,7 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// ---------- Optimized Memo Wrapper ----------
+// Dihapus pengecekan activePreviewImage agar tidak merender ulang semua kartu
 const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   const pid = prevProps.post.id;
   if (prevProps.post !== nextProps.post) return false;
@@ -38,7 +38,6 @@ const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   if (prevProps.animatingFollows.has(prevProps.post.creator_id) !== nextProps.animatingFollows.has(nextProps.post.creator_id)) return false;
   if (prevProps.animatingReposts.has(pid) !== nextProps.animatingReposts.has(pid)) return false;
   if (prevProps.isGloballyMuted !== nextProps.isGloballyMuted) return false;
-  if (prevProps.activePreviewImage !== nextProps.activePreviewImage) return false;
 
   if (prevProps.followedUsers.has(prevProps.post.creator_id) !== nextProps.followedUsers.has(nextProps.post.creator_id)) return false;
   if (prevProps.mutualUsers.has(prevProps.post.creator_id) !== nextProps.mutualUsers.has(nextProps.post.creator_id)) return false;
@@ -51,7 +50,6 @@ const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
   return true;
 });
 
-// Memo untuk slider rekomendasi
 const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
   if (!posts.length) return null;
   return (
@@ -64,27 +62,15 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
         {posts.map(sp => {
           const img = sp.image_url ? sp.image_url.split(',')[0] : '';
           return (
-            <div
-              key={`sugg-${String(sp.id)}`}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/post?id=${String(sp.id)}&from=home`; }}
-              style={{
-                minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px',
-                overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start',
-                cursor: 'pointer', display: 'flex', flexDirection: 'column'
-              }}
-            >
+            <div key={`sugg-${String(sp.id)}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/post?id=${String(sp.id)}&from=home`; }} style={{ minWidth: '150px', maxWidth: '150px', background: 'var(--bg-main)', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
               <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
                 <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div style={{ padding: '10px' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {sp.bio || 'Tanpa Caption'}
-                </p>
+                <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sp.bio || 'Tanpa Caption'}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {sp.profiles?.username}
-                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sp.profiles?.username}</span>
                 </div>
               </div>
             </div>
@@ -96,11 +82,8 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
 });
 MemoizedSlider.displayName = 'MemoizedSlider';
 
-const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) =>
-  prev.myId === next.myId && prev.followedUsers === next.followedUsers
-);
+const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) => prev.myId === next.myId && prev.followedUsers === next.followedUsers);
 
-// ---------- Gallerypost ----------
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -145,25 +128,16 @@ export default function Gallerypost() {
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const POSTS_PER_PAGE = 15;
 
-  const [repostModal, setRepostModal] = useState<{
-    isOpen: boolean;
-    postId: string;
-    creatorId: string;
-    isUnrepost: boolean;
-  } | null>(null);
+  const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string; isUnrepost: boolean; } | null>(null);
   const [repostNote, setRepostNote] = useState("");
-
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
-
-  const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastScrollTimeRef = useRef(0);
 
-  // Preload data saat mount (aggresive)
   useEffect(() => {
     const preload = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -173,6 +147,7 @@ export default function Gallerypost() {
         });
       }
       fetchPosts("all", session?.user, 1, false, new Set());
+      fetchSuggestedPosts();
     };
     preload();
   }, []);
@@ -184,7 +159,6 @@ export default function Gallerypost() {
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
   useEffect(() => { isMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
-  // Observer autoplay dengan throttle
   useEffect(() => {
     autoPlayObserverRef.current = new IntersectionObserver(
       (entries) => {
@@ -200,9 +174,6 @@ export default function Gallerypost() {
 
           if (entry.isIntersecting) {
             if (!activeMediaRef.current.has(postId)) {
-              document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-                if (el !== media && !el.paused) el.pause();
-              });
               activeMediaRef.current.add(postId);
               media.muted = isMutedRef.current;
               media.currentTime = 0;
@@ -250,7 +221,6 @@ export default function Gallerypost() {
     return () => {
       autoPlayObserverRef.current?.disconnect();
       viewObserverRef.current?.disconnect();
-      if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
     };
   }, []);
 
@@ -285,10 +255,7 @@ export default function Gallerypost() {
     const handleCommentRefresh = (e: any) => {
       const postId = String(e.detail.postId);
       if (postId) {
-        setCounts((prev) => ({
-          ...prev,
-          [postId]: { ...prev[postId], comments: (prev[postId]?.comments || 0) + 1 },
-        }));
+        setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], comments: (prev[postId]?.comments || 0) + 1 } }));
       }
     };
     window.addEventListener('commentAdded', handleCommentRefresh);
@@ -306,35 +273,9 @@ export default function Gallerypost() {
     return () => window.removeEventListener('changeCategory', handleCategoryChange);
   }, [currentUser, mutualUsers]);
 
-  const initGallery = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user || null;
-    setCurrentUser(user);
-
-    let currentMutuals = new Set<string>();
-    if (user) {
-      const [followsRes, followersRes] = await Promise.all([
-        supabase.from('followers').select('following_id').eq('follower_id', user.id),
-        supabase.from('followers').select('follower_id').eq('following_id', user.id),
-      ]);
-      if (followsRes.data) {
-        const followingSet = new Set(followsRes.data.map((f) => String(f.following_id)));
-        setFollowedUsers(followingSet);
-        if (followersRes.data) {
-          const followerSet = new Set(followersRes.data.map((f) => String(f.follower_id)));
-          currentMutuals = new Set([...followingSet].filter((x) => followerSet.has(x)));
-          setMutualUsers(currentMutuals);
-        }
-      }
-    }
-    await fetchPosts("all", user, 1, false, currentMutuals);
-    await fetchSuggestedPosts();
-  };
-
   const fetchSuggestedPosts = async () => {
     try {
-      const { data } = await supabase.from('posts').select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)')
-        .eq('status', 'approved').eq('is_private', false).neq('image_url', null).limit(20);
+      const { data } = await supabase.from('posts').select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)').eq('status', 'approved').eq('is_private', false).neq('image_url', null).limit(20);
       if (data) {
         setSuggestedPosts(data.sort(() => 0.5 - Math.random()).slice(0, 6));
         setRandomSliderIndex(Math.floor(Math.random() * 2) + 1);
@@ -378,11 +319,7 @@ export default function Gallerypost() {
         const newCounts: any = {};
         const newLikersMap: any = {};
         const newRepostersMap: any = {};
-        postIds.forEach((id) => {
-          newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
-          newLikersMap[id] = [];
-          newRepostersMap[id] = [];
-        });
+        postIds.forEach((id) => { newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 }; newLikersMap[id] = []; newRepostersMap[id] = []; });
 
         likesRes.data?.forEach((l) => { if (newCounts[l.post_id]) { newCounts[l.post_id].likes++; if (l.profiles) newLikersMap[l.post_id].push(l.profiles); } });
         commentsRes.data?.forEach((c) => { if (newCounts[c.post_id]) newCounts[c.post_id].comments++; });
@@ -422,9 +359,7 @@ export default function Gallerypost() {
   };
 
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
-    if (window.openGlobalShare) {
-      window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
-    }
+    if (window.openGlobalShare) window.openGlobalShare(`${window.location.origin}/post?id=${post.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", post.profiles?.username || "User", post.id, isOwner, post.is_private || false);
   }, []);
 
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
@@ -438,13 +373,10 @@ export default function Gallerypost() {
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
     try {
-      if (isFollowing) {
-        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      } else {
+      if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
+      else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error || error.code === '23505') {
-          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
-        }
+        if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
     } catch (err) {}
   }, []);
@@ -456,13 +388,10 @@ export default function Gallerypost() {
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
     try {
-      if (isLiked) {
-        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
+      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
-        }
+        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
       }
     } catch (err) {}
   }, []);
@@ -478,14 +407,7 @@ export default function Gallerypost() {
       handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
-      if (imageUrl) {
-        setTimeout(() => {
-          if (lastTapRef.current[postId] === now) {
-            setActivePreviewImage(imageUrl);
-            lastTapRef.current[postId] = 0;
-          }
-        }, 360);
-      }
+      if (imageUrl) setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
     }
   }, [handleLike]);
 
@@ -501,14 +423,10 @@ export default function Gallerypost() {
     setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
     try {
-      if (isUnrepost) {
-        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
+      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
-        if (error) {
-          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
-          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
-        }
+        if (error) { setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; }); setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } })); }
       }
     } catch (err) {}
   }, [repostModal, repostNote]);
@@ -527,118 +445,60 @@ export default function Gallerypost() {
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
     try {
-      if (isSaved) {
-        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
+      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else {
         const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
         if (error && error.code !== "23505") console.error(error);
       }
     } catch (err) {}
   }, []);
 
+  // Perbaikan Mute: Tidak membebani query selector
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setIsGloballyMuted(prev => {
       const next = !prev;
       isMutedRef.current = next;
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
+      // Hanya ubah yg sedang aktif agar tidak nge-lag
+      activeMediaRef.current.forEach(id => {
+        const media = document.querySelector(`.card[data-postid="${id}"] .post-video-element, .card[data-postid="${id}"] .post-audio-element`) as HTMLMediaElement;
+        if (media) media.muted = next;
+      });
       return next;
     });
   }, []);
 
+  const renderSkeleton = () => (
+    <div className="gallery-skeleton-wrapper">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="gallery-skeleton-card">
+          <div className="skel-header">
+            <div className="skel-avatar"></div>
+            <div className="skel-text-group">
+              <div className="skel-text short"></div>
+              <div className="skel-text shorter"></div>
+            </div>
+          </div>
+          <div className="skel-media"></div>
+          <div className="skel-footer">
+            <div className="skel-btn"></div>
+            <div className="skel-btn"></div>
+            <div className="skel-btn"></div>
+          </div>
+          <div className="gallery-skeleton-shimmer"></div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0 }}>
-      <style>{`
-        .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .btn-press:active { transform: scale(0.85); }
-        .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
-        @keyframes pureSpin { 100% { transform: rotate(360deg); } }
-        .slider-recommendation::-webkit-scrollbar { display: none; }
-
-        .gallery {
-          width: 100% !important;
-          max-width: 100% !important;
-          padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0 !important;
-          margin: 0 !important;
-        }
-
-        .media-post-card-wp [data-postid] {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
-          margin-bottom: 12px !important; 
-          border-left: none !important;
-          border-right: none !important;
-          border-radius: 16px !important;
-        }
-        .media-post-card-wp [data-postid] img,
-        .media-post-card-wp [data-postid] video,
-        .media-post-card-wp [data-postid] .post-media-wrapper {
-          width: 100% !important;
-          border-radius: 16px 16px 0 0 !important;
-        }
-
-        .text-post-card-wp {
-          width: 100% !important;
-          padding: 0 12px !important;
-          box-sizing: border-box !important;
-        }
-        .text-post-card-wp [data-postid] {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-bottom: 14px !important;
-          border-radius: 20px !important;
-          border: 1px solid var(--border-card) !important;
-          overflow: hidden !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
-        }
-
-        .text-post-card-wp [data-postid] img,
-        .text-post-card-wp [data-postid] .avatar,
-        .text-post-card-wp [data-postid] [class*="avatar"],
-        .media-post-card-wp [data-postid] .avatar,
-        .media-post-card-wp [data-postid] [class*="avatar"] {
-          border-radius: 50% !important;
-          aspect-ratio: 1 / 1 !important;
-          object-fit: cover !important;
-        }
-
-        .see-more-btn {
-          color: #1f3cff;
-          cursor: pointer;
-          font-size: 12px;
-          font-weight: 600;
-          display: inline-block;
-          margin-top: 4px;
-          background: none;
-          border: none;
-          padding: 0;
-          position: relative;
-          z-index: 10;
-          pointer-events: auto;
-          user-select: none;
-        }
-        .see-more-btn:hover {
-          opacity: 0.8;
-        }
-      `}</style>
-
-      <RepostModal
-        isOpen={!!repostModal}
-        postId={repostModal?.postId || ''}
-        creatorId={repostModal?.creatorId || ''}
-        note={repostNote}
-        setNote={setRepostNote}
-        onClose={() => setRepostModal(null)}
-        onConfirm={handleConfirmRepost}
-        isUnrepost={repostModal?.isUnrepost || false}
-      />
+      <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={handleConfirmRepost} isUnrepost={repostModal?.isUnrepost || false} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
       <div className="gallery" id="mainGallery">
         {isLoading ? (
-          <div className="gallery-skeleton-wrapper"><div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer" /></div></div>
+          renderSkeleton()
         ) : posts.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>{t('no_posts_found')}</p>
         ) : (
@@ -646,8 +506,8 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            increaseViewportBy={{ top: 0, bottom: 1200 }}
-            overscan={600}
+            increaseViewportBy={{ top: 200, bottom: 600 }} // DIKURANGI AGAR RAM TIDAK PENUH
+            overscan={200}
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
               const isTextOrAudio = !post.image_url && !post.video_url;
@@ -673,7 +533,6 @@ export default function Gallerypost() {
                       animatingReposts={animatingReposts}
                       isGloballyMuted={isGloballyMuted}
                       poppingHeart={poppingHeart}
-                      activePreviewImage={activePreviewImage}
                       likersMap={likersMap}
                       repostersMap={repostersMap}
                       handleLike={handleLike}
@@ -695,16 +554,7 @@ export default function Gallerypost() {
             }}
             components={{ Footer: () => (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
-                {isLoadingMore ? (
-                  <div className="pure-spinner"></div>
-                ) : hasMore ? (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
-                ) : (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>
-                    Tidak ada postingan lagi
-                  </span>
-                )}
+                {isLoadingMore ? <div className="pure-spinner"></div> : hasMore ? <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span> : <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>Tidak ada postingan lagi</span>}
               </div>
             )}}
           />
