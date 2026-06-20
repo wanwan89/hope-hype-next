@@ -8,7 +8,6 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
-import '@/components/post/Gallery.css'; 
 
 export default function PostPage() {
   const { t } = useTranslation();
@@ -44,16 +43,10 @@ export default function PostPage() {
   const isMutedRef = useRef(true);
 
   const lastTapRef = useRef<Record<string, number>>({});
-
-  // State untuk expand caption (Lihat Selengkapnya)
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
-  // Mode profil
   const [profileUsername, setProfileUsername] = useState<string>('');
   const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
-
-  // Observer autoplay
-  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
@@ -102,10 +95,7 @@ export default function PostPage() {
 
   const loadProfileMode = async (user: any) => {
     const { data: exactPost, error: errExact } = await supabase
-      .from('posts')
-      .select('creator_id')
-      .eq('id', postIdFromUrl)
-      .maybeSingle(); 
+      .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle(); 
 
     if (errExact || !exactPost) {
       setUserPosts([]);
@@ -114,16 +104,11 @@ export default function PostPage() {
     }
 
     const targetUserId = exactPost.creator_id; 
-
     const isMe = user && targetUserId === user.id;
     setIsMyOwnProfile(isMe);
 
     if (!isMe) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', targetUserId)
-        .maybeSingle(); 
+      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).maybeSingle(); 
       if (profileData) setProfileUsername(profileData.username);
     }
 
@@ -148,9 +133,7 @@ export default function PostPage() {
     });
 
     setUserPosts(filtered);
-
     await Promise.all(filtered.map(post => fetchPostInteractions(post.id, user)));
-
     setIsLoading(false);
   };
 
@@ -202,13 +185,7 @@ export default function PostPage() {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
       
-      const { data: userBookmark } = await supabase
-        .from('bookmarks')
-        .select('user_id')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .maybeSingle(); 
-        
+      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle(); 
       const isSavedByUser = !!userBookmark;
       
       setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
@@ -285,7 +262,7 @@ export default function PostPage() {
     } catch (err) {}
   }, []);
 
-  // 🔥 FIX 1: Double Tap Logic
+  // DI SINI LETAK FIX ANIMASI DOUBLE TAP JANTUNG
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -294,7 +271,7 @@ export default function PostPage() {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-      setPoppingHeart(`${postId}-${now}`);
+      setPoppingHeart(`${postId}-${now}`); // Pastikan valuenya selalu unik setiap kali di-tap
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
@@ -320,41 +297,17 @@ export default function PostPage() {
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
     const wasReposted = myRepostedPostsRef.current.has(postId);
-
-    setMyRepostedPosts((prev) => { 
-      const n = new Set(prev); 
-      isUnrepost ? n.delete(postId) : n.add(postId); 
-      return n; 
-    });
-    
-    setCounts((prev) => ({ 
-      ...prev, 
-      [postId]: { 
-        ...prev[postId], 
-        reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) 
-      } 
-    }));
+    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
 
     try {
       if (isUnrepost) {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
-        
         if (error) {
-          console.error("Gagal Repost:", error.message);
-          setMyRepostedPosts((prev) => { 
-            const n = new Set(prev); 
-            wasReposted ? n.add(postId) : n.delete(postId); 
-            return n; 
-          });
-          setCounts((prev) => ({ 
-            ...prev, 
-            [postId]: { 
-              ...prev[postId], 
-              reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) 
-            } 
-          }));
+          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
+          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
         }
       }
     } catch (err) {}
@@ -383,6 +336,7 @@ export default function PostPage() {
     setIsGloballyMuted(prev => {
       const next = !prev;
       isMutedRef.current = next;
+      // Sinkronkan secara paksa
       document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
       return next;
     });
@@ -393,59 +347,6 @@ export default function PostPage() {
       window.openGlobalShare(`${window.location.origin}/post?id=${postToShare.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", postToShare.profiles?.username || "User", postToShare.id, isOwner, postToShare.is_private || false);
     }
   }, []);
-
-  // Observer autoplay buat list postingan yang scrollable
-  useEffect(() => {
-    if (userPosts.length === 0) return;
-    
-    const timer = setTimeout(() => {
-      if (observerRef.current) observerRef.current.disconnect();
-
-      const container = document.getElementById('mainGallery');
-
-      observerRef.current = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          const mediaNodes = entry.target.querySelectorAll(".post-audio-element, .post-video-element");
-
-          mediaNodes.forEach(node => {
-            const media = node as HTMLMediaElement;
-            if (!media) return;
-
-            if (entry.isIntersecting) {
-              media.muted = isMutedRef.current;
-              
-              const playPromise = media.play();
-              if (playPromise !== undefined) {
-                playPromise.catch((error) => {
-                  console.warn("Autoplay diblokir browser, memaksa mute...", error);
-                  media.muted = true;
-                  isMutedRef.current = true;
-                  setIsGloballyMuted(true);
-                  media.play().catch(() => {});
-                });
-              }
-            } else {
-              media.pause();
-            }
-          });
-        });
-      }, { 
-        root: container, 
-        threshold: 0.6   
-      });
-
-      userPosts.forEach(p => {
-        const wrapperEl = document.getElementById(`post-wrapper-${p.id}`);
-        if (wrapperEl) observerRef.current?.observe(wrapperEl);
-      });
-      
-    }, 800);
-
-    return () => { 
-      clearTimeout(timer); 
-      observerRef.current?.disconnect(); 
-    };
-  }, [userPosts]);
 
   let headerTitle = "Detail Postingan";
   if (source === 'profile' && userPosts.length > 0) {
@@ -469,7 +370,7 @@ export default function PostPage() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* KONTEN GALLERY SCROLLABLE */}
+      {/* GALLERY */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
@@ -502,10 +403,12 @@ export default function PostPage() {
                   id={`post-wrapper-${p.id}`} 
                   style={{ 
                     scrollSnapAlign: 'start', 
-                    height: '100%', 
-                    position: 'relative' 
+                    height: 'auto', // Berubah dari 100% jadi auto untuk mencegah melar
+                    position: 'relative',
+                    width: '100%',
+                    padding: isTextOrAudio ? '0 12px' : '0', // FIX BOX TEXT SECARA ABSOLUT
+                    marginBottom: isTextOrAudio ? '14px' : '12px'
                   }}
-                  className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}
                 >
                   <PostCard
                     post={p}
@@ -547,85 +450,45 @@ export default function PostPage() {
         )}
       </div>
       
-      {/* 🔥 FIX 2 & 3: Sinkronisasi CSS dan Perbaikan Avatar + Bubble Float */}
+      {/* SUNTIKAN CSS GLOBAL PALING EKSTRIM UNTUK MEMAKSA TAMPILAN FIX */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
+        @keyframes popHeartAnim {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+          15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          30% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+          70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
+        }
+
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .gallery {
-          width: 100% !important;
-          max-width: 100% !important;
-          padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0 !important;
-          margin: 0 !important;
-        }
-
-        .media-post-card-wp [data-postid] {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
-          margin-bottom: 12px !important; 
-          border-left: none !important;
-          border-right: none !important;
-          border-radius: 16px !important;
-        }
-        .media-post-card-wp [data-postid] img,
-        .media-post-card-wp [data-postid] video,
-        .media-post-card-wp [data-postid] .post-media-wrapper {
-          width: 100% !important;
-          border-radius: 16px 16px 0 0 !important;
-        }
-
-        .text-post-card-wp {
-          width: 100% !important;
-          padding: 0 12px !important;
-          box-sizing: border-box !important;
-        }
-        .text-post-card-wp [data-postid] {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-bottom: 14px !important;
-          border-radius: 20px !important;
-          border: 1px solid var(--border-card) !important;
-          overflow: hidden !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
-          background: var(--bg-main) !important;
-          padding: 16px !important; /* Fix Padding */
-        }
-
-        /* Fix bentuk bulat Avatar dan Floating Bubbles */
-        .text-post-card-wp [data-postid] img,
-        .text-post-card-wp [data-postid] .avatar,
-        .text-post-card-wp [data-postid] [class*="avatar"],
-        .media-post-card-wp [data-postid] .avatar,
-        .media-post-card-wp [data-postid] [class*="avatar"],
-        .floating-bubbles img,
-        .bubble img,
-        .liker-bubble img,
-        .reposter-bubble img {
+        /* GARANSI MUTLAK AVATAR DAN FLOATING BUBBLE BULAT SEMPURNA */
+        img, .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
           border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
         }
+        
+        /* Kecualikan gambar di carousel dan watermark */
+        .carousel-item img, .post-video-element, .image-preview-content img {
+          border-radius: 0 !important;
+          aspect-ratio: auto !important;
+        }
 
         .see-more-btn {
-          color: #1f3cff;
+          color: #1f3cff !important;
           cursor: pointer;
-          font-size: 13px;
-          font-weight: 700;
-          display: block;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          display: inline-block;
           margin-top: 6px;
           background: none;
           border: none;
           padding: 0;
-          position: relative;
-          z-index: 1; /* Fix z-index */
+          z-index: 10;
           pointer-events: auto;
-          user-select: none;
-        }
-        .see-more-btn:hover {
-          opacity: 0.8;
         }
       `}</style>
     </div>

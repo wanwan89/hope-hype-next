@@ -77,16 +77,23 @@ const PostCard: React.FC<PostCardProps> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const actuallyExpanded = isExpanded || localExpanded; 
 
-  // Observer untuk Autoplay (Berlaku untuk Video dan Audio Text Post)
+  // FIX 1: Observer mandiri agar Autoplay Audio / Video sinkron
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
+    
     media.muted = isGloballyMuted;
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           media.muted = isGloballyMuted;
-          media.play().catch(() => {});
+          const playPromise = media.play();
+          if (playPromise !== undefined) {
+             playPromise.catch(() => {
+               media.muted = true; // Paksa mute jika browser blokir autoplay
+               media.play().catch(() => {});
+             });
+          }
           
           document.querySelectorAll(".post-video-element, .post-audio-element").forEach((el: any) => {
             if (el !== media && !el.paused) el.pause();
@@ -96,24 +103,20 @@ const PostCard: React.FC<PostCardProps> = ({
         }
       });
     }, { threshold: 0.6 });
+    
     observer.observe(media);
     return () => observer.disconnect();
   }, [isGloballyMuted, post.audio_src]);
 
-  // Logika Pengukuran "Lihat Selengkapnya" (Akurat & Rapih)
+  // Pengukuran "Lihat Selengkapnya" (Akurat & Rapih)
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
         const el = captionRef.current;
-        // Simpan state CSS asli
         const prevWebkit = el.style.webkitLineClamp;
-        // Buka paksa untuk mengukur tinggi asli teks
         el.style.webkitLineClamp = 'unset';
         const fullHeight = el.scrollHeight;
-        // Kembalikan ke state semula
         el.style.webkitLineClamp = prevWebkit;
-        
-        // Asumsi tinggi 3 baris teks sekitar 65-70px.
         setShowMoreButton(fullHeight > 75);
       }
     });
@@ -143,14 +146,22 @@ const PostCard: React.FC<PostCardProps> = ({
     onToggleExpand(postIdStr);
   }, [onToggleExpand, postIdStr]);
 
+  // FIX 3: Gaya Mutlak untuk Kotak Text Post
   const cardStyle: React.CSSProperties = {
     overflow: actuallyExpanded ? 'visible' : 'hidden', 
+    background: 'var(--bg-main)',
+    borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
+    padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
+    border: '1px solid var(--border-card)',
+    position: 'relative',
+    width: '100%',
+    boxSizing: 'border-box',
+    boxShadow: isVideoPost || photoList.length > 0 ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)'
   };
 
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
       style={cardStyle}
-      /* Fitur double-tap diaktifkan untuk text-post dengan ditaruh di level parent card */
       onClick={(e) => { if(!photoList.length && !isVideoPost) handleMediaClick(e, postIdStr, creatorIdStr); }}>
 
       {(photoList.length > 0 || isVideoPost) ? (
@@ -158,9 +169,13 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
-            {/* FIX Bug 4: Filter id unik animasi */}
-            {poppingHeart?.split('-')[0] === postIdStr && (
-              <span className="material-icons big-pop-heart">favorite</span>
+            {/* FIX 2: Double Tap Hati dengan Key agar merender ulang animasi */}
+            {poppingHeart?.startsWith(postIdStr) && (
+              <div key={poppingHeart} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, pointerEvents: 'none' }}>
+                <span className="material-icons" style={{ color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' }}>
+                  favorite
+                </span>
+              </div>
             )}
 
             <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
@@ -281,10 +296,21 @@ const PostCard: React.FC<PostCardProps> = ({
               onWheel={(e) => actuallyExpanded && e.stopPropagation()}
               onTouchMove={(e) => actuallyExpanded && e.stopPropagation()}
             >
-              {/* Gunakan kelas CSS murni untuk format text */}
               <p
                 ref={captionRef as React.RefObject<HTMLParagraphElement>}
-                className={`post-bio ${actuallyExpanded ? 'expanded' : ''}`} 
+                style={{
+                  fontSize: '14.5px',
+                  color: 'var(--text-main)',
+                  lineHeight: 1.5,
+                  margin: '4px 0 0 0',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  display: actuallyExpanded ? 'block' : '-webkit-box',
+                  WebkitLineClamp: actuallyExpanded ? 'unset' : 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: actuallyExpanded ? 'visible' : 'hidden',
+                  transition: 'all 0.3s ease'
+                }}
               >
                 {renderBioWithMentions(post.bio?.trim())}
               </p>
@@ -355,15 +381,28 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           </div>
 
-          {/* FIX Bug 4: Filter id unik animasi Hati */}
-          {poppingHeart?.split('-')[0] === postIdStr && (
-            <span className="material-icons big-pop-heart">favorite</span>
+          {/* FIX 2: Double Tap Hati dengan Key agar merender ulang animasi */}
+          {poppingHeart?.startsWith(postIdStr) && (
+            <div key={poppingHeart} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, pointerEvents: 'none' }}>
+              <span className="material-icons" style={{ color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' }}>
+                favorite
+              </span>
+            </div>
           )}
 
-          {/* Hapus semua inline style yg bentrok, gunakan Class CSS */}
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
-            className={`post-bio ${actuallyExpanded ? 'expanded' : ''}`} 
+            style={{
+              marginBottom: '12px',
+              fontSize: '15px',
+              color: 'var(--text-main)',
+              lineHeight: 1.5,
+              wordBreak: 'break-word',
+              display: actuallyExpanded ? 'block' : '-webkit-box', 
+              WebkitLineClamp: actuallyExpanded ? 'unset' : 4, 
+              WebkitBoxOrient: 'vertical',
+              overflow: actuallyExpanded ? 'visible' : 'hidden', 
+            }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
@@ -379,18 +418,17 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           )}
 
-          {/* FIX Bug 1: Pastikan komponen Audio tersembunyi dibuat agar autoplay sinkron */}
           {post.audio_src && (
             <>
+              {/* FIX 1: Audio element tidak display none lagi supaya diizinkan diputar oleh browser */}
               <audio
                 ref={mediaRef as React.RefObject<HTMLAudioElement>}
                 src={post.audio_src}
                 className="post-audio-element"
                 loop
                 playsInline
-                autoPlay
                 muted={isGloballyMuted}
-                style={{ display: 'none' }}
+                style={{ width: 0, height: 0, position: 'absolute', opacity: 0, pointerEvents: 'none' }}
               />
               <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={(e) => e.stopPropagation()}>
                 <MusicMarquee post={post} isOverlay={false} mediaRef={mediaRef} />
@@ -428,9 +466,8 @@ export default React.memo(PostCard, (prev, next) => {
   if (prev.activePreviewImage !== next.activePreviewImage) return false;
   if (prev.isGloballyMuted !== next.isGloballyMuted) return false;
 
-  // Loloskan Pop Heart dinamis meskipun ID postnya sama 
-  const isPoppingPrev = prev.poppingHeart?.split('-')[0] === pid;
-  const isPoppingNext = next.poppingHeart?.split('-')[0] === pid;
+  const isPoppingPrev = prev.poppingHeart?.startsWith(pid);
+  const isPoppingNext = next.poppingHeart?.startsWith(pid);
   if (prev.poppingHeart !== next.poppingHeart && (isPoppingPrev || isPoppingNext)) return false;
 
   const prevCount = prev.counts[pid] || {};
