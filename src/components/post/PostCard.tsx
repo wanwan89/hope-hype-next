@@ -77,7 +77,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const actuallyExpanded = isExpanded || localExpanded; 
 
-  // FIX 2: Observer Autoplay dengan Handle Penolakan Play dari Browser
+  // Observer Autoplay & Mute
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -90,13 +90,10 @@ const PostCard: React.FC<PostCardProps> = ({
           const playPromise = media.play();
           if (playPromise !== undefined) {
              playPromise.catch(() => {
-               // Browser akan menolak play unmuted tanpa user event
-               // Jadi kita maksa muted dulu agar videonya tetep muter background
                media.muted = true;
                media.play().catch(() => {});
              });
           }
-          
           document.querySelectorAll(".post-video-element, .post-audio-element").forEach((el: any) => {
             if (el !== media && !el.paused) el.pause();
           });
@@ -110,7 +107,6 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted, post.audio_src]);
 
-  // Logika Pengukuran "Lihat Selengkapnya" (Akurat & Rapih)
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
@@ -119,7 +115,6 @@ const PostCard: React.FC<PostCardProps> = ({
         el.style.webkitLineClamp = 'unset';
         const fullHeight = el.scrollHeight;
         el.style.webkitLineClamp = prevWebkit;
-        
         setShowMoreButton(fullHeight > 75);
       }
     });
@@ -130,13 +125,9 @@ const PostCard: React.FC<PostCardProps> = ({
     if (!text) return null;
     return text.split(/(@\w+|#\w+)/g).map((part, i) => {
       if (part.startsWith('@')) {
-        return (
-          <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/data?id=${part.substring(1)}`); }} style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}>{part}</span>
-        );
+        return <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/data?id=${part.substring(1)}`); }} style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}>{part}</span>;
       } else if (part.startsWith('#')) {
-        return (
-          <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/search?q=${encodeURIComponent(part)}`); }} style={{ color: 'var(--text-muted)', fontWeight: 400, cursor: 'pointer' }}>{part}</span>
-        );
+        return <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/search?q=${encodeURIComponent(part)}`); }} style={{ color: 'var(--text-muted)', fontWeight: 400, cursor: 'pointer' }}>{part}</span>;
       }
       return <span key={i}>{part}</span>;
     });
@@ -149,14 +140,14 @@ const PostCard: React.FC<PostCardProps> = ({
     onToggleExpand(postIdStr);
   }, [onToggleExpand, postIdStr]);
 
-  // FIX 1: Konfigurasi mutlak (100% sama besarnya antara media text)
+  // Kunci layout mutlak agar tidak terpengaruh CSS global mana pun
   const cardStyle: React.CSSProperties = {
     overflow: actuallyExpanded ? 'visible' : 'hidden', 
     background: 'var(--bg-card)', 
-    borderRadius: '16px', // Paksa bentuk yang sama
-    padding: isVideoPost || photoList.length > 0 ? '0' : '16px', // Text card dibersihkan luarnya, padding disuntik ke dalam
+    borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
+    padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
     border: '1px solid var(--border-card)',
-    position: 'relative', // Penting untuk animasi hati di tengah
+    position: 'relative', 
     width: '100%',
     boxSizing: 'border-box',
     boxShadow: isVideoPost || photoList.length > 0 ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)'
@@ -167,16 +158,33 @@ const PostCard: React.FC<PostCardProps> = ({
       style={cardStyle}
       onClick={(e) => { if(!photoList.length && !isVideoPost) handleMediaClick(e, postIdStr, creatorIdStr); }}>
 
+      <style>{`
+        @keyframes popHeartAnimLocal {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+          15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          30% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+          70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
+        }
+        .floating-bubbles img, .liker-bubble img, .reposter-bubble img {
+          border-radius: 50% !important;
+          aspect-ratio: 1/1 !important;
+          object-fit: cover !important;
+        }
+      `}</style>
+
       {(photoList.length > 0 || isVideoPost) ? (
         <>
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
-            {/* FIX 3: Hapus container tambahan, biarkan elemen ini merata ke tengah secara absolut */}
             {poppingHeart?.split('-')[0] === postIdStr && (
-              <span key={poppingHeart} className="material-icons big-pop-heart">
-                favorite
-              </span>
+              <span key={poppingHeart} className="material-icons" style={{
+                position: 'absolute', top: '50%', left: '50%', color: '#ff2e63', fontSize: '120px',
+                zIndex: 9999, pointerEvents: 'none', opacity: 0,
+                animation: 'popHeartAnimLocal 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))'
+              }}>favorite</span>
             )}
 
             <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
@@ -196,9 +204,9 @@ const PostCard: React.FC<PostCardProps> = ({
             {(isVideoPost || post.audio_src) && (
               <button className="btn-press" onClick={(e) => {
                   toggleMute(e);
-                  // FIX 2: Paksa putar kembali jika ditekan tombol unmute saat audio freeze
-                  if (mediaRef.current && mediaRef.current.paused) {
-                    mediaRef.current.play().catch(()=>{});
+                  if (mediaRef.current) {
+                    mediaRef.current.muted = !isGloballyMuted;
+                    if (isGloballyMuted) mediaRef.current.play().catch(()=>{});
                   }
                 }}
                 style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 2, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -206,10 +214,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             )}
 
-            <FloatingBubbles
-              likers={isOwner ? mutualLikers : []}
-              reposters={!isOwner ? mutualReposters : []}
-            />
+            <FloatingBubbles likers={isOwner ? mutualLikers : []} reposters={!isOwner ? mutualReposters : []} />
 
             <div className="photo-carousel" onScroll={(e) => {
               const target = e.target as HTMLDivElement;
@@ -220,19 +225,14 @@ const PostCard: React.FC<PostCardProps> = ({
                 <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
                   style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: '#000', cursor: 'pointer' }}>
                   {!videoLoaded && (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
-                      <div className="loading-spinner" />
-                    </div>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}><div className="loading-spinner" /></div>
                   )}
                   <video
                     ref={mediaRef as React.RefObject<HTMLVideoElement>}
                     src={post.video_url}
                     className="post-video-element"
                     poster={getOptimizedImage(post.image_url)}
-                    playsInline
-                    autoPlay
-                    loop
-                    muted={isGloballyMuted}
+                    playsInline autoPlay loop muted={isGloballyMuted}
                     onLoadedData={() => setVideoLoaded(true)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none', opacity: videoLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
                   />
@@ -243,14 +243,10 @@ const PostCard: React.FC<PostCardProps> = ({
                   return (
                     <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: '#1a1a1a' }}>
                       {!imgLoaded && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
-                          <div className="loading-spinner" />
-                        </div>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}><div className="loading-spinner" /></div>
                       )}
                       <img
-                        src={getOptimizedImage(url)}
-                        decoding="async"
-                        alt={`Postingan Galeri ${i + 1}`}
+                        src={getOptimizedImage(url)} decoding="async" alt={`Postingan Galeri ${i + 1}`}
                         onLoad={() => setImgLoaded(true)}
                         onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr, getOptimizedImage(url))}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
@@ -263,9 +259,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
             {photoList.length > 1 && !isVideoPost && (
               <div className={`carousel-dots dots-${postIdStr}`} style={{ zIndex: 2 }}>
-                {photoList.map((_: any, i: number) => (
-                  <div key={i} className={`dot ${i === currentSlide ? 'active' : ''}`} />
-                ))}
+                {photoList.map((_: any, i: number) => (<div key={i} className={`dot ${i === currentSlide ? 'active' : ''}`} />))}
               </div>
             )}
           </div>
@@ -278,63 +272,38 @@ const PostCard: React.FC<PostCardProps> = ({
                   {post.profiles?.full_name || post.profiles?.username || "User"}
                   <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                 </h2>
-                <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers}
-                  mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
+                <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers} mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
               </div>
-              <button className="options-btn btn-press" aria-label="Opsi Postingan"
-                onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}>
+              <button className="options-btn btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
               </button>
             </div>
 
-            <div 
-              style={{
-                maxHeight: actuallyExpanded ? 'none' : 'auto', 
-                overflowY: 'visible',
+            <div style={{
+                maxHeight: actuallyExpanded ? 'none' : 'auto', overflowY: 'visible',
                 background: actuallyExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
                 backdropFilter: actuallyExpanded ? 'blur(10px)' : 'none',
-                padding: actuallyExpanded ? '12px' : '0',
-                borderRadius: '12px',
-                marginTop: '8px',
-                transition: 'all 0.3s ease-in-out',
-                pointerEvents: 'auto',
-                zIndex: 2, 
+                padding: actuallyExpanded ? '12px' : '0', borderRadius: '12px',
+                marginTop: '8px', transition: 'all 0.3s ease-in-out', pointerEvents: 'auto', zIndex: 2, 
               }}
               onWheel={(e) => actuallyExpanded && e.stopPropagation()}
               onTouchMove={(e) => actuallyExpanded && e.stopPropagation()}
             >
-              <p
-                ref={captionRef as React.RefObject<HTMLParagraphElement>}
+              <p ref={captionRef as React.RefObject<HTMLParagraphElement>}
                 style={{
-                  fontSize: '14.5px',
-                  color: 'var(--text-main)',
-                  lineHeight: 1.5,
-                  margin: '4px 0 0 0',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  display: actuallyExpanded ? 'block' : '-webkit-box',
-                  WebkitLineClamp: actuallyExpanded ? 'unset' : 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: actuallyExpanded ? 'visible' : 'hidden',
-                  transition: 'all 0.3s ease'
+                  fontSize: '14.5px', color: 'var(--text-main)', lineHeight: 1.5, margin: '4px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  display: actuallyExpanded ? 'block' : '-webkit-box', WebkitLineClamp: actuallyExpanded ? 'unset' : 3, WebkitBoxOrient: 'vertical',
+                  overflow: actuallyExpanded ? 'visible' : 'hidden', transition: 'all 0.3s ease'
                 }}
               >
                 {renderBioWithMentions(post.bio?.trim())}
               </p>
               
-              {showMoreButton && !actuallyExpanded && ( 
-                <button className="see-more-btn" onClick={handleToggleClick}>
-                  Lihat Selengkapnya
-                </button>
-              )}
-              {actuallyExpanded && ( 
-                <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#ff7b9c' }}>
-                  Lebih Sedikit
-                </button>
-              )}
+              {showMoreButton && !actuallyExpanded && ( <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#1f3cff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, marginTop: '6px', background: 'none', border: 'none', padding: 0 }}>Lihat Selengkapnya</button> )}
+              {actuallyExpanded && ( <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#ff7b9c', cursor: 'pointer', fontSize: '13px', fontWeight: 700, marginTop: '6px', background: 'none', border: 'none', padding: 0 }}>Lebih Sedikit</button> )}
             </div>
 
-            <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', marginTop: '8px' }}>
+            <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
               <span>{formattedDate}</span>
               {post.is_ad && (
                 <span style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: '#fff' }}>
@@ -343,105 +312,80 @@ const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
 
-            <div className="actions" style={{ pointerEvents: 'auto' }}>
-              <button
-                onClick={() => router.push(`/post?id=${postIdStr}`)}
-                className="primary btn-press"
-                style={{ display: 'inline-block', border: 'none', background: '#1f3cff', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            <div className="actions" style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
+              <button onClick={() => router.push(`/post?id=${postIdStr}`)} className="primary btn-press"
+                style={{ display: 'inline-block', border: 'none', background: '#1f3cff', color: 'white', padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}>
                 {t('view_detail')}
               </button>
-              <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts}
-                mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
-                animatingReposts={animatingReposts}
-                handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
+              <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts} mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts} animatingReposts={animatingReposts} handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
             </div>
           </div>
         </>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
-              <img src={optimizedAvatar} alt="Avatar Profil" decoding="async" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', cursor: 'pointer', flex: 1 }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
+              {/* Fix Avatar anti-gepeng menggunakan flexShrink: 0 dan aspek rasio */}
+              <img src={optimizedAvatar} alt="Avatar Profil" decoding="async" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', flexShrink: 0 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
-                  {post.profiles?.full_name || post.profiles?.username || "User"}
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.profiles?.full_name || post.profiles?.username || "User"}</span>
                   <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-                  <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers}
-                    mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
+                  <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers} mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {formattedDate}
                   {post.is_ad && (
-                    <>
-                      <span>•</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#1f3cff', fontWeight: 700 }}>
-                        <span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan
-                      </span>
-                    </>
+                    <><span>•</span><span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#1f3cff', fontWeight: 700 }}><span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan</span></>
                   )}
                 </span>
               </div>
             </div>
             <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 8px' }}>
               <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
             </button>
           </div>
 
-          {/* FIX 3: Hapus wrapper pembungkus animasi, biarkan tag langsung ke center. */}
           {poppingHeart?.split('-')[0] === postIdStr && (
-            <span key={poppingHeart} className="material-icons big-pop-heart">
-              favorite
-            </span>
+            <span key={poppingHeart} className="material-icons" style={{
+              position: 'absolute', top: '50%', left: '50%', color: '#ff2e63', fontSize: '120px',
+              zIndex: 9999, pointerEvents: 'none', opacity: 0,
+              animation: 'popHeartAnimLocal 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+              filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))'
+            }}>favorite</span>
           )}
 
-          <div
-            ref={captionRef as React.RefObject<HTMLDivElement>}
+          <div ref={captionRef as React.RefObject<HTMLDivElement>}
             style={{
-              marginBottom: '12px',
-              fontSize: '15px',
-              color: 'var(--text-main)',
-              lineHeight: 1.5,
-              wordBreak: 'break-word',
-              display: actuallyExpanded ? 'block' : '-webkit-box', 
-              WebkitLineClamp: actuallyExpanded ? 'unset' : 4, 
-              WebkitBoxOrient: 'vertical',
-              overflow: actuallyExpanded ? 'visible' : 'hidden', 
+              marginBottom: '12px', fontSize: '15px', color: 'var(--text-main)', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+              display: actuallyExpanded ? 'block' : '-webkit-box', WebkitLineClamp: actuallyExpanded ? 'unset' : 4, WebkitBoxOrient: 'vertical',
+              overflow: actuallyExpanded ? 'visible' : 'hidden', transition: 'all 0.3s ease'
             }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
 
-          {showMoreButton && !actuallyExpanded && ( 
-            <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px' }}>
-              Lihat Selengkapnya
-            </button>
-          )}
-          {actuallyExpanded && ( 
-            <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px', color: '#ff2e63' }}>
-              Lebih Sedikit
-            </button>
-          )}
+          {showMoreButton && !actuallyExpanded && ( <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#1f3cff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, marginBottom: '12px', background: 'none', border: 'none', padding: 0 }}>Lihat Selengkapnya</button> )}
+          {actuallyExpanded && ( <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#ff2e63', cursor: 'pointer', fontSize: '13px', fontWeight: 700, marginBottom: '12px', background: 'none', border: 'none', padding: 0 }}>Lebih Sedikit</button> )}
 
-          {/* FIX 2: Memastikan tag audio bisa auto jalan saat diputar (tidak display none & punya ukuran minimal absolute) */}
           {post.audio_src && (
             <>
+              {/* Fix Audio Anti Mati (opacity 0, namun ukurannya tetap ada agar browser mengizinkannya putar) */}
               <audio
                 ref={mediaRef as React.RefObject<HTMLAudioElement>}
                 src={post.audio_src}
                 className="post-audio-element"
-                loop
-                playsInline
-                muted={isGloballyMuted}
-                preload="auto"
-                style={{ width: '1px', height: '1px', position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                loop playsInline muted={isGloballyMuted} preload="auto"
+                style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}
               />
               <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={(e) => e.stopPropagation()}>
                 <MusicMarquee post={post} isOverlay={false} mediaRef={mediaRef} />
                 <button className="btn-press" onClick={(e) => {
                     toggleMute(e);
-                    if (mediaRef.current && mediaRef.current.paused) {
-                      mediaRef.current.play().catch(()=>{});
+                    if (mediaRef.current) {
+                      mediaRef.current.muted = !isGloballyMuted;
+                      if (isGloballyMuted) mediaRef.current.play().catch(()=>{});
                     }
                   }}
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', color: 'var(--text-main)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}>
@@ -451,17 +395,12 @@ const PostCard: React.FC<PostCardProps> = ({
             </>
           )}
 
-          <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '4px', paddingTop: '12px' }} onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => router.push(`/post?id=${postIdStr}`)}
-              className="btn-press"
+          <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '4px', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => router.push(`/post?id=${postIdStr}`)} className="btn-press"
               style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'transparent', border: 'none', fontWeight: 600, display: 'inline-block', cursor: 'pointer', padding: 0 }}>
               {t('view_detail')}
             </button>
-            <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts}
-              mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
-              animatingReposts={animatingReposts}
-              handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
+            <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts} mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts} animatingReposts={animatingReposts} handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
           </div>
         </>
       )}
