@@ -13,13 +13,13 @@
   background: var(--bg-card);
   border-radius: 16px;
   margin-bottom: 25px;
-  /* overflow: hidden;  ❌ DIHAPUS, biar PostCard yang atur */
   border: 1px solid var(--border-card);
   display: flex;
   flex-direction: column;
   transition: transform 0.2s ease, background-color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
   scroll-margin-top: 100px;
+  position: relative; /* Penting untuk posisi Pop Heart */
 }
 
 /* Wrapper class dari Gallerypost.tsx untuk media post */
@@ -62,10 +62,10 @@
 .see-more-btn {
   color: #1f3cff;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  display: inline-block;
-  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  display: block;
+  margin-top: 6px;
   background: none;
   border: none;
   padding: 0;
@@ -118,7 +118,7 @@
   flex: 0 0 100%;
   width: 100%;
   scroll-snap-align: center;
-  position: relative; /* penting untuk overlay loading spinner */
+  position: relative;
 }
 
 .carousel-item img {
@@ -128,7 +128,6 @@
   object-fit: cover;
 }
 
-/* 🔥 FIX Z-INDEX DOTS 🔥 */
 .carousel-dots {
   position: absolute;
   bottom: 15px;
@@ -220,10 +219,11 @@
 
 /* LOGIKA PEMOTONGAN TEKS SEKARANG DIURUS 100% OLEH CSS */
 .post-bio {
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--text-main);
   line-height: 1.5;
-  margin: 4px 0;
+  margin: 4px 0 0 0;
+  white-space: pre-wrap;
   word-break: break-word;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -311,15 +311,16 @@
   left: 50%;
   transform: translate(-50%, -50%) scale(0);
   color: #ff2e63;
-  font-size: 120px;
+  /* FIX Bug 4: UKURAN JAUH LEBIH BESAR */
+  font-size: 160px;
   z-index: 15;
   pointer-events: none;
   opacity: 0;
-  animation: popHeartAnim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 /* ========================================== */
-/* 🔥 SKELETON 🔥                             */
+/* 🔥 SKELETON & MODAL 🔥                     */
 /* ========================================== */
 
 .gallery-skeleton-wrapper { display: flex; flex-direction: column; gap: 25px; width: 100%; }

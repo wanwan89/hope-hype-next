@@ -393,13 +393,16 @@ export default function Gallerypost() {
     } catch (err) {}
   }, []);
 
+
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-      setPoppingHeart(postId);
+      
+      // FIX Bug 4: Menggunakan ID dinamis agar dirender ulang oleh React
+      setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
@@ -414,7 +417,6 @@ export default function Gallerypost() {
       }
     }
   }, [handleLike]);
-
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
     const { postId, creatorId, isUnrepost } = repostModal;

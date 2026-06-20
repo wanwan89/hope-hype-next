@@ -8,7 +8,7 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
-import '@/components/post/Gallery.css'; // sudah di‑fix
+import '@/components/post/Gallery.css'; 
 
 export default function PostPage() {
   const { t } = useTranslation();
@@ -45,7 +45,7 @@ export default function PostPage() {
 
   const lastTapRef = useRef<Record<string, number>>({});
 
-  // 🔥 State untuk expand caption (Lihat Selengkapnya)
+  // State untuk expand caption (Lihat Selengkapnya)
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
   // Mode profil
@@ -229,7 +229,6 @@ export default function PostPage() {
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
-  // 🔥 Callback untuk toggle expand caption
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const newSet = new Set(prev);
@@ -286,6 +285,7 @@ export default function PostPage() {
     } catch (err) {}
   }, []);
 
+  // 🔥 FIX 1: Double Tap Logic
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -294,7 +294,7 @@ export default function PostPage() {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-      setPoppingHeart(postId);
+      setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
@@ -537,7 +537,6 @@ export default function PostPage() {
                     setActivePreviewImage={setActivePreviewImage}
                     router={router}
                     t={t}
-                    // 🔥 Props untuk caption expand
                     isExpanded={isExpanded}
                     onToggleExpand={handleToggleExpand}
                   />
@@ -548,6 +547,7 @@ export default function PostPage() {
         )}
       </div>
       
+      {/* 🔥 FIX 2 & 3: Sinkronisasi CSS dan Perbaikan Avatar + Bubble Float */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         #mainGallery::-webkit-scrollbar { display: none; }
@@ -590,13 +590,20 @@ export default function PostPage() {
           border: 1px solid var(--border-card) !important;
           overflow: hidden !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+          background: var(--bg-main) !important;
+          padding: 16px !important; /* Fix Padding */
         }
 
+        /* Fix bentuk bulat Avatar dan Floating Bubbles */
         .text-post-card-wp [data-postid] img,
         .text-post-card-wp [data-postid] .avatar,
         .text-post-card-wp [data-postid] [class*="avatar"],
         .media-post-card-wp [data-postid] .avatar,
-        .media-post-card-wp [data-postid] [class*="avatar"] {
+        .media-post-card-wp [data-postid] [class*="avatar"],
+        .floating-bubbles img,
+        .bubble img,
+        .liker-bubble img,
+        .reposter-bubble img {
           border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
@@ -605,15 +612,15 @@ export default function PostPage() {
         .see-more-btn {
           color: #1f3cff;
           cursor: pointer;
-          font-size: 12px;
-          font-weight: 600;
-          display: inline-block;
-          margin-top: 4px;
+          font-size: 13px;
+          font-weight: 700;
+          display: block;
+          margin-top: 6px;
           background: none;
           border: none;
           padding: 0;
           position: relative;
-          z-index: 10;
+          z-index: 1; /* Fix z-index */
           pointer-events: auto;
           user-select: none;
         }
