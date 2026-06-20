@@ -77,7 +77,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const actuallyExpanded = isExpanded || localExpanded; 
 
-  // FIX 1: Observer mandiri agar Autoplay Audio / Video sinkron
+  // FIX 2: Observer Autoplay dengan Handle Penolakan Play dari Browser
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -90,7 +90,9 @@ const PostCard: React.FC<PostCardProps> = ({
           const playPromise = media.play();
           if (playPromise !== undefined) {
              playPromise.catch(() => {
-               media.muted = true; // Paksa mute jika browser blokir autoplay
+               // Browser akan menolak play unmuted tanpa user event
+               // Jadi kita maksa muted dulu agar videonya tetep muter background
+               media.muted = true;
                media.play().catch(() => {});
              });
           }
@@ -108,7 +110,7 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted, post.audio_src]);
 
-  // Pengukuran "Lihat Selengkapnya" (Akurat & Rapih)
+  // Logika Pengukuran "Lihat Selengkapnya" (Akurat & Rapih)
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
@@ -117,6 +119,7 @@ const PostCard: React.FC<PostCardProps> = ({
         el.style.webkitLineClamp = 'unset';
         const fullHeight = el.scrollHeight;
         el.style.webkitLineClamp = prevWebkit;
+        
         setShowMoreButton(fullHeight > 75);
       }
     });
@@ -146,14 +149,14 @@ const PostCard: React.FC<PostCardProps> = ({
     onToggleExpand(postIdStr);
   }, [onToggleExpand, postIdStr]);
 
-  // FIX 3: Gaya Mutlak untuk Kotak Text Post
+  // FIX 1: Konfigurasi mutlak (100% sama besarnya antara media text)
   const cardStyle: React.CSSProperties = {
     overflow: actuallyExpanded ? 'visible' : 'hidden', 
-    background: 'var(--bg-main)',
-    borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
-    padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
+    background: 'var(--bg-card)', 
+    borderRadius: '16px', // Paksa bentuk yang sama
+    padding: isVideoPost || photoList.length > 0 ? '0' : '16px', // Text card dibersihkan luarnya, padding disuntik ke dalam
     border: '1px solid var(--border-card)',
-    position: 'relative',
+    position: 'relative', // Penting untuk animasi hati di tengah
     width: '100%',
     boxSizing: 'border-box',
     boxShadow: isVideoPost || photoList.length > 0 ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)'
@@ -169,13 +172,11 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
-            {/* FIX 2: Double Tap Hati dengan Key agar merender ulang animasi */}
-            {poppingHeart?.startsWith(postIdStr) && (
-              <div key={poppingHeart} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, pointerEvents: 'none' }}>
-                <span className="material-icons" style={{ color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' }}>
-                  favorite
-                </span>
-              </div>
+            {/* FIX 3: Hapus container tambahan, biarkan elemen ini merata ke tengah secara absolut */}
+            {poppingHeart?.split('-')[0] === postIdStr && (
+              <span key={poppingHeart} className="material-icons big-pop-heart">
+                favorite
+              </span>
             )}
 
             <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
@@ -193,7 +194,13 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
 
             {(isVideoPost || post.audio_src) && (
-              <button className="btn-press" onClick={toggleMute}
+              <button className="btn-press" onClick={(e) => {
+                  toggleMute(e);
+                  // FIX 2: Paksa putar kembali jika ditekan tombol unmute saat audio freeze
+                  if (mediaRef.current && mediaRef.current.paused) {
+                    mediaRef.current.play().catch(()=>{});
+                  }
+                }}
                 style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 2, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
               </button>
@@ -381,13 +388,11 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           </div>
 
-          {/* FIX 2: Double Tap Hati dengan Key agar merender ulang animasi */}
-          {poppingHeart?.startsWith(postIdStr) && (
-            <div key={poppingHeart} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, pointerEvents: 'none' }}>
-              <span className="material-icons" style={{ color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' }}>
-                favorite
-              </span>
-            </div>
+          {/* FIX 3: Hapus wrapper pembungkus animasi, biarkan tag langsung ke center. */}
+          {poppingHeart?.split('-')[0] === postIdStr && (
+            <span key={poppingHeart} className="material-icons big-pop-heart">
+              favorite
+            </span>
           )}
 
           <div
@@ -418,9 +423,9 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           )}
 
+          {/* FIX 2: Memastikan tag audio bisa auto jalan saat diputar (tidak display none & punya ukuran minimal absolute) */}
           {post.audio_src && (
             <>
-              {/* FIX 1: Audio element tidak display none lagi supaya diizinkan diputar oleh browser */}
               <audio
                 ref={mediaRef as React.RefObject<HTMLAudioElement>}
                 src={post.audio_src}
@@ -428,11 +433,17 @@ const PostCard: React.FC<PostCardProps> = ({
                 loop
                 playsInline
                 muted={isGloballyMuted}
-                style={{ width: 0, height: 0, position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                preload="auto"
+                style={{ width: '1px', height: '1px', position: 'absolute', opacity: 0, pointerEvents: 'none' }}
               />
               <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={(e) => e.stopPropagation()}>
                 <MusicMarquee post={post} isOverlay={false} mediaRef={mediaRef} />
-                <button className="btn-press" onClick={toggleMute}
+                <button className="btn-press" onClick={(e) => {
+                    toggleMute(e);
+                    if (mediaRef.current && mediaRef.current.paused) {
+                      mediaRef.current.play().catch(()=>{});
+                    }
+                  }}
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', color: 'var(--text-main)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}>
                   <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
                 </button>
@@ -466,8 +477,8 @@ export default React.memo(PostCard, (prev, next) => {
   if (prev.activePreviewImage !== next.activePreviewImage) return false;
   if (prev.isGloballyMuted !== next.isGloballyMuted) return false;
 
-  const isPoppingPrev = prev.poppingHeart?.startsWith(pid);
-  const isPoppingNext = next.poppingHeart?.startsWith(pid);
+  const isPoppingPrev = prev.poppingHeart?.startsWith(pid + '-');
+  const isPoppingNext = next.poppingHeart?.startsWith(pid + '-');
   if (prev.poppingHeart !== next.poppingHeart && (isPoppingPrev || isPoppingNext)) return false;
 
   const prevCount = prev.counts[pid] || {};

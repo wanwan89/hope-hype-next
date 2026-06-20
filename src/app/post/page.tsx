@@ -8,6 +8,7 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
+import '@/components/post/Gallery.css'; 
 
 export default function PostPage() {
   const { t } = useTranslation();
@@ -43,8 +44,11 @@ export default function PostPage() {
   const isMutedRef = useRef(true);
 
   const lastTapRef = useRef<Record<string, number>>({});
+
+  // State untuk expand caption (Lihat Selengkapnya)
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
+  // Mode profil
   const [profileUsername, setProfileUsername] = useState<string>('');
   const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
 
@@ -95,7 +99,10 @@ export default function PostPage() {
 
   const loadProfileMode = async (user: any) => {
     const { data: exactPost, error: errExact } = await supabase
-      .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle(); 
+      .from('posts')
+      .select('creator_id')
+      .eq('id', postIdFromUrl)
+      .maybeSingle(); 
 
     if (errExact || !exactPost) {
       setUserPosts([]);
@@ -104,11 +111,16 @@ export default function PostPage() {
     }
 
     const targetUserId = exactPost.creator_id; 
+
     const isMe = user && targetUserId === user.id;
     setIsMyOwnProfile(isMe);
 
     if (!isMe) {
-      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).maybeSingle(); 
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', targetUserId)
+        .maybeSingle(); 
       if (profileData) setProfileUsername(profileData.username);
     }
 
@@ -133,7 +145,9 @@ export default function PostPage() {
     });
 
     setUserPosts(filtered);
+
     await Promise.all(filtered.map(post => fetchPostInteractions(post.id, user)));
+
     setIsLoading(false);
   };
 
@@ -185,7 +199,13 @@ export default function PostPage() {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
       
-      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle(); 
+      const { data: userBookmark } = await supabase
+        .from('bookmarks')
+        .select('user_id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .maybeSingle(); 
+        
       const isSavedByUser = !!userBookmark;
       
       setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
@@ -262,7 +282,6 @@ export default function PostPage() {
     } catch (err) {}
   }, []);
 
-  // DI SINI LETAK FIX ANIMASI DOUBLE TAP JANTUNG
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -271,7 +290,7 @@ export default function PostPage() {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-      setPoppingHeart(`${postId}-${now}`); // Pastikan valuenya selalu unik setiap kali di-tap
+      setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
@@ -297,17 +316,41 @@ export default function PostPage() {
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
     const wasReposted = myRepostedPostsRef.current.has(postId);
-    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
+    setMyRepostedPosts((prev) => { 
+      const n = new Set(prev); 
+      isUnrepost ? n.delete(postId) : n.add(postId); 
+      return n; 
+    });
+    
+    setCounts((prev) => ({ 
+      ...prev, 
+      [postId]: { 
+        ...prev[postId], 
+        reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) 
+      } 
+    }));
 
     try {
       if (isUnrepost) {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
+        
         if (error) {
-          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
-          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
+          console.error("Gagal Repost:", error.message);
+          setMyRepostedPosts((prev) => { 
+            const n = new Set(prev); 
+            wasReposted ? n.add(postId) : n.delete(postId); 
+            return n; 
+          });
+          setCounts((prev) => ({ 
+            ...prev, 
+            [postId]: { 
+              ...prev[postId], 
+              reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) 
+            } 
+          }));
         }
       }
     } catch (err) {}
@@ -336,8 +379,13 @@ export default function PostPage() {
     setIsGloballyMuted(prev => {
       const next = !prev;
       isMutedRef.current = next;
-      // Sinkronkan secara paksa
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
+      // FIX 1: Paksa audio main kalau di-unmute (karena tadi dipause browser)
+      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
+        el.muted = next;
+        if (!next && el.paused) {
+           el.play().catch(() => {});
+        }
+      });
       return next;
     });
   }, []);
@@ -403,10 +451,10 @@ export default function PostPage() {
                   id={`post-wrapper-${p.id}`} 
                   style={{ 
                     scrollSnapAlign: 'start', 
-                    height: 'auto', // Berubah dari 100% jadi auto untuk mencegah melar
+                    height: 'auto',
                     position: 'relative',
                     width: '100%',
-                    padding: isTextOrAudio ? '0 12px' : '0', // FIX BOX TEXT SECARA ABSOLUT
+                    padding: isTextOrAudio ? '0 12px' : '0', 
                     marginBottom: isTextOrAudio ? '14px' : '12px'
                   }}
                 >
@@ -450,9 +498,10 @@ export default function PostPage() {
         )}
       </div>
       
-      {/* SUNTIKAN CSS GLOBAL PALING EKSTRIM UNTUK MEMAKSA TAMPILAN FIX */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
+        
+        /* FIX 2: CSS Animasi Jantung WAJIB didefinisikan agar tidak rendering di pinggir */
         @keyframes popHeartAnim {
           0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
           15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
@@ -461,17 +510,48 @@ export default function PostPage() {
           100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
         }
 
+        .big-pop-heart {
+          position: absolute !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) scale(0);
+          color: #ff2e63 !important;
+          font-size: 160px !important;
+          z-index: 9999 !important;
+          pointer-events: none !important;
+          opacity: 0;
+          animation: popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+          filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3)) !important;
+        }
+
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* GARANSI MUTLAK AVATAR DAN FLOATING BUBBLE BULAT SEMPURNA */
+        /* FIX 3: UKURAN KONSISTEN BOX TEKS */
+        .media-post-card-wp [data-postid],
+        .text-post-card-wp [data-postid] {
+          width: 100% !important;
+          max-width: 100% !important;
+          background: var(--bg-card) !important;
+        }
+
+        .text-post-card-wp {
+          padding: 0 !important; 
+        }
+
+        .media-post-card-wp [data-postid] img,
+        .media-post-card-wp [data-postid] video,
+        .media-post-card-wp [data-postid] .post-media-wrapper {
+          width: 100% !important;
+          border-radius: 16px 16px 0 0 !important;
+        }
+
         img, .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
           border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
         }
         
-        /* Kecualikan gambar di carousel dan watermark */
         .carousel-item img, .post-video-element, .image-preview-content img {
           border-radius: 0 !important;
           aspect-ratio: auto !important;
