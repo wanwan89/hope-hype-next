@@ -1,4 +1,3 @@
-// PostCard.tsx
 'use client';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -75,11 +74,10 @@ const PostCard: React.FC<PostCardProps> = ({
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // 🔥 PERBAIKAN 1: Tambahkan State Lokal untuk kontrol internal komponen
   const [localExpanded, setLocalExpanded] = useState(false);
   const actuallyExpanded = isExpanded || localExpanded; 
 
-  // Observer untuk Video Autoplay
+  // Observer untuk Video Autoplay (Pause video lain untuk performa & fix bentrok suara)
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -89,16 +87,20 @@ const PostCard: React.FC<PostCardProps> = ({
         if (entry.isIntersecting) {
           media.muted = isGloballyMuted;
           media.play().catch(() => {});
+          
+          // Pause semua media lain yang sedang play
+          document.querySelectorAll(".post-video-element, .post-audio-element").forEach((el: any) => {
+            if (el !== media && !el.paused) el.pause();
+          });
         } else {
           media.pause();
         }
       });
-    }, { threshold: 0.5 });
+    }, { threshold: 0.6 });
     observer.observe(media);
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  // 🔥 PERBAIKAN 2: Gunakan actuallyExpanded & ubah webkitLineClamp menjadi 'none'
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
@@ -107,7 +109,7 @@ const PostCard: React.FC<PostCardProps> = ({
         const prevLineClamp = el.style.webkitLineClamp;
         const prevOverflow = el.style.overflow;
         el.style.display = 'block';
-        el.style.webkitLineClamp = 'none'; // FIX CSS property
+        el.style.webkitLineClamp = 'none'; 
         el.style.overflow = 'visible';
         const fullHeight = el.scrollHeight;
         el.style.display = prevDisplay;
@@ -115,9 +117,6 @@ const PostCard: React.FC<PostCardProps> = ({
         el.style.overflow = prevOverflow;
         const clampedHeight = el.clientHeight;
         const shouldShow = fullHeight > clampedHeight + 2;
-        console.log(
-          `[CAPTION MEASURE] postId: ${postIdStr}, fullHeight: ${fullHeight}, clampedHeight: ${clampedHeight}, showMoreButton: ${shouldShow}`
-        );
         setShowMoreButton(shouldShow);
       }
     });
@@ -140,9 +139,7 @@ const PostCard: React.FC<PostCardProps> = ({
     });
   };
 
-  // 🔥 PERBAIKAN 3: Perbarui fungsi toggle untuk mengubah state lokal
   const handleToggleClick = useCallback((e: React.MouseEvent) => {
-    console.log(`[SEE MORE CLICKED] postId: ${postIdStr}`);
     e.stopPropagation();
     e.preventDefault();
     setLocalExpanded(prev => !prev);
@@ -150,8 +147,7 @@ const PostCard: React.FC<PostCardProps> = ({
   }, [onToggleExpand, postIdStr]);
 
   const cardStyle: React.CSSProperties = {
-    ...(!post.image_url && !post.video_url ? { padding: '16px' } : {}),
-    overflow: actuallyExpanded ? 'visible' : 'hidden', // FIX referensi expand
+    overflow: actuallyExpanded ? 'visible' : 'hidden', 
   };
 
   return (
@@ -196,7 +192,10 @@ const PostCard: React.FC<PostCardProps> = ({
             <div className="photo-carousel" onScroll={(e) => {
               const target = e.target as HTMLDivElement;
               const index = Math.round(target.scrollLeft / target.offsetWidth);
-              setCurrentSlide(index);
+              // Fix Bug 3: Update State hanya jika nilainya berubah
+              if (index !== currentSlide) {
+                setCurrentSlide(index);
+              }
             }}>
               {isVideoPost ? (
                 <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
@@ -269,9 +268,10 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
+            {/* FIX Bug 2: Z-INDEX diturunkan agar tidak overlap dengan Header Topbar */}
             <div 
               style={{
-                maxHeight: actuallyExpanded ? 'none' : 'auto', // FIX referensi expand
+                maxHeight: actuallyExpanded ? 'none' : 'auto', 
                 overflowY: 'visible',
                 background: actuallyExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
                 backdropFilter: actuallyExpanded ? 'blur(10px)' : 'none',
@@ -280,26 +280,25 @@ const PostCard: React.FC<PostCardProps> = ({
                 marginTop: '8px',
                 transition: 'all 0.3s ease-in-out',
                 pointerEvents: 'auto',
-                zIndex: 20,
+                zIndex: 2, 
               }}
               onWheel={(e) => actuallyExpanded && e.stopPropagation()}
               onTouchMove={(e) => actuallyExpanded && e.stopPropagation()}
             >
               <p
                 ref={captionRef as React.RefObject<HTMLParagraphElement>}
-                className={`post-bio ${actuallyExpanded ? 'expanded' : ''}`} // FIX referensi expand
+                className={`post-bio ${actuallyExpanded ? 'expanded' : ''}`} 
                 style={{ margin: 0 }}
               >
                 {renderBioWithMentions(post.bio?.trim())}
               </p>
               
-              {console.log(`[RENDER SEE MORE] postId: ${postIdStr}, showMoreButton: ${showMoreButton}, actuallyExpanded: ${actuallyExpanded}`)}
-              {showMoreButton && !actuallyExpanded && ( // FIX referensi expand
+              {showMoreButton && !actuallyExpanded && ( 
                 <button className="see-more-btn" onClick={handleToggleClick}>
                   Lihat Selengkapnya
                 </button>
               )}
-              {actuallyExpanded && ( // FIX referensi expand
+              {actuallyExpanded && ( 
                 <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#ff7b9c' }}>
                   Tutup
                 </button>
@@ -368,30 +367,28 @@ const PostCard: React.FC<PostCardProps> = ({
 
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
-            className={`post-bio ${actuallyExpanded ? 'expanded' : ''}`} // FIX referensi expand
+            className={`post-bio ${actuallyExpanded ? 'expanded' : ''}`} 
             style={{
               marginBottom: '12px',
               fontSize: '15px',
               color: 'var(--text-main)',
               lineHeight: 1.5,
-              whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
-              display: actuallyExpanded ? 'block' : '-webkit-box', // FIX referensi expand
-              WebkitLineClamp: actuallyExpanded ? 'none' : 3, // FIX referensi expand & 'none'
+              display: actuallyExpanded ? 'block' : '-webkit-box', 
+              WebkitLineClamp: actuallyExpanded ? 'none' : 4, 
               WebkitBoxOrient: 'vertical',
-              overflow: actuallyExpanded ? 'visible' : 'hidden', // FIX referensi expand
+              overflow: actuallyExpanded ? 'visible' : 'hidden', 
             }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
 
-          {console.log(`[RENDER SEE MORE (text)] postId: ${postIdStr}, showMoreButton: ${showMoreButton}, actuallyExpanded: ${actuallyExpanded}`)}
-          {showMoreButton && !actuallyExpanded && ( // FIX referensi expand
+          {showMoreButton && !actuallyExpanded && ( 
             <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px' }}>
               Lihat Selengkapnya
             </button>
           )}
-          {actuallyExpanded && ( // FIX referensi expand
+          {actuallyExpanded && ( 
             <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px', color: '#ff2e63' }}>
               Lebih Sedikit
             </button>
@@ -425,6 +422,7 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
+// Optimisasi perbandingan properties props agar render lebih mulus saat di scroll.
 export default React.memo(PostCard, (prev, next) => {
   const pid = prev.post.id;
   const cid = prev.post.creator_id;
@@ -437,10 +435,13 @@ export default React.memo(PostCard, (prev, next) => {
   const isPoppingNext = next.poppingHeart === pid;
   if (isPoppingPrev !== isPoppingNext) return false;
 
-  if (prev.counts[pid]?.likes !== next.counts[pid]?.likes) return false;
-  if (prev.counts[pid]?.comments !== next.counts[pid]?.comments) return false;
-  if (prev.counts[pid]?.reposts !== next.counts[pid]?.reposts) return false;
-  if (prev.counts[pid]?.saves !== next.counts[pid]?.saves) return false;
+  // Fix Bug 3: Pemeriksaan prop secara langsung untuk efisiensi CPU ketimbang JSON stringify
+  const prevCount = prev.counts[pid] || {};
+  const nextCount = next.counts[pid] || {};
+  if (prevCount.likes !== nextCount.likes) return false;
+  if (prevCount.comments !== nextCount.comments) return false;
+  if (prevCount.reposts !== nextCount.reposts) return false;
+  if (prevCount.saves !== nextCount.saves) return false;
 
   if (prev.myLikedPosts.has(pid) !== next.myLikedPosts.has(pid)) return false;
   if (prev.myRepostedPosts.has(pid) !== next.myRepostedPosts.has(pid)) return false;

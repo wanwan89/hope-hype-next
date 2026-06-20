@@ -10,7 +10,7 @@ import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
-import './Gallery.css'; // sudah di‑fix (overflow dihapus dari .card)
+import './Gallery.css'; 
 
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
@@ -20,36 +20,6 @@ const getOptimizedImage = (url: string) => {
   }
   return cleanUrl;
 };
-
-// ---------- Optimized Memo Wrapper ----------
-const MemoizedPostCard = React.memo(PostCard, (prevProps, nextProps) => {
-  const pid = prevProps.post.id;
-  if (prevProps.post !== nextProps.post) return false;
-  if (prevProps.isOwner !== nextProps.isOwner) return false;
-  if (prevProps.myLikedPosts.has(pid) !== nextProps.myLikedPosts.has(pid)) return false;
-  if (prevProps.myRepostedPosts.has(pid) !== nextProps.myRepostedPosts.has(pid)) return false;
-  if (prevProps.mySavedPosts.has(pid) !== nextProps.mySavedPosts.has(pid)) return false;
-
-  const prevCount = prevProps.counts[pid];
-  const nextCount = nextProps.counts[pid];
-  if (JSON.stringify(prevCount) !== JSON.stringify(nextCount)) return false;
-
-  if (prevProps.poppingHeart !== nextProps.poppingHeart && (prevProps.poppingHeart === pid || nextProps.poppingHeart === pid)) return false;
-  if (prevProps.animatingFollows.has(prevProps.post.creator_id) !== nextProps.animatingFollows.has(nextProps.post.creator_id)) return false;
-  if (prevProps.animatingReposts.has(pid) !== nextProps.animatingReposts.has(pid)) return false;
-  if (prevProps.isGloballyMuted !== nextProps.isGloballyMuted) return false;
-  if (prevProps.activePreviewImage !== nextProps.activePreviewImage) return false;
-
-  if (prevProps.followedUsers.has(prevProps.post.creator_id) !== nextProps.followedUsers.has(nextProps.post.creator_id)) return false;
-  if (prevProps.mutualUsers.has(prevProps.post.creator_id) !== nextProps.mutualUsers.has(nextProps.post.creator_id)) return false;
-
-  if (prevProps.likersMap[pid] !== nextProps.likersMap[pid]) return false;
-  if (prevProps.repostersMap[pid] !== nextProps.repostersMap[pid]) return false;
-
-  if (prevProps.isExpanded !== nextProps.isExpanded) return false;
-
-  return true;
-});
 
 // Memo untuk slider rekomendasi
 const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
@@ -100,7 +70,6 @@ const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) =>
   prev.myId === next.myId && prev.followedUsers === next.followedUsers
 );
 
-// ---------- Gallerypost ----------
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -131,10 +100,6 @@ export default function Gallerypost() {
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-  const autoPlayObserverRef = useRef<IntersectionObserver | null>(null);
-  const activeMediaRef = useRef<Set<string>>(new Set());
-  const isMutedRef = useRef(true);
-
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
   const [currentCategory, setCurrentCategory] = useState("all");
@@ -160,10 +125,7 @@ export default function Gallerypost() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
-  const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const lastScrollTimeRef = useRef(0);
-
-  // Preload data saat mount (aggresive)
+  // Preload data
   useEffect(() => {
     const preload = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -173,6 +135,7 @@ export default function Gallerypost() {
         });
       }
       fetchPosts("all", session?.user, 1, false, new Set());
+      initGallery();
     };
     preload();
   }, []);
@@ -182,44 +145,9 @@ export default function Gallerypost() {
   useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
-  useEffect(() => { isMutedRef.current = isGloballyMuted; }, [isGloballyMuted]);
 
-  // Observer autoplay dengan throttle
+  // Observer khusus views (Autoplay sudah diurus internal PostCard.tsx)
   useEffect(() => {
-    autoPlayObserverRef.current = new IntersectionObserver(
-      (entries) => {
-        const now = Date.now();
-        if (now - lastScrollTimeRef.current < 200) return;
-        lastScrollTimeRef.current = now;
-
-        entries.forEach((entry) => {
-          const card = entry.target;
-          const postId = card.getAttribute("data-postid");
-          const media = card.querySelector(".post-audio-element, .post-video-element") as HTMLMediaElement;
-          if (!media || !postId) return;
-
-          if (entry.isIntersecting) {
-            if (!activeMediaRef.current.has(postId)) {
-              document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-                if (el !== media && !el.paused) el.pause();
-              });
-              activeMediaRef.current.add(postId);
-              media.muted = isMutedRef.current;
-              media.currentTime = 0;
-              media.play().catch(() => {});
-            } else {
-              media.muted = isMutedRef.current;
-              if (media.paused) media.play().catch(() => {});
-            }
-          } else {
-            media.pause();
-            activeMediaRef.current.delete(postId);
-          }
-        });
-      },
-      { threshold: 0.6 }
-    );
-
     viewObserverRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -248,9 +176,7 @@ export default function Gallerypost() {
     );
 
     return () => {
-      autoPlayObserverRef.current?.disconnect();
       viewObserverRef.current?.disconnect();
-      if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
     };
   }, []);
 
@@ -259,14 +185,14 @@ export default function Gallerypost() {
     if (!gallery) return;
     const cards = gallery.querySelectorAll<HTMLElement>('.card[data-postid]:not([data-observed])');
     cards.forEach(card => {
-      autoPlayObserverRef.current?.observe(card);
       viewObserverRef.current?.observe(card);
       card.setAttribute('data-observed', 'true');
     });
   }, []);
 
   const handleItemsRendered = useCallback(() => {
-    setTimeout(syncObservers, 50);
+    // Kurangi interval setTimeout agar lebih responsif tanpa memblokir thread
+    setTimeout(syncObservers, 30);
   }, [syncObservers]);
 
   const handleToggleExpand = useCallback((postId: string) => {
@@ -540,7 +466,6 @@ export default function Gallerypost() {
     e.stopPropagation();
     setIsGloballyMuted(prev => {
       const next = !prev;
-      isMutedRef.current = next;
       document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
       return next;
     });
@@ -565,13 +490,10 @@ export default function Gallerypost() {
         .media-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
           margin-bottom: 12px !important; 
-          border-left: none !important;
-          border-right: none !important;
           border-radius: 16px !important;
         }
+        
         .media-post-card-wp [data-postid] img,
         .media-post-card-wp [data-postid] video,
         .media-post-card-wp [data-postid] .post-media-wrapper {
@@ -579,6 +501,7 @@ export default function Gallerypost() {
           border-radius: 16px 16px 0 0 !important;
         }
 
+        /* PERBAIKAN STYLING KARTU TEKS */
         .text-post-card-wp {
           width: 100% !important;
           padding: 0 12px !important;
@@ -592,30 +515,26 @@ export default function Gallerypost() {
           border: 1px solid var(--border-card) !important;
           overflow: hidden !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+          background: var(--bg-main) !important;
+          padding: 16px !important; /* Fix Bug 1: PADDING KONSISTEN */
         }
 
-        .text-post-card-wp [data-postid] img,
-        .text-post-card-wp [data-postid] .avatar,
-        .text-post-card-wp [data-postid] [class*="avatar"],
-        .media-post-card-wp [data-postid] .avatar,
-        .media-post-card-wp [data-postid] [class*="avatar"] {
-          border-radius: 50% !important;
-          aspect-ratio: 1 / 1 !important;
+        img, video, .avatar {
           object-fit: cover !important;
         }
 
         .see-more-btn {
           color: #1f3cff;
           cursor: pointer;
-          font-size: 12px;
-          font-weight: 600;
+          font-size: 13px;
+          font-weight: 700;
           display: inline-block;
           margin-top: 4px;
           background: none;
           border: none;
           padding: 0;
           position: relative;
-          z-index: 10;
+          z-index: 1; /* Fix Bug 2: TURUNKAN Z-INDEX BUTTON */
           pointer-events: auto;
           user-select: none;
         }
@@ -659,10 +578,10 @@ export default function Gallerypost() {
                   {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
 
                   <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
-                    <MemoizedPostCard
+                    {/* Hapus double MemoizedPostCard langsung memanggil PostCard */}
+                    <PostCard
                       post={post}
                       currentUser={currentUser}
-                      isOwner={currentUser?.id === post.creator_id}
                       counts={counts}
                       myLikedPosts={myLikedPosts}
                       myRepostedPosts={myRepostedPosts}
