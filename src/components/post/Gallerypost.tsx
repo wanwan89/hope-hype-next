@@ -494,6 +494,20 @@ export default function Gallerypost() {
         .btn-press:active { transform: scale(0.85); }
         .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
+        
+        /* Shimmer Animation for Skeleton */
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+
+        .skeleton-block {
+          background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-card) 50%, var(--bg-secondary) 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+          border-radius: 8px;
+        }
+
         .slider-recommendation::-webkit-scrollbar { display: none; }
 
         .gallery {
@@ -573,7 +587,37 @@ export default function Gallerypost() {
 
       <div className="gallery" id="mainGallery">
         {isLoading ? (
-          <div className="gallery-skeleton-wrapper"><div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer" /></div></div>
+          // SKELETON LOADING BARU
+          <div style={{ padding: '16px' }}>
+             {/* Ulangi skeleton beberapa kali agar terlihat seperti feed sungguhan */}
+             {[1, 2].map((i) => (
+                <div key={i} style={{ marginBottom: '20px', background: 'var(--bg-main)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
+                  {/* Header: Avatar & Info */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <div className="skeleton-block" style={{ width: '42px', height: '42px', borderRadius: '50%' }}></div>
+                    <div style={{ flex: 1 }}>
+                      <div className="skeleton-block" style={{ width: '40%', height: '14px', marginBottom: '6px' }}></div>
+                      <div className="skeleton-block" style={{ width: '20%', height: '10px' }}></div>
+                    </div>
+                  </div>
+                  {/* Teks Content */}
+                  <div className="skeleton-block" style={{ width: '100%', height: '12px', marginBottom: '8px' }}></div>
+                  <div className="skeleton-block" style={{ width: '90%', height: '12px', marginBottom: '8px' }}></div>
+                  <div className="skeleton-block" style={{ width: '60%', height: '12px', marginBottom: '16px' }}></div>
+                  {/* Media (Opsional, untuk memberi ilusi variasi konten) */}
+                  {i === 1 && <div className="skeleton-block" style={{ width: '100%', height: '200px', borderRadius: '12px', marginBottom: '16px' }}></div>}
+                  {/* Actions/Buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                     <div className="skeleton-block" style={{ width: '80px', height: '28px', borderRadius: '20px' }}></div>
+                     <div style={{ display: 'flex', gap: '16px' }}>
+                        <div className="skeleton-block" style={{ width: '24px', height: '24px', borderRadius: '50%' }}></div>
+                        <div className="skeleton-block" style={{ width: '24px', height: '24px', borderRadius: '50%' }}></div>
+                        <div className="skeleton-block" style={{ width: '24px', height: '24px', borderRadius: '50%' }}></div>
+                     </div>
+                  </div>
+                </div>
+             ))}
+          </div>
         ) : posts.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>{t('no_posts_found')}</p>
         ) : (
@@ -632,7 +676,8 @@ export default function Gallerypost() {
                 {isLoadingMore ? (
                   <div className="pure-spinner"></div>
                 ) : hasMore ? (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
+                  // TEKS HILANG (Hanya elemen kosong agar Virtuoso tetap jalan)
+                  <div style={{ height: '20px' }}></div> 
                 ) : (
                   <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>

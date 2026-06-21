@@ -109,15 +109,20 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted, post.audio_src]);
 
+  // Kalkulasi Tinggi Caption untuk memunculkan tombol "Lihat Selengkapnya"
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
         const el = captionRef.current;
         const prevWebkit = el.style.webkitLineClamp;
+        // Buka batas agar kita bisa ukur tinggi aslinya
         el.style.webkitLineClamp = 'unset';
         const fullHeight = el.scrollHeight;
+        // Kembalikan batas
         el.style.webkitLineClamp = prevWebkit;
-        setShowMoreButton(fullHeight > 75);
+        
+        // 45px adalah estimasi aman untuk tinggi 2 baris (line-height 1.5 * font-size 14.5px ~ 43.5px)
+        setShowMoreButton(fullHeight > 45); 
       }
     });
     return () => cancelAnimationFrame(raf);
@@ -156,7 +161,7 @@ const PostCard: React.FC<PostCardProps> = ({
     width: '100%',
     boxSizing: 'border-box',
     boxShadow: isVideoPost || photoList.length > 0 ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)',
-    textAlign: 'left' // FIX KONSISTENSI UKURAN & MEMAKSA KIRI
+    textAlign: 'left' 
   };
 
   return (
@@ -170,9 +175,8 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
-            {/* FIX 1: Jantung Tengah Presisi (Tanpa Div Wrapper agar Translate tidak dobel) */}
             {poppingHeart?.startsWith(postIdStr) && (
-              <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
+              <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
                 favorite
               </span>
             )}
@@ -312,7 +316,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   display: actuallyExpanded ? 'block' : '-webkit-box',
-                  WebkitLineClamp: actuallyExpanded ? 'unset' : 3,
+                  WebkitLineClamp: actuallyExpanded ? 'unset' : 2, // Ganti ke 2 baris (Media)
                   WebkitBoxOrient: 'vertical',
                   overflow: actuallyExpanded ? 'visible' : 'hidden',
                   transition: 'all 0.3s ease'
@@ -335,6 +339,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
             <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', marginTop: '8px' }}>
               <span>{formattedDate}</span>
+              {/* Badge Iklan Media: Biarkan putih transparan karena background gambar biasanya gelap */}
               {post.is_ad && (
                 <span style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: '#fff' }}>
                   <span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan
@@ -370,11 +375,12 @@ const PostCard: React.FC<PostCardProps> = ({
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {formattedDate}
+                  {/* Badge Iklan Text: Background menyesuaikan (Secondary), warna teks (Main) agar terlihat jelas di mode Terang/Gelap */}
                   {post.is_ad && (
                     <>
                       <span>•</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#1f3cff', fontWeight: 700 }}>
-                        <span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan
+                      <span style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--text-main)' }}>
+                        <span className="material-icons" style={{ fontSize: '12px', color: '#1f3cff' }}>campaign</span> Iklan
                       </span>
                     </>
                   )}
@@ -387,9 +393,8 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           </div>
 
-          {/* FIX 1: Jantung Tengah Presisi untuk Post Text */}
           {poppingHeart?.startsWith(postIdStr) && (
-            <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
+            <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
               favorite
             </span>
           )}
@@ -398,21 +403,20 @@ const PostCard: React.FC<PostCardProps> = ({
             ref={captionRef as React.RefObject<HTMLDivElement>}
             style={{
               marginBottom: showMoreButton ? '4px' : '12px',
-              fontSize: '15px',
+              fontSize: '14.5px', // Samakan font size
               color: 'var(--text-main)',
               lineHeight: 1.5,
               wordBreak: 'break-word',
               display: actuallyExpanded ? 'block' : '-webkit-box', 
-              WebkitLineClamp: actuallyExpanded ? 'unset' : 4, 
+              WebkitLineClamp: actuallyExpanded ? 'unset' : 2, // Ganti ke 2 baris (Teks)
               WebkitBoxOrient: 'vertical',
               overflow: actuallyExpanded ? 'visible' : 'hidden', 
-              textAlign: 'left' // Memastikan teks selalu rata kiri
+              textAlign: 'left' 
             }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
 
-          {/* FIX 2: Tombol 'Lihat Selengkapnya' Rata Kiri & Rapi */}
           {showMoreButton && !actuallyExpanded && ( 
             <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', marginBottom: '12px', color: '#1f3cff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
               Lihat Selengkapnya
