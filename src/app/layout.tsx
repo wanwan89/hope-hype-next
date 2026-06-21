@@ -27,6 +27,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
 import CustomSplash from '@/components/CustomSplash';
+import Providers from '@/components/Providers'; // ✅ Tambahan: React Query Provider
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -462,13 +463,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
 
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider>
-            {renderUI()}
-            <LoginPopup />
-            {!hideOverlays && <Overlays />}
-          </ThemeProvider>
-        </I18nextProvider>
+        {/* ✅ BUNGKUS DENGAN Providers AGAR React Query BISA DIGUNAKAN DI DALAM APLIKASI */}
+        <Providers>
+          <I18nextProvider i18n={i18n}>
+            <ThemeProvider>
+              {renderUI()}
+              <LoginPopup />
+              {!hideOverlays && <Overlays />}
+            </ThemeProvider>
+          </I18nextProvider>
+        </Providers>
       </body>
     </html>
   );
