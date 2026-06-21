@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
@@ -48,67 +48,104 @@ const PostCard: React.FC<PostCardProps> = ({
   isExpanded = false,
   onToggleExpand = () => {},
 }) => {
-  const badge = getUserBadge(post.profiles?.role);
-  const avatarUrl = post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.username}`;
-  const optimizedAvatar = avatarUrl.includes('res.cloudinary.com') && !avatarUrl.includes('f_auto')
-    ? avatarUrl.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/')
-    : avatarUrl;
-  const formattedDate = formatRelativeTime(post.created_at);
-  const isOwner = currentUser && currentUser.id === post.creator_id;
-
   const postIdStr = String(post.id);
   const creatorIdStr = String(post.creator_id);
+  const isOwner = currentUser && currentUser.id === post.creator_id;
 
-  const photoList = post.image_url ? post.image_url.split(',') : [];
+  // --- 1. Nilai turunan dari post (dihitung sekali, tidak berubah kecuali post berubah) ---
+  const photoList = useMemo(
+    () => (post.image_url ? post.image_url.split(',') : []),
+    [post.image_url]
+  );
   const isVideoPost = !!post.video_url;
 
-  const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
-  const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null); 
-  
+  const badge = useMemo(
+    () => getUserBadge(post.profiles?.role),
+    [post.profiles?.role]
+  );
+
+  const rawAvatarUrl =
+    post.profiles?.avatar_url ||
+    `https://ui-avatars.com/api/?name=${post.profiles?.username}`;
+  const optimizedAvatar = useMemo(() => {
+    if (rawAvatarUrl.includes('res.cloudinary.com') && !rawAvatarUrl.includes('f_auto')) {
+      return rawAvatarUrl.replace(
+        '/image/upload/',
+        '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/'
+      );
+    }
+    return rawAvatarUrl;
+  }, [rawAvatarUrl]);
+
+  const formattedDate = useMemo(
+    () => formatRelativeTime(post.created_at),
+    [post.created_at]
+  );
+
+  const optimizedPhotoUrls = useMemo(
+    () => photoList.map((url) => getOptimizedImage(url)),
+    [photoList]
+  );
+
   const likers = likersMap[postIdStr] || [];
   const reposters = repostersMap[postIdStr] || [];
-  const mutualLikers = likers.filter((l: any) => mutualUsers.has(String(l.id)));
-  const mutualReposters = reposters.filter((r: any) => mutualUsers.has(String(r.id)));
+  const mutualLikers = useMemo(
+    () => likers.filter((l: any) => mutualUsers.has(String(l.id))),
+    [likers, mutualUsers]
+  );
+  const mutualReposters = useMemo(
+    () => reposters.filter((r: any) => mutualUsers.has(String(r.id))),
+    [reposters, mutualUsers]
+  );
+
+  // --- 2. Refs dan state lokal ---
+  const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
+  const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const [showMoreButton, setShowMoreButton] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-
   const [localExpanded, setLocalExpanded] = useState(false);
-  const actuallyExpanded = isExpanded || localExpanded; 
+  const actuallyExpanded = isExpanded || localExpanded;
 
+  // --- 3. Observer video/audio (tidak dibuat ulang setiap render) ---
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
     if (!media || !card) return;
-    
+
     media.muted = isGloballyMuted;
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          media.muted = isGloballyMuted;
-          const playPromise = media.play();
-          if (playPromise !== undefined) {
-             playPromise.catch(() => {
-               media.muted = true; 
-               media.play().catch(() => {});
-             });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            media.muted = isGloballyMuted;
+            media.play().catch(() => {
+              media.muted = true;
+              media.play().catch(() => {});
+            });
+
+            // Hentikan media lain yang mungkin masih bermain
+            document
+              .querySelectorAll('.post-video-element, .post-audio-element')
+              .forEach((el: any) => {
+                if (el !== media && !el.paused) el.pause();
+              });
+          } else {
+            media.pause();
           }
-          
-          document.querySelectorAll(".post-video-element, .post-audio-element").forEach((el: any) => {
-            if (el !== media && !el.paused) el.pause();
-          });
-        } else {
-          media.pause();
-        }
-      });
-    }, { threshold: 0.5 });
-    
+        });
+      },
+      { threshold: 0.5 }
+    );
+
     observer.observe(card);
     return () => observer.disconnect();
-  }, [isGloballyMuted, post.audio_src]);
+  }, [isGloballyMuted]); // hanya bergantung pada isGloballyMuted
 
+  // --- 4. Deteksi apakah bio butuh tombol "Lihat Selengkapnya" ---
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
@@ -117,107 +154,259 @@ const PostCard: React.FC<PostCardProps> = ({
         el.style.webkitLineClamp = 'unset';
         const fullHeight = el.scrollHeight;
         el.style.webkitLineClamp = prevWebkit;
-        setShowMoreButton(fullHeight > 45); 
+        setShowMoreButton(fullHeight > 45);
       }
     });
     return () => cancelAnimationFrame(raf);
   }, [post.bio, actuallyExpanded]);
 
-  const renderBioWithMentions = (text: string) => {
-    if (!text) return null;
-    return text.split(/(@\w+|#\w+)/g).map((part, i) => {
-      if (part.startsWith('@')) {
-        return (
-          <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/data?id=${part.substring(1)}`); }} style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}>{part}</span>
-        );
-      } else if (part.startsWith('#')) {
-        return (
-          <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/search?q=${encodeURIComponent(part)}`); }} style={{ color: 'var(--text-muted)', fontWeight: 400, cursor: 'pointer' }}>{part}</span>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
-  };
+  // --- 5. Render bio dengan mention & hashtag (dimemo) ---
+  const renderBioWithMentions = useCallback(
+    (text: string) => {
+      if (!text) return null;
+      return text.split(/(@\w+|#\w+)/g).map((part, i) => {
+        if (part.startsWith('@')) {
+          return (
+            <span
+              key={i}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/data?id=${part.substring(1)}`);
+              }}
+              style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}
+            >
+              {part}
+            </span>
+          );
+        } else if (part.startsWith('#')) {
+          return (
+            <span
+              key={i}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/search?q=${encodeURIComponent(part)}`);
+              }}
+              style={{ color: 'var(--text-muted)', fontWeight: 400, cursor: 'pointer' }}
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      });
+    },
+    [router]
+  );
 
-  const handleToggleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setLocalExpanded(prev => !prev);
-    onToggleExpand(postIdStr);
-  }, [onToggleExpand, postIdStr]);
+  const bioContent = useMemo(
+    () => renderBioWithMentions(post.bio?.trim()),
+    [post.bio, renderBioWithMentions]
+  );
 
-  const cardStyle: React.CSSProperties = {
-    overflow: actuallyExpanded ? 'visible' : 'hidden', 
-    background: 'var(--bg-main)',
-    borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
-    padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
-    border: '1px solid var(--border-card)',
-    position: 'relative',
-    width: '100%',
-    boxSizing: 'border-box',
-    boxShadow: isVideoPost || photoList.length > 0 ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)',
-    textAlign: 'left' 
-  };
+  const handleToggleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      setLocalExpanded((prev) => !prev);
+      onToggleExpand(postIdStr);
+    },
+    [onToggleExpand, postIdStr]
+  );
 
+  // Style card dimemo agar tidak membuat objek baru setiap render
+  const cardStyle: React.CSSProperties = useMemo(
+    () => ({
+      overflow: actuallyExpanded ? 'visible' : 'hidden',
+      background: 'var(--bg-main)',
+      borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
+      padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
+      border: '1px solid var(--border-card)',
+      position: 'relative' as const,
+      width: '100%',
+      boxSizing: 'border-box' as const,
+      boxShadow:
+        isVideoPost || photoList.length > 0
+          ? 'none'
+          : '0 4px 12px rgba(0, 0, 0, 0.03)',
+      textAlign: 'left' as const,
+    }),
+    [actuallyExpanded, isVideoPost, photoList.length]
+  );
+
+  // ====================== RENDER ======================
   return (
-    <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card"
+    <div
+      key={postIdStr}
+      id={`post-${postIdStr}`}
+      data-postid={postIdStr}
+      className="card"
       ref={cardRef}
       style={cardStyle}
-      onClick={(e) => { if(!photoList.length && !isVideoPost) handleMediaClick(e, postIdStr, creatorIdStr); }}>
-
+      onClick={(e) => {
+        if (!photoList.length && !isVideoPost)
+          handleMediaClick(e, postIdStr, creatorIdStr);
+      }}
+    >
       {(photoList.length > 0 || isVideoPost) ? (
         <>
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
             {poppingHeart?.startsWith(postIdStr) && (
-              <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
+              <span
+                key={poppingHeart}
+                className="material-icons"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  color: '#ff2e63',
+                  fontSize: '160px',
+                  animation:
+                    'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                  filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))',
+                  zIndex: 9999,
+                  pointerEvents: 'none',
+                }}
+              >
                 favorite
               </span>
             )}
 
-            <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
+            {/* Top right badges */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                zIndex: 2,
+                display: 'flex',
+                gap: '6px',
+              }}
+            >
               {isVideoPost && (
-                <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-                  <span className="material-icons" style={{ fontSize: '12px' }}>videocam</span> Video
+                <div
+                  style={{
+                    background: 'rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(8px)',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  <span className="material-icons" style={{ fontSize: '12px' }}>
+                    videocam
+                  </span>{' '}
+                  Video
                 </div>
               )}
               {photoList.length > 1 && !isVideoPost && (
-                <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-                  <span className="material-icons" style={{ fontSize: '12px' }}>collections</span>
-                  <span>{currentSlide + 1}/{photoList.length}</span>
+                <div
+                  style={{
+                    background: 'rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(8px)',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  <span className="material-icons" style={{ fontSize: '12px' }}>
+                    collections
+                  </span>
+                  <span>
+                    {currentSlide + 1}/{photoList.length}
+                  </span>
                 </div>
               )}
             </div>
 
+            {/* Tombol mute */}
             {(isVideoPost || post.audio_src) && (
-              <button className="btn-press" onClick={(e) => {
+              <button
+                className="btn-press"
+                onClick={(e) => {
                   toggleMute(e);
                   if (mediaRef.current && isGloballyMuted) {
-                     mediaRef.current.muted = false;
-                     mediaRef.current.play().catch(()=>{});
+                    mediaRef.current.muted = false;
+                    mediaRef.current.play().catch(() => {});
                   }
-              }}
-                style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 2, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '12px',
+                  zIndex: 2,
+                  background: 'rgba(0,0,0,0.6)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'white',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: '18px' }}>
+                  {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                </span>
               </button>
             )}
 
+            {/* Floating bubbles */}
             <FloatingBubbles
               likers={isOwner ? mutualLikers : []}
               reposters={!isOwner ? mutualReposters : []}
             />
 
-            <div className="photo-carousel" onScroll={(e) => {
-              const target = e.target as HTMLDivElement;
-              const index = Math.round(target.scrollLeft / target.offsetWidth);
-              if (index !== currentSlide) setCurrentSlide(index);
-            }}>
+            {/* Carousel media */}
+            <div
+              className="photo-carousel"
+              onScroll={(e) => {
+                const target = e.target as HTMLDivElement;
+                const index = Math.round(target.scrollLeft / target.offsetWidth);
+                if (index !== currentSlide) setCurrentSlide(index);
+              }}
+            >
               {isVideoPost ? (
-                <div className="carousel-item" onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr)}
-                  style={{ aspectRatio: '2 / 3', width: '100%', overflow: 'hidden', position: 'relative', background: '#000', cursor: 'pointer' }}>
+                <div
+                  className="carousel-item"
+                  onClick={(e) =>
+                    handleMediaClick(e, postIdStr, creatorIdStr)
+                  }
+                  style={{
+                    aspectRatio: '2 / 3',
+                    width: '100%',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    background: '#000',
+                    cursor: 'pointer',
+                  }}
+                >
                   {!videoLoaded && (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 3,
+                      }}
+                    >
                       <div className="loading-spinner" />
                     </div>
                   )}
@@ -231,26 +420,68 @@ const PostCard: React.FC<PostCardProps> = ({
                     loop
                     muted={isGloballyMuted}
                     onLoadedData={() => setVideoLoaded(true)}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', pointerEvents: 'none', opacity: videoLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'top center',
+                      pointerEvents: 'none',
+                      opacity: videoLoaded ? 1 : 0,
+                      transition: 'opacity 0.3s',
+                    }}
                   />
                 </div>
               ) : (
                 photoList.map((url: string, i: number) => {
                   const [imgLoaded, setImgLoaded] = useState(false);
                   return (
-                    <div key={i} className="carousel-item" style={{ aspectRatio: '3 / 4', width: '100%', overflow: 'hidden', position: 'relative', background: '#1a1a1a' }}>
+                    <div
+                      key={i}
+                      className="carousel-item"
+                      style={{
+                        aspectRatio: '3 / 4',
+                        width: '100%',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        background: '#1a1a1a',
+                      }}
+                    >
                       {!imgLoaded && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 3,
+                          }}
+                        >
                           <div className="loading-spinner" />
                         </div>
                       )}
                       <img
-                        src={getOptimizedImage(url)}
+                        src={optimizedPhotoUrls[i]}
                         decoding="async"
                         alt={`Postingan Galeri ${i + 1}`}
                         onLoad={() => setImgLoaded(true)}
-                        onClick={(e) => handleMediaClick(e, postIdStr, creatorIdStr, getOptimizedImage(url))}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', cursor: 'pointer', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+                        onClick={(e) =>
+                          handleMediaClick(
+                            e,
+                            postIdStr,
+                            creatorIdStr,
+                            optimizedPhotoUrls[i]
+                          )
+                        }
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'top center',
+                          cursor: 'pointer',
+                          opacity: imgLoaded ? 1 : 0,
+                          transition: 'opacity 0.3s',
+                        }}
                       />
                     </div>
                   );
@@ -258,37 +489,81 @@ const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
 
+            {/* Dots navigasi */}
             {photoList.length > 1 && !isVideoPost && (
-              <div className={`carousel-dots dots-${postIdStr}`} style={{ zIndex: 2 }}>
+              <div
+                className={`carousel-dots dots-${postIdStr}`}
+                style={{ zIndex: 2 }}
+              >
                 {photoList.map((_: any, i: number) => (
-                  <div key={i} className={`dot ${i === currentSlide ? 'active' : ''}`} />
+                  <div
+                    key={i}
+                    className={`dot ${i === currentSlide ? 'active' : ''}`}
+                  />
                 ))}
               </div>
             )}
           </div>
 
-          <div className="overlay" style={{ pointerEvents: 'auto' }}> 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pointerEvents: 'auto' }}>
+          {/* Overlay informasi */}
+          <div className="overlay" style={{ pointerEvents: 'auto' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                width: '100%',
+                pointerEvents: 'auto',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <h2 className="name" onClick={() => router.push(`/data?id=${creatorIdStr}`)}
-                  style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                  {post.profiles?.full_name || post.profiles?.username || "User"}
+                <h2
+                  className="name"
+                  onClick={() => router.push(`/data?id=${creatorIdStr}`)}
+                  style={{
+                    margin: 0,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  {post.profiles?.full_name || post.profiles?.username || 'User'}
                   <span dangerouslySetInnerHTML={{ __html: badge }}></span>
                 </h2>
-                <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers}
-                  mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
+                <FollowButton
+                  creatorId={creatorIdStr}
+                  currentUser={currentUser}
+                  followedUsers={followedUsers}
+                  mutualUsers={mutualUsers}
+                  animatingFollows={animatingFollows}
+                  handleFollowToggle={handleFollowToggle}
+                  t={t}
+                />
               </div>
-              <button className="options-btn btn-press" aria-label="Opsi Postingan"
-                onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              <button
+                className="options-btn btn-press"
+                aria-label="Opsi Postingan"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openShareOptions(post, isOwner);
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <circle cx="12" cy="5" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="12" cy="19" r="2" />
+                </svg>
               </button>
             </div>
 
-            <div 
+            {/* Bio dengan expand/collapse */}
+            <div
               style={{
-                maxHeight: actuallyExpanded ? 'none' : 'auto', 
+                maxHeight: actuallyExpanded ? 'none' : 'auto',
                 overflowY: 'visible',
-                background: actuallyExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
+                background: actuallyExpanded
+                  ? 'rgba(0,0,0,0.65)'
+                  : 'transparent',
                 backdropFilter: actuallyExpanded ? 'blur(10px)' : 'none',
                 padding: actuallyExpanded ? '12px' : '0',
                 borderRadius: '12px',
@@ -296,7 +571,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 transition: 'all 0.3s ease-in-out',
                 pointerEvents: 'auto',
                 zIndex: 2,
-                textAlign: 'left'
+                textAlign: 'left',
               }}
               onWheel={(e) => actuallyExpanded && e.stopPropagation()}
               onTouchMove={(e) => actuallyExpanded && e.stopPropagation()}
@@ -314,84 +589,271 @@ const PostCard: React.FC<PostCardProps> = ({
                   WebkitLineClamp: actuallyExpanded ? 'unset' : 2,
                   WebkitBoxOrient: 'vertical',
                   overflow: actuallyExpanded ? 'visible' : 'hidden',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
                 }}
               >
-                {renderBioWithMentions(post.bio?.trim())}
+                {bioContent}
               </p>
-              
-              {showMoreButton && !actuallyExpanded && ( 
-                <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', margin: '4px 0 0 0', color: '#1f3cff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
+
+              {showMoreButton && !actuallyExpanded && (
+                <button
+                  className="see-more-btn"
+                  onClick={handleToggleClick}
+                  style={{
+                    display: 'block',
+                    textAlign: 'left',
+                    margin: '4px 0 0 0',
+                    color: '#1f3cff',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                  }}
+                >
                   Lihat Selengkapnya
                 </button>
               )}
-              {actuallyExpanded && ( 
-                <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', margin: '4px 0 0 0', color: '#ff7b9c', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
+              {actuallyExpanded && (
+                <button
+                  className="see-more-btn"
+                  onClick={handleToggleClick}
+                  style={{
+                    display: 'block',
+                    textAlign: 'left',
+                    margin: '4px 0 0 0',
+                    color: '#ff2e63',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                  }}
+                >
                   Lebih Sedikit
                 </button>
               )}
             </div>
 
-            <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', marginTop: '8px' }}>
+            {/* Tanggal & Iklan */}
+            <div
+              className="post-date-wrapper"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                pointerEvents: 'auto',
+                marginTop: '8px',
+              }}
+            >
               <span>{formattedDate}</span>
               {post.is_ad && (
-                <span style={{ background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                  <span className="material-icons" style={{ fontSize: '12px', color: '#fff' }}>campaign</span> Iklan
+                <span
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(4px)',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                  }}
+                >
+                  <span
+                    className="material-icons"
+                    style={{ fontSize: '12px', color: '#fff' }}
+                  >
+                    campaign
+                  </span>{' '}
+                  Iklan
                 </span>
               )}
             </div>
 
-            <div className="actions" style={{ pointerEvents: 'auto' }}>
+            {/* Tombol aksi */}
+            <div
+              className="actions"
+              style={{ pointerEvents: 'auto' }}
+            >
               <button
                 onClick={() => router.push(`/post?id=${postIdStr}`)}
                 className="primary btn-press"
-                style={{ display: 'inline-block', border: 'none', background: '#1f3cff', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                style={{
+                  display: 'inline-block',
+                  border: 'none',
+                  background: '#1f3cff',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
                 {t('view_detail')}
               </button>
-              <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts}
-                mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
+              <EngagementButtons
+                postId={postIdStr}
+                creatorId={creatorIdStr}
+                counts={counts}
+                mySavedPosts={mySavedPosts}
+                myRepostedPosts={myRepostedPosts}
+                myLikedPosts={myLikedPosts}
                 animatingReposts={animatingReposts}
-                handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
+                handleSave={handleSave}
+                openRepostModal={openRepostModal}
+                handleLike={handleLike}
+              />
             </div>
           </div>
         </>
       ) : (
+        // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
-              <img src={optimizedAvatar} alt="Avatar Profil" decoding="async" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
-                  {post.profiles?.full_name || post.profiles?.username || "User"}
+          {/* Header */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: '8px',
+            }}
+          >
+            <div
+              style={{ display: 'flex', gap: '12px', cursor: 'pointer' }}
+              onClick={() => router.push(`/data?id=${creatorIdStr}`)}
+            >
+              <img
+                src={optimizedAvatar}
+                alt="Avatar Profil"
+                decoding="async"
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 700,
+                    fontSize: '15px',
+                    color: 'var(--text-main)',
+                  }}
+                >
+                  {post.profiles?.full_name || post.profiles?.username || 'User'}
                   <span dangerouslySetInnerHTML={{ __html: badge }}></span>
-                  <FollowButton creatorId={creatorIdStr} currentUser={currentUser} followedUsers={followedUsers}
-                    mutualUsers={mutualUsers} animatingFollows={animatingFollows} handleFollowToggle={handleFollowToggle} t={t} />
+                  <FollowButton
+                    creatorId={creatorIdStr}
+                    currentUser={currentUser}
+                    followedUsers={followedUsers}
+                    mutualUsers={mutualUsers}
+                    animatingFollows={animatingFollows}
+                    handleFollowToggle={handleFollowToggle}
+                    t={t}
+                  />
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
                   {formattedDate}
                   {post.is_ad && (
                     <>
                       <span>•</span>
-                      <span style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--text-main)' }}>
-                        <span className="material-icons" style={{ fontSize: '12px', color: '#1f3cff' }}>campaign</span> Iklan
+                      <span
+                        style={{
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-card)',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2px',
+                          color: 'var(--text-main)',
+                        }}
+                      >
+                        <span
+                          className="material-icons"
+                          style={{ fontSize: '12px', color: '#1f3cff' }}
+                        >
+                          campaign
+                        </span>{' '}
+                        Iklan
                       </span>
                     </>
                   )}
                 </span>
               </div>
             </div>
-            <button className="btn-press" aria-label="Opsi Postingan" onClick={(e) => { e.stopPropagation(); openShareOptions(post, isOwner); }}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            <button
+              className="btn-press"
+              aria-label="Opsi Postingan"
+              onClick={(e) => {
+                e.stopPropagation();
+                openShareOptions(post, isOwner);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
             </button>
           </div>
 
+          {/* Animasi hati */}
           {poppingHeart?.startsWith(postIdStr) && (
-            <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
+            <span
+              key={poppingHeart}
+              className="material-icons"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                color: '#ff2e63',
+                fontSize: '160px',
+                animation:
+                  'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))',
+                zIndex: 9999,
+                pointerEvents: 'none',
+              }}
+            >
               favorite
             </span>
           )}
 
+          {/* Bio */}
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
             style={{
@@ -400,27 +862,58 @@ const PostCard: React.FC<PostCardProps> = ({
               color: 'var(--text-main)',
               lineHeight: 1.5,
               wordBreak: 'break-word',
-              display: actuallyExpanded ? 'block' : '-webkit-box', 
+              display: actuallyExpanded ? 'block' : '-webkit-box',
               WebkitLineClamp: actuallyExpanded ? 'unset' : 2,
               WebkitBoxOrient: 'vertical',
-              overflow: actuallyExpanded ? 'visible' : 'hidden', 
-              textAlign: 'left' 
+              overflow: actuallyExpanded ? 'visible' : 'hidden',
+              textAlign: 'left',
             }}
           >
-            {renderBioWithMentions(post.bio?.trim())}
+            {bioContent}
           </div>
 
-          {showMoreButton && !actuallyExpanded && ( 
-            <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', marginBottom: '12px', color: '#1f3cff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
+          {showMoreButton && !actuallyExpanded && (
+            <button
+              className="see-more-btn"
+              onClick={handleToggleClick}
+              style={{
+                display: 'block',
+                textAlign: 'left',
+                marginBottom: '12px',
+                color: '#1f3cff',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 700,
+                background: 'none',
+                border: 'none',
+                padding: 0,
+              }}
+            >
               Lihat Selengkapnya
             </button>
           )}
-          {actuallyExpanded && ( 
-            <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', marginBottom: '12px', color: '#ff2e63', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
+          {actuallyExpanded && (
+            <button
+              className="see-more-btn"
+              onClick={handleToggleClick}
+              style={{
+                display: 'block',
+                textAlign: 'left',
+                marginBottom: '12px',
+                color: '#ff2e63',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 700,
+                background: 'none',
+                border: 'none',
+                padding: 0,
+              }}
+            >
               Lebih Sedikit
             </button>
           )}
 
+          {/* Audio player */}
           {post.audio_src && (
             <>
               <audio
@@ -431,35 +924,99 @@ const PostCard: React.FC<PostCardProps> = ({
                 playsInline
                 autoPlay
                 muted={isGloballyMuted}
-                style={{ width: '1px', height: '1px', position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                style={{
+                  width: '1px',
+                  height: '1px',
+                  position: 'absolute',
+                  opacity: 0,
+                  pointerEvents: 'none',
+                }}
               />
-              <div style={{ position: 'relative', height: '40px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={(e) => e.stopPropagation()}>
-                <MusicMarquee post={post} isOverlay={false} mediaRef={mediaRef} />
-                <button className="btn-press" onClick={(e) => {
+              <div
+                style={{
+                  position: 'relative',
+                  height: '40px',
+                  marginTop: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MusicMarquee
+                  post={post}
+                  isOverlay={false}
+                  mediaRef={mediaRef}
+                />
+                <button
+                  className="btn-press"
+                  onClick={(e) => {
                     toggleMute(e);
                     if (mediaRef.current && isGloballyMuted) {
-                       mediaRef.current.muted = false;
-                       mediaRef.current.play().catch(()=>{});
+                      mediaRef.current.muted = false;
+                      mediaRef.current.play().catch(() => {});
                     }
-                }}
-                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', color: 'var(--text-main)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}>
-                  <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
+                  }}
+                  style={{
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-card)',
+                    color: 'var(--text-main)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 2,
+                  }}
+                >
+                  <span className="material-icons" style={{ fontSize: '18px' }}>
+                    {isGloballyMuted ? 'volume_off' : 'volume_up'}
+                  </span>
                 </button>
               </div>
             </>
           )}
 
-          <div className="actions" style={{ borderTop: '1px solid var(--border-card)', marginTop: '4px', paddingTop: '12px' }} onClick={(e) => e.stopPropagation()}>
+          {/* Actions */}
+          <div
+            className="actions"
+            style={{
+              borderTop: '1px solid var(--border-card)',
+              marginTop: '4px',
+              paddingTop: '12px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => router.push(`/post?id=${postIdStr}`)}
               className="btn-press"
-              style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'transparent', border: 'none', fontWeight: 600, display: 'inline-block', cursor: 'pointer', padding: 0 }}>
+              style={{
+                fontSize: '13px',
+                color: 'var(--text-muted)',
+                background: 'transparent',
+                border: 'none',
+                fontWeight: 600,
+                display: 'inline-block',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
               {t('view_detail')}
             </button>
-            <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts}
-              mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts}
+            <EngagementButtons
+              postId={postIdStr}
+              creatorId={creatorIdStr}
+              counts={counts}
+              mySavedPosts={mySavedPosts}
+              myRepostedPosts={myRepostedPosts}
+              myLikedPosts={myLikedPosts}
               animatingReposts={animatingReposts}
-              handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
+              handleSave={handleSave}
+              openRepostModal={openRepostModal}
+              handleLike={handleLike}
+            />
           </div>
         </>
       )}

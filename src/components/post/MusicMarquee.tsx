@@ -10,6 +10,7 @@ type MusicMarqueeProps = {
 const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, mediaRef }) => {
   if (!post.audio_src) return null;
 
+  // Bersihkan & optimalkan URL audio (Cloudinary ke MP3)
   let cleanAudio = (post.audio_src || "").trim();
   if (cleanAudio.includes('res.cloudinary.com') && cleanAudio.includes('/video/upload/')) {
     cleanAudio = cleanAudio.replace('/video/upload/', '/video/upload/f_mp3/');
@@ -21,7 +22,8 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
   const fullText = `${songTitle} — ${songArtist}`;
 
   return (
-    <div className="music-marquee-container"
+    <div
+      className="music-marquee-container"
       style={{
         position: isOverlay ? 'absolute' : 'relative',
         top: isOverlay ? '12px' : 'auto',
@@ -38,9 +40,10 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
         gap: '6px',
         overflow: 'hidden',
         border: isOverlay ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-card)',
-        contain: 'paint' // Mencegah animasi membocorkan performa rendering
+        contain: 'paint', // Batasi area render ulang
       }}
     >
+      {/* Animasi marquee */}
       <style>{`
         @keyframes slideMusicText {
           0% { transform: translateX(100%); }
@@ -50,16 +53,16 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
           display: inline-block;
           white-space: nowrap;
           animation: slideMusicText 6s linear infinite;
-          will-change: transform; /* Bantuan Hardware Acceleration untuk GPU */
+          will-change: transform;       /* GPU accelerated */
         }
       `}</style>
 
       <span className="material-icons" style={{ fontSize: '12px', color: isOverlay ? '#fff' : 'var(--text-main)' }}>
         music_note
       </span>
-      
+
       <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', width: '100%', position: 'relative', flex: 1 }}>
-        <div 
+        <div
           className="marquee-track"
           style={{
             color: isOverlay ? '#fff' : 'var(--text-main)',
@@ -71,12 +74,12 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
         </div>
       </div>
 
-      <audio 
-        ref={mediaRef} 
-        className="post-audio-element" 
-        loop 
-        preload="none" 
-        playsInline 
+      <audio
+        ref={mediaRef}
+        className="post-audio-element"
+        loop
+        preload="none"
+        playsInline
         style={{ display: 'none' }}
       >
         <source src={finalAudio} type="audio/mpeg" />
@@ -86,5 +89,8 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
 };
 
 export default memo(MusicMarquee, (prev, next) => {
-  return prev.post.id === next.post.id && prev.isOverlay === next.isOverlay;
+  return (
+    prev.post.id === next.post.id &&
+    prev.isOverlay === next.isOverlay
+  );
 });
