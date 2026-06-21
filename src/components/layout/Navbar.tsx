@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import './Create.css';
 
 // Komponen lingkaran berputar (chase spinner)
 function CircularChase() {
