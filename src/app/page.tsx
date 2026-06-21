@@ -1,4 +1,5 @@
 // src/app/page.tsx
+import React from 'react'; // 🔥 TAMBAHKAN INI DI BARIS PALING ATAS 🔥
 import { Metadata } from 'next';
 import Gallery from '@/components/post/Gallerypost';
 
