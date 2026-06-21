@@ -10,7 +10,6 @@ import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
-import './Gallery.css'; 
 
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
@@ -21,11 +20,10 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// Memo untuk slider rekomendasi
 const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
   if (!posts.length) return null;
   return (
-    <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
+    <div style={{ margin: '15px 12px 35px 12px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
         <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
         <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
@@ -110,12 +108,7 @@ export default function Gallerypost() {
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const POSTS_PER_PAGE = 15;
 
-  const [repostModal, setRepostModal] = useState<{
-    isOpen: boolean;
-    postId: string;
-    creatorId: string;
-    isUnrepost: boolean;
-  } | null>(null);
+  const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string; isUnrepost: boolean; } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
@@ -125,7 +118,6 @@ export default function Gallerypost() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
-  // Preload data
   useEffect(() => {
     const preload = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -146,7 +138,6 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // Observer khusus views (Autoplay sudah diurus internal PostCard.tsx)
   useEffect(() => {
     viewObserverRef.current = new IntersectionObserver(
       (entries) => {
@@ -174,10 +165,7 @@ export default function Gallerypost() {
       },
       { threshold: 0.6 }
     );
-
-    return () => {
-      viewObserverRef.current?.disconnect();
-    };
+    return () => viewObserverRef.current?.disconnect();
   }, []);
 
   const syncObservers = useCallback(() => {
@@ -190,19 +178,13 @@ export default function Gallerypost() {
     });
   }, []);
 
-  const handleItemsRendered = useCallback(() => {
-    // Kurangi interval setTimeout agar lebih responsif tanpa memblokir thread
-    setTimeout(syncObservers, 30);
-  }, [syncObservers]);
+  const handleItemsRendered = useCallback(() => setTimeout(syncObservers, 30), [syncObservers]);
 
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(postId)) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
-      }
+      if (newSet.has(postId)) newSet.delete(postId);
+      else newSet.add(postId);
       return newSet;
     });
   }, []);
@@ -210,12 +192,7 @@ export default function Gallerypost() {
   useEffect(() => {
     const handleCommentRefresh = (e: any) => {
       const postId = String(e.detail.postId);
-      if (postId) {
-        setCounts((prev) => ({
-          ...prev,
-          [postId]: { ...prev[postId], comments: (prev[postId]?.comments || 0) + 1 },
-        }));
-      }
+      if (postId) setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], comments: (prev[postId]?.comments || 0) + 1 } }));
     };
     window.addEventListener('commentAdded', handleCommentRefresh);
     return () => window.removeEventListener('commentAdded', handleCommentRefresh);
@@ -364,13 +341,10 @@ export default function Gallerypost() {
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
     try {
-      if (isFollowing) {
-        await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      } else {
+      if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
+      else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error || error.code === '23505') {
-          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
-        }
+        if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
     } catch (err) {}
   }, []);
@@ -382,17 +356,13 @@ export default function Gallerypost() {
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
     try {
-      if (isLiked) {
-        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
+      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: postId });
-        }
+        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
       }
     } catch (err) {}
   }, []);
-
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
@@ -400,23 +370,17 @@ export default function Gallerypost() {
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-      
-      // FIX Bug 4: Menggunakan ID dinamis agar dirender ulang oleh React
       setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
       lastTapRef.current[postId] = now;
       if (imageUrl) {
-        setTimeout(() => {
-          if (lastTapRef.current[postId] === now) {
-            setActivePreviewImage(imageUrl);
-            lastTapRef.current[postId] = 0;
-          }
-        }, 360);
+        setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
       }
     }
   }, [handleLike]);
+
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
     const { postId, creatorId, isUnrepost } = repostModal;
@@ -429,9 +393,8 @@ export default function Gallerypost() {
     setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
     try {
-      if (isUnrepost) {
-        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
+      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
         if (error) {
           setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
@@ -455,121 +418,39 @@ export default function Gallerypost() {
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
     try {
-      if (isSaved) {
-        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
-        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (error && error.code !== "23505") console.error(error);
-      }
+      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
     } catch (err) {}
   }, []);
 
+  // FIX AUDIO MUTE SYNC: Memastikan kalau di tekan play langsung tereksekusi!
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setIsGloballyMuted(prev => {
       const next = !prev;
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
+      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
+        el.muted = next; 
+        if (!next && el.paused) {
+           el.play().catch(() => {});
+        }
+      });
       return next;
     });
   }, []);
 
   return (
     <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0 }}>
-      <style>{`
-        .btn-press { transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .btn-press:active { transform: scale(0.85); }
-        .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
-        @keyframes pureSpin { 100% { transform: rotate(360deg); } }
-        .slider-recommendation::-webkit-scrollbar { display: none; }
-
-        .gallery {
-          width: 100% !important;
-          max-width: 100% !important;
-          padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0 !important;
-          margin: 0 !important;
-        }
-
-        .media-post-card-wp [data-postid] {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-bottom: 12px !important; 
-          border-radius: 16px !important;
-        }
-        
-        .media-post-card-wp [data-postid] img,
-        .media-post-card-wp [data-postid] video,
-        .media-post-card-wp [data-postid] .post-media-wrapper {
-          width: 100% !important;
-          border-radius: 16px 16px 0 0 !important;
-        }
-
-        /* PERBAIKAN STYLING KARTU TEKS */
-        .text-post-card-wp {
-          width: 100% !important;
-          padding: 0 12px !important;
-          box-sizing: border-box !important;
-        }
-        .text-post-card-wp [data-postid] {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-bottom: 14px !important;
-          border-radius: 20px !important;
-          border: 1px solid var(--border-card) !important;
-          overflow: hidden !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
-          background: var(--bg-main) !important;
-          padding: 16px !important; /* Fix Bug 1: PADDING KONSISTEN */
-        }
-
-        img, video, .avatar {
-          object-fit: cover !important;
-        }
-
-        .see-more-btn {
-          color: #1f3cff;
-          cursor: pointer;
-          font-size: 13px;
-          font-weight: 700;
-          display: inline-block;
-          margin-top: 4px;
-          background: none;
-          border: none;
-          padding: 0;
-          position: relative;
-          z-index: 1; /* Fix Bug 2: TURUNKAN Z-INDEX BUTTON */
-          pointer-events: auto;
-          user-select: none;
-        }
-        .see-more-btn:hover {
-          opacity: 0.8;
-        }
-      `}</style>
-
-      <RepostModal
-        isOpen={!!repostModal}
-        postId={repostModal?.postId || ''}
-        creatorId={repostModal?.creatorId || ''}
-        note={repostNote}
-        setNote={setRepostNote}
-        onClose={() => setRepostModal(null)}
-        onConfirm={handleConfirmRepost}
-        isUnrepost={repostModal?.isUnrepost || false}
-      />
+      <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={handleConfirmRepost} isUnrepost={repostModal?.isUnrepost || false} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      <div className="gallery" id="mainGallery">
+      <div className="gallery" id="mainGallery" style={{ width: '100%', margin: 0, paddingBottom: '100px' }}>
         {isLoading ? (
-          <div className="gallery-skeleton-wrapper"><div className="gallery-skeleton-card"><div className="gallery-skeleton-shimmer" /></div></div>
+          <div style={{ textAlign: 'center', padding: '50px' }}><div style={{ width: '30px', height: '30px', margin: '0 auto', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div></div>
         ) : posts.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '50px' }}>{t('no_posts_found')}</p>
         ) : (
           <Virtuoso
-            useWindowScroll
-            data={posts}
-            endReached={handleLoadMore}
-            increaseViewportBy={{ top: 0, bottom: 1200 }}
-            overscan={600}
-            itemsRendered={handleItemsRendered}
+            useWindowScroll data={posts} endReached={handleLoadMore} increaseViewportBy={{ top: 0, bottom: 1200 }} overscan={600} itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
               const isTextOrAudio = !post.image_url && !post.video_url;
               const isExpanded = expandedPosts.has(post.id);
@@ -579,36 +460,15 @@ export default function Gallerypost() {
                   {index === randomSliderIndex && <MemoizedSlider posts={suggestedPosts} />}
                   {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
 
-                  <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
-                    {/* Hapus double MemoizedPostCard langsung memanggil PostCard */}
+                  {/* KUNCI MENGHAPUS BENTROK CSS GLOBAL ADALAH DI SINI! (Dibuat inline style murni) */}
+                  <div style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0', marginBottom: isTextOrAudio ? '14px' : '20px' }}>
                     <PostCard
-                      post={post}
-                      currentUser={currentUser}
-                      counts={counts}
-                      myLikedPosts={myLikedPosts}
-                      myRepostedPosts={myRepostedPosts}
-                      mySavedPosts={mySavedPosts}
-                      followedUsers={followedUsers}
-                      mutualUsers={mutualUsers}
-                      animatingFollows={animatingFollows}
-                      animatingReposts={animatingReposts}
-                      isGloballyMuted={isGloballyMuted}
-                      poppingHeart={poppingHeart}
-                      activePreviewImage={activePreviewImage}
-                      likersMap={likersMap}
-                      repostersMap={repostersMap}
-                      handleLike={handleLike}
-                      handleSave={handleSave}
-                      openRepostModal={openRepostModal}
-                      handleMediaClick={handleMediaClick}
-                      toggleMute={toggleMute}
-                      openShareOptions={openShareOptions}
-                      handleFollowToggle={handleFollowToggle}
-                      setActivePreviewImage={setActivePreviewImage}
-                      router={router}
-                      t={t}
-                      isExpanded={isExpanded}
-                      onToggleExpand={handleToggleExpand}
+                      post={post} currentUser={currentUser} counts={counts} myLikedPosts={myLikedPosts} myRepostedPosts={myRepostedPosts}
+                      mySavedPosts={mySavedPosts} followedUsers={followedUsers} mutualUsers={mutualUsers} animatingFollows={animatingFollows}
+                      animatingReposts={animatingReposts} isGloballyMuted={isGloballyMuted} poppingHeart={poppingHeart} activePreviewImage={activePreviewImage}
+                      likersMap={likersMap} repostersMap={repostersMap} handleLike={handleLike} handleSave={handleSave} openRepostModal={openRepostModal}
+                      handleMediaClick={handleMediaClick} toggleMute={toggleMute} openShareOptions={openShareOptions} handleFollowToggle={handleFollowToggle}
+                      setActivePreviewImage={setActivePreviewImage} router={router} t={t} isExpanded={isExpanded} onToggleExpand={handleToggleExpand}
                     />
                   </div>
                 </React.Fragment>
@@ -616,21 +476,13 @@ export default function Gallerypost() {
             }}
             components={{ Footer: () => (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0 80px 0', width: '100%' }}>
-                {isLoadingMore ? (
-                  <div className="pure-spinner"></div>
-                ) : hasMore ? (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>
-                ) : (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span>
-                    Tidak ada postingan lagi
-                  </span>
-                )}
+                {isLoadingMore ? (<div style={{ width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>) : hasMore ? (<span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Scroll ke bawah untuk memuat...</span>) : (<span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><span className="material-icons" style={{ fontSize: '14px', color: '#1f3cff' }}>check_circle</span> Tidak ada postingan lagi</span>)}
               </div>
             )}}
           />
         )}
       </div>
+      <style>{`@keyframes pureSpin { 100% { transform: rotate(360deg); } }`}</style>
     </section>
   );
 }
