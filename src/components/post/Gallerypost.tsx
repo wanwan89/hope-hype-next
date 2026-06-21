@@ -3,14 +3,14 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
-import { useFeed } from '@/hooks/useFeed'; // React Query hook
+import { useFeed } from '@/hooks/useFeed';
 import './Gallery.css';
 
 // Cloudinary helper
@@ -23,7 +23,7 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// Memoized components
+// Memoized Slider Rekomendasi
 const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
   if (!posts.length) return null;
   return (
@@ -75,6 +75,8 @@ const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) =>
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isPosting = searchParams?.get('posting') === 'true';
 
   // --- State interaksi (dipertahankan seperti asli) ---
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -113,6 +115,9 @@ export default function Gallerypost() {
 
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
+  // State untuk rekomendasi postingan (slider)
+  const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
+
   // Refs untuk akses dalam callback
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
@@ -136,7 +141,15 @@ export default function Gallerypost() {
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
 
-  // --- Inisialisasi user dan follows (seperti sebelumnya) ---
+  // Hapus query param "posting" setelah feed selesai loading (hindari overlay terus-menerus)
+  useEffect(() => {
+    if (isPosting && !isLoading) {
+      // Ganti URL tanpa reload
+      router.replace('/', { scroll: false });
+    }
+  }, [isPosting, isLoading, router]);
+
+  // --- Inisialisasi user dan follows ---
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -159,6 +172,27 @@ export default function Gallerypost() {
       }
     };
     init();
+  }, []);
+
+  // Fetch rekomendasi postingan untuk slider
+  useEffect(() => {
+    const fetchSuggestedPosts = async () => {
+      try {
+        const { data } = await supabase
+          .from('posts')
+          .select('id, creator_id, image_url, bio, profiles:creator_id (username, avatar_url)')
+          .eq('status', 'approved')
+          .eq('is_private', false)
+          .neq('image_url', null)
+          .limit(20);
+        if (data) {
+          setSuggestedPosts(data.sort(() => 0.5 - Math.random()).slice(0, 6));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchSuggestedPosts();
   }, []);
 
   // --- Ambil interaksi setiap kali allPosts berubah ---
@@ -222,7 +256,7 @@ export default function Gallerypost() {
     fetchInteractions();
   }, [allPosts, currentUser]);
 
-  // --- Fungsi interaksi (dari Gallerypost asli) ---
+  // --- Fungsi interaksi (dari Gallerypost asli, di-memo) ---
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
@@ -336,6 +370,21 @@ export default function Gallerypost() {
     });
   }, []);
 
+  // Callback share (menggunakan globalShare jika tersedia)
+  const openShareOptions = useCallback((post: any, isOwner: boolean) => {
+    if (typeof window !== 'undefined' && (window as any).openGlobalShare) {
+      (window as any).openGlobalShare(
+        `${window.location.origin}/post?id=${post.id}`,
+        'Postingan HypeTalk',
+        'Lihat karya keren ini di HypeTalk!',
+        post.profiles?.username || 'User',
+        post.id,
+        isOwner,
+        post.is_private || false
+      );
+    }
+  }, []);
+
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const n = new Set(prev);
@@ -351,7 +400,7 @@ export default function Gallerypost() {
 
     return (
       <React.Fragment key={post.id}>
-        {index === 2 && <MemoizedSlider posts={[]} />} {/* Bisa disesuaikan */}
+        {index === 2 && <MemoizedSlider posts={suggestedPosts} />}
         {index === 4 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
         <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
           <PostCard
@@ -375,7 +424,7 @@ export default function Gallerypost() {
             openRepostModal={openRepostModal}
             handleMediaClick={handleMediaClick}
             toggleMute={toggleMute}
-            openShareOptions={() => {}} // Tambahkan jika perlu
+            openShareOptions={openShareOptions}
             handleFollowToggle={handleFollowToggle}
             setActivePreviewImage={setActivePreviewImage}
             router={router}
@@ -391,22 +440,31 @@ export default function Gallerypost() {
     myLikedPosts, myRepostedPosts, mySavedPosts, animatingFollows,
     animatingReposts, isGloballyMuted, poppingHeart, activePreviewImage,
     likersMap, repostersMap, handleLike, handleSave, openRepostModal,
-    handleMediaClick, toggleMute, handleFollowToggle, handleToggleExpand,
-    router, t
+    handleMediaClick, toggleMute, openShareOptions, handleFollowToggle, handleToggleExpand,
+    router, t, suggestedPosts
   ]);
 
-  // Load more handler
   const loadMore = useCallback(() => {
     if (!isFetchingNextPage && hasNextPage) {
       fetchNextPage();
     }
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  // Skeleton / loading
+  // Tampilan overlay "Mengirim postingan..." ketika ?posting=true dan masih loading
+  if (isPosting && isLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg-main)', gap: '20px' }}>
+        <div className="pure-spinner"></div>
+        <p style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: '16px' }}>Mengirim postingan...</p>
+      </div>
+    );
+  }
+
+  // Skeleton loading biasa
   if (isLoading) {
     return (
       <div style={{ padding: 16 }}>
-        {[1,2].map(i => (
+        {[1, 2].map(i => (
           <div key={i} style={{ marginBottom: 20, background: 'var(--bg-main)', padding: 16, borderRadius: 16, border: '1px solid var(--border-card)' }}>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
               <div className="skeleton-block" style={{ width: 42, height: 42, borderRadius: '50%' }}></div>
@@ -429,6 +487,15 @@ export default function Gallerypost() {
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center' }}>
+        <p style={{ color: 'var(--text-muted)' }}>Gagal memuat feed.</p>
+        <button onClick={() => refetch()} style={{ marginTop: 12, padding: '8px 16px', borderRadius: 8, background: '#1f3cff', color: 'white', border: 'none', cursor: 'pointer' }}>Coba lagi</button>
       </div>
     );
   }

@@ -2,20 +2,20 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import Cropper from 'react-easy-crop'; 
+import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 // 🔥 FIX: IMPORT useSearchParams 🔥
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion'; 
-import './Create.css'; 
+import { motion, AnimatePresence } from 'framer-motion';
+import './Create.css';
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
 export default function CreatePostPage() {
   const { t } = useTranslation();
-  const router = useRouter(); 
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // 🔥 TANGKAP ID DRAFT DARI URL 🔥
@@ -26,22 +26,22 @@ export default function CreatePostPage() {
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Karya');
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false); 
-  
-  const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]); 
-  const [croppedImages, setCroppedImages] = useState<Blob[]>([]); 
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]); 
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]);
+  const [croppedImages, setCroppedImages] = useState<Blob[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null); // Menyimpan URL gambar draf lama
 
   const [rawVideoFile, setRawVideoFile] = useState<File | null>(null);
   const [rawVideoUrl, setRawVideoUrl] = useState<string | null>(null);
   const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null); // Menyimpan URL video draf lama
   const [videoDuration, setVideoDuration] = useState(0);
-  const [videoStart, setVideoStart] = useState(0); 
-  const [coverTime, setCoverTime] = useState(0); 
+  const [videoStart, setVideoStart] = useState(0);
+  const [coverTime, setCoverTime] = useState(0);
   const [coverBlob, setCoverBlob] = useState<Blob | null>(null);
   const [coverPreviewUrl, setCoverUrlPreview] = useState<string | null>(null);
-  
+
   const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -50,7 +50,7 @@ export default function CreatePostPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-  const captionInputRef = useRef<HTMLTextAreaElement>(null); 
+  const captionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -61,13 +61,13 @@ export default function CreatePostPage() {
   const [musicResults, setMusicResults] = useState<any[]>([]);
   const [selectedMusic, setSelectedMusic] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   const [isMusicSheetOpen, setIsMusicSheetOpen] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
@@ -125,7 +125,7 @@ export default function CreatePostPage() {
           .select('is_business')
           .eq('id', session.user.id)
           .single();
-          
+
         if (data && data.is_business) {
           setIsBusinessUser(true);
         }
@@ -143,10 +143,10 @@ export default function CreatePostPage() {
         const myId = session.user.id;
         const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
         const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
-        
+
         const connectedIds = new Set([
-            ...(following?.map(f => f.following_id) || []),
-            ...(followers?.map(f => f.follower_id) || [])
+          ...(following?.map(f => f.following_id) || []),
+          ...(followers?.map(f => f.follower_id) || [])
         ]);
 
         if (connectedIds.size > 0) {
@@ -157,7 +157,7 @@ export default function CreatePostPage() {
         } else { setPopupResults([]); }
       } else if (showPopup === 'hashtag') {
         let queryStr = searchQuery.toLowerCase().trim();
-        if (!queryStr.startsWith('#')) queryStr = '#' + queryStr; 
+        if (!queryStr.startsWith('#')) queryStr = '#' + queryStr;
         try {
           const { data } = await supabase.from('hashtags').select('tag').ilike('tag', `${queryStr}%`).limit(10);
           setPopupResults(data || []);
@@ -172,12 +172,12 @@ export default function CreatePostPage() {
     const val = e.target.value; setCaption(val);
     const cursorPosition = e.target.selectionStart || 0;
     const textBeforeCursor = val.slice(0, cursorPosition);
-    
+
     const mentionMatch = textBeforeCursor.match(/(?:^|\s)@(\w*)$/);
     const hashtagMatch = textBeforeCursor.match(/(?:^|\s)#(\w*)$/);
 
-    if (mentionMatch) { setShowPopup('mention'); setSearchQuery(mentionMatch[1]); } 
-    else if (hashtagMatch) { setShowPopup('hashtag'); setSearchQuery(hashtagMatch[1]); } 
+    if (mentionMatch) { setShowPopup('mention'); setSearchQuery(mentionMatch[1]); }
+    else if (hashtagMatch) { setShowPopup('hashtag'); setSearchQuery(hashtagMatch[1]); }
     else { setShowPopup('none'); }
   };
 
@@ -187,13 +187,13 @@ export default function CreatePostPage() {
     const textBeforeCursor = caption.slice(0, cursor);
     const textAfterCursor = caption.slice(cursor);
     let newTextBefore = "";
-    
-    if (showPopup === 'mention') { newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${selectedItem} `); } 
+
+    if (showPopup === 'mention') { newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${selectedItem} `); }
     else if (showPopup === 'hashtag') {
       const formattedTag = selectedItem.startsWith('#') ? selectedItem : `#${selectedItem}`;
       newTextBefore = textBeforeCursor.replace(/#\w*$/, `${formattedTag} `);
     }
-    
+
     setCaption(newTextBefore + textAfterCursor); setShowPopup('none'); captionInputRef.current.focus();
   };
 
@@ -223,9 +223,9 @@ export default function CreatePostPage() {
     });
 
     Promise.all(readersArr).then(results => {
-      setRawImagesQueue(results); 
-      setImageForCrop(results[0]); 
-      setStep('edit'); 
+      setRawImagesQueue(results);
+      setImageForCrop(results[0]);
+      setStep('edit');
       setExistingImageUrl(null); // Reset draf image jika user milih gambar baru
     });
   };
@@ -249,7 +249,7 @@ export default function CreatePostPage() {
       } else {
         setRawImagesQueue([]);
         setImageForCrop(null);
-        setStep('post'); 
+        setStep('post');
       }
     } catch (e) { console.error("Error Cropping:", e); }
   };
@@ -262,14 +262,14 @@ export default function CreatePostPage() {
     } else {
       setRawImagesQueue([]);
       setImageForCrop(null);
-      setStep('post'); 
+      setStep('post');
     }
   };
 
   const handleRemovePreview = (index: number) => {
     setCroppedImages(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
-    if (previewUrls.length <= 1) setExistingImageUrl(null); 
+    if (previewUrls.length <= 1) setExistingImageUrl(null);
   };
 
   const generateVideoThumbnails = async (url: string, duration: number) => {
@@ -277,15 +277,15 @@ export default function CreatePostPage() {
     video.src = url;
     video.muted = true;
     video.playsInline = true;
-    
+
     await new Promise((resolve) => { video.onloadeddata = resolve; });
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 60; 
+    canvas.width = 60;
     canvas.height = 80;
 
-    const numThumbs = 8; 
+    const numThumbs = 8;
     const thumbs: string[] = [];
 
     for (let i = 0; i < numThumbs; i++) {
@@ -305,10 +305,10 @@ export default function CreatePostPage() {
     setRawVideoFile(file);
     const objUrl = URL.createObjectURL(file);
     setRawVideoUrl(objUrl);
-    setVideoThumbnails([]); 
+    setVideoThumbnails([]);
     setExistingVideoUrl(null); // Reset draf video jika user milih video baru
     setExistingImageUrl(null);
-    setStep('edit'); 
+    setStep('edit');
   };
 
   const handleVideoLoadedMetadata = () => {
@@ -347,23 +347,23 @@ export default function CreatePostPage() {
 
     if (videoRatio > targetRatio) {
       ch = video.videoHeight; cw = ch * targetRatio;
-      sx = (video.videoWidth - cw) / 2; 
+      sx = (video.videoWidth - cw) / 2;
       sy = 0;
     } else {
       cw = video.videoWidth; ch = cw / targetRatio;
-      sx = 0; 
-      sy = (video.videoHeight - ch) / 2; 
+      sx = 0;
+      sy = (video.videoHeight - ch) / 2;
     }
 
     canvas.width = cw; canvas.height = ch;
     const ctx = canvas.getContext('2d');
     ctx?.drawImage(video, sx, sy, cw, ch, 0, 0, cw, ch);
-    
+
     canvas.toBlob((blob) => {
       if (blob) {
         setCoverBlob(blob);
         setCoverUrlPreview(URL.createObjectURL(blob));
-        setStep('post'); 
+        setStep('post');
       }
     }, 'image/jpeg', 0.9);
   };
@@ -376,12 +376,12 @@ export default function CreatePostPage() {
     setVideoThumbnails([]);
     setExistingVideoUrl(null);
     setExistingImageUrl(null);
-    setStep('post'); 
+    setStep('post');
   };
 
   const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (playingUrl === url) { audioRef.current?.pause(); setPlayingUrl(null); } 
+    if (playingUrl === url) { audioRef.current?.pause(); setPlayingUrl(null); }
     else {
       if (audioRef.current) audioRef.current.pause();
       audioRef.current = new Audio(url); audioRef.current.play(); setPlayingUrl(url);
@@ -391,23 +391,23 @@ export default function CreatePostPage() {
 
   const handleClose = () => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    router.back(); 
+    router.back();
   };
 
   const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
     return new Promise<any>((resolve, reject) => {
       const fd = new FormData();
       const filename = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
-      fd.append("file", file, filename); 
+      fd.append("file", file, filename);
       fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
-      
+
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(percentComplete); 
+          setUploadProgress(percentComplete);
         }
       };
 
@@ -421,11 +421,28 @@ export default function CreatePostPage() {
     });
   };
 
-  // 🔥 UPDATE LOGIKA SUBMIT UNTUK HANDLE UPDATE DRAFT 🔥
+  // 🆕 Fungsi untuk menghitung jumlah kalimat
+  const countSentences = (text: string) => {
+    if (!text.trim()) return 0;
+    // Pisahkan berdasarkan . ! ?
+    return text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+  };
+
+  // 🔥 UPDATE LOGIKA SUBMIT UNTUK HANDLE UPDATE DRAFT & BATAS KALIMAT 🔥
   const submitPostAction = async (isDraft: boolean = false) => {
-    if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim()) return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
-    if (postType === 'video' && !rawVideoFile && !existingVideoUrl) return showNotif("Pilih video terlebih dahulu!", "warning");
-    if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1))) return showNotif("Story hanya bisa upload 1 foto!", "warning");
+    if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
+      return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
+    if (postType === 'video' && !rawVideoFile && !existingVideoUrl)
+      return showNotif("Pilih video terlebih dahulu!", "warning");
+    if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1)))
+      return showNotif("Story hanya bisa upload 1 foto!", "warning");
+
+    // 🔥 Validasi jumlah kalimat (maks 100)
+    const totalSentences = countSentences(caption);
+    if (totalSentences > 100) {
+      setIsSubmitting(false);
+      return showNotif("Caption maksimal 100 kalimat!", "warning");
+    }
 
     setIsSubmitting(true);
     setUploadProgress(0);
@@ -438,7 +455,7 @@ export default function CreatePostPage() {
       const extractedTags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
       if (extractedTags.length > 0) {
         for (const tg of extractedTags) {
-          await supabase.from('hashtags').upsert({ tag: tg }).then(); 
+          await supabase.from('hashtags').upsert({ tag: tg }).then();
         }
       }
 
@@ -450,7 +467,7 @@ export default function CreatePostPage() {
       if (postType === 'image' && croppedImages.length > 0) {
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
         const uploadResults = await Promise.all(uploadPromises);
-        
+
         const isRejected = uploadResults.some(res => res.moderation && res.moderation[0].status === 'rejected');
         if (isRejected) {
           setIsSubmitting(false);
@@ -459,16 +476,16 @@ export default function CreatePostPage() {
 
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
         setUploadProgress(100);
-      } 
+      }
       else if (postType === 'video' && rawVideoFile && coverBlob) {
         const coverRes = await uploadToCloudinary(coverBlob, 'image');
-        
+
         if (coverRes.moderation && coverRes.moderation[0].status === 'rejected') {
-           setIsSubmitting(false);
-           return showNotif("Video ditolak! Sampul terdeteksi konten sensitif.", "error");
+          setIsSubmitting(false);
+          return showNotif("Video ditolak! Sampul terdeteksi konten sensitif.", "error");
         }
 
-        finalImageUrl = coverRes.secure_url; 
+        finalImageUrl = coverRes.secure_url;
         const videoRes = await uploadToCloudinary(rawVideoFile, 'video');
         const uploadedVidUrl = videoRes.secure_url;
         const endSegment = Math.min(videoDuration, videoStart + 15);
@@ -480,30 +497,30 @@ export default function CreatePostPage() {
       if (destination === "story") {
         await supabase.from("stories").insert({
           creator_id: myUserId,
-          image_url: finalImageUrl, 
-          video_url: finalVideoUrl, 
+          image_url: finalImageUrl,
+          video_url: finalVideoUrl,
           content: caption.trim(),
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
           visibility: visibility,
-          is_ad: isBusinessUser ? isAd : false 
+          is_ad: isBusinessUser ? isAd : false
         });
       } else {
         const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-        
+
         const postPayload = {
           creator_id: myUserId,
           name: prof?.username || "User",
           bio: caption.trim(),
           category: category,
-          image_url: finalImageUrl,  
-          video_url: finalVideoUrl,  
+          image_url: finalImageUrl,
+          video_url: finalVideoUrl,
           audio_src: selectedMusic?.previewUrl,
           title: selectedMusic?.trackName,
           artist: selectedMusic?.artistName,
           status: isDraft ? "draft" : "approved",
-          is_ad: isBusinessUser ? isAd : false 
+          is_ad: isBusinessUser ? isAd : false
         };
 
         // 🔥 JIKA PUNYA ID DRAFT: LAKUKAN UPDATE BUKAN INSERT 🔥
@@ -524,26 +541,39 @@ export default function CreatePostPage() {
           if (taggedUsers) {
             const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
             const notifInserts = taggedUsers.filter(u => u.id !== myUserId).map(u => ({
-                user_id: u.id, actor_id: myUserId, post_id: newPostId ? parseInt(newPostId) : null,
-                type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`
-              }));
+              user_id: u.id, actor_id: myUserId, post_id: newPostId ? parseInt(newPostId) : null,
+              type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`
+            }));
             if (notifInserts.length > 0) await supabase.from("notifications").insert(notifInserts);
           }
         }
       }
 
       showNotif(isDraft ? "Berhasil disimpan ke draft" : "Postingan Berhasil Terkirim!", "success");
-      handleClose();
-    } catch (err: any) { 
+
+      // Matikan audio jika ada
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      // 🆕 Redirect ke home dengan query posting=true setelah publish
+      if (!isDraft) {
+        router.push('/?posting=true');
+      } else {
+        handleClose(); // draft kembali seperti biasa
+      }
+    } catch (err: any) {
       console.error(err);
       showNotif("Gagal upload, periksa koneksi atau konten Anda.", "error");
-    } 
-    finally { setIsSubmitting(false); setUploadProgress(0); }
+      setIsSubmitting(false);
+      setUploadProgress(0);
+    }
   };
 
   const renderEditorScreen = () => {
     if (step !== 'edit') return null;
-    
+
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#080808', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -594,7 +624,7 @@ export default function CreatePostPage() {
                 </div>
               </div>
               <div className="editor-control-card">
-                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><span className="material-icons" style={{ fontSize: '16px', color: '#f59e0b' }}>image</span> Pilih Sampul Depan</span>
                   <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Tampil di: {coverTime.toFixed(1)}s</span>
                 </div>
@@ -617,7 +647,7 @@ export default function CreatePostPage() {
       <AnimatePresence>
         {isMusicSheetOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsMusicSheetOpen(false)}
               style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999 }}
@@ -625,73 +655,73 @@ export default function CreatePostPage() {
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              style={{ 
-                position: 'fixed', bottom: 0, left: 0, right: 0, height: '75dvh', 
-                background: 'var(--bg-secondary)', borderTopLeftRadius: '24px', 
-                borderTopRightRadius: '24px', zIndex: 10000, display: 'flex', flexDirection: 'column' 
+              style={{
+                position: 'fixed', bottom: 0, left: 0, right: 0, height: '75dvh',
+                background: 'var(--bg-secondary)', borderTopLeftRadius: '24px',
+                borderTopRightRadius: '24px', zIndex: 10000, display: 'flex', flexDirection: 'column'
               }}
             >
-               <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '15px auto 10px' }} />
-               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px 15px', borderBottom: '1px solid var(--border-card)' }}>
-                 <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '18px' }}>Tambahkan Musik</h3>
-                 <button onClick={() => { setIsMusicSheetOpen(false); if (audioRef.current) { audioRef.current.pause(); setPlayingUrl(null); } }} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
-                   <span className="material-icons">close</span>
-                 </button>
-               </div>
-               
-               <div style={{ padding: '15px 20px' }}>
-                  <div style={{ position: 'relative' }}>
-                    <span className="material-icons" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>search</span>
-                    <input 
-                      autoFocus 
-                      type="text" 
-                      placeholder={t('search_music')} 
-                      value={searchMusic} 
-                      onChange={(e) => setSearchMusic(e.target.value)} 
-                      style={{ width: '100%', padding: '14px 15px 14px 45px', borderRadius: '14px', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '15px', outline: 'none', fontWeight: 'bold' }} 
-                    />
-                  </div>
-               </div>
+              <div style={{ width: '40px', height: '5px', background: 'var(--border-card)', borderRadius: '10px', margin: '15px auto 10px' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px 15px', borderBottom: '1px solid var(--border-card)' }}>
+                <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '18px' }}>Tambahkan Musik</h3>
+                <button onClick={() => { setIsMusicSheetOpen(false); if (audioRef.current) { audioRef.current.pause(); setPlayingUrl(null); } }} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex' }}>
+                  <span className="material-icons">close</span>
+                </button>
+              </div>
 
-               <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
-                  {isSearching ? (
-                    <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)' }}>
-                       <span className="material-icons" style={{ fontSize: '40px', animation: 'spin 1s linear infinite' }}>autorenew</span>
-                       <p style={{ fontWeight: 600, marginTop: '10px' }}>Mencari lagu...</p>
-                    </div>
-                  ) : musicResults.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {musicResults.map((song, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-main)', padding: '12px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-                          <div style={{ position: 'relative', width: 60, height: 60, marginRight: 15, flexShrink: 0 }}>
-                            <img src={song.artworkUrl100} style={{ width:'100%', height:'100%', borderRadius: 12, objectFit: 'cover' }} />
-                            <div onClick={() => togglePlayPreview(song.previewUrl)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                              <span className="material-icons" style={{ color: '#fff', fontSize: '30px' }}>{playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}</span>
-                            </div>
+              <div style={{ padding: '15px 20px' }}>
+                <div style={{ position: 'relative' }}>
+                  <span className="material-icons" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>search</span>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder={t('search_music')}
+                    value={searchMusic}
+                    onChange={(e) => setSearchMusic(e.target.value)}
+                    style={{ width: '100%', padding: '14px 15px 14px 45px', borderRadius: '14px', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '15px', outline: 'none', fontWeight: 'bold' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
+                {isSearching ? (
+                  <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)' }}>
+                    <span className="material-icons" style={{ fontSize: '40px', animation: 'spin 1s linear infinite' }}>autorenew</span>
+                    <p style={{ fontWeight: 600, marginTop: '10px' }}>Mencari lagu...</p>
+                  </div>
+                ) : musicResults.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {musicResults.map((song, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-main)', padding: '12px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
+                        <div style={{ position: 'relative', width: 60, height: 60, marginRight: 15, flexShrink: 0 }}>
+                          <img src={song.artworkUrl100} style={{ width: '100%', height: '100%', borderRadius: 12, objectFit: 'cover' }} />
+                          <div onClick={() => togglePlayPreview(song.previewUrl)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                            <span className="material-icons" style={{ color: '#fff', fontSize: '30px' }}>{playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}</span>
                           </div>
-                          <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)', whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden' }}>{song.trackName}</div>
-                            <div style={{ fontSize: 13, color:'var(--text-muted)', marginTop: '4px' }}>{song.artistName}</div>
-                          </div>
-                          <button 
-                            onClick={() => {
-                              setSelectedMusic(song);
-                              if (audioRef.current) { audioRef.current.pause(); setPlayingUrl(null); }
-                              setIsMusicSheetOpen(false); 
-                            }} 
-                            style={{ background: '#1f3cff', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '12px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', marginLeft: '10px' }}
-                          >
-                            Pilih
-                          </button>
                         </div>
-                      ))}
-                    </div>
-                  ) : searchMusic ? (
-                     <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)', fontWeight: 600 }}>Tidak ada hasil untuk "{searchMusic}"</div>
-                  ) : (
-                     <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Ketik judul lagu atau nama artis di atas...</div>
-                  )}
-               </div>
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{song.trackName}</div>
+                          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: '4px' }}>{song.artistName}</div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedMusic(song);
+                            if (audioRef.current) { audioRef.current.pause(); setPlayingUrl(null); }
+                            setIsMusicSheetOpen(false);
+                          }}
+                          style={{ background: '#1f3cff', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '12px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', marginLeft: '10px' }}
+                        >
+                          Pilih
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchMusic ? (
+                  <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)', fontWeight: 600 }}>Tidak ada hasil untuk "{searchMusic}"</div>
+                ) : (
+                  <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Ketik judul lagu atau nama artis di atas...</div>
+                )}
+              </div>
             </motion.div>
           </>
         )}
@@ -706,7 +736,7 @@ export default function CreatePostPage() {
             <h2 style={{ color: 'var(--text-main)', fontSize: '18px', fontWeight: 700, margin: 0 }}>
               {draftId ? 'Lanjutkan Draf' : 'Buat Postingan'}
             </h2>
-            <div style={{ width: 28 }}></div> 
+            <div style={{ width: 28 }}></div>
           </div>
 
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
@@ -715,7 +745,7 @@ export default function CreatePostPage() {
               <div className="destination-container">
                 <p className="section-label" style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '10px' }}>{t('send_to')}</p>
                 <div className="dest-toggle-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {[ { id: 'feed', title: t('feed_title', 'Feed'), desc: t('feed_desc', 'Tampil di timeline publik') }, { id: 'story', title: t('story_title', 'Cerita'), desc: t('story_desc', 'Hilang dalam 24 jam') } ].map((dest) => (
+                  {[{ id: 'feed', title: t('feed_title', 'Feed'), desc: t('feed_desc', 'Tampil di timeline publik') }, { id: 'story', title: t('story_title', 'Cerita'), desc: t('story_desc', 'Hilang dalam 24 jam') }].map((dest) => (
                     <label key={dest.id} className="dest-option" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', padding: '15px', borderRadius: '12px', border: destination === dest.id ? '2px solid #1f3cff' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
                       <input type="radio" name="postDestination" value={dest.id} checked={destination === dest.id} onChange={() => setDestination(dest.id as any)} style={{ display: 'none' }} />
                       <div className="dest-content" style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '15px', padding: 0, background: 'transparent', border: 'none' }}>
@@ -731,7 +761,7 @@ export default function CreatePostPage() {
 
               <div className="post-type-toggle" style={{ display: 'flex', gap: '8px', marginTop: '20px', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '14px' }}>
                 {['image', 'video', 'text'].map(type => (
-                   <button key={type} type="button" className={`type-btn ${postType === type ? 'active' : ''}`} onClick={() => { setPostType(type as any); setCroppedImages([]); setPreviewUrls([]); handleRemoveVideo(); setExistingImageUrl(null); setExistingVideoUrl(null); }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: postType === type ? 'var(--bg-input)' : 'transparent', color: postType === type ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s' }}>{type === 'image' ? 'Foto' : type === 'video' ? 'Video' : 'Teks'}</button>
+                  <button key={type} type="button" className={`type-btn ${postType === type ? 'active' : ''}`} onClick={() => { setPostType(type as any); setCroppedImages([]); setPreviewUrls([]); handleRemoveVideo(); setExistingImageUrl(null); setExistingVideoUrl(null); }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: postType === type ? 'var(--bg-input)' : 'transparent', color: postType === type ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: '0.2s' }}>{type === 'image' ? 'Foto' : type === 'video' ? 'Video' : 'Teks'}</button>
                 ))}
               </div>
 
@@ -763,28 +793,28 @@ export default function CreatePostPage() {
               <div style={{ position: 'relative', marginTop: '20px' }}>
                 {showPopup !== 'none' && (
                   <div className="popup-suggestion-box">
-                    {popupResults.length > 0 ? ( popupResults.map(item => (<div key={item.id || item.tag} className="popup-item" onClick={() => handleSelectPopupItem(showPopup === 'mention' ? item.username : item.tag)}>{showPopup === 'mention' ? (<><img src={item.avatar_url || '/asets/png/profile.webp'} alt={item.username} /><div className="popup-name">{item.username}</div></>) : (<><span className="material-icons" style={{ color: '#1DA1F2' }}>tag</span><div className="popup-tag">{item.tag}</div></>)}</div>)) ) : ( <div className="popup-empty">Tidak ditemukan...</div> )}
+                    {popupResults.length > 0 ? (popupResults.map(item => (<div key={item.id || item.tag} className="popup-item" onClick={() => handleSelectPopupItem(showPopup === 'mention' ? item.username : item.tag)}>{showPopup === 'mention' ? (<><img src={item.avatar_url || '/asets/png/profile.webp'} alt={item.username} /><div className="popup-name">{item.username}</div></>) : (<><span className="material-icons" style={{ color: '#1DA1F2' }}>tag</span><div className="popup-tag">{item.tag}</div></>)}</div>))) : (<div className="popup-empty">Tidak ditemukan...</div>)}
                   </div>
                 )}
-                <textarea ref={captionInputRef} className="post-textarea" placeholder={postType === 'image' || postType === 'video' ? "Tulis caption atau gunakan @ untuk tag dan # untuk hashtag..." : "Tulis cerita, gunakan @ untuk tag dan # untuk hashtag..."} maxLength={300} value={caption} onChange={handleCaptionChange} onKeyDown={(e) => { if (showPopup !== 'none' && e.key === "Enter") { e.preventDefault(); if (popupResults.length > 0) { handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag); } } }} style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }} />
+                <textarea ref={captionInputRef} className="post-textarea" placeholder={postType === 'image' || postType === 'video' ? "Tulis caption atau gunakan @ untuk tag dan # untuk hashtag..." : "Tulis cerita, gunakan @ untuk tag dan # untuk hashtag..."} maxLength={10000} value={caption} onChange={handleCaptionChange} onKeyDown={(e) => { if (showPopup !== 'none' && e.key === "Enter") { e.preventDefault(); if (popupResults.length > 0) { handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag); } } }} style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }} />
               </div>
 
               <div style={{ position: 'relative', marginTop: '20px' }}>
                 {isCategoryOpen && <div onClick={() => setIsCategoryOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />}
-                <div onClick={() => setIsCategoryOpen(!isCategoryOpen)} style={{ width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>{[ { val: "Karya", label: t('cat_karya', 'Karya') }, { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, { val: "Photography", label: t('cat_photo', 'Photography') }, { val: "Mountain", label: t('cat_mountain', 'Mountain') }, { val: "Thread", label: t('cat_thread', 'Thread') } ].find(opt => opt.val === category)?.label || category}</span><span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: '20px', transform: isCategoryOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>expand_more</span></div>
+                <div onClick={() => setIsCategoryOpen(!isCategoryOpen)} style={{ width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>{[{ val: "Karya", label: t('cat_karya', 'Karya') }, { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, { val: "Photography", label: t('cat_photo', 'Photography') }, { val: "Mountain", label: t('cat_mountain', 'Mountain') }, { val: "Thread", label: t('cat_thread', 'Thread') }].find(opt => opt.val === category)?.label || category}</span><span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: '20px', transform: isCategoryOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>expand_more</span></div>
                 <AnimatePresence>
-                  {isCategoryOpen && (<motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.15 }} style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: '8px', background: 'var(--bg-main, #1a1d21)', border: '1px solid var(--border-card, #2a2d31)', borderRadius: '16px', padding: '8px', zIndex: 100, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>{[ { val: "Karya", label: t('cat_karya', 'Karya') }, { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, { val: "Photography", label: t('cat_photo', 'Photography') }, { val: "Mountain", label: t('cat_mountain', 'Mountain') }, { val: "Thread", label: t('cat_thread', 'Thread') } ].map((opt) => (<div key={opt.val} onClick={() => { setCategory(opt.val); setIsCategoryOpen(false); }} style={{ padding: '12px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: category === opt.val ? 'rgba(31, 60, 255, 0.1)' : 'transparent', color: category === opt.val ? '#1f3cff' : 'var(--text-main)', fontWeight: category === opt.val ? 'bold' : 'normal', transition: 'background 0.2s' }}>{opt.label}{category === opt.val && <span className="material-icons" style={{ fontSize: '18px' }}>check_circle</span>}</div>))}</motion.div>)}
+                  {isCategoryOpen && (<motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.15 }} style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: '8px', background: 'var(--bg-main, #1a1d21)', border: '1px solid var(--border-card, #2a2d31)', borderRadius: '16px', padding: '8px', zIndex: 100, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>{[{ val: "Karya", label: t('cat_karya', 'Karya') }, { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, { val: "Photography", label: t('cat_photo', 'Photography') }, { val: "Mountain", label: t('cat_mountain', 'Mountain') }, { val: "Thread", label: t('cat_thread', 'Thread') }].map((opt) => (<div key={opt.val} onClick={() => { setCategory(opt.val); setIsCategoryOpen(false); }} style={{ padding: '12px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: category === opt.val ? 'rgba(31, 60, 255, 0.1)' : 'transparent', color: category === opt.val ? '#1f3cff' : 'var(--text-main)', fontWeight: category === opt.val ? 'bold' : 'normal', transition: 'background 0.2s' }}>{opt.label}{category === opt.val && <span className="material-icons" style={{ fontSize: '18px' }}>check_circle</span>}</div>))}</motion.div>)}
                 </AnimatePresence>
               </div>
 
-              <div 
-                className="music-picker-btn" 
+              <div
+                className="music-picker-btn"
                 onClick={() => setIsMusicSheetOpen(true)}
                 style={{ marginTop: '20px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', padding: '15px', borderRadius: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ background: '#1f3cff', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                     <span className="material-icons" style={{ color: '#fff', fontSize: '24px' }}>music_note</span>
+                    <span className="material-icons" style={{ color: '#fff', fontSize: '24px' }}>music_note</span>
                   </div>
                   <div>
                     <div style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '15px' }}>
@@ -796,12 +826,12 @@ export default function CreatePostPage() {
                   </div>
                 </div>
                 {selectedMusic ? (
-                  <button 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setSelectedMusic(null); 
-                      if (playingUrl === selectedMusic.previewUrl) audioRef.current?.pause(); 
-                    }} 
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedMusic(null);
+                      if (playingUrl === selectedMusic.previewUrl) audioRef.current?.pause();
+                    }}
                     style={{ background: 'rgba(255,71,87,0.1)', color: '#ff4757', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}
                   >
                     Hapus
@@ -821,13 +851,13 @@ export default function CreatePostPage() {
                       Beri tahu audiens bahwa ini adalah konten promosi / bersponsor
                     </div>
                   </div>
-                  
+
                   <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', flexShrink: 0 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={isAd} 
+                    <input
+                      type="checkbox"
+                      checked={isAd}
                       onChange={(e) => setIsAd(e.target.checked)}
-                      style={{ opacity: 0, width: 0, height: 0 }} 
+                      style={{ opacity: 0, width: 0, height: 0 }}
                     />
                     <span style={{
                       position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
@@ -853,14 +883,14 @@ export default function CreatePostPage() {
                     disabled={isSubmitting}
                     onClick={() => submitPostAction(true)}
                     style={{
-                      flex: 1, 
-                      padding: '16px', 
-                      borderRadius: '14px', 
-                      border: '1px solid var(--border-card)', 
-                      background: 'var(--bg-secondary)', 
-                      color: 'var(--text-main)', 
-                      fontSize: '15px', 
-                      fontWeight: 700, 
+                      flex: 1,
+                      padding: '16px',
+                      borderRadius: '14px',
+                      border: '1px solid var(--border-card)',
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-main)',
+                      fontSize: '15px',
+                      fontWeight: 700,
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
                       transition: '0.2s ease'
                     }}
@@ -869,21 +899,21 @@ export default function CreatePostPage() {
                   </button>
                 )}
 
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => submitPostAction(false)}
-                  disabled={isSubmitting} 
-                  style={{ 
-                    flex: destination !== 'story' ? 2 : 1, 
-                    padding: '16px', 
-                    color: '#fff', 
-                    border: isSubmitting ? '1px solid #1f3cff' : 'none', 
-                    borderRadius: '14px', 
-                    fontSize: '16px', 
-                    fontWeight: 800, 
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer', 
+                  disabled={isSubmitting}
+                  style={{
+                    flex: destination !== 'story' ? 2 : 1,
+                    padding: '16px',
+                    color: '#fff',
+                    border: isSubmitting ? '1px solid #1f3cff' : 'none',
+                    borderRadius: '14px',
+                    fontSize: '16px',
+                    fontWeight: 800,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
                     position: 'relative',
-                    overflow: 'hidden', 
+                    overflow: 'hidden',
                     background: isSubmitting ? 'var(--bg-input)' : '#1f3cff',
                     transform: 'translateZ(0)',
                   }}
@@ -891,10 +921,10 @@ export default function CreatePostPage() {
                   {isSubmitting && (
                     <motion.div
                       initial={{ y: "100%" }}
-                      animate={{ y: `${100 - Math.max(uploadProgress, 2)}%` }} 
+                      animate={{ y: `${100 - Math.max(uploadProgress, 2)}%` }}
                       transition={{ ease: "easeInOut", duration: 0.8 }}
                       style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, height: '150%', 
+                        position: 'absolute', top: 0, left: 0, right: 0, height: '150%',
                         background: '#1f3cff',
                         zIndex: 1
                       }}
@@ -921,7 +951,7 @@ export default function CreatePostPage() {
                       />
                     </motion.div>
                   )}
-                  
+
                   <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>
                     {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : (draftId ? 'Publikasikan Draf' : t('btn_submit_post'))}
                   </span>
