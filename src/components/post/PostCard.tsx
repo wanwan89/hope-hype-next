@@ -109,19 +109,14 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted, post.audio_src]);
 
-  // Kalkulasi Tinggi Caption untuk memunculkan tombol "Lihat Selengkapnya"
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
         const el = captionRef.current;
         const prevWebkit = el.style.webkitLineClamp;
-        // Buka batas agar kita bisa ukur tinggi aslinya
         el.style.webkitLineClamp = 'unset';
         const fullHeight = el.scrollHeight;
-        // Kembalikan batas
         el.style.webkitLineClamp = prevWebkit;
-        
-        // 45px adalah estimasi aman untuk tinggi 2 baris (line-height 1.5 * font-size 14.5px ~ 43.5px)
         setShowMoreButton(fullHeight > 45); 
       }
     });
@@ -316,7 +311,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   display: actuallyExpanded ? 'block' : '-webkit-box',
-                  WebkitLineClamp: actuallyExpanded ? 'unset' : 2, // Ganti ke 2 baris (Media)
+                  WebkitLineClamp: actuallyExpanded ? 'unset' : 2,
                   WebkitBoxOrient: 'vertical',
                   overflow: actuallyExpanded ? 'visible' : 'hidden',
                   transition: 'all 0.3s ease'
@@ -339,10 +334,9 @@ const PostCard: React.FC<PostCardProps> = ({
 
             <div className="post-date-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', marginTop: '8px' }}>
               <span>{formattedDate}</span>
-              {/* Badge Iklan Media: Biarkan putih transparan karena background gambar biasanya gelap */}
               {post.is_ad && (
-                <span style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: '#fff' }}>
-                  <span className="material-icons" style={{ fontSize: '12px' }}>campaign</span> Iklan
+                <span style={{ background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                  <span className="material-icons" style={{ fontSize: '12px', color: '#fff' }}>campaign</span> Iklan
                 </span>
               )}
             </div>
@@ -375,7 +369,6 @@ const PostCard: React.FC<PostCardProps> = ({
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {formattedDate}
-                  {/* Badge Iklan Text: Background menyesuaikan (Secondary), warna teks (Main) agar terlihat jelas di mode Terang/Gelap */}
                   {post.is_ad && (
                     <>
                       <span>•</span>
@@ -403,12 +396,12 @@ const PostCard: React.FC<PostCardProps> = ({
             ref={captionRef as React.RefObject<HTMLDivElement>}
             style={{
               marginBottom: showMoreButton ? '4px' : '12px',
-              fontSize: '14.5px', // Samakan font size
+              fontSize: '14.5px',
               color: 'var(--text-main)',
               lineHeight: 1.5,
               wordBreak: 'break-word',
               display: actuallyExpanded ? 'block' : '-webkit-box', 
-              WebkitLineClamp: actuallyExpanded ? 'unset' : 2, // Ganti ke 2 baris (Teks)
+              WebkitLineClamp: actuallyExpanded ? 'unset' : 2,
               WebkitBoxOrient: 'vertical',
               overflow: actuallyExpanded ? 'visible' : 'hidden', 
               textAlign: 'left' 

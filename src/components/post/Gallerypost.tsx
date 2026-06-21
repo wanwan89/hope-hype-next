@@ -30,7 +30,7 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
         <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
         <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
       </div>
-      <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px' }}>
+      <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px', willChange: 'transform' }}>
         {posts.map(sp => {
           const img = sp.image_url ? sp.image_url.split(',')[0] : '';
           return (
@@ -43,15 +43,15 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
                 cursor: 'pointer', display: 'flex', flexDirection: 'column'
               }}
             >
-              <div style={{ width: '100%', height: '160px', background: '#000', position: 'relative' }}>
-                <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ width: '100%', height: '160px', background: 'var(--bg-secondary)', position: 'relative' }}>
+                <img src={getOptimizedImage(img) || '/asets/png/placeholder.png'} loading="lazy" decoding="async" alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div style={{ padding: '10px' }}>
                 <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {sp.bio || 'Tanpa Caption'}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
+                  <img src={getOptimizedImage(sp.profiles?.avatar_url) || '/asets/png/profile.webp'} loading="lazy" decoding="async" style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} alt="av" />
                   <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {sp.profiles?.username}
                   </span>
@@ -99,6 +99,7 @@ export default function Gallerypost() {
   const viewObserverRef = useRef<IntersectionObserver | null>(null);
   const viewedPostsRef = useRef<Set<string>>(new Set());
   const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null); // State untuk debounce
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
@@ -146,7 +147,7 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // Observer khusus views (Autoplay sudah diurus internal PostCard.tsx)
+  // Observer khusus views
   useEffect(() => {
     viewObserverRef.current = new IntersectionObserver(
       (entries) => {
@@ -181,18 +182,26 @@ export default function Gallerypost() {
   }, []);
 
   const syncObservers = useCallback(() => {
-    const gallery = document.getElementById('mainGallery');
-    if (!gallery) return;
-    const cards = gallery.querySelectorAll<HTMLElement>('.card[data-postid]:not([data-observed])');
-    cards.forEach(card => {
-      viewObserverRef.current?.observe(card);
-      card.setAttribute('data-observed', 'true');
+    // Dibungkus requestAnimationFrame agar eksekusinya selaras dengan frame browser GPU
+    requestAnimationFrame(() => {
+      const gallery = document.getElementById('mainGallery');
+      if (!gallery) return;
+      const cards = gallery.querySelectorAll<HTMLElement>('.card[data-postid]:not([data-observed])');
+      cards.forEach(card => {
+        viewObserverRef.current?.observe(card);
+        card.setAttribute('data-observed', 'true');
+      });
     });
   }, []);
 
   const handleItemsRendered = useCallback(() => {
-    // Kurangi interval setTimeout agar lebih responsif tanpa memblokir thread
-    setTimeout(syncObservers, 30);
+    // FIX PERFORMA: Gunakan Debounce! 
+    // Mencegah querySelector berjalan 60x per detik saat di-scroll. 
+    // Hanya berjalan ketika user memperlambat scroll.
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current);
+    }
+    renderTimeoutRef.current = setTimeout(syncObservers, 200);
   }, [syncObservers]);
 
   const handleToggleExpand = useCallback((postId: string) => {
@@ -400,7 +409,6 @@ export default function Gallerypost() {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
       
-      // FIX Bug 4: Menggunakan ID dinamis agar dirender ulang oleh React
       setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
@@ -481,7 +489,6 @@ export default function Gallerypost() {
   return (
     <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0 }}>
       <style>{`
-        /* DITAMBAHKAN AGAR ANIMASI JANTUNG BISA JALAN */
         @keyframes popHeartAnim {
           0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
           15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
@@ -495,7 +502,6 @@ export default function Gallerypost() {
         .pure-spinner { width: 30px; height: 30px; border: 3px solid var(--border-card); border-top-color: #1f3cff; border-radius: 50%; animation: pureSpin 1s linear infinite; }
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         
-        /* Shimmer Animation for Skeleton */
         @keyframes shimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
@@ -522,6 +528,7 @@ export default function Gallerypost() {
           max-width: 100% !important;
           margin-bottom: 12px !important; 
           border-radius: 16px !important;
+          contain: content; /* Optimasi GPU untuk area media */
         }
         
         .media-post-card-wp [data-postid] img,
@@ -531,7 +538,6 @@ export default function Gallerypost() {
           border-radius: 16px 16px 0 0 !important;
         }
 
-        /* PERBAIKAN STYLING KARTU TEKS */
         .text-post-card-wp {
           width: 100% !important;
           padding: 0 12px !important;
@@ -546,7 +552,8 @@ export default function Gallerypost() {
           overflow: hidden !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
           background: var(--bg-main) !important;
-          padding: 16px !important; /* Fix Bug 1: PADDING KONSISTEN */
+          padding: 16px !important; 
+          contain: content; /* Optimasi GPU untuk area teks */
         }
 
         img, video, .avatar {
@@ -564,7 +571,7 @@ export default function Gallerypost() {
           border: none;
           padding: 0;
           position: relative;
-          z-index: 1; /* Fix Bug 2: TURUNKAN Z-INDEX BUTTON */
+          z-index: 1; 
           pointer-events: auto;
           user-select: none;
         }
@@ -587,12 +594,9 @@ export default function Gallerypost() {
 
       <div className="gallery" id="mainGallery">
         {isLoading ? (
-          // SKELETON LOADING BARU
           <div style={{ padding: '16px' }}>
-             {/* Ulangi skeleton beberapa kali agar terlihat seperti feed sungguhan */}
              {[1, 2].map((i) => (
                 <div key={i} style={{ marginBottom: '20px', background: 'var(--bg-main)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-                  {/* Header: Avatar & Info */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                     <div className="skeleton-block" style={{ width: '42px', height: '42px', borderRadius: '50%' }}></div>
                     <div style={{ flex: 1 }}>
@@ -600,13 +604,10 @@ export default function Gallerypost() {
                       <div className="skeleton-block" style={{ width: '20%', height: '10px' }}></div>
                     </div>
                   </div>
-                  {/* Teks Content */}
                   <div className="skeleton-block" style={{ width: '100%', height: '12px', marginBottom: '8px' }}></div>
                   <div className="skeleton-block" style={{ width: '90%', height: '12px', marginBottom: '8px' }}></div>
                   <div className="skeleton-block" style={{ width: '60%', height: '12px', marginBottom: '16px' }}></div>
-                  {/* Media (Opsional, untuk memberi ilusi variasi konten) */}
                   {i === 1 && <div className="skeleton-block" style={{ width: '100%', height: '200px', borderRadius: '12px', marginBottom: '16px' }}></div>}
-                  {/* Actions/Buttons */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                      <div className="skeleton-block" style={{ width: '80px', height: '28px', borderRadius: '20px' }}></div>
                      <div style={{ display: 'flex', gap: '16px' }}>
@@ -625,8 +626,9 @@ export default function Gallerypost() {
             useWindowScroll
             data={posts}
             endReached={handleLoadMore}
-            increaseViewportBy={{ top: 0, bottom: 1200 }}
-            overscan={600}
+            /* FIX PERFORMA: Turunkan angka ini agar HP tidak memuat memori yang tak terlihat secara berlebihan */
+            increaseViewportBy={{ top: 0, bottom: 400 }} 
+            overscan={300} 
             itemsRendered={handleItemsRendered}
             itemContent={(index, post) => {
               const isTextOrAudio = !post.image_url && !post.video_url;
@@ -676,7 +678,6 @@ export default function Gallerypost() {
                 {isLoadingMore ? (
                   <div className="pure-spinner"></div>
                 ) : hasMore ? (
-                  // TEKS HILANG (Hanya elemen kosong agar Virtuoso tetap jalan)
                   <div style={{ height: '20px' }}></div> 
                 ) : (
                   <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -688,7 +689,3 @@ export default function Gallerypost() {
             )}}
           />
         )}
-      </div>
-    </section>
-  );
-}
