@@ -1,20 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // 🔥 FIX: Tambahkan 'React' di sini
 import { usePathname } from 'next/navigation'; 
-// 🔥 FIX 1: Import i18n hook
 import { useTranslation } from 'react-i18next';
 import './Sidebar.css'; 
 
 export default function Sidebarpost() {
-  // 🔥 FIX 2: Inisialisasi translate
   const { t } = useTranslation();
   
   const [isOpen, setIsOpen] = useState(false);
   const [activeCat, setActiveCat] = useState('all');
   const pathname = usePathname();
 
-  // 🔥 FIX 3: Mapping Kategori (ID untuk logic, Label untuk UI)
   const CATEGORIES = [
     { id: 'all', label: 'cat_all' },
     { id: 'karya', label: 'cat_karya' },
@@ -40,7 +37,6 @@ export default function Sidebarpost() {
 
   const handleCategoryClick = (cat: string) => {
     setActiveCat(cat);
-    // Dispatch event tetep kirim ID asli (misal: 'karya') biar Gallery ga bingung query-nya
     window.dispatchEvent(new CustomEvent('changeCategory', { 
       detail: { category: cat } 
     }));
@@ -55,13 +51,11 @@ export default function Sidebarpost() {
 
   return (
     <>
-      {/* 1. OVERLAY */}
       <div 
         className={`sidebar-overlay ${isOpen ? 'active' : ''}`} 
         onClick={closeSidebar} 
       />
 
-      {/* 2. SIDEBAR PANEL */}
       <aside className={`sidebar ${isOpen ? 'active' : ''}`}>
         
         <nav className="sidebar-nav">
@@ -76,7 +70,6 @@ export default function Sidebarpost() {
                 textTransform: 'capitalize'
               }}
             >
-              {/* 🔥 FIX 4: Tampilkan label hasil translasi */}
               {t(item.label)}
               {activeCat === item.id && <span style={{ marginLeft: '8px' }}>●</span>}
             </button>

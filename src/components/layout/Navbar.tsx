@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useEffect, useRef, Suspense } from 'react'; // 🔥 TAMBAHKAN React DI SINI
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -9,9 +10,9 @@ import {
   User,
   Mic,
 } from 'lucide-react';
-import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
+import './Create.css';
 
 // Komponen lingkaran berputar (chase spinner)
 function CircularChase() {
@@ -40,7 +41,6 @@ function NavbarContent() {
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   
-  // 🔥 STATE BARU UNTUK MENYIMPAN FOTO PROFIL 🔥
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [clickedItem, setClickedItem] = useState<string | null>(null);
@@ -111,7 +111,6 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
-      // 🔥 AMBIL DATA AVATAR USER DARI PROFILES 🔥
       const { data: profile } = await supabase
         .from('profiles')
         .select('avatar_url')
@@ -120,14 +119,12 @@ function NavbarContent() {
 
       if (isMounted && profile?.avatar_url) {
         let url = profile.avatar_url;
-        // Optimasi gambar Cloudinary khusus Navbar biar ringan
         if (url.includes('res.cloudinary.com') && !url.includes('f_auto')) {
           url = url.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
         }
         setAvatarUrl(url);
       }
 
-      // Menghitung chat yang belum dibaca
       const { count: chatCount } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
@@ -137,7 +134,6 @@ function NavbarContent() {
 
       if (isMounted && chatCount !== null) setUnreadChatCount(chatCount);
 
-      // Menghitung notifikasi yang belum dibaca
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -146,7 +142,6 @@ function NavbarContent() {
 
       if (isMounted && notifCount !== null) setUnreadNotifCount(notifCount);
 
-      // Channel Realtime
       const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
       badgeChannel = supabase
         .channel(uniqueChannelName)
@@ -303,7 +298,6 @@ function NavbarContent() {
                         <CircularChase />
                       </motion.div>
                     ) : item.name === 'Profil' && avatarUrl ? (
-                      // 🔥 RENDER FOTO PROFIL JIKA DATA AVATAR ADA 🔥
                       <div
                         key="avatar"
                         style={{
@@ -313,7 +307,7 @@ function NavbarContent() {
                           width: '28px',
                           height: '28px',
                           borderRadius: '50%',
-                          padding: '2px', // Jarak antara foto dan border aktif
+                          padding: '2px',
                           border: isActive ? `2px solid ${normalColor}` : '2px solid transparent',
                           transition: 'all 0.2s ease',
                         }}
@@ -331,7 +325,6 @@ function NavbarContent() {
                         />
                       </div>
                     ) : (
-                      // Render Icon Bawaan Jika Bukan Profil Atau Foto Belum Load
                       <div
                         key="icon"
                         style={{
