@@ -1,10 +1,10 @@
 'use client';
-import React from 'react';
+import React, { memo } from 'react';
 
 type MusicMarqueeProps = {
   post: any;
   isOverlay?: boolean;
-  mediaRef?: React.RefObject<any>; // 🔥 Tambahin ini
+  mediaRef?: React.RefObject<any>;
 };
 
 const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, mediaRef }) => {
@@ -37,7 +37,8 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
         alignItems: 'center',
         gap: '6px',
         overflow: 'hidden',
-        border: isOverlay ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-card)'
+        border: isOverlay ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-card)',
+        contain: 'paint' // Mencegah animasi membocorkan performa rendering
       }}
     >
       <style>{`
@@ -49,6 +50,7 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
           display: inline-block;
           white-space: nowrap;
           animation: slideMusicText 6s linear infinite;
+          will-change: transform; /* Bantuan Hardware Acceleration untuk GPU */
         }
       `}</style>
 
@@ -70,7 +72,7 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
       </div>
 
       <audio 
-        ref={mediaRef} // 🔥 Sambungin ref ke sini
+        ref={mediaRef} 
         className="post-audio-element" 
         loop 
         preload="none" 
@@ -83,4 +85,6 @@ const MusicMarquee: React.FC<MusicMarqueeProps> = ({ post, isOverlay = true, med
   );
 };
 
-export default React.memo(MusicMarquee);
+export default memo(MusicMarquee, (prev, next) => {
+  return prev.post.id === next.post.id && prev.isOverlay === next.isOverlay;
+});

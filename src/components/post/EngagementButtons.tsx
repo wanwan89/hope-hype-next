@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { memo } from 'react';
 
 type EngagementButtonsProps = {
   postId: string;
@@ -57,4 +57,13 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
   );
 };
 
-export default EngagementButtons;
+// KUNCI PERFORMA: Hanya render ulang jika angkanya berubah
+export default memo(EngagementButtons, (prev, next) => {
+  const pid = prev.postId;
+  if (prev.counts[pid] !== next.counts[pid]) return false;
+  if (prev.myLikedPosts.has(pid) !== next.myLikedPosts.has(pid)) return false;
+  if (prev.mySavedPosts.has(pid) !== next.mySavedPosts.has(pid)) return false;
+  if (prev.myRepostedPosts.has(pid) !== next.myRepostedPosts.has(pid)) return false;
+  if (prev.animatingReposts.has(pid) !== next.animatingReposts.has(pid)) return false;
+  return true;
+});
