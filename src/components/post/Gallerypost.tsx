@@ -10,6 +10,7 @@ import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
+import './Gallery.css'; 
 
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
@@ -145,7 +146,7 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // Observer views
+  // Observer khusus views (Autoplay sudah diurus internal PostCard.tsx)
   useEffect(() => {
     viewObserverRef.current = new IntersectionObserver(
       (entries) => {
@@ -190,6 +191,7 @@ export default function Gallerypost() {
   }, []);
 
   const handleItemsRendered = useCallback(() => {
+    // Kurangi interval setTimeout agar lebih responsif tanpa memblokir thread
     setTimeout(syncObservers, 30);
   }, [syncObservers]);
 
@@ -391,6 +393,7 @@ export default function Gallerypost() {
     } catch (err) {}
   }, []);
 
+
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -398,6 +401,7 @@ export default function Gallerypost() {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
       
+      // FIX Bug 4: Menggunakan ID dinamis agar dirender ulang oleh React
       setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
@@ -413,7 +417,6 @@ export default function Gallerypost() {
       }
     }
   }, [handleLike]);
-
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
     const { postId, creatorId, isUnrepost } = repostModal;
@@ -486,14 +489,11 @@ export default function Gallerypost() {
           margin: 0 !important;
         }
 
-        /* FIX 1: UKURAN SAMA PERSIS ANTARA TEXT & MEDIA POST */
-        .media-post-card-wp [data-postid],
-        .text-post-card-wp [data-postid] {
+        .media-post-card-wp [data-postid] {
           width: 100% !important;
           max-width: 100% !important;
-          margin-bottom: 20px !important; 
+          margin-bottom: 12px !important; 
           border-radius: 16px !important;
-          background: var(--bg-card) !important;
         }
         
         .media-post-card-wp [data-postid] img,
@@ -503,34 +503,22 @@ export default function Gallerypost() {
           border-radius: 16px 16px 0 0 !important;
         }
 
-        /* HAPUS SEMUA PADDING LUAR DI WRAPPER TEXT */
+        /* PERBAIKAN STYLING KARTU TEKS */
         .text-post-card-wp {
           width: 100% !important;
-          padding: 0 !important; 
+          padding: 0 12px !important;
           box-sizing: border-box !important;
         }
-
-        /* FIX 3: POSISI ANIMASI DOUBLE TAP KE TENGAH KARTU */
-        @keyframes popHeartAnim {
-          0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-          15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-          30% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
-          70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-          100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
-        }
-
-        .big-pop-heart {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          color: #ff2e63;
-          font-size: 160px;
-          z-index: 9999;
-          pointer-events: none;
-          opacity: 0;
-          /* Transform (-50%, -50%) sudah murni dihandle oleh animasi di bawah */
-          animation: popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-          filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+        .text-post-card-wp [data-postid] {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-bottom: 14px !important;
+          border-radius: 20px !important;
+          border: 1px solid var(--border-card) !important;
+          overflow: hidden !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+          background: var(--bg-main) !important;
+          padding: 16px !important; /* Fix Bug 1: PADDING KONSISTEN */
         }
 
         img, video, .avatar {
@@ -548,11 +536,13 @@ export default function Gallerypost() {
           border: none;
           padding: 0;
           position: relative;
-          z-index: 10;
+          z-index: 1; /* Fix Bug 2: TURUNKAN Z-INDEX BUTTON */
           pointer-events: auto;
           user-select: none;
         }
-        .see-more-btn:hover { opacity: 0.8; }
+        .see-more-btn:hover {
+          opacity: 0.8;
+        }
       `}</style>
 
       <RepostModal
@@ -590,6 +580,7 @@ export default function Gallerypost() {
                   {index === randomFriendIndex && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
 
                   <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
+                    {/* Hapus double MemoizedPostCard langsung memanggil PostCard */}
                     <PostCard
                       post={post}
                       currentUser={currentUser}

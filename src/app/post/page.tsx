@@ -22,6 +22,7 @@ export default function PostPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
+  // States Interaksi
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
@@ -39,6 +40,7 @@ export default function PostPage() {
   const [repostNote, setRepostNote] = useState("");
   
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
+  const isMutedRef = useRef(true);
 
   const lastTapRef = useRef<Record<string, number>>({});
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
@@ -92,8 +94,14 @@ export default function PostPage() {
   };
 
   const loadProfileMode = async (user: any) => {
-    const { data: exactPost, error: errExact } = await supabase.from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle(); 
-    if (errExact || !exactPost) { setUserPosts([]); setIsLoading(false); return; }
+    const { data: exactPost, error: errExact } = await supabase
+      .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle(); 
+
+    if (errExact || !exactPost) {
+      setUserPosts([]);
+      setIsLoading(false);
+      return;
+    }
 
     const targetUserId = exactPost.creator_id; 
     const isMe = user && targetUserId === user.id;
@@ -107,9 +115,15 @@ export default function PostPage() {
     const { data: postsData, error } = await supabase
       .from('posts')
       .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
-      .eq('creator_id', targetUserId).eq('status', 'approved').order('created_at', { ascending: false });
+      .eq('creator_id', targetUserId)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
 
-    if (error || !postsData) { setUserPosts([]); setIsLoading(false); return; }
+    if (error || !postsData) {
+      setUserPosts([]);
+      setIsLoading(false);
+      return;
+    }
 
     const filtered = postsData.filter(p => {
       if (!p.profiles?.is_private) return true;
@@ -128,9 +142,15 @@ export default function PostPage() {
       const { data: postData, error } = await supabase
         .from('posts')
         .select(`id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)`)
-        .eq('id', id).maybeSingle();
+        .eq('id', id)
+        .maybeSingle();
 
-      if (error || !postData) { setUserPosts([]); setIsLoading(false); return; }
+      if (error || !postData) {
+        setUserPosts([]);
+        setIsLoading(false);
+        return;
+      }
+
       setUserPosts([postData]);
       await fetchPostInteractions(postData.id, user);
     } catch (err) {
@@ -149,26 +169,51 @@ export default function PostPage() {
       supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
     ]);
 
-    setCounts(prev => ({ ...prev, [pid]: { likes: likesRes.data?.length || 0, comments: commentsRes.count || 0, reposts: repostsRes.data?.length || 0, saves: (savesRes.data && savesRes.data[0]?.count) || 0 } }));
+    setCounts(prev => ({
+      ...prev,
+      [pid]: {
+        likes: likesRes.data?.length || 0,
+        comments: commentsRes.count || 0,
+        reposts: repostsRes.data?.length || 0,
+        saves: (savesRes.data && savesRes.data[0]?.count) || 0,
+      }
+    }));
     setLikersMap(prev => ({ ...prev, [pid]: likesRes.data?.map(l => l.profiles) || [] }));
     setRepostersMap(prev => ({ ...prev, [pid]: repostsRes.data?.map(r => ({ ...r.profiles, note: r.note })) || [] }));
 
     if (user) {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
+      
       const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle(); 
+      const isSavedByUser = !!userBookmark;
       
       setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
       setMyRepostedPosts(prev => { const n = new Set(prev); if (reposted) n.add(pid); return n; });
-      setMySavedPosts(prev => { const n = new Set(prev); if (!!userBookmark) n.add(pid); return n; });
+      setMySavedPosts(prev => { const n = new Set(prev); if (isSavedByUser) n.add(pid); return n; });
     }
   };
+
+  useEffect(() => {
+    if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
+      setTimeout(() => {
+        const container = document.getElementById('mainGallery');
+        const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
+        if (container && targetPost) {
+          container.scrollTo({ top: targetPost.offsetTop, behavior: 'auto' });
+        }
+      }, 300);
+    }
+  }, [isLoading, userPosts, postIdFromUrl]);
 
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(postId)) newSet.delete(postId);
-      else newSet.add(postId);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
       return newSet;
     });
   }, []);
@@ -179,8 +224,10 @@ export default function PostPage() {
     if (currentUserRef.current.id === creatorId) return;
 
     const isFollowing = followedUsersRef.current.has(creatorId);
+    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
+
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
     try {
@@ -188,7 +235,9 @@ export default function PostPage() {
         await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
       } else {
         const { error } = await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        if (!error || error.code === '23505') {
+          if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
+        }
       }
     } catch (err) {}
   }, []);
@@ -206,11 +255,14 @@ export default function PostPage() {
         await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        if (!error && creatorId !== currentUserRef.current.id) {
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        }
       }
     } catch (err) {}
   }, []);
 
+  // DI SINI LETAK FIX ANIMASI DOUBLE TAP JANTUNG
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -219,7 +271,7 @@ export default function PostPage() {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-      setPoppingHeart(`${postId}-${now}`);
+      setPoppingHeart(`${postId}-${now}`); // Pastikan valuenya selalu unik setiap kali di-tap
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
@@ -270,8 +322,12 @@ export default function PostPage() {
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
 
     try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      if (isSaved) {
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (error && error.code !== "23505") console.error(error);
+      }
     } catch (err) {}
   }, []);
 
@@ -279,9 +335,9 @@ export default function PostPage() {
     e.stopPropagation();
     setIsGloballyMuted(prev => {
       const next = !prev;
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
-        el.muted = next; 
-      });
+      isMutedRef.current = next;
+      // Sinkronkan secara paksa
+      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
       return next;
     });
   }, []);
@@ -294,12 +350,16 @@ export default function PostPage() {
 
   let headerTitle = "Detail Postingan";
   if (source === 'profile' && userPosts.length > 0) {
-    if (isMyOwnProfile) headerTitle = "Postingan Anda";
-    else headerTitle = `Postingan ${profileUsername || userPosts[0].profiles?.username || 'User'}`;
+    if (isMyOwnProfile) {
+       headerTitle = "Postingan Anda";
+    } else {
+       headerTitle = `Postingan ${profileUsername || userPosts[0].profiles?.username || 'User'}`;
+    }
   }
 
   return (
     <div style={{ paddingBottom: '80px', background: 'var(--bg-main)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* HEADER */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -310,11 +370,11 @@ export default function PostPage() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
+      {/* GALLERY */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
-            <div style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
-            <style>{`@keyframes pureSpin { 100% { transform: rotate(360deg); } }`}</style>
+            <div className="pure-spinner" style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
           </div>
         ) : userPosts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
@@ -322,33 +382,66 @@ export default function PostPage() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div style={{ flex: 1, overflowY: 'auto', scrollSnapType: 'y mandatory', height: 'calc(100vh - 60px)', width: '100%', scrollbarWidth: 'none' }}>
+          <div 
+            className="gallery" 
+            id="mainGallery" 
+            style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              scrollSnapType: 'y mandatory',
+              height: 'calc(100vh - 60px)', 
+              width: '100%' 
+            }}
+          >
             {userPosts.map((p) => {
               const isTextOrAudio = !p.image_url && !p.video_url;
               const isExpanded = expandedPosts.has(p.id);
 
               return (
-                <div key={p.id} id={`post-wrapper-${p.id}`}
-                  style={{
-                    scrollSnapAlign: 'start', position: 'relative', width: '100%',
-                    padding: isTextOrAudio ? '0 12px' : '0', 
-                    marginBottom: isTextOrAudio ? '14px' : '20px'
+                <div 
+                  key={p.id} 
+                  id={`post-wrapper-${p.id}`} 
+                  style={{ 
+                    scrollSnapAlign: 'start', 
+                    height: 'auto', // Berubah dari 100% jadi auto untuk mencegah melar
+                    position: 'relative',
+                    width: '100%',
+                    padding: isTextOrAudio ? '0 12px' : '0', // FIX BOX TEXT SECARA ABSOLUT
+                    marginBottom: isTextOrAudio ? '14px' : '12px'
                   }}
                 >
                   <PostCard
-                    post={p} currentUser={currentUser} counts={counts} myLikedPosts={myLikedPosts}
-                    myRepostedPosts={myRepostedPosts} mySavedPosts={mySavedPosts} followedUsers={followedUsers}
-                    mutualUsers={mutualUsers} animatingFollows={animatingFollows} animatingReposts={animatingReposts}
-                    isGloballyMuted={isGloballyMuted} poppingHeart={poppingHeart} activePreviewImage={activePreviewImage}
-                    likersMap={likersMap} repostersMap={repostersMap} handleLike={handleLike} handleSave={handleSave}
+                    post={p}
+                    currentUser={currentUser}
+                    counts={counts}
+                    myLikedPosts={myLikedPosts}
+                    myRepostedPosts={myRepostedPosts}
+                    mySavedPosts={mySavedPosts}
+                    followedUsers={followedUsers}
+                    mutualUsers={mutualUsers}
+                    animatingFollows={animatingFollows}
+                    animatingReposts={animatingReposts}
+                    isGloballyMuted={isGloballyMuted}
+                    poppingHeart={poppingHeart}
+                    activePreviewImage={activePreviewImage}
+                    likersMap={likersMap} 
+                    repostersMap={repostersMap}
+                    handleLike={handleLike}
+                    handleSave={handleSave}
                     openRepostModal={(id, cid) => {
                       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
                       if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
                       else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
                     }}
-                    handleMediaClick={handleMediaClick} toggleMute={toggleMute} openShareOptions={openShareOptions}
-                    handleFollowToggle={handleFollowToggle} setActivePreviewImage={setActivePreviewImage} router={router} t={t}
-                    isExpanded={isExpanded} onToggleExpand={handleToggleExpand}
+                    handleMediaClick={handleMediaClick}
+                    toggleMute={toggleMute}
+                    openShareOptions={openShareOptions}
+                    handleFollowToggle={handleFollowToggle}
+                    setActivePreviewImage={setActivePreviewImage}
+                    router={router}
+                    t={t}
+                    isExpanded={isExpanded}
+                    onToggleExpand={handleToggleExpand}
                   />
                 </div>
               );
@@ -356,6 +449,48 @@ export default function PostPage() {
           </div>
         )}
       </div>
+      
+      {/* SUNTIKAN CSS GLOBAL PALING EKSTRIM UNTUK MEMAKSA TAMPILAN FIX */}
+      <style>{`
+        @keyframes pureSpin { 100% { transform: rotate(360deg); } }
+        @keyframes popHeartAnim {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+          15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          30% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+          70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
+        }
+
+        #mainGallery::-webkit-scrollbar { display: none; }
+        #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* GARANSI MUTLAK AVATAR DAN FLOATING BUBBLE BULAT SEMPURNA */
+        img, .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
+          border-radius: 50% !important;
+          aspect-ratio: 1 / 1 !important;
+          object-fit: cover !important;
+        }
+        
+        /* Kecualikan gambar di carousel dan watermark */
+        .carousel-item img, .post-video-element, .image-preview-content img {
+          border-radius: 0 !important;
+          aspect-ratio: auto !important;
+        }
+
+        .see-more-btn {
+          color: #1f3cff !important;
+          cursor: pointer;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          display: inline-block;
+          margin-top: 6px;
+          background: none;
+          border: none;
+          padding: 0;
+          z-index: 10;
+          pointer-events: auto;
+        }
+      `}</style>
     </div>
   );
 }
