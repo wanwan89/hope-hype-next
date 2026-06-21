@@ -143,7 +143,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
     observer.observe(card);
     return () => observer.disconnect();
-  }, [isGloballyMuted]); // hanya bergantung pada isGloballyMuted
+  }, [isGloballyMuted]);
 
   // --- 4. Deteksi apakah bio butuh tombol "Lihat Selengkapnya" ---
   useEffect(() => {
@@ -213,7 +213,7 @@ const PostCard: React.FC<PostCardProps> = ({
     [onToggleExpand, postIdStr]
   );
 
-  // Style card dimemo agar tidak membuat objek baru setiap render
+  // Style card – tambahkan margin 0 untuk menghilangkan celah dan zIndex tinggi saat expanded
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
@@ -223,12 +223,14 @@ const PostCard: React.FC<PostCardProps> = ({
       border: '1px solid var(--border-card)',
       position: 'relative' as const,
       width: '100%',
+      margin: 0, // ✅ hilangkan celah pinggir
       boxSizing: 'border-box' as const,
       boxShadow:
         isVideoPost || photoList.length > 0
           ? 'none'
           : '0 4px 12px rgba(0, 0, 0, 0.03)',
       textAlign: 'left' as const,
+      zIndex: actuallyExpanded ? 50 : 1, // ✅ naikkan zIndex saat expanded agar di atas search bar
     }),
     [actuallyExpanded, isVideoPost, photoList.length]
   );
@@ -556,7 +558,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* Bio dengan expand/collapse */}
+            {/* Bio dengan expand/collapse – zIndex tinggi agar di atas search bar */}
             <div
               style={{
                 maxHeight: actuallyExpanded ? 'none' : 'auto',
@@ -570,8 +572,9 @@ const PostCard: React.FC<PostCardProps> = ({
                 marginTop: '8px',
                 transition: 'all 0.3s ease-in-out',
                 pointerEvents: 'auto',
-                zIndex: 2,
+                zIndex: 100, // ✅ pastikan di atas search bar
                 textAlign: 'left',
+                position: 'relative' // diperlukan untuk zIndex
               }}
               onWheel={(e) => actuallyExpanded && e.stopPropagation()}
               onTouchMove={(e) => actuallyExpanded && e.stopPropagation()}
@@ -610,6 +613,8 @@ const PostCard: React.FC<PostCardProps> = ({
                     background: 'none',
                     border: 'none',
                     padding: 0,
+                    position: 'relative',
+                    zIndex: 101 // lebih tinggi dari bio container
                   }}
                 >
                   Lihat Selengkapnya
@@ -630,6 +635,8 @@ const PostCard: React.FC<PostCardProps> = ({
                     background: 'none',
                     border: 'none',
                     padding: 0,
+                    position: 'relative',
+                    zIndex: 101
                   }}
                 >
                   Lebih Sedikit
@@ -853,7 +860,7 @@ const PostCard: React.FC<PostCardProps> = ({
             </span>
           )}
 
-          {/* Bio */}
+          {/* Bio untuk postingan teks */}
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
             style={{
@@ -867,6 +874,7 @@ const PostCard: React.FC<PostCardProps> = ({
               WebkitBoxOrient: 'vertical',
               overflow: actuallyExpanded ? 'visible' : 'hidden',
               textAlign: 'left',
+              // Tidak perlu zIndex tinggi karena di dalam card yang sudah zIndex 50
             }}
           >
             {bioContent}
@@ -887,6 +895,8 @@ const PostCard: React.FC<PostCardProps> = ({
                 background: 'none',
                 border: 'none',
                 padding: 0,
+                position: 'relative',
+                zIndex: 101
               }}
             >
               Lihat Selengkapnya
@@ -907,6 +917,8 @@ const PostCard: React.FC<PostCardProps> = ({
                 background: 'none',
                 border: 'none',
                 padding: 0,
+                position: 'relative',
+                zIndex: 101
               }}
             >
               Lebih Sedikit
