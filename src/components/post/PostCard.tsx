@@ -155,7 +155,8 @@ const PostCard: React.FC<PostCardProps> = ({
     position: 'relative',
     width: '100%',
     boxSizing: 'border-box',
-    boxShadow: isVideoPost || photoList.length > 0 ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)'
+    boxShadow: isVideoPost || photoList.length > 0 ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)',
+    textAlign: 'left' // FIX KONSISTENSI UKURAN & MEMAKSA KIRI
   };
 
   return (
@@ -169,12 +170,11 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
+            {/* FIX 1: Jantung Tengah Presisi (Tanpa Div Wrapper agar Translate tidak dobel) */}
             {poppingHeart?.startsWith(postIdStr) && (
-              <div key={poppingHeart} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, pointerEvents: 'none' }}>
-                <span className="material-icons" style={{ color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' }}>
-                  favorite
-                </span>
-              </div>
+              <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
+                favorite
+              </span>
             )}
 
             <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
@@ -296,7 +296,8 @@ const PostCard: React.FC<PostCardProps> = ({
                 marginTop: '8px',
                 transition: 'all 0.3s ease-in-out',
                 pointerEvents: 'auto',
-                zIndex: 2, 
+                zIndex: 2,
+                textAlign: 'left'
               }}
               onWheel={(e) => actuallyExpanded && e.stopPropagation()}
               onTouchMove={(e) => actuallyExpanded && e.stopPropagation()}
@@ -321,12 +322,12 @@ const PostCard: React.FC<PostCardProps> = ({
               </p>
               
               {showMoreButton && !actuallyExpanded && ( 
-                <button className="see-more-btn" onClick={handleToggleClick}>
+                <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', margin: '4px 0 0 0', color: '#1f3cff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
                   Lihat Selengkapnya
                 </button>
               )}
               {actuallyExpanded && ( 
-                <button className="see-more-btn" onClick={handleToggleClick} style={{ color: '#ff7b9c' }}>
+                <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', margin: '4px 0 0 0', color: '#ff7b9c', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
                   Lebih Sedikit
                 </button>
               )}
@@ -386,18 +387,17 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           </div>
 
+          {/* FIX 1: Jantung Tengah Presisi untuk Post Text */}
           {poppingHeart?.startsWith(postIdStr) && (
-            <div key={poppingHeart} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, pointerEvents: 'none' }}>
-              <span className="material-icons" style={{ color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' }}>
-                favorite
-              </span>
-            </div>
+            <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>
+              favorite
+            </span>
           )}
 
           <div
             ref={captionRef as React.RefObject<HTMLDivElement>}
             style={{
-              marginBottom: '12px',
+              marginBottom: showMoreButton ? '4px' : '12px',
               fontSize: '15px',
               color: 'var(--text-main)',
               lineHeight: 1.5,
@@ -406,18 +406,20 @@ const PostCard: React.FC<PostCardProps> = ({
               WebkitLineClamp: actuallyExpanded ? 'unset' : 4, 
               WebkitBoxOrient: 'vertical',
               overflow: actuallyExpanded ? 'visible' : 'hidden', 
+              textAlign: 'left' // Memastikan teks selalu rata kiri
             }}
           >
             {renderBioWithMentions(post.bio?.trim())}
           </div>
 
+          {/* FIX 2: Tombol 'Lihat Selengkapnya' Rata Kiri & Rapi */}
           {showMoreButton && !actuallyExpanded && ( 
-            <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px' }}>
+            <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', marginBottom: '12px', color: '#1f3cff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
               Lihat Selengkapnya
             </button>
           )}
           {actuallyExpanded && ( 
-            <button className="see-more-btn" onClick={handleToggleClick} style={{ marginBottom: '12px', color: '#ff2e63' }}>
+            <button className="see-more-btn" onClick={handleToggleClick} style={{ display: 'block', textAlign: 'left', marginBottom: '12px', color: '#ff2e63', cursor: 'pointer', fontSize: '13px', fontWeight: 700, background: 'none', border: 'none', padding: 0 }}>
               Lebih Sedikit
             </button>
           )}
