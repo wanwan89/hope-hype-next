@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react'; // 🔥 TAMBAHKAN React DI SINI
 import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
