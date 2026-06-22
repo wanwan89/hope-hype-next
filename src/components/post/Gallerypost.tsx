@@ -13,6 +13,16 @@ import { Virtuoso } from 'react-virtuoso';
 import { useFeed } from '@/hooks/useFeed';
 import './Gallery.css';
 
+// Fungsi Fisher-Yates untuk mengacak array (Masih dipakai untuk widget SuggestedPosts)
+function shuffleArray(array: any[]) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // Cloudinary helper
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
@@ -78,7 +88,7 @@ export default function Gallerypost() {
   const searchParams = useSearchParams();
   const isPosting = searchParams?.get('posting') === 'true';
 
-  // --- State interaksi (dipertahankan seperti asli) ---
+  // --- State interaksi ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
@@ -95,14 +105,11 @@ export default function Gallerypost() {
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
 
-  const viewObserverRef = useRef<IntersectionObserver | null>(null);
-  const viewedPostsRef = useRef<Set<string>>(new Set());
-  const viewTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
-  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
-  const [currentCategory, setCurrentCategory] = useState("all");
+  
+  // Kategori default ke 'fyp' yang akan ditangkap oleh useFeed
+  const [currentCategory, setCurrentCategory] = useState("fyp"); 
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
 
   const [repostModal, setRepostModal] = useState<{
@@ -114,8 +121,6 @@ export default function Gallerypost() {
   const [repostNote, setRepostNote] = useState("");
 
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
-
-  // State untuk rekomendasi postingan (slider)
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
 
   // Refs untuk akses dalam callback
@@ -130,7 +135,7 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // React Query feed hook
+  // 🔥 Hook fetching data dari useFeed (Sudah menangani logic FYP/Randomize di dalamnya)
   const {
     allPosts,
     fetchNextPage,
@@ -141,15 +146,14 @@ export default function Gallerypost() {
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
 
-  // Hapus query param "posting" setelah feed selesai loading (hindari overlay terus-menerus)
+  // Hapus query param "posting"
   useEffect(() => {
     if (isPosting && !isLoading) {
-      // Ganti URL tanpa reload
       router.replace('/', { scroll: false });
     }
   }, [isPosting, isLoading, router]);
 
-  // --- Inisialisasi user dan follows ---
+  // --- Inisialisasi user ---
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -174,7 +178,7 @@ export default function Gallerypost() {
     init();
   }, []);
 
-  // Fetch rekomendasi postingan untuk slider
+  // Fetch rekomendasi
   useEffect(() => {
     const fetchSuggestedPosts = async () => {
       try {
@@ -186,7 +190,7 @@ export default function Gallerypost() {
           .neq('image_url', null)
           .limit(20);
         if (data) {
-          setSuggestedPosts(data.sort(() => 0.5 - Math.random()).slice(0, 6));
+          setSuggestedPosts(shuffleArray(data).slice(0, 6));
         }
       } catch (err) {
         console.error(err);
@@ -195,7 +199,7 @@ export default function Gallerypost() {
     fetchSuggestedPosts();
   }, []);
 
-  // --- Ambil interaksi setiap kali allPosts berubah ---
+  // --- Ambil Interaksi (Likes, dsb) berdasarkan allPosts ---
   useEffect(() => {
     if (!currentUser || allPosts.length === 0) return;
 
@@ -212,9 +216,11 @@ export default function Gallerypost() {
       const newLikersMap: any = {};
       const newRepostersMap: any = {};
       postIds.forEach(id => {
-        newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
-        newLikersMap[id] = [];
-        newRepostersMap[id] = [];
+        if(!newCounts[id]) {
+            newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
+            newLikersMap[id] = [];
+            newRepostersMap[id] = [];
+        }
       });
 
       likesRes.data?.forEach(l => {
@@ -230,7 +236,6 @@ export default function Gallerypost() {
       setLikersMap(prev => ({ ...prev, ...newLikersMap }));
       setRepostersMap(prev => ({ ...prev, ...newRepostersMap }));
 
-      // My likes/reposts/saves
       const [myLikes, myReposts, mySaves] = await Promise.all([
         supabase.from("likes").select("post_id").eq("user_id", currentUser.id).in("post_id", postIds),
         supabase.from("reposts").select("post_id").eq("user_id", currentUser.id).in("post_id", postIds),
@@ -256,7 +261,6 @@ export default function Gallerypost() {
     fetchInteractions();
   }, [allPosts, currentUser]);
 
-  // --- Fungsi interaksi (dari Gallerypost asli, di-memo) ---
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
     const numericPostId = parseInt(postId);
@@ -370,7 +374,6 @@ export default function Gallerypost() {
     });
   }, []);
 
-  // Callback share (menggunakan globalShare jika tersedia)
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
     if (typeof window !== 'undefined' && (window as any).openGlobalShare) {
       (window as any).openGlobalShare(
@@ -400,8 +403,9 @@ export default function Gallerypost() {
 
     return (
       <React.Fragment key={post.id}>
-        {index === 2 && <MemoizedSlider posts={suggestedPosts} />}
-        {index === 4 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
+        {/* Render Suggestion Slider secara selektif untuk memecah feed */}
+        {index === 3 && <MemoizedSlider posts={suggestedPosts} />}
+        {index === 7 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
         <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
           <PostCard
             post={post}
@@ -450,7 +454,6 @@ export default function Gallerypost() {
     }
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  // Tampilan overlay "Mengirim postingan..." ketika ?posting=true dan masih loading
   if (isPosting && isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg-main)', gap: '20px' }}>
@@ -460,7 +463,6 @@ export default function Gallerypost() {
     );
   }
 
-  // Skeleton loading biasa
   if (isLoading) {
     return (
       <div style={{ padding: 16 }}>
@@ -516,9 +518,9 @@ export default function Gallerypost() {
 
       <Virtuoso
         useWindowScroll
-        data={allPosts}
+        data={allPosts} // 🔥 Kembali menggunakan allPosts
         endReached={loadMore}
-        overscan={5}
+        overscan={2} // 🔥 Optimasi render video
         itemContent={renderItem}
         components={{
           Footer: () => isFetchingNextPage ? (

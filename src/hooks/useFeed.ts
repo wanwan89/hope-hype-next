@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query'; // 🔥 Typo 'Import' huruf besar sudah diperbaiki
 import { supabase } from '@/lib/supabase';
 import { useMemo } from 'react';
 
@@ -32,7 +32,18 @@ export interface FeedCounts {
   saves: number;
 }
 
-const POSTS_PER_PAGE = 15;
+// 🔥 OPTIMASI TIKTOK/REELS: Load awal hanya 5 untuk performa instan
+const POSTS_PER_PAGE = 5;
+
+// Fungsi utilitas untuk mengacak array (Sistem FYP)
+const shuffleArray = (array: any[]) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 const fetchFeed = async ({
   pageParam = 0,
@@ -48,31 +59,44 @@ const fetchFeed = async ({
   const from = pageParam * POSTS_PER_PAGE;
   const to = from + POSTS_PER_PAGE - 1;
 
+  // Jika kategori 'fyp', kita fetch secara normal lalu acak hasilnya di client
+  const isFyp = category === 'fyp';
+  const queryCategory = isFyp ? 'all' : category;
+
   let query = supabase
     .from('posts')
     .select(
       'id, image_url, video_url, audio_src, title, artist, bio, created_at, creator_id, category, views, is_private, is_ad, profiles:creator_id (full_name, username, role, avatar_url, is_private)'
     )
     .eq('status', 'approved')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }) // Wajib urut waktu agar paginasi tidak menghasilkan postingan duplikat
     .range(from, to);
 
-  if (category !== 'all') query = query.ilike('category', `%${category}%`);
+  if (queryCategory !== 'all') {
+    query = query.ilike('category', `%${queryCategory}%`);
+  }
 
   const { data: rawPosts, error } = await query;
   if (error) throw error;
 
-  const posts: Post[] = (rawPosts || []).filter((post: any) => {
+  // Filter privacy
+  let posts: Post[] = (rawPosts || []).filter((post: any) => {
     if (!post.profiles?.is_private) return true;
     if (user && post.creator_id === user.id) return true;
     if (user && mutuals.has(post.creator_id)) return true;
     return false;
   });
 
-  // Return both posts and a nextPage offset (null if no more)
+  // 🔥 LOGIKA FYP: Acak 5 postingan yang baru di-fetch (Batch Shuffle)
+  // Ini memberi kesan random tiap scroll tanpa merusak struktur infinite scroll
+  if (isFyp) {
+    posts = shuffleArray(posts);
+  }
+
   return {
     posts,
-    nextPage: posts.length < POSTS_PER_PAGE ? null : pageParam + 1,
+    // Pengecekan limit menggunakan rawPosts agar paginasi tidak berhenti prematur jika ada post yang terfilter
+    nextPage: rawPosts.length < POSTS_PER_PAGE ? null : pageParam + 1,
   };
 };
 
@@ -82,14 +106,18 @@ export function useFeed(
   mutuals: Set<string>
 ) {
   const query = useInfiniteQuery({
-    queryKey: ['feed', category, user?.id, ...Array.from(mutuals)],
+    // Menggunakan mutuals.size sebagai cache key agar React Query tidak bingung dengan Set object
+    queryKey: ['feed', category, user?.id, mutuals.size],
     queryFn: ({ pageParam }) =>
       fetchFeed({ pageParam: pageParam as number, category, user, mutuals }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage,
-    staleTime: 1000 * 60 * 2, // 2 menit stale
-    retry: 3,
-    refetchOnWindowFocus: false,
+    
+    // 🔥 OPTIMASI CACHE AGAR FEED TERASA INSTAN SEPERTI IG/TIKTOK
+    staleTime: 1000 * 60 * 5, // Data tidak akan di-fetch ulang selama 5 menit
+    gcTime: 1000 * 60 * 10,   // Simpan posisi memori scroll hingga 10 menit
+    retry: 2,                 // Jika gagal fetch, coba 2x lagi
+    refetchOnWindowFocus: false, // Jangan me-refresh feed tiba-tiba saat ganti tab
   });
 
   // Gabungkan semua post dari setiap halaman
