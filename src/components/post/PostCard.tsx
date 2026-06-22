@@ -52,7 +52,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const creatorIdStr = String(post.creator_id);
   const isOwner = currentUser && currentUser.id === post.creator_id;
 
-  // --- 1. Nilai turunan dari post (dihitung sekali, tidak berubah kecuali post berubah) ---
+  // --- 1. Nilai turunan dari post ---
   const photoList = useMemo(
     () => (post.image_url ? post.image_url.split(',') : []),
     [post.image_url]
@@ -106,17 +106,18 @@ const PostCard: React.FC<PostCardProps> = ({
   const [showMoreButton, setShowMoreButton] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const currentSlideRef = useRef(0);
   const [localExpanded, setLocalExpanded] = useState(false);
   const actuallyExpanded = isExpanded || localExpanded;
 
-  // ✅ State kontrol video
+  // State kontrol video
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
-  const [showControls, setShowControls] = useState(false); // kontrol disembunyikan awal
+  const [showControls, setShowControls] = useState(false);
 
-  // --- 3. Observer video/audio ---
+  // --- 3. Observer video/audio (threshold 0.3 agar tidak terlalu sensitif) ---
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
@@ -144,14 +145,14 @@ const PostCard: React.FC<PostCardProps> = ({
           }
         });
       },
-      { threshold: 0.5 }
+      { threshold: 0.3 }
     );
 
     observer.observe(card);
     return () => observer.disconnect();
   }, [isGloballyMuted]);
 
-  // ✅ Efek untuk melacak status play/pause dan waktu video
+  // Sinkronisasi status video
   useEffect(() => {
     const video = mediaRef.current as HTMLVideoElement | null;
     if (!video || !isVideoPost) return;
@@ -176,22 +177,27 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-  // --- 4. Deteksi bio butuh tombol "Lihat Selengkapnya" ---
+  // Deteksi bio butuh tombol "Lihat Selengkapnya" (hanya untuk postingan media)
   useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      if (captionRef.current) {
-        const el = captionRef.current;
-        const prevWebkit = el.style.webkitLineClamp;
-        el.style.webkitLineClamp = 'unset';
-        const fullHeight = el.scrollHeight;
-        el.style.webkitLineClamp = prevWebkit;
-        setShowMoreButton(fullHeight > 45);
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [post.bio, actuallyExpanded]);
+    if (photoList.length > 0 || isVideoPost) {
+      const raf = requestAnimationFrame(() => {
+        if (captionRef.current) {
+          const el = captionRef.current;
+          const prev = el.style.webkitLineClamp;
+          el.style.webkitLineClamp = 'unset';
+          const fullHeight = el.scrollHeight;
+          el.style.webkitLineClamp = prev;
+          setShowMoreButton(fullHeight > 45);
+        }
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      // Postingan teks tidak membutuhkan tombol
+      setShowMoreButton(false);
+    }
+  }, [post.bio, actuallyExpanded, photoList.length, isVideoPost]);
 
-  // --- 5. Render bio dengan mention & hashtag ---
+  // Render bio dengan mention & hashtag
   const renderBioWithMentions = useCallback(
     (text: string) => {
       if (!text) return null;
@@ -244,7 +250,7 @@ const PostCard: React.FC<PostCardProps> = ({
     [onToggleExpand, postIdStr]
   );
 
-  // ✅ Handler kontrol video
+  // Handler kontrol video
   const handleVideoSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = Number(e.target.value);
     setVideoCurrentTime(time);
@@ -271,27 +277,29 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  // ✅ Toggle tampilkan kontrol (play/pause + progress bar)
   const handleVideoTap = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowControls((prev) => !prev);
   };
 
-  // ✅ Throttle scroll carousel dengan requestAnimationFrame (optimasi performa)
+  // Throttle scroll carousel dengan ref untuk currentSlide terbaru
   const ticking = useRef(false);
   const handleCarouselScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (!ticking.current) {
       window.requestAnimationFrame(() => {
         const target = e.target as HTMLDivElement;
         const index = Math.round(target.scrollLeft / target.offsetWidth);
-        if (index !== currentSlide) setCurrentSlide(index);
+        if (index !== currentSlideRef.current) {
+          setCurrentSlide(index);
+          currentSlideRef.current = index;
+        }
         ticking.current = false;
       });
       ticking.current = true;
     }
-  }, [currentSlide]);
+  }, []);
 
-  // ✅ Style card – full‑bleed dengan optimasi GPU
+  // Style card – full bleed tanpa will-change
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
@@ -311,9 +319,6 @@ const PostCard: React.FC<PostCardProps> = ({
           : '0 4px 12px rgba(0, 0, 0, 0.03)',
       textAlign: 'left' as const,
       zIndex: actuallyExpanded ? 50 : 1,
-      // 🔥 Optimasi performa
-      willChange: 'transform',
-      contain: 'layout style',
     }),
     [actuallyExpanded, isVideoPost, photoList.length]
   );
@@ -334,7 +339,7 @@ const PostCard: React.FC<PostCardProps> = ({
     >
       {(photoList.length > 0 || isVideoPost) ? (
         <>
-          <div className="slider" style={{ position: 'relative', willChange: 'transform' }}>
+          <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
             {poppingHeart?.startsWith(postIdStr) && (
@@ -473,7 +478,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     position: 'relative',
                     background: '#000',
                     cursor: 'pointer',
-                    transform: 'translateZ(0)', // GPU layer
+                    transform: 'translateZ(0)',
                   }}
                 >
                   {!videoLoaded && (
@@ -512,7 +517,6 @@ const PostCard: React.FC<PostCardProps> = ({
                     }}
                   />
 
-                  {/* ✅ Tombol play/pause – hanya muncul jika showControls true */}
                   {videoLoaded && showControls && (
                     <button
                       onClick={toggleVideoPlayPause}
@@ -540,7 +544,6 @@ const PostCard: React.FC<PostCardProps> = ({
                     </button>
                   )}
 
-                  {/* ✅ Progress bar – hanya muncul jika showControls true */}
                   {videoLoaded && showControls && (
                     <input
                       type="range"
@@ -643,7 +646,7 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          {/* Overlay informasi */}
+          {/* Overlay informasi (hanya untuk media post) */}
           <div className="overlay" style={{ pointerEvents: 'auto' }}>
             <div
               style={{
@@ -694,7 +697,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* Bio dengan expand/collapse */}
+            {/* Bio dengan expand/collapse (khusus media) */}
             <div
               style={{
                 maxHeight: actuallyExpanded ? 'none' : 'auto',
@@ -780,7 +783,6 @@ const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
 
-            {/* Tanggal & Iklan */}
             <div
               className="post-date-wrapper"
               style={{
@@ -819,7 +821,6 @@ const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
 
-            {/* Tombol aksi */}
             <div
               className="actions"
               style={{ pointerEvents: 'auto' }}
@@ -857,9 +858,8 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
         </>
       ) : (
-        // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
+        // ==================== TAMPILAN POSTINGAN TEKS / AUDIO (tanpa expand) ====================
         <>
-          {/* Header */}
           <div
             style={{
               display: 'flex',
@@ -973,7 +973,6 @@ const PostCard: React.FC<PostCardProps> = ({
             </button>
           </div>
 
-          {/* Animasi hati */}
           {poppingHeart?.startsWith(postIdStr) && (
             <span
               key={poppingHeart}
@@ -996,69 +995,20 @@ const PostCard: React.FC<PostCardProps> = ({
             </span>
           )}
 
-          {/* Bio untuk postingan teks */}
+          {/* Bio untuk postingan teks - tampilan penuh */}
           <div
-            ref={captionRef as React.RefObject<HTMLDivElement>}
             style={{
-              marginBottom: showMoreButton ? '4px' : '12px',
+              marginBottom: '12px',
               fontSize: '14.5px',
               color: 'var(--text-main)',
               lineHeight: 1.5,
               wordBreak: 'break-word',
-              display: actuallyExpanded ? 'block' : '-webkit-box',
-              WebkitLineClamp: actuallyExpanded ? 'unset' : 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: actuallyExpanded ? 'visible' : 'hidden',
+              whiteSpace: 'pre-wrap',
               textAlign: 'left',
             }}
           >
             {bioContent}
           </div>
-
-          {showMoreButton && !actuallyExpanded && (
-            <button
-              className="see-more-btn"
-              onClick={handleToggleClick}
-              style={{
-                display: 'block',
-                textAlign: 'left',
-                marginBottom: '12px',
-                color: '#1f3cff',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 700,
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                position: 'relative',
-                zIndex: 101
-              }}
-            >
-              Lihat Selengkapnya
-            </button>
-          )}
-          {actuallyExpanded && (
-            <button
-              className="see-more-btn"
-              onClick={handleToggleClick}
-              style={{
-                display: 'block',
-                textAlign: 'left',
-                marginBottom: '12px',
-                color: '#ff2e63',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 700,
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                position: 'relative',
-                zIndex: 101
-              }}
-            >
-              Lebih Sedikit
-            </button>
-          )}
 
           {/* Audio player */}
           {post.audio_src && (
@@ -1126,7 +1076,6 @@ const PostCard: React.FC<PostCardProps> = ({
             </>
           )}
 
-          {/* Actions */}
           <div
             className="actions"
             style={{
