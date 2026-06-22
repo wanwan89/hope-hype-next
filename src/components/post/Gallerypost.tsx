@@ -13,7 +13,6 @@ import { Virtuoso } from 'react-virtuoso';
 import { useFeed } from '@/hooks/useFeed';
 import './Gallery.css';
 
-// Fungsi Fisher-Yates untuk mengacak array (Masih dipakai untuk widget SuggestedPosts)
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -23,7 +22,6 @@ function shuffleArray(array: any[]) {
   return shuffled;
 }
 
-// Cloudinary helper
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -33,7 +31,6 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// Memoized Slider Rekomendasi
 const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
   if (!posts.length) return null;
   return (
@@ -88,7 +85,6 @@ export default function Gallerypost() {
   const searchParams = useSearchParams();
   const isPosting = searchParams?.get('posting') === 'true';
 
-  // --- State interaksi ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
@@ -108,7 +104,6 @@ export default function Gallerypost() {
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
   
-  // Kategori default ke 'fyp' yang akan ditangkap oleh useFeed
   const [currentCategory, setCurrentCategory] = useState("fyp"); 
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
 
@@ -123,7 +118,9 @@ export default function Gallerypost() {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
 
-  // Refs untuk akses dalam callback
+  // 🔥 State untuk progress bar posting
+  const [postingProgress, setPostingProgress] = useState<number | null>(null);
+
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -135,7 +132,6 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // 🔥 Hook fetching data dari useFeed (Sudah menangani logic FYP/Randomize di dalamnya)
   const {
     allPosts,
     fetchNextPage,
@@ -146,12 +142,43 @@ export default function Gallerypost() {
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
 
-  // Hapus query param "posting"
+  // 🔥 Bersihkan query param & ambil progress dari localStorage
   useEffect(() => {
-    if (isPosting && !isLoading) {
+    if (isPosting) {
+      const savedProgress = localStorage.getItem('postingProgress');
+      if (savedProgress) {
+        setPostingProgress(Number(savedProgress));
+      } else {
+        setPostingProgress(0);
+      }
+      // Hapus query param
       router.replace('/', { scroll: false });
     }
-  }, [isPosting, isLoading, router]);
+  }, [isPosting, router]);
+
+  // 🔥 Polling progress dari localStorage
+  useEffect(() => {
+    if (postingProgress === null) return;
+    const interval = setInterval(() => {
+      const p = localStorage.getItem('postingProgress');
+      if (p) {
+        const val = Number(p);
+        setPostingProgress(val);
+        if (val >= 100) {
+          clearInterval(interval);
+          // Tunggu sebentar lalu hapus localStorage
+          setTimeout(() => {
+            localStorage.removeItem('postingProgress');
+            setPostingProgress(null);
+          }, 1500);
+        }
+      } else {
+        clearInterval(interval);
+        setPostingProgress(null);
+      }
+    }, 300);
+    return () => clearInterval(interval);
+  }, [postingProgress]);
 
   // --- Inisialisasi user ---
   useEffect(() => {
@@ -396,14 +423,12 @@ export default function Gallerypost() {
     });
   }, []);
 
-  // --- Render item untuk Virtuoso ---
   const renderItem = useCallback((index: number, post: any) => {
     const isExpanded = expandedPosts.has(post.id);
     const isTextOrAudio = !post.image_url && !post.video_url;
 
     return (
       <React.Fragment key={post.id}>
-        {/* Render Suggestion Slider secara selektif untuk memecah feed */}
         {index === 3 && <MemoizedSlider posts={suggestedPosts} />}
         {index === 7 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
         <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
@@ -454,11 +479,26 @@ export default function Gallerypost() {
     }
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  if (isPosting && isLoading) {
+  // 🔥 Tampilan progress bar saat ada postingProgress
+  if (postingProgress !== null) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg-main)', gap: '20px' }}>
-        <div className="pure-spinner"></div>
-        <p style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: '16px' }}>Mengirim postingan...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg-main)', gap: '20px', padding: '0 30px' }}>
+        <div style={{ width: '100%', maxWidth: '300px', textAlign: 'center' }}>
+          <span className="material-icons" style={{ fontSize: '48px', color: '#1f3cff', marginBottom: '15px' }}>cloud_upload</span>
+          <p style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '16px', margin: '0 0 15px 0' }}>
+            {postingProgress >= 100 ? 'Postingan berhasil dikirim!' : 'Mengirim postingan...'}
+          </p>
+          <div style={{ width: '100%', height: '8px', background: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${postingProgress}%`,
+              height: '100%',
+              background: '#1f3cff',
+              borderRadius: '4px',
+              transition: 'width 0.3s ease'
+            }}></div>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '10px' }}>{postingProgress}%</p>
+        </div>
       </div>
     );
   }
@@ -518,9 +558,9 @@ export default function Gallerypost() {
 
       <Virtuoso
         useWindowScroll
-        data={allPosts} // 🔥 Kembali menggunakan allPosts
+        data={allPosts}
         endReached={loadMore}
-        overscan={2} // 🔥 Optimasi render video
+        overscan={2}
         itemContent={renderItem}
         components={{
           Footer: () => isFetchingNextPage ? (

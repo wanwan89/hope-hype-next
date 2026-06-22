@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'; // 🔥 TAMBAHKAN React DI SINI
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
-// 🔥 FIX: IMPORT useSearchParams 🔥
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Create.css';
@@ -18,7 +17,6 @@ export default function CreatePostPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 🔥 TANGKAP ID DRAFT DARI URL 🔥
   const draftId = searchParams?.get('draft_id');
 
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
@@ -31,11 +29,11 @@ export default function CreatePostPage() {
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]);
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null); // Menyimpan URL gambar draf lama
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
   const [rawVideoFile, setRawVideoFile] = useState<File | null>(null);
   const [rawVideoUrl, setRawVideoUrl] = useState<string | null>(null);
-  const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null); // Menyimpan URL video draf lama
+  const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoStart, setVideoStart] = useState(0);
   const [coverTime, setCoverTime] = useState(0);
@@ -77,7 +75,7 @@ export default function CreatePostPage() {
   const [isBusinessUser, setIsBusinessUser] = useState(false);
   const [isAd, setIsAd] = useState(false);
 
-  // 🔥 EFEK: LOAD DATA DRAFT JIKA ADA draft_id DI URL 🔥
+  // Load draft
   useEffect(() => {
     if (draftId) {
       const fetchDraft = async () => {
@@ -90,7 +88,7 @@ export default function CreatePostPage() {
           if (data.video_url) {
             setPostType('video');
             setExistingVideoUrl(data.video_url);
-            setExistingImageUrl(data.image_url); // Biasanya cover video disimpan di image_url
+            setExistingImageUrl(data.image_url);
             setCoverUrlPreview(data.image_url);
             setRawVideoUrl(data.video_url);
           } else if (data.image_url) {
@@ -109,7 +107,7 @@ export default function CreatePostPage() {
             });
           }
 
-          setStep('post'); // Langsung bawa ke halaman caption
+          setStep('post');
         }
       };
       fetchDraft();
@@ -226,7 +224,7 @@ export default function CreatePostPage() {
       setRawImagesQueue(results);
       setImageForCrop(results[0]);
       setStep('edit');
-      setExistingImageUrl(null); // Reset draf image jika user milih gambar baru
+      setExistingImageUrl(null);
     });
   };
 
@@ -306,7 +304,7 @@ export default function CreatePostPage() {
     const objUrl = URL.createObjectURL(file);
     setRawVideoUrl(objUrl);
     setVideoThumbnails([]);
-    setExistingVideoUrl(null); // Reset draf video jika user milih video baru
+    setExistingVideoUrl(null);
     setExistingImageUrl(null);
     setStep('edit');
   };
@@ -408,6 +406,8 @@ export default function CreatePostPage() {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(percentComplete);
+          // 🔥 Update localStorage dengan progress (skala 0-50)
+          localStorage.setItem('postingProgress', String(Math.round(percentComplete / 2)));
         }
       };
 
@@ -421,14 +421,12 @@ export default function CreatePostPage() {
     });
   };
 
-  // 🆕 Fungsi untuk menghitung jumlah kalimat
   const countSentences = (text: string) => {
     if (!text.trim()) return 0;
-    // Pisahkan berdasarkan . ! ?
     return text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
   };
 
-  // 🔥 UPDATE LOGIKA SUBMIT UNTUK HANDLE UPDATE DRAFT & BATAS KALIMAT 🔥
+  // 🔥 Fungsi submit yang diubah
   const submitPostAction = async (isDraft: boolean = false) => {
     if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
       return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
@@ -437,7 +435,6 @@ export default function CreatePostPage() {
     if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1)))
       return showNotif("Story hanya bisa upload 1 foto!", "warning");
 
-    // 🔥 Validasi jumlah kalimat (maks 100)
     const totalSentences = countSentences(caption);
     if (totalSentences > 100) {
       setIsSubmitting(false);
@@ -446,6 +443,8 @@ export default function CreatePostPage() {
 
     setIsSubmitting(true);
     setUploadProgress(0);
+    // 🔥 Mulai progress bar di galeri
+    localStorage.setItem('postingProgress', '0');
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -459,11 +458,9 @@ export default function CreatePostPage() {
         }
       }
 
-      // Pakai existing URL (dari draf) dulu, bakal ketimpa kalau user upload file baru
       let finalImageUrl: string | null = existingImageUrl;
       let finalVideoUrl: string | null = existingVideoUrl;
 
-      // Cuma upload ke Cloudinary kalau ada file BARU yang dipilih
       if (postType === 'image' && croppedImages.length > 0) {
         const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
         const uploadResults = await Promise.all(uploadPromises);
@@ -471,17 +468,20 @@ export default function CreatePostPage() {
         const isRejected = uploadResults.some(res => res.moderation && res.moderation[0].status === 'rejected');
         if (isRejected) {
           setIsSubmitting(false);
+          localStorage.removeItem('postingProgress');
           return showNotif("Postingan ditolak! Terdeteksi konten sensitif.", "error");
         }
 
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
         setUploadProgress(100);
+        localStorage.setItem('postingProgress', '50'); // upload selesai
       }
       else if (postType === 'video' && rawVideoFile && coverBlob) {
         const coverRes = await uploadToCloudinary(coverBlob, 'image');
 
         if (coverRes.moderation && coverRes.moderation[0].status === 'rejected') {
           setIsSubmitting(false);
+          localStorage.removeItem('postingProgress');
           return showNotif("Video ditolak! Sampul terdeteksi konten sensitif.", "error");
         }
 
@@ -490,8 +490,11 @@ export default function CreatePostPage() {
         const uploadedVidUrl = videoRes.secure_url;
         const endSegment = Math.min(videoDuration, videoStart + 15);
         finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
+        localStorage.setItem('postingProgress', '50');
       }
 
+      // 🔥 Simpan postingan (insert/update)
+      localStorage.setItem('postingProgress', '70');
       let newPostId: string | null = null;
 
       if (destination === "story") {
@@ -523,7 +526,6 @@ export default function CreatePostPage() {
           is_ad: isBusinessUser ? isAd : false
         };
 
-        // 🔥 JIKA PUNYA ID DRAFT: LAKUKAN UPDATE BUKAN INSERT 🔥
         if (draftId) {
           await supabase.from("posts").update(postPayload).eq('id', draftId);
           newPostId = draftId;
@@ -533,7 +535,9 @@ export default function CreatePostPage() {
         }
       }
 
-      // Notifikasi Mentions hanya jalan jika postingan di publish (bukan draft)
+      localStorage.setItem('postingProgress', '85');
+
+      // Notifikasi Mentions
       if (!isDraft && (newPostId || destination === "story")) {
         const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         if (mentionedUsernames.length > 0) {
@@ -549,25 +553,26 @@ export default function CreatePostPage() {
         }
       }
 
+      localStorage.setItem('postingProgress', '100');
+
       showNotif(isDraft ? "Berhasil disimpan ke draft" : "Postingan Berhasil Terkirim!", "success");
 
-      // Matikan audio jika ada
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
       }
 
-      // 🆕 Redirect ke home dengan query posting=true setelah publish
       if (!isDraft) {
         router.push('/?posting=true');
       } else {
-        handleClose(); // draft kembali seperti biasa
+        handleClose();
       }
     } catch (err: any) {
       console.error(err);
       showNotif("Gagal upload, periksa koneksi atau konten Anda.", "error");
       setIsSubmitting(false);
       setUploadProgress(0);
+      localStorage.removeItem('postingProgress');
     }
   };
 
@@ -953,7 +958,7 @@ export default function CreatePostPage() {
                   )}
 
                   <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>
-                    {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : (draftId ? 'Publikasikan Draf' : t('btn_submit_post'))}
+                    {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : (draftId ? 'Publikasikan Draf' : 'Posting')}
                   </span>
                 </button>
               </div>
