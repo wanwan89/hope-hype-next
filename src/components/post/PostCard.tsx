@@ -109,13 +109,14 @@ const PostCard: React.FC<PostCardProps> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const actuallyExpanded = isExpanded || localExpanded;
 
-  // ✅ State baru untuk kontrol video
+  // ✅ State kontrol video
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [showControls, setShowControls] = useState(false); // progress bar tersembunyi awal
 
-  // --- 3. Observer video/audio (tidak dibuat ulang setiap render) ---
+  // --- 3. Observer video/audio ---
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
@@ -133,7 +134,6 @@ const PostCard: React.FC<PostCardProps> = ({
               media.play().catch(() => {});
             });
 
-            // Hentikan media lain yang mungkin masih bermain
             document
               .querySelectorAll('.post-video-element, .post-audio-element')
               .forEach((el: any) => {
@@ -176,7 +176,7 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-  // --- 4. Deteksi apakah bio butuh tombol "Lihat Selengkapnya" ---
+  // --- 4. Deteksi bio butuh tombol "Lihat Selengkapnya" ---
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (captionRef.current) {
@@ -191,7 +191,7 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [post.bio, actuallyExpanded]);
 
-  // --- 5. Render bio dengan mention & hashtag (dimemo) ---
+  // --- 5. Render bio dengan mention & hashtag ---
   const renderBioWithMentions = useCallback(
     (text: string) => {
       if (!text) return null;
@@ -268,6 +268,14 @@ const PostCard: React.FC<PostCardProps> = ({
       } else {
         video.pause();
       }
+    }
+  };
+
+  // ✅ Munculkan progress bar hanya saat diketuk pertama kali
+  const handleVideoTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showControls) {
+      setShowControls(true);
     }
   };
 
@@ -446,6 +454,7 @@ const PostCard: React.FC<PostCardProps> = ({
               {isVideoPost ? (
                 <div
                   className="carousel-item"
+                  onClick={handleVideoTap}
                   style={{
                     aspectRatio: '2 / 3',
                     width: '100%',
@@ -490,65 +499,60 @@ const PostCard: React.FC<PostCardProps> = ({
                     }}
                   />
 
-                  {/* ✅ Kontrol video (progress bar + play/pause) */}
+                  {/* ✅ Tombol play/pause – TEPAT DI TENGAH */}
                   {videoLoaded && (
-                    <div
+                    <button
+                      onClick={toggleVideoPlayPause}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'rgba(0,0,0,0.5)',
+                        border: 'none',
+                        color: 'white',
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 5,
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '32px' }}>
+                        {isVideoPlaying ? 'pause' : 'play_arrow'}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* ✅ Progress bar – muncul hanya setelah diketuk sekali */}
+                  {videoLoaded && showControls && (
+                    <input
+                      type="range"
+                      min={0}
+                      max={videoDuration || 1}
+                      value={videoCurrentTime}
+                      onChange={handleVideoSeekChange}
+                      onMouseUp={handleVideoSeekCommit}
+                      onTouchEnd={handleVideoSeekCommit}
                       style={{
                         position: 'absolute',
                         bottom: 0,
                         left: 0,
                         right: 0,
+                        width: '100%',
+                        height: '4px',
+                        appearance: 'none',
+                        background: 'rgba(255,255,255,0.3)',
+                        outline: 'none',
+                        margin: 0,
+                        cursor: 'pointer',
+                        accentColor: '#1f3cff',
                         zIndex: 4,
-                        pointerEvents: 'auto',
                       }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* Progress bar */}
-                      <input
-                        type="range"
-                        min={0}
-                        max={videoDuration || 1}
-                        value={videoCurrentTime}
-                        onChange={handleVideoSeekChange}
-                        onMouseUp={handleVideoSeekCommit}
-                        onTouchEnd={handleVideoSeekCommit}
-                        style={{
-                          width: '100%',
-                          height: '4px',
-                          appearance: 'none',
-                          background: 'rgba(255,255,255,0.3)',
-                          outline: 'none',
-                          margin: 0,
-                          cursor: 'pointer',
-                          accentColor: '#1f3cff',
-                        }}
-                      />
-                      {/* Tombol play/pause di tengah */}
-                      <button
-                        onClick={toggleVideoPlayPause}
-                        style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          background: 'rgba(0,0,0,0.5)',
-                          border: 'none',
-                          color: 'white',
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          zIndex: 5,
-                        }}
-                      >
-                        <span className="material-icons" style={{ fontSize: '32px' }}>
-                          {isVideoPlaying ? 'pause' : 'play_arrow'}
-                        </span>
-                      </button>
-                    </div>
+                    />
                   )}
                 </div>
               ) : (
