@@ -277,7 +277,21 @@ const PostCard: React.FC<PostCardProps> = ({
     setShowControls((prev) => !prev);
   };
 
-  // ✅ Style card – full‑bleed untuk menghilangkan celah pinggir
+  // ✅ Throttle scroll carousel dengan requestAnimationFrame (optimasi performa)
+  const ticking = useRef(false);
+  const handleCarouselScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (!ticking.current) {
+      window.requestAnimationFrame(() => {
+        const target = e.target as HTMLDivElement;
+        const index = Math.round(target.scrollLeft / target.offsetWidth);
+        if (index !== currentSlide) setCurrentSlide(index);
+        ticking.current = false;
+      });
+      ticking.current = true;
+    }
+  }, [currentSlide]);
+
+  // ✅ Style card – full‑bleed dengan optimasi GPU
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
@@ -297,6 +311,9 @@ const PostCard: React.FC<PostCardProps> = ({
           : '0 4px 12px rgba(0, 0, 0, 0.03)',
       textAlign: 'left' as const,
       zIndex: actuallyExpanded ? 50 : 1,
+      // 🔥 Optimasi performa
+      willChange: 'transform',
+      contain: 'layout style',
     }),
     [actuallyExpanded, isVideoPost, photoList.length]
   );
@@ -317,7 +334,7 @@ const PostCard: React.FC<PostCardProps> = ({
     >
       {(photoList.length > 0 || isVideoPost) ? (
         <>
-          <div className="slider" style={{ position: 'relative' }}>
+          <div className="slider" style={{ position: 'relative', willChange: 'transform' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
 
             {poppingHeart?.startsWith(postIdStr) && (
@@ -443,11 +460,7 @@ const PostCard: React.FC<PostCardProps> = ({
             {/* Carousel media */}
             <div
               className="photo-carousel"
-              onScroll={(e) => {
-                const target = e.target as HTMLDivElement;
-                const index = Math.round(target.scrollLeft / target.offsetWidth);
-                if (index !== currentSlide) setCurrentSlide(index);
-              }}
+              onScroll={handleCarouselScroll}
             >
               {isVideoPost ? (
                 <div
@@ -460,6 +473,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     position: 'relative',
                     background: '#000',
                     cursor: 'pointer',
+                    transform: 'translateZ(0)', // GPU layer
                   }}
                 >
                   {!videoLoaded && (
@@ -485,6 +499,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     autoPlay
                     loop
                     muted={isGloballyMuted}
+                    preload="metadata"
                     onLoadedData={() => setVideoLoaded(true)}
                     style={{
                       width: '100%',
@@ -566,6 +581,7 @@ const PostCard: React.FC<PostCardProps> = ({
                         overflow: 'hidden',
                         position: 'relative',
                         background: '#1a1a1a',
+                        transform: 'translateZ(0)',
                       }}
                     >
                       {!imgLoaded && (
