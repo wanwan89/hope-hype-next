@@ -23,8 +23,6 @@ export default function CreatePostPage() {
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
   const [caption, setCaption] = useState('');
-  const [category, setCategory] = useState('Karya');
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]);
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]);
@@ -82,7 +80,6 @@ export default function CreatePostPage() {
         const { data, error } = await supabase.from('posts').select('*').eq('id', draftId).single();
         if (data) {
           setCaption(data.bio || '');
-          setCategory(data.category || 'Karya');
           setIsAd(data.is_ad || false);
 
           if (data.video_url) {
@@ -406,7 +403,6 @@ export default function CreatePostPage() {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(percentComplete);
-          // 🔥 Update localStorage dengan progress (skala 0-50)
           localStorage.setItem('postingProgress', String(Math.round(percentComplete / 2)));
         }
       };
@@ -421,13 +417,11 @@ export default function CreatePostPage() {
     });
   };
 
-  // 🔥 Hitung jumlah kata (bukan kalimat)
   const countWords = (text: string) => {
     if (!text.trim()) return 0;
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
-  // 🔥 Fungsi submit yang diubah
   const submitPostAction = async (isDraft: boolean = false) => {
     if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
       return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
@@ -446,7 +440,6 @@ export default function CreatePostPage() {
 
     setIsSubmitting(true);
     setUploadProgress(0);
-    // 🔥 Mulai progress bar di galeri
     localStorage.setItem('postingProgress', '0');
 
     try {
@@ -477,7 +470,7 @@ export default function CreatePostPage() {
 
         finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
         setUploadProgress(100);
-        localStorage.setItem('postingProgress', '50'); // upload selesai
+        localStorage.setItem('postingProgress', '50');
       }
       else if (postType === 'video' && rawVideoFile && coverBlob) {
         const coverRes = await uploadToCloudinary(coverBlob, 'image');
@@ -496,7 +489,6 @@ export default function CreatePostPage() {
         localStorage.setItem('postingProgress', '50');
       }
 
-      // 🔥 Simpan postingan (insert/update)
       localStorage.setItem('postingProgress', '70');
       let newPostId: string | null = null;
 
@@ -519,7 +511,7 @@ export default function CreatePostPage() {
           creator_id: myUserId,
           name: prof?.username || "User",
           bio: caption.trim(),
-          category: category,
+          category: "Karya",
           image_url: finalImageUrl,
           video_url: finalVideoUrl,
           audio_src: selectedMusic?.previewUrl,
@@ -540,7 +532,6 @@ export default function CreatePostPage() {
 
       localStorage.setItem('postingProgress', '85');
 
-      // Notifikasi Mentions
       if (!isDraft && (newPostId || destination === "story")) {
         const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         if (mentionedUsernames.length > 0) {
@@ -804,19 +795,13 @@ export default function CreatePostPage() {
                     {popupResults.length > 0 ? (popupResults.map(item => (<div key={item.id || item.tag} className="popup-item" onClick={() => handleSelectPopupItem(showPopup === 'mention' ? item.username : item.tag)}>{showPopup === 'mention' ? (<><img src={item.avatar_url || '/asets/png/profile.webp'} alt={item.username} /><div className="popup-name">{item.username}</div></>) : (<><span className="material-icons" style={{ color: '#1DA1F2' }}>tag</span><div className="popup-tag">{item.tag}</div></>)}</div>))) : (<div className="popup-empty">Tidak ditemukan...</div>)}
                   </div>
                 )}
-                <textarea ref={captionInputRef} className="post-textarea" placeholder={postType === 'image' || postType === 'video' ? "Tulis caption (maks 100 kata)..." : "Tulis cerita (maks 150 kata)..."} maxLength={postType === 'text' ? 10000 : 10000} value={caption} onChange={handleCaptionChange} onKeyDown={(e) => { if (showPopup !== 'none' && e.key === "Enter") { e.preventDefault(); if (popupResults.length > 0) { handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag); } } }} style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }} />
+                <textarea ref={captionInputRef} className="post-textarea" placeholder={postType === 'image' || postType === 'video' ? "Tulis caption (maks 100 kata)..." : "Tulis cerita (maks 150 kata)..."} maxLength={10000} value={caption} onChange={handleCaptionChange} onKeyDown={(e) => { if (showPopup !== 'none' && e.key === "Enter") { e.preventDefault(); if (popupResults.length > 0) { handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag); } } }} style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }} />
                 <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {countWords(caption)} / {postType === 'text' ? 150 : 100} kata
                 </div>
               </div>
 
-              <div style={{ position: 'relative', marginTop: '20px' }}>
-                {isCategoryOpen && <div onClick={() => setIsCategoryOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />}
-                <div onClick={() => setIsCategoryOpen(!isCategoryOpen)} style={{ width: '100%', padding: '15px', border: '1px solid var(--border-card)', borderRadius: '12px', backgroundColor: 'var(--bg-secondary)', fontSize: '15px', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>{[{ val: "Karya", label: t('cat_karya', 'Karya') }, { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, { val: "Photography", label: t('cat_photo', 'Photography') }, { val: "Mountain", label: t('cat_mountain', 'Mountain') }, { val: "Thread", label: t('cat_thread', 'Thread') }].find(opt => opt.val === category)?.label || category}</span><span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: '20px', transform: isCategoryOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>expand_more</span></div>
-                <AnimatePresence>
-                  {isCategoryOpen && (<motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.15 }} style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: '8px', background: 'var(--bg-main, #1a1d21)', border: '1px solid var(--border-card, #2a2d31)', borderRadius: '16px', padding: '8px', zIndex: 100, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}>{[{ val: "Karya", label: t('cat_karya', 'Karya') }, { val: "Prestasi", label: t('cat_prestasi', 'Prestasi') }, { val: "Photography", label: t('cat_photo', 'Photography') }, { val: "Mountain", label: t('cat_mountain', 'Mountain') }, { val: "Thread", label: t('cat_thread', 'Thread') }].map((opt) => (<div key={opt.val} onClick={() => { setCategory(opt.val); setIsCategoryOpen(false); }} style={{ padding: '12px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: category === opt.val ? 'rgba(31, 60, 255, 0.1)' : 'transparent', color: category === opt.val ? '#1f3cff' : 'var(--text-main)', fontWeight: category === opt.val ? 'bold' : 'normal', transition: 'background 0.2s' }}>{opt.label}{category === opt.val && <span className="material-icons" style={{ fontSize: '18px' }}>check_circle</span>}</div>))}</motion.div>)}
-                </AnimatePresence>
-              </div>
+              {/* ❌ KATEGORI DIHAPUS DARI SINI */}
 
               <div
                 className="music-picker-btn"
@@ -886,7 +871,7 @@ export default function CreatePostPage() {
                 </div>
               )}
 
-              {/* 🔥 TOMBOL SUBMIT & DRAFT 🔥 */}
+              {/* TOMBOL SUBMIT & DRAFT */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '30px', width: '100%' }}>
                 {destination !== 'story' && (
                   <button
