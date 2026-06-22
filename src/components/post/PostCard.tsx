@@ -114,7 +114,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
-  const [showControls, setShowControls] = useState(false); // progress bar tersembunyi awal
+  const [showControls, setShowControls] = useState(false); // kontrol disembunyikan awal
 
   // --- 3. Observer video/audio ---
   useEffect(() => {
@@ -271,12 +271,10 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  // ✅ Munculkan progress bar hanya saat diketuk pertama kali
+  // ✅ Toggle tampilkan kontrol (play/pause + progress bar)
   const handleVideoTap = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!showControls) {
-      setShowControls(true);
-    }
+    setShowControls((prev) => !prev);
   };
 
   // ✅ Style card – full‑bleed untuk menghilangkan celah pinggir
@@ -499,8 +497,8 @@ const PostCard: React.FC<PostCardProps> = ({
                     }}
                   />
 
-                  {/* ✅ Tombol play/pause – TEPAT DI TENGAH */}
-                  {videoLoaded && (
+                  {/* ✅ Tombol play/pause – hanya muncul jika showControls true */}
+                  {videoLoaded && showControls && (
                     <button
                       onClick={toggleVideoPlayPause}
                       style={{
@@ -527,7 +525,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     </button>
                   )}
 
-                  {/* ✅ Progress bar – muncul hanya setelah diketuk sekali */}
+                  {/* ✅ Progress bar – hanya muncul jika showControls true */}
                   {videoLoaded && showControls && (
                     <input
                       type="range"
