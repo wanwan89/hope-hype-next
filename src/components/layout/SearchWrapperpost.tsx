@@ -61,25 +61,16 @@ export default function SearchWrapperpost() {
   return (
     <div className="header-sticky-wrapper">
       <div className="search-wrapper glass-effect">
-        <button 
-          id="mobileMenuBtn"
-          type="button"
-          aria-label="Buka Menu"
-          onClick={() => window.dispatchEvent(new CustomEvent('openSidebar'))}
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '5px', display: 'flex', flexDirection: 'column', gap: '5px', width: '24px', flexShrink: 0, outline: 'none' }}
-        >
-          {[1,2,3].map(i => <span key={i} style={{ display: 'block', width: '100%', height: '2px', backgroundColor: 'var(--text-main)', borderRadius: '2px' }}></span>)}
-        </button>
+        {/* Tombol tiga garis dihapus */}
 
         <div className="brutal-input-container">
-          {/* 🔥 UBAH BAGIAN INI 🔥 */}
           <input
             type="text"
             placeholder={t('search_placeholder')}
             className="brutal-input"
-            readOnly // Mencegah keyboard HP muncul sesaat
-            onClick={() => router.push('/search')} // Langsung pindah saat diklik
-            style={{ cursor: 'pointer' }} // Memberi tahu user ini bisa diklik
+            readOnly
+            onClick={() => router.push('/search')}
+            style={{ cursor: 'pointer' }}
           />
         </div>
 
