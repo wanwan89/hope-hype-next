@@ -479,27 +479,36 @@ export default function Gallerypost() {
     }
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  // 🔥 Tampilan progress bar saat ada postingProgress
+  // 🔥 Tampilan progress indicator kecil di bawah search bar
   if (postingProgress !== null) {
+    // Indikator ditempatkan di dalam section, sebelum Virtuoso
+    // Search bar biasanya ada di header global, jadi kita letakkan di sini sebagai bagian dari konten
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg-main)', gap: '20px', padding: '0 30px' }}>
-        <div style={{ width: '100%', maxWidth: '300px', textAlign: 'center' }}>
-          <span className="material-icons" style={{ fontSize: '48px', color: '#1f3cff', marginBottom: '15px' }}>cloud_upload</span>
-          <p style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '16px', margin: '0 0 15px 0' }}>
-            {postingProgress >= 100 ? 'Postingan berhasil dikirim!' : 'Mengirim postingan...'}
-          </p>
-          <div style={{ width: '100%', height: '8px', background: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden' }}>
-            <div style={{
-              width: `${postingProgress}%`,
-              height: '100%',
-              background: '#1f3cff',
-              borderRadius: '4px',
-              transition: 'width 0.3s ease'
-            }}></div>
+      <>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 16px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="pure-spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></div>
+            <span style={{ fontSize: '14px', color: 'var(--text-main)' }}>Mengirim {postingProgress}%</span>
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '10px' }}>{postingProgress}%</p>
         </div>
-      </div>
+        <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0 }}>
+          {/* Feed tetap ditampilkan di bawah indikator */}
+          <Virtuoso
+            useWindowScroll
+            data={allPosts}
+            endReached={loadMore}
+            overscan={2}
+            itemContent={renderItem}
+            components={{
+              Footer: () => isFetchingNextPage ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                  <div className="pure-spinner"></div>
+                </div>
+              ) : null
+            }}
+          />
+        </section>
+      </>
     );
   }
 

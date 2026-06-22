@@ -421,9 +421,10 @@ export default function CreatePostPage() {
     });
   };
 
-  const countSentences = (text: string) => {
+  // 🔥 Hitung jumlah kata (bukan kalimat)
+  const countWords = (text: string) => {
     if (!text.trim()) return 0;
-    return text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+    return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
   // 🔥 Fungsi submit yang diubah
@@ -435,10 +436,12 @@ export default function CreatePostPage() {
     if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1)))
       return showNotif("Story hanya bisa upload 1 foto!", "warning");
 
-    const totalSentences = countSentences(caption);
-    if (totalSentences > 100) {
+    const wordCount = countWords(caption);
+    const maxWords = postType === 'text' ? 150 : 100;
+
+    if (wordCount > maxWords) {
       setIsSubmitting(false);
-      return showNotif("Caption maksimal 100 kalimat!", "warning");
+      return showNotif(`Caption maksimal ${maxWords} kata!`, "warning");
     }
 
     setIsSubmitting(true);
@@ -801,7 +804,10 @@ export default function CreatePostPage() {
                     {popupResults.length > 0 ? (popupResults.map(item => (<div key={item.id || item.tag} className="popup-item" onClick={() => handleSelectPopupItem(showPopup === 'mention' ? item.username : item.tag)}>{showPopup === 'mention' ? (<><img src={item.avatar_url || '/asets/png/profile.webp'} alt={item.username} /><div className="popup-name">{item.username}</div></>) : (<><span className="material-icons" style={{ color: '#1DA1F2' }}>tag</span><div className="popup-tag">{item.tag}</div></>)}</div>))) : (<div className="popup-empty">Tidak ditemukan...</div>)}
                   </div>
                 )}
-                <textarea ref={captionInputRef} className="post-textarea" placeholder={postType === 'image' || postType === 'video' ? "Tulis caption atau gunakan @ untuk tag dan # untuk hashtag..." : "Tulis cerita, gunakan @ untuk tag dan # untuk hashtag..."} maxLength={10000} value={caption} onChange={handleCaptionChange} onKeyDown={(e) => { if (showPopup !== 'none' && e.key === "Enter") { e.preventDefault(); if (popupResults.length > 0) { handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag); } } }} style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }} />
+                <textarea ref={captionInputRef} className="post-textarea" placeholder={postType === 'image' || postType === 'video' ? "Tulis caption (maks 100 kata)..." : "Tulis cerita (maks 150 kata)..."} maxLength={postType === 'text' ? 10000 : 10000} value={caption} onChange={handleCaptionChange} onKeyDown={(e) => { if (showPopup !== 'none' && e.key === "Enter") { e.preventDefault(); if (popupResults.length > 0) { handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag); } } }} style={{ width: '100%', minHeight: '120px', background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', borderRadius: '16px', padding: '15px', color: 'var(--text-main)', fontSize: '15px', outline: 'none', resize: 'vertical' }} />
+                <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {countWords(caption)} / {postType === 'text' ? 150 : 100} kata
+                </div>
               </div>
 
               <div style={{ position: 'relative', marginTop: '20px' }}>
