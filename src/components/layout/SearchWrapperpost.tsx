@@ -16,7 +16,6 @@ export default function SearchWrapperpost() {
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
 
-  // State untuk background upload
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -49,7 +48,7 @@ export default function SearchWrapperpost() {
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
-      }, 1500);
+      }, 2000);
     };
     const handleUploadError = () => {
       setIsUploading(false);
@@ -74,7 +73,6 @@ export default function SearchWrapperpost() {
   }, [mounted, isHidden]);
 
   const fetchStories = async () => {
-    // ... sama seperti sebelumnya, tidak diubah ...
     try {
       const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
@@ -147,51 +145,96 @@ export default function SearchWrapperpost() {
         </button>
       </div>
 
-      {/* 🔥 Progress bar di luar kotak pencarian – tidak mengganggu input / tombol */}
+      {/* 🔥 LOADING POSTINGAN DENGAN GAYA KEKINIAN */}
       {isUploading && (
         <div
           style={{
-            background: 'var(--bg-main)',
-            borderBottom: '1px solid var(--border-card)',
-            padding: '0',
-            overflow: 'hidden',
+            position: 'relative',
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: '6px',
+            marginBottom: '2px',
+            padding: '0 16px',
+            boxSizing: 'border-box',
           }}
         >
-          {/* Bar progres */}
-          <div style={{ height: '3px', background: 'var(--border-card)' }}>
-            <div
-              style={{
-                width: `${uploadProgress}%`,
-                height: '100%',
-                background: '#1f3cff',
-                transition: 'width 0.3s ease',
-                borderRadius: '0 2px 2px 0',
-              }}
-            />
-          </div>
-          {/* Teks status */}
           <div
             style={{
               display: 'flex',
-              justifyContent: 'center',
               alignItems: 'center',
-              padding: '6px 0',
+              gap: '10px',
+              background: 'rgba(31, 60, 255, 0.08)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              borderRadius: '24px',
+              padding: '8px 16px',
+              width: '100%',
+              maxWidth: '500px',
+              border: '1px solid rgba(31, 60, 255, 0.15)',
+              boxShadow: '0 4px 16px rgba(31, 60, 255, 0.08)',
+              transition: 'all 0.3s ease',
             }}
           >
-            <span
+            {/* Ikon status */}
+            {uploadProgress < 100 ? (
+              <span
+                className="material-icons"
+                style={{
+                  fontSize: '18px',
+                  color: '#1f3cff',
+                  animation: 'spin 1.5s linear infinite',
+                }}
+              >
+                autorenew
+              </span>
+            ) : (
+              <span
+                className="material-icons"
+                style={{
+                  fontSize: '18px',
+                  color: '#00c853',
+                }}
+              >
+                check_circle
+              </span>
+            )}
+
+            {/* Progress bar mini */}
+            <div
               style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#1f3cff',
-                letterSpacing: '0.5px',
-                background: 'rgba(31,60,255,0.08)',
-                padding: '2px 12px',
-                borderRadius: '10px',
+                flex: 1,
+                height: '4px',
+                background: 'rgba(31, 60, 255, 0.1)',
+                borderRadius: '4px',
+                overflow: 'hidden',
               }}
             >
-              {uploadProgress < 100
-                ? `Sedang Memposting... ${uploadProgress}%`
-                : 'Berhasil Memposting!'}
+              <div
+                style={{
+                  width: `${uploadProgress}%`,
+                  height: '100%',
+                  background:
+                    uploadProgress < 100
+                      ? 'linear-gradient(90deg, #1f3cff, #6c8cff)'
+                      : '#00c853',
+                  borderRadius: '4px',
+                  transition: 'width 0.4s ease',
+                }}
+              />
+            </div>
+
+            {/* Teks persentase */}
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#1f3cff',
+                minWidth: '40px',
+                textAlign: 'right',
+              }}
+            >
+              {uploadProgress}%
             </span>
           </div>
         </div>

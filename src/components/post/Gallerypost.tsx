@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from './PostCard';
 import RepostModal from './RepostModal';
@@ -82,8 +82,6 @@ const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) =>
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isPosting = searchParams?.get('posting') === 'true';
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
@@ -103,8 +101,8 @@ export default function Gallerypost() {
 
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
-  
-  const [currentCategory, setCurrentCategory] = useState("fyp"); 
+
+  const [currentCategory, setCurrentCategory] = useState("fyp");
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
 
   const [repostModal, setRepostModal] = useState<{
@@ -117,9 +115,6 @@ export default function Gallerypost() {
 
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
-
-  // 🔥 State untuk progress bar posting
-  const [postingProgress, setPostingProgress] = useState<number | null>(null);
 
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
@@ -141,44 +136,6 @@ export default function Gallerypost() {
     isError,
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
-
-  // 🔥 Bersihkan query param & ambil progress dari localStorage
-  useEffect(() => {
-    if (isPosting) {
-      const savedProgress = localStorage.getItem('postingProgress');
-      if (savedProgress) {
-        setPostingProgress(Number(savedProgress));
-      } else {
-        setPostingProgress(0);
-      }
-      // Hapus query param
-      router.replace('/', { scroll: false });
-    }
-  }, [isPosting, router]);
-
-  // 🔥 Polling progress dari localStorage
-  useEffect(() => {
-    if (postingProgress === null) return;
-    const interval = setInterval(() => {
-      const p = localStorage.getItem('postingProgress');
-      if (p) {
-        const val = Number(p);
-        setPostingProgress(val);
-        if (val >= 100) {
-          clearInterval(interval);
-          // Tunggu sebentar lalu hapus localStorage
-          setTimeout(() => {
-            localStorage.removeItem('postingProgress');
-            setPostingProgress(null);
-          }, 1500);
-        }
-      } else {
-        clearInterval(interval);
-        setPostingProgress(null);
-      }
-    }, 300);
-    return () => clearInterval(interval);
-  }, [postingProgress]);
 
   // --- Inisialisasi user ---
   useEffect(() => {
@@ -243,10 +200,10 @@ export default function Gallerypost() {
       const newLikersMap: any = {};
       const newRepostersMap: any = {};
       postIds.forEach(id => {
-        if(!newCounts[id]) {
-            newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
-            newLikersMap[id] = [];
-            newRepostersMap[id] = [];
+        if (!newCounts[id]) {
+          newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
+          newLikersMap[id] = [];
+          newRepostersMap[id] = [];
         }
       });
 
@@ -303,7 +260,7 @@ export default function Gallerypost() {
           await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
         }
       }
-    } catch (err) {}
+    } catch (err) { }
   }, []);
 
   const handleSave = useCallback(async (postId: string) => {
@@ -315,7 +272,7 @@ export default function Gallerypost() {
     try {
       if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-    } catch (err) {}
+    } catch (err) { }
   }, []);
 
   const openRepostModal = useCallback((postId: string, creatorId: string) => {
@@ -346,7 +303,7 @@ export default function Gallerypost() {
           setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
         }
       }
-    } catch (err) {}
+    } catch (err) { }
   }, [repostModal, repostNote]);
 
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
@@ -364,7 +321,7 @@ export default function Gallerypost() {
         await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
         await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
-    } catch (err) {}
+    } catch (err) { }
   }, []);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
@@ -395,7 +352,7 @@ export default function Gallerypost() {
       const next = !prev;
       document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
         el.muted = next;
-        if (!next && el.paused) el.play().catch(() => {});
+        if (!next && el.paused) el.play().catch(() => { });
       });
       return next;
     });
@@ -479,39 +436,6 @@ export default function Gallerypost() {
     }
   }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
-  // 🔥 Tampilan progress indicator kecil di bawah search bar
-  if (postingProgress !== null) {
-    // Indikator ditempatkan di dalam section, sebelum Virtuoso
-    // Search bar biasanya ada di header global, jadi kita letakkan di sini sebagai bagian dari konten
-    return (
-      <>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 16px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div className="pure-spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></div>
-            <span style={{ fontSize: '14px', color: 'var(--text-main)' }}>Mengirim {postingProgress}%</span>
-          </div>
-        </div>
-        <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0 }}>
-          {/* Feed tetap ditampilkan di bawah indikator */}
-          <Virtuoso
-            useWindowScroll
-            data={allPosts}
-            endReached={loadMore}
-            overscan={2}
-            itemContent={renderItem}
-            components={{
-              Footer: () => isFetchingNextPage ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-                  <div className="pure-spinner"></div>
-                </div>
-              ) : null
-            }}
-          />
-        </section>
-      </>
-    );
-  }
-
   if (isLoading) {
     return (
       <div style={{ padding: 16 }}>
@@ -569,7 +493,8 @@ export default function Gallerypost() {
         useWindowScroll
         data={allPosts}
         endReached={loadMore}
-        overscan={2}
+        overscan={{ main: 600, reverse: 600 }}
+        increaseViewportBy={{ top: 400, bottom: 400 }}
         itemContent={renderItem}
         components={{
           Footer: () => isFetchingNextPage ? (
