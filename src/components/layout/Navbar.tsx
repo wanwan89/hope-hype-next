@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react'; // 🔥 TAMBAHKAN React DI SINI
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -226,7 +226,7 @@ function NavbarContent() {
         <nav
           style={{
             width: '100%',
-            height: `calc(65px + env(safe-area-inset-bottom))`,
+            height: `calc(72px + env(safe-area-inset-bottom))`,  // 🔥 dinaikkan dari 65px menjadi 72px
             paddingBottom: 'env(safe-area-inset-bottom)',
             backgroundColor: 'var(--bg-card)',
             backdropFilter: 'blur(15px)',
