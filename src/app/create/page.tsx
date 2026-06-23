@@ -389,6 +389,13 @@ export default function CreatePostPage() {
     router.back();
   };
 
+  // 🔥 Fungsi helper dispatch global event loading progress
+  const updateGlobalProgress = (progress: number) => {
+    setUploadProgress(progress);
+    window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: progress }));
+    localStorage.setItem('uploadProgress', String(progress));
+  };
+
   const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
     return new Promise<any>((resolve, reject) => {
       const fd = new FormData();
@@ -402,8 +409,7 @@ export default function CreatePostPage() {
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(percentComplete);
-          localStorage.setItem('postingProgress', String(Math.round(percentComplete / 2)));
+          updateGlobalProgress(Math.round(percentComplete / 2)); // 50% dari total proses
         }
       };
 
@@ -422,6 +428,7 @@ export default function CreatePostPage() {
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
+  // 🔥 Fungsi Posting yang langsung Background Running
   const submitPostAction = async (isDraft: boolean = false) => {
     if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
       return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
@@ -438,136 +445,148 @@ export default function CreatePostPage() {
       return showNotif(`Caption maksimal ${maxWords} kata!`, "warning");
     }
 
+    // 1. Tentukan status awal
     setIsSubmitting(true);
-    setUploadProgress(0);
-    localStorage.setItem('postingProgress', '0');
+    localStorage.setItem('isUploading', 'true');
+    updateGlobalProgress(0);
+    window.dispatchEvent(new CustomEvent('postUploadStart'));
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return window.dispatchEvent(new CustomEvent('openLogin'));
-      const myUserId = session.user.id;
+    // 2. Langsung Lempar Kembali ke Home agar Tidak Menunggu
+    if (!isDraft) {
+      router.push('/');
+    }
 
-      const extractedTags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
-      if (extractedTags.length > 0) {
-        for (const tg of extractedTags) {
-          await supabase.from('hashtags').upsert({ tag: tg }).then();
+    // 3. Eksekusi Background Upload Process (IIFE)
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            window.dispatchEvent(new CustomEvent('postUploadError'));
+            return;
         }
-      }
+        const myUserId = session.user.id;
 
-      let finalImageUrl: string | null = existingImageUrl;
-      let finalVideoUrl: string | null = existingVideoUrl;
-
-      if (postType === 'image' && croppedImages.length > 0) {
-        const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
-        const uploadResults = await Promise.all(uploadPromises);
-
-        const isRejected = uploadResults.some(res => res.moderation && res.moderation[0].status === 'rejected');
-        if (isRejected) {
-          setIsSubmitting(false);
-          localStorage.removeItem('postingProgress');
-          return showNotif("Postingan ditolak! Terdeteksi konten sensitif.", "error");
-        }
-
-        finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
-        setUploadProgress(100);
-        localStorage.setItem('postingProgress', '50');
-      }
-      else if (postType === 'video' && rawVideoFile && coverBlob) {
-        const coverRes = await uploadToCloudinary(coverBlob, 'image');
-
-        if (coverRes.moderation && coverRes.moderation[0].status === 'rejected') {
-          setIsSubmitting(false);
-          localStorage.removeItem('postingProgress');
-          return showNotif("Video ditolak! Sampul terdeteksi konten sensitif.", "error");
-        }
-
-        finalImageUrl = coverRes.secure_url;
-        const videoRes = await uploadToCloudinary(rawVideoFile, 'video');
-        const uploadedVidUrl = videoRes.secure_url;
-        const endSegment = Math.min(videoDuration, videoStart + 15);
-        finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
-        localStorage.setItem('postingProgress', '50');
-      }
-
-      localStorage.setItem('postingProgress', '70');
-      let newPostId: string | null = null;
-
-      if (destination === "story") {
-        await supabase.from("stories").insert({
-          creator_id: myUserId,
-          image_url: finalImageUrl,
-          video_url: finalVideoUrl,
-          content: caption.trim(),
-          audio_src: selectedMusic?.previewUrl,
-          title: selectedMusic?.trackName,
-          artist: selectedMusic?.artistName,
-          visibility: visibility,
-          is_ad: isBusinessUser ? isAd : false
-        });
-      } else {
-        const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-
-        const postPayload = {
-          creator_id: myUserId,
-          name: prof?.username || "User",
-          bio: caption.trim(),
-          category: "Karya",
-          image_url: finalImageUrl,
-          video_url: finalVideoUrl,
-          audio_src: selectedMusic?.previewUrl,
-          title: selectedMusic?.trackName,
-          artist: selectedMusic?.artistName,
-          status: isDraft ? "draft" : "approved",
-          is_ad: isBusinessUser ? isAd : false
-        };
-
-        if (draftId) {
-          await supabase.from("posts").update(postPayload).eq('id', draftId);
-          newPostId = draftId;
-        } else {
-          const { data: newPost } = await supabase.from("posts").insert(postPayload).select('id').single();
-          if (newPost) newPostId = newPost.id;
-        }
-      }
-
-      localStorage.setItem('postingProgress', '85');
-
-      if (!isDraft && (newPostId || destination === "story")) {
-        const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
-        if (mentionedUsernames.length > 0) {
-          const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
-          if (taggedUsers) {
-            const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-            const notifInserts = taggedUsers.filter(u => u.id !== myUserId).map(u => ({
-              user_id: u.id, actor_id: myUserId, post_id: newPostId ? parseInt(newPostId) : null,
-              type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`
-            }));
-            if (notifInserts.length > 0) await supabase.from("notifications").insert(notifInserts);
+        const extractedTags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
+        if (extractedTags.length > 0) {
+          for (const tg of extractedTags) {
+            await supabase.from('hashtags').upsert({ tag: tg }).then();
           }
         }
+
+        let finalImageUrl: string | null = existingImageUrl;
+        let finalVideoUrl: string | null = existingVideoUrl;
+
+        if (postType === 'image' && croppedImages.length > 0) {
+          const uploadPromises = croppedImages.map(blob => uploadToCloudinary(blob, 'image'));
+          const uploadResults = await Promise.all(uploadPromises);
+
+          const isRejected = uploadResults.some(res => res.moderation && res.moderation[0].status === 'rejected');
+          if (isRejected) {
+            window.dispatchEvent(new CustomEvent('postUploadError'));
+            localStorage.removeItem('isUploading');
+            return showNotif("Postingan ditolak! Terdeteksi konten sensitif.", "error");
+          }
+
+          finalImageUrl = uploadResults.map(res => res.secure_url).join(',');
+          updateGlobalProgress(50);
+        }
+        else if (postType === 'video' && rawVideoFile && coverBlob) {
+          const coverRes = await uploadToCloudinary(coverBlob, 'image');
+
+          if (coverRes.moderation && coverRes.moderation[0].status === 'rejected') {
+            window.dispatchEvent(new CustomEvent('postUploadError'));
+            localStorage.removeItem('isUploading');
+            return showNotif("Video ditolak! Sampul terdeteksi konten sensitif.", "error");
+          }
+
+          finalImageUrl = coverRes.secure_url;
+          const videoRes = await uploadToCloudinary(rawVideoFile, 'video');
+          const uploadedVidUrl = videoRes.secure_url;
+          const endSegment = Math.min(videoDuration, videoStart + 15);
+          finalVideoUrl = uploadedVidUrl.replace('/upload/', `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${endSegment.toFixed(1)}/`);
+          updateGlobalProgress(50);
+        }
+
+        updateGlobalProgress(70);
+        let newPostId: string | null = null;
+
+        if (destination === "story") {
+          await supabase.from("stories").insert({
+            creator_id: myUserId,
+            image_url: finalImageUrl,
+            video_url: finalVideoUrl,
+            content: caption.trim(),
+            audio_src: selectedMusic?.previewUrl,
+            title: selectedMusic?.trackName,
+            artist: selectedMusic?.artistName,
+            visibility: visibility,
+            is_ad: isBusinessUser ? isAd : false
+          });
+        } else {
+          const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+
+          const postPayload = {
+            creator_id: myUserId,
+            name: prof?.username || "User",
+            bio: caption.trim(),
+            category: "Karya",
+            image_url: finalImageUrl,
+            video_url: finalVideoUrl,
+            audio_src: selectedMusic?.previewUrl,
+            title: selectedMusic?.trackName,
+            artist: selectedMusic?.artistName,
+            status: isDraft ? "draft" : "approved",
+            is_ad: isBusinessUser ? isAd : false
+          };
+
+          if (draftId) {
+            await supabase.from("posts").update(postPayload).eq('id', draftId);
+            newPostId = draftId;
+          } else {
+            const { data: newPost } = await supabase.from("posts").insert(postPayload).select('id').single();
+            if (newPost) newPostId = newPost.id;
+          }
+        }
+
+        updateGlobalProgress(85);
+
+        if (!isDraft && (newPostId || destination === "story")) {
+          const mentionedUsernames = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
+          if (mentionedUsernames.length > 0) {
+            const { data: taggedUsers } = await supabase.from('profiles').select('id, username').in('username', mentionedUsernames);
+            if (taggedUsers) {
+              const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+              const notifInserts = taggedUsers.filter(u => u.id !== myUserId).map(u => ({
+                user_id: u.id, actor_id: myUserId, post_id: newPostId ? parseInt(newPostId) : null,
+                type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`
+              }));
+              if (notifInserts.length > 0) await supabase.from("notifications").insert(notifInserts);
+            }
+          }
+        }
+
+        updateGlobalProgress(100);
+        window.dispatchEvent(new CustomEvent('postUploadSuccess'));
+        localStorage.removeItem('isUploading');
+        localStorage.removeItem('uploadProgress');
+
+        showNotif(isDraft ? "Berhasil disimpan ke draft" : "Postingan Berhasil Terkirim!", "success");
+
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+
+        if (isDraft) handleClose();
+        
+      } catch (err: any) {
+        console.error(err);
+        window.dispatchEvent(new CustomEvent('postUploadError'));
+        localStorage.removeItem('isUploading');
+        localStorage.removeItem('uploadProgress');
+        showNotif("Gagal upload, periksa koneksi atau konten Anda.", "error");
       }
-
-      localStorage.setItem('postingProgress', '100');
-
-      showNotif(isDraft ? "Berhasil disimpan ke draft" : "Postingan Berhasil Terkirim!", "success");
-
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-
-      if (!isDraft) {
-        router.push('/?posting=true');
-      } else {
-        handleClose();
-      }
-    } catch (err: any) {
-      console.error(err);
-      showNotif("Gagal upload, periksa koneksi atau konten Anda.", "error");
-      setIsSubmitting(false);
-      setUploadProgress(0);
-      localStorage.removeItem('postingProgress');
-    }
+    })();
   };
 
   const renderEditorScreen = () => {
@@ -801,8 +820,6 @@ export default function CreatePostPage() {
                 </div>
               </div>
 
-              {/* ❌ KATEGORI DIHAPUS DARI SINI */}
-
               <div
                 className="music-picker-btn"
                 onClick={() => setIsMusicSheetOpen(true)}
@@ -903,7 +920,7 @@ export default function CreatePostPage() {
                     flex: destination !== 'story' ? 2 : 1,
                     padding: '16px',
                     color: '#fff',
-                    border: isSubmitting ? '1px solid #1f3cff' : 'none',
+                    border: 'none',
                     borderRadius: '14px',
                     fontSize: '16px',
                     fontWeight: 800,
@@ -914,42 +931,8 @@ export default function CreatePostPage() {
                     transform: 'translateZ(0)',
                   }}
                 >
-                  {isSubmitting && (
-                    <motion.div
-                      initial={{ y: "100%" }}
-                      animate={{ y: `${100 - Math.max(uploadProgress, 2)}%` }}
-                      transition={{ ease: "easeInOut", duration: 0.8 }}
-                      style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, height: '150%',
-                        background: '#1f3cff',
-                        zIndex: 1
-                      }}
-                    >
-                      <motion.div
-                        animate={{ x: ["0%", "-50%"] }}
-                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                        style={{
-                          position: 'absolute', top: '-19px', left: 0, width: '200%', height: '20px',
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,55 250,-5 400,25 C550,55 650,-5 800,25 L800,50 L0,50 Z' fill='rgba(31,60,255,0.5)'/%3E%3C/svg%3E")`,
-                          backgroundSize: '50% 100%',
-                          backgroundRepeat: 'repeat-x'
-                        }}
-                      />
-                      <motion.div
-                        animate={{ x: ["-50%", "0%"] }}
-                        transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
-                        style={{
-                          position: 'absolute', top: '-14px', left: 0, width: '200%', height: '15px',
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 50'%3E%3Cpath d='M0,25 C150,45 250,5 400,25 C550,45 650,5 800,25 L800,50 L0,50 Z' fill='%231f3cff'/%3E%3C/svg%3E")`,
-                          backgroundSize: '50% 100%',
-                          backgroundRepeat: 'repeat-x'
-                        }}
-                      />
-                    </motion.div>
-                  )}
-
-                  <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none' }}>
-                    {isSubmitting ? `MENGIRIM... ${uploadProgress}%` : (draftId ? 'Publikasikan Draf' : 'Posting')}
+                  <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none', color: isSubmitting ? 'var(--text-muted)' : '#fff' }}>
+                    {isSubmitting ? `Menyiapkan...` : (draftId ? 'Publikasikan Draf' : 'Posting')}
                   </span>
                 </button>
               </div>

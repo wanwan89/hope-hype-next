@@ -116,9 +116,9 @@ const PostCard: React.FC<PostCardProps> = ({
   const [videoDuration, setVideoDuration] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
 
-  // State baru untuk kontrol UI
-  const [showPlayPause, setShowPlayPause] = useState(false); // ikon play/pause
-  const [isBarVisible, setIsBarVisible] = useState(false);   // progress bar
+  // State UI video
+  const [showPlayPause, setShowPlayPause] = useState(false);
+  const [isBarVisible, setIsBarVisible] = useState(false);
   const playPauseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapVideoRef = useRef<number>(0);
@@ -183,7 +183,7 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-  // Deteksi bio butuh tombol "Lihat Selengkapnya" (hanya untuk postingan media)
+  // Deteksi bio
   useEffect(() => {
     if (photoList.length > 0 || isVideoPost) {
       const raf = requestAnimationFrame(() => {
@@ -210,7 +210,7 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, []);
 
-  // Render bio dengan mention & hashtag
+  // Render bio
   const renderBioWithMentions = useCallback(
     (text: string) => {
       if (!text) return null;
@@ -278,25 +278,13 @@ const PostCard: React.FC<PostCardProps> = ({
     setIsSeeking(false);
   };
 
-  const toggleVideoPlayPause = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    const video = mediaRef.current as HTMLVideoElement | null;
-    if (video) {
-      if (video.paused) {
-        video.play();
-      } else {
-        video.pause();
-      }
-    }
-  }, []);
-
-  // Handler area video (single tap = pause/play + indikator 1.5s, double tap = like)
+  // Handler klik area video (single/double tap)
   const handleVideoClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const now = Date.now();
     const lastTap = lastTapVideoRef.current;
 
-    if (now - lastTap < 350) {
+    if (now - lastTap < 500) {
       // Double tap
       lastTapVideoRef.current = 0;
       if (tapTimerRef.current) {
@@ -325,11 +313,11 @@ const PostCard: React.FC<PostCardProps> = ({
           playPauseTimerRef.current = null;
         }, 1500);
         tapTimerRef.current = null;
-      }, 350);
+      }, 500);
     }
   }, [handleMediaClick, postIdStr, creatorIdStr]);
 
-  // Handler untuk progress bar (tekan tahan)
+  // Progress bar
   const handleBarPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
@@ -539,7 +527,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     transform: 'translateZ(0)',
                   }}
                 >
-                  {/* Area klik video (pause/play dan double tap like) */}
+                  {/* Area klik video */}
                   <div
                     style={{ position: 'absolute', inset: 0, zIndex: 1, cursor: 'pointer' }}
                     onClick={handleVideoClick}
@@ -582,7 +570,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     }}
                   />
 
-                  {/* Indikator play/pause (muncul 1.5 detik setelah single tap) */}
+                  {/* Indikator play/pause */}
                   {videoLoaded && showPlayPause && (
                     <div
                       style={{
@@ -607,7 +595,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     </div>
                   )}
 
-                  {/* Area progress bar (hanya muncul saat ditekan) */}
+                  {/* Area progress bar (tekan tahan) */}
                   <div
                     style={{
                       position: 'absolute',
@@ -723,7 +711,7 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          {/* Overlay informasi (hanya untuk media post) */}
+          {/* Overlay informasi */}
           <div className="overlay" style={{ pointerEvents: 'auto' }}>
             <div
               style={{

@@ -16,10 +16,59 @@ export default function SearchWrapperpost() {
   const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
 
+  // 🔥 State untuk Loading Bar di Background
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const isHidden = pathname?.includes('hypetalk') || pathname?.includes('chat') || pathname?.includes('/story/view');
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Listener untuk Background Upload
+  useEffect(() => {
+    // Cek jika saat mount ada proses upload sebelumnya yang belum selesai
+    if (localStorage.getItem('isUploading') === 'true') {
+      setIsUploading(true);
+      setUploadProgress(Number(localStorage.getItem('uploadProgress')) || 0);
+    }
+
+    const handleUploadStart = () => {
+      setIsUploading(true);
+      setUploadProgress(0);
+    };
+
+    const handleUploadProgress = (e: any) => {
+      setIsUploading(true);
+      setUploadProgress(e.detail);
+    };
+
+    const handleUploadSuccess = () => {
+      setUploadProgress(100);
+      // Hilangkan bar setelah jeda agar animasi penuh terlihat sempurna
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 1000); 
+    };
+
+    const handleUploadError = () => {
+      setIsUploading(false);
+      setUploadProgress(0);
+    };
+
+    window.addEventListener('postUploadStart', handleUploadStart);
+    window.addEventListener('postUploadProgress', handleUploadProgress);
+    window.addEventListener('postUploadSuccess', handleUploadSuccess);
+    window.addEventListener('postUploadError', handleUploadError);
+
+    return () => {
+      window.removeEventListener('postUploadStart', handleUploadStart);
+      window.removeEventListener('postUploadProgress', handleUploadProgress);
+      window.removeEventListener('postUploadSuccess', handleUploadSuccess);
+      window.removeEventListener('postUploadError', handleUploadError);
+    };
   }, []);
 
   useEffect(() => {
@@ -60,9 +109,8 @@ export default function SearchWrapperpost() {
 
   return (
     <div className="header-sticky-wrapper">
-      <div className="search-wrapper glass-effect">
-        {/* Tombol tiga garis dihapus */}
-
+      <div className="search-wrapper glass-effect" style={{ position: 'relative', overflow: 'hidden' }}>
+        
         <div className="brutal-input-container">
           <input
             type="text"
@@ -81,6 +129,27 @@ export default function SearchWrapperpost() {
         >
           <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
         </button>
+
+        {/* 🔥 Animasi Loading Bar dari Bawah Area Search */}
+        {isUploading && (
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: '3px',
+            background: 'var(--border-card)',
+            zIndex: 10
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${uploadProgress}%`,
+              background: '#1f3cff', // Warna biru khas theme Anda
+              transition: 'width 0.3s ease-out',
+              borderRadius: '0 2px 2px 0'
+            }} />
+          </div>
+        )}
       </div>
 
       {stories.length > 0 && (
