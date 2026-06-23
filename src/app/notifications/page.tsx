@@ -7,10 +7,11 @@ import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Notifications.css';
 
-import FriendStoriesTray from './components/FriendStoriesTray';
-import CategoryMenu from './components/CategoryMenu';
-import RecommendedFriends from './components/RecommendedFriends';
-import NotificationListView from './components/NotificationListView';
+// Gunakan alias @/ yang sudah kita daftarkan di tsconfig.json
+import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
+import CategoryMenu from '@/components/notifications/CategoryMenu';
+import RecommendedFriends from '@/components/notifications/RecommendedFriends';
+import NotificationListView from '@/components/notifications/NotificationListView';
 
 export default function NotificationsPage() {
   const router = useRouter();
