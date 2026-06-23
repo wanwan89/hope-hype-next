@@ -226,7 +226,7 @@ function NavbarContent() {
         <nav
           style={{
             width: '100%',
-            height: `calc(50px + env(safe-area-inset-bottom))`, // 🔥 Diubah jadi 50px
+            height: `calc(55px + env(safe-area-inset-bottom))`, // 🔥 Diubah jadi 55px
             paddingBottom: 'env(safe-area-inset-bottom)',
             backgroundColor: 'var(--bg-card)',
             backdropFilter: 'blur(15px)',
