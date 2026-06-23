@@ -35,7 +35,6 @@ export default function FriendStoriesTray({
 }: Props) {
   return (
     <div className="friend-stories-tray">
-      {/* Profil sendiri di posisi pertama */}
       {currentUser && (
         <div className="story-avatar-container" style={{ position: 'relative' }}>
           <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
@@ -95,7 +94,7 @@ export default function FriendStoriesTray({
                 className="story-status-text"
                 title="Klik untuk membalas"
                 onClick={(e) => {
-                  e.stopPropagation(); // Jangan navigasi ke story/profil
+                  e.stopPropagation();
                   onFriendNoteClick?.(friend.id);
                 }}
                 style={{ cursor: 'pointer' }}

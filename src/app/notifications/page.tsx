@@ -69,6 +69,8 @@ export default function NotificationsPage() {
   const handleUpdateStatus = async (newText: string) => {
     if (!currentUser) return;
     try {
+      // 🔥 Insert ke user_notes & update cache profiles
+      await supabase.from('user_notes').insert({ user_id: currentUser.id, content: newText });
       await supabase.from('profiles').update({ status_text: newText }).eq('id', currentUser.id);
       setMyStatusText(newText);
       setShowStatusInput(false);
@@ -171,7 +173,49 @@ export default function NotificationsPage() {
         if (profs) profs.forEach(p => { profilesMap[p.id] = p; });
       }
 
-      const formattedLikes = likesData.map((l: any) => ({ id: `like-${l.id}`, type: 'like', post_id: l.post_id, actor_id: l.user_id, created_at: l.created_at, is_read: true, actor: profilesMap[l.user_id], postData: myPosts.find(p => p.id === l.post_id) }));
+      // 🔥 GABUNG LIKES JIKA > 10 UNTUK TIAP POST
+      const likesByPostId: Record<string, any[]> = {};
+      likesData.forEach((l: any) => {
+        const key = l.post_id;
+        if (!likesByPostId[key]) likesByPostId[key] = [];
+        likesByPostId[key].push(l);
+      });
+
+      let finalLikesNotifs: any[] = [];
+
+      Object.entries(likesByPostId).forEach(([postId, likes]) => {
+        if (likes.length <= 10) {
+          // Tampilkan semua notif like satu per satu
+          finalLikesNotifs.push(
+            ...likes.map((l: any) => ({
+              id: `like-${l.id}`,
+              type: 'like',
+              post_id: l.post_id,
+              actor_id: l.user_id,
+              created_at: l.created_at,
+              is_read: true,
+              actor: profilesMap[l.user_id],
+              postData: myPosts.find(p => p.id === l.post_id),
+            }))
+          );
+        } else {
+          // Ambil 2 actor pertama
+          const firstTwo = likes.slice(0, 2);
+          const otherCount = likes.length - 2;
+          finalLikesNotifs.push({
+            id: `like-group-${postId}`,
+            type: 'like_group',
+            post_id: postId,
+            actor_ids: firstTwo.map(l => l.user_id),
+            otherCount,
+            created_at: likes[0].created_at,
+            is_read: true,
+            actors: firstTwo.map(l => profilesMap[l.user_id]),
+            postData: myPosts.find(p => p.id === postId),
+          });
+        }
+      });
+
       const formattedComments = commentsData.map((c: any) => ({ id: `comment-${c.id}`, type: 'comment', post_id: c.post_id, actor_id: c.user_id, message: c.content, created_at: c.created_at, is_read: true, actor: profilesMap[c.user_id], postData: myPosts.find(p => p.id === c.post_id) }));
       const formattedReposts = repostsData.map((r: any) => ({ id: `repost-${r.id}`, type: 'repost', post_id: r.post_id, actor_id: r.user_id, created_at: r.created_at, is_read: true, actor: profilesMap[r.user_id], postData: myPosts.find(p => p.id === r.post_id) }));
       const formattedSaves = savesData.map((s: any) => ({ id: `save-${s.id}`, type: 'save', post_id: s.post_id, actor_id: s.user_id, created_at: s.created_at, is_read: true, actor: profilesMap[s.user_id], postData: myPosts.find(p => p.id === s.post_id) }));
@@ -184,10 +228,10 @@ export default function NotificationsPage() {
         return { ...n, type: isFollow ? 'follow' : n.type || 'other', actor: profilesMap[n.actor_id] || { username: 'Seseorang', avatar_url: '/asets/png/profile.webp' } };
       });
 
-      const allRaw = [...normalizedDbNotifs, ...formattedLikes, ...formattedComments, ...formattedReposts, ...formattedSaves, ...formattedCommentLikes, ...formattedCoins, ...formattedPayments]
+      const allRaw = [...normalizedDbNotifs, ...finalLikesNotifs, ...formattedComments, ...formattedReposts, ...formattedSaves, ...formattedCommentLikes, ...formattedCoins, ...formattedPayments]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      // 🔥 Deduplikasi: hapus notifikasi ganda berdasarkan ID unik
+      // 🔥 Deduplikasi
       const uniqueNotifs = Array.from(new Map(allRaw.map(item => [item.id, item])).values());
       setRawNotifs(uniqueNotifs);
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
@@ -204,13 +248,11 @@ export default function NotificationsPage() {
   };
 
   const handleNotifClick = async (notif: any) => {
-    // Tandai sudah dibaca jika notifikasi database (ID numerik)
     if (!notif.is_read && notif.id && !String(notif.id).includes('-')) {
       setRawNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
 
-    // Navigasi berdasarkan tipe
     if (notif.type === 'follow' && notif.actor_id) {
       router.push(`/data?id=${notif.actor_id}`);
     } else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) {
@@ -294,14 +336,113 @@ export default function NotificationsPage() {
     }
   };
 
-  // Handler klik note teman -> buka profil untuk balas
   const handleFriendNoteClick = (friendId: string) => {
     router.push(`/data?id=${friendId}`);
   };
 
   return (
     <div className="notif-page-container">
-      {/* Internal CSS di sini (tidak diubah, sama seperti sebelumnya) */}
+      <style>{`
+        .notif-page-container {
+          height: 100dvh;
+          overflow-y: auto;
+          overflow-x: hidden;
+          background: var(--bg-main);
+          padding-bottom: 80px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .friend-stories-tray {
+          display: flex; gap: 16px; padding: 15px; overflow-x: auto; scrollbar-width: none;
+          border-bottom: 1px solid var(--border-card); background: var(--bg-main);
+        }
+        .friend-stories-tray::-webkit-scrollbar { display: none; }
+        .story-avatar-container {
+          display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; width: 68px;
+        }
+        .story-ring {
+          width: 64px; height: 64px; border-radius: 50%; padding: 3px; display: flex; align-items: center; justify-content: center;
+        }
+        .story-ring.active-story {
+          background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+        }
+        .story-ring.no-story {
+          background: var(--border-card);
+        }
+        .story-ring img {
+          width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--bg-main);
+        }
+        .story-ring .default-avatar {
+          width: 100%; height: 100%; border-radius: 50%; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center;
+        }
+        .story-username {
+          font-size: 11px; color: var(--text-main); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center;
+        }
+        .story-status-text {
+          font-size: 9px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 64px; text-align: center; cursor: pointer;
+        }
+        .add-status-btn {
+          position: absolute; bottom: 2px; right: 2px; background: #1f3cff; border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .status-input-container {
+          display: flex; gap: 8px; padding: 10px 15px; background: var(--bg-main); border-bottom: 1px solid var(--border-card);
+        }
+        .status-input {
+          flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-card); background: var(--bg-input); color: var(--text-main); font-size: 14px;
+        }
+        .pending-alert-box {
+          display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border-card); padding: 14px 16px; border-radius: 16px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: all 0.2s ease; margin: 10px 15px;
+        }
+        .pending-alert-box:active { transform: scale(0.98); background: var(--bg-secondary); }
+        .pending-alert-left { display: flex; align-items: center; gap: 14px; }
+        .pending-icon-wrap { width: 40px; height: 40px; border-radius: 12px; background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center; color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+        .pending-text { display: flex; flex-direction: column; gap: 2px; }
+        .pending-title { font-size: 14px; font-weight: 800; color: var(--text-main); }
+        .pending-title span { color: #f59e0b; }
+        .pending-desc { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+        .pending-chevron { color: var(--text-muted); font-size: 20px; opacity: 0.5; }
+        .category-menu-list { padding: 10px 15px; border-bottom: 1px solid var(--border-card); }
+        .category-menu-item { display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid rgba(128,128,128,0.08); cursor: pointer; }
+        .category-menu-item:last-child { border-bottom: none; }
+        .category-icon-box { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .category-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .category-title { font-size: 15px; font-weight: 700; color: var(--text-main); }
+        .category-desc { font-size: 12px; color: var(--text-muted); }
+        .category-badge { background: #ff4757; color: white; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; }
+        .chevron { color: var(--text-muted); }
+        .recommended-section { padding: 20px 15px; }
+        .section-title { font-size: 16px; font-weight: 800; color: var(--text-main); margin-bottom: 15px; margin-top: 0; }
+        .recommended-list { display: flex; flex-direction: column; gap: 15px; }
+        .recommended-card { display: flex; align-items: center; gap: 12px; }
+        .recommended-card img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 1px solid var(--border-card); }
+        .rec-info { flex: 1; cursor: pointer; }
+        .rec-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
+        .rec-user { font-size: 12px; color: var(--text-muted); }
+        .rec-follow-btn { background: #1f3cff; color: white; border: none; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .rec-follow-btn.followed { background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-card); }
+        .notif-detail-view { background: var(--bg-main); animation: slideIn 0.3s cubic-bezier(0.25, 1, 0.5, 1); min-height: 100%; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .notif-detail-header { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border-card); position: sticky; top: 0; background: var(--bg-main); z-index: 10; }
+        .back-btn { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; padding: 0; }
+        .notif-detail-header h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-main); }
+        .notif-item { padding: 12px 15px; display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border-card); cursor: pointer; position: relative; }
+        .notif-item.unread { background: rgba(29, 161, 242, 0.03); }
+        .notif-avatar-wrapper { position: relative; flex-shrink: 0; }
+        .notif-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-card); }
+        .notif-avatar.default-avatar { background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .notif-icon-badge { position: absolute; bottom: -4px; right: -4px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-main); }
+        .notif-icon-badge .material-icons { font-size: 12px; color: white; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-text { font-size: 14px; color: var(--text-main); line-height: 1.4; }
+        .notif-date { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: block; }
+        .notif-action-area { flex-shrink: 0; display: flex; align-items: center; margin-left: 8px; }
+        .notif-follow-btn { background: #1f3cff; color: white; border: none; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .notif-follow-btn.followed { background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-card); }
+        .notif-post-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; }
+        .notif-unread-dot { position: absolute; top: 15px; right: 15px; width: 8px; height: 8px; background: #1f3cff; border-radius: 50%; }
+        .btn-press { transition: transform 0.1s ease; }
+        .btn-press:active { transform: scale(0.95); }
+      `}</style>
+
       {activeView === 'main' ? (
         <div className="notif-main-view">
           <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
@@ -310,7 +451,6 @@ export default function NotificationsPage() {
             </h2>
           </header>
 
-          {/* Tray Story dengan profil sendiri & tombol + */}
           <FriendStoriesTray
             friends={friendStories}
             currentUser={currentUser}
@@ -320,7 +460,6 @@ export default function NotificationsPage() {
             onFriendNoteClick={handleFriendNoteClick}
           />
 
-          {/* Input Status */}
           {showStatusInput && (
             <div className="status-input-container">
               <input
@@ -346,7 +485,7 @@ export default function NotificationsPage() {
           )}
 
           {pendingCount > 0 && (
-            <div className="pending-alert-box" style={{ margin: '15px' }} onClick={() => router.push('/pending')}>
+            <div className="pending-alert-box" onClick={() => router.push('/pending')}>
               <div className="pending-alert-left">
                 <div className="pending-icon-wrap"><span className="material-icons" style={{ fontSize: '20px' }}>pending_actions</span></div>
                 <div className="pending-text">
