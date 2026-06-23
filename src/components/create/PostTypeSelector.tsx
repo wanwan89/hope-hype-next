@@ -1,5 +1,3 @@
-import React from 'react';
-
 type Props = {
   postType: 'image' | 'video' | 'text';
   setPostType: (v: 'image' | 'video' | 'text') => void;
@@ -7,28 +5,14 @@ type Props = {
 };
 
 export default function PostTypeSelector({ postType, setPostType, onReset }: Props) {
-  const types: Array<'image' | 'video' | 'text'> = ['image', 'video', 'text'];
   return (
-    <div
-      className="post-type-toggle"
-      style={{
-        display: 'flex',
-        gap: '8px',
-        marginTop: '20px',
-        background: 'var(--bg-secondary)',
-        padding: '6px',
-        borderRadius: '14px',
-      }}
-    >
-      {types.map((type) => (
+    <div className="post-type-toggle" style={{ display: 'flex', gap: '8px', marginTop: '20px', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '14px' }}>
+      {(['image', 'video', 'text'] as const).map(type => (
         <button
           key={type}
           type="button"
           className={`type-btn ${postType === type ? 'active' : ''}`}
-          onClick={() => {
-            setPostType(type);
-            onReset();
-          }}
+          onClick={() => { setPostType(type); onReset(); }}
           style={{
             flex: 1,
             padding: '10px',
