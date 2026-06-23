@@ -21,10 +21,18 @@ interface Props {
   currentUser?: CurrentUser | null;
   myStatusText?: string;
   onAddStatus?: () => void;
+  onFriendNoteClick?: (friendId: string) => void;
   router: any;
 }
 
-export default function FriendStoriesTray({ friends, currentUser, myStatusText, onAddStatus, router }: Props) {
+export default function FriendStoriesTray({
+  friends,
+  currentUser,
+  myStatusText,
+  onAddStatus,
+  onFriendNoteClick,
+  router,
+}: Props) {
   return (
     <div className="friend-stories-tray">
       {/* Profil sendiri di posisi pertama */}
@@ -35,14 +43,22 @@ export default function FriendStoriesTray({ friends, currentUser, myStatusText, 
               <img src={currentUser.avatar_url} alt="Anda" />
             ) : (
               <div className="default-avatar">
-                <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+                <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>
+                  person
+                </span>
               </div>
             )}
           </div>
           <span className="story-username">Anda</span>
-          {myStatusText && <span className="story-status-text">{myStatusText}</span>}
+          {myStatusText && (
+            <span className="story-status-text" title="Status Anda">
+              {myStatusText}
+            </span>
+          )}
           <button className="add-status-btn" onClick={onAddStatus}>
-            <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
+            <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>
+              add
+            </span>
           </button>
         </div>
       )}
@@ -52,23 +68,41 @@ export default function FriendStoriesTray({ friends, currentUser, myStatusText, 
           Belum mengikuti siapa pun.
         </div>
       ) : (
-        friends.map(friend => (
-          <div 
-            key={friend.id} 
+        friends.map((friend) => (
+          <div
+            key={friend.id}
             className="story-avatar-container"
-            onClick={() => friend.hasStory ? router.push(`/story/view?id=${friend.storyId}`) : router.push(`/data?id=${friend.id}`)}
+            onClick={() =>
+              friend.hasStory
+                ? router.push(`/story/view?id=${friend.storyId}`)
+                : router.push(`/data?id=${friend.id}`)
+            }
           >
             <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
               {friend.avatar_url ? (
                 <img src={friend.avatar_url} alt={friend.username} />
               ) : (
                 <div className="default-avatar">
-                  <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+                  <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>
+                    person
+                  </span>
                 </div>
               )}
             </div>
             <span className="story-username">{friend.username}</span>
-            {friend.status_text && <span className="story-status-text">{friend.status_text}</span>}
+            {friend.status_text && (
+              <span
+                className="story-status-text"
+                title="Klik untuk membalas"
+                onClick={(e) => {
+                  e.stopPropagation(); // Jangan navigasi ke story/profil
+                  onFriendNoteClick?.(friend.id);
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                {friend.status_text}
+              </span>
+            )}
           </div>
         ))
       )}
