@@ -122,6 +122,9 @@ const PostCard: React.FC<PostCardProps> = ({
   const playPauseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapVideoRef = useRef<number>(0);
+  
+  // Ref untuk menyimpan state video sebelum di-seek
+  const wasPlayingRef = useRef(false);
 
   // --- 3. Observer video/audio ---
   useEffect(() => {
@@ -263,20 +266,48 @@ const PostCard: React.FC<PostCardProps> = ({
     [onToggleExpand, postIdStr]
   );
 
-  // Handler kontrol video
-  const handleVideoSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = Number(e.target.value);
-    setVideoCurrentTime(time);
+  // 🔥 HANDLER VIDEO SCRUBBER / SEEKING YANG BARU & SMOOTH 🔥
+  const handleVideoSeekStart = useCallback((e: React.SyntheticEvent) => {
+    e.stopPropagation();
     setIsSeeking(true);
-  };
-
-  const handleVideoSeekCommit = () => {
+    setIsBarVisible(true);
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      video.currentTime = videoCurrentTime;
+      wasPlayingRef.current = !video.paused;
+      video.pause(); // Pause saat di-drag agar suara tidak glitch
     }
+  }, []);
+
+  const handleVideoSeekChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const time = Number(e.target.value);
+    setVideoCurrentTime(time);
+    const video = mediaRef.current as HTMLVideoElement | null;
+    if (video) {
+      video.currentTime = time; // Update frame video secara langsung
+    }
+  }, []);
+
+  const handleVideoSeekCommit = useCallback((e: React.SyntheticEvent) => {
+    e.stopPropagation();
     setIsSeeking(false);
-  };
+    
+    // Biarkan bar tetap terlihat sejenak setelah dilepas lalu hilangkan
+    setTimeout(() => {
+      if (!isSeeking) setIsBarVisible(false);
+    }, 1500);
+
+    const video = mediaRef.current as HTMLVideoElement | null;
+    if (video) {
+      // Sinkronkan sekali lagi
+      video.currentTime = videoCurrentTime; 
+      // Lanjutkan video jika sebelumnya bermain
+      if (wasPlayingRef.current) {
+        video.play().catch(() => {});
+      }
+    }
+  }, [videoCurrentTime, isSeeking]);
+
 
   // Handler klik area video (single/double tap)
   const handleVideoClick = useCallback((e: React.MouseEvent) => {
@@ -316,18 +347,6 @@ const PostCard: React.FC<PostCardProps> = ({
       }, 500);
     }
   }, [handleMediaClick, postIdStr, creatorIdStr]);
-
-  // Progress bar
-  const handleBarPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    setIsBarVisible(true);
-  }, []);
-
-  const handleBarPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setIsBarVisible(false);
-  }, []);
 
   // Throttle scroll carousel
   const ticking = useRef(false);
@@ -595,7 +614,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     </div>
                   )}
 
-                  {/* Area progress bar (tekan tahan) */}
+                  {/* 🔥 Progress Bar yang Interaktif dan Halus 🔥 */}
                   <div
                     style={{
                       position: 'absolute',
@@ -604,17 +623,41 @@ const PostCard: React.FC<PostCardProps> = ({
                       right: 0,
                       height: '24px',
                       zIndex: 4,
+                      display: 'flex',
+                      alignItems: 'flex-end'
                     }}
-                    onPointerDown={handleBarPointerDown}
-                    onPointerUp={handleBarPointerUp}
-                    onPointerLeave={handleBarPointerUp}
+                    onPointerEnter={() => setIsBarVisible(true)}
+                    onPointerLeave={() => { if (!isSeeking) setIsBarVisible(false); }}
                   >
-                    {videoLoaded && isBarVisible && (
+                    {/* Visual Bar - Selalu tampil tapi tipis, menebal saat disentuh/di-hover */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: '100%',
+                      height: isBarVisible || isSeeking ? '6px' : '2px',
+                      background: 'rgba(255,255,255,0.3)',
+                      transition: 'height 0.2s',
+                      pointerEvents: 'none'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${(videoCurrentTime / (videoDuration || 1)) * 100}%`,
+                        background: '#1f3cff',
+                        transition: isSeeking ? 'none' : 'width 0.1s linear'
+                      }} />
+                    </div>
+
+                    {/* Input range yang transparan tapi bisa di-drag */}
+                    {videoLoaded && (
                       <input
                         type="range"
                         min={0}
                         max={videoDuration || 1}
+                        step="0.001" // 🔥 PENTING: Membuat pergerakan slide mulus
                         value={videoCurrentTime}
+                        onMouseDown={handleVideoSeekStart}
+                        onTouchStart={handleVideoSeekStart}
                         onChange={handleVideoSeekChange}
                         onMouseUp={handleVideoSeekCommit}
                         onTouchEnd={handleVideoSeekCommit}
@@ -622,15 +665,12 @@ const PostCard: React.FC<PostCardProps> = ({
                           position: 'absolute',
                           bottom: 0,
                           left: 0,
-                          right: 0,
                           width: '100%',
-                          height: '4px',
-                          appearance: 'none',
-                          background: 'rgba(255,255,255,0.3)',
-                          outline: 'none',
+                          height: '24px', // Area tekan lebih luas agar mudah disentuh
                           margin: 0,
+                          opacity: 0, // Dibuat invisible, pengguna hanya melihat Visual Bar di atas
                           cursor: 'pointer',
-                          accentColor: '#1f3cff',
+                          zIndex: 5
                         }}
                       />
                     )}

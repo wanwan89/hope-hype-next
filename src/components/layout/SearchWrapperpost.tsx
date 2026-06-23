@@ -28,7 +28,6 @@ export default function SearchWrapperpost() {
 
   // Listener untuk Background Upload
   useEffect(() => {
-    // Cek jika saat mount ada proses upload sebelumnya yang belum selesai
     if (localStorage.getItem('isUploading') === 'true') {
       setIsUploading(true);
       setUploadProgress(Number(localStorage.getItem('uploadProgress')) || 0);
@@ -46,11 +45,10 @@ export default function SearchWrapperpost() {
 
     const handleUploadSuccess = () => {
       setUploadProgress(100);
-      // Hilangkan bar setelah jeda agar animasi penuh terlihat sempurna
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
-      }, 1000); 
+      }, 1500); // Beri jeda sedikit lebih lama agar tulisan "Berhasil" sempat terbaca
     };
 
     const handleUploadError = () => {
@@ -108,8 +106,21 @@ export default function SearchWrapperpost() {
   if (!mounted || isHidden) return null;
 
   return (
-    <div className="header-sticky-wrapper">
-      <div className="search-wrapper glass-effect" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div className="header-main-wrapper"> 
+      
+      {/* Area pencarian diam (Sticky) dan tanpa celah pinggir */}
+      <div className="search-wrapper glass-effect" style={{ 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 99, 
+        width: '100vw',
+        maxWidth: '100%',
+        margin: 0,
+        borderRadius: 0,
+        borderLeft: 'none',
+        borderRight: 'none',
+        overflow: 'hidden'
+      }}>
         
         <div className="brutal-input-container">
           <input
@@ -130,21 +141,53 @@ export default function SearchWrapperpost() {
           <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
         </button>
 
-        {/* 🔥 Animasi Loading Bar dari Bawah Area Search */}
+        {/* 🔥 Loading Bar beserta Teks Indikator */}
         {isUploading && (
           <div style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             width: '100%',
-            height: '3px',
-            background: 'var(--border-card)',
-            zIndex: 10
+            height: '22px', // Diperlebar agar teks muat
+            background: 'rgba(31, 60, 255, 0.08)', // Background tipis biru
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}>
+            {/* Warna progres bar yang mengisi background */}
             <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
               height: '100%',
               width: `${uploadProgress}%`,
-              background: '#1f3cff', // Warna biru khas theme Anda
+              background: 'rgba(31, 60, 255, 0.15)',
+              transition: 'width 0.3s ease-out',
+            }} />
+            
+            {/* Teks Status */}
+            <span style={{
+              position: 'relative',
+              zIndex: 11,
+              fontSize: '10px',
+              fontWeight: 800,
+              color: '#1f3cff', // Warna teks biru solid
+              letterSpacing: '0.5px'
+            }}>
+              {uploadProgress < 100 
+                ? `SEDANG MEMPOSTING... ${uploadProgress}%` 
+                : 'BERHASIL MEMPOSTING!'}
+            </span>
+
+            {/* Garis Progres Solid di Paling Bawah */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: `${uploadProgress}%`,
+              height: '3px',
+              background: '#1f3cff',
               transition: 'width 0.3s ease-out',
               borderRadius: '0 2px 2px 0'
             }} />
@@ -152,6 +195,7 @@ export default function SearchWrapperpost() {
         )}
       </div>
 
+      {/* Area Story: Ikut ter-scroll ke bawah/hilang */}
       {stories.length > 0 && (
         <div className="stories-container">
           {stories.map((story) => (
