@@ -7,7 +7,7 @@ import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Notifications.css';
 
-// Gunakan alias @/ yang sudah kita daftarkan di tsconfig.json
+// Komponen
 import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
 import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
@@ -29,6 +29,10 @@ export default function NotificationsPage() {
   const [friendStories, setFriendStories] = useState<any[]>([]);
   const [recommendedFriends, setRecommendedFriends] = useState<any[]>([]);
 
+  // State untuk status text user sendiri
+  const [myStatusText, setMyStatusText] = useState<string>('');
+  const [showStatusInput, setShowStatusInput] = useState(false);
+
   const channelRef = useRef<any>(null);
 
   useEffect(() => {
@@ -39,7 +43,14 @@ export default function NotificationsPage() {
   const initUserAndData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
-    setCurrentUser(session.user);
+    
+    // Ambil profil user (termasuk status_text)
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    const userData = { ...session.user, ...profile };
+    setCurrentUser(userData);
+    if (profile?.status_text) {
+      setMyStatusText(profile.status_text);
+    }
     
     const { data: fData } = await supabase.from('followers').select('following_id').eq('follower_id', session.user.id);
     const followingIds = new Set(fData ? fData.map(f => String(f.following_id)) : []);
@@ -54,11 +65,25 @@ export default function NotificationsPage() {
     setupRealtime(session.user.id);
   };
 
+  // Update status text
+  const handleUpdateStatus = async (newText: string) => {
+    if (!currentUser) return;
+    try {
+      await supabase.from('profiles').update({ status_text: newText }).eq('id', currentUser.id);
+      setMyStatusText(newText);
+      setShowStatusInput(false);
+      showNotif('Status berhasil diperbarui!', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotif('Gagal menyimpan status', 'error');
+    }
+  };
+
   const loadFriendStories = async (followingIds: Set<string>) => {
     if (followingIds.size === 0) return;
     try {
       const arrIds = Array.from(followingIds);
-      const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', arrIds);
+      const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url, status_text').in('id', arrIds);
       if (!profiles) return;
 
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -247,20 +272,16 @@ export default function NotificationsPage() {
   };
 
   return (
-    // 🔥 PERBAIKAN SCROLL: height 100dvh dan overflow-y: auto 🔥
     <div className="notif-page-container">
       <style>{`
-        /* --- PERBAIKAN SCROLL --- */
         .notif-page-container {
           height: 100dvh;
           overflow-y: auto;
           overflow-x: hidden;
           background: var(--bg-main);
-          padding-bottom: 80px; /* Jarak untuk navbar bawah */
-          -webkit-overflow-scrolling: touch; /* Membuat scroll mulus di iOS */
+          padding-bottom: 80px;
+          -webkit-overflow-scrolling: touch;
         }
-        
-        /* Tray Story Teman */
         .friend-stories-tray {
           display: flex; gap: 16px; padding: 15px; overflow-x: auto; scrollbar-width: none;
           border-bottom: 1px solid var(--border-card); background: var(--bg-main);
@@ -281,30 +302,33 @@ export default function NotificationsPage() {
         .story-ring img {
           width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--bg-main);
         }
+        .story-ring .default-avatar {
+          width: 100%; height: 100%; border-radius: 50%; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center;
+        }
         .story-username {
           font-size: 11px; color: var(--text-main); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center;
         }
-
-        /* Menu Kategori */
-        .category-menu-list {
-          padding: 10px 15px; border-bottom: 1px solid var(--border-card);
+        .story-status-text {
+          font-size: 9px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 64px; text-align: center;
         }
-        .category-menu-item {
-          display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid rgba(128,128,128,0.1); cursor: pointer;
+        .add-status-btn {
+          position: absolute; bottom: 0; right: 0; background: #1f3cff; border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
+        .status-input-container {
+          display: flex; gap: 8px; padding: 10px 15px; background: var(--bg-main); border-bottom: 1px solid var(--border-card);
+        }
+        .status-input {
+          flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-card); background: var(--bg-input); color: var(--text-main); font-size: 14px;
+        }
+        .category-menu-list { padding: 10px 15px; border-bottom: 1px solid var(--border-card); }
+        .category-menu-item { display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid rgba(128,128,128,0.1); cursor: pointer; }
         .category-menu-item:last-child { border-bottom: none; }
-        .category-icon-box {
-          width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
+        .category-icon-box { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .category-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
         .category-title { font-size: 15px; font-weight: 700; color: var(--text-main); }
         .category-desc { font-size: 12px; color: var(--text-muted); }
-        .category-badge {
-          background: #ff4757; color: white; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px;
-        }
+        .category-badge { background: #ff4757; color: white; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; }
         .chevron { color: var(--text-muted); }
-
-        /* Saran Teman */
         .recommended-section { padding: 20px 15px; }
         .section-title { font-size: 16px; font-weight: 800; color: var(--text-main); margin-bottom: 15px; margin-top: 0; }
         .recommended-list { display: flex; flex-direction: column; gap: 15px; }
@@ -313,18 +337,13 @@ export default function NotificationsPage() {
         .rec-info { flex: 1; display: flex; flex-direction: column; cursor: pointer; }
         .rec-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
         .rec-user { font-size: 12px; color: var(--text-muted); }
-        .rec-follow-btn {
-          background: #1f3cff; color: white; border: none; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s;
-        }
+        .rec-follow-btn { background: #1f3cff; color: white; border: none; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .rec-follow-btn.followed { background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-card); }
-
-        /* Sub-View Notifikasi */
         .notif-detail-view { background: var(--bg-main); animation: slideIn 0.3s cubic-bezier(0.25, 1, 0.5, 1); min-height: 100%; }
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
         .notif-detail-header { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border-card); position: sticky; top: 0; background: var(--bg-main); z-index: 10; }
         .back-btn { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; padding: 0; }
         .notif-detail-header h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-main); }
-        
         .notif-item { padding: 12px 15px; display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border-card); cursor: pointer; position: relative; }
         .notif-avatar-wrapper { position: relative; flex-shrink: 0; }
         .notif-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-card); }
@@ -333,26 +352,56 @@ export default function NotificationsPage() {
         .notif-content { flex: 1; min-width: 0; }
         .notif-text { font-size: 14px; color: var(--text-main); line-height: 1.4; }
         .notif-date { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: block; }
-        .notif-action-area { flex-shrink: 0; display: flex; alignItems: center; height: 100%; margin-left: 8px; }
+        .notif-action-area { flex-shrink: 0; display: flex; align-items: center; height: 100%; margin-left: 8px; }
         .notif-follow-btn { background: #1f3cff; color: white; border: none; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
         .notif-follow-btn.followed { background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-card); }
         .notif-post-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; }
         .notif-unread-dot { position: absolute; top: 15px; right: 15px; width: 8px; height: 8px; background: #1f3cff; border-radius: 50%; }
-        
         .btn-press { transition: transform 0.1s ease; }
         .btn-press:active { transform: scale(0.95); }
       `}</style>
 
       {activeView === 'main' ? (
         <div className="notif-main-view">
-          {/* 🔥 FIX HEADER RATA KIRI 🔥 */}
           <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800, textAlign: 'left' }}>
               {t('notifications', 'Notifikasi')}
             </h2>
           </header>
 
-          <FriendStoriesTray friends={friendStories} router={router} />
+          {/* Tray Story dengan profil sendiri & tombol + */}
+          <FriendStoriesTray 
+            friends={friendStories} 
+            currentUser={currentUser}
+            myStatusText={myStatusText}
+            onAddStatus={() => setShowStatusInput(true)}
+            router={router} 
+          />
+
+          {/* Input Status */}
+          {showStatusInput && (
+            <div className="status-input-container">
+              <input 
+                type="text" 
+                placeholder="Tulis note atau status..." 
+                maxLength={100}
+                defaultValue={myStatusText}
+                autoFocus
+                className="status-input"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleUpdateStatus(e.currentTarget.value);
+                  }
+                }}
+              />
+              <button 
+                onClick={() => setShowStatusInput(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}
+              >
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+          )}
 
           {pendingCount > 0 && (
             <div className="pending-alert-box" style={{ margin: '15px' }} onClick={() => router.push('/pending')}>
