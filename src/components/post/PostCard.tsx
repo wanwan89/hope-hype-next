@@ -117,6 +117,10 @@ const PostCard: React.FC<PostCardProps> = ({
   const [isSeeking, setIsSeeking] = useState(false);
   const [showControls, setShowControls] = useState(false);
 
+  // Ref untuk timer auto-hide controls dan deteksi double-tap video
+  const autoHideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTapVideoRef = useRef<number>(0);
+
   // --- 3. Observer video/audio (threshold 0.3 agar tidak terlalu sensitif) ---
   useEffect(() => {
     const media = mediaRef.current;
@@ -277,10 +281,33 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  const handleVideoTap = (e: React.MouseEvent) => {
+  // Handler klik area video: deteksi single tap (tampilkan kontrol 2 detik) vs double tap (like)
+  const handleVideoClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowControls((prev) => !prev);
-  };
+    const now = Date.now();
+    const lastTap = lastTapVideoRef.current;
+    // Double-tap jika jarak < 350ms
+    if (now - lastTap < 350) {
+      // Double tap -> like
+      lastTapVideoRef.current = 0;
+      if (autoHideTimerRef.current) {
+        clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = null;
+      }
+      setShowControls(false); // sembunyikan kontrol
+      // Panggil handler like dari parent (sama seperti double-tap gambar)
+      handleMediaClick(e, postIdStr, creatorIdStr);
+    } else {
+      // Single tap
+      lastTapVideoRef.current = now;
+      setShowControls(true);
+      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = setTimeout(() => {
+        setShowControls(false);
+        autoHideTimerRef.current = null;
+      }, 2000);
+    }
+  }, [handleMediaClick, postIdStr, creatorIdStr]);
 
   // Throttle scroll carousel dengan ref untuk currentSlide terbaru
   const ticking = useRef(false);
@@ -470,7 +497,7 @@ const PostCard: React.FC<PostCardProps> = ({
               {isVideoPost ? (
                 <div
                   className="carousel-item"
-                  onClick={handleVideoTap}
+                  onClick={handleVideoClick}
                   style={{
                     aspectRatio: '2 / 3',
                     width: '100%',
@@ -517,58 +544,58 @@ const PostCard: React.FC<PostCardProps> = ({
                     }}
                   />
 
+                  {/* Tombol play/pause dan progress bar muncul hanya jika showControls true */}
                   {videoLoaded && showControls && (
-                    <button
-                      onClick={toggleVideoPlayPause}
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        background: 'rgba(0,0,0,0.5)',
-                        border: 'none',
-                        color: 'white',
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 5,
-                      }}
-                    >
-                      <span className="material-icons" style={{ fontSize: '32px' }}>
-                        {isVideoPlaying ? 'pause' : 'play_arrow'}
-                      </span>
-                    </button>
-                  )}
-
-                  {videoLoaded && showControls && (
-                    <input
-                      type="range"
-                      min={0}
-                      max={videoDuration || 1}
-                      value={videoCurrentTime}
-                      onChange={handleVideoSeekChange}
-                      onMouseUp={handleVideoSeekCommit}
-                      onTouchEnd={handleVideoSeekCommit}
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        width: '100%',
-                        height: '4px',
-                        appearance: 'none',
-                        background: 'rgba(255,255,255,0.3)',
-                        outline: 'none',
-                        margin: 0,
-                        cursor: 'pointer',
-                        accentColor: '#1f3cff',
-                        zIndex: 4,
-                      }}
-                    />
+                    <>
+                      <button
+                        onClick={toggleVideoPlayPause}
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          background: 'rgba(0,0,0,0.5)',
+                          border: 'none',
+                          color: 'white',
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          zIndex: 5,
+                        }}
+                      >
+                        <span className="material-icons" style={{ fontSize: '32px' }}>
+                          {isVideoPlaying ? 'pause' : 'play_arrow'}
+                        </span>
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={videoDuration || 1}
+                        value={videoCurrentTime}
+                        onChange={handleVideoSeekChange}
+                        onMouseUp={handleVideoSeekCommit}
+                        onTouchEnd={handleVideoSeekCommit}
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          width: '100%',
+                          height: '4px',
+                          appearance: 'none',
+                          background: 'rgba(255,255,255,0.3)',
+                          outline: 'none',
+                          margin: 0,
+                          cursor: 'pointer',
+                          accentColor: '#1f3cff',
+                          zIndex: 4,
+                        }}
+                      />
+                    </>
                   )}
                 </div>
               ) : (
