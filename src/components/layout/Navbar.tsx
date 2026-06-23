@@ -18,8 +18,8 @@ function CircularChase() {
   return (
     <motion.div
       style={{
-        width: 24,
-        height: 24,
+        width: 20,
+        height: 20,
         borderRadius: '50%',
         border: '3px solid rgba(128,128,128,0.3)',
         borderTopColor: '#1f3cff',
@@ -226,7 +226,7 @@ function NavbarContent() {
         <nav
           style={{
             width: '100%',
-            height: `calc(72px + env(safe-area-inset-bottom))`,  // 🔥 dinaikkan dari 65px menjadi 72px
+            height: `calc(50px + env(safe-area-inset-bottom))`, // 🔥 Diubah jadi 50px
             paddingBottom: 'env(safe-area-inset-bottom)',
             backgroundColor: 'var(--bg-card)',
             backdropFilter: 'blur(15px)',
@@ -259,9 +259,9 @@ function NavbarContent() {
                   justifyContent: 'center',
                   textDecoration: 'none',
                   position: 'relative',
-                  padding: '10px',
+                  padding: '4px',
                   touchAction: 'manipulation',
-                  width: '60px',
+                  width: '50px',
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
@@ -274,7 +274,7 @@ function NavbarContent() {
                     transform: isClicked
                       ? 'scale(0.8)'
                       : isActive
-                      ? 'scale(1.15)'
+                      ? 'scale(1.1)'
                       : 'scale(1)',
                     transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   }}
@@ -303,11 +303,11 @@ function NavbarContent() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '28px',
-                          height: '28px',
+                          width: '24px',
+                          height: '24px',
                           borderRadius: '50%',
-                          padding: '2px',
-                          border: isActive ? `2px solid ${normalColor}` : '2px solid transparent',
+                          padding: '1px',
+                          border: isActive ? `1.5px solid ${normalColor}` : '1.5px solid transparent',
                           transition: 'all 0.2s ease',
                         }}
                       >
@@ -319,7 +319,6 @@ function NavbarContent() {
                             height: '100%',
                             borderRadius: '50%',
                             objectFit: 'cover',
-                            border: isActive ? 'none' : '1px solid var(--border-card)',
                           }}
                         />
                       </div>
@@ -333,7 +332,7 @@ function NavbarContent() {
                         }}
                       >
                         <Icon
-                          size={24}
+                          size={22}
                           color={normalColor}
                           fill={isActive && item.name !== 'Profil' ? normalColor : 'none'}
                           strokeWidth={isActive ? 2.5 : 2}
@@ -348,18 +347,18 @@ function NavbarContent() {
                       <div
                         style={{
                           position: 'absolute',
-                          top: '-4px',
-                          right: '-8px',
+                          top: '-6px',
+                          right: '-6px',
                           backgroundColor: '#ff4757',
                           color: 'white',
-                          fontSize: '10px',
+                          fontSize: '9px',
                           fontWeight: 'bold',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          padding: '2px 5px',
-                          minWidth: '18px',
-                          height: '18px',
+                          padding: '1px 3px',
+                          minWidth: '14px',
+                          height: '14px',
                           borderRadius: '10px',
                           border: '2px solid var(--bg-card)',
                           zIndex: 10,
