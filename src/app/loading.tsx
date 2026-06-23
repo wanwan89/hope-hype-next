@@ -3,104 +3,81 @@
 import { motion } from 'framer-motion';
 
 export default function GlobalLoading() {
-  // Warna Biru Tema Utama
-  const color1 = '#1f3cff'; 
-  // Warna Merah Tema Utama
-  const color2 = '#ff4757'; 
+  const color1 = '#1f3cff'; // Biru tema
+  const color2 = '#ff4757'; // Merah tema
 
-  // Ukuran Dot (Diperkecil)
-  const dotSize = '12px';
-  // Jarak orbit (Radius putaran diperkecil)
-  const orbitRadius = 15; 
+  const dotSize = 14; // ukuran dot (px)
+  const containerWidth = 80; // lebar area gerak horizontal
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 99999,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      background: 'var(--bg-main, #121212)', 
-      backdropFilter: 'blur(3px)', // Efek blur background
-    }}>
-      
-      {/* --- WADAH ANIMASI UTAMA (DIPERKECIL) --- */}
-      <div style={{
-        position: 'relative',
-        width: '50px', // Setengah dari ukuran sebelumnya
-        height: '50px',
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'center',
-      }}>
-        
-        {/* Container yang berputar secara ORBITAL (Smooth)
-          Waktu duration (1.5s) dan ease linear bikin putaran stabil dan sangat smooth.
-        */}
+        alignItems: 'center',
+        background: 'transparent', // 🔥 Background transparan
+      }}
+    >
+      {/* Wadah animasi horizontal */}
+      <div
+        style={{
+          position: 'relative',
+          width: `${containerWidth}px`,
+          height: '40px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* --- Dot Biru (bergerak dari kiri ke kanan) --- */}
         <motion.div
-          style={{ width: '100%', height: '100%', position: 'relative' }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-        >
-          
-          {/* --- DOT 1 (BIRU TEMA) --- */}
-          <motion.div
-            style={{
-              width: dotSize,
-              height: dotSize,
-              background: color1,
-              borderRadius: '50%',
-              position: 'absolute',
-              top: `calc(50% - (${dotSize} / 2))`,
-              left: `calc(50% - (${dotSize} / 2))`,
-              boxShadow: `0 0 10px ${color1}80`, // Efek glow lembut
-            }}
-            // Gerakan ORBITAL melingkar: berputar mengelilingi pusat
-            animate={{ 
-              x: [-orbitRadius, orbitRadius, orbitRadius, -orbitRadius, -orbitRadius],
-              y: [-orbitRadius, -orbitRadius, orbitRadius, orbitRadius, -orbitRadius],
-            }}
-            transition={{ 
-              duration: 1.5, 
-              repeat: Infinity, 
-              ease: "linear" // Linear buat orbit yang stabil
-            }}
-          />
+          style={{
+            width: dotSize,
+            height: dotSize,
+            background: color1,
+            borderRadius: '50%',
+            position: 'absolute',
+            left: 0,
+            boxShadow: `0 0 12px ${color1}80`,
+          }}
+          animate={{
+            x: [0, containerWidth - dotSize, 0],
+            scale: [1, 1.6, 1], // 🔥 Membesar saat di tengah (tabrakan)
+          }}
+          transition={{
+            duration: 1.3,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            times: [0, 0.5, 1],
+          }}
+        />
 
-          {/* --- DOT 2 (MERAH TEMA) --- */}
-          <motion.div
-            style={{
-              width: dotSize,
-              height: dotSize,
-              background: color2,
-              borderRadius: '50%',
-              position: 'absolute',
-              top: `calc(50% - (${dotSize} / 2))`,
-              left: `calc(50% - (${dotSize} / 2))`,
-              boxShadow: `0 0 10px ${color2}80`, // Efek glow lembut
-            }}
-            // Gerakan ORBITAL melingkar (berlawanan dot 1)
-            animate={{ 
-              x: [orbitRadius, -orbitRadius, -orbitRadius, orbitRadius, orbitRadius],
-              y: [orbitRadius, orbitRadius, -orbitRadius, -orbitRadius, orbitRadius],
-            }}
-            transition={{ 
-              duration: 1.5, 
-              repeat: Infinity, 
-              ease: "linear" 
-            }}
-          />
-
-        </motion.div>
+        {/* --- Dot Merah (bergerak dari kanan ke kiri) --- */}
+        <motion.div
+          style={{
+            width: dotSize,
+            height: dotSize,
+            background: color2,
+            borderRadius: '50%',
+            position: 'absolute',
+            right: 0,
+            boxShadow: `0 0 12px ${color2}80`,
+          }}
+          animate={{
+            x: [0, -(containerWidth - dotSize), 0],
+            scale: [1, 1.6, 1],
+          }}
+          transition={{
+            duration: 1.3,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            times: [0, 0.5, 1],
+          }}
+        />
       </div>
-
-      {/* Tahan scroll body saat loading muncul */}
-      <style jsx global>{`
-        body {
-          overflow: hidden !important;
-        }
-      `}</style>
     </div>
   );
 }
