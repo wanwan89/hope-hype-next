@@ -13,10 +13,8 @@ export default function SearchWrapperpost() {
 
   const [mounted, setMounted] = useState(false); 
   const [stories, setStories] = useState<any[]>([]);
-  const [clickedStoryId, setClickedStoryId] = useState<string | null>(null);
   const [animatingStoryId, setAnimatingStoryId] = useState<string | null>(null);
 
-  // 🔥 State untuk Loading Bar di Background
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -26,35 +24,19 @@ export default function SearchWrapperpost() {
     setMounted(true);
   }, []);
 
-  // Listener untuk Background Upload
   useEffect(() => {
     if (localStorage.getItem('isUploading') === 'true') {
       setIsUploading(true);
       setUploadProgress(Number(localStorage.getItem('uploadProgress')) || 0);
     }
 
-    const handleUploadStart = () => {
-      setIsUploading(true);
-      setUploadProgress(0);
-    };
-
-    const handleUploadProgress = (e: any) => {
-      setIsUploading(true);
-      setUploadProgress(e.detail);
-    };
-
+    const handleUploadStart = () => { setIsUploading(true); setUploadProgress(0); };
+    const handleUploadProgress = (e: any) => { setIsUploading(true); setUploadProgress(e.detail); };
     const handleUploadSuccess = () => {
       setUploadProgress(100);
-      setTimeout(() => {
-        setIsUploading(false);
-        setUploadProgress(0);
-      }, 1500); // Beri jeda sedikit lebih lama agar tulisan "Berhasil" sempat terbaca
+      setTimeout(() => { setIsUploading(false); setUploadProgress(0); }, 1500); 
     };
-
-    const handleUploadError = () => {
-      setIsUploading(false);
-      setUploadProgress(0);
-    };
+    const handleUploadError = () => { setIsUploading(false); setUploadProgress(0); };
 
     window.addEventListener('postUploadStart', handleUploadStart);
     window.addEventListener('postUploadProgress', handleUploadProgress);
@@ -89,14 +71,11 @@ export default function SearchWrapperpost() {
         return true;
       });
       setStories(uniqueStories);
-    } catch (err) {
-      console.error("Story Error:", err);
-    }
+    } catch (err) { console.error("Story Error:", err); }
   };
 
   const handleStoryClick = (sId: string) => {
     setAnimatingStoryId(sId);
-    setClickedStoryId(sId); 
     setTimeout(() => {
       router.push(`/story/view?id=${sId}`);
       setTimeout(() => setAnimatingStoryId(null), 100);
@@ -108,94 +87,82 @@ export default function SearchWrapperpost() {
   return (
     <div className="header-main-wrapper"> 
       
-      {/* Area pencarian diam (Sticky) dan tanpa celah pinggir */}
+      {/* 🔥 Sticky Header Utama dengan Flex Column */}
       <div className="search-wrapper glass-effect" style={{ 
         position: 'sticky', 
         top: 0, 
         zIndex: 99, 
-        width: '100vw',
-        maxWidth: '100%',
+        width: '100%',
         margin: 0,
         borderRadius: 0,
-        borderLeft: 'none',
-        borderRight: 'none',
-        overflow: 'hidden'
+        display: 'flex',
+        flexDirection: 'column', // Kunci agar bar loading tersusun rapi di bawah search bar
+        padding: 0
       }}>
         
-        <div className="brutal-input-container">
-          <input
-            type="text"
-            placeholder={t('search_placeholder')}
-            className="brutal-input"
-            readOnly
-            onClick={() => router.push('/search')}
-            style={{ cursor: 'pointer' }}
-          />
+        {/* Baris 1: Search & Add Button */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '12px', 
+          padding: '12px 16px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <div className="brutal-input-container" style={{ flex: 1 }}>
+            <input
+              type="text"
+              placeholder={t('search_placeholder')}
+              className="brutal-input"
+              readOnly
+              onClick={() => router.push('/search')}
+              style={{ cursor: 'pointer', width: '100%' }}
+            />
+          </div>
+          <button 
+            type="button"
+            className="add-post-btn"
+            onClick={(e) => { e.stopPropagation(); router.push('/create'); }}
+          >
+            <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
+          </button>
         </div>
 
-        <button 
-          type="button"
-          className="add-post-btn"
-          onClick={(e) => { e.stopPropagation(); router.push('/create'); }}
-        >
-          <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
-        </button>
-
-        {/* 🔥 Loading Bar beserta Teks Indikator */}
+        {/* Baris 2: Loading Bar (Muncul mulus di bawah search bar) */}
         {isUploading && (
           <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
             width: '100%',
-            height: '22px', // Diperlebar agar teks muat
-            background: 'rgba(31, 60, 255, 0.08)', // Background tipis biru
-            zIndex: 10,
+            height: '24px',
+            background: 'rgba(31, 60, 255, 0.05)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            borderTop: '1px solid rgba(31, 60, 255, 0.1)'
           }}>
-            {/* Warna progres bar yang mengisi background */}
             <div style={{
               position: 'absolute',
-              top: 0,
               left: 0,
               height: '100%',
               width: `${uploadProgress}%`,
-              background: 'rgba(31, 60, 255, 0.15)',
+              background: 'rgba(31, 60, 255, 0.08)',
               transition: 'width 0.3s ease-out',
             }} />
-            
-            {/* Teks Status */}
             <span style={{
-              position: 'relative',
-              zIndex: 11,
               fontSize: '10px',
               fontWeight: 800,
-              color: '#1f3cff', // Warna teks biru solid
+              color: '#1f3cff',
+              textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>
               {uploadProgress < 100 
-                ? `SEDANG MEMPOSTING... ${uploadProgress}%` 
-                : 'BERHASIL MEMPOSTING!'}
+                ? `Sedang memposting... ${uploadProgress}%` 
+                : 'Berhasil memposting!'}
             </span>
-
-            {/* Garis Progres Solid di Paling Bawah */}
-            <div style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              width: `${uploadProgress}%`,
-              height: '3px',
-              background: '#1f3cff',
-              transition: 'width 0.3s ease-out',
-              borderRadius: '0 2px 2px 0'
-            }} />
           </div>
         )}
       </div>
 
-      {/* Area Story: Ikut ter-scroll ke bawah/hilang */}
+      {/* Area Story: Tetap di bawah Sticky Header */}
       {stories.length > 0 && (
         <div className="stories-container">
           {stories.map((story) => (

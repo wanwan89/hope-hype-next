@@ -421,7 +421,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1f3cff" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+        {/* 🔥 MENCEGAH ZOOM IN/OUT 🔥 */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
         {/* 🔥 FIX: UPDATE LINK ICON DAN SPLESH SESUAI PEMBARUAN KAMU 🔥 */}
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
