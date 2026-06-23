@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import './Create.css';
 
-// Import dari folder components
+// Import komponen modular
 import CreateHeader from '@/components/create/CreateHeader';
 import DestinationSelector from '@/components/create/DestinationSelector';
 import PostTypeSelector from '@/components/create/PostTypeSelector';
@@ -20,7 +20,6 @@ import AdToggle from '@/components/create/AdToggle';
 import SubmitButtons from '@/components/create/SubmitButtons';
 import MusicSheet from '@/components/create/MusicSheet';
 
-
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
@@ -30,6 +29,7 @@ export default function CreatePostPage() {
   const searchParams = useSearchParams();
   const draftId = searchParams?.get('draft_id');
 
+  // --- State ---
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
@@ -76,13 +76,82 @@ export default function CreatePostPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // ... (semua useEffect, handler, submitPostAction dll tetap sama, tidak diubah)
+  // --- Handlers Penting ---
 
-  // Karena terlalu panjang, di bawah hanya bagian return yang diubah menggunakan komponen-komponen baru
+  const togglePlayPreview = useCallback((url: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (playingUrl === url) { 
+      if (audioRef.current) audioRef.current.pause(); 
+      setPlayingUrl(null); 
+    } else {
+      if (audioRef.current) audioRef.current.pause();
+      audioRef.current = new Audio(url); 
+      audioRef.current.play().catch(e => console.error(e)); 
+      setPlayingUrl(url);
+      audioRef.current.onended = () => setPlayingUrl(null);
+    }
+  }, [playingUrl]);
 
+  const handleClose = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    router.back();
+  };
+
+  const countWords = (text: string) => {
+    if (!text.trim()) return 0;
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
+
+  // Fungsi submitPostAction, handleFileChange, handleRemoveVideo, dll...
+  // Pastikan diletakkan di sini sebelum blok return
+  
+  const submitPostAction = async (isDraft: boolean = false) => {
+    // ... isi logika submitPostAction Anda yang lama ...
+    setIsSubmitting(true);
+    // ...
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ... isi logika handleFileChange ...
+  };
+
+  const handleRemoveVideo = () => {
+    setRawVideoFile(null);
+    setRawVideoUrl(null);
+    setCoverBlob(null);
+    setCoverUrlPreview(null);
+    setVideoThumbnails([]);
+    setExistingVideoUrl(null);
+    setExistingImageUrl(null);
+    setStep('post');
+  };
+
+  const handleRemovePreview = (index: number) => {
+    setCroppedImages(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSelectPopupItem = (selectedItem: string) => {
+     // ... isi logika ...
+  };
+
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+     // ... isi logika ...
+  };
+  
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+     // ... isi logika ...
+  };
+
+  const renderEditorScreen = () => {
+    // ... isi logika renderEditorScreen Anda ...
+    return <div>...</div>;
+  };
+
+  // --- RENDER ---
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
-      {step === 'edit' && renderEditorScreen()} {/* renderEditorScreen tetap di sini */}
+      {step === 'edit' && renderEditorScreen()}
 
       <MusicSheet
         isOpen={isMusicSheetOpen}
