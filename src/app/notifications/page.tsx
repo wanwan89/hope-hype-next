@@ -7,185 +7,12 @@ import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Notifications.css';
 
-// ==========================================
-// 1. KOMPONEN: TRAY STORY TEMAN
-// ==========================================
-const FriendStoriesTray = ({ friends, router }: { friends: any[], router: any }) => {
-  return (
-    <div className="friend-stories-tray">
-      {friends.length === 0 ? (
-        <div style={{ padding: '0 15px', fontSize: '12px', color: 'var(--text-muted)' }}>
-          Belum mengikuti siapa pun.
-        </div>
-      ) : (
-        friends.map(friend => (
-          <div 
-            key={friend.id} 
-            className="story-avatar-container"
-            onClick={() => friend.hasStory ? router.push(`/story/view?id=${friend.storyId}`) : router.push(`/data?id=${friend.id}`)}
-          >
-            <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
-              <img src={friend.avatar_url || "/asets/png/profile.webp"} alt={friend.username} />
-            </div>
-            <span className="story-username">{friend.username}</span>
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
+// Import Komponen Modular
+import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
+import CategoryMenu from '@/components/notifications/CategoryMenu';
+import RecommendedFriends from '@/components/notifications/RecommendedFriends';
+import NotificationListView from '@/components/notifications/NotificationListView';
 
-// ==========================================
-// 2. KOMPONEN: MENU KATEGORI (PISAH HALAMAN)
-// ==========================================
-const CategoryMenu = ({ unreadCounts, onSelectCategory }: { unreadCounts: any, onSelectCategory: (cat: string) => void }) => {
-  const menus = [
-    { id: 'like', icon: 'favorite', color: '#ff2e63', title: 'Suka & Simpan', desc: 'Interaksi pada postingan Anda' },
-    { id: 'comment', icon: 'chat_bubble', color: '#10b981', title: 'Komentar', desc: 'Balasan dan komentar baru' },
-    { id: 'follow', icon: 'person_add', color: '#8b5cf6', title: 'Pengikut Baru', desc: 'Orang yang mulai mengikuti Anda' },
-    { id: 'other', icon: 'notifications', color: '#3b82f6', title: 'Sistem & Lainnya', desc: 'Transaksi, koin, dan info sistem' }
-  ];
-
-  return (
-    <div className="category-menu-list">
-      {menus.map(menu => (
-        <div key={menu.id} className="category-menu-item btn-press" onClick={() => onSelectCategory(menu.id)}>
-          <div className="category-icon-box" style={{ background: `${menu.color}15`, color: menu.color }}>
-            <span className="material-icons">{menu.icon}</span>
-          </div>
-          <div className="category-text">
-            <span className="category-title">{menu.title}</span>
-            <span className="category-desc">{menu.desc}</span>
-          </div>
-          {unreadCounts[menu.id] > 0 && (
-            <div className="category-badge">{unreadCounts[menu.id]}</div>
-          )}
-          <span className="material-icons chevron">chevron_right</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ==========================================
-// 3. KOMPONEN: SARAN TEMAN (RECOMMENDED)
-// ==========================================
-const RecommendedFriends = ({ recommended, onFollow, myFollowings }: { recommended: any[], onFollow: any, myFollowings: Set<string> }) => {
-  const router = useRouter();
-  if (recommended.length === 0) return null;
-
-  return (
-    <div className="recommended-section">
-      <h3 className="section-title">Saran Teman</h3>
-      <div className="recommended-list">
-        {recommended.map(user => {
-          const isFollowing = myFollowings.has(user.id);
-          return (
-            <div key={user.id} className="recommended-card">
-              <img src={user.avatar_url || "/asets/png/profile.webp"} alt={user.username} onClick={() => router.push(`/data?id=${user.id}`)} />
-              <div className="rec-info" onClick={() => router.push(`/data?id=${user.id}`)}>
-                <span className="rec-name">{user.full_name || user.username}</span>
-                <span className="rec-user">@{user.username}</span>
-              </div>
-              <button 
-                className={`rec-follow-btn ${isFollowing ? 'followed' : ''}`}
-                onClick={(e) => onFollow(e, user.id)}
-              >
-                {isFollowing ? 'Mengikuti' : 'Ikuti'}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-// ==========================================
-// 4. KOMPONEN: HALAMAN DAFTAR NOTIFIKASI
-// ==========================================
-const NotificationListView = ({ 
-  title, notifs, onBack, handleNotifClick, handleFollowBack, myFollowings, router, formatDate, getIconAndColor 
-}: any) => {
-  return (
-    <div className="notif-detail-view slide-in-right">
-      <header className="notif-detail-header">
-        <button onClick={onBack} className="back-btn btn-press"><span className="material-icons">arrow_back</span></button>
-        <h2>{title}</h2>
-      </header>
-      <div className="notif-list">
-        {notifs.length === 0 ? (
-          <div className="notif-empty-state">
-            <span className="material-icons">notifications_none</span>
-            <p>Belum ada notifikasi di kategori ini.</p>
-          </div>
-        ) : (
-          notifs.map((notif: any) => {
-            const { icon: typeIcon, color } = getIconAndColor(notif.type);
-            const actorName = notif.actor?.username || "Sistem";
-            const actorAvatar = notif.actor?.avatar_url || "/asets/png/profile.webp";
-            const isFollowing = notif.actor_id ? myFollowings.has(notif.actor_id) : false;
-            
-            let messageHtml = "";
-            let thumbUrl = null;
-
-            if (notif.postData) {
-               const imgs = notif.postData.image_url ? notif.postData.image_url.split(',') : [];
-               thumbUrl = imgs.length > 0 ? imgs[0] : notif.postData.video_url;
-            }
-
-            if (notif.type === 'like') messageHtml = `menyukai postinganmu.`; 
-            else if (notif.type === 'comment_like') messageHtml = `menyukai komentarmu.`; 
-            else if (notif.type === 'comment') messageHtml = `berkomentar: <span style="color:var(--text-muted)">"${notif.message}"</span>`; 
-            else if (notif.type === 'repost') messageHtml = `membagikan ulang karyamu.`; 
-            else if (notif.type === 'save') messageHtml = `menyimpan karyamu.`; 
-            else if (notif.type === 'follow') messageHtml = `mulai mengikuti Anda.`; 
-            else if (notif.type === 'coin_receive') messageHtml = `Anda menerima koin: <strong style="color:#f59e0b">+${notif.amount}</strong><br/><span style="font-size: 12px; color:var(--text-muted)">${notif.description || 'Top up / Reward'}</span>`; 
-            else if (notif.type === 'payment_status') messageHtml = `Status pembayaran Rp ${notif.amount?.toLocaleString('id-ID')} Anda saat ini: <strong style="text-transform: capitalize">${notif.status}</strong>.`; 
-            else messageHtml = notif.message?.replace(/<b>(.*?)<\/b>/g, '') || "Ada notifikasi baru untukmu.";
-
-            return (
-              <div 
-                key={notif.id} 
-                className={`notif-item ${!notif.is_read ? 'unread' : ''}`}
-                onClick={() => handleNotifClick(notif)}
-              >
-                <div className="notif-avatar-wrapper">
-                  <img src={actorAvatar} alt={actorName} className="notif-avatar" onClick={(e) => { e.stopPropagation(); if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`); }} />
-                  <div className="notif-icon-badge" style={{ background: color }}>
-                    <span className="material-icons">{typeIcon}</span>
-                  </div>
-                </div>
-                
-                <div className="notif-content">
-                  <div className="notif-text">
-                    <strong onClick={(e) => { e.stopPropagation(); if(notif.actor_id) router.push(`/data?id=${notif.actor_id}`); }}>{actorName}</strong> {messageHtml && <span dangerouslySetInnerHTML={{ __html: messageHtml }} />}
-                  </div>
-                  <span className="notif-date">{formatDate(notif.created_at)}</span>
-                </div>
-
-                <div className="notif-action-area">
-                  {notif.type === 'follow' && notif.actor_id ? (
-                     <button className={`notif-follow-btn ${isFollowing ? 'followed' : ''}`} onClick={(e) => handleFollowBack(e, notif.actor_id)}>
-                       {isFollowing ? 'Mengikuti' : 'Ikuti Balik'}
-                     </button>
-                  ) : thumbUrl ? (
-                     <img src={thumbUrl} className="notif-post-thumb" alt="post" />
-                  ) : null}
-                </div>
-                {!notif.is_read && <div className="notif-unread-dot"></div>}
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ==========================================
-// 5. KOMPONEN UTAMA: NOTIFICATIONS PAGE
-// ==========================================
 export default function NotificationsPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -196,7 +23,6 @@ export default function NotificationsPage() {
   const [rawNotifs, setRawNotifs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // State untuk "Halaman" mana yang sedang dibuka
   const [activeView, setActiveView] = useState<'main' | 'like' | 'comment' | 'follow' | 'other'>('main');
   
   const [pendingCount, setPendingCount] = useState(0);
@@ -215,12 +41,10 @@ export default function NotificationsPage() {
     if (!session) { router.push('/login'); return; }
     setCurrentUser(session.user);
     
-    // Ambil Followings
     const { data: fData } = await supabase.from('followers').select('following_id').eq('follower_id', session.user.id);
     const followingIds = new Set(fData ? fData.map(f => String(f.following_id)) : []);
     setMyFollowings(followingIds);
 
-    // Load Data Tambahan
     await Promise.all([
       loadNotifications(session.user.id),
       loadFriendStories(followingIds),
@@ -234,11 +58,9 @@ export default function NotificationsPage() {
     if (followingIds.size === 0) return;
     try {
       const arrIds = Array.from(followingIds);
-      // Ambil profil teman
       const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', arrIds);
       if (!profiles) return;
 
-      // Cek story 24 jam terakhir
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: stories } = await supabase.from('stories').select('id, creator_id').in('creator_id', arrIds).gte('created_at', twentyFourHoursAgo);
       
@@ -251,7 +73,6 @@ export default function NotificationsPage() {
         storyId: storyMap.get(p.id) || null
       }));
 
-      // Sort: yang punya story di depan
       mappedFriends.sort((a, b) => (b.hasStory ? 1 : 0) - (a.hasStory ? 1 : 0));
       setFriendStories(mappedFriends);
 
@@ -269,7 +90,6 @@ export default function NotificationsPage() {
     } catch (err) { console.error("Gagal load saran teman", err); }
   };
 
-  // LOGIKA FETCH NOTIFIKASI ASLI (Tidak Diubah)
   const loadNotifications = async (userId: string) => {
     setIsLoading(true);
     try {
@@ -344,7 +164,6 @@ export default function NotificationsPage() {
     channelRef.current = supabase.channel(`notif-realtime-${userId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => { loadNotifications(userId); }).subscribe();
   };
 
-  // LOGIKA NAVIGASI & KLIK ASLI
   const handleNotifClick = async (notif: any) => {
     if (!notif.is_read && notif.id && !String(notif.id).includes('-')) {
       setRawNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
@@ -361,7 +180,6 @@ export default function NotificationsPage() {
     e.stopPropagation();
     if (!currentUser) return;
     
-    // Toggle Follow/Unfollow logic simple
     const isFollowing = myFollowings.has(targetId);
     if (isFollowing) {
       await supabase.from('followers').delete().eq('follower_id', currentUser.id).eq('following_id', targetId);
@@ -403,7 +221,6 @@ export default function NotificationsPage() {
       : dateObj.toLocaleDateString("id-ID", { month: "short", day: "numeric", hour: "2-digit", minute:"2-digit" });
   };
 
-  // Hitung jumlah notif belum dibaca per kategori
   const unreadCounts = {
     like: rawNotifs.filter(n => !n.is_read && ['like','repost','save','comment_like'].includes(n.type)).length,
     comment: rawNotifs.filter(n => !n.is_read && ['comment','reply'].includes(n.type)).length,
@@ -411,7 +228,6 @@ export default function NotificationsPage() {
     other: rawNotifs.filter(n => !n.is_read && ['coin_receive','payment_status','other'].includes(n.type)).length,
   };
 
-  // Filter notifikasi berdasarkan halaman/view yang aktif
   const filteredNotifs = rawNotifs.filter(n => {
     if (activeView === 'like') return ['like', 'repost', 'save', 'comment_like'].includes(n.type);
     if (activeView === 'comment') return ['comment', 'reply'].includes(n.type);
@@ -430,15 +246,20 @@ export default function NotificationsPage() {
     }
   };
 
-
-  // ==========================================
-  // RENDER UTAMA
-  // ==========================================
   return (
+    // 🔥 PERBAIKAN SCROLL: height 100dvh dan overflow-y: auto 🔥
     <div className="notif-page-container">
-      
-      {/* CSS KHUSUS UNTUK KOMPONEN BARU */}
       <style>{`
+        /* --- PERBAIKAN SCROLL --- */
+        .notif-page-container {
+          height: 100dvh;
+          overflow-y: auto;
+          overflow-x: hidden;
+          background: var(--bg-main);
+          padding-bottom: 80px; /* Jarak untuk navbar bawah */
+          -webkit-overflow-scrolling: touch; /* Membuat scroll mulus di iOS */
+        }
+        
         /* Tray Story Teman */
         .friend-stories-tray {
           display: flex; gap: 16px; padding: 15px; overflow-x: auto; scrollbar-width: none;
@@ -498,13 +319,12 @@ export default function NotificationsPage() {
         .rec-follow-btn.followed { background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-card); }
 
         /* Sub-View Notifikasi */
-        .notif-detail-view { background: var(--bg-main); min-height: 100vh; animation: slideIn 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+        .notif-detail-view { background: var(--bg-main); animation: slideIn 0.3s cubic-bezier(0.25, 1, 0.5, 1); min-height: 100%; }
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
         .notif-detail-header { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border-card); position: sticky; top: 0; background: var(--bg-main); z-index: 10; }
         .back-btn { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; padding: 0; }
         .notif-detail-header h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-main); }
         
-        /* Modifikasi List Item Notifikasi Lama */
         .notif-item { padding: 12px 15px; display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border-card); cursor: pointer; position: relative; }
         .notif-avatar-wrapper { position: relative; flex-shrink: 0; }
         .notif-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-card); }
@@ -523,17 +343,17 @@ export default function NotificationsPage() {
         .btn-press:active { transform: scale(0.95); }
       `}</style>
 
-      {/* RENDER BERDASARKAN STATE ACTIVE VIEW */}
       {activeView === 'main' ? (
         <div className="notif-main-view">
-          <header className="notif-header" style={{ padding: '15px 15px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>{t('notifications', 'Notifikasi')}</h2>
+          {/* 🔥 FIX HEADER RATA KIRI 🔥 */}
+          <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+            <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800, textAlign: 'left' }}>
+              {t('notifications', 'Notifikasi')}
+            </h2>
           </header>
 
-          {/* 1. Tray Story Teman */}
           <FriendStoriesTray friends={friendStories} router={router} />
 
-          {/* 2. Banner Pending (Jika ada) */}
           {pendingCount > 0 && (
             <div className="pending-alert-box" style={{ margin: '15px' }} onClick={() => router.push('/pending')}>
               <div className="pending-alert-left">
@@ -547,14 +367,10 @@ export default function NotificationsPage() {
             </div>
           )}
 
-          {/* 3. Menu Kategori */}
           <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
-
-          {/* 4. Saran Teman */}
           <RecommendedFriends recommended={recommendedFriends} onFollow={handleFollowAction} myFollowings={myFollowings} />
         </div>
       ) : (
-        /* 5. Tampilan Halaman Notifikasi Khusus Kategori */
         <NotificationListView 
           title={getTitleByView()}
           notifs={filteredNotifs}
@@ -567,7 +383,6 @@ export default function NotificationsPage() {
           getIconAndColor={getIconAndColor}
         />
       )}
-
     </div>
   );
 }
