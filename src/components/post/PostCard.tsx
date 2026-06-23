@@ -115,13 +115,15 @@ const PostCard: React.FC<PostCardProps> = ({
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
-  const [showControls, setShowControls] = useState(false);
 
-  // Ref untuk timer auto-hide controls dan deteksi double-tap video
-  const autoHideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // State baru untuk kontrol UI
+  const [showPlayPause, setShowPlayPause] = useState(false); // ikon play/pause
+  const [isBarVisible, setIsBarVisible] = useState(false);   // progress bar
+  const playPauseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapVideoRef = useRef<number>(0);
 
-  // --- 3. Observer video/audio (threshold 0.3 agar tidak terlalu sensitif) ---
+  // --- 3. Observer video/audio ---
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
@@ -196,10 +198,17 @@ const PostCard: React.FC<PostCardProps> = ({
       });
       return () => cancelAnimationFrame(raf);
     } else {
-      // Postingan teks tidak membutuhkan tombol
       setShowMoreButton(false);
     }
   }, [post.bio, actuallyExpanded, photoList.length, isVideoPost]);
+
+  // Cleanup timer
+  useEffect(() => {
+    return () => {
+      if (playPauseTimerRef.current) clearTimeout(playPauseTimerRef.current);
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
 
   // Render bio dengan mention & hashtag
   const renderBioWithMentions = useCallback(
@@ -269,7 +278,7 @@ const PostCard: React.FC<PostCardProps> = ({
     setIsSeeking(false);
   };
 
-  const toggleVideoPlayPause = (e: React.MouseEvent) => {
+  const toggleVideoPlayPause = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
@@ -279,37 +288,60 @@ const PostCard: React.FC<PostCardProps> = ({
         video.pause();
       }
     }
-  };
+  }, []);
 
-  // Handler klik area video: deteksi single tap (tampilkan kontrol 2 detik) vs double tap (like)
+  // Handler area video (single tap = pause/play + indikator 1.5s, double tap = like)
   const handleVideoClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const now = Date.now();
     const lastTap = lastTapVideoRef.current;
-    // Double-tap jika jarak < 350ms
+
     if (now - lastTap < 350) {
-      // Double tap -> like
+      // Double tap
       lastTapVideoRef.current = 0;
-      if (autoHideTimerRef.current) {
-        clearTimeout(autoHideTimerRef.current);
-        autoHideTimerRef.current = null;
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
       }
-      setShowControls(false); // sembunyikan kontrol
-      // Panggil handler like dari parent (sama seperti double-tap gambar)
+      setShowPlayPause(false);
+      if (playPauseTimerRef.current) {
+        clearTimeout(playPauseTimerRef.current);
+        playPauseTimerRef.current = null;
+      }
       handleMediaClick(e, postIdStr, creatorIdStr);
     } else {
-      // Single tap
       lastTapVideoRef.current = now;
-      setShowControls(true);
-      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
-      autoHideTimerRef.current = setTimeout(() => {
-        setShowControls(false);
-        autoHideTimerRef.current = null;
-      }, 2000);
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = setTimeout(() => {
+        const video = mediaRef.current as HTMLVideoElement | null;
+        if (video) {
+          if (video.paused) video.play();
+          else video.pause();
+        }
+        setShowPlayPause(true);
+        if (playPauseTimerRef.current) clearTimeout(playPauseTimerRef.current);
+        playPauseTimerRef.current = setTimeout(() => {
+          setShowPlayPause(false);
+          playPauseTimerRef.current = null;
+        }, 1500);
+        tapTimerRef.current = null;
+      }, 350);
     }
   }, [handleMediaClick, postIdStr, creatorIdStr]);
 
-  // Throttle scroll carousel dengan ref untuk currentSlide terbaru
+  // Handler untuk progress bar (tekan tahan)
+  const handleBarPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    setIsBarVisible(true);
+  }, []);
+
+  const handleBarPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    setIsBarVisible(false);
+  }, []);
+
+  // Throttle scroll carousel
   const ticking = useRef(false);
   const handleCarouselScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (!ticking.current) {
@@ -326,7 +358,7 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card – full bleed tanpa will-change
+  // Style card
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
@@ -497,17 +529,22 @@ const PostCard: React.FC<PostCardProps> = ({
               {isVideoPost ? (
                 <div
                   className="carousel-item"
-                  onClick={handleVideoClick}
                   style={{
                     aspectRatio: '2 / 3',
                     width: '100%',
                     overflow: 'hidden',
                     position: 'relative',
                     background: '#000',
-                    cursor: 'pointer',
+                    cursor: 'default',
                     transform: 'translateZ(0)',
                   }}
                 >
+                  {/* Area klik video (pause/play dan double tap like) */}
+                  <div
+                    style={{ position: 'absolute', inset: 0, zIndex: 1, cursor: 'pointer' }}
+                    onClick={handleVideoClick}
+                  />
+
                   {!videoLoaded && (
                     <div
                       style={{
@@ -522,6 +559,7 @@ const PostCard: React.FC<PostCardProps> = ({
                       <div className="loading-spinner" />
                     </div>
                   )}
+
                   <video
                     ref={mediaRef as React.RefObject<HTMLVideoElement>}
                     src={post.video_url}
@@ -544,33 +582,46 @@ const PostCard: React.FC<PostCardProps> = ({
                     }}
                   />
 
-                  {/* Tombol play/pause dan progress bar muncul hanya jika showControls true */}
-                  {videoLoaded && showControls && (
-                    <>
-                      <button
-                        onClick={toggleVideoPlayPause}
+                  {/* Indikator play/pause (muncul 1.5 detik setelah single tap) */}
+                  {videoLoaded && showPlayPause && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 5,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <span
+                        className="material-icons"
                         style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          background: 'rgba(0,0,0,0.5)',
-                          border: 'none',
+                          fontSize: '48px',
                           color: 'white',
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          zIndex: 5,
+                          textShadow: '0 0 10px rgba(0,0,0,0.5)',
                         }}
                       >
-                        <span className="material-icons" style={{ fontSize: '32px' }}>
-                          {isVideoPlaying ? 'pause' : 'play_arrow'}
-                        </span>
-                      </button>
+                        {isVideoPlaying ? 'pause' : 'play_arrow'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Area progress bar (hanya muncul saat ditekan) */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: '24px',
+                      zIndex: 4,
+                    }}
+                    onPointerDown={handleBarPointerDown}
+                    onPointerUp={handleBarPointerUp}
+                    onPointerLeave={handleBarPointerUp}
+                  >
+                    {videoLoaded && isBarVisible && (
                       <input
                         type="range"
                         min={0}
@@ -592,11 +643,10 @@ const PostCard: React.FC<PostCardProps> = ({
                           margin: 0,
                           cursor: 'pointer',
                           accentColor: '#1f3cff',
-                          zIndex: 4,
                         }}
                       />
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
               ) : (
                 photoList.map((url: string, i: number) => {
@@ -724,7 +774,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* Bio dengan expand/collapse (khusus media) */}
+            {/* Bio dengan expand/collapse */}
             <div
               style={{
                 maxHeight: actuallyExpanded ? 'none' : 'auto',
@@ -885,7 +935,7 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
         </>
       ) : (
-        // ==================== TAMPILAN POSTINGAN TEKS / AUDIO (tanpa expand) ====================
+        // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
         <>
           <div
             style={{
