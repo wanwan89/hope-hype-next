@@ -8,17 +8,17 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import './Create.css';
 
-// ✅ Import komponen dengan path absolut sesuai struktur folder
-import CreateHeader from '@/component/create/CreateHeader';
-import DestinationSelector from '@/component/create/DestinationSelector';
-import PostTypeSelector from '@/component/create/PostTypeSelector';
-import ImageUploader from '@/component/create/ImageUploader';
-import VideoUploader from '@/component/create/VideoUploader';
-import CaptionInput from '@/component/create/CaptionInput';
-import MusicPicker from '@/component/create/MusicPicker';
-import AdToggle from '@/component/create/AdToggle';
-import SubmitButtons from '@/component/create/SubmitButtons';
-import MusicSheet from '@/component/create/MusicSheet';
+// ✅ Import komponen dari src/components/create/
+import CreateHeader from '@/components/create/CreateHeader';
+import DestinationSelector from '@/components/create/DestinationSelector';
+import PostTypeSelector from '@/components/create/PostTypeSelector';
+import ImageUploader from '@/components/create/ImageUploader';
+import VideoUploader from '@/components/create/VideoUploader';
+import CaptionInput from '@/components/create/CaptionInput';
+import MusicPicker from '@/components/create/MusicPicker';
+import AdToggle from '@/components/create/AdToggle';
+import SubmitButtons from '@/components/create/SubmitButtons';
+import MusicSheet from '@/components/create/MusicSheet';
 
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
@@ -77,7 +77,6 @@ export default function CreatePostPage() {
   const captionInputRef = useRef<HTMLTextAreaElement>(null);
 
   // ==================== EFFECTS ====================
-  // Load draft
   useEffect(() => {
     if (!draftId) return;
     (async () => {
@@ -101,7 +100,6 @@ export default function CreatePostPage() {
     })();
   }, [draftId]);
 
-  // Cek bisnis
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -112,7 +110,6 @@ export default function CreatePostPage() {
     })();
   }, []);
 
-  // Suggestions
   useEffect(() => {
     if (showPopup === 'none') return;
     const fetchSuggestions = async () => {
@@ -142,7 +139,6 @@ export default function CreatePostPage() {
     return () => clearTimeout(t);
   }, [searchQuery, showPopup]);
 
-  // Search musik
   useEffect(() => {
     if (!searchMusic.trim()) { setMusicResults([]); return; }
     const timer = setTimeout(async () => {
