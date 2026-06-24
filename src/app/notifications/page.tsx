@@ -366,11 +366,12 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="notif-page-container" style={{ background: 'var(--bg-main, #ffffff)' }}>
+    // 🔥 Menggunakan var(--bg-card) agar murni putih (#ffffff) di light mode dan otomatis gelap di dark mode 🔥
+    <div className="notif-page-container" style={{ background: 'var(--bg-card, #ffffff)' }}>
       {activeView === 'main' ? (
-        <div className="notif-main-view" style={{ background: 'var(--bg-main, #ffffff)' }}>
-          {/* 🔥 FIX HEADER: Z-index dibuat lebih rendah agar Note Bubble bisa menumpuk di atasnya */}
-          <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', background: 'var(--bg-main, #ffffff)', position: 'relative', zIndex: 1 }}>
+        <div className="notif-main-view" style={{ background: 'var(--bg-card, #ffffff)' }}>
+          
+          <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', background: 'var(--bg-card, #ffffff)', position: 'relative', zIndex: 1 }}>
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, textAlign: 'left', color: 'var(--text-main)' }}>
               {t('notifications', 'Notifikasi')}
             </h2>
@@ -379,7 +380,7 @@ export default function NotificationsPage() {
           <FriendStoriesTray friends={friendStories} currentUser={currentUser} myStatusText={myStatusText} onAddStatus={() => setShowStatusInput(true)} router={router} onFriendNoteClick={(id) => router.push(`/data?id=${id}`)} />
 
           {showStatusInput && (
-            <div className="status-input-container" style={{ background: 'var(--bg-main, #ffffff)', borderBottom: '1px solid var(--border-card)' }}>
+            <div className="status-input-container" style={{ background: 'var(--bg-card, #ffffff)', borderBottom: '1px solid var(--border-card)' }}>
               <input type="text" placeholder="Tulis note (Maks. 50 Karakter)" maxLength={50} defaultValue={myStatusText} autoFocus className="status-input" style={{ background: 'var(--bg-input)', color: 'var(--text-main)', border: '1px solid var(--border-card)' }} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateStatus(e.currentTarget.value); }} />
               <button onClick={() => setShowStatusInput(false)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}>
                 <span className="material-icons">close</span>
