@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface Friend {
   id: string;
@@ -25,8 +25,28 @@ interface Props {
   router: any;
 }
 
-export default function FriendStoriesTray({ friends, currentUser, myStatusText, onAddStatus, onFriendNoteClick, router }: Props) {
-  const [popupNote, setPopupNote] = useState<{ text: string; username: string; userId: string } | null>(null);
+export default function FriendStoriesTray({
+  friends,
+  currentUser,
+  myStatusText,
+  onAddStatus,
+  onFriendNoteClick,
+  router,
+}: Props) {
+  const [popupNote, setPopupNote] = useState<{
+    text: string;
+    username: string;
+    userId: string;
+  } | null>(null);
+
+  const [isDark, setIsDark] = useState(true); // default true (aman untuk SSR)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDark(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const sortedFriends = [...friends].sort((a, b) => {
     if (a.status_text && !b.status_text) return -1;
@@ -36,57 +56,106 @@ export default function FriendStoriesTray({ friends, currentUser, myStatusText, 
     return 0;
   });
 
-  const handleBubbleClick = (e: React.MouseEvent, text: string, username: string, userId: string) => {
+  const handleBubbleClick = (
+    e: React.MouseEvent,
+    text: string,
+    username: string,
+    userId: string
+  ) => {
     e.stopPropagation();
     setPopupNote({ text, username, userId });
   };
 
   const closePopup = () => setPopupNote(null);
 
-  // Tampilkan max 20 karakter di bubble luarnya
-  const truncateBubble = (text: string) => text && text.length > 20 ? text.substring(0, 20) + '...' : text;
+  const truncateBubble = (text: string) =>
+    text && text.length > 20 ? text.substring(0, 20) + '...' : text;
 
-  // 🔥 Render Base Bubble CSS: Posisi dibalik ke atas mengambang di atas header
+  // Bubble style yang muncul di atas avatar – sekarang bisa mengikuti tema
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: 'calc(100% + 8px)', // Muncul ke atas di atas cincin avatar
+    bottom: 'calc(100% + 8px)',
     left: '50%',
     transform: 'translateX(-50%)',
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border-card)',
+    background: isDark ? 'var(--bg-card)' : '#ffffff',
+    border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
     borderRadius: '14px',
     padding: '6px 12px',
     maxWidth: '140px',
     boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    zIndex: 50, // Z-index super tinggi agar melangkahi Header Navbar
+    zIndex: 50,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     fontSize: '11px',
     fontWeight: 600,
-    color: 'var(--text-main)',
-    textAlign: 'center'
+    color: isDark ? 'var(--text-main)' : '#1a1a1a',
+    textAlign: 'center',
   };
 
   const triangleStyles: React.CSSProperties = {
-    position: 'absolute', bottom: '-5px', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid var(--bg-card)'
+    position: 'absolute',
+    bottom: '-5px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 0,
+    height: 0,
+    borderLeft: '6px solid transparent',
+    borderRight: '6px solid transparent',
+    borderTop: `6px solid ${isDark ? 'var(--bg-card)' : '#ffffff'}`,
   };
 
   return (
-    // 🔥 PERBAIKAN: zIndex ditinggikan, posisi relative, background dikunci untuk Dark/Light mode
-    <div className="friend-stories-tray" style={{ position: 'relative', zIndex: 10, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '15px' }}>
+    <div
+      className="friend-stories-tray"
+      style={{
+        position: 'relative',
+        zIndex: 10,
+        background: isDark ? 'var(--bg-main)' : '#ffffff',
+        borderBottom: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+        padding: '15px',
+      }}
+    >
       {/* Profil sendiri */}
       {currentUser && (
         <div className="story-avatar-container" style={{ position: 'relative' }}>
-          <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
-            {currentUser.avatar_url ? ( <img src={currentUser.avatar_url} alt="Anda" /> ) : ( <div className="default-avatar"><span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span></div> )}
+          <div
+            className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}
+          >
+            {currentUser.avatar_url ? (
+              <img src={currentUser.avatar_url} alt="Anda" />
+            ) : (
+              <div className="default-avatar">
+                <span
+                  className="material-icons"
+                  style={{ fontSize: 32, color: 'var(--text-muted)' }}
+                >
+                  person
+                </span>
+              </div>
+            )}
           </div>
-          <span className="story-username" style={{ color: 'var(--text-main)' }}>Anda</span>
-          <button className="add-status-btn" onClick={onAddStatus}> <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span> </button>
+          <span
+            className="story-username"
+            style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a' }}
+          >
+            Anda
+          </span>
+          <button className="add-status-btn" onClick={onAddStatus}>
+            <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>
+              add
+            </span>
+          </button>
 
           {myStatusText && (
-            <div className="note-bubble" style={bubbleStyles} onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}>
+            <div
+              className="note-bubble"
+              style={bubbleStyles}
+              onClick={(e) =>
+                handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)
+              }
+            >
               {truncateBubble(myStatusText)}
               <div style={triangleStyles} />
             </div>
@@ -96,17 +165,59 @@ export default function FriendStoriesTray({ friends, currentUser, myStatusText, 
 
       {/* Teman */}
       {sortedFriends.length === 0 && !currentUser ? (
-        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Belum mengikuti siapa pun.</div>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+          Belum mengikuti siapa pun.
+        </div>
       ) : (
         sortedFriends.map((friend) => (
-          <div key={friend.id} className="story-avatar-container" style={{ position: 'relative' }} onClick={() => friend.hasStory ? router.push(`/story/view?id=${friend.storyId}`) : router.push(`/data?id=${friend.id}`)}>
-            <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
-              {friend.avatar_url ? ( <img src={friend.avatar_url} alt={friend.username} /> ) : ( <div className="default-avatar"><span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span></div> )}
+          <div
+            key={friend.id}
+            className="story-avatar-container"
+            style={{ position: 'relative' }}
+            onClick={() =>
+              friend.hasStory
+                ? router.push(`/story/view?id=${friend.storyId}`)
+                : router.push(`/data?id=${friend.id}`)
+            }
+          >
+            <div
+              className={`story-ring ${
+                friend.hasStory ? 'active-story' : 'no-story'
+              }`}
+            >
+              {friend.avatar_url ? (
+                <img src={friend.avatar_url} alt={friend.username} />
+              ) : (
+                <div className="default-avatar">
+                  <span
+                    className="material-icons"
+                    style={{ fontSize: 32, color: 'var(--text-muted)' }}
+                  >
+                    person
+                  </span>
+                </div>
+              )}
             </div>
-            <span className="story-username" style={{ color: 'var(--text-main)' }}>{friend.username}</span>
+            <span
+              className="story-username"
+              style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a' }}
+            >
+              {friend.username}
+            </span>
 
             {friend.status_text && (
-              <div className="note-bubble" style={bubbleStyles} onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}>
+              <div
+                className="note-bubble"
+                style={bubbleStyles}
+                onClick={(e) =>
+                  handleBubbleClick(
+                    e,
+                    friend.status_text!,
+                    friend.username,
+                    friend.id
+                  )
+                }
+              >
                 {truncateBubble(friend.status_text)}
                 <div style={triangleStyles} />
               </div>
@@ -115,25 +226,105 @@ export default function FriendStoriesTray({ friends, currentUser, myStatusText, 
         ))
       )}
 
-      {/* Popup full note (Menampilkan maksimum 50 karakter utuh jika di-klik) */}
+      {/* Popup full note */}
       {popupNote && (
         <>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 9998 }} onClick={closePopup} />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-card)', border: '1px solid var(--border-card)', borderRadius: '20px', padding: '20px', maxWidth: '320px', width: '85%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', zIndex: 9999, fontSize: '14px', color: 'var(--text-main)' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 15 }}>
-              <span className="material-icons" style={{ fontSize: 24, color: '#1f3cff' }}>sticky_note_2</span>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 9998,
+            }}
+            onClick={closePopup}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: isDark ? 'var(--bg-card)' : '#ffffff',
+              border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+              borderRadius: '20px',
+              padding: '20px',
+              maxWidth: '320px',
+              width: '85%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+              zIndex: 9999,
+              fontSize: '14px',
+              color: isDark ? 'var(--text-main)' : '#1a1a1a',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginBottom: 15,
+              }}
+            >
+              <span
+                className="material-icons"
+                style={{ fontSize: 24, color: '#1f3cff' }}
+              >
+                sticky_note_2
+              </span>
               <strong style={{ fontSize: 16 }}>{popupNote.username}</strong>
             </div>
 
-            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--bg-main)', border: '1px solid var(--border-card)', padding: '16px', borderRadius: '12px', marginBottom: 20, fontSize: '15px', lineHeight: 1.5 }}>
+            <div
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                background: isDark ? 'var(--bg-main)' : '#f5f5f5',
+                border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                padding: '16px',
+                borderRadius: '12px',
+                marginBottom: 20,
+                fontSize: '15px',
+                lineHeight: 1.5,
+              }}
+            >
               {popupNote.text}
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button style={{ flex: 1, background: '#1f3cff', color: 'white', border: 'none', borderRadius: 12, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }} onClick={() => { closePopup(); onFriendNoteClick?.(popupNote.userId); }}>
+              <button
+                style={{
+                  flex: 1,
+                  background: '#1f3cff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 12,
+                  padding: '12px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+                onClick={() => {
+                  closePopup();
+                  onFriendNoteClick?.(popupNote.userId);
+                }}
+              >
                 Balas
               </button>
-              <button style={{ flex: 1, background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--border-card)', borderRadius: 12, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }} onClick={closePopup}>
+              <button
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  color: isDark ? 'var(--text-main)' : '#1a1a1a',
+                  border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                  borderRadius: 12,
+                  padding: '12px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+                onClick={closePopup}
+              >
                 Tutup
               </button>
             </div>
