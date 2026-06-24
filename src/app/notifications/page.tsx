@@ -12,7 +12,6 @@ import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
 import NotificationListView from '@/components/notifications/NotificationListView';
 
-// Helper untuk menyimpan status read di local storage (agar tidak reset saat refresh)
 const getReadNotifs = (): string[] => {
   if (typeof window === 'undefined') return [];
   try { return JSON.parse(localStorage.getItem('read_notifs_local') || '[]'); } 
@@ -24,7 +23,6 @@ const saveReadNotifs = (ids: string[]) => {
   try {
     const readList = new Set(getReadNotifs());
     ids.forEach(id => readList.add(id));
-    // Simpan maksimal 500 ID terakhir agar memori tidak penuh
     localStorage.setItem('read_notifs_local', JSON.stringify(Array.from(readList).slice(-500)));
   } catch {}
 };
@@ -66,6 +64,14 @@ export default function NotificationsPage() {
     const userData = { ...session.user, ...profile };
     setCurrentUser(userData);
     if (profile?.status_text) setMyStatusText(profile.status_text);
+
+    // 🔥 PEMBERSIHAN OTOMATIS: Hapus status "belum dibaca" pada Ghost Notifications
+    // Memastikan Navbar tidak mendeteksi 23 notifikasi jika UI hanya memunculkan 5
+    await supabase.from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', session.user.id)
+      .eq('is_read', false)
+      .in('type', ['like', 'comment', 'repost', 'save', 'comment_like']);
 
     const { data: fData } = await supabase.from('followers').select('following_id').eq('follower_id', session.user.id);
     const followingIds = new Set(fData ? fData.map((f) => String(f.following_id)) : []);
@@ -180,7 +186,6 @@ export default function NotificationsPage() {
         likesByPostId[l.post_id].push(l);
       });
 
-      // FIX: Ambil daftar notif yang sudah di-read dari local storage
       const readList = new Set(getReadNotifs());
 
       let finalLikesNotifs: any[] = [];
@@ -192,29 +197,14 @@ export default function NotificationsPage() {
           const l = uniqueLikers[0];
           const nId = `like-${l.id}`;
           finalLikesNotifs.push({
-            id: nId,
-            type: 'like',
-            post_id: postId,
-            actor_id: l.user_id,
-            created_at: l.created_at,
-            is_read: readList.has(nId), // Check local storage
-            actor: profilesMap[l.user_id],
-            postData: myPosts.find((p) => p.id === postId),
+            id: nId, type: 'like', post_id: postId, actor_id: l.user_id, created_at: l.created_at, is_read: readList.has(nId), actor: profilesMap[l.user_id], postData: myPosts.find((p) => p.id === postId),
           });
         } else {
           const firstTwoIds = uniqueLikers.slice(0, 2).map(l => l.user_id);
           const otherCount = uniqueLikers.length - 2 > 0 ? uniqueLikers.length - 2 : 0;
           const nId = `like-group-${postId}`;
           finalLikesNotifs.push({
-            id: nId,
-            type: 'like_group',
-            post_id: postId,
-            actor_ids: firstTwoIds,
-            otherCount,
-            created_at: uniqueLikers[0].created_at,
-            is_read: readList.has(nId), // Check local storage
-            actors: firstTwoIds.map(id => profilesMap[id]),
-            postData: myPosts.find((p) => p.id === postId),
+            id: nId, type: 'like_group', post_id: postId, actor_ids: firstTwoIds, otherCount, created_at: uniqueLikers[0].created_at, is_read: readList.has(nId), actors: firstTwoIds.map(id => profilesMap[id]), postData: myPosts.find((p) => p.id === postId),
           });
         }
       });
@@ -261,7 +251,8 @@ export default function NotificationsPage() {
       .subscribe();
   };
 
-  const markCategoryAsRead = (category: string) => {
+  // ✅ PERBAIKAN: Fungsi diubah menjadi Async dan AWAIT proses database selesai sebelum dispatch event
+  const markCategoryAsRead = async (category: string) => {
     let updated = [...rawNotifs];
     let dbIdsToUpdate: string[] = [];
     let localIdsToUpdate: string[] = [];
@@ -282,20 +273,22 @@ export default function NotificationsPage() {
     });
     setRawNotifs(updated);
 
-    if (dbIdsToUpdate.length > 0) {
-      supabase.from('notifications').update({ is_read: true }).in('id', dbIdsToUpdate).then(({ error }) => {
-        if (error) console.error('Gagal update notifikasi terbaca:', error);
-      });
-    }
     if (localIdsToUpdate.length > 0) {
       saveReadNotifs(localIdsToUpdate);
     }
 
-    // 🔥 TAMBAHKAN INI DI SINI
+    if (dbIdsToUpdate.length > 0) {
+      // Tunggu (await) sampai DB Supabase benar-benar selesai memperbarui
+      const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', dbIdsToUpdate);
+      if (error) console.error('Gagal update notifikasi terbaca:', error);
+    }
+
+    // Sekarang event trigger dikirim tepat saat DB sudah dijamin bersih!
     window.dispatchEvent(new Event('notif-count-changed'));
   };
 
-    const handleNotifClick = async (notif: any) => {
+  // ✅ PERBAIKAN: AWAIT proses update
+  const handleNotifClick = async (notif: any) => {
     if (!notif.is_read) {
       setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
       
@@ -305,11 +298,9 @@ export default function NotificationsPage() {
         saveReadNotifs([notif.id]);
       }
 
-      // 🔥 TAMBAHKAN INI DI SINI
       window.dispatchEvent(new Event('notif-count-changed'));
     }
 
-    // Routing...
     if (notif.type === 'follow' && notif.actor_id) { router.push(`/data?id=${notif.actor_id}`); }
     else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) { router.push(`/post?id=${notif.post_id}&openComment=true`); }
     else if (notif.type === 'story_like' && notif.story_id) { router.push(`/story/${notif.story_id}`); }
