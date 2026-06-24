@@ -131,12 +131,7 @@ export default function SearchWrapperpost() {
             className="brutal-input"
             readOnly
             onClick={() => router.push('/search')}
-            style={{ 
-              cursor: 'pointer',
-              background: 'var(--bg-input)',
-              color: 'var(--text-main)',
-              border: '1px solid var(--border-card)'
-            }}
+            style={{ cursor: 'pointer' }} /* 🔥 Dikembalikan persis seperti semula */
           />
         </div>
 
