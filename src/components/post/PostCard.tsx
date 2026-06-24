@@ -1233,38 +1233,4 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
-export default React.memo(PostCard, (prev, next) => {
-  const pid = prev.post.id;
-  const cid = prev.post.creator_id;
-
-  if (prev.post !== next.post) return false;
-  if (prev.activePreviewImage !== next.activePreviewImage) return false;
-  if (prev.isGloballyMuted !== next.isGloballyMuted) return false;
-
-  const isPoppingPrev = prev.poppingHeart?.startsWith(pid);
-  const isPoppingNext = next.poppingHeart?.startsWith(pid);
-  if (prev.poppingHeart !== next.poppingHeart && (isPoppingPrev || isPoppingNext)) return false;
-
-  const prevCount = prev.counts[pid] || {};
-  const nextCount = next.counts[pid] || {};
-  if (prevCount.likes !== nextCount.likes) return false;
-  if (prevCount.comments !== nextCount.comments) return false;
-  if (prevCount.reposts !== nextCount.reposts) return false;
-  if (prevCount.saves !== nextCount.saves) return false;
-
-  if (prev.myLikedPosts.has(pid) !== next.myLikedPosts.has(pid)) return false;
-  if (prev.myRepostedPosts.has(pid) !== next.myRepostedPosts.has(pid)) return false;
-  if (prev.mySavedPosts.has(pid) !== next.mySavedPosts.has(pid)) return false;
-  if (prev.animatingReposts.has(pid) !== next.animatingReposts.has(pid)) return false;
-
-  if (prev.followedUsers.has(cid) !== next.followedUsers.has(cid)) return false;
-  if (prev.mutualUsers.has(cid) !== next.mutualUsers.has(cid)) return false;
-  if (prev.animatingFollows.has(cid) !== next.animatingFollows.has(cid)) return false;
-
-  if (prev.likersMap[pid]?.length !== next.likersMap[pid]?.length) return false;
-  if (prev.repostersMap[pid]?.length !== next.repostersMap[pid]?.length) return false;
-
-  if (prev.isExpanded !== next.isExpanded) return false;
-
-  return true;
-});
+export default PostCard;
