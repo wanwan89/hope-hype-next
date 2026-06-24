@@ -62,9 +62,10 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 20 ? text.substring(0, 20) + '...' : text;
 
+  // Bubble menempel di atas avatar dengan sedikit tumpang tindih
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: 'calc(100% + 8px)',
+    bottom: 'calc(100% - 4px)', // menempel di atas cincin, sedikit menimpa
     left: '50%',
     transform: 'translateX(-50%)',
     background: 'var(--bg-card, #ffffff)',
@@ -73,7 +74,7 @@ export default function FriendStoriesTray({
     padding: '6px 12px',
     maxWidth: '140px',
     boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    zIndex: 999, // di atas header (z-index: 10)
+    zIndex: 999,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -102,94 +103,90 @@ export default function FriendStoriesTray({
       className="friend-stories-tray"
       style={{
         position: 'relative',
-        zIndex: 100, // lebih tinggi dari notif-header (10)
+        zIndex: 100,
         background: 'var(--bg-main, #ffffff)',
         borderBottom: '1px solid var(--border-card, #e0e0e0)',
         padding: '15px',
-        overflow: 'visible', // agar bubble tidak terpotong
-      }}
-    >
-      {/* Wrapper scroll horizontal */}
-      <div style={{
+        overflowX: 'auto',
+        overflowY: 'visible', // penting agar bubble tidak terpotong
         display: 'flex',
         gap: '16px',
-        overflowX: 'auto',
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
         WebkitOverflowScrolling: 'touch',
-      }}>
-        {/* Profil sendiri */}
-        {currentUser && (
-          <div className="story-avatar-container" style={{ position: 'relative', flexShrink: 0 }}>
-            <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
-              {currentUser.avatar_url ? (
-                <img src={currentUser.avatar_url} alt="Anda" />
+      }}
+    >
+      {/* Profil sendiri */}
+      {currentUser && (
+        <div className="story-avatar-container" style={{ position: 'relative', flexShrink: 0 }}>
+          <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
+            {currentUser.avatar_url ? (
+              <img src={currentUser.avatar_url} alt="Anda" />
+            ) : (
+              <div className="default-avatar">
+                <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+              </div>
+            )}
+          </div>
+          <span className="story-username" style={{ color: 'var(--text-main)' }}>Anda</span>
+          <button className="add-status-btn" onClick={onAddStatus}>
+            <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
+          </button>
+
+          {myStatusText && (
+            <div
+              className="note-bubble"
+              style={bubbleStyles}
+              onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
+            >
+              {truncateBubble(myStatusText)}
+              <div style={triangleStyles} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Teman */}
+      {sortedFriends.length === 0 && !currentUser ? (
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>
+          Belum mengikuti siapa pun.
+        </div>
+      ) : (
+        sortedFriends.map((friend) => (
+          <div
+            key={friend.id}
+            className="story-avatar-container"
+            style={{ position: 'relative', flexShrink: 0 }}
+            onClick={() =>
+              friend.hasStory
+                ? router.push(`/story/view?id=${friend.storyId}`)
+                : router.push(`/data?id=${friend.id}`)
+            }
+          >
+            <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
+              {friend.avatar_url ? (
+                <img src={friend.avatar_url} alt={friend.username} />
               ) : (
                 <div className="default-avatar">
                   <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                 </div>
               )}
             </div>
-            <span className="story-username" style={{ color: 'var(--text-main)' }}>Anda</span>
-            <button className="add-status-btn" onClick={onAddStatus}>
-              <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
-            </button>
+            <span className="story-username" style={{ color: 'var(--text-main)' }}>{friend.username}</span>
 
-            {myStatusText && (
+            {friend.status_text && (
               <div
                 className="note-bubble"
                 style={bubbleStyles}
-                onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
+                onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
               >
-                {truncateBubble(myStatusText)}
+                {truncateBubble(friend.status_text)}
                 <div style={triangleStyles} />
               </div>
             )}
           </div>
-        )}
-
-        {/* Teman */}
-        {sortedFriends.length === 0 && !currentUser ? (
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>
-            Belum mengikuti siapa pun.
-          </div>
-        ) : (
-          sortedFriends.map((friend) => (
-            <div
-              key={friend.id}
-              className="story-avatar-container"
-              style={{ position: 'relative', flexShrink: 0 }}
-              onClick={() =>
-                friend.hasStory
-                  ? router.push(`/story/view?id=${friend.storyId}`)
-                  : router.push(`/data?id=${friend.id}`)
-              }
-            >
-              <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
-                {friend.avatar_url ? (
-                  <img src={friend.avatar_url} alt={friend.username} />
-                ) : (
-                  <div className="default-avatar">
-                    <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
-                  </div>
-                )}
-              </div>
-              <span className="story-username" style={{ color: 'var(--text-main)' }}>{friend.username}</span>
-
-              {friend.status_text && (
-                <div
-                  className="note-bubble"
-                  style={bubbleStyles}
-                  onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
-                >
-                  {truncateBubble(friend.status_text)}
-                  <div style={triangleStyles} />
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
+        ))
+      )}
 
       {/* Popup full note */}
       {popupNote && (
