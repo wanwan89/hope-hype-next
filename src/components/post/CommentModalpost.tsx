@@ -219,7 +219,6 @@ export default function CommentModalpost() {
     return () => window.removeEventListener("insertGiftComment", handleInsertGift);
   }, [t]);
 
-  // 🔥 FUNGSI FETCH STIKER GIPHY 🔥
   const fetchStickers = async (q="") => {
     try {
       const res = await fetch(`https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08&limit=20&rating=g${q ? `&q=${q}` : ''}`);
@@ -230,7 +229,6 @@ export default function CommentModalpost() {
     }
   };
 
-  // 🔥 DEBOUNCE PENCARIAN STIKER 🔥
   useEffect(() => {
     if (!showStickers) return;
     const delayDebounceFn = setTimeout(() => {
@@ -351,7 +349,6 @@ export default function CommentModalpost() {
     inputRef.current.focus();
   };
 
-  // 🔥 FUNGSI KIRIM STIKER 🔥
   const handleSendSticker = async (stickerUrl: string) => {
     if (!currentPostId || isCommentsDisabled || isSubmitting) return;
     
@@ -604,7 +601,6 @@ export default function CommentModalpost() {
     const rawAvatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
     const avatar = getOptimizedImage(rawAvatar);
 
-    // 🔥 CEK TIPE KOMENTAR: TEXT, GIFT, ATAU STIKER 🔥
     let isGift = false;
     let isSticker = false;
     let giftName = "";
@@ -787,7 +783,6 @@ export default function CommentModalpost() {
         .sticker-item { width: 100%; aspect-ratio: 1; object-fit: contain; cursor: pointer; border-radius: 8px; transition: transform 0.2s; }
         .sticker-item:active { transform: scale(0.9); }
         .sticker-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; grid-column: span 4; }
-        .modal-sticker-btn { background: none; border: none; padding: 5px; margin-right: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
       `}</style>
 
       <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick}>
@@ -949,7 +944,8 @@ export default function CommentModalpost() {
                   </div>
                 )}
 
-                <div className="input-container">
+                {/* 🔥 CONTAINER INPUT & IKON DIPERBARUI DI SINI 🔥 */}
+                <div className="input-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <input 
                     ref={inputRef}
                     type="text" 
@@ -968,26 +964,38 @@ export default function CommentModalpost() {
                       }
                     }}
                     disabled={isSubmitting}
+                    /* 🔥 Teks diberi jarak kanan (paddingRight) agar tidak tertutup ikon 🔥 */
+                    style={{ width: '100%', paddingRight: '75px' }} 
                   />
                   
-                  {/* 🔥 TOMBOL STIKER 🔥 */}
-                  <button 
-                    className="modal-sticker-btn" 
-                    aria-label="Kirim Stiker" 
-                    onClick={() => {
-                      const willShow = !showStickers;
-                      setShowStickers(willShow);
-                      if (willShow && stickers.length === 0) fetchStickers("");
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" style={{ color: showStickers ? '#1f3cff' : 'var(--text-main)', fill: 'currentColor', width: '22px', height: '22px' }}>
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2.5-9c.83 0 1.5-.67 1.5-1.5S10.33 8 9.5 8 8 8.67 8 9.5 8.67 11 9.5 11zm5 0c.83 0 1.5-.67 1.5-1.5S15.33 8 14.5 8 13 8.67 13 9.5 13.67 11 14.5 11zm-2.5 4.5c1.76 0 3.31-.89 4.22-2.25.18-.27-.05-.62-.37-.56-2.55.51-5.16.51-7.7 0-.32-.06-.55.29-.37.56.91 1.36 2.46 2.25 4.22 2.25z"/>
-                    </svg>
-                  </button>
+                  {/* 🔥 Wrapper khusus ikon dengan flexbox & absolute ke pojok kanan 🔥 */}
+                  <div style={{ position: 'absolute', right: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    
+                    <button 
+                      className="modal-sticker-btn" 
+                      aria-label="Kirim Stiker" 
+                      onClick={() => {
+                        const willShow = !showStickers;
+                        setShowStickers(willShow);
+                        if (willShow && stickers.length === 0) fetchStickers("");
+                      }}
+                      style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, display: 'flex', cursor: 'pointer' }}
+                    >
+                      <svg viewBox="0 0 24 24" style={{ color: showStickers ? '#1f3cff' : 'var(--text-main)', fill: 'currentColor', width: '22px', height: '22px' }}>
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2.5-9c.83 0 1.5-.67 1.5-1.5S10.33 8 9.5 8 8 8.67 8 9.5 8.67 11 9.5 11zm5 0c.83 0 1.5-.67 1.5-1.5S15.33 8 14.5 8 13 8.67 13 9.5 13.67 11 14.5 11zm-2.5 4.5c1.76 0 3.31-.89 4.22-2.25.18-.27-.05-.62-.37-.56-2.55.51-5.16.51-7.7 0-.32-.06-.55.29-.37.56.91 1.36 2.46 2.25 4.22 2.25z"/>
+                      </svg>
+                    </button>
 
-                  <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={() => { setShowStickers(false); handleGiftClick(); }}>
-                    <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor', width: '22px', height: '22px' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
-                  </button>
+                    <button 
+                      className="modal-gift-btn" 
+                      aria-label="Kirim Hadiah" 
+                      onClick={() => { setShowStickers(false); handleGiftClick(); }}
+                      style={{ position: 'static', background: 'transparent', border: 'none', padding: 0, margin: 0, display: 'flex', cursor: 'pointer' }}
+                    >
+                      <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor', width: '22px', height: '22px' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+                    </button>
+                  </div>
+
                 </div>
               </div>
             )
