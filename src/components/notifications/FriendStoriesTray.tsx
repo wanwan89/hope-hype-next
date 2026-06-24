@@ -64,12 +64,12 @@ export default function FriendStoriesTray({
 
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: 'calc(100% - 4px)', // menempel di atas cincin
+    bottom: 'calc(100% - 4px)',
     left: '50%',
     transform: 'translateX(-50%)',
     background: 'var(--bg-card, #ffffff)',
     border: '1px solid var(--border-card, #e0e0e0)',
-    borderRadius: '8px', // agak kotak
+    borderRadius: '8px',
     padding: '6px 12px',
     maxWidth: '140px',
     boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
@@ -105,11 +105,11 @@ export default function FriendStoriesTray({
         background: 'var(--bg-main, #ffffff)',
         borderBottom: '1px solid var(--border-card, #e0e0e0)',
         padding: '15px',
-        overflow: 'visible', // penting agar bubble tidak terpotong
+        overflow: 'visible',
         zIndex: 100,
+        marginTop: '8px', // jarak dari header
       }}
     >
-      {/* Wrapper scroll horizontal – terpisah agar overflow‑y tetap visible */}
       <div
         style={{
           display: 'flex',
