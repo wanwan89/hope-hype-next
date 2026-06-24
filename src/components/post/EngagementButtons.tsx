@@ -23,7 +23,10 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
       {/* Save */}
       <button
         className={`icon-btn save-btn btn-press ${mySavedPosts.has(postId) ? 'active' : ''}`}
-        onClick={() => handleSave(postId)}
+        onClick={(e) => {
+          e.stopPropagation(); // 🔥 Cegah propagasi ke parent
+          handleSave(postId);
+        }}
       >
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor"
           style={{ color: mySavedPosts.has(postId) ? "#1f3cff" : "var(--text-main)", transition: '0.2s' }}>
@@ -37,7 +40,10 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
       {/* Repost */}
       <button
         className={`icon-btn repost-btn btn-press ${myRepostedPosts.has(postId) ? 'reposted' : ''}`}
-        onClick={() => openRepostModal(postId, creatorId)}
+        onClick={(e) => {
+          e.stopPropagation();
+          openRepostModal(postId, creatorId);
+        }}
       >
         <svg viewBox="0 0 24 24" className={`icon ${animatingReposts.has(postId) ? 'spin-anim' : ''}`}
           fill="currentColor" style={{ color: myRepostedPosts.has(postId) ? "#1f3cff" : "var(--text-main)", transition: '0.2s' }}>
@@ -49,7 +55,10 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
       {/* Like */}
       <button
         className={`icon-btn like-btn btn-press ${myLikedPosts.has(postId) ? 'liked' : ''}`}
-        onClick={() => handleLike(postId, creatorId)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleLike(postId, creatorId);
+        }}
       >
         <svg viewBox="0 0 24 24" className={`icon heart ${myLikedPosts.has(postId) ? 'heart-pop active' : ''}`}
           fill="currentColor" style={{ color: myLikedPosts.has(postId) ? '#ff2e63' : 'var(--text-main)', transition: '0.2s' }}>
@@ -59,7 +68,12 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
       </button>
 
       {/* Comment */}
-      <button className="icon-btn comment-toggle btn-press" data-post={postId} data-creator={creatorId}>
+      <button
+        className="icon-btn comment-toggle btn-press"
+        data-post={postId}
+        data-creator={creatorId}
+        onClick={(e) => e.stopPropagation()}
+      >
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor" style={{ color: 'var(--text-main)' }}>
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
         </svg>
@@ -69,7 +83,6 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
   );
 };
 
-// Optimasi re‑render: hanya jika data berubah untuk postId ini
 export default memo(EngagementButtons, (prev, next) => {
   const pid = prev.postId;
   if (prev.counts[pid] !== next.counts[pid]) return false;
