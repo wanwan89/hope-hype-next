@@ -365,28 +365,28 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card
+  // 🔥 PERUBAHAN TAMPILAN: Full-Width, Dark Mode Ready, dengan Celah Bawah 🔥
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: '#ffffff', // 🔥 DIGANTI JADI PUTIH SOLID
-      borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
-      padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
-      border: '1px solid var(--border-card)',
+      background: 'var(--bg-card)', // Support Dark Mode/Light Mode
+      borderRadius: '0px',          // Pinggir kiri & kanan menempel layar tanpa lengkungan
+      padding: '0',                 // Padding 0 agar media bisa full width
+      borderLeft: 'none',           // Hilangkan border kiri
+      borderRight: 'none',          // Hilangkan border kanan
+      borderTop: '1px solid var(--border-card)',
+      borderBottom: '1px solid var(--border-card)',
       position: 'relative' as const,
-      width: '100vw',
-      marginLeft: 'calc(-50vw + 50%)',
-      marginRight: 'calc(-50vw + 50%)',
-      maxWidth: '100vw',
+      width: '100vw',               // Lebar 100% dari viewport layar
+      marginLeft: 'calc(-50vw + 50%)', // Trik untuk menabrak padding dari parent div (kiri)
+      marginRight: 'calc(-50vw + 50%)', // Trik untuk menabrak padding dari parent div (kanan)
+      marginBottom: '12px',         // Memberikan celah antar postingan atas dan bawah
       boxSizing: 'border-box' as const,
-      boxShadow:
-        isVideoPost || photoList.length > 0
-          ? 'none'
-          : '0 4px 12px rgba(0, 0, 0, 0.03)',
+      boxShadow: 'none',            // Hilangkan bayangan agar terlihat menyatu (seamless)
       textAlign: 'left' as const,
       zIndex: actuallyExpanded ? 50 : 1,
     }),
-    [actuallyExpanded, isVideoPost, photoList.length]
+    [actuallyExpanded]
   );
 
   // ====================== RENDER ======================
@@ -751,8 +751,8 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          {/* Overlay informasi */}
-          <div className="overlay" style={{ pointerEvents: 'auto' }}>
+          {/* 🔥 Padding '12px 15px' agar teks aman dan tidak nyangkut di pinggir HP 🔥 */}
+          <div className="overlay" style={{ pointerEvents: 'auto', padding: '12px 15px' }}>
             <div
               style={{
                 display: 'flex',
@@ -964,7 +964,8 @@ const PostCard: React.FC<PostCardProps> = ({
         </>
       ) : (
         // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
-        <>
+        // 🔥 Padding '15px' ditambahkan agar text post tidak mentok pinggir HP 🔥
+        <div style={{ padding: '15px' }}>
           <div
             style={{
               display: 'flex',
@@ -1219,7 +1220,7 @@ const PostCard: React.FC<PostCardProps> = ({
               handleLike={handleLike}
             />
           </div>
-        </>
+        </div>
       )}
     </div>
   );

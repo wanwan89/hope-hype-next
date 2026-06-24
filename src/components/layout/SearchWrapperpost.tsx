@@ -105,7 +105,7 @@ export default function SearchWrapperpost() {
   if (!mounted || isHidden) return null;
 
   return (
-    <div className="header-main-wrapper">
+    <div className="header-main-wrapper" style={{ background: 'var(--bg-main)' }}>
       {/* Kotak pencarian + tombol */}
       <div
         className="search-wrapper glass-effect"
@@ -120,7 +120,8 @@ export default function SearchWrapperpost() {
           borderLeft: 'none',
           borderRight: 'none',
           overflow: 'hidden',
-          background: '#ffffff',
+          background: 'var(--bg-main)', // Fix Background
+          borderBottom: '1px solid var(--border-card)',
         }}
       >
         <div className="brutal-input-container">
@@ -130,7 +131,12 @@ export default function SearchWrapperpost() {
             className="brutal-input"
             readOnly
             onClick={() => router.push('/search')}
-            style={{ cursor: 'pointer' }}
+            style={{ 
+              cursor: 'pointer',
+              background: 'var(--bg-input)',
+              color: 'var(--text-main)',
+              border: '1px solid var(--border-card)'
+            }}
           />
         </div>
 
@@ -140,6 +146,11 @@ export default function SearchWrapperpost() {
           onClick={(e) => {
             e.stopPropagation();
             router.push('/create');
+          }}
+          style={{
+            background: 'var(--primary)',
+            color: '#fff',
+            border: 'none'
           }}
         >
           <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
@@ -165,7 +176,7 @@ export default function SearchWrapperpost() {
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              background: 'rgba(31, 60, 255, 0.08)',
+              background: 'var(--primary-soft)', // Menggunakan variabel global
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
               borderRadius: '24px',
@@ -173,7 +184,7 @@ export default function SearchWrapperpost() {
               width: '100%',
               maxWidth: '500px',
               border: '1px solid rgba(31, 60, 255, 0.15)',
-              boxShadow: '0 4px 16px rgba(31, 60, 255, 0.08)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
               transition: 'all 0.3s ease',
             }}
           >
@@ -183,7 +194,7 @@ export default function SearchWrapperpost() {
                 className="material-icons"
                 style={{
                   fontSize: '18px',
-                  color: '#1f3cff',
+                  color: 'var(--primary)',
                   animation: 'spin 1.5s linear infinite',
                 }}
               >
@@ -206,7 +217,7 @@ export default function SearchWrapperpost() {
               style={{
                 flex: 1,
                 height: '4px',
-                background: 'rgba(31, 60, 255, 0.1)',
+                background: 'var(--border-card)',
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}
@@ -217,7 +228,7 @@ export default function SearchWrapperpost() {
                   height: '100%',
                   background:
                     uploadProgress < 100
-                      ? 'linear-gradient(90deg, #1f3cff, #6c8cff)'
+                      ? 'var(--primary)'
                       : '#00c853',
                   borderRadius: '4px',
                   transition: 'width 0.4s ease',
@@ -230,7 +241,7 @@ export default function SearchWrapperpost() {
               style={{
                 fontSize: '12px',
                 fontWeight: 700,
-                color: '#1f3cff',
+                color: 'var(--primary)',
                 minWidth: '40px',
                 textAlign: 'right',
               }}
@@ -241,12 +252,12 @@ export default function SearchWrapperpost() {
         </div>
       )}
 
-      {/* Story dengan latar putih bersih */}
+      {/* Story dengan latar mengikuti tema */}
       {stories.length > 0 && (
         <div
           className="stories-container"
           style={{
-            background: '#ffffff',
+            background: 'var(--bg-main)', // Menyesuaikan tema
             borderBottom: 'none',
             padding: '10px 0',
           }}
@@ -265,7 +276,7 @@ export default function SearchWrapperpost() {
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--bg-main)', // Cincin putih/gelap tergantung tema
                 }}
               >
                 <img
@@ -274,9 +285,10 @@ export default function SearchWrapperpost() {
                     `https://ui-avatars.com/api/?name=${story.profiles?.username}`
                   }
                   alt="avatar"
+                  style={{ border: '2px solid var(--bg-main)' }} // Border image mengikuti tema
                 />
               </div>
-              <span className="story-name" style={{ color: '#111111' }}>
+              <span className="story-name" style={{ color: 'var(--text-main)' }}>
                 {story.profiles?.username}
               </span>
             </div>
