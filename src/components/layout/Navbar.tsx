@@ -70,7 +70,7 @@ function NavbarContent() {
     if (!session) return;
     const userId = session.user.id;
 
-    const [profileRes, chatRes, notifRes] = await Promise.all([
+    const [profileRes, chatRes, notifRes, followersRes] = await Promise.all([
       supabase.from('profiles').select('avatar_url').eq('id', userId).single(),
       
       supabase.from('messages')
@@ -79,12 +79,15 @@ function NavbarContent() {
         .neq('user_id', userId)
         .or('status.neq.read,status.is.null'),
         
-      // 🔥 FIX LOGIC: Filter dihapus. Sekarang akan menghitung SEMUA notif baru (termasuk like/comment)
-      // Angkanya akan akurat (7) karena data yatim piatu sudah dibersihkan via SQL di atas.
       supabase.from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('is_read', false)
+        .eq('is_read', false),
+        
+      // Fetch live followers untuk disinkronkan dengan halaman notifikasi
+      supabase.from('followers')
+        .select('follower_id')
+        .eq('following_id', userId)
     ]);
 
     if (profileRes.data?.avatar_url) {
@@ -96,12 +99,35 @@ function NavbarContent() {
     }
 
     if (chatRes.count !== null) setUnreadChatCount(chatRes.count);
-    if (notifRes.count !== null) setUnreadNotifCount(notifRes.count);
+
+    // Hitung Notifikasi (Database + Local Live Followers)
+    const dbNotifCount = notifRes.count || 0;
+    
+    let localReadNotifs: string[] = [];
+    if (typeof window !== 'undefined') {
+      try {
+        localReadNotifs = JSON.parse(localStorage.getItem('read_notifs_local') || '[]');
+      } catch (e) {}
+    }
+    const readSet = new Set(localReadNotifs);
+
+    let unreadFollowersCount = 0;
+    if (followersRes.data) {
+      followersRes.data.forEach((f: any) => {
+        if (!readSet.has(`follow-${f.follower_id}`)) {
+          unreadFollowersCount++;
+        }
+      });
+    }
+
+    // Gabungkan notif database dengan follower yang belum dibaca
+    setUnreadNotifCount(dbNotifCount + unreadFollowersCount);
   };
 
   useEffect(() => {
     fetchBadgesAndUser();
     const handleRefresh = () => fetchBadgesAndUser();
+    // Event listener ini yang akan menghapus badge otomatis saat notif dibaca di halaman Notifications
     window.addEventListener('notif-count-changed', handleRefresh);
     return () => window.removeEventListener('notif-count-changed', handleRefresh);
   }, [pathname]);
@@ -117,8 +143,8 @@ function NavbarContent() {
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, item: (typeof navItems)[0], isActive: boolean) => {
-    if (item.name === 'Notif') setUnreadNotifCount(0);
-    if (item.name === 'Chat') setUnreadChatCount(0);
+    // 🔥 PERBAIKAN: setUnreadNotifCount(0) dan setUnreadChatCount(0) dihapus dari sini.
+    // Badge hanya akan hilang jika event 'notif-count-changed' terpanggil (saat benar-benar dibaca).
 
     if (isActive) {
       e.preventDefault();
@@ -149,16 +175,15 @@ function NavbarContent() {
           height: `calc(60px + env(safe-area-inset-bottom))`,
           paddingBottom: 'env(safe-area-inset-bottom)',
           backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.75))',
-          backdropFilter: 'blur(24px)', // Efek Glassmorphism lebih kuat
+          backdropFilter: 'blur(24px)', 
           WebkitBackdropFilter: 'blur(24px)',
-          /* 🔥 PREMIUM UI FIX: Shadow dihapus, diganti border halus */
           borderTop: '1px solid var(--border-color, rgba(128, 128, 128, 0.2))',
           boxShadow: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
           boxSizing: 'border-box',
-          color: 'inherit' // Menyerap warna text theme (Light/Dark)
+          color: 'inherit' 
         }}
       >
         {navItems.map((item) => {
@@ -215,11 +240,10 @@ function NavbarContent() {
                     <div key="icon" style={{ display: 'flex' }}>
                       <Icon
                         size={24}
-                        /* 🔥 PREMIUM UI FIX: currentColor otomatis adaptif tema Dark/Light */
                         color={isActive ? '#1f3cff' : 'currentColor'}
                         fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
                         strokeWidth={isActive ? 2.5 : 2}
-                        style={{ opacity: isActive ? 1 : 0.6 }} // Opsi inactive lebih pudar agar elegan
+                        style={{ opacity: isActive ? 1 : 0.6 }} 
                       />
                     </div>
                   )}
@@ -234,7 +258,7 @@ function NavbarContent() {
                       backgroundColor: '#FF3B30', color: 'white', fontSize: '10px',
                       fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '2px 5px', minWidth: '16px', height: '16px', borderRadius: '12px',
-                      border: '2px solid var(--bg-main, #ffffff)', // Border menyesuaikan background agar rapi
+                      border: '2px solid var(--bg-main, #ffffff)', 
                       zIndex: 10,
                     }}
                   >
