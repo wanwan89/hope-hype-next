@@ -38,7 +38,7 @@ export default function CommentModalpost() {
   
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
   const [currentCreatorId, setCurrentCreatorId] = useState<string | null>(null);
-  const [isCommentsDisabled, setIsCommentsDisabled] = useState(false); // 🔥 STATE STATUS KOMENTAR 🔥
+  const [isCommentsDisabled, setIsCommentsDisabled] = useState(false); 
   
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyToUsername, setReplyToUsername] = useState<string | null>(null);
@@ -66,6 +66,11 @@ export default function CommentModalpost() {
   const [postLikers, setPostLikers] = useState<any[]>([]);
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [isLoadingLikers, setIsLoadingLikers] = useState(false);
+
+  // 🔥 STATE STIKER GIPHY 🔥
+  const [showStickers, setShowStickers] = useState(false);
+  const [stickers, setStickers] = useState<any[]>([]);
+  const [stickerQuery, setStickerQuery] = useState("");
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -111,7 +116,7 @@ export default function CommentModalpost() {
         
         if (postId) {
           loadComments(postId, userId);
-          checkPostSettings(postId); // 🔥 CEK STATUS KOMENTAR SAAT MODAL DIBUKA 🔥
+          checkPostSettings(postId); 
           if (creatorId === userId) {
             checkMutuals(userId);
           }
@@ -122,7 +127,6 @@ export default function CommentModalpost() {
     return () => document.body.removeEventListener("click", handleBodyClick);
   }, []);
 
-  // 🔥 FUNGSI CEK STATUS MATIKAN KOMENTAR 🔥
   const checkPostSettings = async (postId: string) => {
     try {
       const { data } = await supabase
@@ -215,6 +219,26 @@ export default function CommentModalpost() {
     return () => window.removeEventListener("insertGiftComment", handleInsertGift);
   }, [t]);
 
+  // 🔥 FUNGSI FETCH STIKER GIPHY 🔥
+  const fetchStickers = async (q="") => {
+    try {
+      const res = await fetch(`https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=vPUlBU5Qfz2ZygoEtKXVUqmIEAEcIB08&limit=20&rating=g${q ? `&q=${q}` : ''}`);
+      const d = await res.json(); 
+      setStickers(d.data || []);
+    } catch (error) {
+      console.error("Gagal memuat stiker", error);
+    }
+  };
+
+  // 🔥 DEBOUNCE PENCARIAN STIKER 🔥
+  useEffect(() => {
+    if (!showStickers) return;
+    const delayDebounceFn = setTimeout(() => {
+      fetchStickers(stickerQuery);
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [stickerQuery, showStickers]);
+
   const loadComments = async (postId: string, userId?: string) => {
     setIsLoading(true);
     const { data: commsData } = await supabase.from("comments")
@@ -253,6 +277,8 @@ export default function CommentModalpost() {
     setReplyToUserId(null);
     setInputValue("");
     setShowMentions(false);
+    setShowStickers(false);
+    setStickerQuery("");
     setIsActionSheetOpen(false);
     setPostLikers([]);
   };
@@ -325,10 +351,71 @@ export default function CommentModalpost() {
     inputRef.current.focus();
   };
 
+  // 🔥 FUNGSI KIRIM STIKER 🔥
+  const handleSendSticker = async (stickerUrl: string) => {
+    if (!currentPostId || isCommentsDisabled || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const userId = session.user.id;
+      const pid = parseInt(currentPostId);
+      const parentId = replyToId;
+      const targetUser = replyToUsername;
+      const targetUserId = replyToUserId;
+      
+      const content = `STICKER||${stickerUrl}`;
+
+      const { data: newComment, error } = await supabase.from("comments").insert({
+        post_id: pid,
+        user_id: userId,
+        content: content, 
+        parent_id: parentId ? parseInt(parentId) : null,
+        reply_to_username: targetUser || null
+      }).select('*, profiles(id, username, avatar_url, role)').single();
+
+      if (error) throw error;
+      
+      const { data: myProf } = await supabase.from("profiles").select("username").eq("id", userId).single();
+
+      if (targetUserId && targetUserId !== userId) {
+        await supabase.from("notifications").insert({
+          user_id: targetUserId, actor_id: userId, post_id: pid, type: "reply",
+          message: `${myProf?.username} membalas dengan stiker.`
+        });
+      }
+
+      if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
+        await supabase.from("notifications").insert({
+          user_id: currentCreatorId, actor_id: userId, post_id: pid, type: "comment",
+          message: `${myProf?.username} mengomentari postingan Anda dengan stiker.`
+        });
+      }
+
+      if (newComment) {
+        setComments(prev => [newComment, ...prev]);
+        setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
+      }
+
+      setReplyToId(null);
+      setReplyToUsername(null);
+      setReplyToUserId(null);
+      setShowStickers(false);
+      setStickerQuery("");
+      
+    } catch (err) {
+      showNotif(t('comment_error'), "error"); 
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim() && !isSubmitting && !showMentions) {
       e.preventDefault();
-      if (!currentPostId || isCommentsDisabled) return; // 🔥 CEK DISINI JUGA 🔥
+      if (!currentPostId || isCommentsDisabled) return; 
 
       let finalContent = inputValue.trim();
 
@@ -517,15 +604,22 @@ export default function CommentModalpost() {
     const rawAvatar = p?.avatar_url || `https://ui-avatars.com/api/?name=${p?.username}`;
     const avatar = getOptimizedImage(rawAvatar);
 
+    // 🔥 CEK TIPE KOMENTAR: TEXT, GIFT, ATAU STIKER 🔥
     let isGift = false;
+    let isSticker = false;
     let giftName = "";
     let giftImg = "";
+    let stickerUrl = "";
     
     if (comment.content?.startsWith("GIFT||")) {
       isGift = true;
       const parts = comment.content.split("||");
       giftName = parts[1] || "Gift";
       giftImg = parts[2] || "";
+    } else if (comment.content?.startsWith("STICKER||")) {
+      isSticker = true;
+      const parts = comment.content.split("||");
+      stickerUrl = parts[1] || "";
     }
 
     const isCommentLiked = likedComments.has(String(comment.id));
@@ -585,6 +679,10 @@ export default function CommentModalpost() {
                  <span>{t('gave_gift', { giftName })}</span>
                  {giftImg && <img src={getOptimizedImage(giftImg)} loading="lazy" alt={giftName} />}
               </div>
+            ) : isSticker ? (
+              <div className="sticker-comment-bubble">
+                 <img src={stickerUrl} loading="lazy" alt="Sticker" style={{ maxWidth: '120px', borderRadius: '8px', background: 'transparent' }} />
+              </div>
             ) : (
               highlightMentions(comment.content)
             )}
@@ -592,8 +690,7 @@ export default function CommentModalpost() {
 
           <div className="comment-actions">
             <span className="comment-time">{formatTimeAgo(comment.created_at)}</span>
-            {/* 🔥 CEK JIKA KOMENTAR DISABLED, HILANGKAN TOMBOL BALAS 🔥 */}
-            {!isGift && !isCommentsDisabled && (
+            {!isGift && !isSticker && !isCommentsDisabled && (
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
@@ -682,6 +779,15 @@ export default function CommentModalpost() {
         .c-liker-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .c-liker-name { font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; }
         .c-liker-time { font-size: 12px; color: var(--text-muted); }
+
+        /* 🔥 CSS STICKER POPUP 🔥 */
+        .sticker-popup-container { position: absolute; bottom: 65px; left: 15px; right: 15px; background: var(--bg-main, #fff); border-radius: 12px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); border: 1px solid var(--border-card, #eee); z-index: 10; display: flex; flex-direction: column; max-height: 250px; overflow: hidden; }
+        .sticker-search { width: 100%; padding: 10px 15px; border: none; border-bottom: 1px solid var(--border-card, #eee); background: transparent; color: var(--text-main); font-size: 14px; outline: none; }
+        .sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px; overflow-y: auto; flex: 1; }
+        .sticker-item { width: 100%; aspect-ratio: 1; object-fit: contain; cursor: pointer; border-radius: 8px; transition: transform 0.2s; }
+        .sticker-item:active { transform: scale(0.9); }
+        .sticker-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; grid-column: span 4; }
+        .modal-sticker-btn { background: none; border: none; padding: 5px; margin-right: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
       `}</style>
 
       <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick}>
@@ -790,14 +896,13 @@ export default function CommentModalpost() {
             )}
           </div>
 
-          {/* 🔥 LOGIKA INPUT / PERINGATAN KOMENTAR DISABLED 🔥 */}
           {activeTab === 'comment' && (
             isCommentsDisabled ? (
               <div style={{ padding: '15px', textAlign: 'center', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-card)', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600 }}>
                 Komentar dinonaktifkan oleh kreator.
               </div>
             ) : (
-              <div className="comment-input-wrap">
+              <div className="comment-input-wrap" style={{ position: 'relative' }}>
                 {showMentions && (
                   <div className="mention-popup">
                     {mentionResults.length > 0 ? (
@@ -815,6 +920,35 @@ export default function CommentModalpost() {
                   </div>
                 )}
 
+                {/* 🔥 POPUP MENU STIKER 🔥 */}
+                {showStickers && (
+                  <div className="sticker-popup-container">
+                    <input 
+                      type="text" 
+                      className="sticker-search" 
+                      placeholder="Cari stiker Giphy..." 
+                      value={stickerQuery}
+                      onChange={(e) => setStickerQuery(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="sticker-grid">
+                      {stickers.length > 0 ? (
+                        stickers.map(st => (
+                          <img 
+                            key={st.id} 
+                            src={st.images.fixed_height_small.url} 
+                            className="sticker-item" 
+                            alt="sticker" 
+                            onClick={() => handleSendSticker(st.images.fixed_height.url)}
+                          />
+                        ))
+                      ) : (
+                        <div className="sticker-empty">Memuat...</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="input-container">
                   <input 
                     ref={inputRef}
@@ -824,6 +958,7 @@ export default function CommentModalpost() {
                     autoComplete="off"
                     value={inputValue}
                     onChange={handleInputChange}
+                    onFocus={() => setShowStickers(false)} 
                     onKeyDown={(e) => {
                       if (showMentions && e.key === "Enter") {
                         e.preventDefault();
@@ -834,8 +969,24 @@ export default function CommentModalpost() {
                     }}
                     disabled={isSubmitting}
                   />
-                  <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={handleGiftClick}>
-                    <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
+                  
+                  {/* 🔥 TOMBOL STIKER 🔥 */}
+                  <button 
+                    className="modal-sticker-btn" 
+                    aria-label="Kirim Stiker" 
+                    onClick={() => {
+                      const willShow = !showStickers;
+                      setShowStickers(willShow);
+                      if (willShow && stickers.length === 0) fetchStickers("");
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" style={{ color: showStickers ? '#1f3cff' : 'var(--text-main)', fill: 'currentColor', width: '22px', height: '22px' }}>
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2.5-9c.83 0 1.5-.67 1.5-1.5S10.33 8 9.5 8 8 8.67 8 9.5 8.67 11 9.5 11zm5 0c.83 0 1.5-.67 1.5-1.5S15.33 8 14.5 8 13 8.67 13 9.5 13.67 11 14.5 11zm-2.5 4.5c1.76 0 3.31-.89 4.22-2.25.18-.27-.05-.62-.37-.56-2.55.51-5.16.51-7.7 0-.32-.06-.55.29-.37.56.91 1.36 2.46 2.25 4.22 2.25z"/>
+                    </svg>
+                  </button>
+
+                  <button className="modal-gift-btn" aria-label="Kirim Hadiah" onClick={() => { setShowStickers(false); handleGiftClick(); }}>
+                    <svg viewBox="0 0 24 24" style={{ color: 'var(--text-main)', fill: 'currentColor', width: '22px', height: '22px' }}><path d="M20 7h-2.18A3 3 0 0 0 12 3a3 3 0 0 0-5.82 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-8-2a1 1 0 0 1 1 1v1h-2V6a1 1 0 0 1 1-1Zm-4 1a1 1 0 0 1 2 0v1H8a1 1 0 0 1 0-2Zm9 13h-4v-7h4Zm-6 0H7v-7h4Zm8-9H5V9h14Z"/></svg>
                   </button>
                 </div>
               </div>
