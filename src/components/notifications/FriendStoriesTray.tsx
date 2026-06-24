@@ -59,47 +59,9 @@ export default function FriendStoriesTray({
 
   const closePopup = () => setPopupNote(null);
 
+  // FIX: Truncate limit diperbesar (Maks ~65 Karakter atau sekitar 10 kata)
   const truncateBubble = (text: string) =>
-    text && text.length > 20 ? text.substring(0, 20) + '...' : text;
-
-  // FIX: Style untuk bentuk Bubble Note seperti IG
-  const bubbleStyles: React.CSSProperties = {
-    position: 'absolute',
-    bottom: 'calc(100% - 14px)', // Membiarkan bubble overlap sedikit dengan avatar
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'var(--bg-card, #ffffff)',
-    border: '1px solid var(--border-card, #e0e0e0)',
-    borderRadius: '16px', // Lebih bulat
-    padding: '6px 12px',
-    maxWidth: '120px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-    zIndex: 10,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: 'var(--text-main, #1c1e21)',
-    textAlign: 'center',
-    pointerEvents: 'auto',
-  };
-
-  // FIX: Ekor bubble berupa kotak yang diputar 45 derajat (seperti IG)
-  const tailStyles: React.CSSProperties = {
-    content: '""',
-    position: 'absolute',
-    bottom: '-5px',
-    left: '50%',
-    transform: 'translateX(-50%) rotate(45deg)',
-    width: '10px',
-    height: '10px',
-    background: 'var(--bg-card, #ffffff)',
-    borderRight: '1px solid var(--border-card, #e0e0e0)',
-    borderBottom: '1px solid var(--border-card, #e0e0e0)',
-    zIndex: -1,
-  };
+    text && text.length > 65 ? text.substring(0, 65) + '...' : text;
 
   return (
     <div
@@ -117,8 +79,8 @@ export default function FriendStoriesTray({
           display: 'flex',
           gap: '16px',
           overflowX: 'auto',
-          overflowY: 'visible', // Supaya bubble bisa keluar batas scroll
-          paddingTop: '35px', // FIX: Ruang lega agar bubble tidak terpotong
+          overflowY: 'visible', 
+          paddingTop: '30px', // Ruang atas agar awan note tidak terpotong
           paddingBottom: '15px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -127,31 +89,100 @@ export default function FriendStoriesTray({
       >
         {/* Profil sendiri */}
         {currentUser && (
-          <div className="story-avatar-container" style={{ position: 'relative', flexShrink: 0 }}>
-            <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
-              {currentUser.avatar_url ? (
-                <img src={currentUser.avatar_url} alt="Anda" />
-              ) : (
-                <div className="default-avatar">
-                  <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+          <div style={{ position: 'relative', flexShrink: 0, width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ position: 'relative' }}>
+              <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
+                {currentUser.avatar_url ? (
+                  <img src={currentUser.avatar_url} alt="Catatan" />
+                ) : (
+                  <div className="default-avatar">
+                    <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+                  </div>
+                )}
+              </div>
+
+              {/* FIX: Ikon Tambah dipindah ke kiri/kanan atas dan dibalut background putih agar terpisah rapi dari teks */}
+              {!myStatusText && (
+                <button 
+                  onClick={onAddStatus}
+                  style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    left: '-6px',
+                    background: 'var(--bg-main, #ffffff)',
+                    padding: '2px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                    zIndex: 12
+                  }}
+                >
+                  <div style={{ background: '#1f3cff', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-icons" style={{ fontSize: 14, color: 'white', fontWeight: 'bold' }}>add</span>
+                  </div>
+                </button>
+              )}
+
+              {/* FIX: Bubble Awan menutupi profil atas tanpa melebar terlalu jauh */}
+              {myStatusText && (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddStatus?.(); // Kalau diklik milik sendiri, langsung buka input edit
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '-15px', 
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'var(--bg-card, #ffffff)',
+                    border: '1px solid var(--border-card, #e0e0e0)',
+                    borderRadius: '20px', // Membentuk ellipse/oval
+                    padding: '6px 12px',
+                    minWidth: '55px',
+                    maxWidth: '85px', // Mencegah nabrak ke bubble tetangga
+                    zIndex: 10,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+                  }}
+                >
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: 'var(--text-main, #1c1e21)',
+                    textAlign: 'center',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3, // Maksimal 3 baris
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    lineHeight: 1.2,
+                    wordBreak: 'break-word',
+                  }}>
+                    {truncateBubble(myStatusText)}
+                  </div>
+                  {/* Ekor awan mengarah ke bawah */}
+                  <div style={{
+                    content: '""',
+                    position: 'absolute',
+                    bottom: '-4px',
+                    left: '50%',
+                    transform: 'translateX(-50%) rotate(45deg)',
+                    width: '8px',
+                    height: '8px',
+                    background: 'var(--bg-card, #ffffff)',
+                    borderRight: '1px solid var(--border-card, #e0e0e0)',
+                    borderBottom: '1px solid var(--border-card, #e0e0e0)',
+                    zIndex: -1,
+                  }} />
                 </div>
               )}
             </div>
-            <span className="story-username" style={{ color: 'var(--text-main)' }}>Anda</span>
-            <button className="add-status-btn" onClick={onAddStatus}>
-              <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
-            </button>
-
-            {myStatusText && (
-              <div
-                className="note-bubble"
-                style={bubbleStyles}
-                onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
-              >
-                {truncateBubble(myStatusText)}
-                <div style={tailStyles} />
-              </div>
-            )}
+            {/* FIX: Teks diubah jadi Catatan */}
+            <span className="story-username" style={{ color: 'var(--text-main)', marginTop: '6px' }}>Catatan</span>
           </div>
         )}
 
@@ -164,41 +195,82 @@ export default function FriendStoriesTray({
           sortedFriends.map((friend) => (
             <div
               key={friend.id}
-              className="story-avatar-container"
-              style={{ position: 'relative', flexShrink: 0 }}
+              style={{ position: 'relative', flexShrink: 0, width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
               onClick={() =>
                 friend.hasStory
                   ? router.push(`/story/view?id=${friend.storyId}`)
                   : router.push(`/data?id=${friend.id}`)
               }
             >
-              <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
-                {friend.avatar_url ? (
-                  <img src={friend.avatar_url} alt={friend.username} />
-                ) : (
-                  <div className="default-avatar">
-                    <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+              <div style={{ position: 'relative' }}>
+                <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
+                  {friend.avatar_url ? (
+                    <img src={friend.avatar_url} alt={friend.username} />
+                  ) : (
+                    <div className="default-avatar">
+                      <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* FIX: Bubble Awan menutupi profil atas tanpa melebar terlalu jauh */}
+                {friend.status_text && (
+                  <div
+                    onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
+                    style={{
+                      position: 'absolute',
+                      top: '-15px', 
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'var(--bg-card, #ffffff)',
+                      border: '1px solid var(--border-card, #e0e0e0)',
+                      borderRadius: '20px', 
+                      padding: '6px 12px',
+                      minWidth: '55px',
+                      maxWidth: '85px',
+                      zIndex: 10,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: 'var(--text-main, #1c1e21)',
+                      textAlign: 'center',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      lineHeight: 1.2,
+                      wordBreak: 'break-word',
+                    }}>
+                      {truncateBubble(friend.status_text)}
+                    </div>
+                    {/* Ekor awan */}
+                    <div style={{
+                      content: '""',
+                      position: 'absolute',
+                      bottom: '-4px',
+                      left: '50%',
+                      transform: 'translateX(-50%) rotate(45deg)',
+                      width: '8px',
+                      height: '8px',
+                      background: 'var(--bg-card, #ffffff)',
+                      borderRight: '1px solid var(--border-card, #e0e0e0)',
+                      borderBottom: '1px solid var(--border-card, #e0e0e0)',
+                      zIndex: -1,
+                    }} />
                   </div>
                 )}
               </div>
-              <span className="story-username" style={{ color: 'var(--text-main)' }}>{friend.username}</span>
-
-              {friend.status_text && (
-                <div
-                  className="note-bubble"
-                  style={bubbleStyles}
-                  onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
-                >
-                  {truncateBubble(friend.status_text)}
-                  <div style={tailStyles} />
-                </div>
-              )}
+              <span className="story-username" style={{ color: 'var(--text-main)', marginTop: '6px' }}>{friend.username}</span>
             </div>
           ))
         )}
       </div>
 
-      {/* Popup full note */}
+      {/* Popup full note (Bawah) */}
       {popupNote && (
         <>
           <div

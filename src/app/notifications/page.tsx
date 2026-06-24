@@ -176,7 +176,7 @@ export default function NotificationsPage() {
             post_id: postId,
             actor_id: l.user_id,
             created_at: l.created_at,
-            is_read: false, // FIX: set false agar badge muncul
+            is_read: false,
             actor: profilesMap[l.user_id],
             postData: myPosts.find((p) => p.id === postId),
           });
@@ -190,7 +190,7 @@ export default function NotificationsPage() {
             actor_ids: firstTwoIds,
             otherCount,
             created_at: uniqueLikers[0].created_at,
-            is_read: false, // FIX: set false
+            is_read: false,
             actors: firstTwoIds.map(id => profilesMap[id]),
             postData: myPosts.find((p) => p.id === postId),
           });
@@ -238,6 +238,7 @@ export default function NotificationsPage() {
       .subscribe();
   };
 
+  // FIX: Mengupdate state notifikasi agar langsung terbaca (menghilangkan badge menu)
   const markCategoryAsRead = (category: string) => {
     let updated = [...rawNotifs];
     let idsToUpdate: string[] = [];
@@ -253,7 +254,7 @@ export default function NotificationsPage() {
       }
       return n;
     });
-    setRawNotifs(updated);
+    setRawNotifs(updated); // <-- Update state lokal seketika
     if (idsToUpdate.length > 0) {
       supabase.from('notifications').update({ is_read: true }).in('id', idsToUpdate).then(({ error }) => {
         if (error) console.error('Gagal update notifikasi terbaca:', error);
@@ -261,11 +262,16 @@ export default function NotificationsPage() {
     }
   };
 
+  // FIX: Mengupdate state saat notifikasi individual diklik agar titik biru langsung hilang
   const handleNotifClick = async (notif: any) => {
-    if (!notif.is_read && notif.is_db) {
+    if (!notif.is_read) {
       setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+      if (notif.is_db) {
+        await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+      }
     }
+    
+    // Routing...
     if (notif.type === 'follow' && notif.actor_id) { router.push(`/data?id=${notif.actor_id}`); }
     else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) { router.push(`/post?id=${notif.post_id}&openComment=true`); }
     else if (notif.type === 'story_like' && notif.story_id) { router.push(`/story/${notif.story_id}`); }
@@ -359,8 +365,8 @@ export default function NotificationsPage() {
             <div className="status-input-container">
               <input
                 type="text"
-                placeholder="Tulis note (Maks. 50 Karakter)"
-                maxLength={50}
+                placeholder="Tulis note (Maks. 60 Karakter)"
+                maxLength={60}
                 defaultValue={myStatusText}
                 autoFocus
                 className="status-input"
