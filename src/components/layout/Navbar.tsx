@@ -96,21 +96,41 @@ function NavbarContent() {
     isHistoryCoinPage ||
     isWithdrawPage;
 
-  // 1. Definisikan fungsi fetch di luar useEffect agar bisa dipanggil kapan saja
+  // ✅ FUNGSI FETCH UTAMA (dengan chat & optimasi avatar)
   const fetchBadgesAndUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const userId = session.user.id;
 
-    const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('id', userId).single();
-    if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
+    // Avatar
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', userId)
+      .single();
+    if (profile?.avatar_url) {
+      let url = profile.avatar_url;
+      if (url.includes('res.cloudinary.com') && !url.includes('f_auto')) {
+        url = url.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
+      }
+      setAvatarUrl(url);
+    }
 
+    // Chat belum terbaca
+    const { count: chatCount } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .ilike('room_id', `pv_%${userId}%`)
+      .neq('user_id', userId)
+      .neq('status', 'read');
+    if (chatCount !== null) setUnreadChatCount(chatCount);
+
+    // Notifikasi belum terbaca
     const { count: notifCount } = await supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('is_read', false);
-    
     if (notifCount !== null) setUnreadNotifCount(notifCount);
   };
 
