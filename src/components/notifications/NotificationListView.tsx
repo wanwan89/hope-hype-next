@@ -1,7 +1,6 @@
 'use client';
 import React from 'react';
 
-// Interface untuk notifikasi
 interface Notification {
   id: string;
   type: string;
@@ -10,6 +9,9 @@ interface Notification {
     username?: string;
     avatar_url?: string | null;
   };
+  actors?: { username?: string; avatar_url?: string | null }[];
+  actor_ids?: string[];
+  otherCount?: number;
   message?: string;
   amount?: number;
   description?: string;
@@ -48,7 +50,6 @@ export default function NotificationListView({
 }: Props) {
   return (
     <div className="notif-detail-view slide-in-right">
-      {/* Header */}
       <header className="notif-detail-header">
         <button onClick={onBack} className="back-btn btn-press">
           <span className="material-icons">arrow_back</span>
@@ -56,28 +57,19 @@ export default function NotificationListView({
         <h2>{title}</h2>
       </header>
 
-      {/* Daftar notifikasi */}
       <div className="notif-list-container">
         {notifs.length === 0 ? (
           <div className="notif-empty-state">
-            <span
-              className="material-icons"
-              style={{ fontSize: '48px', color: 'var(--border-card)' }}
-            >
-              notifications_none
-            </span>
-            <p style={{ color: 'var(--text-muted)' }}>
-              Belum ada notifikasi di kategori ini.
-            </p>
+            <span className="material-icons" style={{ fontSize: '48px', color: 'var(--border-card)' }}>notifications_none</span>
+            <p style={{ color: 'var(--text-muted)' }}>Belum ada notifikasi di kategori ini.</p>
           </div>
         ) : (
           notifs.map((notif) => {
             const { icon: typeIcon, color } = getIconAndColor(notif.type);
-            const actorName = notif.actor?.username || 'Sistem';
+            const actorName = notif.actor?.username || notif.actor_id || 'Pengguna';
             const actorAvatar = notif.actor?.avatar_url || null;
             const isFollowing = notif.actor_id ? myFollowings.has(notif.actor_id) : false;
 
-            // Thumbnail postingan
             let thumbUrl: string | null = null;
             if (notif.postData) {
               if (notif.postData.image_url) {
@@ -88,12 +80,20 @@ export default function NotificationListView({
               }
             }
 
-            // Pesan HTML
             let messageHtml = '';
             switch (notif.type) {
               case 'like':
                 messageHtml = 'menyukai postinganmu.';
                 break;
+              case 'like_group': {
+                const actor1 = notif.actors?.[0]?.username || 'Pengguna';
+                const actor2 = notif.actors?.[1]?.username;
+                const otherCount = notif.otherCount;
+                messageHtml = actor2
+                  ? `${actor1}, ${actor2} dan ${otherCount} lainnya menyukai postingan Anda.`
+                  : `${actor1} dan ${otherCount} lainnya menyukai postingan Anda.`;
+                break;
+              }
               case 'comment_like':
                 messageHtml = 'menyukai komentarmu.';
                 break;
@@ -120,71 +120,104 @@ export default function NotificationListView({
                 break;
             }
 
+            // Tampilan khusus like_group: dua avatar kecil
+            const avatarElement = notif.type === 'like_group' ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '-8px' }}>
+                {(notif.actors || []).slice(0, 2).map((actor, idx) => (
+                  <img
+                    key={idx}
+                    src={actor?.avatar_url || '/asets/png/profile.webp'}
+                    alt={actor?.username}
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid var(--bg-main)',
+                      marginLeft: idx === 0 ? 0 : -10,
+                      zIndex: idx === 0 ? 2 : 1,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notif.actor_ids?.[idx]) router.push(`/data?id=${notif.actor_ids[idx]}`);
+                    }}
+                  />
+                ))}
+                {/* Ikon badge like */}
+                <div className="notif-icon-badge" style={{ background: color, position: 'relative', marginLeft: -6, zIndex: 3 }}>
+                  <span className="material-icons">{typeIcon}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="notif-avatar-wrapper">
+                {actorAvatar ? (
+                  <img
+                    src={actorAvatar}
+                    alt={actorName}
+                    className="notif-avatar"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`);
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="notif-avatar default-avatar"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`);
+                    }}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: 'var(--bg-secondary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid var(--border-card)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span className="material-icons" style={{ fontSize: 28, color: 'var(--text-muted)' }}>person</span>
+                  </div>
+                )}
+                <div className="notif-icon-badge" style={{ background: color }}>
+                  <span className="material-icons">{typeIcon}</span>
+                </div>
+              </div>
+            );
+
             return (
               <div
                 key={notif.id}
                 className={`notif-item ${!notif.is_read ? 'unread' : ''}`}
                 onClick={() => handleNotifClick(notif)}
               >
-                {/* Avatar + badge ikon */}
-                <div className="notif-avatar-wrapper">
-                  {actorAvatar ? (
-                    <img
-                      src={actorAvatar}
-                      alt={actorName}
-                      className="notif-avatar"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`);
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="notif-avatar default-avatar"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`);
-                      }}
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: '50%',
-                        background: 'var(--bg-secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid var(--border-card)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <span className="material-icons" style={{ fontSize: 28, color: 'var(--text-muted)' }}>
-                        person
-                      </span>
-                    </div>
-                  )}
-                  <div className="notif-icon-badge" style={{ background: color }}>
-                    <span className="material-icons">{typeIcon}</span>
-                  </div>
-                </div>
+                {avatarElement}
 
-                {/* Teks */}
                 <div className="notif-content">
                   <div className="notif-text">
-                    <strong
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`);
-                      }}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      {actorName}
-                    </strong>{' '}
-                    {messageHtml && <span dangerouslySetInnerHTML={{ __html: messageHtml }} />}
+                    {notif.type !== 'like_group' && (
+                      <strong
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (notif.actor_id) router.push(`/data?id=${notif.actor_id}`);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {actorName}
+                      </strong>
+                    )}
+                    {notif.type !== 'like_group' ? (
+                      <> <span dangerouslySetInnerHTML={{ __html: messageHtml }} /></>
+                    ) : (
+                      <span dangerouslySetInnerHTML={{ __html: messageHtml }} />
+                    )}
                   </div>
                   <span className="notif-date">{formatDate(notif.created_at)}</span>
                 </div>
 
-                {/* Tombol aksi */}
                 <div className="notif-action-area">
                   {notif.type === 'follow' && notif.actor_id && (
                     <button
@@ -195,15 +228,10 @@ export default function NotificationListView({
                     </button>
                   )}
                   {thumbUrl && (
-                    <img
-                      src={thumbUrl}
-                      className="notif-post-thumb"
-                      alt="post thumbnail"
-                    />
+                    <img src={thumbUrl} className="notif-post-thumb" alt="post thumbnail" />
                   )}
                 </div>
 
-                {/* Dot belum dibaca */}
                 {!notif.is_read && <div className="notif-unread-dot" />}
               </div>
             );

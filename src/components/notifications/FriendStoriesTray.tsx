@@ -35,14 +35,14 @@ export default function FriendStoriesTray({
 }: Props) {
   const [popupNote, setPopupNote] = useState<{ text: string; username: string; userId: string } | null>(null);
 
-  // 🔥 Potong teks ke maks 50 karakter
-  const truncateText = (text: string, maxLen: number = 50) => {
+  // 🔥 Potong teks ke maks 20 karakter untuk bubble
+  const truncateText = (text: string, maxLen: number = 20) => {
     if (!text) return '';
     if (text.length <= maxLen) return text;
     return text.substring(0, maxLen - 3) + '...';
   };
 
-  // 🔥 Urutkan: yang punya note di depan, lalu yang punya story
+  // Urutkan: yang punya note di depan, lalu yang punya story
   const sortedFriends = [...friends].sort((a, b) => {
     if (a.status_text && !b.status_text) return -1;
     if (!a.status_text && b.status_text) return 1;
@@ -51,24 +51,17 @@ export default function FriendStoriesTray({
     return 0;
   });
 
-  // 🔥 Handler klik bubble
+  // Handler klik bubble (selalu tampilkan popup full note)
   const handleBubbleClick = (e: React.MouseEvent, text: string, username: string, userId: string) => {
     e.stopPropagation();
-    if (text.length > 50) {
-      // Tampilkan popup full note
-      setPopupNote({ text, username, userId });
-    } else {
-      // Navigasi ke profil untuk balas
-      onFriendNoteClick?.(userId);
-    }
+    setPopupNote({ text, username, userId });
   };
 
-  // 🔥 Tutup popup
   const closePopup = () => setPopupNote(null);
 
   return (
     <div className="friend-stories-tray" style={{ position: 'relative' }}>
-      {/* ============ PROFIL SENDIRI ============ */}
+      {/* Profil sendiri */}
       {currentUser && (
         <div className="story-avatar-container" style={{ position: 'relative' }}>
           <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
@@ -76,20 +69,17 @@ export default function FriendStoriesTray({
               <img src={currentUser.avatar_url} alt="Anda" />
             ) : (
               <div className="default-avatar">
-                <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>
-                  person
-                </span>
+                <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
               </div>
             )}
           </div>
           <span className="story-username">Anda</span>
 
-          {/* Tombol + untuk tambah note */}
           <button className="add-status-btn" onClick={onAddStatus}>
             <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
           </button>
 
-          {/* Bubble note sendiri */}
+          {/* Bubble note sendiri: selalu muncul jika ada teks, klik = popup */}
           {myStatusText && (
             <div
               className="note-bubble"
@@ -106,48 +96,36 @@ export default function FriendStoriesTray({
                 zIndex: 5,
                 cursor: 'pointer',
               }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (myStatusText.length > 50) {
-                  setPopupNote({ text: myStatusText, username: 'Anda', userId: currentUser.id });
-                }
-              }}
+              onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
             >
-              <span
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--text-main)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: 'block',
-                }}
-              >
+              <span style={{
+                fontSize: '11px',
+                color: 'var(--text-main)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: 'block',
+              }}>
                 {truncateText(myStatusText)}
               </span>
-              {/* Ekor bubble */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: -5,
-                  right: 22,
-                  width: 0,
-                  height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid var(--bg-card, #ffffff)',
-                }}
-              />
+              <div style={{
+                position: 'absolute',
+                bottom: -5,
+                right: 22,
+                width: 0,
+                height: 0,
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderTop: '6px solid var(--bg-card, #ffffff)',
+              }} />
             </div>
           )}
         </div>
       )}
 
-      {/* ============ DAFTAR TEMAN ============ */}
+      {/* Teman */}
       {sortedFriends.length === 0 && !currentUser ? (
-        <div style={{ padding: '0 15px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          Belum mengikuti siapa pun.
-        </div>
+        <div style={{ padding: '0 15px', fontSize: '13px', color: 'var(--text-muted)' }}>Belum mengikuti siapa pun.</div>
       ) : (
         sortedFriends.map((friend) => (
           <div
@@ -165,15 +143,12 @@ export default function FriendStoriesTray({
                 <img src={friend.avatar_url} alt={friend.username} />
               ) : (
                 <div className="default-avatar">
-                  <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>
-                    person
-                  </span>
+                  <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                 </div>
               )}
             </div>
             <span className="story-username">{friend.username}</span>
 
-            {/* Bubble note teman */}
             {friend.status_text && (
               <div
                 className="note-bubble"
@@ -192,51 +167,39 @@ export default function FriendStoriesTray({
                 }}
                 onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
               >
-                <span
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--text-main)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: 'block',
-                  }}
-                >
+                <span style={{
+                  fontSize: '11px',
+                  color: 'var(--text-main)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: 'block',
+                }}>
                   {truncateText(friend.status_text)}
                 </span>
-                {/* Ekor bubble */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: -5,
-                    right: 22,
-                    width: 0,
-                    height: 0,
-                    borderLeft: '6px solid transparent',
-                    borderRight: '6px solid transparent',
-                    borderTop: '6px solid var(--bg-card, #ffffff)',
-                  }}
-                />
+                <div style={{
+                  position: 'absolute',
+                  bottom: -5,
+                  right: 22,
+                  width: 0,
+                  height: 0,
+                  borderLeft: '6px solid transparent',
+                  borderRight: '6px solid transparent',
+                  borderTop: '6px solid var(--bg-card, #ffffff)',
+                }} />
               </div>
             )}
           </div>
         ))
       )}
 
-      {/* ============ POPUP FULL NOTE ============ */}
+      {/* Popup full note */}
       {popupNote && (
         <>
-          {/* Overlay transparan */}
           <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.4)',
-              zIndex: 9998,
-            }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }}
             onClick={closePopup}
           />
-          {/* Popup */}
           <div
             style={{
               position: 'fixed',
@@ -257,27 +220,22 @@ export default function FriendStoriesTray({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <span className="material-icons" style={{ fontSize: 24, color: '#1f3cff' }}>sticky_note_2</span>
               <strong style={{ fontSize: 16 }}>{popupNote.username}</strong>
             </div>
 
-            {/* Teks note penuh */}
-            <div
-              style={{
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                background: 'var(--bg-secondary, #f3f4f6)',
-                padding: '12px',
-                borderRadius: '12px',
-                marginBottom: 16,
-              }}
-            >
+            <div style={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              background: 'var(--bg-secondary, #f3f4f6)',
+              padding: '12px',
+              borderRadius: '12px',
+              marginBottom: 16,
+            }}>
               {popupNote.text}
             </div>
 
-            {/* Tombol aksi */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 style={{

@@ -1,6 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase'; // 🔥 FIX 1: Import Supabase untuk rekam view
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
 import MusicMarquee from './MusicMarquee';
@@ -103,6 +104,9 @@ const PostCard: React.FC<PostCardProps> = ({
   const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // Ref untuk memastikan view hanya dihitung sekali per render
+  const hasViewedRef = useRef(false);
+
   const [showMoreButton, setShowMoreButton] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -130,36 +134,62 @@ const PostCard: React.FC<PostCardProps> = ({
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
-    if (!media || !card) return;
+    if (!card) return;
 
-    media.muted = isGloballyMuted;
+    if (media) media.muted = isGloballyMuted;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            media.muted = isGloballyMuted;
-            media.play().catch(() => {
-              media.muted = true;
-              media.play().catch(() => {});
-            });
+            // Putar media jika ada
+            if (media) {
+              media.muted = isGloballyMuted;
+              media.play().catch(() => {
+                media.muted = true;
+                media.play().catch(() => {});
+              });
+            }
 
+            // Pause media lain yang sedang jalan
             document
               .querySelectorAll('.post-video-element, .post-audio-element')
               .forEach((el: any) => {
                 if (el !== media && !el.paused) el.pause();
               });
+
+            // 🔥 FIX BUG 1: Rekam view saat elemen terlihat di layar (min 50% terlihat) 🔥
+            if (!hasViewedRef.current && postIdStr) {
+              hasViewedRef.current = true; // Set true agar tidak dipanggil berulang
+              const recordView = async () => {
+                try {
+                  // Coba update menggunakan RPC (jika ada)
+                  const { error } = await supabase.rpc('increment_post_view', { p_id: postIdStr });
+                  
+                  // Fallback: Jika RPC tidak ada, update manual dengan mengambil data view sekarang + 1
+                  if (error) {
+                    const { data } = await supabase.from('posts').select('views').eq('id', postIdStr).single();
+                    if (data) {
+                      await supabase.from('posts').update({ views: (data.views || 0) + 1 }).eq('id', postIdStr);
+                    }
+                  }
+                } catch (err) {
+                  console.error("Gagal update view:", err);
+                }
+              };
+              recordView();
+            }
           } else {
-            media.pause();
+            if (media) media.pause();
           }
         });
       },
-      { threshold: 0.3 }
+      { threshold: 0.5 } // Threshold 0.5 artinya view dihitung jika 50% elemen terlihat di layar
     );
 
     observer.observe(card);
     return () => observer.disconnect();
-  }, [isGloballyMuted]);
+  }, [isGloballyMuted, postIdStr]);
 
   // Sinkronisasi status video
   useEffect(() => {
@@ -274,7 +304,7 @@ const PostCard: React.FC<PostCardProps> = ({
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
       wasPlayingRef.current = !video.paused;
-      video.pause(); // Pause saat di-drag agar suara tidak glitch
+      video.pause();
     }
   }, []);
 
@@ -284,7 +314,7 @@ const PostCard: React.FC<PostCardProps> = ({
     setVideoCurrentTime(time);
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      video.currentTime = time; // Update frame video secara langsung
+      video.currentTime = time;
     }
   }, []);
 
@@ -292,22 +322,18 @@ const PostCard: React.FC<PostCardProps> = ({
     e.stopPropagation();
     setIsSeeking(false);
     
-    // Biarkan bar tetap terlihat sejenak setelah dilepas lalu hilangkan
     setTimeout(() => {
       if (!isSeeking) setIsBarVisible(false);
     }, 1500);
 
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      // Sinkronkan sekali lagi
       video.currentTime = videoCurrentTime; 
-      // Lanjutkan video jika sebelumnya bermain
       if (wasPlayingRef.current) {
         video.play().catch(() => {});
       }
     }
   }, [videoCurrentTime, isSeeking]);
-
 
   // Handler klik area video (single/double tap)
   const handleVideoClick = useCallback((e: React.MouseEvent) => {
@@ -316,7 +342,6 @@ const PostCard: React.FC<PostCardProps> = ({
     const lastTap = lastTapVideoRef.current;
 
     if (now - lastTap < 500) {
-      // Double tap
       lastTapVideoRef.current = 0;
       if (tapTimerRef.current) {
         clearTimeout(tapTimerRef.current);
@@ -365,24 +390,24 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // 🔥 PERUBAHAN TAMPILAN: Full-Width, Dark Mode Ready, dengan Celah Bawah 🔥
+  // Style card
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: 'var(--bg-card)', // Support Dark Mode/Light Mode
-      borderRadius: '0px',          // Pinggir kiri & kanan menempel layar tanpa lengkungan
-      padding: '0',                 // Padding 0 agar media bisa full width
-      borderLeft: 'none',           // Hilangkan border kiri
-      borderRight: 'none',          // Hilangkan border kanan
+      background: 'var(--bg-card)', 
+      borderRadius: '0px',
+      padding: '0',
+      borderLeft: 'none',
+      borderRight: 'none',
       borderTop: '1px solid var(--border-card)',
       borderBottom: '1px solid var(--border-card)',
       position: 'relative' as const,
-      width: '100vw',               // Lebar 100% dari viewport layar
-      marginLeft: 'calc(-50vw + 50%)', // Trik untuk menabrak padding dari parent div (kiri)
-      marginRight: 'calc(-50vw + 50%)', // Trik untuk menabrak padding dari parent div (kanan)
-      marginBottom: '12px',         // Memberikan celah antar postingan atas dan bawah
+      width: '100vw',
+      marginLeft: 'calc(-50vw + 50%)',
+      marginRight: 'calc(-50vw + 50%)',
+      marginBottom: '12px',
       boxSizing: 'border-box' as const,
-      boxShadow: 'none',            // Hilangkan bayangan agar terlihat menyatu (seamless)
+      boxShadow: 'none',
       textAlign: 'left' as const,
       zIndex: actuallyExpanded ? 50 : 1,
     }),
@@ -614,7 +639,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     </div>
                   )}
 
-                  {/* 🔥 Progress Bar yang Interaktif dan Halus 🔥 */}
+                  {/* Progress Bar */}
                   <div
                     style={{
                       position: 'absolute',
@@ -629,7 +654,6 @@ const PostCard: React.FC<PostCardProps> = ({
                     onPointerEnter={() => setIsBarVisible(true)}
                     onPointerLeave={() => { if (!isSeeking) setIsBarVisible(false); }}
                   >
-                    {/* Visual Bar - Selalu tampil tapi tipis, menebal saat disentuh/di-hover */}
                     <div style={{
                       position: 'absolute',
                       bottom: 0,
@@ -648,13 +672,12 @@ const PostCard: React.FC<PostCardProps> = ({
                       }} />
                     </div>
 
-                    {/* Input range yang transparan tapi bisa di-drag */}
                     {videoLoaded && (
                       <input
                         type="range"
                         min={0}
                         max={videoDuration || 1}
-                        step="0.001" // 🔥 PENTING: Membuat pergerakan slide mulus
+                        step="0.001"
                         value={videoCurrentTime}
                         onMouseDown={handleVideoSeekStart}
                         onTouchStart={handleVideoSeekStart}
@@ -666,9 +689,9 @@ const PostCard: React.FC<PostCardProps> = ({
                           bottom: 0,
                           left: 0,
                           width: '100%',
-                          height: '24px', // Area tekan lebih luas agar mudah disentuh
+                          height: '24px',
                           margin: 0,
-                          opacity: 0, // Dibuat invisible, pengguna hanya melihat Visual Bar di atas
+                          opacity: 0,
                           cursor: 'pointer',
                           zIndex: 5
                         }}
@@ -751,7 +774,6 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          {/* 🔥 Padding '12px 15px' agar teks aman dan tidak nyangkut di pinggir HP 🔥 */}
           <div className="overlay" style={{ pointerEvents: 'auto', padding: '12px 15px' }}>
             <div
               style={{
@@ -802,7 +824,6 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* Bio dengan expand/collapse */}
             <div
               style={{
                 maxHeight: actuallyExpanded ? 'none' : 'auto',
@@ -964,7 +985,6 @@ const PostCard: React.FC<PostCardProps> = ({
         </>
       ) : (
         // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
-        // 🔥 Padding '15px' ditambahkan agar text post tidak mentok pinggir HP 🔥
         <div style={{ padding: '15px' }}>
           <div
             style={{
@@ -1101,7 +1121,6 @@ const PostCard: React.FC<PostCardProps> = ({
             </span>
           )}
 
-          {/* Bio untuk postingan teks - tampilan penuh */}
           <div
             style={{
               marginBottom: '12px',
@@ -1116,7 +1135,6 @@ const PostCard: React.FC<PostCardProps> = ({
             {bioContent}
           </div>
 
-          {/* Audio player */}
           {post.audio_src && (
             <>
               <audio
