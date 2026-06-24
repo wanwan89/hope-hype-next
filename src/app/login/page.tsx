@@ -2,7 +2,7 @@
 
 import React, { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase'; // Sesuaikan path ini dengan config Supabase Anda
+import { supabase } from '@/lib/supabase'; // Sesuaikan path ini
 import './Login.css';
 
 type Mode = 'login' | 'signup';
@@ -87,7 +87,7 @@ export default function LoginPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push('/'); // Redirect ke dashboard
+        router.push('/'); 
       }
     } catch (err: any) {
       handleError(err.message || 'Authentication failed');
@@ -136,15 +136,10 @@ export default function LoginPage() {
     setLoading('passkey');
     clearMessages();
     try {
-      // Pengecekan support WebAuthn di browser
       if (!window.PublicKeyCredential) {
         throw new Error('Passkeys are not supported on this device/browser.');
       }
-      
-      // Catatan: Ini adalah stub. Anda perlu mengintegrasikan backend Passkey/Supabase Beta 
-      // navigator.credentials.get({ publicKey: ... })
-      await new Promise((res) => setTimeout(res, 1000)); // Simulasi
-      
+      await new Promise((res) => setTimeout(res, 1000)); 
       throw new Error('Passkey login is not configured on the server yet.');
     } catch (err: any) {
       handleError(err.message || 'Passkey authentication failed');
@@ -153,13 +148,12 @@ export default function LoginPage() {
     }
   };
 
-  // --- Toggle Mode ---
   const toggleMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
     clearMessages();
   };
 
-  // --- SVG Icons (Inline, No external libraries) ---
+  // --- SVG Icons ---
   const LoaderIcon = () => (
     <svg className="spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
@@ -167,15 +161,14 @@ export default function LoginPage() {
   );
 
   const LogoSVG = () => (
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="app-logo">
-      <rect width="40" height="40" rx="12" fill="var(--color-primary)" />
-      <path d="M12 20L18 26L28 14" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="app-logo">
+      <rect width="48" height="48" rx="14" fill="var(--text-main, #0f172a)" />
     </svg>
   );
 
   return (
     <div className="auth-layout">
-      <div className="auth-card" role="main">
+      <div className="auth-container" role="main">
         
         {/* Header */}
         <header className="auth-header">
@@ -184,21 +177,15 @@ export default function LoginPage() {
           <p>{mode === 'login' ? 'Sign in to continue' : 'Sign up to get started'}</p>
         </header>
 
-        {/* Notifications (Fixed height to prevent CLS) */}
+        {/* Alerts */}
         <div className="auth-alerts" aria-live="polite">
           {errorMsg && <div className="alert alert-error">{errorMsg}</div>}
           {successMsg && <div className="alert alert-success">{successMsg}</div>}
         </div>
 
-        {/* OAuth & Passkey Buttons */}
+        {/* OAuth Buttons */}
         <div className="auth-socials">
-          <button 
-            type="button" 
-            className="btn-social" 
-            onClick={() => handleOAuth('google')}
-            disabled={loading !== null}
-            aria-label="Continue with Google"
-          >
+          <button type="button" className="btn-social" onClick={() => handleOAuth('google')} disabled={loading !== null}>
             {loading === 'google' ? <LoaderIcon /> : (
               <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -210,13 +197,7 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <button 
-            type="button" 
-            className="btn-social" 
-            onClick={() => handleOAuth('discord')}
-            disabled={loading !== null}
-            aria-label="Continue with Discord"
-          >
+          <button type="button" className="btn-social" onClick={() => handleOAuth('discord')} disabled={loading !== null}>
             {loading === 'discord' ? <LoaderIcon /> : (
               <svg width="20" height="20" viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg">
                 <path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
@@ -225,18 +206,11 @@ export default function LoginPage() {
             Continue with Discord
           </button>
 
-          <button 
-            type="button" 
-            className="btn-social" 
-            onClick={handlePasskey}
-            disabled={loading !== null}
-            aria-label="Continue with Passkey"
-          >
+          <button type="button" className="btn-social" onClick={handlePasskey} disabled={loading !== null}>
             {loading === 'passkey' ? <LoaderIcon /> : (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                <circle cx="12" cy="16" r="1" />
               </svg>
             )}
             Continue with Passkey
@@ -245,22 +219,18 @@ export default function LoginPage() {
 
         {/* Divider */}
         <div className="auth-divider">
-          <span>or</span>
+          <span>OR</span>
         </div>
 
         {/* Main Form */}
         <form onSubmit={handleCredentialsAuth} className="auth-form" noValidate>
           {mode === 'signup' && (
-            <div className="form-group">
+            <div className="form-group slide-down">
               <label htmlFor="username">Username</label>
               <input 
-                id="username" 
-                type="text" 
-                value={username} 
+                id="username" type="text" value={username} 
                 onChange={(e) => setUsername(e.target.value)} 
-                placeholder="hypeuser"
-                disabled={loading !== null}
-                aria-label="Username"
+                placeholder="hypeuser" disabled={loading !== null}
               />
             </div>
           )}
@@ -268,62 +238,40 @@ export default function LoginPage() {
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input 
-              id="email" 
-              type="email" 
-              value={email} 
+              id="email" type="email" value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              placeholder="name@example.com"
-              disabled={loading !== null}
-              aria-label="Email Address"
+              placeholder="name@example.com" disabled={loading !== null}
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input 
-              id="password" 
-              type="password" 
-              value={password} 
+              id="password" type="password" value={password} 
               onChange={(e) => setPassword(e.target.value)} 
-              placeholder="••••••••"
-              disabled={loading !== null}
-              aria-label="Password"
+              placeholder="••••••••" disabled={loading !== null}
             />
           </div>
 
           {mode === 'signup' && (
-            <div className="form-group fade-in">
+            <div className="form-group slide-down">
               <label htmlFor="confirmPassword">Confirm Password</label>
               <input 
-                id="confirmPassword" 
-                type="password" 
-                value={confirmPassword} 
+                id="confirmPassword" type="password" value={confirmPassword} 
                 onChange={(e) => setConfirmPassword(e.target.value)} 
-                placeholder="••••••••"
-                disabled={loading !== null}
-                aria-label="Confirm Password"
+                placeholder="••••••••" disabled={loading !== null}
               />
             </div>
           )}
 
-          <button 
-            type="submit" 
-            className="btn-primary mt-2" 
-            disabled={loading !== null}
-            aria-label={mode === 'login' ? 'Sign In' : 'Create Account'}
-          >
+          <button type="submit" className="btn-primary mt-2" disabled={loading !== null}>
             {loading === 'credentials' ? <LoaderIcon /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </button>
 
           {mode === 'login' && (
-            <button 
-              type="button" 
-              className="btn-magic-link" 
-              onClick={handleMagicLink}
-              disabled={loading !== null}
-            >
+            <button type="button" className="btn-magic-link" onClick={handleMagicLink} disabled={loading !== null}>
               {loading === 'magiclink' ? 'Sending...' : 'Send Magic Link Instead'}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                 <polyline points="22,6 12,13 2,6" />
               </svg>
@@ -331,7 +279,7 @@ export default function LoginPage() {
           )}
         </form>
 
-        {/* Footer Toggle */}
+        {/* Footer */}
         <footer className="auth-footer">
           <p>
             {mode === 'login' ? "Don't have an account?" : "Already have an account?"}

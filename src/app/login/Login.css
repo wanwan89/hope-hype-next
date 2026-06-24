@@ -1,388 +1,325 @@
 /* =========================================
-   DESIGN SYSTEM 2026 (Variables)
+   FULL SCREEN LAYOUT (No Card/Box)
+   Bergantung pada Global CSS Variables
    ========================================= */
-   :root {
-    --color-bg: #f8fafc;
-    --color-surface: #ffffff;
-    --color-text: #0f172a;
-    --color-text-muted: #64748b;
-    --color-border: #e2e8f0;
-    --color-primary: #000000;
-    --color-primary-hover: #1e293b;
-    --color-error: #ef4444;
-    --color-error-bg: #fef2f2;
-    --color-success: #10b981;
-    --color-success-bg: #ecfdf5;
-  
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-full: 9999px;
-  
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-  
-    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  /* OLED Dark Mode */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --color-bg: #000000;
-      --color-surface: #0a0a0a;
-      --color-text: #f8fafc;
-      --color-text-muted: #94a3b8;
-      --color-border: #262626;
-      --color-primary: #ffffff;
-      --color-primary-hover: #e2e8f0;
-      --color-error: #f87171;
-      --color-error-bg: #450a0a;
-      --color-success: #34d399;
-      --color-success-bg: #022c22;
-      --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.8);
-    }
-  }
-  
-  /* Jika menggunakan data-theme */
-  [data-theme='dark'] {
-    --color-bg: #000000;
-    --color-surface: #0a0a0a;
-    --color-text: #f8fafc;
-    --color-text-muted: #94a3b8;
-    --color-border: #262626;
-    --color-primary: #ffffff;
-    --color-primary-hover: #e2e8f0;
-  }
-  
-  /* =========================================
-     LAYOUT (Mobile First)
-     ========================================= */
-  .auth-layout {
-    min-height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--color-bg);
-    padding: 16px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: var(--color-text);
-  }
-  
-  .auth-card {
-    width: 100%;
-    max-width: 420px;
-    background-color: var(--color-surface);
-    border-radius: var(--radius-lg);
-    padding: 32px 24px;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--color-border);
-    animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  @media (min-width: 768px) {
-    .auth-card {
-      padding: 40px;
-    }
-  }
-  
-  /* =========================================
-     HEADER
-     ========================================= */
-  .auth-header {
-    text-align: center;
-    margin-bottom: 24px;
-  }
-  
-  .app-logo {
-    margin-bottom: 16px;
-  }
-  
-  .auth-header h1 {
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin: 0 0 6px 0;
-  }
-  
-  .auth-header p {
-    font-size: 14px;
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-  
-  /* =========================================
-     ALERTS (Mencegah CLS dengan min-height)
-     ========================================= */
-  .auth-alerts {
-    min-height: 48px; 
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-  }
-  
-  .alert {
-    width: 100%;
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    font-weight: 500;
-    animation: fadeIn 0.3s ease;
-  }
-  
-  .alert-error {
-    background-color: var(--color-error-bg);
-    color: var(--color-error);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-  }
-  
-  .alert-success {
-    background-color: var(--color-success-bg);
-    color: var(--color-success);
-    border: 1px solid rgba(16, 185, 129, 0.2);
-  }
-  
-  /* =========================================
-     SOCIAL BUTTONS
-     ========================================= */
-  .auth-socials {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .btn-social {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-    height: 44px;
-    background-color: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    color: var(--color-text);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition);
-    /* Paksa GPU rendering untuk animasi halus */
-    transform: translateZ(0); 
-  }
-  
-  .btn-social:hover:not(:disabled) {
-    background-color: var(--color-bg);
-    border-color: var(--color-text-muted);
-  }
-  
-  .btn-social:active:not(:disabled) {
-    transform: scale(0.98);
-  }
-  
-  .btn-social:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  
-  /* =========================================
-     DIVIDER
-     ========================================= */
-  .auth-divider {
-    position: relative;
-    text-align: center;
-    margin: 24px 0;
-  }
-  
-  .auth-divider::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background-color: var(--color-border);
-  }
-  
-  .auth-divider span {
-    position: relative;
-    background-color: var(--color-surface);
-    padding: 0 12px;
-    color: var(--color-text-muted);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  
-  /* =========================================
-     FORM & INPUTS
-     ========================================= */
-  .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  
-  .form-group label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-  
-  .form-group input {
-    width: 100%;
-    height: 44px;
-    padding: 0 16px;
-    background-color: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    color: var(--color-text);
-    font-size: 14px;
-    transition: var(--transition);
-    box-sizing: border-box;
-  }
-  
-  .form-group input::placeholder {
-    color: var(--color-text-muted);
-    opacity: 0.5;
-  }
-  
-  .form-group input:focus {
-    outline: none;
-    border-color: var(--color-text);
-    box-shadow: 0 0 0 1px var(--color-text);
-  }
-  
-  .form-group input:disabled {
-    background-color: var(--color-bg);
-    opacity: 0.6;
-  }
-  
-  /* Fix Autofill Styles untuk OLED Dark Mode */
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover, 
-  input:-webkit-autofill:focus, 
-  input:-webkit-autofill:active{
-    -webkit-box-shadow: 0 0 0 30px var(--color-surface) inset !important;
-    -webkit-text-fill-color: var(--color-text) !important;
-    transition: background-color 5000s ease-in-out 0s;
-  }
-  
-  /* =========================================
-     BUTTONS (Primary & Magic Link)
-     ========================================= */
-  .mt-2 {
-    margin-top: 8px;
-  }
-  
-  .btn-primary {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 44px;
-    background-color: var(--color-primary);
-    color: var(--color-surface);
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    transform: translateZ(0);
-  }
-  
-  .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-primary-hover);
-  }
-  
-  .btn-primary:active:not(:disabled) {
-    transform: scale(0.98);
-  }
-  
-  .btn-primary:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-  
-  .btn-magic-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: var(--color-text-muted);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 8px;
-    transition: var(--transition);
-  }
-  
-  .btn-magic-link:hover:not(:disabled) {
-    color: var(--color-text);
-  }
-  
-  /* =========================================
-     FOOTER
-     ========================================= */
-  .auth-footer {
-    margin-top: 24px;
-    text-align: center;
-  }
-  
-  .auth-footer p {
-    font-size: 14px;
-    color: var(--color-text-muted);
-  }
-  
-  .btn-toggle {
-    background: none;
-    border: none;
-    color: var(--color-text);
-    font-weight: 600;
-    cursor: pointer;
-    margin-left: 6px;
-    padding: 0;
-    font-size: 14px;
-    transition: var(--transition);
-  }
-  
-  .btn-toggle:hover {
-    text-decoration: underline;
-  }
-  
-  /* =========================================
-     ANIMATIONS & UTILS
-     ========================================= */
-  .fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-  
-  @keyframes slideUpFade {
-    0% { opacity: 0; transform: translateY(16px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  
-  @keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-  }
-  
-  /* Spinner 60fps */
-  .spinner {
-    width: 18px;
-    height: 18px;
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    100% { transform: rotate(360deg); }
-  }
+
+.auth-layout {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent; /* Ikut background global body */
+  font-family: 'Inter', -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 400px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* =========================================
+   HEADER & LOGO
+   ========================================= */
+.auth-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.app-logo {
+  margin-bottom: 16px;
+}
+
+.auth-header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px 0;
+  color: var(--text-main, #0f172a);
+}
+
+.auth-header p {
+  font-size: 15px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+/* =========================================
+   ALERTS
+   ========================================= */
+.auth-alerts {
+  min-height: 48px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  animation: slideDown 0.3s ease;
+}
+
+.alert-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.alert-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* =========================================
+   SOCIAL BUTTONS
+   ========================================= */
+.auth-socials {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  background-color: transparent;
+  border: 1px solid var(--border-color, #333639);
+  border-radius: 12px;
+  color: var(--text-main, #0f172a);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  transform: translateZ(0);
+}
+
+.btn-social:hover:not(:disabled) {
+  background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  border-color: var(--text-muted, #64748b);
+}
+
+.btn-social:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-social:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   DIVIDER
+   ========================================= */
+.auth-divider {
+  position: relative;
+  text-align: center;
+  margin: 28px 0;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: var(--border-color, #333639);
+}
+
+.auth-divider span {
+  position: relative;
+  background-color: var(--bg-main, #ffffff);
+  padding: 0 16px;
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* =========================================
+   FORM & INPUTS
+   ========================================= */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main, #0f172a);
+}
+
+.form-group input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  background-color: transparent;
+  border: 1px solid var(--border-color, #333639);
+  border-radius: 12px;
+  color: var(--text-main, #0f172a);
+  font-size: 15px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-group input::placeholder {
+  color: var(--text-muted, #64748b);
+  opacity: 0.6;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--text-main, #0f172a);
+  box-shadow: 0 0 0 1px var(--text-main, #0f172a);
+}
+
+.form-group input:disabled {
+  opacity: 0.6;
+}
+
+/* Fix Autofill transparan mengikuti Global CSS */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--bg-main, #ffffff) inset !important;
+  -webkit-text-fill-color: var(--text-main, #0f172a) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* =========================================
+   PRIMARY BUTTON (Sign In)
+   ========================================= */
+.mt-2 {
+  margin-top: 12px;
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  /* Dibalik agar High Contrast (putih di dark mode, hitam di light mode) */
+  background-color: var(--text-main, #0f172a);
+  color: var(--bg-main, #ffffff);
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  transform: translateZ(0);
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   MAGIC LINK & FOOTER
+   ========================================= */
+.btn-magic-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 12px 0;
+  transition: color 0.2s ease;
+}
+
+.btn-magic-link:hover:not(:disabled) {
+  color: var(--text-main, #0f172a);
+}
+
+.auth-footer {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.auth-footer p {
+  font-size: 14px;
+  color: var(--text-muted, #64748b);
+}
+
+.btn-toggle {
+  background: none;
+  border: none;
+  color: var(--text-main, #0f172a);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+  padding: 0;
+  font-size: 14px;
+  transition: opacity 0.2s ease;
+}
+
+.btn-toggle:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+/* =========================================
+   ANIMATIONS & UTILS
+   ========================================= */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-down {
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+/* Spinner 60fps */
+.spinner {
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
