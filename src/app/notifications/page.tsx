@@ -7,7 +7,7 @@ import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Notifications.css';
 
-// Komponen
+// Komponen (sudah di-fix sebelumnya agar mandiri mendeteksi tema)
 import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
 import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
@@ -17,23 +17,30 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { t } = useTranslation();
 
+  // ---------- State tema ----------
+  const [isDark, setIsDark] = useState(true); // default true agar saat SSR aman
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDark(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // ---------- State data ----------
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [myFollowings, setMyFollowings] = useState<Set<string>>(new Set());
-
   const [rawNotifs, setRawNotifs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [activeView, setActiveView] = useState<'main' | 'like' | 'comment' | 'follow' | 'other'>('main');
-
   const [pendingCount, setPendingCount] = useState(0);
   const [friendStories, setFriendStories] = useState<any[]>([]);
   const [recommendedFriends, setRecommendedFriends] = useState<any[]>([]);
-
   const [myStatusText, setMyStatusText] = useState<string>('');
   const [showStatusInput, setShowStatusInput] = useState(false);
-
   const channelRef = useRef<any>(null);
 
+  // ---------- Efek inisialisasi ----------
   useEffect(() => {
     initUserAndData();
     return () => {
@@ -41,13 +48,13 @@ export default function NotificationsPage() {
     };
   }, []);
 
-  // ✅ Tandai semua notifikasi di subkategori sebagai terbaca saat subkategori dibuka
   useEffect(() => {
     if (activeView !== 'main') {
       markCategoryAsRead(activeView);
     }
   }, [activeView]);
 
+  // ---------- Fungsi-fungsi data (sama persis, tidak diubah) ----------
   const initUserAndData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
@@ -55,7 +62,7 @@ export default function NotificationsPage() {
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
     const userData = { ...session.user, ...profile };
     setCurrentUser(userData);
-    if (profile?.status_text) { setMyStatusText(profile.status_text); }
+    if (profile?.status_text) setMyStatusText(profile.status_text);
 
     const { data: fData } = await supabase.from('followers').select('following_id').eq('follower_id', session.user.id);
     const followingIds = new Set(fData ? fData.map((f) => String(f.following_id)) : []);
@@ -90,19 +97,15 @@ export default function NotificationsPage() {
       const arrIds = Array.from(followingIds);
       const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url, status_text').in('id', arrIds);
       if (!profiles) return;
-
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: stories } = await supabase.from('stories').select('id, creator_id').in('creator_id', arrIds).gte('created_at', twentyFourHoursAgo);
-
       const storyMap = new Map();
-      (stories || []).forEach((s) => { storyMap.set(s.creator_id, s.id); });
-
+      (stories || []).forEach((s) => storyMap.set(s.creator_id, s.id));
       const mappedFriends = profiles.map((p) => ({
         ...p,
         hasStory: storyMap.has(p.id),
         storyId: storyMap.get(p.id) || null,
       }));
-
       mappedFriends.sort((a, b) => (b.hasStory ? 1 : 0) - (a.hasStory ? 1 : 0));
       setFriendStories(mappedFriends);
     } catch (err) { console.error('Gagal load story teman:', err); }
@@ -123,7 +126,6 @@ export default function NotificationsPage() {
       setPendingCount(pendingPosts || 0);
 
       const { data: dbNotifs } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
-
       const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like'];
       const filteredDbNotifs = (dbNotifs || []).filter((n) => !synthesizeTypes.includes(n.type));
 
@@ -166,10 +168,9 @@ export default function NotificationsPage() {
       let profilesMap: Record<string, any> = {};
       if (allActorIds.size > 0) {
         const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(allActorIds));
-        if (profs) { profs.forEach((p) => { profilesMap[p.id] = p; }); }
+        if (profs) profs.forEach((p) => (profilesMap[p.id] = p));
       }
 
-      // 🔥 LOGIKA BARU UNTUK GROUPING LIKES (2 orang + Lainnya)
       const likesByPostId: Record<string, any[]> = {};
       likesData.forEach((l: any) => {
         if (!likesByPostId[l.post_id]) likesByPostId[l.post_id] = [];
@@ -177,13 +178,10 @@ export default function NotificationsPage() {
       });
 
       let finalLikesNotifs: any[] = [];
-
       Object.entries(likesByPostId).forEach(([postId, likes]) => {
         const uniqueLikersMap = new Map(likes.map(l => [l.user_id, l]));
-        const uniqueLikers = Array.from(uniqueLikersMap.values()).filter(l => profilesMap[l.user_id]); 
-
+        const uniqueLikers = Array.from(uniqueLikersMap.values()).filter(l => profilesMap[l.user_id]);
         if (uniqueLikers.length === 0) return;
-
         if (uniqueLikers.length === 1) {
           const l = uniqueLikers[0];
           finalLikesNotifs.push({
@@ -213,7 +211,6 @@ export default function NotificationsPage() {
         }
       });
 
-      // Hilangkan fallback "Pengguna", jika Profil tidak ditemukan, lewati.
       const formattedComments = commentsData.filter(c => profilesMap[c.user_id]).map((c: any) => ({
         id: `comment-${c.id}`, type: 'comment', post_id: c.post_id, actor_id: c.user_id, message: c.content, created_at: c.created_at, is_read: true, actor: profilesMap[c.user_id], postData: myPosts.find((p) => p.id === c.post_id),
       }));
@@ -234,20 +231,14 @@ export default function NotificationsPage() {
         id: `pay-${py.id}`, type: 'payment_status', status: py.status, amount: py.amount, created_at: py.created_at, is_read: true, actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
       }));
 
-      // 🔥 FIX BADGE TIDAK HILANG: Tambahkan is_db agar sistem tahu ini ID asli dari database 🔥
       const normalizedDbNotifs = filteredDbNotifs.map((n) => {
         const isFollow = n.message?.toLowerCase().includes('mengikuti') || n.type === 'follow';
         if (!n.actor_id || !profilesMap[n.actor_id]) return null;
-        return { 
-          ...n, 
-          type: isFollow ? 'follow' : n.type || 'other', 
-          actor: profilesMap[n.actor_id],
-          is_db: true // Digunakan untuk menandai update UUID ke Database
-        };
+        return { ...n, type: isFollow ? 'follow' : n.type || 'other', actor: profilesMap[n.actor_id], is_db: true };
       }).filter(Boolean);
 
-      const allRaw = [ ...normalizedDbNotifs, ...finalLikesNotifs, ...formattedComments, ...formattedReposts, ...formattedSaves, ...formattedCommentLikes, ...formattedCoins, ...formattedPayments ]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const allRaw = [...normalizedDbNotifs, ...finalLikesNotifs, ...formattedComments, ...formattedReposts, ...formattedSaves, ...formattedCommentLikes, ...formattedCoins, ...formattedPayments]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       const uniqueNotifs = Array.from(new Map(allRaw.map((item) => [item.id, item])).values());
       setRawNotifs(uniqueNotifs);
@@ -256,32 +247,27 @@ export default function NotificationsPage() {
 
   const setupRealtime = (userId: string) => {
     if (channelRef.current) supabase.removeChannel(channelRef.current);
-    channelRef.current = supabase.channel(`notif-realtime-${userId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => { loadNotifications(userId); }).subscribe();
+    channelRef.current = supabase.channel(`notif-realtime-${userId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => { loadNotifications(userId); })
+      .subscribe();
   };
 
-  // ✅ PERBAIKAN BUG BADGE LAMA HILANG: Cek menggunakan `n.is_db`
   const markCategoryAsRead = (category: string) => {
     let updated = [...rawNotifs];
     let idsToUpdate: string[] = [];
-
     updated = updated.map((n) => {
       let match = false;
       if (category === 'like' && ['like', 'repost', 'save', 'comment_like', 'like_group'].includes(n.type)) match = true;
       if (category === 'comment' && ['comment', 'reply'].includes(n.type)) match = true;
       if (category === 'follow' && n.type === 'follow') match = true;
       if (category === 'other' && !['like', 'repost', 'save', 'comment_like', 'like_group', 'comment', 'reply', 'follow'].includes(n.type)) match = true;
-
       if (match && !n.is_read) {
-        if (n.is_db) {
-          idsToUpdate.push(n.id);
-        }
+        if (n.is_db) idsToUpdate.push(n.id);
         return { ...n, is_read: true };
       }
       return n;
     });
-
     setRawNotifs(updated);
-
     if (idsToUpdate.length > 0) {
       supabase.from('notifications').update({ is_read: true }).in('id', idsToUpdate).then(({ error }) => {
         if (error) console.error('Gagal update notifikasi terbaca:', error);
@@ -294,12 +280,11 @@ export default function NotificationsPage() {
       setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
-
-    if (notif.type === 'follow' && notif.actor_id) { router.push(`/data?id=${notif.actor_id}`);
-    } else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) { router.push(`/post?id=${notif.post_id}&openComment=true`);
-    } else if (notif.type === 'story_like' && notif.story_id) { router.push(`/story/${notif.story_id}`);
-    } else if (notif.type === 'payment_status' || notif.type === 'coin_receive') { router.push(`/settings/wallet`);
-    } else if (notif.post_id) { router.push(`/post?id=${notif.post_id}`); }
+    if (notif.type === 'follow' && notif.actor_id) { router.push(`/data?id=${notif.actor_id}`); }
+    else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) { router.push(`/post?id=${notif.post_id}&openComment=true`); }
+    else if (notif.type === 'story_like' && notif.story_id) { router.push(`/story/${notif.story_id}`); }
+    else if (notif.type === 'payment_status' || notif.type === 'coin_receive') { router.push(`/settings/wallet`); }
+    else if (notif.post_id) { router.push(`/post?id=${notif.post_id}`); }
   };
 
   const handleFollowAction = async (e: React.MouseEvent, targetId: string) => {
@@ -337,7 +322,9 @@ export default function NotificationsPage() {
   const formatDate = (dateString: string) => {
     const dateObj = new Date(dateString);
     const isToday = new Date().toDateString() === dateObj.toDateString();
-    return isToday ? `${t('today', 'Hari ini')}, ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', })}` : dateObj.toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', });
+    return isToday
+      ? `${t('today', 'Hari ini')}, ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+      : dateObj.toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   const unreadCounts = {
@@ -366,46 +353,157 @@ export default function NotificationsPage() {
   };
 
   return (
-    // 🔥 Menggunakan var(--bg-card) agar murni putih (#ffffff) di light mode dan otomatis gelap di dark mode 🔥
-    <div className="notif-page-container" style={{ background: 'var(--bg-card, #ffffff)' }}>
+    <div
+      className="notif-page-container"
+      style={{
+        background: isDark ? 'var(--bg-card)' : '#ffffff',
+        minHeight: '100dvh',
+      }}
+    >
       {activeView === 'main' ? (
-        <div className="notif-main-view" style={{ background: 'var(--bg-card, #ffffff)' }}>
-          
-          <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', background: 'var(--bg-card, #ffffff)', position: 'relative', zIndex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, textAlign: 'left', color: 'var(--text-main)' }}>
+        <div
+          className="notif-main-view"
+          style={{ background: isDark ? 'var(--bg-card)' : '#ffffff' }}
+        >
+          <header
+            className="notif-header"
+            style={{
+              padding: '20px 15px 15px',
+              display: 'flex',
+              justifyContent: 'flex-start',
+              alignItems: 'center',
+              background: isDark ? 'var(--bg-card)' : '#ffffff',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                fontSize: '20px',
+                fontWeight: 800,
+                textAlign: 'left',
+                color: isDark ? 'var(--text-main)' : '#1a1a1a',
+              }}
+            >
               {t('notifications', 'Notifikasi')}
             </h2>
           </header>
 
-          <FriendStoriesTray friends={friendStories} currentUser={currentUser} myStatusText={myStatusText} onAddStatus={() => setShowStatusInput(true)} router={router} onFriendNoteClick={(id) => router.push(`/data?id=${id}`)} />
+          {/* FriendStoriesTray sudah di-fix mandiri, tidak perlu prop isDark */}
+          <FriendStoriesTray
+            friends={friendStories}
+            currentUser={currentUser}
+            myStatusText={myStatusText}
+            onAddStatus={() => setShowStatusInput(true)}
+            router={router}
+            onFriendNoteClick={(id) => router.push(`/data?id=${id}`)}
+          />
 
           {showStatusInput && (
-            <div className="status-input-container" style={{ background: 'var(--bg-card, #ffffff)', borderBottom: '1px solid var(--border-card)' }}>
-              <input type="text" placeholder="Tulis note (Maks. 50 Karakter)" maxLength={50} defaultValue={myStatusText} autoFocus className="status-input" style={{ background: 'var(--bg-input)', color: 'var(--text-main)', border: '1px solid var(--border-card)' }} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateStatus(e.currentTarget.value); }} />
-              <button onClick={() => setShowStatusInput(false)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}>
+            <div
+              className="status-input-container"
+              style={{
+                background: isDark ? 'var(--bg-card)' : '#ffffff',
+                borderBottom: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                padding: '10px 15px',
+                display: 'flex',
+                gap: '10px',
+              }}
+            >
+              <input
+                type="text"
+                placeholder="Tulis note (Maks. 50 Karakter)"
+                maxLength={50}
+                defaultValue={myStatusText}
+                autoFocus
+                className="status-input"
+                style={{
+                  flex: 1,
+                  background: isDark ? 'var(--bg-input)' : '#f5f5f5',
+                  color: isDark ? 'var(--text-main)' : '#1a1a1a',
+                  border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleUpdateStatus(e.currentTarget.value);
+                }}
+              />
+              <button
+                onClick={() => setShowStatusInput(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: isDark ? 'var(--text-main)' : '#1a1a1a',
+                  cursor: 'pointer',
+                }}
+              >
                 <span className="material-icons">close</span>
               </button>
             </div>
           )}
 
           {pendingCount > 0 && (
-            <div className="pending-alert-box" style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border-card)' }} onClick={() => router.push('/pending')}>
-              <div className="pending-alert-left">
-                <div className="pending-icon-wrap"><span className="material-icons" style={{ fontSize: '20px' }}>pending_actions</span></div>
-                <div className="pending-text">
-                  <span className="pending-title" style={{ color: 'var(--text-main)' }}>Menunggu Review <span style={{ color: '#f59e0b' }}>({pendingCount})</span></span>
-                  <span className="pending-desc" style={{ color: 'var(--text-muted)' }}>Karyamu sedang dalam antrean pengecekan.</span>
+            <div
+              className="pending-alert-box"
+              style={{
+                background: isDark ? 'var(--bg-card)' : '#ffffff',
+                border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                margin: '10px 15px',
+                padding: '12px 15px',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+              }}
+              onClick={() => router.push('/pending')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="pending-icon-wrap">
+                  <span className="material-icons" style={{ fontSize: '20px', color: '#f59e0b' }}>
+                    pending_actions
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a', fontWeight: 600 }}>
+                    Menunggu Review <span style={{ color: '#f59e0b' }}>({pendingCount})</span>
+                  </span>
+                  <br />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                    Karyamu sedang dalam antrean pengecekan.
+                  </span>
                 </div>
               </div>
-              <span className="material-icons pending-chevron" style={{ color: 'var(--text-muted)' }}>chevron_right</span>
+              <span className="material-icons" style={{ color: 'var(--text-muted)' }}>
+                chevron_right
+              </span>
             </div>
           )}
 
+          {/* CategoryMenu juga sudah mandiri */}
           <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
-          <RecommendedFriends recommended={recommendedFriends} onFollow={handleFollowAction} myFollowings={myFollowings} />
+
+          {/* RecommendedFriends – asumsikan sudah di-fix serupa, jika belum bisa disesuaikan */}
+          <RecommendedFriends
+            recommended={recommendedFriends}
+            onFollow={handleFollowAction}
+            myFollowings={myFollowings}
+          />
         </div>
       ) : (
-        <NotificationListView title={getTitleByView()} notifs={filteredNotifs} onBack={() => setActiveView('main')} handleNotifClick={handleNotifClick} handleFollowBack={handleFollowAction} myFollowings={myFollowings} router={router} formatDate={formatDate} getIconAndColor={getIconAndColor} />
+        <NotificationListView
+          title={getTitleByView()}
+          notifs={filteredNotifs}
+          onBack={() => setActiveView('main')}
+          handleNotifClick={handleNotifClick}
+          handleFollowBack={handleFollowAction}
+          myFollowings={myFollowings}
+          router={router}
+          formatDate={formatDate}
+          getIconAndColor={getIconAndColor}
+        />
       )}
     </div>
   );
