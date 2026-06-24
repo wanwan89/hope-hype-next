@@ -120,6 +120,7 @@ export default function SearchWrapperpost() {
           borderLeft: 'none',
           borderRight: 'none',
           overflow: 'hidden',
+          background: '#ffffff',
         }}
       >
         <div className="brutal-input-container">
@@ -240,9 +241,16 @@ export default function SearchWrapperpost() {
         </div>
       )}
 
-      {/* Story */}
+      {/* Story dengan latar putih bersih */}
       {stories.length > 0 && (
-        <div className="stories-container">
+        <div
+          className="stories-container"
+          style={{
+            background: '#ffffff',
+            borderBottom: 'none',
+            padding: '10px 0',
+          }}
+        >
           {stories.map((story) => (
             <div
               key={story.id}
@@ -251,10 +259,14 @@ export default function SearchWrapperpost() {
               style={{
                 transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)',
                 transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                background: 'transparent',
               }}
             >
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
+                style={{
+                  background: '#ffffff',
+                }}
               >
                 <img
                   src={
@@ -264,7 +276,9 @@ export default function SearchWrapperpost() {
                   alt="avatar"
                 />
               </div>
-              <span className="story-name">{story.profiles?.username}</span>
+              <span className="story-name" style={{ color: '#111111' }}>
+                {story.profiles?.username}
+              </span>
             </div>
           ))}
         </div>

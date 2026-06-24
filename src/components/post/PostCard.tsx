@@ -369,7 +369,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: 'var(--bg-main)',
+      background: '#ffffff', // 🔥 DIGANTI JADI PUTIH SOLID
       borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
       padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
       border: '1px solid var(--border-card)',
