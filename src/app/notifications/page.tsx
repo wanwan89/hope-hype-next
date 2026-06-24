@@ -128,16 +128,43 @@ export default function NotificationsPage() {
     } catch (err) { console.error('Gagal load saran teman', err); }
   };
 
+  // ✅ PERBAIKAN UTAMA: Ambil notifikasi follow TANPA LIMIT, sisanya dengan limit
   const loadNotifications = async (userId: string) => {
     setIsLoading(true);
     try {
-      const { count: pendingPosts } = await supabase.from('posts').select('*', { count: 'exact', head: true }).eq('creator_id', userId).eq('status', 'pending');
+      const { count: pendingPosts } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('creator_id', userId)
+        .eq('status', 'pending');
       setPendingCount(pendingPosts || 0);
 
-      const { data: dbNotifs } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
-      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like'];
-      const filteredDbNotifs = (dbNotifs || []).filter((n) => !synthesizeTypes.includes(n.type));
+      // Ambil SEMUA notifikasi follow tanpa batasan
+      const { data: followNotifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('type', 'follow')
+        .order('created_at', { ascending: false });
 
+      // Ambil notifikasi lain (selain synthesized dan follow) dengan limit 50
+      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like'];
+      const { data: dbNotifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Filter: buang synthesized + follow (karena follow sudah diambil semua di atas)
+      const filteredDbNotifs = (dbNotifs || []).filter(
+        (n) => !synthesizeTypes.includes(n.type) && n.type !== 'follow'
+      );
+
+      // Gabungkan: semua follow + notifikasi lain hasil filter
+      const allFilteredDbNotifs = [...(followNotifs || []), ...filteredDbNotifs];
+
+      // --- SYNTHESIZED NOTIFICATIONS (dari likes, comments, reposts, bookmarks, dll) ---
       const myPostsRes = await supabase.from('posts').select('id, image_url, video_url').eq('creator_id', userId);
       const myPosts = myPostsRes.data || [];
       const postIds = myPosts.map((p) => p.id);
@@ -169,7 +196,7 @@ export default function NotificationsPage() {
       coinTransData = coinRes.data || []; commentLikesData = commentLikesRes.data || []; paymentsData = paymentsRes.data || [];
 
       const allActorIds = new Set<string>();
-      filteredDbNotifs.forEach((n) => { if (n.actor_id) allActorIds.add(n.actor_id); });
+      allFilteredDbNotifs.forEach((n) => { if (n.actor_id) allActorIds.add(n.actor_id); });
       likesData.forEach((l) => allActorIds.add(l.user_id)); commentsData.forEach((c) => allActorIds.add(c.user_id));
       repostsData.forEach((r) => allActorIds.add(r.user_id)); savesData.forEach((s) => allActorIds.add(s.user_id));
       commentLikesData.forEach((cl) => allActorIds.add(cl.user_id));
@@ -230,8 +257,8 @@ export default function NotificationsPage() {
         id: `pay-${py.id}`, type: 'payment_status', status: py.status, amount: py.amount, created_at: py.created_at, is_read: readList.has(`pay-${py.id}`), actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
       }));
 
-      const normalizedDbNotifs = filteredDbNotifs.map((n) => {
-        const isFollow = n.message?.toLowerCase().includes('mengikuti') || n.type === 'follow';
+      const normalizedDbNotifs = allFilteredDbNotifs.map((n) => {
+        const isFollow = n.type === 'follow'; // langsung karena kita sudah pastikan hanya follow yang lolos
         if (!n.actor_id || !profilesMap[n.actor_id]) return null;
         return { ...n, type: isFollow ? 'follow' : n.type || 'other', actor: profilesMap[n.actor_id], is_db: true };
       }).filter(Boolean);
@@ -251,7 +278,6 @@ export default function NotificationsPage() {
       .subscribe();
   };
 
-  // ✅ PERBAIKAN: Fungsi diubah menjadi Async dan AWAIT proses database selesai sebelum dispatch event
   const markCategoryAsRead = async (category: string) => {
     let updated = [...rawNotifs];
     let dbIdsToUpdate: string[] = [];
@@ -273,21 +299,15 @@ export default function NotificationsPage() {
     });
     setRawNotifs(updated);
 
-    if (localIdsToUpdate.length > 0) {
-      saveReadNotifs(localIdsToUpdate);
-    }
+    if (localIdsToUpdate.length > 0) saveReadNotifs(localIdsToUpdate);
 
     if (dbIdsToUpdate.length > 0) {
-      // Tunggu (await) sampai DB Supabase benar-benar selesai memperbarui
-      const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', dbIdsToUpdate);
-      if (error) console.error('Gagal update notifikasi terbaca:', error);
+      await supabase.from('notifications').update({ is_read: true }).in('id', dbIdsToUpdate);
     }
 
-    // Sekarang event trigger dikirim tepat saat DB sudah dijamin bersih!
     window.dispatchEvent(new Event('notif-count-changed'));
   };
 
-  // ✅ PERBAIKAN: AWAIT proses update
   const handleNotifClick = async (notif: any) => {
     if (!notif.is_read) {
       setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
