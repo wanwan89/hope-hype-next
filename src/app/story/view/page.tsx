@@ -1,6 +1,6 @@
 'use client';
 
-// 🔥 FIX: Import Suspense dari react 🔥
+// 🔥 FIX: Import Suspense dari react
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils'; 
@@ -82,7 +82,6 @@ function StoryViewerContent() {
     const { data: { session } } = await supabase.auth.getSession();
     setCurrentUserId(session?.user?.id || null);
 
-    // 🔥 FIX 1: single() diganti jadi maybeSingle() 🔥
     const { data: initStory } = await supabase
       .from('stories')
       .select('creator_id')
@@ -122,8 +121,6 @@ function StoryViewerContent() {
         const { error } = await supabase.from('story_views').insert({ story_id: sId, user_id: currentUserId });
         if (error) {
           console.error("❌ GAGAL MASUKIN VIEW KE DATABASE:", error.message);
-        } else {
-          console.log("✅ View berhasil dicatat!");
         }
       }
     } catch (err) {
@@ -131,21 +128,31 @@ function StoryViewerContent() {
     }
   }
 
+  // 🔥 FIX: Perbaikan query fetch viewers agar relasi profilenya terbaca dengan benar
   async function fetchViewers(sId: string) {
     const currentStory = allUserStories[currentIndex];
     if (currentStory && currentStory.creator_id !== currentUserId) return;
 
     const { data, error } = await supabase
       .from('story_views')
-      .select('id, user_id, profiles:user_id(id, username, avatar_url)') 
+      .select(`
+        id, 
+        user_id, 
+        profiles (
+          id, 
+          username, 
+          avatar_url
+        )
+      `) 
       .eq('story_id', sId)
       .order('created_at', { ascending: false });
 
     if (data && !error) {
+      // Pastikan data profiles ada sebelum dimasukkan ke state
       const uniqueViewers = data.map((d: any) => d.profiles).filter(Boolean);
       setViewers(uniqueViewers);
     } else {
-      console.error("Gagal load viewers:", error);
+      console.error("Gagal load viewers:", error?.message);
     }
   }
 
@@ -195,7 +202,6 @@ function StoryViewerContent() {
   async function checkIfLiked(sId: string) {
     if (!currentUserId) return;
     
-    // 🔥 FIX 2: single() diganti jadi maybeSingle() 🔥
     const { data } = await supabase
       .from('story_likes')
       .select('id')
@@ -205,13 +211,15 @@ function StoryViewerContent() {
     setIsLiked(!!data);
   }
 
+  // 🔥 FIX: Penambahan fitur Notifikasi saat Like
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentUserId) return showNotif("Login dulu bro!", "error");
     
-    const sId = allUserStories[currentIndex].id;
+    const currentStory = allUserStories[currentIndex];
+    const sId = currentStory.id;
     const newLikeStatus = !isLiked;
-    setIsLiked(newLikeStatus); // Langsung ubah UI biar cepet (Optimistic UI)
+    setIsLiked(newLikeStatus); // Optimistic UI update
 
     try {
       if (newLikeStatus) {
@@ -220,10 +228,20 @@ function StoryViewerContent() {
         
         if (error) {
           console.error("❌ GAGAL MASUKIN LIKE KE DATABASE:", error.message);
-          setIsLiked(false); // Kalau error database, kembalikan warna love ke semula
+          setIsLiked(false); // Rollback jika error
           showNotif("Gagal menyukai story", "error");
         } else {
-          console.log("✅ Like berhasil masuk!");
+          // 🔔 INSERT NOTIFIKASI KE PEMILIK STORY
+          if (currentStory.creator_id !== currentUserId) {
+            const { error: notifError } = await supabase.from('notifications').insert({
+              user_id: currentStory.creator_id,       // Penerima notif
+              sender_id: currentUserId,               // Yang nge-like
+              type: 'story_like',                     // Tipe notif
+              reference_id: sId,                      // Referensi story (sesuaikan nama kolom di DB Anda)
+              message: 'menyukai cerita Anda.'
+            });
+            if (notifError) console.error("Gagal mengirim notifikasi like:", notifError.message);
+          }
         }
       } else {
         const { error } = await supabase.from('story_likes').delete().match({ story_id: sId, user_id: currentUserId });

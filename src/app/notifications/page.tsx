@@ -196,7 +196,6 @@ export default function NotificationsPage() {
       setPendingCount(pendingPosts || 0);
 
       // 1. Ambil FOLLOWER ASLI langsung dari tabel followers secara live
-      // (Pastikan tabel followers ada kolom created_at, jika tidak ada fallback ke waktu saat ini)
       const { data: activeFollowersData } = await supabase
         .from('followers')
         .select('follower_id, created_at')
@@ -204,7 +203,6 @@ export default function NotificationsPage() {
         .order('created_at', { ascending: false });
 
       // 2. Ambil notifikasi lain dengan limit
-      // Kita abaikan tipe 'follow' dari tabel notifications karena sudah digenerate live dari followers
       const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
       const { data: dbNotifs } = await supabase
         .from('notifications')
@@ -266,8 +264,12 @@ export default function NotificationsPage() {
 
       // Kumpulkan aktor
       const allActorIds = new Set<string>();
-      filteredDbNotifs.forEach((n) => { if (n.actor_id) allActorIds.add(n.actor_id); });
-      (activeFollowersData || []).forEach((f) => allActorIds.add(f.follower_id)); // Aktor dari followers asli
+      filteredDbNotifs.forEach((n) => { 
+        if (n.actor_id) allActorIds.add(n.actor_id); 
+        // 🔥 FIX: Tangkap sender_id karena struktur tabel notifications terbaru menggunakan sender_id
+        if (n.sender_id) allActorIds.add(n.sender_id);
+      });
+      (activeFollowersData || []).forEach((f) => allActorIds.add(f.follower_id)); 
       likesData.forEach((l) => allActorIds.add(l.user_id));
       commentsData.forEach((c) => allActorIds.add(c.user_id));
       repostsData.forEach((r) => allActorIds.add(r.user_id));
@@ -286,22 +288,22 @@ export default function NotificationsPage() {
       const getActor = (actorId: string) => profilesMap[actorId] || { id: actorId, ...UNKNOWN_ACTOR };
       const readList = new Set(getReadNotifs());
 
-      // Format Followers (Live dari tabel followers)
+      // Format Followers
       const formattedFollowers = (activeFollowersData || []).map((f: any) => {
         const nId = `follow-${f.follower_id}`;
         return {
           id: nId,
           type: 'follow',
           actor_id: f.follower_id,
-          created_at: f.created_at || new Date().toISOString(), // fallback date
+          created_at: f.created_at || new Date().toISOString(),
           is_read: readList.has(nId),
           actor: getActor(f.follower_id),
           totalCount: 1,
-          is_db: false // update locally only agar tidak nge-hit db yg ga perlu
+          is_db: false 
         };
       });
 
-      // Helper Universal untuk Grouping (Like, Repost, Save)
+      // Helper Universal
       const groupActions = (dataArr: any[], baseType: string) => {
         const byPostId: Record<string, any[]> = {};
         dataArr.forEach((item: any) => {
@@ -411,7 +413,10 @@ export default function NotificationsPage() {
         .map((n) => ({
           ...n,
           type: n.type || 'other',
-          actor: n.actor_id ? getActor(n.actor_id) : null,
+          // 🔥 FIX: Map sender_id sebagai actor jika ada (untuk tabel notifications)
+          actor: (n.actor_id || n.sender_id) ? getActor(n.actor_id || n.sender_id) : null,
+          // 🔥 FIX: Pastikan kita menyimpan reference_id dari tabel sbg story_id untuk keperluan routing
+          story_id: n.reference_id || n.story_id, 
           is_db: true,
           totalCount: 1, 
         }))
@@ -424,7 +429,7 @@ export default function NotificationsPage() {
         ...finalSavesNotifs,
         ...formattedComments,
         ...formattedCommentLikes,
-        ...formattedFollowers, // Inject followers asli ke dalam notifikasi
+        ...formattedFollowers, 
         ...formattedCoins,
         ...formattedPayments,
       ].sort(
@@ -450,7 +455,7 @@ export default function NotificationsPage() {
         () => { loadNotifications(userId); }
       )
       .on(
-        'postgres_changes', // Update otomatis kalau ada follower baru
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'followers', filter: `following_id=eq.${userId}` },
         () => { loadNotifications(userId); }
       )
@@ -504,7 +509,8 @@ export default function NotificationsPage() {
     } else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) {
       router.push(`/post?id=${notif.post_id}&openComment=true`);
     } else if (notif.type === 'story_like' && notif.story_id) {
-      router.push(`/story/${notif.story_id}`);
+      // 🔥 FIX: Redirect ke komponen viewer story dengan id
+      router.push(`/story?id=${notif.story_id}`); 
     } else if (notif.type === 'payment_status' || notif.type === 'coin_receive') {
       router.push(`/settings/wallet`);
     } else if (notif.post_id) {
