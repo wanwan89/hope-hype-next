@@ -226,9 +226,9 @@ function NavbarContent() {
         <nav
           style={{
             width: '100%',
-            height: `calc(55px + env(safe-area-inset-bottom))`, // 🔥 Diubah jadi 55px
+            height: `calc(55px + env(safe-area-inset-bottom))`,
             paddingBottom: 'env(safe-area-inset-bottom)',
-            backgroundColor: 'var(--bg-card)',
+            backgroundColor: 'var(--bg-main)', // ← diubah ke bg-main
             backdropFilter: 'blur(15px)',
             WebkitBackdropFilter: 'blur(15px)',
             borderTop: '1px solid var(--border-card)',
@@ -360,7 +360,7 @@ function NavbarContent() {
                           minWidth: '14px',
                           height: '14px',
                           borderRadius: '10px',
-                          border: '2px solid var(--bg-card)',
+                          border: '2px solid var(--bg-main)', // ← ikuti latar baru
                           zIndex: 10,
                         }}
                       >
