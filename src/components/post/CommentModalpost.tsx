@@ -26,6 +26,21 @@ const containsBadWords = (text: string) => {
 
 export default function CommentModalpost() {
   const { t } = useTranslation();
+   const searchParams = useSearchParams(); // pastikan import dari 'next/navigation'
+
+useEffect(() => {
+  const openComment = searchParams?.get('openComment');
+  const postId = searchParams?.get('id');
+
+  if (openComment === 'true' && postId) {
+    setCurrentPostId(postId);
+    setCurrentCreatorId(null); // CreatorId bisa di-fetch lewat loadComments
+    setIsActive(true);
+    setActiveTab('comment');
+    document.body.style.overflow = "hidden";
+    loadComments(postId); // Panggil fungsi load komentar
+  }
+}, [searchParams]);
 
   const [isActive, setIsActive] = useState(false);
   const [comments, setComments] = useState<any[]>([]);

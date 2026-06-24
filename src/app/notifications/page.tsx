@@ -39,10 +39,22 @@ const UNKNOWN_ACTOR = {
   role: 'user',
 };
 
-const LIKE_TYPES = ['like', 'like_group', 'repost', 'repost_group', 'save', 'save_group', 'comment_like', 'story_like'];
+const LIKE_TYPES = ['like', 'like_group', 'repost', 'repost_group', 'save', 'save_group', 'comment_like', 'story_likes'];
 const COMMENT_TYPES = ['comment', 'reply'];
 const FOLLOW_TYPES = ['follow'];
 const ALL_HANDLED_TYPES = [...LIKE_TYPES, ...COMMENT_TYPES, ...FOLLOW_TYPES];
+
+// 🔥 FUNGSI BARU: FORMAT PESAN AGAR GIFT & STIKER RAPI 🔥
+const formatMessage = (msg: string | undefined | null) => {
+  if (!msg) return '';
+  if (msg.includes('GIFT||')) {
+    return msg.replace(/GIFT\|\|.*?\|\|.*/, 'mengirimkan sebuah Gift ');
+  }
+  if (msg.includes('STICKER||')) {
+    return msg.replace(/STICKER\|\|.*/, 'mengirimkan sebuah Stiker ');
+  }
+  return msg;
+};
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -195,14 +207,12 @@ export default function NotificationsPage() {
         .eq('status', 'pending');
       setPendingCount(pendingPosts || 0);
 
-      // 1. Ambil FOLLOWER ASLI langsung dari tabel followers secara live
       const { data: activeFollowersData } = await supabase
         .from('followers')
         .select('follower_id, created_at')
         .eq('following_id', userId)
         .order('created_at', { ascending: false });
 
-      // 2. Ambil notifikasi lain dengan limit
       const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
       const { data: dbNotifs } = await supabase
         .from('notifications')
@@ -215,7 +225,6 @@ export default function NotificationsPage() {
         (n) => !synthesizeTypes.includes(n.type)
       );
 
-      // 3. Data postingan & komentar (untuk data tersintesis)
       const myPostsRes = await supabase
         .from('posts')
         .select('id, image_url, video_url')
@@ -262,11 +271,9 @@ export default function NotificationsPage() {
       commentLikesData = commentLikesRes.data || [];
       paymentsData = paymentsRes.data || [];
 
-      // Kumpulkan aktor
       const allActorIds = new Set<string>();
       filteredDbNotifs.forEach((n) => { 
         if (n.actor_id) allActorIds.add(n.actor_id); 
-        // 🔥 FIX: Tangkap sender_id karena struktur tabel notifications terbaru menggunakan sender_id
         if (n.sender_id) allActorIds.add(n.sender_id);
       });
       (activeFollowersData || []).forEach((f) => allActorIds.add(f.follower_id)); 
@@ -288,7 +295,6 @@ export default function NotificationsPage() {
       const getActor = (actorId: string) => profilesMap[actorId] || { id: actorId, ...UNKNOWN_ACTOR };
       const readList = new Set(getReadNotifs());
 
-      // Format Followers
       const formattedFollowers = (activeFollowersData || []).map((f: any) => {
         const nId = `follow-${f.follower_id}`;
         return {
@@ -303,7 +309,6 @@ export default function NotificationsPage() {
         };
       });
 
-      // Helper Universal
       const groupActions = (dataArr: any[], baseType: string) => {
         const byPostId: Record<string, any[]> = {};
         dataArr.forEach((item: any) => {
@@ -358,12 +363,13 @@ export default function NotificationsPage() {
       const finalRepostsNotifs = groupActions(repostsData, 'repost');
       const finalSavesNotifs = groupActions(savesData, 'save');
 
+      // 🔥 FORMAT PESAN KOMENTAR/GIFT/STIKER 🔥
       const formattedComments = commentsData.map((c: any) => ({
         id: `comment-${c.id}`,
         type: 'comment',
         post_id: c.post_id,
         actor_id: c.user_id,
-        message: c.content,
+        message: formatMessage(c.content),
         created_at: c.created_at,
         is_read: readList.has(`comment-${c.id}`),
         actor: getActor(c.user_id),
@@ -409,17 +415,23 @@ export default function NotificationsPage() {
         totalCount: 1,
       }));
 
+      // 🔥 MEMASTIKAN STORY_LIKE & REPLY TERTANGKAP DAN TERFORMAT 🔥
       const normalizedDbNotifs = filteredDbNotifs
-        .map((n) => ({
-          ...n,
-          type: n.type || 'other',
-          // 🔥 FIX: Map sender_id sebagai actor jika ada (untuk tabel notifications)
-          actor: (n.actor_id || n.sender_id) ? getActor(n.actor_id || n.sender_id) : null,
-          // 🔥 FIX: Pastikan kita menyimpan reference_id dari tabel sbg story_id untuk keperluan routing
-          story_id: n.reference_id || n.story_id, 
-          is_db: true,
-          totalCount: 1, 
-        }))
+        .map((n) => {
+          let msg = formatMessage(n.message);
+          if (n.type === 'story_likes' && !msg) {
+            msg = 'menyukai cerita Anda ';
+          }
+          return {
+            ...n,
+            message: msg,
+            type: n.type || 'other',
+            actor: (n.actor_id || n.sender_id) ? getActor(n.actor_id || n.sender_id) : null,
+            story_id: n.reference_id || n.story_id, 
+            is_db: true,
+            totalCount: 1, 
+          }
+        })
         .filter(Boolean);
 
       const allRaw = [
@@ -506,14 +518,18 @@ export default function NotificationsPage() {
 
     if (notif.type === 'follow' && notif.actor_id) {
       router.push(`/data?id=${notif.actor_id}`);
-    } else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) {
+    } 
+    // 🔥 PERBAIKAN: Menambahkan 'reply' ke filter, dan mem-passing parameter openComment
+    else if ((notif.type === 'comment' || notif.type === 'comment_like' || notif.type === 'reply') && notif.post_id) {
       router.push(`/post?id=${notif.post_id}&openComment=true`);
-    } else if (notif.type === 'story_like' && notif.story_id) {
-      // 🔥 FIX: Redirect ke komponen viewer story dengan id
+    } 
+    else if (notif.type === 'story_likes' && notif.story_id) {
       router.push(`/story?id=${notif.story_id}`); 
-    } else if (notif.type === 'payment_status' || notif.type === 'coin_receive') {
+    } 
+    else if (notif.type === 'payment_status' || notif.type === 'coin_receive') {
       router.push(`/settings/wallet`);
-    } else if (notif.post_id) {
+    } 
+    else if (notif.post_id) {
       router.push(`/post?id=${notif.post_id}`);
     }
   };
@@ -543,7 +559,7 @@ export default function NotificationsPage() {
       case 'like':
       case 'like_group':
       case 'comment_like':
-      case 'story_like':
+      case 'story_likes':
         return { icon: 'favorite', color: '#ff2e63' };
       case 'comment':
       case 'reply':

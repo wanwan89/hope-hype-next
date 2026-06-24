@@ -23,6 +23,23 @@ import MusicSheet from '@/components/create/MusicSheet';
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
+// Komponen Toggle Sederhana untuk Opsi Lainnya
+const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
+  <div
+    onClick={() => onChange(!checked)}
+    style={{
+      width: '42px', height: '24px', background: checked ? '#1f3cff' : 'var(--border-card)',
+      borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s'
+    }}
+  >
+    <div style={{
+      width: '18px', height: '18px', background: '#fff', borderRadius: '50%',
+      position: 'absolute', top: '3px', left: checked ? '21px' : '3px', transition: 'left 0.3s',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+    }} />
+  </div>
+);
+
 export default function CreatePostPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -37,6 +54,11 @@ export default function CreatePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBusinessUser, setIsBusinessUser] = useState(false);
   const [isAd, setIsAd] = useState(false);
+
+  // Opsi Lainnya State
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [allowComments, setAllowComments] = useState(true);
+  const [saveToDevice, setSaveToDevice] = useState(false);
 
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]);
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]);
@@ -67,6 +89,7 @@ export default function CreatePostPage() {
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
+  const [isProcessingEdit, setIsProcessingEdit] = useState(false); // State Loading Crop
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -87,6 +110,8 @@ export default function CreatePostPage() {
       if (!data) return;
       setCaption(data.bio || '');
       setIsAd(data.is_ad || false);
+      if (data.comments_disabled !== undefined) setAllowComments(!data.comments_disabled);
+      
       if (data.video_url) {
         setPostType('video');
         setExistingVideoUrl(data.video_url);
@@ -205,6 +230,7 @@ export default function CreatePostPage() {
 
   const handleSaveCrop = async () => {
     if (!imageForCrop || !croppedAreaPixels) return;
+    setIsProcessingEdit(true); // Mulai loading processing
     try {
       const blob = await getCroppedImg(imageForCrop, croppedAreaPixels);
       setCroppedImages(prev => [...prev, blob]);
@@ -221,13 +247,25 @@ export default function CreatePostPage() {
         setImageForCrop(null);
         setStep('post');
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e); 
+      showNotif("Gagal memproses gambar", "error");
+    } finally {
+      setIsProcessingEdit(false);
+    }
   };
 
   const handleCancelCrop = () => {
     const rest = rawImagesQueue.slice(1);
-    if (rest.length > 0) { setRawImagesQueue(rest); setImageForCrop(rest[0]); }
-    else { setRawImagesQueue([]); setImageForCrop(null); setStep('post'); }
+    if (rest.length > 0) { 
+      setRawImagesQueue(rest); 
+      setImageForCrop(rest[0]); 
+    }
+    else { 
+      setRawImagesQueue([]); 
+      setImageForCrop(null); 
+      setStep('post'); // 🔥 Fix Bug: Dulu setStep('pick') bikin layar putih 
+    }
   };
 
   const handleRemovePreview = (idx: number) => {
@@ -273,7 +311,6 @@ export default function CreatePostPage() {
       setVideoStart(0);
       setCoverTime(0);
       if (rawVideoUrl && !existingVideoUrl) generateVideoThumbnails(rawVideoUrl, dur);
-      // Opsional: peringatan jika durasi > MAX_VIDEO_CLIP, tetapi masih bisa dipotong
       if (dur > MAX_VIDEO_CLIP) {
         showNotif(`Video berdurasi ${Math.round(dur)} detik. Anda dapat memotong hingga maksimal ${MAX_VIDEO_CLIP} detik.`, "info");
       }
@@ -290,6 +327,8 @@ export default function CreatePostPage() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
+    setIsProcessingEdit(true);
+    
     video.pause(); setIsVideoPlaying(false);
     const ratio = 2 / 3;
     const vw = video.videoWidth, vh = video.videoHeight;
@@ -298,12 +337,14 @@ export default function CreatePostPage() {
     else { cw = vw; ch = cw / ratio; sx = 0; sy = (vh - ch) / 2; }
     canvas.width = cw; canvas.height = ch;
     canvas.getContext('2d')?.drawImage(video, sx, sy, cw, ch, 0, 0, cw, ch);
+    
     canvas.toBlob(blob => {
       if (blob) {
         setCoverBlob(blob);
         setCoverUrlPreview(URL.createObjectURL(blob));
         setStep('post');
       }
+      setIsProcessingEdit(false);
     }, 'image/jpeg', 0.9);
   };
 
@@ -367,6 +408,24 @@ export default function CreatePostPage() {
     }
 
     setIsSubmitting(true);
+
+    // Fitur: Simpan ke perangkat jika dipilih
+    if (saveToDevice) {
+      if (postType === 'image' && croppedImages.length > 0) {
+        croppedImages.forEach((blob, idx) => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `Hype_Image_${Date.now()}_${idx}.jpg`;
+          a.click();
+        });
+      } else if (postType === 'video' && rawVideoFile) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(rawVideoFile);
+        a.download = `Hype_Video_${Date.now()}.mp4`;
+        a.click();
+      }
+    }
+
     localStorage.setItem('isUploading', 'true');
     updateGlobalProgress(0);
     window.dispatchEvent(new CustomEvent('postUploadStart'));
@@ -393,6 +452,7 @@ export default function CreatePostPage() {
             window.dispatchEvent(new CustomEvent('postUploadError'));
             localStorage.removeItem('isUploading');
             showNotif("Postingan ditolak! Konten sensitif.", "error");
+            setIsSubmitting(false);
             return;
           }
           finalImageUrl = results.map(r => r.secure_url).join(',');
@@ -403,11 +463,11 @@ export default function CreatePostPage() {
             window.dispatchEvent(new CustomEvent('postUploadError'));
             localStorage.removeItem('isUploading');
             showNotif("Video ditolak! Sampul sensitif.", "error");
+            setIsSubmitting(false);
             return;
           }
           finalImageUrl = coverRes.secure_url;
 
-          // 🔥 Ubah pemotongan video menjadi maksimal MAX_VIDEO_CLIP detik
           const clipEnd = Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
           const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
           finalVideoUrl = vidRes.secure_url.replace(
@@ -435,6 +495,7 @@ export default function CreatePostPage() {
             audio_src: selectedMusic?.previewUrl, title: selectedMusic?.trackName,
             artist: selectedMusic?.artistName, status: isDraft ? "draft" : "approved",
             is_ad: isBusinessUser ? isAd : false,
+            comments_disabled: !allowComments, // 🔥 Opsi allow comments
           };
           if (draftId) { await supabase.from("posts").update(payload).eq('id', draftId); newPostId = draftId; }
           else { const { data: newPost } = await supabase.from("posts").insert(payload).select('id').single(); newPostId = newPost?.id; }
@@ -468,6 +529,8 @@ export default function CreatePostPage() {
         window.dispatchEvent(new CustomEvent('postUploadError'));
         localStorage.removeItem('isUploading'); localStorage.removeItem('uploadProgress');
         showNotif("Gagal upload", "error");
+      } finally {
+        setIsSubmitting(false);
       }
     })();
   };
@@ -477,13 +540,20 @@ export default function CreatePostPage() {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#080808', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <button onClick={() => { if (postType === 'image') handleCancelCrop(); else { handleRemoveVideo(); setStep('pick'); } }} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          {/* 🔥 Fix Bug: Handle Cancel properly biar layar ga putih */}
+          <button onClick={() => { if (postType === 'image') handleCancelCrop(); else { handleRemoveVideo(); setStep('post'); } }} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <span className="material-icons">arrow_back</span>
           </button>
           <p style={{ color: '#fff', fontSize: '16px', fontWeight: 600, margin: 0 }}>
             {postType === 'image' ? `Atur Foto (${croppedImages.length + 1}/${croppedImages.length + rawImagesQueue.length})` : 'Edit Video'}
           </p>
-          <button onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} style={{ background: '#1f3cff', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '20px', fontWeight: 800, cursor: 'pointer', fontSize: '13px' }}>Selesai</button>
+          <button 
+            disabled={isProcessingEdit} 
+            onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
+            style={{ background: isProcessingEdit ? '#555' : '#1f3cff', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '20px', fontWeight: 800, cursor: isProcessingEdit ? 'not-allowed' : 'pointer', fontSize: '13px' }}
+          >
+            {isProcessingEdit ? 'Memproses...' : 'Selesai'}
+          </button>
         </div>
         <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#000', padding: '10px' }}>
           {postType === 'image' && imageForCrop ? (
@@ -571,6 +641,17 @@ export default function CreatePostPage() {
   // ==================== RENDER ====================
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
+      {/* 🔥 Loading Overlay dengan Teks "Mengirim..." saat proses simpan data */}
+      {isSubmitting && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <span className="material-icons" style={{ fontSize: '50px', color: '#1f3cff', animation: 'spin 1.2s linear infinite' }}>sync</span>
+          <p style={{ color: '#fff', fontSize: '16px', fontWeight: 700, marginTop: '16px' }}>Mengirim...</p>
+        </div>
+      )}
+
       {step === 'edit' && renderEditorScreen()}
 
       <MusicSheet
@@ -640,6 +721,43 @@ export default function CreatePostPage() {
               />
 
               {isBusinessUser && <AdToggle isAd={isAd} setIsAd={setIsAd} />}
+
+              {/* 🔥 Fitur Opsi Lainnya */}
+              {destination === 'feed' && (
+                <div style={{ marginTop: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', padding: '14px 16px', border: '1px solid var(--border-card)' }}>
+                  <div 
+                    onClick={() => setShowMoreOptions(!showMoreOptions)} 
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                  >
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="material-icons" style={{ fontSize: '18px' }}>settings</span> Opsi Lainnya
+                    </span>
+                    <span className="material-icons" style={{ color: 'var(--text-muted)', transform: showMoreOptions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
+                      expand_more
+                    </span>
+                  </div>
+                  
+                  {showMoreOptions && (
+                    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--border-card)', paddingTop: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>Izinkan Komentar</p>
+                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Orang lain bisa mengomentari ini</p>
+                        </div>
+                        <ToggleSwitch checked={allowComments} onChange={setAllowComments} />
+                      </div>
+                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>Simpan ke Perangkat</p>
+                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Otomatis simpan media yang diedit</p>
+                        </div>
+                        <ToggleSwitch checked={saveToDevice} onChange={setSaveToDevice} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <SubmitButtons
                 isSubmitting={isSubmitting}

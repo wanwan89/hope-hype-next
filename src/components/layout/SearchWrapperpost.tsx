@@ -28,7 +28,7 @@ export default function SearchWrapperpost() {
     setMounted(true);
   }, []);
 
-  // Listener upload (tidak diubah)
+  // Listener upload
   useEffect(() => {
     if (localStorage.getItem('isUploading') === 'true') {
       setIsUploading(true);
@@ -136,7 +136,7 @@ export default function SearchWrapperpost() {
         </button>
       </div>
 
-      {/* Loading postingan */}
+      {/* 🔥 Loading Progress Bar yang Lebih Profesional 🔥 */}
       {isUploading && (
         <div
           style={{
@@ -144,57 +144,75 @@ export default function SearchWrapperpost() {
             width: '100%',
             display: 'flex',
             justifyContent: 'center',
-            marginTop: '6px',
-            marginBottom: '2px',
+            marginTop: '12px',
+            marginBottom: '4px',
             padding: '0 16px',
             boxSizing: 'border-box',
+            zIndex: 10,
           }}
         >
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
+              flexDirection: 'column',
               gap: '10px',
-              background: 'var(--primary-soft)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              borderRadius: '24px',
-              padding: '8px 16px',
+              background: 'var(--bg-secondary)',
+              borderRadius: '16px',
+              padding: '14px 18px',
               width: '100%',
-              maxWidth: '500px',
-              border: '1px solid rgba(31, 60, 255, 0.15)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
-              transition: 'all 0.3s ease',
+              maxWidth: '450px',
+              border: '1px solid var(--border-card)',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+              animation: 'slideDown 0.3s ease-out',
             }}
           >
-            {uploadProgress < 100 ? (
-              <span
-                className="material-icons"
-                style={{
-                  fontSize: '18px',
-                  color: 'var(--primary)',
-                  animation: 'spin 1.5s linear infinite',
+            {/* Header Toast: Ikon + Teks + Persentase */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {uploadProgress < 100 ? (
+                  <span
+                    className="material-icons"
+                    style={{
+                      fontSize: '18px',
+                      color: 'var(--text-muted)',
+                      animation: 'spin 1.5s linear infinite',
+                    }}
+                  >
+                    sync
+                  </span>
+                ) : (
+                  <span
+                    className="material-icons"
+                    style={{
+                      fontSize: '18px',
+                      color: '#00c853',
+                    }}
+                  >
+                    check_circle
+                  </span>
+                )}
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
+                  {uploadProgress < 100 ? 'Mengunggah postingan...' : 'Postingan berhasil diunggah'}
+                </span>
+              </div>
+              <span 
+                style={{ 
+                  fontSize: '13px', 
+                  fontWeight: 700, 
+                  color: uploadProgress < 100 ? 'var(--primary)' : '#00c853',
+                  transition: 'color 0.3s ease'
                 }}
               >
-                autorenew
+                {uploadProgress}%
               </span>
-            ) : (
-              <span
-                className="material-icons"
-                style={{
-                  fontSize: '18px',
-                  color: '#00c853',
-                }}
-              >
-                check_circle
-              </span>
-            )}
+            </div>
 
+            {/* Progress Bar Line */}
             <div
               style={{
-                flex: 1,
+                width: '100%',
                 height: '4px',
-                background: 'var(--border-card)',
+                background: 'var(--bg-main)', // Warna track yang lebih gelap dari bg-secondary
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}
@@ -205,22 +223,10 @@ export default function SearchWrapperpost() {
                   height: '100%',
                   background: uploadProgress < 100 ? 'var(--primary)' : '#00c853',
                   borderRadius: '4px',
-                  transition: 'width 0.4s ease',
+                  transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease',
                 }}
               />
             </div>
-
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                color: 'var(--primary)',
-                minWidth: '40px',
-                textAlign: 'right',
-              }}
-            >
-              {uploadProgress}%
-            </span>
           </div>
         </div>
       )}
@@ -241,7 +247,7 @@ export default function SearchWrapperpost() {
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  background: 'var(--bg-main)', // ikuti tema
+                  background: 'var(--bg-main)', 
                 }}
               >
                 <img
@@ -251,7 +257,7 @@ export default function SearchWrapperpost() {
                   }
                   alt="avatar"
                   style={{
-                    border: '2px solid var(--bg-main)', // ikuti tema
+                    border: '2px solid var(--bg-main)', 
                   }}
                 />
               </div>
