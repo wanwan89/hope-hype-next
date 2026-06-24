@@ -1,15 +1,23 @@
 /* Gallery.css - FULL FIX & OPTIMIZATION */
 
+/* Paksa area galeri menjadi putih */
+body .gallery,
+body section[style*="max-width"],
+.virtuoso-wrapper {
+  background: #ffffff !important;
+}
+
 .gallery {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
   padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0;
   box-sizing: border-box;
+  background: #ffffff; /* putih */
 }
 
 .card {
-  background: var(--bg-card);
+  background: #ffffff; /* putih bersih */
   border-radius: 16px;
   margin-bottom: 25px;
   border: 1px solid var(--border-card);
