@@ -25,17 +25,9 @@ interface Props {
   router: any;
 }
 
-export default function FriendStoriesTray({
-  friends,
-  currentUser,
-  myStatusText,
-  onAddStatus,
-  onFriendNoteClick,
-  router,
-}: Props) {
+export default function FriendStoriesTray({ friends, currentUser, myStatusText, onAddStatus, onFriendNoteClick, router }: Props) {
   const [popupNote, setPopupNote] = useState<{ text: string; username: string; userId: string } | null>(null);
 
-  // Urutkan: yang punya note di depan, lalu yang punya story
   const sortedFriends = [...friends].sort((a, b) => {
     if (a.status_text && !b.status_text) return -1;
     if (!a.status_text && b.status_text) return 1;
@@ -51,64 +43,52 @@ export default function FriendStoriesTray({
 
   const closePopup = () => setPopupNote(null);
 
+  // Tampilkan max 20 karakter di bubble luarnya
+  const truncateBubble = (text: string) => text && text.length > 20 ? text.substring(0, 20) + '...' : text;
+
+  // 🔥 Render Base Bubble CSS: Posisi dibalik ke atas mengambang di atas header
+  const bubbleStyles: React.CSSProperties = {
+    position: 'absolute',
+    bottom: 'calc(100% + 8px)', // Muncul ke atas di atas cincin avatar
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-card)',
+    borderRadius: '14px',
+    padding: '6px 12px',
+    maxWidth: '140px',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+    zIndex: 50, // Z-index super tinggi agar melangkahi Header Navbar
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--text-main)',
+    textAlign: 'center'
+  };
+
+  const triangleStyles: React.CSSProperties = {
+    position: 'absolute', bottom: '-5px', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid var(--bg-card)'
+  };
+
   return (
-    <div className="friend-stories-tray" style={{ position: 'relative' }}>
+    // 🔥 PERBAIKAN: zIndex ditinggikan, posisi relative, background dikunci untuk Dark/Light mode
+    <div className="friend-stories-tray" style={{ position: 'relative', zIndex: 10, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '15px' }}>
       {/* Profil sendiri */}
       {currentUser && (
-        <div className="story-avatar-container" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="story-avatar-container" style={{ position: 'relative' }}>
           <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
-            {currentUser.avatar_url ? (
-              <img src={currentUser.avatar_url} alt="Anda" />
-            ) : (
-              <div className="default-avatar">
-                <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
-              </div>
-            )}
+            {currentUser.avatar_url ? ( <img src={currentUser.avatar_url} alt="Anda" /> ) : ( <div className="default-avatar"><span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span></div> )}
           </div>
-          <span className="story-username">Anda</span>
-
-          <button className="add-status-btn" onClick={onAddStatus}>
-            <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
-          </button>
+          <span className="story-username" style={{ color: 'var(--text-main)' }}>Anda</span>
+          <button className="add-status-btn" onClick={onAddStatus}> <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span> </button>
 
           {myStatusText && (
-            <div
-              className="note-bubble"
-              style={{
-                position: 'absolute',
-                bottom: '55px', // menempel di atas dan menutupi sebagian avatar
-                right: -16,
-                background: 'var(--bg-card, #ffffff)',
-                border: '1px solid var(--border-card, #ccc)',
-                borderRadius: '12px',
-                padding: '6px 10px',
-                maxWidth: '150px',
-                maxHeight: '100px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: 10, // pastikan di atas avatar dan elemen lain di container
-                cursor: 'pointer',
-                whiteSpace: 'normal',
-                wordBreak: 'break-word',
-                fontSize: '11px',
-                lineHeight: '1.4',
-                color: 'var(--text-main)',
-              }}
-              onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
-            >
-              {myStatusText}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: -5,
-                  right: 22,
-                  width: 0,
-                  height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid var(--bg-card, #ffffff)',
-                }}
-              />
+            <div className="note-bubble" style={bubbleStyles} onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}>
+              {truncateBubble(myStatusText)}
+              <div style={triangleStyles} />
             </div>
           )}
         </div>
@@ -116,155 +96,44 @@ export default function FriendStoriesTray({
 
       {/* Teman */}
       {sortedFriends.length === 0 && !currentUser ? (
-        <div style={{ padding: '0 15px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          Belum mengikuti siapa pun.
-        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Belum mengikuti siapa pun.</div>
       ) : (
         sortedFriends.map((friend) => (
-          <div
-            key={friend.id}
-            className="story-avatar-container"
-            style={{ position: 'relative', zIndex: 1 }}
-            onClick={() =>
-              friend.hasStory
-                ? router.push(`/story/view?id=${friend.storyId}`)
-                : router.push(`/data?id=${friend.id}`)
-            }
-          >
+          <div key={friend.id} className="story-avatar-container" style={{ position: 'relative' }} onClick={() => friend.hasStory ? router.push(`/story/view?id=${friend.storyId}`) : router.push(`/data?id=${friend.id}`)}>
             <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
-              {friend.avatar_url ? (
-                <img src={friend.avatar_url} alt={friend.username} />
-              ) : (
-                <div className="default-avatar">
-                  <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
-                </div>
-              )}
+              {friend.avatar_url ? ( <img src={friend.avatar_url} alt={friend.username} /> ) : ( <div className="default-avatar"><span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span></div> )}
             </div>
-            <span className="story-username">{friend.username}</span>
+            <span className="story-username" style={{ color: 'var(--text-main)' }}>{friend.username}</span>
 
             {friend.status_text && (
-              <div
-                className="note-bubble"
-                style={{
-                  position: 'absolute',
-                  bottom: '55px',
-                  right: -16,
-                  background: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border-card, #ccc)',
-                  borderRadius: '12px',
-                  padding: '6px 10px',
-                  maxWidth: '150px',
-                  maxHeight: '100px',
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  zIndex: 10,
-                  cursor: 'pointer',
-                  whiteSpace: 'normal',
-                  wordBreak: 'break-word',
-                  fontSize: '11px',
-                  lineHeight: '1.4',
-                  color: 'var(--text-main)',
-                }}
-                onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
-              >
-                {friend.status_text}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: -5,
-                    right: 22,
-                    width: 0,
-                    height: 0,
-                    borderLeft: '6px solid transparent',
-                    borderRight: '6px solid transparent',
-                    borderTop: '6px solid var(--bg-card, #ffffff)',
-                  }}
-                />
+              <div className="note-bubble" style={bubbleStyles} onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}>
+                {truncateBubble(friend.status_text)}
+                <div style={triangleStyles} />
               </div>
             )}
           </div>
         ))
       )}
 
-      {/* Popup full note (tidak berubah) */}
+      {/* Popup full note (Menampilkan maksimum 50 karakter utuh jika di-klik) */}
       {popupNote && (
         <>
-          <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }}
-            onClick={closePopup}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border-card, #ccc)',
-              borderRadius: '16px',
-              padding: '20px',
-              maxWidth: '320px',
-              width: '90%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-              zIndex: 9999,
-              fontSize: '14px',
-              color: 'var(--text-main)',
-              lineHeight: 1.5,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 9998 }} onClick={closePopup} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-card)', border: '1px solid var(--border-card)', borderRadius: '20px', padding: '20px', maxWidth: '320px', width: '85%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', zIndex: 9999, fontSize: '14px', color: 'var(--text-main)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 15 }}>
               <span className="material-icons" style={{ fontSize: 24, color: '#1f3cff' }}>sticky_note_2</span>
               <strong style={{ fontSize: 16 }}>{popupNote.username}</strong>
             </div>
 
-            <div
-              style={{
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                background: 'var(--bg-secondary, #f3f4f6)',
-                padding: '12px',
-                borderRadius: '12px',
-                marginBottom: 16,
-              }}
-            >
+            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--bg-main)', border: '1px solid var(--border-card)', padding: '16px', borderRadius: '12px', marginBottom: 20, fontSize: '15px', lineHeight: 1.5 }}>
               {popupNote.text}
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                style={{
-                  flex: 1,
-                  background: '#1f3cff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 12,
-                  padding: '10px',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-                onClick={() => {
-                  closePopup();
-                  onFriendNoteClick?.(popupNote.userId);
-                }}
-              >
+              <button style={{ flex: 1, background: '#1f3cff', color: 'white', border: 'none', borderRadius: 12, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }} onClick={() => { closePopup(); onFriendNoteClick?.(popupNote.userId); }}>
                 Balas
               </button>
-              <button
-                style={{
-                  flex: 1,
-                  background: 'var(--bg-secondary, #e5e7eb)',
-                  color: 'var(--text-main)',
-                  border: '1px solid var(--border-card)',
-                  borderRadius: 12,
-                  padding: '10px',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-                onClick={closePopup}
-              >
+              <button style={{ flex: 1, background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--border-card)', borderRadius: 12, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }} onClick={closePopup}>
                 Tutup
               </button>
             </div>
