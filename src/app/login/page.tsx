@@ -1,401 +1,346 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { showNotif } from '@/lib/ui-utils';
-import { useTranslation } from 'react-i18next';
+import { supabase } from '@/lib/supabase'; // Sesuaikan path ini dengan config Supabase Anda
 import './Login.css';
 
-// ---------- Tipe step ----------
-type Step =
-  | 'method-selection'
-  | 'input-email'
-  | 'input-phone'
-  | 'otp'
-  | 'find-account';
+type Mode = 'login' | 'signup';
+type LoadingState = 'google' | 'discord' | 'passkey' | 'magiclink' | 'credentials' | null;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { t } = useTranslation();
 
-  // --- Step navigasi ---
-  const [step, setStep] = useState<Step>('method-selection');
+  // --- UI State ---
+  const [mode, setMode] = useState<Mode>('login');
+  const [loading, setLoading] = useState<LoadingState>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // --- Data form ---
+  // --- Form State ---
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [phoneChannel, setPhoneChannel] = useState<'whatsapp' | 'sms'>('whatsapp');
-  const [otpToken, setOtpToken] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  // --- Fitur "Cari Akun" ---
-  const [searchType, setSearchType] = useState<'email' | 'phone'>('email');
-  const [searchEmail, setSearchEmail] = useState('');
-  const [searchPhone, setSearchPhone] = useState('');
-  const [searchResult, setSearchResult] = useState<{
-    exists: boolean;
-    username?: string;
-    email?: string;
-    phone?: string;
-    avatar_url?: string;
-  } | null>(null);
-
-  // --- Reset password ---
-  const [resetEmail, setResetEmail] = useState('');
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-
-  // Referensi untuk kotak OTP
-  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  // ---------- Helper format nomor & sensor username ----------
-  const getFormattedPhone = (raw: string) => {
-    let cleaned = raw.replace(/\s+/g, '');
-    if (cleaned.startsWith('0')) cleaned = '+62' + cleaned.slice(1);
-    else if (cleaned.length > 0 && !cleaned.startsWith('+')) cleaned = '+' + cleaned;
-    return cleaned;
+  // --- Reset & Notifications ---
+  const clearMessages = () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
   };
 
-  const maskUsername = (name?: string) => {
-    if (!name) return '';
-    if (name.length <= 5) return name.slice(0, 2) + '***';
-    const first = name.slice(0, 4);
-    const last = name.slice(-3);
-    return `${first}***${last}`;
+  const handleError = (msg: string) => {
+    clearMessages();
+    setErrorMsg(msg);
   };
 
-  // ---------- Cek sesi & auto-create profile ----------
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        const userId = session.user.id;
-        const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).single();
-
-        if (!profile) {
-          const userMeta = session.user.user_metadata;
-          const rawName = userMeta?.full_name || userMeta?.name || session.user.email?.split('@')[0] || session.user.phone?.replace('+', '') || 'user_hype';
-          const safeUsername = rawName.toLowerCase().replace(/\s+/g, '');
-          const safeAvatar = userMeta?.avatar_url || userMeta?.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${safeUsername}`;
-
-          await supabase.from('profiles').insert([{ id: userId, username: safeUsername, avatar_url: safeAvatar, role: 'user' }]);
-        }
-        router.push('/');
-      }
-    });
-
-    return () => authListener.subscription.unsubscribe();
-  }, [router]);
-
-  // ---------- OAuth (Google) ----------
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + '/' },
-    });
+  const handleSuccess = (msg: string) => {
+    clearMessages();
+    setSuccessMsg(msg);
   };
 
-  // ---------- Kirim OTP ----------
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (step === 'input-email') {
-        if (!email) throw new Error(t('email_required'));
-        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-        if (error) throw error;
-        showNotif(t('otp_email_sent'), 'success');
-      } else if (step === 'input-phone') {
-        if (!phone) throw new Error(t('phone_required'));
-        const formatted = getFormattedPhone(phone);
-        const { error } = await supabase.auth.signInWithOtp({
-          phone: formatted,
-          options: { channel: phoneChannel, shouldCreateUser: true },
-        });
-        if (error) throw error;
-        showNotif(`Kode OTP dikirim melalui ${phoneChannel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`, 'success');
-      }
-      setStep('otp');
-    } catch (error: any) {
-      showNotif(error.message, 'error');
-    } finally {
-      setIsLoading(false);
+  // --- Validations ---
+  const validateForm = (): boolean => {
+    if (!email || !email.includes('@')) {
+      handleError('Please enter a valid email address.');
+      return false;
     }
-  };
-
-  // ---------- Verifikasi OTP ----------
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const token = otpToken.trim();
-    if (token.length !== 6) return showNotif('Kode OTP harus 6 digit', 'warning');
-    setIsLoading(true);
-
-    try {
-      const verifyParams: any = {
-        token,
-        type: step === 'input-email' || (step === 'otp' && email) ? 'email' : 'sms',
-      };
-      if (email) verifyParams.email = email;
-      else if (phone) verifyParams.phone = getFormattedPhone(phone);
-
-      const { error } = await supabase.auth.verifyOtp(verifyParams);
-      if (error) throw error;
-      showNotif(t('verify_success'), 'success');
-    } catch (error: any) {
-      showNotif(error.message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ---------- Pencarian akun ----------
-  const handleFindAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setSearchResult(null);
-
-    try {
-      const identifier = searchType === 'email' ? searchEmail.trim() : getFormattedPhone(searchPhone);
-      if (!identifier) throw new Error('Masukkan email atau nomor telepon');
-
-      // Simulasi pemanggilan API (Ganti dengan endpoint API aslimu)
-      const res = await fetch('/api/check-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: searchType, identifier }),
-      });
-      const data = await res.json();
-
-      if (data.exists) {
-        setSearchResult({
-          exists: true,
-          username: data.username,
-          email: data.email,
-          phone: data.phone,
-          avatar_url: data.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=hype', // Fallback image
-        });
-      } else {
-        setSearchResult({ exists: false });
+    if (mode === 'signup') {
+      if (!username.trim()) {
+        handleError('Username is required.');
+        return false;
       }
-    } catch (error: any) {
-      showNotif(error.message || 'Gagal memeriksa akun', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLoginFoundAccount = () => {
-    if (searchType === 'email') {
-      setEmail(searchEmail);
-      setStep('input-email');
+      if (password.length < 8) {
+        handleError('Password must be at least 8 characters.');
+        return false;
+      }
+      if (password !== confirmPassword) {
+        handleError('Passwords do not match.');
+        return false;
+      }
     } else {
-      setPhone(searchPhone);
-      setStep('input-phone');
+      if (!password) {
+        handleError('Password is required.');
+        return false;
+      }
     }
-    setSearchResult(null);
+    return true;
   };
 
-  // ---------- Lupa kata sandi ----------
-  const handleForgotPassword = async () => {
-    if (!resetEmail) return showNotif('Masukkan email terdaftar', 'warning');
-    setIsLoading(true);
+  // --- Auth Handlers ---
+  const handleCredentialsAuth = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
+    setLoading('credentials');
+    clearMessages();
+
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: window.location.origin + '/reset-password',
+      if (mode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { username } },
+        });
+        if (error) throw error;
+        handleSuccess('Account created! Please check your email to verify.');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        router.push('/'); // Redirect ke dashboard
+      }
+    } catch (err: any) {
+      handleError(err.message || 'Authentication failed');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleOAuth = async (provider: 'google' | 'discord') => {
+    setLoading(provider);
+    clearMessages();
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) throw error;
-      showNotif('Email reset password telah dikirim', 'success');
-      setShowForgotPassword(false);
-      setResetEmail('');
-    } catch (error: any) {
-      showNotif(error.message, 'error');
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      handleError(err.message || `Failed to sign in with ${provider}`);
+      setLoading(null);
     }
   };
 
-  // =====================================================================
-  // RENDER BLOCKS
-  // =====================================================================
-
-  const renderMethodSelection = () => (
-    <>
-      <div className="method-selection">
-        <button className="method-btn" onClick={() => setStep('input-email')}>
-          <span className="material-icons">email</span> Masuk dengan Email
-        </button>
-        <button className="method-btn" onClick={() => setStep('input-phone')}>
-          <span className="material-icons">phone</span> Masuk dengan Nomor Telepon
-        </button>
-        <button className="method-btn google-btn" onClick={handleGoogleLogin} disabled={isLoading}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-          </svg>
-          Masuk dengan Google
-        </button>
-      </div>
-      <div className="auth-links">
-        <button className="link-btn" onClick={() => setStep('find-account')}>Cari akun Anda</button>
-        <button className="link-btn" onClick={() => setShowForgotPassword(true)}>Lupa kata sandi?</button>
-      </div>
-    </>
-  );
-
-  const renderOtpInput = () => {
-    const handleOtpChange = (index: number, value: string) => {
-      if (!/^\d?$/.test(value)) return;
-      const newOtp = otpToken.split('');
-      newOtp[index] = value;
-      setOtpToken(newOtp.join('').slice(0, 6));
-      if (value && index < 5) otpInputRefs.current[index + 1]?.focus();
-    };
-
-    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-      if (e.key === 'Backspace' && !otpToken[index] && index > 0) {
-        otpInputRefs.current[index - 1]?.focus();
-      }
-    };
-
-    return (
-      <form onSubmit={handleVerifyOtp} className="otp-form slide-in">
-        <div className="otp-boxes">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <input
-              key={i}
-              ref={(el) => { otpInputRefs.current[i] = el; }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={otpToken[i] || ''}
-              onChange={(e) => handleOtpChange(i, e.target.value)}
-              onKeyDown={(e) => handleOtpKeyDown(i, e)}
-              className="otp-digit"
-              autoFocus={i === 0}
-            />
-          ))}
-        </div>
-        <button type="submit" className="btn-auth-main" disabled={isLoading}>
-          {isLoading ? 'Memverifikasi...' : 'Verifikasi & Masuk'}
-        </button>
-        <button type="button" className="back-link" onClick={() => { setStep(email ? 'input-email' : 'input-phone'); setOtpToken(''); }}>
-          ← Ubah Tujuan
-        </button>
-      </form>
-    );
+  const handleMagicLink = async () => {
+    if (!email || !email.includes('@')) {
+      handleError('Please enter your email first to send a magic link.');
+      return;
+    }
+    setLoading('magiclink');
+    clearMessages();
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/` },
+      });
+      if (error) throw error;
+      handleSuccess('Magic link sent! Check your inbox.');
+    } catch (err: any) {
+      handleError(err.message || 'Failed to send magic link');
+    } finally {
+      setLoading(null);
+    }
   };
 
-  const renderFindAccount = () => (
-    <form onSubmit={handleFindAccount} className="auth-form slide-in">
-      <h4 style={{ marginBottom: '16px' }}>Cari akun Anda</h4>
+  const handlePasskey = async () => {
+    setLoading('passkey');
+    clearMessages();
+    try {
+      // Pengecekan support WebAuthn di browser
+      if (!window.PublicKeyCredential) {
+        throw new Error('Passkeys are not supported on this device/browser.');
+      }
       
-      {/* Tampilan Avatar jika ketemu */}
-      {searchResult?.exists && searchResult.avatar_url && (
-        <div className="profile-preview-container fade-in-scale">
-          <img src={searchResult.avatar_url} alt="Profile" className="profile-preview-img" />
-        </div>
-      )}
+      // Catatan: Ini adalah stub. Anda perlu mengintegrasikan backend Passkey/Supabase Beta 
+      // navigator.credentials.get({ publicKey: ... })
+      await new Promise((res) => setTimeout(res, 1000)); // Simulasi
+      
+      throw new Error('Passkey login is not configured on the server yet.');
+    } catch (err: any) {
+      handleError(err.message || 'Passkey authentication failed');
+    } finally {
+      setLoading(null);
+    }
+  };
 
-      <div className="tab-mini">
-        <button type="button" className={searchType === 'email' ? 'active' : ''} onClick={() => setSearchType('email')}>Email</button>
-        <button type="button" className={searchType === 'phone' ? 'active' : ''} onClick={() => setSearchType('phone')}>Telepon</button>
-      </div>
+  // --- Toggle Mode ---
+  const toggleMode = () => {
+    setMode(mode === 'login' ? 'signup' : 'login');
+    clearMessages();
+  };
 
-      {/* Input sudah dibungkus dengan input-group-auth agar ada CSS nya */}
-      <div className="input-group-auth">
-        {searchType === 'email' ? (
-          <input type="email" placeholder="Email terdaftar" value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} required />
-        ) : (
-          <input type="tel" placeholder="Nomor telepon" value={searchPhone} onChange={(e) => setSearchPhone(e.target.value)} required />
-        )}
-      </div>
-
-      <button type="submit" className="btn-auth-main" disabled={isLoading}>
-        {isLoading ? 'Mencari...' : 'Mencari...'}
-      </button>
-
-      {searchResult && (
-        <div className="search-result fade-in-scale">
-          {searchResult.exists ? (
-            <>
-              <div className="result-status">
-                <span className="material-icons" style={{ color: '#10b981', fontSize: '18px' }}>check_box</span>
-                <p>Akun ditemukan: <strong>{maskUsername(searchResult.username)}</strong></p>
-              </div>
-              <button type="button" onClick={handleLoginFoundAccount} className="btn-auth-main secondary-btn">
-                Lanjutkan Login
-              </button>
-            </>
-          ) : (
-            <p style={{ color: '#ef4444' }}>Tidak ada akun yang terdaftar.</p>
-          )}
-        </div>
-      )}
-
-      <button type="button" className="back-link" onClick={() => { setStep('method-selection'); setSearchResult(null); }}>← Kembali</button>
-    </form>
+  // --- SVG Icons (Inline, No external libraries) ---
+  const LoaderIcon = () => (
+    <svg className="spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
+    </svg>
   );
 
-  // =====================================================================
-  // MAIN RENDER
-  // =====================================================================
-
-  if (showForgotPassword) {
-    return (
-      <div className="auth-wrapper fade-in-scale">
-        <div className="auth-container">
-          <h2 style={{ marginBottom: '20px' }}>Lupa Kata Sandi</h2>
-          {/* Input sudah dibungkus dengan input-group-auth */}
-          <div className="input-group-auth">
-            <input type="email" placeholder="Email terdaftar" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
-          </div>
-          <button onClick={handleForgotPassword} className="btn-auth-main" disabled={isLoading}>
-            Kirim Link Reset
-          </button>
-          <button onClick={() => setShowForgotPassword(false)} className="back-link">← Kembali</button>
-        </div>
-      </div>
-    );
-  }
+  const LogoSVG = () => (
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="app-logo">
+      <rect width="40" height="40" rx="12" fill="var(--color-primary)" />
+      <path d="M12 20L18 26L28 14" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 
   return (
-    <div className="auth-wrapper fade-in-scale">
-      <div className="auth-container">
-        <div className="auth-header">
-          <h1 style={{ fontSize: '32px' }}># hypeco</h1>
-          <p>
-            {step === 'method-selection' ? 'Login dulu buat lanjut cari hype' :
-             step === 'otp' ? 'Masukkan kode verifikasi' : 'Login dulu buat lanjut cari hype'}
-          </p>
+    <div className="auth-layout">
+      <div className="auth-card" role="main">
+        
+        {/* Header */}
+        <header className="auth-header">
+          <LogoSVG />
+          <h1>{mode === 'login' ? 'Welcome Back' : 'Create an Account'}</h1>
+          <p>{mode === 'login' ? 'Sign in to continue' : 'Sign up to get started'}</p>
+        </header>
+
+        {/* Notifications (Fixed height to prevent CLS) */}
+        <div className="auth-alerts" aria-live="polite">
+          {errorMsg && <div className="alert alert-error">{errorMsg}</div>}
+          {successMsg && <div className="alert alert-success">{successMsg}</div>}
         </div>
 
-        {step === 'method-selection' && renderMethodSelection()}
-        
-        {step === 'input-email' && (
-          <form onSubmit={handleSendOtp} className="auth-form slide-in">
-            <div className="input-group-auth"><input type="email" placeholder="user@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-            <button type="submit" className="btn-auth-main" disabled={isLoading}>{isLoading ? 'Mengirim...' : 'Kirim Kode OTP'}</button>
-            <button type="button" className="back-link" onClick={() => setStep('method-selection')}>← Kembali</button>
-          </form>
-        )}
+        {/* OAuth & Passkey Buttons */}
+        <div className="auth-socials">
+          <button 
+            type="button" 
+            className="btn-social" 
+            onClick={() => handleOAuth('google')}
+            disabled={loading !== null}
+            aria-label="Continue with Google"
+          >
+            {loading === 'google' ? <LoaderIcon /> : (
+              <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+            )}
+            Continue with Google
+          </button>
 
-        {step === 'input-phone' && (
-          <form onSubmit={handleSendOtp} className="auth-form slide-in">
-            <div className="input-group-auth"><input type="tel" placeholder="0812xxx / +628..." value={phone} onChange={(e) => setPhone(e.target.value)} required /></div>
-            <div className="channel-selector">
-              <label><input type="radio" value="whatsapp" checked={phoneChannel === 'whatsapp'} onChange={() => setPhoneChannel('whatsapp')} /> WhatsApp</label>
-              <label><input type="radio" value="sms" checked={phoneChannel === 'sms'} onChange={() => setPhoneChannel('sms')} /> SMS</label>
+          <button 
+            type="button" 
+            className="btn-social" 
+            onClick={() => handleOAuth('discord')}
+            disabled={loading !== null}
+            aria-label="Continue with Discord"
+          >
+            {loading === 'discord' ? <LoaderIcon /> : (
+              <svg width="20" height="20" viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+              </svg>
+            )}
+            Continue with Discord
+          </button>
+
+          <button 
+            type="button" 
+            className="btn-social" 
+            onClick={handlePasskey}
+            disabled={loading !== null}
+            aria-label="Continue with Passkey"
+          >
+            {loading === 'passkey' ? <LoaderIcon /> : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                <circle cx="12" cy="16" r="1" />
+              </svg>
+            )}
+            Continue with Passkey
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        {/* Main Form */}
+        <form onSubmit={handleCredentialsAuth} className="auth-form" noValidate>
+          {mode === 'signup' && (
+            <div className="form-group">
+              <label htmlFor="username">Username</label>
+              <input 
+                id="username" 
+                type="text" 
+                value={username} 
+                onChange={(e) => setUsername(e.target.value)} 
+                placeholder="hypeuser"
+                disabled={loading !== null}
+                aria-label="Username"
+              />
             </div>
-            <button type="submit" className="btn-auth-main" disabled={isLoading}>{isLoading ? 'Mengirim...' : 'Kirim Kode OTP'}</button>
-            <button type="button" className="back-link" onClick={() => setStep('method-selection')}>← Kembali</button>
-          </form>
-        )}
+          )}
 
-        {step === 'otp' && renderOtpInput()}
-        {step === 'find-account' && renderFindAccount()}
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input 
+              id="email" 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              placeholder="name@example.com"
+              disabled={loading !== null}
+              aria-label="Email Address"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input 
+              id="password" 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              placeholder="••••••••"
+              disabled={loading !== null}
+              aria-label="Password"
+            />
+          </div>
+
+          {mode === 'signup' && (
+            <div className="form-group fade-in">
+              <label htmlFor="confirmPassword">Confirm Password</label>
+              <input 
+                id="confirmPassword" 
+                type="password" 
+                value={confirmPassword} 
+                onChange={(e) => setConfirmPassword(e.target.value)} 
+                placeholder="••••••••"
+                disabled={loading !== null}
+                aria-label="Confirm Password"
+              />
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            className="btn-primary mt-2" 
+            disabled={loading !== null}
+            aria-label={mode === 'login' ? 'Sign In' : 'Create Account'}
+          >
+            {loading === 'credentials' ? <LoaderIcon /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
+          </button>
+
+          {mode === 'login' && (
+            <button 
+              type="button" 
+              className="btn-magic-link" 
+              onClick={handleMagicLink}
+              disabled={loading !== null}
+            >
+              {loading === 'magiclink' ? 'Sending...' : 'Send Magic Link Instead'}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            </button>
+          )}
+        </form>
+
+        {/* Footer Toggle */}
+        <footer className="auth-footer">
+          <p>
+            {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
+            <button type="button" onClick={toggleMode} className="btn-toggle">
+              {mode === 'login' ? 'Sign Up' : 'Sign In'}
+            </button>
+          </p>
+        </footer>
+
       </div>
     </div>
   );

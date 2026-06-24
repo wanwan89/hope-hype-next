@@ -1,479 +1,388 @@
-/* src/app/login/Login.css */
-
-/* VARIABEL WARNA (Terhubung dengan globals.css) */
-:root {
-  --primary: #1f3cff;
-  --primary-hover: #152ac4;
-}
-
-.auth-wrapper {
-  min-height: 100dvh;
-  width: 100%;
-  background-color: var(--bg-main, #ffffff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Plus Jakarta Sans', 'Poppins', -apple-system, sans-serif;
-  box-sizing: border-box;
-}
-
-.auth-container {
-  width: 100%;
-  max-width: 440px;
-  padding: 30px 24px 40px 24px;
-  background-color: transparent;
-  display: flex;
-  flex-direction: column;
-}
-
-/* HEADER */
-.auth-header {
-  text-align: left;
-  margin-bottom: 32px;
-}
-
-.auth-logo {
-  margin-bottom: 24px;
-}
-
-.auth-header h1 {
-  font-size: 40px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: var(--text-main, #0f172a);
-  letter-spacing: -1.5px;
-  line-height: 1.1;
-}
-
-.auth-header p {
-  font-size: 15px;
-  color: var(--text-muted, #64748b);
-  font-weight: 500;
-}
-
-/* FORM INPUT */
-.auth-form {
-  display: flex;
-  flex-direction: column;
-}
-
-.input-group-auth {
-  position: relative;
-  background: transparent;
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  height: 56px;
-  margin-bottom: 16px;
-  transition: all 0.2s ease;
-}
-
-.input-group-auth:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary);
-}
-
-.input-group-auth .material-icons {
-  color: var(--text-muted, #94a3b8);
-  margin-right: 12px;
-  font-size: 20px;
-  transition: color 0.2s;
-}
-
-.input-group-auth:focus-within .material-icons {
-  color: var(--primary);
-}
-
-.input-group-auth input,
-.input-group-auth select {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: 16px;
-  color: var(--text-main, #0f172a);
-  width: 100%;
-  font-family: inherit;
-}
-
-.input-group-auth input::placeholder {
-  color: var(--placeholder-color, #94a3b8);
-}
-
-/* BUTTON UTAMA */
-.btn-auth-main {
-  height: 52px;
-  background-color: var(--text-main, #0f172a);
-  color: var(--bg-main, #ffffff);
-  border: none;
-  border-radius: 30px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: opacity 0.2s, transform 0.1s;
-}
-
-.btn-auth-main:hover {
-  opacity: 0.9;
-}
-
-.btn-auth-main:active {
-  transform: scale(0.98);
-}
-
-.btn-auth-main:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-/* DIVIDER */
-.divider-auth {
-  margin: 24px 0;
-  position: relative;
-  text-align: center;
-}
-
-.divider-auth::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--border-color, #e2e8f0);
-  z-index: 1;
-}
-
-.divider-auth span {
-  background: var(--bg-main, #ffffff);
-  padding: 0 16px;
-  color: var(--text-muted, #64748b);
-  font-size: 14px;
-  position: relative;
-  z-index: 2;
-}
-
-/* TOMBOL GOOGLE (standar) */
-.btn-google {
-  width: 100%;
-  height: 52px;
-  background: transparent;
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-main, #0f172a);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-google:hover {
-  background: var(--bg-hover, #f1f5f9);
-}
-
-/* FOOTER */
-.footer-auth {
-  margin-top: 32px;
-  font-size: 14px;
-  color: var(--text-muted, #64748b);
-  text-align: left;
-}
-
-.footer-auth span {
-  color: var(--primary);
-  font-weight: 600;
-  cursor: pointer;
-  margin-left: 4px;
-}
-.footer-auth span:hover {
-  text-decoration: underline;
-}
-
-/* ANIMASI */
-.fade-in-scale {
-  animation: fadeIn 0.4s ease-out forwards;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.slide-down {
-  animation: slideDown 0.3s ease-out forwards;
-  transform-origin: top;
-}
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 /* =========================================
-   DARK MODE (OLED STYLE)
+   DESIGN SYSTEM 2026 (Variables)
    ========================================= */
-[data-theme='dark'] .auth-wrapper,
-html.dark .auth-wrapper {
-  --bg-main: #000000;
-  --text-main: #e7e9ea;
-  --text-muted: #71767b;
-  --border-color: #333639;
-  --placeholder-color: #71767b;
-  --bg-hover: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme='dark'] .input-group-auth input:-webkit-autofill,
-html.dark .input-group-auth input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 30px #000000 inset !important;
-  -webkit-text-fill-color: #e7e9ea !important;
-}
-
-/* =========================================
-   NEW: METHOD SELECTION (EMAIL / PHONE / GOOGLE)
-   ========================================= */
-.method-selection {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin: 20px 0;
-}
-
-.method-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: 12px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-main, #0f172a);
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.method-btn:hover {
-  background: var(--bg-hover, #f1f5f9);
-  border-color: var(--primary);
-}
-
-/* Google button khusus di method selection */
-.method-btn.google-btn svg {
-  flex-shrink: 0;
-}
-
-/* Links: Cari akun / Lupa kata sandi */
-.auth-links {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 16px;
-}
-
-.link-btn {
-  background: none;
-  border: none;
-  color: var(--primary, #0070f3);
-  cursor: pointer;
-  text-decoration: underline;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.link-btn:hover {
-  opacity: 0.8;
-}
-
-/* OTP BOXES (6 digit) */
-.otp-boxes {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.otp-digit {
-  width: 48px;
-  height: 56px;
-  text-align: center;
-  font-size: 24px;
-  font-weight: bold;
-  border: 2px solid var(--border-color, #cbd5e1);
-  border-radius: 10px;
-  outline: none;
-  background: transparent;
-  color: var(--text-main, #0f172a);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.otp-digit:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(31, 60, 255, 0.2);
-}
-
-/* Back button (teks di bawah form) */
-.back-link {
-  display: block;
-  margin-top: 12px;
-  background: none;
-  border: none;
-  color: var(--text-muted, #64748b);
-  cursor: pointer;
-  font-size: 14px;
-  text-align: center;
-  width: 100%;
-  transition: color 0.2s;
-}
-
-.back-link:hover {
-  color: var(--text-main, #0f172a);
-}
-
-/* Tab mini untuk cari akun (Email / Telepon) */
-.tab-mini {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.tab-mini button {
-  flex: 1;
-  padding: 8px;
-  border: 1px solid var(--border-color, #cbd5e1);
-  background: transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-main, #0f172a);
-  transition: 0.2s;
-}
-
-.tab-mini button.active {
-  background: var(--text-main, #0f172a);
-  color: var(--bg-main, #ffffff);
-}
-
-/* Pencarian akun result */
-.search-result {
-  margin-top: 16px;
-  padding: 12px;
-  background: var(--bg-hover, #f8fafc);
-  border-radius: 8px;
-  text-align: center;
-}
-
-.search-result p {
-  margin: 0 0 12px;
-  font-size: 14px;
-  color: var(--text-main, #0f172a);
-}
-
-/* Lupa password container */
-.forgot-password-container {
-  text-align: left;
-}
-
-/* Utility: hilangkan outline default untuk input OTP */
-.otp-digit:focus-visible {
-  outline: none;
-}
-
-/* Channel selector (WhatsApp / SMS) */
-.channel-selector {
-  display: flex;
-  justify-content: space-around;
-  margin: 10px 0 16px;
-  font-size: 14px;
-}
-
-.channel-selector label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  color: var(--text-main, #0f172a);
-}
-/* =========================================
-   STYLE TAMBAHAN: FOTO PROFIL & HASIL CARI
-   ========================================= */
-
-.profile-preview-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.profile-preview-img {
-  width: 90px;
-  height: 90px;
-  border-radius: 12px;
-  object-fit: cover;
-  border: 1px solid var(--border-color, #333639);
-  background-color: var(--bg-hover, rgba(255, 255, 255, 0.05));
-  /* Sengaja tanpa box-shadow berlebih agar lebih clean */
-}
-
-.result-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.result-status p {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-main, #e7e9ea);
-}
-
-/* Tombol sekunder dalam pencarian hasil */
-.btn-auth-main.secondary-btn {
-  background-color: var(--text-main, #e7e9ea);
-  color: var(--bg-main, #000000);
-}
-
-/* =========================================
-   PERBAIKAN TAB MINI (EMAIL | TELEPON)
-   ========================================= */
-
-.tab-mini {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.tab-mini button {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid var(--border-color, #333639);
-  background: transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-main, #e7e9ea);
-  transition: all 0.2s ease;
-}
-
-.tab-mini button.active {
-  background: var(--text-main, #e7e9ea);
-  color: var(--bg-main, #000000);
-  border-color: var(--text-main, #e7e9ea);
-}
-
-/* Animasi tambahan agar perpindahan mulus */
-.slide-in {
-  animation: slideIn 0.3s ease-out forwards;
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+   :root {
+    --color-bg: #f8fafc;
+    --color-surface: #ffffff;
+    --color-text: #0f172a;
+    --color-text-muted: #64748b;
+    --color-border: #e2e8f0;
+    --color-primary: #000000;
+    --color-primary-hover: #1e293b;
+    --color-error: #ef4444;
+    --color-error-bg: #fef2f2;
+    --color-success: #10b981;
+    --color-success-bg: #ecfdf5;
+  
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+  
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* OLED Dark Mode */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg: #000000;
+      --color-surface: #0a0a0a;
+      --color-text: #f8fafc;
+      --color-text-muted: #94a3b8;
+      --color-border: #262626;
+      --color-primary: #ffffff;
+      --color-primary-hover: #e2e8f0;
+      --color-error: #f87171;
+      --color-error-bg: #450a0a;
+      --color-success: #34d399;
+      --color-success-bg: #022c22;
+      --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.8);
+    }
+  }
+  
+  /* Jika menggunakan data-theme */
+  [data-theme='dark'] {
+    --color-bg: #000000;
+    --color-surface: #0a0a0a;
+    --color-text: #f8fafc;
+    --color-text-muted: #94a3b8;
+    --color-border: #262626;
+    --color-primary: #ffffff;
+    --color-primary-hover: #e2e8f0;
+  }
+  
+  /* =========================================
+     LAYOUT (Mobile First)
+     ========================================= */
+  .auth-layout {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-bg);
+    padding: 16px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--color-text);
+  }
+  
+  .auth-card {
+    width: 100%;
+    max-width: 420px;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: 32px 24px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-border);
+    animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  @media (min-width: 768px) {
+    .auth-card {
+      padding: 40px;
+    }
+  }
+  
+  /* =========================================
+     HEADER
+     ========================================= */
+  .auth-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  
+  .app-logo {
+    margin-bottom: 16px;
+  }
+  
+  .auth-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px 0;
+  }
+  
+  .auth-header p {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+  
+  /* =========================================
+     ALERTS (Mencegah CLS dengan min-height)
+     ========================================= */
+  .auth-alerts {
+    min-height: 48px; 
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .alert {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .alert-error {
+    background-color: var(--color-error-bg);
+    color: var(--color-error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+  
+  .alert-success {
+    background-color: var(--color-success-bg);
+    color: var(--color-success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+  
+  /* =========================================
+     SOCIAL BUTTONS
+     ========================================= */
+  .auth-socials {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .btn-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 44px;
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    /* Paksa GPU rendering untuk animasi halus */
+    transform: translateZ(0); 
+  }
+  
+  .btn-social:hover:not(:disabled) {
+    background-color: var(--color-bg);
+    border-color: var(--color-text-muted);
+  }
+  
+  .btn-social:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  
+  .btn-social:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  /* =========================================
+     DIVIDER
+     ========================================= */
+  .auth-divider {
+    position: relative;
+    text-align: center;
+    margin: 24px 0;
+  }
+  
+  .auth-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: var(--color-border);
+  }
+  
+  .auth-divider span {
+    position: relative;
+    background-color: var(--color-surface);
+    padding: 0 12px;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  /* =========================================
+     FORM & INPUTS
+     ========================================= */
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+  
+  .form-group input {
+    width: 100%;
+    height: 44px;
+    padding: 0 16px;
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font-size: 14px;
+    transition: var(--transition);
+    box-sizing: border-box;
+  }
+  
+  .form-group input::placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.5;
+  }
+  
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--color-text);
+    box-shadow: 0 0 0 1px var(--color-text);
+  }
+  
+  .form-group input:disabled {
+    background-color: var(--color-bg);
+    opacity: 0.6;
+  }
+  
+  /* Fix Autofill Styles untuk OLED Dark Mode */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px var(--color-surface) inset !important;
+    -webkit-text-fill-color: var(--color-text) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+  
+  /* =========================================
+     BUTTONS (Primary & Magic Link)
+     ========================================= */
+  .mt-2 {
+    margin-top: 8px;
+  }
+  
+  .btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 44px;
+    background-color: var(--color-primary);
+    color: var(--color-surface);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    transform: translateZ(0);
+  }
+  
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+  
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  
+  .btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  .btn-magic-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px;
+    transition: var(--transition);
+  }
+  
+  .btn-magic-link:hover:not(:disabled) {
+    color: var(--color-text);
+  }
+  
+  /* =========================================
+     FOOTER
+     ========================================= */
+  .auth-footer {
+    margin-top: 24px;
+    text-align: center;
+  }
+  
+  .auth-footer p {
+    font-size: 14px;
+    color: var(--color-text-muted);
+  }
+  
+  .btn-toggle {
+    background: none;
+    border: none;
+    color: var(--color-text);
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 6px;
+    padding: 0;
+    font-size: 14px;
+    transition: var(--transition);
+  }
+  
+  .btn-toggle:hover {
+    text-decoration: underline;
+  }
+  
+  /* =========================================
+     ANIMATIONS & UTILS
+     ========================================= */
+  .fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  @keyframes slideUpFade {
+    0% { opacity: 0; transform: translateY(16px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  
+  /* Spinner 60fps */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    100% { transform: rotate(360deg); }
+  }
