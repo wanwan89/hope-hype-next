@@ -128,12 +128,13 @@ function StoryViewerContent() {
     }
   }
 
-  // 🔥 FIX: Perbaikan query fetch viewers agar relasi profilenya terbaca dengan benar
+  // 🔥 FIX: Mengambil data viewers dan juga data likes dari story ini
   async function fetchViewers(sId: string) {
     const currentStory = allUserStories[currentIndex];
     if (currentStory && currentStory.creator_id !== currentUserId) return;
 
-    const { data, error } = await supabase
+    // 1. Ambil data penonton
+    const { data: viewsData, error: viewsError } = await supabase
       .from('story_views')
       .select(`
         id, 
@@ -147,12 +148,27 @@ function StoryViewerContent() {
       .eq('story_id', sId)
       .order('created_at', { ascending: false });
 
-    if (data && !error) {
-      // Pastikan data profiles ada sebelum dimasukkan ke state
-      const uniqueViewers = data.map((d: any) => d.profiles).filter(Boolean);
+    // 2. Ambil data likes untuk story ini
+    const { data: likesData } = await supabase
+      .from('story_likes')
+      .select('user_id')
+      .eq('story_id', sId);
+
+    const likedUserIds = new Set(likesData?.map((l: any) => l.user_id) || []);
+
+    if (viewsData && !viewsError) {
+      // Gabungkan data profiles dengan status has_liked
+      const uniqueViewers = viewsData.map((d: any) => {
+        if (!d.profiles) return null;
+        return {
+          ...d.profiles,
+          has_liked: likedUserIds.has(d.user_id)
+        };
+      }).filter(Boolean);
+      
       setViewers(uniqueViewers);
     } else {
-      console.error("Gagal load viewers:", error?.message);
+      console.error("Gagal load viewers:", viewsError?.message);
     }
   }
 
@@ -211,7 +227,6 @@ function StoryViewerContent() {
     setIsLiked(!!data);
   }
 
-  // 🔥 FIX: Penambahan fitur Notifikasi saat Like
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentUserId) return showNotif("Login dulu bro!", "error");
@@ -477,9 +492,11 @@ function StoryViewerContent() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', animation: 'fadeInOverlay 0.3s ease' }} onClick={() => setIsViewersModalOpen(false)}>
           <div style={{ background: '#1a1a1a', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', animation: 'slideUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1)', display: 'flex', flexDirection: 'column', maxHeight: '75vh' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: '40px', height: '5px', background: '#333', borderRadius: '10px', margin: '0 auto 15px auto' }}></div>
+            {/* 🔥 FIX: Tambahkan total viewers di header */}
             <h3 style={{ color: 'white', margin: '0 0 15px 0', fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-              <span className="material-icons">visibility</span> Tayangan
+              <span className="material-icons">visibility</span> Tayangan {viewers.length > 0 ? `(${viewers.length})` : ''}
             </h3>
+            
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '5px' }}>
               {viewers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
@@ -488,9 +505,20 @@ function StoryViewerContent() {
                 </div>
               ) : (
                 viewers.map(v => (
-                  <div key={v.id} onClick={() => { setIsViewersModalOpen(false); router.push(`/data?id=${v.id}`); }} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
-                    <img src={v.avatar_url || '/asets/png/profile.webp'} style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover' }} />
-                    <span style={{ color: 'white', fontWeight: 600, fontSize: '15px' }}>{v.username}</span>
+                  // 🔥 FIX: Layout justify-content: space-between agar love berada di kanan
+                  <div key={v.id} onClick={() => { setIsViewersModalOpen(false); router.push(`/data?id=${v.id}`); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
+                    
+                    {/* Bagian Kiri (Avatar & Nama) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <img src={v.avatar_url || '/asets/png/profile.webp'} style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover' }} alt="Avatar" />
+                      <span style={{ color: 'white', fontWeight: 600, fontSize: '15px' }}>{v.username}</span>
+                    </div>
+
+                    {/* 🔥 FIX: Bagian Kanan (Icon Love Jika Sudah Like) */}
+                    {v.has_liked && (
+                      <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>favorite</span>
+                    )}
+
                   </div>
                 ))
               )}
