@@ -7,7 +7,7 @@ import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Notifications.css';
 
-// Komponen (sudah di-fix sebelumnya agar mandiri mendeteksi tema)
+// Komponen (sudah di-fix mandiri, tidak perlu prop isDark)
 import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
 import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
@@ -17,17 +17,7 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { t } = useTranslation();
 
-  // ---------- State tema ----------
-  const [isDark, setIsDark] = useState(true); // default true agar saat SSR aman
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDark(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  // ---------- State data ----------
+  // ---------- State data (tanpa isDark) ----------
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [myFollowings, setMyFollowings] = useState<Set<string>>(new Set());
   const [rawNotifs, setRawNotifs] = useState<any[]>([]);
@@ -54,7 +44,7 @@ export default function NotificationsPage() {
     }
   }, [activeView]);
 
-  // ---------- Fungsi-fungsi data (sama persis, tidak diubah) ----------
+  // ---------- Fungsi-fungsi data (persis sama, tidak diubah) ----------
   const initUserAndData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
@@ -352,45 +342,15 @@ export default function NotificationsPage() {
     }
   };
 
+  // ---------- RENDER ----------
   return (
-    <div
-      className="notif-page-container"
-      style={{
-        background: isDark ? 'var(--bg-card)' : '#ffffff',
-        minHeight: '100dvh',
-      }}
-    >
+    <div className="notif-page-container">
       {activeView === 'main' ? (
-        <div
-          className="notif-main-view"
-          style={{ background: isDark ? 'var(--bg-card)' : '#ffffff' }}
-        >
-          <header
-            className="notif-header"
-            style={{
-              padding: '20px 15px 15px',
-              display: 'flex',
-              justifyContent: 'flex-start',
-              alignItems: 'center',
-              background: isDark ? 'var(--bg-card)' : '#ffffff',
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
-            <h2
-              style={{
-                margin: 0,
-                fontSize: '20px',
-                fontWeight: 800,
-                textAlign: 'left',
-                color: isDark ? 'var(--text-main)' : '#1a1a1a',
-              }}
-            >
-              {t('notifications', 'Notifikasi')}
-            </h2>
+        <div className="notif-main-view">
+          <header className="notif-header">
+            <h2>{t('notifications', 'Notifikasi')}</h2>
           </header>
 
-          {/* FriendStoriesTray sudah di-fix mandiri, tidak perlu prop isDark */}
           <FriendStoriesTray
             friends={friendStories}
             currentUser={currentUser}
@@ -401,16 +361,7 @@ export default function NotificationsPage() {
           />
 
           {showStatusInput && (
-            <div
-              className="status-input-container"
-              style={{
-                background: isDark ? 'var(--bg-card)' : '#ffffff',
-                borderBottom: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
-                padding: '10px 15px',
-                display: 'flex',
-                gap: '10px',
-              }}
-            >
+            <div className="status-input-container">
               <input
                 type="text"
                 placeholder="Tulis note (Maks. 50 Karakter)"
@@ -418,26 +369,13 @@ export default function NotificationsPage() {
                 defaultValue={myStatusText}
                 autoFocus
                 className="status-input"
-                style={{
-                  flex: 1,
-                  background: isDark ? 'var(--bg-input)' : '#f5f5f5',
-                  color: isDark ? 'var(--text-main)' : '#1a1a1a',
-                  border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleUpdateStatus(e.currentTarget.value);
                 }}
               />
               <button
                 onClick={() => setShowStatusInput(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: isDark ? 'var(--text-main)' : '#1a1a1a',
-                  cursor: 'pointer',
-                }}
+                className="back-btn"
               >
                 <span className="material-icons">close</span>
               </button>
@@ -445,47 +383,23 @@ export default function NotificationsPage() {
           )}
 
           {pendingCount > 0 && (
-            <div
-              className="pending-alert-box"
-              style={{
-                background: isDark ? 'var(--bg-card)' : '#ffffff',
-                border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
-                margin: '10px 15px',
-                padding: '12px 15px',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-              }}
-              onClick={() => router.push('/pending')}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div className="pending-alert-box" onClick={() => router.push('/pending')}>
+              <div className="pending-alert-left">
                 <div className="pending-icon-wrap">
-                  <span className="material-icons" style={{ fontSize: '20px', color: '#f59e0b' }}>
-                    pending_actions
-                  </span>
+                  <span className="material-icons" style={{ fontSize: '20px' }}>pending_actions</span>
                 </div>
-                <div>
-                  <span style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a', fontWeight: 600 }}>
-                    Menunggu Review <span style={{ color: '#f59e0b' }}>({pendingCount})</span>
+                <div className="pending-text">
+                  <span className="pending-title">
+                    Menunggu Review <span>({pendingCount})</span>
                   </span>
-                  <br />
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                    Karyamu sedang dalam antrean pengecekan.
-                  </span>
+                  <span className="pending-desc">Karyamu sedang dalam antrean pengecekan.</span>
                 </div>
               </div>
-              <span className="material-icons" style={{ color: 'var(--text-muted)' }}>
-                chevron_right
-              </span>
+              <span className="material-icons pending-chevron">chevron_right</span>
             </div>
           )}
 
-          {/* CategoryMenu juga sudah mandiri */}
           <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
-
-          {/* RecommendedFriends – asumsikan sudah di-fix serupa, jika belum bisa disesuaikan */}
           <RecommendedFriends
             recommended={recommendedFriends}
             onFollow={handleFollowAction}

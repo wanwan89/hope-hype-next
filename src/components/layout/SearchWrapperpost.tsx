@@ -28,7 +28,7 @@ export default function SearchWrapperpost() {
     setMounted(true);
   }, []);
 
-  // Listener upload
+  // Listener upload (tidak diubah)
   useEffect(() => {
     if (localStorage.getItem('isUploading') === 'true') {
       setIsUploading(true);
@@ -76,20 +76,20 @@ export default function SearchWrapperpost() {
     try {
       const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
-        .from("stories")
-        .select("*, profiles(username, avatar_url)")
-        .gte("created_at", timeLimit)
-        .order("created_at", { ascending: false });
+        .from('stories')
+        .select('*, profiles(username, avatar_url)')
+        .gte('created_at', timeLimit)
+        .order('created_at', { ascending: false });
 
       const seenUsers = new Set();
-      const uniqueStories = (data || []).filter(story => {
+      const uniqueStories = (data || []).filter((story) => {
         if (seenUsers.has(story.creator_id)) return false;
         seenUsers.add(story.creator_id);
         return true;
       });
       setStories(uniqueStories);
     } catch (err) {
-      console.error("Story Error:", err);
+      console.error('Story Error:', err);
     }
   };
 
@@ -105,25 +105,9 @@ export default function SearchWrapperpost() {
   if (!mounted || isHidden) return null;
 
   return (
-    <div className="header-main-wrapper" style={{ background: '#ffffff' }}>
+    <div className="header-main-wrapper">
       {/* Kotak pencarian + tombol */}
-      <div
-        className="search-wrapper glass-effect"
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 99,
-          width: '100vw',
-          maxWidth: '100%',
-          margin: 0,
-          borderRadius: 0,
-          borderLeft: 'none',
-          borderRight: 'none',
-          overflow: 'hidden',
-          background: '#ffffff', // Background diubah jadi putih
-          borderBottom: '1px solid var(--border-card)',
-        }}
-      >
+      <div className="search-wrapper glass-effect">
         <div className="brutal-input-container">
           <input
             type="text"
@@ -131,7 +115,7 @@ export default function SearchWrapperpost() {
             className="brutal-input"
             readOnly
             onClick={() => router.push('/search')}
-            style={{ cursor: 'pointer' }} /* 🔥 Dikembalikan persis seperti semula tanpa background inline */
+            style={{ cursor: 'pointer' }}
           />
         </div>
 
@@ -145,14 +129,14 @@ export default function SearchWrapperpost() {
           style={{
             background: 'var(--primary)',
             color: '#fff',
-            border: 'none'
+            border: 'none',
           }}
         >
           <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
         </button>
       </div>
 
-      {/* 🔥 LOADING POSTINGAN DENGAN GAYA KEKINIAN */}
+      {/* Loading postingan */}
       {isUploading && (
         <div
           style={{
@@ -171,7 +155,7 @@ export default function SearchWrapperpost() {
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              background: 'var(--primary-soft)', // Menggunakan variabel global
+              background: 'var(--primary-soft)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
               borderRadius: '24px',
@@ -183,7 +167,6 @@ export default function SearchWrapperpost() {
               transition: 'all 0.3s ease',
             }}
           >
-            {/* Ikon status */}
             {uploadProgress < 100 ? (
               <span
                 className="material-icons"
@@ -207,7 +190,6 @@ export default function SearchWrapperpost() {
               </span>
             )}
 
-            {/* Progress bar mini */}
             <div
               style={{
                 flex: 1,
@@ -221,17 +203,13 @@ export default function SearchWrapperpost() {
                 style={{
                   width: `${uploadProgress}%`,
                   height: '100%',
-                  background:
-                    uploadProgress < 100
-                      ? 'var(--primary)'
-                      : '#00c853',
+                  background: uploadProgress < 100 ? 'var(--primary)' : '#00c853',
                   borderRadius: '4px',
                   transition: 'width 0.4s ease',
                 }}
               />
             </div>
 
-            {/* Teks persentase */}
             <span
               style={{
                 fontSize: '12px',
@@ -247,16 +225,9 @@ export default function SearchWrapperpost() {
         </div>
       )}
 
-      {/* Story dengan latar mengikuti tema */}
+      {/* Story */}
       {stories.length > 0 && (
-        <div
-          className="stories-container"
-          style={{
-            background: '#ffffff', // Background diubah jadi putih
-            borderBottom: 'none',
-            padding: '10px 0',
-          }}
-        >
+        <div className="stories-container">
           {stories.map((story) => (
             <div
               key={story.id}
@@ -265,13 +236,12 @@ export default function SearchWrapperpost() {
               style={{
                 transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)',
                 transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                background: 'transparent',
               }}
             >
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  background: '#ffffff', // Cincin putih/gelap tergantung tema
+                  background: 'var(--bg-main)', // ikuti tema
                 }}
               >
                 <img
@@ -280,10 +250,12 @@ export default function SearchWrapperpost() {
                     `https://ui-avatars.com/api/?name=${story.profiles?.username}`
                   }
                   alt="avatar"
-                  style={{ border: '2px solid #ffffff' }} // Border image mengikuti background putih
+                  style={{
+                    border: '2px solid var(--bg-main)', // ikuti tema
+                  }}
                 />
               </div>
-              <span className="story-name" style={{ color: 'var(--text-main)' }}>
+              <span className="story-name">
                 {story.profiles?.username}
               </span>
             </div>

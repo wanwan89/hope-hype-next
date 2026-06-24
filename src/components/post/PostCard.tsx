@@ -1,7 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase'; // 🔥 FIX 1: Import Supabase untuk rekam view
+import { supabase } from '@/lib/supabase';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
 import MusicMarquee from './MusicMarquee';
@@ -104,7 +104,6 @@ const PostCard: React.FC<PostCardProps> = ({
   const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Ref untuk memastikan view hanya dihitung sekali per render
   const hasViewedRef = useRef(false);
 
   const [showMoreButton, setShowMoreButton] = useState(false);
@@ -114,23 +113,19 @@ const PostCard: React.FC<PostCardProps> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const actuallyExpanded = isExpanded || localExpanded;
 
-  // State kontrol video
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
 
-  // State UI video
   const [showPlayPause, setShowPlayPause] = useState(false);
   const [isBarVisible, setIsBarVisible] = useState(false);
   const playPauseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapVideoRef = useRef<number>(0);
-  
-  // Ref untuk menyimpan state video sebelum di-seek
   const wasPlayingRef = useRef(false);
 
-  // --- 3. Observer video/audio ---
+  // --- 3. Observer video/audio (tidak diubah) ---
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
@@ -142,7 +137,6 @@ const PostCard: React.FC<PostCardProps> = ({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Putar media jika ada
             if (media) {
               media.muted = isGloballyMuted;
               media.play().catch(() => {
@@ -151,22 +145,17 @@ const PostCard: React.FC<PostCardProps> = ({
               });
             }
 
-            // Pause media lain yang sedang jalan
             document
               .querySelectorAll('.post-video-element, .post-audio-element')
               .forEach((el: any) => {
                 if (el !== media && !el.paused) el.pause();
               });
 
-            // 🔥 FIX BUG 1: Rekam view saat elemen terlihat di layar (min 50% terlihat) 🔥
             if (!hasViewedRef.current && postIdStr) {
-              hasViewedRef.current = true; // Set true agar tidak dipanggil berulang
+              hasViewedRef.current = true;
               const recordView = async () => {
                 try {
-                  // Coba update menggunakan RPC (jika ada)
                   const { error } = await supabase.rpc('increment_post_view', { p_id: postIdStr });
-                  
-                  // Fallback: Jika RPC tidak ada, update manual dengan mengambil data view sekarang + 1
                   if (error) {
                     const { data } = await supabase.from('posts').select('views').eq('id', postIdStr).single();
                     if (data) {
@@ -184,14 +173,14 @@ const PostCard: React.FC<PostCardProps> = ({
           }
         });
       },
-      { threshold: 0.5 } // Threshold 0.5 artinya view dihitung jika 50% elemen terlihat di layar
+      { threshold: 0.5 }
     );
 
     observer.observe(card);
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // Sinkronisasi status video
+  // --- Sinkronisasi status video (tidak diubah) ---
   useEffect(() => {
     const video = mediaRef.current as HTMLVideoElement | null;
     if (!video || !isVideoPost) return;
@@ -216,7 +205,7 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-  // Deteksi bio
+  // Deteksi bio (tidak diubah)
   useEffect(() => {
     if (photoList.length > 0 || isVideoPost) {
       const raf = requestAnimationFrame(() => {
@@ -243,7 +232,7 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, []);
 
-  // Render bio
+  // Render bio (tidak diubah)
   const renderBioWithMentions = useCallback(
     (text: string) => {
       if (!text) return null;
@@ -296,7 +285,7 @@ const PostCard: React.FC<PostCardProps> = ({
     [onToggleExpand, postIdStr]
   );
 
-  // 🔥 HANDLER VIDEO SCRUBBER / SEEKING YANG BARU & SMOOTH 🔥
+  // Handler video seek (tidak diubah)
   const handleVideoSeekStart = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
     setIsSeeking(true);
@@ -321,21 +310,19 @@ const PostCard: React.FC<PostCardProps> = ({
   const handleVideoSeekCommit = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
     setIsSeeking(false);
-    
     setTimeout(() => {
       if (!isSeeking) setIsBarVisible(false);
     }, 1500);
 
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      video.currentTime = videoCurrentTime; 
+      video.currentTime = videoCurrentTime;
       if (wasPlayingRef.current) {
         video.play().catch(() => {});
       }
     }
   }, [videoCurrentTime, isSeeking]);
 
-  // Handler klik area video (single/double tap)
   const handleVideoClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const now = Date.now();
@@ -373,7 +360,6 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, [handleMediaClick, postIdStr, creatorIdStr]);
 
-  // Throttle scroll carousel
   const ticking = useRef(false);
   const handleCarouselScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (!ticking.current) {
@@ -390,11 +376,11 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card
+  // Style card (hanya ubah background jika bukan variabel)
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: 'var(--bg-card)', 
+      background: 'var(--bg-card)',
       borderRadius: '0px',
       padding: '0',
       borderLeft: 'none',
@@ -455,7 +441,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </span>
             )}
 
-            {/* Top right badges */}
+            {/* Top right badges – background semi transparan tidak diubah */}
             <div
               style={{
                 position: 'absolute',
@@ -547,7 +533,6 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             )}
 
-            {/* Floating bubbles */}
             <FloatingBubbles
               likers={isOwner ? mutualLikers : []}
               reposters={!isOwner ? mutualReposters : []}
@@ -566,12 +551,11 @@ const PostCard: React.FC<PostCardProps> = ({
                     width: '100%',
                     overflow: 'hidden',
                     position: 'relative',
-                    background: '#000',
+                    background: 'var(--bg-secondary)', // ← gunakan variabel tema
                     cursor: 'default',
                     transform: 'translateZ(0)',
                   }}
                 >
-                  {/* Area klik video */}
                   <div
                     style={{ position: 'absolute', inset: 0, zIndex: 1, cursor: 'pointer' }}
                     onClick={handleVideoClick}
@@ -614,7 +598,6 @@ const PostCard: React.FC<PostCardProps> = ({
                     }}
                   />
 
-                  {/* Indikator play/pause */}
                   {videoLoaded && showPlayPause && (
                     <div
                       style={{
@@ -711,7 +694,7 @@ const PostCard: React.FC<PostCardProps> = ({
                         width: '100%',
                         overflow: 'hidden',
                         position: 'relative',
-                        background: '#1a1a1a',
+                        background: 'var(--bg-secondary)', // ← gunakan variabel tema
                         transform: 'translateZ(0)',
                       }}
                     >
@@ -793,6 +776,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
+                    color: 'var(--text-main)', // ← pastikan teks ikut tema
                   }}
                 >
                   {post.profiles?.full_name || post.profiles?.username || 'User'}
@@ -917,6 +901,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 gap: '8px',
                 pointerEvents: 'auto',
                 marginTop: '8px',
+                color: 'var(--text-muted)', // ← ikut tema
               }}
             >
               <span>{formattedDate}</span>
