@@ -12,6 +12,23 @@ import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
 import NotificationListView from '@/components/notifications/NotificationListView';
 
+// Helper untuk menyimpan status read di local storage (agar tidak reset saat refresh)
+const getReadNotifs = (): string[] => {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem('read_notifs_local') || '[]'); } 
+  catch { return []; }
+};
+
+const saveReadNotifs = (ids: string[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const readList = new Set(getReadNotifs());
+    ids.forEach(id => readList.add(id));
+    // Simpan maksimal 500 ID terakhir agar memori tidak penuh
+    localStorage.setItem('read_notifs_local', JSON.stringify(Array.from(readList).slice(-500)));
+  } catch {}
+};
+
 export default function NotificationsPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -163,6 +180,9 @@ export default function NotificationsPage() {
         likesByPostId[l.post_id].push(l);
       });
 
+      // FIX: Ambil daftar notif yang sudah di-read dari local storage
+      const readList = new Set(getReadNotifs());
+
       let finalLikesNotifs: any[] = [];
       Object.entries(likesByPostId).forEach(([postId, likes]) => {
         const uniqueLikersMap = new Map(likes.map(l => [l.user_id, l]));
@@ -170,27 +190,29 @@ export default function NotificationsPage() {
         if (uniqueLikers.length === 0) return;
         if (uniqueLikers.length === 1) {
           const l = uniqueLikers[0];
+          const nId = `like-${l.id}`;
           finalLikesNotifs.push({
-            id: `like-${l.id}`,
+            id: nId,
             type: 'like',
             post_id: postId,
             actor_id: l.user_id,
             created_at: l.created_at,
-            is_read: false,
+            is_read: readList.has(nId), // Check local storage
             actor: profilesMap[l.user_id],
             postData: myPosts.find((p) => p.id === postId),
           });
         } else {
           const firstTwoIds = uniqueLikers.slice(0, 2).map(l => l.user_id);
           const otherCount = uniqueLikers.length - 2 > 0 ? uniqueLikers.length - 2 : 0;
+          const nId = `like-group-${postId}`;
           finalLikesNotifs.push({
-            id: `like-group-${postId}`,
+            id: nId,
             type: 'like_group',
             post_id: postId,
             actor_ids: firstTwoIds,
             otherCount,
             created_at: uniqueLikers[0].created_at,
-            is_read: false,
+            is_read: readList.has(nId), // Check local storage
             actors: firstTwoIds.map(id => profilesMap[id]),
             postData: myPosts.find((p) => p.id === postId),
           });
@@ -198,23 +220,24 @@ export default function NotificationsPage() {
       });
 
       const formattedComments = commentsData.filter(c => profilesMap[c.user_id]).map((c: any) => ({
-        id: `comment-${c.id}`, type: 'comment', post_id: c.post_id, actor_id: c.user_id, message: c.content, created_at: c.created_at, is_read: false, actor: profilesMap[c.user_id], postData: myPosts.find((p) => p.id === c.post_id),
+        id: `comment-${c.id}`, type: 'comment', post_id: c.post_id, actor_id: c.user_id, message: c.content, created_at: c.created_at, is_read: readList.has(`comment-${c.id}`), actor: profilesMap[c.user_id], postData: myPosts.find((p) => p.id === c.post_id),
       }));
       const formattedReposts = repostsData.filter(r => profilesMap[r.user_id]).map((r: any) => ({
-        id: `repost-${r.id}`, type: 'repost', post_id: r.post_id, actor_id: r.user_id, created_at: r.created_at, is_read: false, actor: profilesMap[r.user_id], postData: myPosts.find((p) => p.id === r.post_id),
+        id: `repost-${r.id}`, type: 'repost', post_id: r.post_id, actor_id: r.user_id, created_at: r.created_at, is_read: readList.has(`repost-${r.id}`), actor: profilesMap[r.user_id], postData: myPosts.find((p) => p.id === r.post_id),
       }));
       const formattedSaves = savesData.filter(s => profilesMap[s.user_id]).map((s: any) => ({
-        id: `save-${s.id}`, type: 'save', post_id: s.post_id, actor_id: s.user_id, created_at: s.created_at, is_read: false, actor: profilesMap[s.user_id], postData: myPosts.find((p) => p.id === s.post_id),
+        id: `save-${s.id}`, type: 'save', post_id: s.post_id, actor_id: s.user_id, created_at: s.created_at, is_read: readList.has(`save-${s.id}`), actor: profilesMap[s.user_id], postData: myPosts.find((p) => p.id === s.post_id),
       }));
       const formattedCommentLikes = commentLikesData.filter(cl => profilesMap[cl.user_id]).map((cl: any) => {
         const relatedComment = myComments.find((c) => c.id === cl.comment_id);
-        return { id: `comment_like-${cl.id}`, type: 'comment_like', post_id: relatedComment?.post_id, actor_id: cl.user_id, created_at: cl.created_at, is_read: false, actor: profilesMap[cl.user_id], postData: myPosts.find((p) => p.id === relatedComment?.post_id) };
+        const nId = `comment_like-${cl.id}`;
+        return { id: nId, type: 'comment_like', post_id: relatedComment?.post_id, actor_id: cl.user_id, created_at: cl.created_at, is_read: readList.has(nId), actor: profilesMap[cl.user_id], postData: myPosts.find((p) => p.id === relatedComment?.post_id) };
       });
       const formattedCoins = coinTransData.map((ct: any) => ({
-        id: `coin-${ct.id}`, type: 'coin_receive', amount: ct.amount, description: ct.description, created_at: ct.created_at, is_read: false, actor: { username: 'HypeSystem', avatar_url: '/asets/png/logo.png' },
+        id: `coin-${ct.id}`, type: 'coin_receive', amount: ct.amount, description: ct.description, created_at: ct.created_at, is_read: readList.has(`coin-${ct.id}`), actor: { username: 'HypeSystem', avatar_url: '/asets/png/logo.png' },
       }));
       const formattedPayments = paymentsData.map((py: any) => ({
-        id: `pay-${py.id}`, type: 'payment_status', status: py.status, amount: py.amount, created_at: py.created_at, is_read: false, actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
+        id: `pay-${py.id}`, type: 'payment_status', status: py.status, amount: py.amount, created_at: py.created_at, is_read: readList.has(`pay-${py.id}`), actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
       }));
 
       const normalizedDbNotifs = filteredDbNotifs.map((n) => {
@@ -238,40 +261,46 @@ export default function NotificationsPage() {
       .subscribe();
   };
 
-  // FIX: Mengupdate state notifikasi agar langsung terbaca (menghilangkan badge menu)
   const markCategoryAsRead = (category: string) => {
     let updated = [...rawNotifs];
-    let idsToUpdate: string[] = [];
+    let dbIdsToUpdate: string[] = [];
+    let localIdsToUpdate: string[] = [];
+
     updated = updated.map((n) => {
       let match = false;
       if (category === 'like' && ['like', 'repost', 'save', 'comment_like', 'like_group'].includes(n.type)) match = true;
       if (category === 'comment' && ['comment', 'reply'].includes(n.type)) match = true;
       if (category === 'follow' && n.type === 'follow') match = true;
       if (category === 'other' && !['like', 'repost', 'save', 'comment_like', 'like_group', 'comment', 'reply', 'follow'].includes(n.type)) match = true;
+      
       if (match && !n.is_read) {
-        if (n.is_db) idsToUpdate.push(n.id);
+        if (n.is_db) dbIdsToUpdate.push(n.id);
+        else localIdsToUpdate.push(n.id); // Notif dynamic masuk ke local storage
         return { ...n, is_read: true };
       }
       return n;
     });
-    setRawNotifs(updated); // <-- Update state lokal seketika
-    if (idsToUpdate.length > 0) {
-      supabase.from('notifications').update({ is_read: true }).in('id', idsToUpdate).then(({ error }) => {
+    setRawNotifs(updated);
+
+    if (dbIdsToUpdate.length > 0) {
+      supabase.from('notifications').update({ is_read: true }).in('id', dbIdsToUpdate).then(({ error }) => {
         if (error) console.error('Gagal update notifikasi terbaca:', error);
       });
     }
+    if (localIdsToUpdate.length > 0) {
+      saveReadNotifs(localIdsToUpdate); // Simpan status read secara lokal
+    }
   };
 
-  // FIX: Mengupdate state saat notifikasi individual diklik agar titik biru langsung hilang
   const handleNotifClick = async (notif: any) => {
     if (!notif.is_read) {
       setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
       if (notif.is_db) {
         await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+      } else {
+        saveReadNotifs([notif.id]); // Simpan status read lokal ketika item di-klik
       }
     }
-    
-    // Routing...
     if (notif.type === 'follow' && notif.actor_id) { router.push(`/data?id=${notif.actor_id}`); }
     else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) { router.push(`/post?id=${notif.post_id}&openComment=true`); }
     else if (notif.type === 'story_like' && notif.story_id) { router.push(`/story/${notif.story_id}`); }
