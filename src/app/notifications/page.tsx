@@ -29,7 +29,6 @@ export default function NotificationsPage() {
   const [friendStories, setFriendStories] = useState<any[]>([]);
   const [recommendedFriends, setRecommendedFriends] = useState<any[]>([]);
 
-  // State untuk status text user sendiri
   const [myStatusText, setMyStatusText] = useState<string>('');
   const [showStatusInput, setShowStatusInput] = useState(false);
 
@@ -44,7 +43,6 @@ export default function NotificationsPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
 
-    // Ambil profil user (termasuk status_text)
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
     const userData = { ...session.user, ...profile };
     setCurrentUser(userData);
@@ -65,11 +63,9 @@ export default function NotificationsPage() {
     setupRealtime(session.user.id);
   };
 
-  // Update status text
   const handleUpdateStatus = async (newText: string) => {
     if (!currentUser) return;
     try {
-      // 🔥 Insert ke user_notes & update cache profiles
       await supabase.from('user_notes').insert({ user_id: currentUser.id, content: newText });
       await supabase.from('profiles').update({ status_text: newText }).eq('id', currentUser.id);
       setMyStatusText(newText);
@@ -173,7 +169,6 @@ export default function NotificationsPage() {
         if (profs) profs.forEach(p => { profilesMap[p.id] = p; });
       }
 
-      // 🔥 GABUNG LIKES JIKA > 10 UNTUK TIAP POST
       const likesByPostId: Record<string, any[]> = {};
       likesData.forEach((l: any) => {
         const key = l.post_id;
@@ -185,7 +180,6 @@ export default function NotificationsPage() {
 
       Object.entries(likesByPostId).forEach(([postId, likes]) => {
         if (likes.length <= 10) {
-          // Tampilkan semua notif like satu per satu
           finalLikesNotifs.push(
             ...likes.map((l: any) => ({
               id: `like-${l.id}`,
@@ -199,7 +193,6 @@ export default function NotificationsPage() {
             }))
           );
         } else {
-          // Ambil 2 actor pertama
           const firstTwo = likes.slice(0, 2);
           const otherCount = likes.length - 2;
           finalLikesNotifs.push({
@@ -231,7 +224,6 @@ export default function NotificationsPage() {
       const allRaw = [...normalizedDbNotifs, ...finalLikesNotifs, ...formattedComments, ...formattedReposts, ...formattedSaves, ...formattedCommentLikes, ...formattedCoins, ...formattedPayments]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      // 🔥 Deduplikasi
       const uniqueNotifs = Array.from(new Map(allRaw.map(item => [item.id, item])).values());
       setRawNotifs(uniqueNotifs);
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
@@ -340,20 +332,21 @@ export default function NotificationsPage() {
     router.push(`/data?id=${friendId}`);
   };
 
+  // 🔥 Warna background disamakan dengan halaman HypeTalk: putih bersih
   return (
-    <div className="notif-page-container">
+    <div className="notif-page-container" style={{ background: '#ffffff' }}>
       <style>{`
         .notif-page-container {
           height: 100dvh;
           overflow-y: auto;
           overflow-x: hidden;
-          background: var(--bg-main);
+          background: #ffffff;
           padding-bottom: 80px;
           -webkit-overflow-scrolling: touch;
         }
         .friend-stories-tray {
           display: flex; gap: 16px; padding: 15px; overflow-x: auto; scrollbar-width: none;
-          border-bottom: 1px solid var(--border-card); background: var(--bg-main);
+          border-bottom: 1px solid var(--border-card); background: #ffffff;
         }
         .friend-stories-tray::-webkit-scrollbar { display: none; }
         .story-avatar-container {
@@ -369,7 +362,7 @@ export default function NotificationsPage() {
           background: var(--border-card);
         }
         .story-ring img {
-          width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--bg-main);
+          width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #ffffff;
         }
         .story-ring .default-avatar {
           width: 100%; height: 100%; border-radius: 50%; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center;
@@ -384,13 +377,13 @@ export default function NotificationsPage() {
           position: absolute; bottom: 2px; right: 2px; background: #1f3cff; border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
         .status-input-container {
-          display: flex; gap: 8px; padding: 10px 15px; background: var(--bg-main); border-bottom: 1px solid var(--border-card);
+          display: flex; gap: 8px; padding: 10px 15px; background: #ffffff; border-bottom: 1px solid var(--border-card);
         }
         .status-input {
           flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-card); background: var(--bg-input); color: var(--text-main); font-size: 14px;
         }
         .pending-alert-box {
-          display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border-card); padding: 14px 16px; border-radius: 16px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: all 0.2s ease; margin: 10px 15px;
+          display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid var(--border-card); padding: 14px 16px; border-radius: 16px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: all 0.2s ease; margin: 10px 15px;
         }
         .pending-alert-box:active { transform: scale(0.98); background: var(--bg-secondary); }
         .pending-alert-left { display: flex; align-items: center; gap: 14px; }
@@ -419,9 +412,9 @@ export default function NotificationsPage() {
         .rec-user { font-size: 12px; color: var(--text-muted); }
         .rec-follow-btn { background: #1f3cff; color: white; border: none; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
         .rec-follow-btn.followed { background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-card); }
-        .notif-detail-view { background: var(--bg-main); animation: slideIn 0.3s cubic-bezier(0.25, 1, 0.5, 1); min-height: 100%; }
+        .notif-detail-view { background: #ffffff; animation: slideIn 0.3s cubic-bezier(0.25, 1, 0.5, 1); min-height: 100%; }
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        .notif-detail-header { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border-card); position: sticky; top: 0; background: var(--bg-main); z-index: 10; }
+        .notif-detail-header { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border-card); position: sticky; top: 0; background: #ffffff; z-index: 10; }
         .back-btn { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; padding: 0; }
         .notif-detail-header h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-main); }
         .notif-item { padding: 12px 15px; display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border-card); cursor: pointer; position: relative; }
@@ -429,7 +422,7 @@ export default function NotificationsPage() {
         .notif-avatar-wrapper { position: relative; flex-shrink: 0; }
         .notif-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-card); }
         .notif-avatar.default-avatar { background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .notif-icon-badge { position: absolute; bottom: -4px; right: -4px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-main); }
+        .notif-icon-badge { position: absolute; bottom: -4px; right: -4px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; }
         .notif-icon-badge .material-icons { font-size: 12px; color: white; }
         .notif-content { flex: 1; min-width: 0; }
         .notif-text { font-size: 14px; color: var(--text-main); line-height: 1.4; }
@@ -444,8 +437,8 @@ export default function NotificationsPage() {
       `}</style>
 
       {activeView === 'main' ? (
-        <div className="notif-main-view">
-          <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+        <div className="notif-main-view" style={{ background: '#ffffff' }}>
+          <header className="notif-header" style={{ padding: '20px 15px 15px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', background: '#ffffff' }}>
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, textAlign: 'left' }}>
               {t('notifications', 'Notifikasi')}
             </h2>
