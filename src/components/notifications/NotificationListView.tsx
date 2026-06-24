@@ -292,11 +292,14 @@ export default function NotificationListView({
                   borderBottom: `1px solid ${
                     isDark ? 'var(--border-card)' : '#e0e0e0'
                   }`,
+                  // FIX: Background jelas untuk membedakan notif belum dibaca
                   background: !notif.is_read
                     ? isDark
-                      ? 'var(--bg-secondary)'
-                      : '#f5f5f5'
+                      ? 'rgba(31, 60, 255, 0.1)'
+                      : 'rgba(31, 60, 255, 0.05)'
                     : 'transparent',
+                  position: 'relative',
+                  paddingRight: !notif.is_read ? '35px' : '15px' // Ruang untuk dot
                 }}
                 onClick={() => handleNotifClick(notif)}
               >
@@ -364,10 +367,21 @@ export default function NotificationListView({
                     />
                   )}
                 </div>
+                {/* FIX: Titik Biru yang ditaruh di tengah kanan layaknya sosmed populer */}
                 {!notif.is_read && (
                   <div
                     className="notif-unread-dot"
-                    style={{ background: '#1f3cff' }}
+                    style={{ 
+                      position: 'absolute',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      right: '15px',
+                      width: '10px',
+                      height: '10px',
+                      background: '#1f3cff',
+                      borderRadius: '50%',
+                      boxShadow: `0 0 0 2px ${isDark ? 'var(--bg-main)' : '#ffffff'}`
+                    }}
                   />
                 )}
               </div>

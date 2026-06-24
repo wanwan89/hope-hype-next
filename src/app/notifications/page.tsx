@@ -7,7 +7,6 @@ import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import './Notifications.css';
 
-// Komponen (sudah di-fix mandiri, tidak perlu prop isDark)
 import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
 import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
@@ -17,7 +16,6 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { t } = useTranslation();
 
-  // ---------- State data (tanpa isDark) ----------
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [myFollowings, setMyFollowings] = useState<Set<string>>(new Set());
   const [rawNotifs, setRawNotifs] = useState<any[]>([]);
@@ -30,7 +28,6 @@ export default function NotificationsPage() {
   const [showStatusInput, setShowStatusInput] = useState(false);
   const channelRef = useRef<any>(null);
 
-  // ---------- Efek inisialisasi ----------
   useEffect(() => {
     initUserAndData();
     return () => {
@@ -44,7 +41,6 @@ export default function NotificationsPage() {
     }
   }, [activeView]);
 
-  // ---------- Fungsi-fungsi data (persis sama, tidak diubah) ----------
   const initUserAndData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
@@ -180,7 +176,7 @@ export default function NotificationsPage() {
             post_id: postId,
             actor_id: l.user_id,
             created_at: l.created_at,
-            is_read: true,
+            is_read: false, // FIX: set false agar badge muncul
             actor: profilesMap[l.user_id],
             postData: myPosts.find((p) => p.id === postId),
           });
@@ -194,7 +190,7 @@ export default function NotificationsPage() {
             actor_ids: firstTwoIds,
             otherCount,
             created_at: uniqueLikers[0].created_at,
-            is_read: true,
+            is_read: false, // FIX: set false
             actors: firstTwoIds.map(id => profilesMap[id]),
             postData: myPosts.find((p) => p.id === postId),
           });
@@ -202,23 +198,23 @@ export default function NotificationsPage() {
       });
 
       const formattedComments = commentsData.filter(c => profilesMap[c.user_id]).map((c: any) => ({
-        id: `comment-${c.id}`, type: 'comment', post_id: c.post_id, actor_id: c.user_id, message: c.content, created_at: c.created_at, is_read: true, actor: profilesMap[c.user_id], postData: myPosts.find((p) => p.id === c.post_id),
+        id: `comment-${c.id}`, type: 'comment', post_id: c.post_id, actor_id: c.user_id, message: c.content, created_at: c.created_at, is_read: false, actor: profilesMap[c.user_id], postData: myPosts.find((p) => p.id === c.post_id),
       }));
       const formattedReposts = repostsData.filter(r => profilesMap[r.user_id]).map((r: any) => ({
-        id: `repost-${r.id}`, type: 'repost', post_id: r.post_id, actor_id: r.user_id, created_at: r.created_at, is_read: true, actor: profilesMap[r.user_id], postData: myPosts.find((p) => p.id === r.post_id),
+        id: `repost-${r.id}`, type: 'repost', post_id: r.post_id, actor_id: r.user_id, created_at: r.created_at, is_read: false, actor: profilesMap[r.user_id], postData: myPosts.find((p) => p.id === r.post_id),
       }));
       const formattedSaves = savesData.filter(s => profilesMap[s.user_id]).map((s: any) => ({
-        id: `save-${s.id}`, type: 'save', post_id: s.post_id, actor_id: s.user_id, created_at: s.created_at, is_read: true, actor: profilesMap[s.user_id], postData: myPosts.find((p) => p.id === s.post_id),
+        id: `save-${s.id}`, type: 'save', post_id: s.post_id, actor_id: s.user_id, created_at: s.created_at, is_read: false, actor: profilesMap[s.user_id], postData: myPosts.find((p) => p.id === s.post_id),
       }));
       const formattedCommentLikes = commentLikesData.filter(cl => profilesMap[cl.user_id]).map((cl: any) => {
         const relatedComment = myComments.find((c) => c.id === cl.comment_id);
-        return { id: `comment_like-${cl.id}`, type: 'comment_like', post_id: relatedComment?.post_id, actor_id: cl.user_id, created_at: cl.created_at, is_read: true, actor: profilesMap[cl.user_id], postData: myPosts.find((p) => p.id === relatedComment?.post_id) };
+        return { id: `comment_like-${cl.id}`, type: 'comment_like', post_id: relatedComment?.post_id, actor_id: cl.user_id, created_at: cl.created_at, is_read: false, actor: profilesMap[cl.user_id], postData: myPosts.find((p) => p.id === relatedComment?.post_id) };
       });
       const formattedCoins = coinTransData.map((ct: any) => ({
-        id: `coin-${ct.id}`, type: 'coin_receive', amount: ct.amount, description: ct.description, created_at: ct.created_at, is_read: true, actor: { username: 'HypeSystem', avatar_url: '/asets/png/logo.png' },
+        id: `coin-${ct.id}`, type: 'coin_receive', amount: ct.amount, description: ct.description, created_at: ct.created_at, is_read: false, actor: { username: 'HypeSystem', avatar_url: '/asets/png/logo.png' },
       }));
       const formattedPayments = paymentsData.map((py: any) => ({
-        id: `pay-${py.id}`, type: 'payment_status', status: py.status, amount: py.amount, created_at: py.created_at, is_read: true, actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
+        id: `pay-${py.id}`, type: 'payment_status', status: py.status, amount: py.amount, created_at: py.created_at, is_read: false, actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
       }));
 
       const normalizedDbNotifs = filteredDbNotifs.map((n) => {
@@ -342,7 +338,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // ---------- RENDER ----------
   return (
     <div className="notif-page-container">
       {activeView === 'main' ? (

@@ -99,6 +99,7 @@ export default function CategoryMenu({ unreadCounts, onSelectCategory }: Props) 
                 {menu.desc}
               </span>
             </div>
+            {/* FIX: Badge Notif sekarang akan ter-trigger jika count > 0 */}
             {count > 0 && (
               <div
                 className="category-badge"

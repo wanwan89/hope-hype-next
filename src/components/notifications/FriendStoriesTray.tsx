@@ -62,41 +62,43 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 20 ? text.substring(0, 20) + '...' : text;
 
-  // Bubble di ATAS avatar, dengan teks kontras di kedua mode
+  // FIX: Style untuk bentuk Bubble Note seperti IG
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: 'calc(100% - 4px)',
+    bottom: 'calc(100% - 14px)', // Membiarkan bubble overlap sedikit dengan avatar
     left: '50%',
     transform: 'translateX(-50%)',
     background: 'var(--bg-card, #ffffff)',
-    border: '1.5px solid var(--border-card, #e0e0e0)',
-    borderRadius: '18px',
-    padding: '7px 14px',
-    maxWidth: '150px',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
-    zIndex: 9999, // ⬆️ sangat tinggi agar di atas segalanya
+    border: '1px solid var(--border-card, #e0e0e0)',
+    borderRadius: '16px', // Lebih bulat
+    padding: '6px 12px',
+    maxWidth: '120px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+    zIndex: 10,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: 600,
     color: 'var(--text-main, #1c1e21)',
     textAlign: 'center',
     pointerEvents: 'auto',
   };
 
-  // Ekor balon menunjuk ke bawah
-  const triangleStyles: React.CSSProperties = {
+  // FIX: Ekor bubble berupa kotak yang diputar 45 derajat (seperti IG)
+  const tailStyles: React.CSSProperties = {
+    content: '""',
     position: 'absolute',
-    bottom: '-6px',
+    bottom: '-5px',
     left: '50%',
-    transform: 'translateX(-50%)',
-    width: 0,
-    height: 0,
-    borderLeft: '7px solid transparent',
-    borderRight: '7px solid transparent',
-    borderTop: '7px solid var(--bg-card, #ffffff)',
+    transform: 'translateX(-50%) rotate(45deg)',
+    width: '10px',
+    height: '10px',
+    background: 'var(--bg-card, #ffffff)',
+    borderRight: '1px solid var(--border-card, #e0e0e0)',
+    borderBottom: '1px solid var(--border-card, #e0e0e0)',
+    zIndex: -1,
   };
 
   return (
@@ -106,10 +108,8 @@ export default function FriendStoriesTray({
         position: 'relative',
         background: 'var(--bg-main, #ffffff)',
         borderBottom: '1px solid var(--border-card, #e0e0e0)',
-        padding: '15px',
+        padding: '0 15px', 
         overflow: 'visible',
-        zIndex: 999, // tray juga tinggi agar tidak tertutup
-        marginTop: '8px',
       }}
     >
       <div
@@ -117,7 +117,9 @@ export default function FriendStoriesTray({
           display: 'flex',
           gap: '16px',
           overflowX: 'auto',
-          overflowY: 'visible',
+          overflowY: 'visible', // Supaya bubble bisa keluar batas scroll
+          paddingTop: '35px', // FIX: Ruang lega agar bubble tidak terpotong
+          paddingBottom: '15px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           WebkitOverflowScrolling: 'touch',
@@ -147,7 +149,7 @@ export default function FriendStoriesTray({
                 onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
               >
                 {truncateBubble(myStatusText)}
-                <div style={triangleStyles} />
+                <div style={tailStyles} />
               </div>
             )}
           </div>
@@ -155,7 +157,7 @@ export default function FriendStoriesTray({
 
         {/* Teman */}
         {sortedFriends.length === 0 && !currentUser ? (
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0, marginTop: '20px' }}>
             Belum mengikuti siapa pun.
           </div>
         ) : (
@@ -188,7 +190,7 @@ export default function FriendStoriesTray({
                   onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
                 >
                   {truncateBubble(friend.status_text)}
-                  <div style={triangleStyles} />
+                  <div style={tailStyles} />
                 </div>
               )}
             </div>
