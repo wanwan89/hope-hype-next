@@ -19,12 +19,13 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
   animatingReposts, handleSave, openRepostModal, handleLike
 }) => {
   return (
-    <div className="engagement-group">
+    <div className="engagement-group" onClick={(e) => e.stopPropagation()}>
       {/* Save */}
       <button
         className={`icon-btn save-btn btn-press ${mySavedPosts.has(postId) ? 'active' : ''}`}
         onClick={(e) => {
-          e.stopPropagation(); // 🔥 Cegah propagasi ke parent
+          e.stopPropagation();
+          e.preventDefault();
           handleSave(postId);
         }}
       >
@@ -42,6 +43,7 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className={`icon-btn repost-btn btn-press ${myRepostedPosts.has(postId) ? 'reposted' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
           openRepostModal(postId, creatorId);
         }}
       >
@@ -57,6 +59,7 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className={`icon-btn like-btn btn-press ${myLikedPosts.has(postId) ? 'liked' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
           handleLike(postId, creatorId);
         }}
       >
@@ -72,7 +75,10 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className="icon-btn comment-toggle btn-press"
         data-post={postId}
         data-creator={creatorId}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
       >
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor" style={{ color: 'var(--text-main)' }}>
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
@@ -83,6 +89,7 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
   );
 };
 
+// Optimasi re‑render
 export default memo(EngagementButtons, (prev, next) => {
   const pid = prev.postId;
   if (prev.counts[pid] !== next.counts[pid]) return false;

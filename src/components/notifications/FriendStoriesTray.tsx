@@ -39,14 +39,8 @@ export default function FriendStoriesTray({
     userId: string;
   } | null>(null);
 
-  const [isDark, setIsDark] = useState(true); // default true (aman untuk SSR)
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDark(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  // Gunakan variabel CSS global, tidak perlu deteksi manual
+  // Tapi tetap bisa digunakan untuk fallback jika diperlukan
 
   const sortedFriends = [...friends].sort((a, b) => {
     if (a.status_text && !b.status_text) return -1;
@@ -71,27 +65,27 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 20 ? text.substring(0, 20) + '...' : text;
 
-  // Bubble style yang muncul di atas avatar – sekarang bisa mengikuti tema
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
     bottom: 'calc(100% + 8px)',
     left: '50%',
     transform: 'translateX(-50%)',
-    background: isDark ? 'var(--bg-card)' : '#ffffff',
-    border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+    background: 'var(--bg-card, #ffffff)',
+    border: '1px solid var(--border-card, #e0e0e0)',
     borderRadius: '14px',
     padding: '6px 12px',
     maxWidth: '140px',
     boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    zIndex: 50,
+    zIndex: 1000, // Pastikan di atas semua elemen
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     fontSize: '11px',
     fontWeight: 600,
-    color: isDark ? 'var(--text-main)' : '#1a1a1a',
+    color: 'var(--text-main, #1a1a1a)',
     textAlign: 'center',
+    pointerEvents: 'auto', // Pastikan bisa diklik
   };
 
   const triangleStyles: React.CSSProperties = {
@@ -103,7 +97,7 @@ export default function FriendStoriesTray({
     height: 0,
     borderLeft: '6px solid transparent',
     borderRight: '6px solid transparent',
-    borderTop: `6px solid ${isDark ? 'var(--bg-card)' : '#ffffff'}`,
+    borderTop: '6px solid var(--bg-card, #ffffff)',
   };
 
   return (
@@ -112,49 +106,37 @@ export default function FriendStoriesTray({
       style={{
         position: 'relative',
         zIndex: 10,
-        background: isDark ? 'var(--bg-main)' : '#ffffff',
-        borderBottom: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+        background: 'var(--bg-main, #ffffff)',
+        borderBottom: '1px solid var(--border-card, #e0e0e0)',
         padding: '15px',
+        overflowY: 'visible', // Agar bubble tidak terpotong
+        overflowX: 'auto', // Tetap bisa scroll horizontal
+        display: 'flex',
+        gap: '16px',
       }}
     >
       {/* Profil sendiri */}
       {currentUser && (
-        <div className="story-avatar-container" style={{ position: 'relative' }}>
-          <div
-            className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}
-          >
+        <div className="story-avatar-container" style={{ position: 'relative', flexShrink: 0 }}>
+          <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
             {currentUser.avatar_url ? (
               <img src={currentUser.avatar_url} alt="Anda" />
             ) : (
               <div className="default-avatar">
-                <span
-                  className="material-icons"
-                  style={{ fontSize: 32, color: 'var(--text-muted)' }}
-                >
-                  person
-                </span>
+                <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
               </div>
             )}
           </div>
-          <span
-            className="story-username"
-            style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a' }}
-          >
-            Anda
-          </span>
+          <span className="story-username" style={{ color: 'var(--text-main)' }}>Anda</span>
           <button className="add-status-btn" onClick={onAddStatus}>
-            <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>
-              add
-            </span>
+            <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
           </button>
 
           {myStatusText && (
             <div
               className="note-bubble"
               style={bubbleStyles}
-              onClick={(e) =>
-                handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)
-              }
+              onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
             >
               {truncateBubble(myStatusText)}
               <div style={triangleStyles} />
@@ -165,7 +147,7 @@ export default function FriendStoriesTray({
 
       {/* Teman */}
       {sortedFriends.length === 0 && !currentUser ? (
-        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>
           Belum mengikuti siapa pun.
         </div>
       ) : (
@@ -173,50 +155,29 @@ export default function FriendStoriesTray({
           <div
             key={friend.id}
             className="story-avatar-container"
-            style={{ position: 'relative' }}
+            style={{ position: 'relative', flexShrink: 0 }}
             onClick={() =>
               friend.hasStory
                 ? router.push(`/story/view?id=${friend.storyId}`)
                 : router.push(`/data?id=${friend.id}`)
             }
           >
-            <div
-              className={`story-ring ${
-                friend.hasStory ? 'active-story' : 'no-story'
-              }`}
-            >
+            <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
               {friend.avatar_url ? (
                 <img src={friend.avatar_url} alt={friend.username} />
               ) : (
                 <div className="default-avatar">
-                  <span
-                    className="material-icons"
-                    style={{ fontSize: 32, color: 'var(--text-muted)' }}
-                  >
-                    person
-                  </span>
+                  <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                 </div>
               )}
             </div>
-            <span
-              className="story-username"
-              style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a' }}
-            >
-              {friend.username}
-            </span>
+            <span className="story-username" style={{ color: 'var(--text-main)' }}>{friend.username}</span>
 
             {friend.status_text && (
               <div
                 className="note-bubble"
                 style={bubbleStyles}
-                onClick={(e) =>
-                  handleBubbleClick(
-                    e,
-                    friend.status_text!,
-                    friend.username,
-                    friend.id
-                  )
-                }
+                onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
               >
                 {truncateBubble(friend.status_text)}
                 <div style={triangleStyles} />
@@ -226,7 +187,7 @@ export default function FriendStoriesTray({
         ))
       )}
 
-      {/* Popup full note */}
+      {/* Popup full note – tetap sama dengan perbaikan */}
       {popupNote && (
         <>
           <div
@@ -245,8 +206,8 @@ export default function FriendStoriesTray({
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              background: isDark ? 'var(--bg-card)' : '#ffffff',
-              border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+              background: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border-card, #e0e0e0)',
               borderRadius: '20px',
               padding: '20px',
               maxWidth: '320px',
@@ -254,24 +215,12 @@ export default function FriendStoriesTray({
               boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
               zIndex: 9999,
               fontSize: '14px',
-              color: isDark ? 'var(--text-main)' : '#1a1a1a',
+              color: 'var(--text-main, #1a1a1a)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                marginBottom: 15,
-              }}
-            >
-              <span
-                className="material-icons"
-                style={{ fontSize: 24, color: '#1f3cff' }}
-              >
-                sticky_note_2
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 15 }}>
+              <span className="material-icons" style={{ fontSize: 24, color: '#1f3cff' }}>sticky_note_2</span>
               <strong style={{ fontSize: 16 }}>{popupNote.username}</strong>
             </div>
 
@@ -279,8 +228,8 @@ export default function FriendStoriesTray({
               style={{
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
-                background: isDark ? 'var(--bg-main)' : '#f5f5f5',
-                border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                background: 'var(--bg-main, #f5f5f5)',
+                border: '1px solid var(--border-card, #e0e0e0)',
                 padding: '16px',
                 borderRadius: '12px',
                 marginBottom: 20,
@@ -315,8 +264,8 @@ export default function FriendStoriesTray({
                 style={{
                   flex: 1,
                   background: 'transparent',
-                  color: isDark ? 'var(--text-main)' : '#1a1a1a',
-                  border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                  color: 'var(--text-main, #1a1a1a)',
+                  border: '1px solid var(--border-card, #e0e0e0)',
                   borderRadius: 12,
                   padding: '12px',
                   fontSize: 14,
