@@ -62,10 +62,10 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 20 ? text.substring(0, 20) + '...' : text;
 
-  // Bubble balon yang menyatu dengan avatar
+  // Bubble balon di BAWAH avatar
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: 'calc(100% - 4px)',
+    top: 'calc(100% - 4px)', // menempel di bawah cincin
     left: '50%',
     transform: 'translateX(-50%)',
     background: 'var(--bg-card, #ffffff)',
@@ -86,17 +86,17 @@ export default function FriendStoriesTray({
     pointerEvents: 'auto',
   };
 
-  // Ekor balon menunjuk ke bawah
+  // Ekor balon menunjuk ke ATAS
   const triangleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: '-6px',
+    top: '-6px', // di atas bubble
     left: '50%',
     transform: 'translateX(-50%)',
     width: 0,
     height: 0,
     borderLeft: '7px solid transparent',
     borderRight: '7px solid transparent',
-    borderTop: '7px solid var(--bg-card, #ffffff)',
+    borderBottom: '7px solid var(--bg-card, #ffffff)', // segitiga ke atas
   };
 
   return (
