@@ -62,39 +62,41 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 20 ? text.substring(0, 20) + '...' : text;
 
+  // Bubble balon yang menyatu dengan avatar
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
     bottom: 'calc(100% - 4px)',
     left: '50%',
     transform: 'translateX(-50%)',
     background: 'var(--bg-card, #ffffff)',
-    border: '1px solid var(--border-card, #e0e0e0)',
-    borderRadius: '8px',
-    padding: '6px 12px',
-    maxWidth: '140px',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+    border: '1.5px solid var(--border-card, #e0e0e0)',
+    borderRadius: '18px',
+    padding: '7px 14px',
+    maxWidth: '150px',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
     zIndex: 999,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    fontSize: '11px',
+    fontSize: '12px',
     fontWeight: 600,
     color: 'var(--text-main, #1a1a1a)',
     textAlign: 'center',
     pointerEvents: 'auto',
   };
 
+  // Ekor balon menunjuk ke bawah
   const triangleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: '-5px',
+    bottom: '-6px',
     left: '50%',
     transform: 'translateX(-50%)',
     width: 0,
     height: 0,
-    borderLeft: '6px solid transparent',
-    borderRight: '6px solid transparent',
-    borderTop: '6px solid var(--bg-card, #ffffff)',
+    borderLeft: '7px solid transparent',
+    borderRight: '7px solid transparent',
+    borderTop: '7px solid var(--bg-card, #ffffff)',
   };
 
   return (
@@ -107,7 +109,7 @@ export default function FriendStoriesTray({
         padding: '15px',
         overflow: 'visible',
         zIndex: 100,
-        marginTop: '30px', // jarak dari header
+        marginTop: '8px',
       }}
     >
       <div
