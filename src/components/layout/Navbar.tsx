@@ -37,7 +37,6 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
-  // Scroll Behavior
   useEffect(() => {
     if (pathname !== '/') {
       setIsVisible(true);
@@ -70,24 +69,18 @@ function NavbarContent() {
     if (!session) return;
     const userId = session.user.id;
 
-    const [profileRes, chatRes, notifRes, followersRes] = await Promise.all([
+    // 1. Ambil Profil, Chat, dan Data Database Notif
+    const [profileRes, chatRes, dbNotifRes] = await Promise.all([
       supabase.from('profiles').select('avatar_url').eq('id', userId).single(),
-      
       supabase.from('messages')
         .select('id', { count: 'exact', head: true })
         .ilike('room_id', `%${userId}%`)
         .neq('user_id', userId)
         .or('status.neq.read,status.is.null'),
-        
       supabase.from('notifications')
-        .select('id', { count: 'exact', head: true })
+        .select('type')
         .eq('user_id', userId)
-        .eq('is_read', false),
-        
-      // Fetch live followers untuk disinkronkan dengan halaman notifikasi
-      supabase.from('followers')
-        .select('follower_id')
-        .eq('following_id', userId)
+        .eq('is_read', false)
     ]);
 
     if (profileRes.data?.avatar_url) {
@@ -97,37 +90,88 @@ function NavbarContent() {
       }
       setAvatarUrl(url);
     }
-
     if (chatRes.count !== null) setUnreadChatCount(chatRes.count);
 
-    // Hitung Notifikasi (Database + Local Live Followers)
-    const dbNotifCount = notifRes.count || 0;
-    
-    let localReadNotifs: string[] = [];
-    if (typeof window !== 'undefined') {
-      try {
-        localReadNotifs = JSON.parse(localStorage.getItem('read_notifs_local') || '[]');
-      } catch (e) {}
-    }
-    const readSet = new Set(localReadNotifs);
+    // 2. Filter "Notifikasi Hantu" yang menyangkut di 1 (tipe lama diabaikan)
+    const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
+    let unreadNotifs = (dbNotifRes.data || []).filter(n => !synthesizeTypes.includes(n.type)).length;
 
-    let unreadFollowersCount = 0;
-    if (followersRes.data) {
-      followersRes.data.forEach((f: any) => {
-        if (!readSet.has(`follow-${f.follower_id}`)) {
-          unreadFollowersCount++;
+    // 3. Ambil Local Storage untuk notif yang sudah dibaca
+    let readSet = new Set<string>();
+    if (typeof window !== 'undefined') {
+      try { readSet = new Set(JSON.parse(localStorage.getItem('read_notifs_local') || '[]')); } catch (e) {}
+    }
+
+    // 4. Ambil IDs untuk melakukan pengecekan live notif (Sama dengan Notification Page)
+    const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
+    const postIds = myPosts?.map((p: any) => p.id) || [];
+    
+    const { data: myComments } = await supabase.from('comments').select('id').eq('user_id', userId);
+    const commentIds = myComments?.map((c: any) => c.id) || [];
+
+    // 5. Jalankan query pararel agar cepat (Mengambil Followers, Likes, Comments dll)
+    const promises: Promise<any>[] = [
+      supabase.from('followers').select('follower_id').eq('following_id', userId),
+      supabase.from('coin_transactions').select('id').eq('user_id', userId).gt('amount', 0).limit(20),
+      supabase.from('payments').select('id').eq('user_id', userId).limit(20)
+    ];
+
+    if (postIds.length > 0) {
+      promises.push(
+        supabase.from('likes').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+        supabase.from('comments').select('id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+        supabase.from('reposts').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+        supabase.from('bookmarks').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30)
+      );
+    } else {
+      promises.push(Promise.resolve({data:[]}), Promise.resolve({data:[]}), Promise.resolve({data:[]}), Promise.resolve({data:[]}));
+    }
+
+    if (commentIds.length > 0) {
+      promises.push(supabase.from('comment_likes').select('id').in('comment_id', commentIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(20));
+    } else {
+      promises.push(Promise.resolve({data:[]}));
+    }
+
+    const [fRes, coinRes, payRes, likesRes, commentsRes, repostsRes, savesRes, cLikesRes] = await Promise.all(promises);
+
+    // 6. Kalkulasi 100% sinkron dengan Notification Page
+    (fRes.data || []).forEach((f: any) => { if (!readSet.has(`follow-${f.follower_id}`)) unreadNotifs++; });
+    (coinRes.data || []).forEach((c: any) => { if (!readSet.has(`coin-${c.id}`)) unreadNotifs++; });
+    (payRes.data || []).forEach((p: any) => { if (!readSet.has(`pay-${p.id}`)) unreadNotifs++; });
+    (commentsRes.data || []).forEach((c: any) => { if (!readSet.has(`comment-${c.id}`)) unreadNotifs++; });
+    (cLikesRes.data || []).forEach((cl: any) => { if (!readSet.has(`comment_like-${cl.id}`)) unreadNotifs++; });
+
+    // Grouping counter (Untuk Like, Repost, Save agar angkanya akurat dengan UI Notif)
+    const countGrouped = (data: any[], type: string) => {
+      const byPost: Record<string, any[]> = {};
+      data.forEach((item: any) => {
+        if (!byPost[item.post_id]) byPost[item.post_id] = [];
+        byPost[item.post_id].push(item);
+      });
+      let count = 0;
+      Object.entries(byPost).forEach(([postId, items]) => {
+        const uniqueMap = new Map(items.map((i: any) => [i.user_id, i]));
+        const uniqueUsers = Array.from(uniqueMap.values());
+        if (uniqueUsers.length === 1) {
+          if (!readSet.has(`${type}-${(uniqueUsers[0] as any).id}`)) count++;
+        } else if (uniqueUsers.length > 1) {
+          if (!readSet.has(`${type}_group-${postId}`)) count++;
         }
       });
-    }
+      return count;
+    };
 
-    // Gabungkan notif database dengan follower yang belum dibaca
-    setUnreadNotifCount(dbNotifCount + unreadFollowersCount);
+    unreadNotifs += countGrouped(likesRes.data || [], 'like');
+    unreadNotifs += countGrouped(repostsRes.data || [], 'repost');
+    unreadNotifs += countGrouped(savesRes.data || [], 'save');
+
+    setUnreadNotifCount(unreadNotifs);
   };
 
   useEffect(() => {
     fetchBadgesAndUser();
     const handleRefresh = () => fetchBadgesAndUser();
-    // Event listener ini yang akan menghapus badge otomatis saat notif dibaca di halaman Notifications
     window.addEventListener('notif-count-changed', handleRefresh);
     return () => window.removeEventListener('notif-count-changed', handleRefresh);
   }, [pathname]);
@@ -143,9 +187,6 @@ function NavbarContent() {
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, item: (typeof navItems)[0], isActive: boolean) => {
-    // 🔥 PERBAIKAN: setUnreadNotifCount(0) dan setUnreadChatCount(0) dihapus dari sini.
-    // Badge hanya akan hilang jika event 'notif-count-changed' terpanggil (saat benar-benar dibaca).
-
     if (isActive) {
       e.preventDefault();
       setAnimatingIcon(item.name);
