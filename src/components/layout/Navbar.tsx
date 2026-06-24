@@ -98,6 +98,8 @@ function NavbarContent() {
 
   // --- DATA & REALTIME ---
   useEffect(() => {
+    if (isHiddenPage) return;
+    
     let isMounted = true;
     let badgeChannel: any;
 
@@ -139,7 +141,6 @@ function NavbarContent() {
 
       if (isMounted && notifCount !== null) setUnreadNotifCount(notifCount);
 
-      // Bersihkan channel lama dan buat baru
       if (badgeChannel) {
         supabase.removeChannel(badgeChannel);
       }
@@ -163,7 +164,6 @@ function NavbarContent() {
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, async (payload) => {
           if (payload.new.user_id === userId) {
-            // Hitung ulang total unread setiap kali ada update
             const { count } = await supabase
               .from('notifications')
               .select('id', { count: 'exact', head: true })
@@ -183,6 +183,27 @@ function NavbarContent() {
     };
   }, [pathname]);
 
+  // 🔥 FETCH ULANG UNREAD COUNT SETIAP PATHNAME BERUBAH
+  useEffect(() => {
+    if (isHiddenPage) return;
+
+    const refreshUnreadCounts = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const userId = session.user.id;
+
+      const { count: notifCount } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_read', false);
+      
+      if (notifCount !== null) setUnreadNotifCount(notifCount);
+    };
+
+    refreshUnreadCounts();
+  }, [pathname, isHiddenPage]);
+
   if (isHiddenPage) return null;
 
   const navItems = [
@@ -200,7 +221,6 @@ function NavbarContent() {
     item: (typeof navItems)[0],
     isActive: boolean
   ) => {
-    // Reset badge notifikasi saat ikon Notif diklik
     if (item.name === 'Notif') {
       setUnreadNotifCount(0);
     }
