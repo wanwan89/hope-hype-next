@@ -376,11 +376,11 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card (hanya ubah background jika bukan variabel)
+  // Style card dengan bg-main
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: 'var(--bg-card)',
+      background: 'var(--bg-main)', // ← diubah ke bg-main
       borderRadius: '0px',
       padding: '0',
       borderLeft: 'none',
@@ -441,7 +441,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </span>
             )}
 
-            {/* Top right badges – background semi transparan tidak diubah */}
+            {/* Top right badges */}
             <div
               style={{
                 position: 'absolute',
@@ -551,7 +551,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     width: '100%',
                     overflow: 'hidden',
                     position: 'relative',
-                    background: 'var(--bg-secondary)', // ← gunakan variabel tema
+                    background: 'var(--bg-secondary)',
                     cursor: 'default',
                     transform: 'translateZ(0)',
                   }}
@@ -694,7 +694,7 @@ const PostCard: React.FC<PostCardProps> = ({
                         width: '100%',
                         overflow: 'hidden',
                         position: 'relative',
-                        background: 'var(--bg-secondary)', // ← gunakan variabel tema
+                        background: 'var(--bg-secondary)',
                         transform: 'translateZ(0)',
                       }}
                     >
@@ -776,7 +776,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    color: 'var(--text-main)', // ← pastikan teks ikut tema
+                    color: 'var(--text-main)',
                   }}
                 >
                   {post.profiles?.full_name || post.profiles?.username || 'User'}
@@ -901,7 +901,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 gap: '8px',
                 pointerEvents: 'auto',
                 marginTop: '8px',
-                color: 'var(--text-muted)', // ← ikut tema
+                color: 'var(--text-muted)',
               }}
             >
               <span>{formattedDate}</span>
