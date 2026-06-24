@@ -105,7 +105,7 @@ export default function SearchWrapperpost() {
   if (!mounted || isHidden) return null;
 
   return (
-    <div className="header-main-wrapper" style={{ background: 'var(--bg-main)' }}>
+    <div className="header-main-wrapper" style={{ background: '#ffffff' }}>
       {/* Kotak pencarian + tombol */}
       <div
         className="search-wrapper glass-effect"
@@ -120,7 +120,7 @@ export default function SearchWrapperpost() {
           borderLeft: 'none',
           borderRight: 'none',
           overflow: 'hidden',
-          background: 'var(--bg-main)', // Fix Background
+          background: '#ffffff', // Background diubah jadi putih
           borderBottom: '1px solid var(--border-card)',
         }}
       >
@@ -131,7 +131,7 @@ export default function SearchWrapperpost() {
             className="brutal-input"
             readOnly
             onClick={() => router.push('/search')}
-            style={{ cursor: 'pointer' }} /* 🔥 Dikembalikan persis seperti semula */
+            style={{ cursor: 'pointer' }} /* 🔥 Dikembalikan persis seperti semula tanpa background inline */
           />
         </div>
 
@@ -252,7 +252,7 @@ export default function SearchWrapperpost() {
         <div
           className="stories-container"
           style={{
-            background: 'var(--bg-main)', // Menyesuaikan tema
+            background: '#ffffff', // Background diubah jadi putih
             borderBottom: 'none',
             padding: '10px 0',
           }}
@@ -271,7 +271,7 @@ export default function SearchWrapperpost() {
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  background: 'var(--bg-main)', // Cincin putih/gelap tergantung tema
+                  background: '#ffffff', // Cincin putih/gelap tergantung tema
                 }}
               >
                 <img
@@ -280,7 +280,7 @@ export default function SearchWrapperpost() {
                     `https://ui-avatars.com/api/?name=${story.profiles?.username}`
                   }
                   alt="avatar"
-                  style={{ border: '2px solid var(--bg-main)' }} // Border image mengikuti tema
+                  style={{ border: '2px solid #ffffff' }} // Border image mengikuti background putih
                 />
               </div>
               <span className="story-name" style={{ color: 'var(--text-main)' }}>
