@@ -34,7 +34,6 @@ function NavbarContent() {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
@@ -80,11 +79,12 @@ function NavbarContent() {
         .neq('user_id', userId)
         .or('status.neq.read,status.is.null'),
         
+      // 🔥 FIX LOGIC: Filter dihapus. Sekarang akan menghitung SEMUA notif baru (termasuk like/comment)
+      // Angkanya akan akurat (7) karena data yatim piatu sudah dibersihkan via SQL di atas.
       supabase.from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('is_read', false)
-        .not('type', 'in', '("like","comment","repost","save","comment_like")') 
     ]);
 
     if (profileRes.data?.avatar_url) {
@@ -101,10 +101,8 @@ function NavbarContent() {
 
   useEffect(() => {
     fetchBadgesAndUser();
-
     const handleRefresh = () => fetchBadgesAndUser();
     window.addEventListener('notif-count-changed', handleRefresh);
-    
     return () => window.removeEventListener('notif-count-changed', handleRefresh);
   }, [pathname]);
 
@@ -118,11 +116,7 @@ function NavbarContent() {
     { name: 'Profil', path: '/data', icon: User },
   ];
 
-  const handleNavClick = (
-    e: React.MouseEvent<HTMLAnchorElement>,
-    item: (typeof navItems)[0],
-    isActive: boolean
-  ) => {
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, item: (typeof navItems)[0], isActive: boolean) => {
     if (item.name === 'Notif') setUnreadNotifCount(0);
     if (item.name === 'Chat') setUnreadChatCount(0);
 
@@ -139,9 +133,7 @@ function NavbarContent() {
     <div
       style={{
         position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: 0, left: 0, right: 0,
         zIndex: 9000,
         display: 'flex',
         justifyContent: 'center',
@@ -156,18 +148,17 @@ function NavbarContent() {
           width: '100%',
           height: `calc(60px + env(safe-area-inset-bottom))`,
           paddingBottom: 'env(safe-area-inset-bottom)',
-          backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.85))',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          /* UI Update: Bayangan dihapus, diganti border sangat halus adaptif */
-          borderTop: '1px solid var(--border-color, rgba(128, 128, 128, 0.15))',
-          boxShadow: 'none', 
+          backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.75))',
+          backdropFilter: 'blur(24px)', // Efek Glassmorphism lebih kuat
+          WebkitBackdropFilter: 'blur(24px)',
+          /* 🔥 PREMIUM UI FIX: Shadow dihapus, diganti border halus */
+          borderTop: '1px solid var(--border-color, rgba(128, 128, 128, 0.2))',
+          boxShadow: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
           boxSizing: 'border-box',
-          /* Pastikan text-color mewarisi warna body untuk Dark/Light mode */
-          color: 'var(--text-primary, inherit)' 
+          color: 'inherit' // Menyerap warna text theme (Light/Dark)
         }}
       >
         {navItems.map((item) => {
@@ -184,25 +175,17 @@ function NavbarContent() {
               aria-label={item.name}
               onClick={(e) => handleNavClick(e, item, isActive)}
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textDecoration: 'none',
-                position: 'relative',
-                padding: '6px',
-                touchAction: 'manipulation',
-                width: '55px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', textDecoration: 'none',
+                position: 'relative', padding: '6px',
+                touchAction: 'manipulation', width: '55px',
                 WebkitTapHighlightColor: 'transparent',
-                color: 'inherit', // Mewarisi warna dari nav
+                color: 'inherit',
               }}
             >
               <div
                 style={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transform: isClicked ? 'scale(0.8)' : isActive ? 'scale(1.08)' : 'scale(1)',
                   transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 }}
@@ -211,11 +194,8 @@ function NavbarContent() {
                   {isAnimating ? (
                     <motion.div
                       key="spinner"
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.8, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      style={{ position: 'absolute', display: 'flex' }}
+                      initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
+                      transition={{ duration: 0.25 }} style={{ position: 'absolute', display: 'flex' }}
                     >
                       <CircularChase />
                     </motion.div>
@@ -223,33 +203,23 @@ function NavbarContent() {
                     <div
                       key="avatar"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: '50%',
-                        padding: '2px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '26px', height: '26px', borderRadius: '50%', padding: '2px',
                         border: isActive ? `2px solid #1f3cff` : '2px solid transparent',
                         transition: 'all 0.3s ease',
                       }}
                     >
-                      <img
-                        src={avatarUrl}
-                        alt="Profil"
-                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-                      />
+                      <img src={avatarUrl} alt="Profil" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                     </div>
                   ) : (
                     <div key="icon" style={{ display: 'flex' }}>
                       <Icon
                         size={24}
-                        /* UI Update: 'currentColor' akan membaca warna teks otomatis (Hitam di Light Mode, Putih di Dark Mode) */
+                        /* 🔥 PREMIUM UI FIX: currentColor otomatis adaptif tema Dark/Light */
                         color={isActive ? '#1f3cff' : 'currentColor'}
                         fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
                         strokeWidth={isActive ? 2.5 : 2}
-                        /* Sedikit opacity agar mode non-aktif tidak terlalu mencolok */
-                        style={{ opacity: isActive ? 1 : 0.8 }} 
+                        style={{ opacity: isActive ? 1 : 0.6 }} // Opsi inactive lebih pudar agar elegan
                       />
                     </div>
                   )}
@@ -260,21 +230,11 @@ function NavbarContent() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     style={{
-                      position: 'absolute',
-                      top: '-5px',
-                      right: '-8px',
-                      backgroundColor: '#FF3B30',
-                      color: 'white',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '2px 5px',
-                      minWidth: '16px',
-                      height: '16px',
-                      borderRadius: '12px',
-                      border: '2px solid var(--bg-main, #ffffff)',
+                      position: 'absolute', top: '-5px', right: '-8px',
+                      backgroundColor: '#FF3B30', color: 'white', fontSize: '10px',
+                      fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '2px 5px', minWidth: '16px', height: '16px', borderRadius: '12px',
+                      border: '2px solid var(--bg-main, #ffffff)', // Border menyesuaikan background agar rapi
                       zIndex: 10,
                     }}
                   >
