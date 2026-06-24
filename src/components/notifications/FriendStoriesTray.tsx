@@ -44,7 +44,6 @@ export default function FriendStoriesTray({
     return 0;
   });
 
-  // Handler klik bubble (selalu tampilkan popup full note)
   const handleBubbleClick = (e: React.MouseEvent, text: string, username: string, userId: string) => {
     e.stopPropagation();
     setPopupNote({ text, username, userId });
@@ -56,7 +55,7 @@ export default function FriendStoriesTray({
     <div className="friend-stories-tray" style={{ position: 'relative' }}>
       {/* Profil sendiri */}
       {currentUser && (
-        <div className="story-avatar-container" style={{ position: 'relative' }}>
+        <div className="story-avatar-container" style={{ position: 'relative', zIndex: 1 }}>
           <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
             {currentUser.avatar_url ? (
               <img src={currentUser.avatar_url} alt="Anda" />
@@ -72,25 +71,24 @@ export default function FriendStoriesTray({
             <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
           </button>
 
-          {/* Bubble note sendiri – sekarang menempel di atas, mengembang ke atas */}
           {myStatusText && (
             <div
               className="note-bubble"
               style={{
                 position: 'absolute',
-                bottom: 'calc(100% + 8px)', // tepat di atas avatar
+                bottom: '55px', // menempel di atas dan menutupi sebagian avatar
                 right: -16,
                 background: 'var(--bg-card, #ffffff)',
                 border: '1px solid var(--border-card, #ccc)',
                 borderRadius: '12px',
                 padding: '6px 10px',
                 maxWidth: '150px',
-                maxHeight: '100px', // batasi agar tidak terlalu tinggi
+                maxHeight: '100px',
                 overflow: 'hidden',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: 5,
+                zIndex: 10, // pastikan di atas avatar dan elemen lain di container
                 cursor: 'pointer',
-                whiteSpace: 'normal', // izinkan wrap
+                whiteSpace: 'normal',
                 wordBreak: 'break-word',
                 fontSize: '11px',
                 lineHeight: '1.4',
@@ -99,7 +97,6 @@ export default function FriendStoriesTray({
               onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
             >
               {myStatusText}
-              {/* Ekor bubble di bawah, menunjuk ke avatar */}
               <div
                 style={{
                   position: 'absolute',
@@ -127,7 +124,7 @@ export default function FriendStoriesTray({
           <div
             key={friend.id}
             className="story-avatar-container"
-            style={{ position: 'relative' }}
+            style={{ position: 'relative', zIndex: 1 }}
             onClick={() =>
               friend.hasStory
                 ? router.push(`/story/view?id=${friend.storyId}`)
@@ -150,7 +147,7 @@ export default function FriendStoriesTray({
                 className="note-bubble"
                 style={{
                   position: 'absolute',
-                  bottom: 'calc(100% + 8px)',
+                  bottom: '55px',
                   right: -16,
                   background: 'var(--bg-card, #ffffff)',
                   border: '1px solid var(--border-card, #ccc)',
@@ -160,7 +157,7 @@ export default function FriendStoriesTray({
                   maxHeight: '100px',
                   overflow: 'hidden',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  zIndex: 5,
+                  zIndex: 10,
                   cursor: 'pointer',
                   whiteSpace: 'normal',
                   wordBreak: 'break-word',
@@ -189,7 +186,7 @@ export default function FriendStoriesTray({
         ))
       )}
 
-      {/* Popup full note (tidak diubah) */}
+      {/* Popup full note (tidak berubah) */}
       {popupNote && (
         <>
           <div
