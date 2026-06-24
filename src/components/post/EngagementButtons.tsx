@@ -1,5 +1,5 @@
 'use client';
-import React, { memo } from 'react';
+import React from 'react';
 
 type EngagementButtonsProps = {
   postId: string;
@@ -25,7 +25,6 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className={`icon-btn save-btn btn-press ${mySavedPosts.has(postId) ? 'active' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
-          e.preventDefault();
           handleSave(postId);
         }}
       >
@@ -43,7 +42,6 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className={`icon-btn repost-btn btn-press ${myRepostedPosts.has(postId) ? 'reposted' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
-          e.preventDefault();
           openRepostModal(postId, creatorId);
         }}
       >
@@ -59,7 +57,6 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className={`icon-btn like-btn btn-press ${myLikedPosts.has(postId) ? 'liked' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
-          e.preventDefault();
           handleLike(postId, creatorId);
         }}
       >
@@ -75,10 +72,7 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className="icon-btn comment-toggle btn-press"
         data-post={postId}
         data-creator={creatorId}
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
+        onClick={(e) => e.stopPropagation()}
       >
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor" style={{ color: 'var(--text-main)' }}>
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
@@ -89,13 +83,4 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
   );
 };
 
-// Optimasi re‑render
-export default memo(EngagementButtons, (prev, next) => {
-  const pid = prev.postId;
-  if (prev.counts[pid] !== next.counts[pid]) return false;
-  if (prev.myLikedPosts.has(pid) !== next.myLikedPosts.has(pid)) return false;
-  if (prev.mySavedPosts.has(pid) !== next.mySavedPosts.has(pid)) return false;
-  if (prev.myRepostedPosts.has(pid) !== next.myRepostedPosts.has(pid)) return false;
-  if (prev.animatingReposts.has(pid) !== next.animatingReposts.has(pid)) return false;
-  return true;
-});
+export default EngagementButtons;
