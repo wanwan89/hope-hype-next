@@ -66,24 +66,20 @@ function NavbarContent() {
   ].some(path => pathname?.includes(path)) || 
   (pathname === '/voice' && searchParams?.get('id') !== null);
 
-  // ✅ FUNGSI FETCH UTAMA (Parallel & Optimized)
   const fetchBadgesAndUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const userId = session.user.id;
 
-    // 🔥 Parallel Fetching untuk performa 3x lipat lebih cepat
     const [profileRes, chatRes, notifRes] = await Promise.all([
       supabase.from('profiles').select('avatar_url').eq('id', userId).single(),
       
-      // Fix Chat Query: Lebih dinamis membaca room_id & handle null status
       supabase.from('messages')
         .select('id', { count: 'exact', head: true })
         .ilike('room_id', `%${userId}%`)
         .neq('user_id', userId)
-        .or('status.neq.read,status.is.null'), // Antisipasi status belum di-set
+        .or('status.neq.read,status.is.null'),
         
-      // Fix Notif Query: Mengabaikan "Ghost Notifications" agar count akurat (Sama dengan UI)
       supabase.from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
@@ -91,7 +87,6 @@ function NavbarContent() {
         .not('type', 'in', '("like","comment","repost","save","comment_like")') 
     ]);
 
-    // Set Avatar
     if (profileRes.data?.avatar_url) {
       let url = profileRes.data.avatar_url;
       if (url.includes('res.cloudinary.com') && !url.includes('f_auto')) {
@@ -100,7 +95,6 @@ function NavbarContent() {
       setAvatarUrl(url);
     }
 
-    // Set Badges
     if (chatRes.count !== null) setUnreadChatCount(chatRes.count);
     if (notifRes.count !== null) setUnreadNotifCount(notifRes.count);
   };
@@ -129,7 +123,6 @@ function NavbarContent() {
     item: (typeof navItems)[0],
     isActive: boolean
   ) => {
-    // Optimistic UI update agar instan
     if (item.name === 'Notif') setUnreadNotifCount(0);
     if (item.name === 'Chat') setUnreadChatCount(0);
 
@@ -165,22 +158,24 @@ function NavbarContent() {
           paddingBottom: 'env(safe-area-inset-bottom)',
           backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.85))',
           backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)', // Glassmorphism
-          borderTop: '1px solid rgba(128, 128, 128, 0.15)',
-          boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.03)', // Soft Claymorphism shadow
+          WebkitBackdropFilter: 'blur(20px)',
+          /* UI Update: Bayangan dihapus, diganti border sangat halus adaptif */
+          borderTop: '1px solid var(--border-color, rgba(128, 128, 128, 0.15))',
+          boxShadow: 'none', 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
           boxSizing: 'border-box',
+          /* Pastikan text-color mewarisi warna body untuk Dark/Light mode */
+          color: 'var(--text-primary, inherit)' 
         }}
       >
         {navItems.map((item) => {
+          const isInsideVoiceRoom = pathname === '/voice' && searchParams?.get('id') !== null;
           const isActive = pathname === item.path || (item.path === '/voice-room' && pathname === '/voice' && !isInsideVoiceRoom);
           const Icon = item.icon;
           const isClicked = clickedItem === item.name;
           const isAnimating = animatingIcon === item.name;
-
-          const normalColor = isActive ? '#1f3cff' : '#737373';
 
           return (
             <Link
@@ -199,6 +194,7 @@ function NavbarContent() {
                 touchAction: 'manipulation',
                 width: '55px',
                 WebkitTapHighlightColor: 'transparent',
+                color: 'inherit', // Mewarisi warna dari nav
               }}
             >
               <div
@@ -234,7 +230,7 @@ function NavbarContent() {
                         height: '26px',
                         borderRadius: '50%',
                         padding: '2px',
-                        border: isActive ? `2px solid ${normalColor}` : '2px solid transparent',
+                        border: isActive ? `2px solid #1f3cff` : '2px solid transparent',
                         transition: 'all 0.3s ease',
                       }}
                     >
@@ -248,15 +244,17 @@ function NavbarContent() {
                     <div key="icon" style={{ display: 'flex' }}>
                       <Icon
                         size={24}
-                        color={normalColor}
-                        fill={isActive && item.name !== 'Profil' ? normalColor : 'none'}
+                        /* UI Update: 'currentColor' akan membaca warna teks otomatis (Hitam di Light Mode, Putih di Dark Mode) */
+                        color={isActive ? '#1f3cff' : 'currentColor'}
+                        fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
                         strokeWidth={isActive ? 2.5 : 2}
+                        /* Sedikit opacity agar mode non-aktif tidak terlalu mencolok */
+                        style={{ opacity: isActive ? 1 : 0.8 }} 
                       />
                     </div>
                   )}
                 </AnimatePresence>
 
-                {/* Premium Animated Badge */}
                 {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                   <motion.div
                     initial={{ scale: 0 }}
@@ -277,7 +275,6 @@ function NavbarContent() {
                       height: '16px',
                       borderRadius: '12px',
                       border: '2px solid var(--bg-main, #ffffff)',
-                      boxShadow: '0 2px 6px rgba(255, 59, 48, 0.4)',
                       zIndex: 10,
                     }}
                   >
