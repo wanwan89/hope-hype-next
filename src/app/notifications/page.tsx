@@ -40,6 +40,12 @@ const UNKNOWN_ACTOR = {
   role: 'user',
 };
 
+// Konstanta Kategori Tipe Notifikasi
+const LIKE_TYPES = ['like', 'like_group', 'repost', 'repost_group', 'save', 'save_group', 'comment_like', 'story_like'];
+const COMMENT_TYPES = ['comment', 'reply'];
+const FOLLOW_TYPES = ['follow'];
+const ALL_HANDLED_TYPES = [...LIKE_TYPES, ...COMMENT_TYPES, ...FOLLOW_TYPES];
+
 export default function NotificationsPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -89,8 +95,7 @@ export default function NotificationsPage() {
     setCurrentUser(userData);
     if (profile?.status_text) setMyStatusText(profile.status_text);
 
-    // PEMBERSIHAN OTOMATIS: hanya menandai notifikasi sintesis yang sudah tidak relevan,
-    // JANGAN hapus follow, bookmark, dll.
+    // PEMBERSIHAN OTOMATIS
     await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -193,22 +198,39 @@ export default function NotificationsPage() {
         .eq('status', 'pending');
       setPendingCount(pendingPosts || 0);
 
-      // 1. Ambil SEMUA notifikasi follow (tanpa limit)
-      const { data: followNotifs } = await supabase
+      // 1. Ambil FOLLOWER ASLI YANG SAAT INI MENGIKUTI
+      const { data: activeFollowersData } = await supabase
+        .from('followers')
+        .select('follower_id')
+        .eq('following_id', userId);
+      const activeFollowerIds = new Set((activeFollowersData || []).map(f => String(f.follower_id)));
+
+      // 2. Ambil semua notif follow dari DB & Dedup agar 1 User 1 Notif (Hanya user real yg msh follow)
+      const { data: rawFollowNotifs } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
         .eq('type', 'follow')
         .order('created_at', { ascending: false });
 
-      // 2. Ambil notifikasi lain (bukan synthesized & bukan follow) dengan limit
-      const synthesizeTypes = [
-        'like',
-        'comment',
-        'repost',
-        'save',
-        'comment_like',
-      ];
+      const latestFollowNotifsMap = new Map();
+      (rawFollowNotifs || []).forEach(n => {
+        if (n.actor_id && activeFollowerIds.has(String(n.actor_id))) {
+          if (!latestFollowNotifsMap.has(n.actor_id)) {
+            latestFollowNotifsMap.set(n.actor_id, n);
+          } else {
+            // Jika ada notif yang sama dari user yang sama, ambil yang paling baru
+            const existing = latestFollowNotifsMap.get(n.actor_id);
+            if (new Date(n.created_at) > new Date(existing.created_at)) {
+              latestFollowNotifsMap.set(n.actor_id, n);
+            }
+          }
+        }
+      });
+      const validFollowNotifs = Array.from(latestFollowNotifsMap.values());
+
+      // 3. Ambil notifikasi lain dengan limit
+      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like'];
       const { data: dbNotifs } = await supabase
         .from('notifications')
         .select('*')
@@ -220,13 +242,10 @@ export default function NotificationsPage() {
         (n) => !synthesizeTypes.includes(n.type) && n.type !== 'follow'
       );
 
-      // 3. Gabungkan semua notifikasi dari DB yang akan ditampilkan
-      const allFilteredDbNotifs = [
-        ...(followNotifs || []),
-        ...filteredDbNotifs,
-      ];
+      // Gabungkan notif follow yang sudah valid & bersih dengan notif lainnya
+      const allFilteredDbNotifs = [...validFollowNotifs, ...filteredDbNotifs];
 
-      // 4. Data postingan & komentar sendiri (untuk synthesized)
+      // 4. Data postingan & komentar (untuk data tersintesis)
       const myPostsRes = await supabase
         .from('posts')
         .select('id, image_url, video_url')
@@ -250,37 +269,12 @@ export default function NotificationsPage() {
         paymentsData: any[] = [];
 
       if (postIds.length > 0) {
-        const [likesRes, commentsRes, repostsRes, savesRes] =
-          await Promise.all([
-            supabase
-              .from('likes')
-              .select('id, post_id, created_at, user_id')
-              .in('post_id', postIds)
-              .neq('user_id', userId)
-              .order('created_at', { ascending: false })
-              .limit(30),
-            supabase
-              .from('comments')
-              .select('id, post_id, content, created_at, user_id')
-              .in('post_id', postIds)
-              .neq('user_id', userId)
-              .order('created_at', { ascending: false })
-              .limit(30),
-            supabase
-              .from('reposts')
-              .select('id, post_id, created_at, user_id')
-              .in('post_id', postIds)
-              .neq('user_id', userId)
-              .order('created_at', { ascending: false })
-              .limit(20),
-            supabase
-              .from('bookmarks')
-              .select('id, post_id, created_at, user_id')
-              .in('post_id', postIds)
-              .neq('user_id', userId)
-              .order('created_at', { ascending: false })
-              .limit(20),
-          ]);
+        const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
+          supabase.from('likes').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+          supabase.from('comments').select('id, post_id, content, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+          supabase.from('reposts').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+          supabase.from('bookmarks').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+        ]);
         likesData = likesRes.data || [];
         commentsData = commentsRes.data || [];
         repostsData = repostsRes.data || [];
@@ -288,54 +282,25 @@ export default function NotificationsPage() {
       }
 
       const promisesExtra = [];
-      promisesExtra.push(
-        supabase
-          .from('coin_transactions')
-          .select('*')
-          .eq('user_id', userId)
-          .gt('amount', 0)
-          .order('created_at', { ascending: false })
-          .limit(20)
-      );
-      if (commentIds.length > 0)
-        promisesExtra.push(
-          supabase
-            .from('comment_likes')
-            .select('id, comment_id, created_at, user_id')
-            .in('comment_id', commentIds)
-            .neq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(20)
-        );
+      promisesExtra.push(supabase.from('coin_transactions').select('*').eq('user_id', userId).gt('amount', 0).order('created_at', { ascending: false }).limit(20));
+      if (commentIds.length > 0) promisesExtra.push(supabase.from('comment_likes').select('id, comment_id, created_at, user_id').in('comment_id', commentIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(20));
       else promisesExtra.push(Promise.resolve({ data: [] }));
-      promisesExtra.push(
-        supabase
-          .from('payments')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(20)
-      );
+      promisesExtra.push(supabase.from('payments').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
 
-      const [coinRes, commentLikesRes, paymentsRes] = await Promise.all(
-        promisesExtra
-      );
+      const [coinRes, commentLikesRes, paymentsRes] = await Promise.all(promisesExtra);
       coinTransData = coinRes.data || [];
       commentLikesData = commentLikesRes.data || [];
       paymentsData = paymentsRes.data || [];
 
-      // Kumpulkan semua actor_id
+      // Kumpulkan aktor
       const allActorIds = new Set<string>();
-      allFilteredDbNotifs.forEach((n) => {
-        if (n.actor_id) allActorIds.add(n.actor_id);
-      });
+      allFilteredDbNotifs.forEach((n) => { if (n.actor_id) allActorIds.add(n.actor_id); });
       likesData.forEach((l) => allActorIds.add(l.user_id));
       commentsData.forEach((c) => allActorIds.add(c.user_id));
       repostsData.forEach((r) => allActorIds.add(r.user_id));
       savesData.forEach((s) => allActorIds.add(s.user_id));
       commentLikesData.forEach((cl) => allActorIds.add(cl.user_id));
 
-      // Ambil profil aktor
       let profilesMap: Record<string, any> = {};
       if (allActorIds.size > 0) {
         const { data: profs } = await supabase
@@ -345,55 +310,63 @@ export default function NotificationsPage() {
         if (profs) profs.forEach((p) => (profilesMap[p.id] = p));
       }
 
-      // Helper untuk mendapatkan data actor (fallback jika tidak ditemukan)
-      const getActor = (actorId: string) =>
-        profilesMap[actorId] || { id: actorId, ...UNKNOWN_ACTOR };
-
-      // Proses likes
-      const likesByPostId: Record<string, any[]> = {};
-      likesData.forEach((l: any) => {
-        if (!likesByPostId[l.post_id]) likesByPostId[l.post_id] = [];
-        likesByPostId[l.post_id].push(l);
-      });
-
+      const getActor = (actorId: string) => profilesMap[actorId] || { id: actorId, ...UNKNOWN_ACTOR };
       const readList = new Set(getReadNotifs());
-      let finalLikesNotifs: any[] = [];
 
-      Object.entries(likesByPostId).forEach(([postId, likes]) => {
-        const uniqueLikersMap = new Map(likes.map((l) => [l.user_id, l]));
-        const uniqueLikers = Array.from(uniqueLikersMap.values());
-        if (uniqueLikers.length === 0) return;
-        if (uniqueLikers.length === 1) {
-          const l = uniqueLikers[0];
-          const nId = `like-${l.id}`;
-          finalLikesNotifs.push({
-            id: nId,
-            type: 'like',
-            post_id: postId,
-            actor_id: l.user_id,
-            created_at: l.created_at,
-            is_read: readList.has(nId),
-            actor: getActor(l.user_id),
-            postData: myPosts.find((p) => p.id === postId),
-          });
-        } else {
-          const firstTwoIds = uniqueLikers.slice(0, 2).map((l) => l.user_id);
-          const otherCount =
-            uniqueLikers.length - 2 > 0 ? uniqueLikers.length - 2 : 0;
-          const nId = `like-group-${postId}`;
-          finalLikesNotifs.push({
-            id: nId,
-            type: 'like_group',
-            post_id: postId,
-            actor_ids: firstTwoIds,
-            otherCount,
-            created_at: uniqueLikers[0].created_at,
-            is_read: readList.has(nId),
-            actors: firstTwoIds.map((id) => getActor(id)),
-            postData: myPosts.find((p) => p.id === postId),
-          });
-        }
-      });
+      // Helper Universal untuk Grouping (Like, Repost, Save)
+      const groupActions = (dataArr: any[], baseType: string) => {
+        const byPostId: Record<string, any[]> = {};
+        dataArr.forEach((item: any) => {
+          if (!byPostId[item.post_id]) byPostId[item.post_id] = [];
+          byPostId[item.post_id].push(item);
+        });
+
+        const result: any[] = [];
+        Object.entries(byPostId).forEach(([postId, items]) => {
+          const uniqueUsersMap = new Map(items.map((i) => [i.user_id, i]));
+          const uniqueUsers = Array.from(uniqueUsersMap.values());
+          if (uniqueUsers.length === 0) return;
+
+          uniqueUsers.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+          if (uniqueUsers.length === 1) {
+            const item = uniqueUsers[0];
+            const nId = `${baseType}-${item.id}`;
+            result.push({
+              id: nId,
+              type: baseType,
+              post_id: postId,
+              actor_id: item.user_id,
+              created_at: item.created_at,
+              is_read: readList.has(nId),
+              actor: getActor(item.user_id),
+              postData: myPosts.find((p) => p.id === postId),
+              totalCount: 1, // untuk badge
+            });
+          } else {
+            const firstTwoIds = uniqueUsers.slice(0, 2).map((u) => u.user_id);
+            const otherCount = uniqueUsers.length - 2 > 0 ? uniqueUsers.length - 2 : 0;
+            const nId = `${baseType}_group-${postId}`;
+            result.push({
+              id: nId,
+              type: `${baseType}_group`,
+              post_id: postId,
+              actor_ids: firstTwoIds,
+              otherCount,
+              totalCount: uniqueUsers.length, // Total interaksi asli untuk badge
+              created_at: uniqueUsers[0].created_at,
+              is_read: readList.has(nId),
+              actors: firstTwoIds.map((id) => getActor(id)),
+              postData: myPosts.find((p) => p.id === postId),
+            });
+          }
+        });
+        return result;
+      };
+
+      const finalLikesNotifs = groupActions(likesData, 'like');
+      const finalRepostsNotifs = groupActions(repostsData, 'repost');
+      const finalSavesNotifs = groupActions(savesData, 'save');
 
       const formattedComments = commentsData.map((c: any) => ({
         id: `comment-${c.id}`,
@@ -405,35 +378,11 @@ export default function NotificationsPage() {
         is_read: readList.has(`comment-${c.id}`),
         actor: getActor(c.user_id),
         postData: myPosts.find((p) => p.id === c.post_id),
-      }));
-
-      const formattedReposts = repostsData.map((r: any) => ({
-        id: `repost-${r.id}`,
-        type: 'repost',
-        post_id: r.post_id,
-        actor_id: r.user_id,
-        created_at: r.created_at,
-        is_read: readList.has(`repost-${r.id}`),
-        actor: getActor(r.user_id),
-        postData: myPosts.find((p) => p.id === r.post_id),
-      }));
-
-      // Bookmark / save
-      const formattedSaves = savesData.map((s: any) => ({
-        id: `save-${s.id}`,
-        type: 'save',
-        post_id: s.post_id,
-        actor_id: s.user_id,
-        created_at: s.created_at,
-        is_read: readList.has(`save-${s.id}`),
-        actor: getActor(s.user_id),
-        postData: myPosts.find((p) => p.id === s.post_id),
+        totalCount: 1,
       }));
 
       const formattedCommentLikes = commentLikesData.map((cl: any) => {
-        const relatedComment = myComments.find(
-          (c) => c.id === cl.comment_id
-        );
+        const relatedComment = myComments.find((c) => c.id === cl.comment_id);
         const nId = `comment_like-${cl.id}`;
         return {
           id: nId,
@@ -444,6 +393,7 @@ export default function NotificationsPage() {
           is_read: readList.has(nId),
           actor: getActor(cl.user_id),
           postData: myPosts.find((p) => p.id === relatedComment?.post_id),
+          totalCount: 1,
         };
       });
 
@@ -454,10 +404,8 @@ export default function NotificationsPage() {
         description: ct.description,
         created_at: ct.created_at,
         is_read: readList.has(`coin-${ct.id}`),
-        actor: {
-          username: 'HypeSystem',
-          avatar_url: '/asets/png/logo.png',
-        },
+        actor: { username: 'HypeSystem', avatar_url: '/asets/png/logo.png' },
+        totalCount: 1,
       }));
 
       const formattedPayments = paymentsData.map((py: any) => ({
@@ -467,30 +415,19 @@ export default function NotificationsPage() {
         amount: py.amount,
         created_at: py.created_at,
         is_read: readList.has(`pay-${py.id}`),
-        actor: {
-          username: 'HypeFinance',
-          avatar_url: '/asets/png/logo.png',
-        },
+        actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
+        totalCount: 1,
       }));
 
-      // Normalisasi DB notifs (follow & lainnya) – jangan filter actor
       const normalizedDbNotifs = allFilteredDbNotifs
         .map((n) => {
           const isFollow = n.type === 'follow';
-          if (!n.actor_id) {
-            // jika tidak ada actor_id, mungkin notifikasi sistem, tetap tampilkan
-            return {
-              ...n,
-              type: isFollow ? 'follow' : n.type || 'other',
-              actor: null,
-              is_db: true,
-            };
-          }
           return {
             ...n,
             type: isFollow ? 'follow' : n.type || 'other',
-            actor: getActor(n.actor_id),
+            actor: n.actor_id ? getActor(n.actor_id) : null,
             is_db: true,
+            totalCount: 1, // follow/db count
           };
         })
         .filter(Boolean);
@@ -498,20 +435,17 @@ export default function NotificationsPage() {
       const allRaw = [
         ...normalizedDbNotifs,
         ...finalLikesNotifs,
+        ...finalRepostsNotifs,
+        ...finalSavesNotifs,
         ...formattedComments,
-        ...formattedReposts,
-        ...formattedSaves,
         ...formattedCommentLikes,
         ...formattedCoins,
         ...formattedPayments,
       ].sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      const uniqueNotifs = Array.from(
-        new Map(allRaw.map((item) => [item.id, item])).values()
-      );
+      const uniqueNotifs = Array.from(new Map(allRaw.map((item) => [item.id, item])).values());
       setRawNotifs(uniqueNotifs);
     } catch (err) {
       console.error(err);
@@ -546,30 +480,10 @@ export default function NotificationsPage() {
 
     updated = updated.map((n) => {
       let match = false;
-      if (
-        category === 'like' &&
-        ['like', 'repost', 'save', 'comment_like', 'like_group'].includes(
-          n.type
-        )
-      )
-        match = true;
-      if (category === 'comment' && ['comment', 'reply'].includes(n.type))
-        match = true;
-      if (category === 'follow' && n.type === 'follow') match = true;
-      if (
-        category === 'other' &&
-        ![
-          'like',
-          'repost',
-          'save',
-          'comment_like',
-          'like_group',
-          'comment',
-          'reply',
-          'follow',
-        ].includes(n.type)
-      )
-        match = true;
+      if (category === 'like' && LIKE_TYPES.includes(n.type)) match = true;
+      if (category === 'comment' && COMMENT_TYPES.includes(n.type)) match = true;
+      if (category === 'follow' && FOLLOW_TYPES.includes(n.type)) match = true;
+      if (category === 'other' && !ALL_HANDLED_TYPES.includes(n.type)) match = true;
 
       if (match && !n.is_read) {
         if (n.is_db) dbIdsToUpdate.push(n.id);
@@ -582,10 +496,7 @@ export default function NotificationsPage() {
 
     if (localIdsToUpdate.length > 0) saveReadNotifs(localIdsToUpdate);
     if (dbIdsToUpdate.length > 0) {
-      await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .in('id', dbIdsToUpdate);
+      await supabase.from('notifications').update({ is_read: true }).in('id', dbIdsToUpdate);
     }
 
     window.dispatchEvent(new Event('notif-count-changed'));
@@ -593,15 +504,10 @@ export default function NotificationsPage() {
 
   const handleNotifClick = async (notif: any) => {
     if (!notif.is_read) {
-      setRawNotifs((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
-      );
+      setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
 
       if (notif.is_db) {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('id', notif.id);
+        await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
       } else {
         saveReadNotifs([notif.id]);
       }
@@ -611,45 +517,30 @@ export default function NotificationsPage() {
 
     if (notif.type === 'follow' && notif.actor_id) {
       router.push(`/data?id=${notif.actor_id}`);
-    } else if (
-      (notif.type === 'comment' || notif.type === 'comment_like') &&
-      notif.post_id
-    ) {
+    } else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) {
       router.push(`/post?id=${notif.post_id}&openComment=true`);
     } else if (notif.type === 'story_like' && notif.story_id) {
       router.push(`/story/${notif.story_id}`);
-    } else if (
-      notif.type === 'payment_status' ||
-      notif.type === 'coin_receive'
-    ) {
+    } else if (notif.type === 'payment_status' || notif.type === 'coin_receive') {
       router.push(`/settings/wallet`);
     } else if (notif.post_id) {
       router.push(`/post?id=${notif.post_id}`);
     }
   };
 
-  const handleFollowAction = async (
-    e: React.MouseEvent,
-    targetId: string
-  ) => {
+  const handleFollowAction = async (e: React.MouseEvent, targetId: string) => {
     e.stopPropagation();
     if (!currentUser) return;
     const isFollowing = myFollowings.has(targetId);
     if (isFollowing) {
-      await supabase
-        .from('followers')
-        .delete()
-        .eq('follower_id', currentUser.id)
-        .eq('following_id', targetId);
+      await supabase.from('followers').delete().eq('follower_id', currentUser.id).eq('following_id', targetId);
       setMyFollowings((prev) => {
         const n = new Set(prev);
         n.delete(targetId);
         return n;
       });
     } else {
-      const { error } = await supabase
-        .from('followers')
-        .insert({ follower_id: currentUser.id, following_id: targetId });
+      const { error } = await supabase.from('followers').insert({ follower_id: currentUser.id, following_id: targetId });
       if (!error) {
         setMyFollowings((prev) => new Set(prev).add(targetId));
         showNotif('Berhasil mengikuti!', 'success');
@@ -674,8 +565,10 @@ export default function NotificationsPage() {
       case 'reply':
         return { icon: 'chat_bubble', color: '#10b981' };
       case 'repost':
+      case 'repost_group':
         return { icon: 'repeat', color: '#1DA1F2' };
       case 'save':
+      case 'save_group':
         return { icon: 'bookmark', color: '#f59e0b' };
       case 'gift':
       case 'coin_receive':
@@ -697,58 +590,31 @@ export default function NotificationsPage() {
     const dateObj = new Date(dateString);
     const isToday = new Date().toDateString() === dateObj.toDateString();
     return isToday
-      ? `${t('today', 'Hari ini')}, ${dateObj.toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}`
-      : dateObj.toLocaleDateString('id-ID', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+      ? `${t('today', 'Hari ini')}, ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+      : dateObj.toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Helper untuk menghitung badge sesuai jumlah total interaksi (bukan total notif block)
+  const calculateBadges = (types: string[]) => {
+    return rawNotifs
+      .filter((n) => !n.is_read && types.includes(n.type))
+      .reduce((sum, n) => sum + (n.totalCount || 1), 0);
   };
 
   const unreadCounts = {
-    like: rawNotifs.filter(
-      (n) =>
-        !n.is_read &&
-        ['like', 'repost', 'save', 'comment_like', 'like_group'].includes(
-          n.type
-        )
-    ).length,
-    comment: rawNotifs.filter(
-      (n) => !n.is_read && ['comment', 'reply'].includes(n.type)
-    ).length,
-    follow: rawNotifs.filter(
-      (n) => !n.is_read && n.type === 'follow'
-    ).length,
-    other: rawNotifs.filter(
-      (n) =>
-        !n.is_read &&
-        ['coin_receive', 'payment_status', 'other'].includes(n.type)
-    ).length,
+    like: calculateBadges(LIKE_TYPES),
+    comment: calculateBadges(COMMENT_TYPES),
+    follow: calculateBadges(FOLLOW_TYPES),
+    other: rawNotifs
+      .filter((n) => !n.is_read && !ALL_HANDLED_TYPES.includes(n.type))
+      .reduce((sum, n) => sum + (n.totalCount || 1), 0),
   };
 
   const filteredNotifs = rawNotifs.filter((n) => {
-    if (activeView === 'like')
-      return ['like', 'repost', 'save', 'comment_like', 'like_group'].includes(
-        n.type
-      );
-    if (activeView === 'comment')
-      return ['comment', 'reply'].includes(n.type);
+    if (activeView === 'like') return LIKE_TYPES.includes(n.type);
+    if (activeView === 'comment') return COMMENT_TYPES.includes(n.type);
     if (activeView === 'follow') return n.type === 'follow';
-    if (activeView === 'other')
-      return ![
-        'like',
-        'repost',
-        'save',
-        'comment_like',
-        'like_group',
-        'comment',
-        'reply',
-        'follow',
-      ].includes(n.type);
+    if (activeView === 'other') return !ALL_HANDLED_TYPES.includes(n.type);
     return true;
   });
 
@@ -794,57 +660,32 @@ export default function NotificationsPage() {
                 autoFocus
                 className="status-input"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter')
-                    handleUpdateStatus(e.currentTarget.value);
+                  if (e.key === 'Enter') handleUpdateStatus(e.currentTarget.value);
                 }}
               />
-              <button
-                onClick={() => setShowStatusInput(false)}
-                className="back-btn"
-              >
+              <button onClick={() => setShowStatusInput(false)} className="back-btn">
                 <span className="material-icons">close</span>
               </button>
             </div>
           )}
 
           {pendingCount > 0 && (
-            <div
-              className="pending-alert-box"
-              onClick={() => router.push('/pending')}
-            >
+            <div className="pending-alert-box" onClick={() => router.push('/pending')}>
               <div className="pending-alert-left">
                 <div className="pending-icon-wrap">
-                  <span
-                    className="material-icons"
-                    style={{ fontSize: '20px' }}
-                  >
-                    pending_actions
-                  </span>
+                  <span className="material-icons" style={{ fontSize: '20px' }}>pending_actions</span>
                 </div>
                 <div className="pending-text">
-                  <span className="pending-title">
-                    Menunggu Review <span>({pendingCount})</span>
-                  </span>
-                  <span className="pending-desc">
-                    Karyamu sedang dalam antrean pengecekan.
-                  </span>
+                  <span className="pending-title">Menunggu Review <span>({pendingCount})</span></span>
+                  <span className="pending-desc">Karyamu sedang dalam antrean pengecekan.</span>
                 </div>
               </div>
-              <span className="material-icons pending-chevron">
-                chevron_right
-              </span>
+              <span className="material-icons pending-chevron">chevron_right</span>
             </div>
           )}
 
-          <CategoryMenu
-            unreadCounts={unreadCounts}
-            onSelectCategory={setActiveView}
-          />
-          <RecommendedFriends
-            recommended={recommendedFriends}
-            onFollow={handleFollowAction}
-            myFollowings={myFollowings}
-          />
+          <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
+          <RecommendedFriends recommended={recommendedFriends} onFollow={handleFollowAction} myFollowings={myFollowings} />
         </div>
       ) : (
         <NotificationListView
