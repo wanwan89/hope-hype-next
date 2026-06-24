@@ -41,7 +41,7 @@ body section[style*="max-width"],
 }
 
 .media-post-card-wp .card {
-  border-radius: 0; /* Pinggir menempel layar */
+  border-radius: 0;
 }
 .media-post-card-wp .card .slider img,
 .media-post-card-wp .card .slider video,
@@ -102,7 +102,7 @@ body section[style*="max-width"],
 .slider {
   position: relative;
   width: 100%;
-  background: #1a1a1a;
+  background: var(--bg-secondary); /* ← sudah mengikuti tema */
   overflow: hidden;
   display: flex;
   align-items: center;

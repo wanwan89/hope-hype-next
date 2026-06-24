@@ -47,7 +47,7 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
               key={`sugg-${String(sp.id)}`}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/post?id=${String(sp.id)}&from=home`; }}
               style={{
-                minWidth: '150px', maxWidth: '150px', background: '#ffffff', borderRadius: '14px',
+                minWidth: '150px', maxWidth: '150px', background: 'var(--bg-card)', borderRadius: '14px',
                 overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start',
                 cursor: 'pointer', display: 'flex', flexDirection: 'column'
               }}
@@ -438,9 +438,9 @@ export default function Gallerypost() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: 16, background: '#ffffff', minHeight: '100dvh' }}>
+      <div style={{ padding: 16, background: 'var(--bg-main)', minHeight: '100dvh' }}>
         {[1, 2].map(i => (
-          <div key={i} style={{ marginBottom: 20, background: '#ffffff', padding: 16, borderRadius: 16, border: '1px solid var(--border-card)' }}>
+          <div key={i} style={{ marginBottom: 20, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border-card)' }}>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
               <div className="skeleton-block" style={{ width: 42, height: 42, borderRadius: '50%' }}></div>
               <div style={{ flex: 1 }}>
@@ -468,7 +468,7 @@ export default function Gallerypost() {
 
   if (isError) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', background: '#ffffff', minHeight: '100dvh' }}>
+      <div style={{ padding: 40, textAlign: 'center', background: 'var(--bg-main)', minHeight: '100dvh' }}>
         <p style={{ color: 'var(--text-muted)' }}>Gagal memuat feed.</p>
         <button onClick={() => refetch()} style={{ marginTop: 12, padding: '8px 16px', borderRadius: 8, background: '#1f3cff', color: 'white', border: 'none', cursor: 'pointer' }}>Coba lagi</button>
       </div>
@@ -476,7 +476,7 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: '#ffffff', minHeight: '100dvh' }}>
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh' }}>
       <RepostModal
         isOpen={!!repostModal}
         postId={repostModal?.postId || ''}
