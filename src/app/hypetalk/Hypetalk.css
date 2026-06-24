@@ -20,7 +20,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--bg-card);
+  background: var(--bg-main);
   box-shadow: none;
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   overflow: hidden;
@@ -34,7 +34,7 @@
 
 /* HEADER */
 .telegram-wrapper .tg-header {
-  background: var(--bg-card);
+  background: var(--bg-main);
   z-index: 20;
   padding-top: env(safe-area-inset-top);
   flex-shrink: 0;
@@ -61,7 +61,7 @@
   overflow-y: auto;
   padding-bottom: 110px;
   -webkit-overflow-scrolling: touch;
-  background: var(--bg-card);
+  background: var(--bg-main);
 }
 .telegram-wrapper .tg-chat-list::-webkit-scrollbar { width: 0; display: none; }
 
@@ -193,7 +193,7 @@
   left: 50%;
   width: 100%;
   max-width: 320px;
-  background: var(--bg-card);
+  background: var(--bg-main);
   transform: translateX(calc(-50% - 100vw));
   z-index: 99991;
   display: flex;
