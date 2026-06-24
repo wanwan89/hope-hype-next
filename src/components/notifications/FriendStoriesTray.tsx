@@ -107,7 +107,7 @@ export default function FriendStoriesTray({
         padding: '15px',
         overflow: 'visible',
         zIndex: 100,
-        marginTop: '8px', // jarak dari header
+        marginTop: '30px', // jarak dari header
       }}
     >
       <div
