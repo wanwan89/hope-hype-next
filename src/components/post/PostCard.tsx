@@ -380,7 +380,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: 'var(--bg-main)', // ← diubah ke bg-main
+      background: 'var(--bg-main)',
       borderRadius: '0px',
       padding: '0',
       borderLeft: 'none',
@@ -503,6 +503,7 @@ const PostCard: React.FC<PostCardProps> = ({
               <button
                 className="btn-press"
                 onClick={(e) => {
+                  e.stopPropagation();
                   toggleMute(e);
                   if (mediaRef.current && isGloballyMuted) {
                     mediaRef.current.muted = false;
@@ -932,9 +933,11 @@ const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
 
+            {/* 🔥 Tambahkan stopPropagation di sini */}
             <div
               className="actions"
               style={{ pointerEvents: 'auto' }}
+              onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => router.push(`/post?id=${postIdStr}`)}
@@ -1157,6 +1160,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 <button
                   className="btn-press"
                   onClick={(e) => {
+                    e.stopPropagation();
                     toggleMute(e);
                     if (mediaRef.current && isGloballyMuted) {
                       mediaRef.current.muted = false;
