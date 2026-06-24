@@ -65,7 +65,7 @@ export default function FriendStoriesTray({
   // Bubble di ATAS avatar, dengan teks kontras di kedua mode
   const bubbleStyles: React.CSSProperties = {
     position: 'absolute',
-    bottom: 'calc(100% - 4px)', // menempel di atas cincin
+    bottom: 'calc(100% - 4px)',
     left: '50%',
     transform: 'translateX(-50%)',
     background: 'var(--bg-card, #ffffff)',
@@ -74,20 +74,19 @@ export default function FriendStoriesTray({
     padding: '7px 14px',
     maxWidth: '150px',
     boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
-    zIndex: 999,
+    zIndex: 9999, // ⬆️ sangat tinggi agar di atas segalanya
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     fontSize: '12px',
     fontWeight: 600,
-    // Teks otomatis kontras dengan background
     color: 'var(--text-main, #1c1e21)',
     textAlign: 'center',
     pointerEvents: 'auto',
   };
 
-  // Ekor balon menunjuk ke bawah (arah avatar)
+  // Ekor balon menunjuk ke bawah
   const triangleStyles: React.CSSProperties = {
     position: 'absolute',
     bottom: '-6px',
@@ -109,7 +108,7 @@ export default function FriendStoriesTray({
         borderBottom: '1px solid var(--border-card, #e0e0e0)',
         padding: '15px',
         overflow: 'visible',
-        zIndex: 100,
+        zIndex: 999, // tray juga tinggi agar tidak tertutup
         marginTop: '8px',
       }}
     >
