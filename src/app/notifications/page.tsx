@@ -41,6 +41,13 @@ export default function NotificationsPage() {
     };
   }, []);
 
+  // ✅ Tandai semua notifikasi di subkategori sebagai terbaca saat subkategori dibuka
+  useEffect(() => {
+    if (activeView !== 'main') {
+      markCategoryAsRead(activeView);
+    }
+  }, [activeView]);
+
   const initUserAndData = async () => {
     const {
       data: { session },
@@ -156,7 +163,6 @@ export default function NotificationsPage() {
   const loadNotifications = async (userId: string) => {
     setIsLoading(true);
     try {
-      // 1. Postingan pending
       const { count: pendingPosts } = await supabase
         .from('posts')
         .select('*', { count: 'exact', head: true })
@@ -164,7 +170,6 @@ export default function NotificationsPage() {
         .eq('status', 'pending');
       setPendingCount(pendingPosts || 0);
 
-      // 2. Notifikasi dari tabel notifikasi (hanya yang bukan hasil sintesis)
       const { data: dbNotifs } = await supabase
         .from('notifications')
         .select('*')
@@ -172,13 +177,12 @@ export default function NotificationsPage() {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // 🔥 Filter agar tidak duplikat dengan notifikasi buatan sendiri
+      // Hindari duplikasi: notifikasi tipe sintesis tidak diambil dari DB
       const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like'];
       const filteredDbNotifs = (dbNotifs || []).filter(
         (n) => !synthesizeTypes.includes(n.type)
       );
 
-      // 3. Data postingan milik user
       const myPostsRes = await supabase
         .from('posts')
         .select('id, image_url, video_url')
@@ -186,7 +190,6 @@ export default function NotificationsPage() {
       const myPosts = myPostsRes.data || [];
       const postIds = myPosts.map((p) => p.id);
 
-      // 4. Komentar milik user
       const myCommentsRes = await supabase
         .from('comments')
         .select('id, post_id')
@@ -202,7 +205,6 @@ export default function NotificationsPage() {
       let commentLikesData: any[] = [];
       let paymentsData: any[] = [];
 
-      // 5. Ambil interaksi postingan jika ada
       if (postIds.length > 0) {
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
           supabase
@@ -240,7 +242,6 @@ export default function NotificationsPage() {
         savesData = savesRes.data || [];
       }
 
-      // 6. Data transaksi, like komentar, pembayaran
       const promisesExtra = [];
       promisesExtra.push(
         supabase
@@ -280,7 +281,6 @@ export default function NotificationsPage() {
       commentLikesData = commentLikesRes.data || [];
       paymentsData = paymentsRes.data || [];
 
-      // 7. Kumpulkan semua actor ID
       const allActorIds = new Set<string>();
       filteredDbNotifs.forEach((n) => {
         if (n.actor_id) allActorIds.add(n.actor_id);
@@ -291,7 +291,6 @@ export default function NotificationsPage() {
       savesData.forEach((s) => allActorIds.add(s.user_id));
       commentLikesData.forEach((cl) => allActorIds.add(cl.user_id));
 
-      // 8. Ambil profil semua actor (sekali query)
       let profilesMap: Record<string, any> = {};
       if (allActorIds.size > 0) {
         const { data: profs } = await supabase
@@ -305,7 +304,7 @@ export default function NotificationsPage() {
         }
       }
 
-      // 9. Buat notifikasi likes dengan pengelompokan
+      // Notifikasi likes dengan pengelompokan
       const likesByPostId: Record<string, any[]> = {};
       likesData.forEach((l: any) => {
         const key = l.post_id;
@@ -317,7 +316,6 @@ export default function NotificationsPage() {
 
       Object.entries(likesByPostId).forEach(([postId, likes]) => {
         if (likes.length <= 10) {
-          // Tampilkan satu per satu
           finalLikesNotifs.push(
             ...likes.map((l: any) => ({
               id: `like-${l.id}`,
@@ -334,7 +332,6 @@ export default function NotificationsPage() {
             }))
           );
         } else {
-          // Gabungkan: dua user pertama + jumlah lainnya
           const firstTwo = likes.slice(0, 2);
           const otherCount = likes.length - 2;
           finalLikesNotifs.push({
@@ -357,7 +354,6 @@ export default function NotificationsPage() {
         }
       });
 
-      // 10. Format tipe lainnya
       const formattedComments = commentsData.map((c: any) => ({
         id: `comment-${c.id}`,
         type: 'comment',
@@ -439,7 +435,7 @@ export default function NotificationsPage() {
         },
       }));
 
-      // 11. Normalisasi notifikasi dari DB (bebas dari “Seseorang”)
+      // Notifikasi dari DB (termasuk follow) – hapus fallback “Seseorang”
       const normalizedDbNotifs = filteredDbNotifs.map((n) => {
         const isFollow =
           n.message?.toLowerCase().includes('mengikuti') || n.type === 'follow';
@@ -453,7 +449,6 @@ export default function NotificationsPage() {
         };
       });
 
-      // 12. Gabungkan semua, urutkan, hapus duplikat
       const allRaw = [
         ...normalizedDbNotifs,
         ...finalLikesNotifs,
@@ -496,6 +491,42 @@ export default function NotificationsPage() {
         }
       )
       .subscribe();
+  };
+
+  // ✅ Tandai semua notifikasi di kategori tertentu sebagai terbaca (lokal + DB)
+  const markCategoryAsRead = (category: string) => {
+    let updated = [...rawNotifs];
+    let idsToUpdate: string[] = [];
+
+    updated = updated.map((n) => {
+      let match = false;
+      if (category === 'like' && ['like', 'repost', 'save', 'comment_like', 'like_group'].includes(n.type)) match = true;
+      if (category === 'comment' && ['comment', 'reply'].includes(n.type)) match = true;
+      if (category === 'follow' && n.type === 'follow') match = true;
+      if (category === 'other' && !['like', 'repost', 'save', 'comment_like', 'like_group', 'comment', 'reply', 'follow'].includes(n.type)) match = true;
+
+      if (match && !n.is_read) {
+        // Hanya notifikasi asli (tanpa tanda hubung) yang disimpan di DB
+        if (!String(n.id).includes('-')) {
+          idsToUpdate.push(n.id);
+        }
+        return { ...n, is_read: true };
+      }
+      return n;
+    });
+
+    setRawNotifs(updated);
+
+    // Batch update ke database untuk notifikasi asli
+    if (idsToUpdate.length > 0) {
+      supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .in('id', idsToUpdate)
+        .then(({ error }) => {
+          if (error) console.error('Gagal update notifikasi terbaca:', error);
+        });
+    }
   };
 
   const handleNotifClick = async (notif: any) => {

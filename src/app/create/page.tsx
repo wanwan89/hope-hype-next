@@ -76,6 +76,9 @@ export default function CreatePostPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null);
 
+  // 🔥 Durasi maksimal klip video (dalam detik)
+  const MAX_VIDEO_CLIP = 60;
+
   // ==================== EFFECTS ====================
   useEffect(() => {
     if (!draftId) return;
@@ -270,6 +273,10 @@ export default function CreatePostPage() {
       setVideoStart(0);
       setCoverTime(0);
       if (rawVideoUrl && !existingVideoUrl) generateVideoThumbnails(rawVideoUrl, dur);
+      // Opsional: peringatan jika durasi > MAX_VIDEO_CLIP, tetapi masih bisa dipotong
+      if (dur > MAX_VIDEO_CLIP) {
+        showNotif(`Video berdurasi ${Math.round(dur)} detik. Anda dapat memotong hingga maksimal ${MAX_VIDEO_CLIP} detik.`, "info");
+      }
     }
   };
 
@@ -399,8 +406,14 @@ export default function CreatePostPage() {
             return;
           }
           finalImageUrl = coverRes.secure_url;
+
+          // 🔥 Ubah pemotongan video menjadi maksimal MAX_VIDEO_CLIP detik
+          const clipEnd = Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
           const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
-          finalVideoUrl = vidRes.secure_url.replace('/upload/', `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${Math.min(videoDuration, videoStart + 15).toFixed(1)}/`);
+          finalVideoUrl = vidRes.secure_url.replace(
+            '/upload/',
+            `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
+          );
           updateGlobalProgress(50);
         }
 
@@ -498,21 +511,54 @@ export default function CreatePostPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div className="editor-control-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>content_cut</span> Potong Video (Max 15s)</span>
-                  <span style={{ color: '#aaa', fontSize: '12px', fontWeight: 600 }}>{videoStart.toFixed(1)}s - {Math.min(videoDuration, videoStart + 15).toFixed(1)}s</span>
+                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>content_cut</span> Potong Video (Max {MAX_VIDEO_CLIP}s)
+                  </span>
+                  <span style={{ color: '#aaa', fontSize: '12px', fontWeight: 600 }}>
+                    {videoStart.toFixed(1)}s - {Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP).toFixed(1)}s
+                  </span>
                 </div>
                 <div className="filmstrip-box">
-                  <div className="filmstrip-images">{videoThumbnails.map((thumb, idx) => <img key={idx} src={thumb} alt="thumb" />)}</div>
-                  <input type="range" className="custom-range-timeline blue-slider" min={0} max={Math.max(0, videoDuration - 15)} step={0.1} value={videoStart} onChange={e => { const val = Number(e.target.value); setVideoStart(val); if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.play(); setIsVideoPlaying(true); } if (coverTime < val || coverTime > val + 15) setCoverTime(val); }} />
+                  <div className="filmstrip-images">
+                    {videoThumbnails.map((thumb, idx) => <img key={idx} src={thumb} alt="thumb" />)}
+                  </div>
+                  <input
+                    type="range"
+                    className="custom-range-timeline blue-slider"
+                    min={0}
+                    max={Math.max(0, videoDuration - MAX_VIDEO_CLIP)}
+                    step={0.1}
+                    value={videoStart}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setVideoStart(val);
+                      if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.play(); setIsVideoPlaying(true); }
+                      if (coverTime < val || coverTime > val + MAX_VIDEO_CLIP) setCoverTime(val);
+                    }}
+                  />
                 </div>
               </div>
               <div className="editor-control-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><span className="material-icons" style={{ fontSize: '16px', color: '#f59e0b' }}>image</span> Pilih Sampul Depan</span>
+                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px', color: '#f59e0b' }}>image</span> Pilih Sampul Depan
+                  </span>
                   <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Tampil di: {coverTime.toFixed(1)}s</span>
                 </div>
                 <div className="filmstrip-box" style={{ height: '30px' }}>
-                  <input type="range" className="custom-range-timeline orange-slider" min={videoStart} max={Math.min(videoDuration, videoStart + 15)} step={0.1} value={coverTime} onChange={e => { const val = Number(e.target.value); setCoverTime(val); if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.pause(); setIsVideoPlaying(false); } }} />
+                  <input
+                    type="range"
+                    className="custom-range-timeline orange-slider"
+                    min={videoStart}
+                    max={Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP)}
+                    step={0.1}
+                    value={coverTime}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setCoverTime(val);
+                      if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.pause(); setIsVideoPlaying(false); }
+                    }}
+                  />
                 </div>
               </div>
             </div>

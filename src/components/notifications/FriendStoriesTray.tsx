@@ -35,13 +35,6 @@ export default function FriendStoriesTray({
 }: Props) {
   const [popupNote, setPopupNote] = useState<{ text: string; username: string; userId: string } | null>(null);
 
-  // 🔥 Potong teks ke maks 20 karakter untuk bubble
-  const truncateText = (text: string, maxLen: number = 20) => {
-    if (!text) return '';
-    if (text.length <= maxLen) return text;
-    return text.substring(0, maxLen - 3) + '...';
-  };
-
   // Urutkan: yang punya note di depan, lalu yang punya story
   const sortedFriends = [...friends].sort((a, b) => {
     if (a.status_text && !b.status_text) return -1;
@@ -79,45 +72,46 @@ export default function FriendStoriesTray({
             <span className="material-icons" style={{ fontSize: 14, color: 'white' }}>add</span>
           </button>
 
-          {/* Bubble note sendiri: selalu muncul jika ada teks, klik = popup */}
+          {/* Bubble note sendiri – sekarang menempel di atas, mengembang ke atas */}
           {myStatusText && (
             <div
               className="note-bubble"
               style={{
                 position: 'absolute',
-                top: -8,
+                bottom: 'calc(100% + 8px)', // tepat di atas avatar
                 right: -16,
                 background: 'var(--bg-card, #ffffff)',
                 border: '1px solid var(--border-card, #ccc)',
                 borderRadius: '12px',
-                padding: '4px 10px',
-                maxWidth: '140px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                padding: '6px 10px',
+                maxWidth: '150px',
+                maxHeight: '100px', // batasi agar tidak terlalu tinggi
+                overflow: 'hidden',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 zIndex: 5,
                 cursor: 'pointer',
+                whiteSpace: 'normal', // izinkan wrap
+                wordBreak: 'break-word',
+                fontSize: '11px',
+                lineHeight: '1.4',
+                color: 'var(--text-main)',
               }}
               onClick={(e) => handleBubbleClick(e, myStatusText, 'Anda', currentUser.id)}
             >
-              <span style={{
-                fontSize: '11px',
-                color: 'var(--text-main)',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: 'block',
-              }}>
-                {truncateText(myStatusText)}
-              </span>
-              <div style={{
-                position: 'absolute',
-                bottom: -5,
-                right: 22,
-                width: 0,
-                height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '6px solid var(--bg-card, #ffffff)',
-              }} />
+              {myStatusText}
+              {/* Ekor bubble di bawah, menunjuk ke avatar */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -5,
+                  right: 22,
+                  width: 0,
+                  height: 0,
+                  borderLeft: '6px solid transparent',
+                  borderRight: '6px solid transparent',
+                  borderTop: '6px solid var(--bg-card, #ffffff)',
+                }}
+              />
             </div>
           )}
         </div>
@@ -125,7 +119,9 @@ export default function FriendStoriesTray({
 
       {/* Teman */}
       {sortedFriends.length === 0 && !currentUser ? (
-        <div style={{ padding: '0 15px', fontSize: '13px', color: 'var(--text-muted)' }}>Belum mengikuti siapa pun.</div>
+        <div style={{ padding: '0 15px', fontSize: '13px', color: 'var(--text-muted)' }}>
+          Belum mengikuti siapa pun.
+        </div>
       ) : (
         sortedFriends.map((friend) => (
           <div
@@ -154,46 +150,46 @@ export default function FriendStoriesTray({
                 className="note-bubble"
                 style={{
                   position: 'absolute',
-                  top: -8,
+                  bottom: 'calc(100% + 8px)',
                   right: -16,
                   background: 'var(--bg-card, #ffffff)',
                   border: '1px solid var(--border-card, #ccc)',
                   borderRadius: '12px',
-                  padding: '4px 10px',
-                  maxWidth: '140px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  padding: '6px 10px',
+                  maxWidth: '150px',
+                  maxHeight: '100px',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                   zIndex: 5,
                   cursor: 'pointer',
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                  fontSize: '11px',
+                  lineHeight: '1.4',
+                  color: 'var(--text-main)',
                 }}
                 onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
               >
-                <span style={{
-                  fontSize: '11px',
-                  color: 'var(--text-main)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: 'block',
-                }}>
-                  {truncateText(friend.status_text)}
-                </span>
-                <div style={{
-                  position: 'absolute',
-                  bottom: -5,
-                  right: 22,
-                  width: 0,
-                  height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid var(--bg-card, #ffffff)',
-                }} />
+                {friend.status_text}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: -5,
+                    right: 22,
+                    width: 0,
+                    height: 0,
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderTop: '6px solid var(--bg-card, #ffffff)',
+                  }}
+                />
               </div>
             )}
           </div>
         ))
       )}
 
-      {/* Popup full note */}
+      {/* Popup full note (tidak diubah) */}
       {popupNote && (
         <>
           <div
@@ -225,14 +221,16 @@ export default function FriendStoriesTray({
               <strong style={{ fontSize: 16 }}>{popupNote.username}</strong>
             </div>
 
-            <div style={{
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              background: 'var(--bg-secondary, #f3f4f6)',
-              padding: '12px',
-              borderRadius: '12px',
-              marginBottom: 16,
-            }}>
+            <div
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                background: 'var(--bg-secondary, #f3f4f6)',
+                padding: '12px',
+                borderRadius: '12px',
+                marginBottom: 16,
+              }}
+            >
               {popupNote.text}
             </div>
 
