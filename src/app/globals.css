@@ -7,7 +7,8 @@
   --bg-main: #ffffff;
   --text-main: #1c1e21;
   --bg-card: #ffffff;
-  --border-card: #dddfe2;
+  /* Garis dibuat transparan agar tidak muncul */
+  --border-card: transparent; 
   --text-muted: #64748b;
   --bg-modal: #ffffff;
   --bg-input: #f1f5f9;
@@ -28,7 +29,8 @@
   --bg-main: #0a0a0a; 
   --text-main: #f8fafc;
   --bg-card: #151515;
-  --border-card: rgba(255,255,255,0.06);
+  /* Garis dibuat transparan agar tidak muncul */
+  --border-card: transparent;
   --text-muted: #94a3b8;
   --bg-modal: #111111;
   --bg-input: #1e1e1e;
