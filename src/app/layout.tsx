@@ -27,7 +27,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
 import CustomSplash from '@/components/CustomSplash';
-import Providers from '@/components/Providers'; // ✅ Tambahan: React Query Provider
+import Providers from '@/components/Providers';
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -330,6 +330,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, [pathname, isStandaloneApp]);
 
+  // --- 🔥 ANTI ZOOM DENGAN EVENT LISTENER (iOS & Android) ---
+  useEffect(() => {
+    const handleGestureStart = (e: Event) => {
+      e.preventDefault();
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      // Cegah pinch zoom jika lebih dari satu jari
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('gesturestart', handleGestureStart);
+    document.addEventListener('gesturechange', handleGestureStart);
+    document.addEventListener('gestureend', handleGestureStart);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      document.removeEventListener('gesturestart', handleGestureStart);
+      document.removeEventListener('gesturechange', handleGestureStart);
+      document.removeEventListener('gestureend', handleGestureStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
   // --- RENDER CONTENT HELPER ---
   const renderUI = () => (
     <>
@@ -432,7 +458,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
-          body { background-color: var(--bg-main); }
+          body {
+            background-color: var(--bg-main);
+            /* 🔥 Tambahan anti-zoom via CSS */
+            touch-action: manipulation;
+            -ms-touch-action: manipulation;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            -moz-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            -webkit-user-zoom: fixed;
+            user-zoom: fixed;
+          }
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
           .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
           @keyframes pulseCallGlobal { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); } 70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
@@ -443,17 +480,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
-
         <CustomSplash />
+        <NextTopLoader color="#1f3cff" showSpinner={false} shadow="0 0 10px #1f3cff,0 0 5px #1f3cff" zIndex={99999999} />
 
-        <NextTopLoader
-          color="#1f3cff"
-          showSpinner={false}
-          shadow="0 0 10px #1f3cff,0 0 5px #1f3cff"
-          zIndex={99999999}
-        />
-
-        {/* 🔥 ERUDA DEBUG CONSOLE (hanya untuk development) 🔥 */}
         <Script
           src="https://cdn.jsdelivr.net/npm/eruda"
           strategy="lazyOnload"
@@ -464,7 +493,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
 
-        {/* ✅ BUNGKUS DENGAN Providers AGAR React Query BISA DIGUNAKAN DI DALAM APLIKASI */}
         <Providers>
           <I18nextProvider i18n={i18n}>
             <ThemeProvider>

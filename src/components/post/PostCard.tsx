@@ -274,7 +274,7 @@ const PostCard: React.FC<PostCardProps> = ({
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
       wasPlayingRef.current = !video.paused;
-      video.pause(); // Pause saat di-drag agar suara tidak glitch
+      video.pause();
     }
   }, []);
 
@@ -284,7 +284,7 @@ const PostCard: React.FC<PostCardProps> = ({
     setVideoCurrentTime(time);
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      video.currentTime = time; // Update frame video secara langsung
+      video.currentTime = time;
     }
   }, []);
 
@@ -292,16 +292,13 @@ const PostCard: React.FC<PostCardProps> = ({
     e.stopPropagation();
     setIsSeeking(false);
     
-    // Biarkan bar tetap terlihat sejenak setelah dilepas lalu hilangkan
     setTimeout(() => {
       if (!isSeeking) setIsBarVisible(false);
     }, 1500);
 
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      // Sinkronkan sekali lagi
       video.currentTime = videoCurrentTime; 
-      // Lanjutkan video jika sebelumnya bermain
       if (wasPlayingRef.current) {
         video.play().catch(() => {});
       }
@@ -316,7 +313,6 @@ const PostCard: React.FC<PostCardProps> = ({
     const lastTap = lastTapVideoRef.current;
 
     if (now - lastTap < 500) {
-      // Double tap
       lastTapVideoRef.current = 0;
       if (tapTimerRef.current) {
         clearTimeout(tapTimerRef.current);
@@ -365,19 +361,18 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card
+  // Style card – HANYA SATU PERUBAHAN: `width: 100%` + `margin: 0`
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: '#ffffff', // 🔥 DIGANTI JADI PUTIH SOLID
+      background: '#ffffff',
       borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
       padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
       border: '1px solid var(--border-card)',
       position: 'relative' as const,
-      width: '100vw',
-      marginLeft: 'calc(-50vw + 50%)',
-      marginRight: 'calc(-50vw + 50%)',
-      maxWidth: '100vw',
+      width: '100%',          // <-- TANPA CELAH
+      maxWidth: '100%',
+      margin: 0,              // <-- TANPA MARGIN NEGATIF
       boxSizing: 'border-box' as const,
       boxShadow:
         isVideoPost || photoList.length > 0
@@ -629,7 +624,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     onPointerEnter={() => setIsBarVisible(true)}
                     onPointerLeave={() => { if (!isSeeking) setIsBarVisible(false); }}
                   >
-                    {/* Visual Bar - Selalu tampil tapi tipis, menebal saat disentuh/di-hover */}
+                    {/* Visual Bar */}
                     <div style={{
                       position: 'absolute',
                       bottom: 0,
@@ -648,13 +643,13 @@ const PostCard: React.FC<PostCardProps> = ({
                       }} />
                     </div>
 
-                    {/* Input range yang transparan tapi bisa di-drag */}
+                    {/* Input range transparan */}
                     {videoLoaded && (
                       <input
                         type="range"
                         min={0}
                         max={videoDuration || 1}
-                        step="0.001" // 🔥 PENTING: Membuat pergerakan slide mulus
+                        step="0.001"
                         value={videoCurrentTime}
                         onMouseDown={handleVideoSeekStart}
                         onTouchStart={handleVideoSeekStart}
@@ -666,9 +661,9 @@ const PostCard: React.FC<PostCardProps> = ({
                           bottom: 0,
                           left: 0,
                           width: '100%',
-                          height: '24px', // Area tekan lebih luas agar mudah disentuh
+                          height: '24px',
                           margin: 0,
-                          opacity: 0, // Dibuat invisible, pengguna hanya melihat Visual Bar di atas
+                          opacity: 0,
                           cursor: 'pointer',
                           zIndex: 5
                         }}
