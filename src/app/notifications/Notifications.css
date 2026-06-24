@@ -20,7 +20,7 @@
 
 /* Header "Notifikasi" */
 .notif-main-view .notif-header {
-  padding: 20px 15px 15px;
+  padding: 12px 15px 10px; /* lebih ramping */
   display: flex;
   justify-content: flex-start;
   align-items: center;
@@ -32,7 +32,7 @@
 
 .notif-main-view .notif-header h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 18px; /* lebih kecil */
   font-weight: 800;
   text-align: left;
   color: var(--text-main);
