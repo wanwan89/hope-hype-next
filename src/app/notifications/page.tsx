@@ -33,14 +33,12 @@ const saveReadNotifs = (ids: string[]) => {
   } catch {}
 };
 
-// Fallback profil jika data actor tidak ditemukan
 const UNKNOWN_ACTOR = {
   username: 'Unknown',
   avatar_url: '',
   role: 'user',
 };
 
-// Konstanta Kategori Tipe Notifikasi
 const LIKE_TYPES = ['like', 'like_group', 'repost', 'repost_group', 'save', 'save_group', 'comment_like', 'story_like'];
 const COMMENT_TYPES = ['comment', 'reply'];
 const FOLLOW_TYPES = ['follow'];
@@ -95,7 +93,6 @@ export default function NotificationsPage() {
     setCurrentUser(userData);
     if (profile?.status_text) setMyStatusText(profile.status_text);
 
-    // PEMBERSIHAN OTOMATIS
     await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -198,39 +195,17 @@ export default function NotificationsPage() {
         .eq('status', 'pending');
       setPendingCount(pendingPosts || 0);
 
-      // 1. Ambil FOLLOWER ASLI YANG SAAT INI MENGIKUTI
+      // 1. Ambil FOLLOWER ASLI langsung dari tabel followers secara live
+      // (Pastikan tabel followers ada kolom created_at, jika tidak ada fallback ke waktu saat ini)
       const { data: activeFollowersData } = await supabase
         .from('followers')
-        .select('follower_id')
-        .eq('following_id', userId);
-      const activeFollowerIds = new Set((activeFollowersData || []).map(f => String(f.follower_id)));
-
-      // 2. Ambil semua notif follow dari DB & Dedup agar 1 User 1 Notif (Hanya user real yg msh follow)
-      const { data: rawFollowNotifs } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('type', 'follow')
+        .select('follower_id, created_at')
+        .eq('following_id', userId)
         .order('created_at', { ascending: false });
 
-      const latestFollowNotifsMap = new Map();
-      (rawFollowNotifs || []).forEach(n => {
-        if (n.actor_id && activeFollowerIds.has(String(n.actor_id))) {
-          if (!latestFollowNotifsMap.has(n.actor_id)) {
-            latestFollowNotifsMap.set(n.actor_id, n);
-          } else {
-            // Jika ada notif yang sama dari user yang sama, ambil yang paling baru
-            const existing = latestFollowNotifsMap.get(n.actor_id);
-            if (new Date(n.created_at) > new Date(existing.created_at)) {
-              latestFollowNotifsMap.set(n.actor_id, n);
-            }
-          }
-        }
-      });
-      const validFollowNotifs = Array.from(latestFollowNotifsMap.values());
-
-      // 3. Ambil notifikasi lain dengan limit
-      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like'];
+      // 2. Ambil notifikasi lain dengan limit
+      // Kita abaikan tipe 'follow' dari tabel notifications karena sudah digenerate live dari followers
+      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
       const { data: dbNotifs } = await supabase
         .from('notifications')
         .select('*')
@@ -239,13 +214,10 @@ export default function NotificationsPage() {
         .limit(50);
 
       const filteredDbNotifs = (dbNotifs || []).filter(
-        (n) => !synthesizeTypes.includes(n.type) && n.type !== 'follow'
+        (n) => !synthesizeTypes.includes(n.type)
       );
 
-      // Gabungkan notif follow yang sudah valid & bersih dengan notif lainnya
-      const allFilteredDbNotifs = [...validFollowNotifs, ...filteredDbNotifs];
-
-      // 4. Data postingan & komentar (untuk data tersintesis)
+      // 3. Data postingan & komentar (untuk data tersintesis)
       const myPostsRes = await supabase
         .from('posts')
         .select('id, image_url, video_url')
@@ -294,7 +266,8 @@ export default function NotificationsPage() {
 
       // Kumpulkan aktor
       const allActorIds = new Set<string>();
-      allFilteredDbNotifs.forEach((n) => { if (n.actor_id) allActorIds.add(n.actor_id); });
+      filteredDbNotifs.forEach((n) => { if (n.actor_id) allActorIds.add(n.actor_id); });
+      (activeFollowersData || []).forEach((f) => allActorIds.add(f.follower_id)); // Aktor dari followers asli
       likesData.forEach((l) => allActorIds.add(l.user_id));
       commentsData.forEach((c) => allActorIds.add(c.user_id));
       repostsData.forEach((r) => allActorIds.add(r.user_id));
@@ -312,6 +285,21 @@ export default function NotificationsPage() {
 
       const getActor = (actorId: string) => profilesMap[actorId] || { id: actorId, ...UNKNOWN_ACTOR };
       const readList = new Set(getReadNotifs());
+
+      // Format Followers (Live dari tabel followers)
+      const formattedFollowers = (activeFollowersData || []).map((f: any) => {
+        const nId = `follow-${f.follower_id}`;
+        return {
+          id: nId,
+          type: 'follow',
+          actor_id: f.follower_id,
+          created_at: f.created_at || new Date().toISOString(), // fallback date
+          is_read: readList.has(nId),
+          actor: getActor(f.follower_id),
+          totalCount: 1,
+          is_db: false // update locally only agar tidak nge-hit db yg ga perlu
+        };
+      });
 
       // Helper Universal untuk Grouping (Like, Repost, Save)
       const groupActions = (dataArr: any[], baseType: string) => {
@@ -341,7 +329,7 @@ export default function NotificationsPage() {
               is_read: readList.has(nId),
               actor: getActor(item.user_id),
               postData: myPosts.find((p) => p.id === postId),
-              totalCount: 1, // untuk badge
+              totalCount: 1, 
             });
           } else {
             const firstTwoIds = uniqueUsers.slice(0, 2).map((u) => u.user_id);
@@ -353,7 +341,7 @@ export default function NotificationsPage() {
               post_id: postId,
               actor_ids: firstTwoIds,
               otherCount,
-              totalCount: uniqueUsers.length, // Total interaksi asli untuk badge
+              totalCount: uniqueUsers.length, 
               created_at: uniqueUsers[0].created_at,
               is_read: readList.has(nId),
               actors: firstTwoIds.map((id) => getActor(id)),
@@ -419,17 +407,14 @@ export default function NotificationsPage() {
         totalCount: 1,
       }));
 
-      const normalizedDbNotifs = allFilteredDbNotifs
-        .map((n) => {
-          const isFollow = n.type === 'follow';
-          return {
-            ...n,
-            type: isFollow ? 'follow' : n.type || 'other',
-            actor: n.actor_id ? getActor(n.actor_id) : null,
-            is_db: true,
-            totalCount: 1, // follow/db count
-          };
-        })
+      const normalizedDbNotifs = filteredDbNotifs
+        .map((n) => ({
+          ...n,
+          type: n.type || 'other',
+          actor: n.actor_id ? getActor(n.actor_id) : null,
+          is_db: true,
+          totalCount: 1, 
+        }))
         .filter(Boolean);
 
       const allRaw = [
@@ -439,6 +424,7 @@ export default function NotificationsPage() {
         ...finalSavesNotifs,
         ...formattedComments,
         ...formattedCommentLikes,
+        ...formattedFollowers, // Inject followers asli ke dalam notifikasi
         ...formattedCoins,
         ...formattedPayments,
       ].sort(
@@ -460,15 +446,13 @@ export default function NotificationsPage() {
       .channel(`notif-realtime-${userId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          loadNotifications(userId);
-        }
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        () => { loadNotifications(userId); }
+      )
+      .on(
+        'postgres_changes', // Update otomatis kalau ada follower baru
+        { event: '*', schema: 'public', table: 'followers', filter: `following_id=eq.${userId}` },
+        () => { loadNotifications(userId); }
       )
       .subscribe();
   };
@@ -544,12 +528,6 @@ export default function NotificationsPage() {
       if (!error) {
         setMyFollowings((prev) => new Set(prev).add(targetId));
         showNotif('Berhasil mengikuti!', 'success');
-        await supabase.from('notifications').insert({
-          user_id: targetId,
-          actor_id: currentUser.id,
-          type: 'follow',
-          message: `mulai mengikuti Anda.`,
-        });
       }
     }
   };
@@ -594,7 +572,6 @@ export default function NotificationsPage() {
       : dateObj.toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Helper untuk menghitung badge sesuai jumlah total interaksi (bukan total notif block)
   const calculateBadges = (types: string[]) => {
     return rawNotifs
       .filter((n) => !n.is_read && types.includes(n.type))
