@@ -96,113 +96,33 @@ function NavbarContent() {
     isHistoryCoinPage ||
     isWithdrawPage;
 
-  // --- DATA & REALTIME ---
-  useEffect(() => {
-    if (isHiddenPage) return;
+  // 1. Definisikan fungsi fetch di luar useEffect agar bisa dipanggil kapan saja
+  const fetchBadgesAndUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const userId = session.user.id;
+
+    const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('id', userId).single();
+    if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
+
+    const { count: notifCount } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
     
-    let isMounted = true;
-    let badgeChannel: any;
+    if (notifCount !== null) setUnreadNotifCount(notifCount);
+  };
 
-    const fetchBadgesAndUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const userId = session.user.id;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('avatar_url')
-        .eq('id', userId)
-        .single();
-
-      if (isMounted && profile?.avatar_url) {
-        let url = profile.avatar_url;
-        if (url.includes('res.cloudinary.com') && !url.includes('f_auto')) {
-          url = url.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
-        }
-        setAvatarUrl(url);
-      }
-
-      const { count: chatCount } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .ilike('room_id', `pv_%${userId}%`)
-        .neq('user_id', userId)
-        .neq('status', 'read');
-
-      if (isMounted && chatCount !== null) setUnreadChatCount(chatCount);
-
-      const { count: notifCount } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_read', false);
-
-      if (isMounted && notifCount !== null) setUnreadNotifCount(notifCount);
-
-      if (badgeChannel) {
-        supabase.removeChannel(badgeChannel);
-      }
-      const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
-      badgeChannel = supabase
-        .channel(uniqueChannelName)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-          if (payload.new.room_id.includes(userId) && payload.new.user_id !== userId) {
-            setUnreadChatCount((prev) => prev + 1);
-          }
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
-          if (payload.new.status === 'read' && payload.old.status !== 'read') {
-            setUnreadChatCount((prev) => Math.max(0, prev - 1));
-          }
-        })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-          if (payload.new.user_id === userId) {
-            setUnreadNotifCount((prev) => prev + 1);
-          }
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, async (payload) => {
-          if (payload.new.user_id === userId) {
-            const { count } = await supabase
-              .from('notifications')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', userId)
-              .eq('is_read', false);
-            if (isMounted && count !== null) setUnreadNotifCount(count);
-          }
-        })
-        .subscribe();
-    };
-
+  // 2. Gunakan useEffect ini untuk mendengarkan sinyal dari NotificationsPage
+  useEffect(() => {
     fetchBadgesAndUser();
 
-    return () => {
-      isMounted = false;
-      if (badgeChannel) supabase.removeChannel(badgeChannel);
-    };
+    const handleRefresh = () => fetchBadgesAndUser();
+    window.addEventListener('notif-count-changed', handleRefresh);
+    
+    return () => window.removeEventListener('notif-count-changed', handleRefresh);
   }, [pathname]);
-
-  // 🔥 FETCH ULANG UNREAD COUNT SETIAP PATHNAME BERUBAH
-  useEffect(() => {
-    if (isHiddenPage) return;
-
-    const refreshUnreadCounts = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const userId = session.user.id;
-
-      const { count: notifCount } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_read', false);
-      
-      if (notifCount !== null) setUnreadNotifCount(notifCount);
-    };
-
-    refreshUnreadCounts();
-  }, [pathname, isHiddenPage]);
 
   if (isHiddenPage) return null;
 

@@ -275,7 +275,7 @@ export default function NotificationsPage() {
       
       if (match && !n.is_read) {
         if (n.is_db) dbIdsToUpdate.push(n.id);
-        else localIdsToUpdate.push(n.id); // Notif dynamic masuk ke local storage
+        else localIdsToUpdate.push(n.id);
         return { ...n, is_read: true };
       }
       return n;
@@ -288,19 +288,28 @@ export default function NotificationsPage() {
       });
     }
     if (localIdsToUpdate.length > 0) {
-      saveReadNotifs(localIdsToUpdate); // Simpan status read secara lokal
+      saveReadNotifs(localIdsToUpdate);
     }
+
+    // 🔥 TAMBAHKAN INI DI SINI
+    window.dispatchEvent(new Event('notif-count-changed'));
   };
 
-  const handleNotifClick = async (notif: any) => {
+    const handleNotifClick = async (notif: any) => {
     if (!notif.is_read) {
       setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
+      
       if (notif.is_db) {
         await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
       } else {
-        saveReadNotifs([notif.id]); // Simpan status read lokal ketika item di-klik
+        saveReadNotifs([notif.id]);
       }
+
+      // 🔥 TAMBAHKAN INI DI SINI
+      window.dispatchEvent(new Event('notif-count-changed'));
     }
+
+    // Routing...
     if (notif.type === 'follow' && notif.actor_id) { router.push(`/data?id=${notif.actor_id}`); }
     else if ((notif.type === 'comment' || notif.type === 'comment_like') && notif.post_id) { router.push(`/post?id=${notif.post_id}&openComment=true`); }
     else if (notif.type === 'story_like' && notif.story_id) { router.push(`/story/${notif.story_id}`); }
