@@ -13,7 +13,6 @@ import {
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Komponen lingkaran berputar (chase spinner)
 function CircularChase() {
   return (
     <motion.div
@@ -39,13 +38,13 @@ function NavbarContent() {
 
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
-  
+
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
-  // Scroll otomatis hanya di Home
+  // Scroll hanya di Home
   useEffect(() => {
     if (pathname !== '/') {
       setIsVisible(true);
@@ -66,7 +65,6 @@ function NavbarContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [pathname]);
 
-  // Halaman yang tidak menampilkan navbar
   const isLoginPage = pathname === '/login' || pathname?.startsWith('/login/');
   const isDailyCekPage = pathname?.includes('/dailycek');
   const isSettingsPage = pathname?.includes('/settings');
@@ -91,14 +89,14 @@ function NavbarContent() {
     isCreatePage ||
     isSearchPage ||
     isRoomPage ||
-    isInsideVoiceRoom || 
+    isInsideVoiceRoom ||
     isSaldoPage ||
     isStoryPage ||
     isPendingPage ||
     isHistoryCoinPage ||
     isWithdrawPage;
 
-  // --- LOGIKA BADGE PESAN & NOTIFIKASI + AMBIL FOTO PROFIL ---
+  // --- DATA & REALTIME ---
   useEffect(() => {
     let isMounted = true;
     let badgeChannel: any;
@@ -141,6 +139,10 @@ function NavbarContent() {
 
       if (isMounted && notifCount !== null) setUnreadNotifCount(notifCount);
 
+      // Bersihkan channel lama dan buat baru
+      if (badgeChannel) {
+        supabase.removeChannel(badgeChannel);
+      }
       const uniqueChannelName = `navbar-badges-${userId}-${Date.now()}`;
       badgeChannel = supabase
         .channel(uniqueChannelName)
@@ -155,21 +157,22 @@ function NavbarContent() {
           }
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-          if (payload.new.user_id === userId) setUnreadNotifCount((prev) => prev + 1);
+          if (payload.new.user_id === userId) {
+            setUnreadNotifCount((prev) => prev + 1);
+          }
         })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
-          if (payload.new.is_read === true && payload.new.user_id === userId) checkRemainingNotifs(userId);
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, async (payload) => {
+          if (payload.new.user_id === userId) {
+            // Hitung ulang total unread setiap kali ada update
+            const { count } = await supabase
+              .from('notifications')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', userId)
+              .eq('is_read', false);
+            if (isMounted && count !== null) setUnreadNotifCount(count);
+          }
         })
         .subscribe();
-    };
-
-    const checkRemainingNotifs = async (userId: string) => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_read', false);
-      if (isMounted && count !== null) setUnreadNotifCount(count);
     };
 
     fetchBadgesAndUser();
@@ -185,7 +188,7 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: Mic }, 
+    { name: 'Voice', path: '/voice-room', icon: Mic },
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
     { name: 'Profil', path: '/data', icon: User },
   ];
@@ -197,6 +200,10 @@ function NavbarContent() {
     item: (typeof navItems)[0],
     isActive: boolean
   ) => {
+    // Reset badge notifikasi saat ikon Notif diklik
+    if (item.name === 'Notif') {
+      setUnreadNotifCount(0);
+    }
     if (isActive) {
       e.preventDefault();
       setAnimatingIcon(item.name);
@@ -228,7 +235,7 @@ function NavbarContent() {
             width: '100%',
             height: `calc(55px + env(safe-area-inset-bottom))`,
             paddingBottom: 'env(safe-area-inset-bottom)',
-            backgroundColor: 'var(--bg-main)', // ← diubah ke bg-main
+            backgroundColor: 'var(--bg-main)',
             backdropFilter: 'blur(15px)',
             WebkitBackdropFilter: 'blur(15px)',
             borderTop: '1px solid var(--border-card)',
@@ -360,7 +367,7 @@ function NavbarContent() {
                           minWidth: '14px',
                           height: '14px',
                           borderRadius: '10px',
-                          border: '2px solid var(--bg-main)', // ← ikuti latar baru
+                          border: '2px solid var(--bg-main)',
                           zIndex: 10,
                         }}
                       >
