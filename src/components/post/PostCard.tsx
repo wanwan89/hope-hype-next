@@ -274,7 +274,7 @@ const PostCard: React.FC<PostCardProps> = ({
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
       wasPlayingRef.current = !video.paused;
-      video.pause();
+      video.pause(); // Pause saat di-drag agar suara tidak glitch
     }
   }, []);
 
@@ -284,7 +284,7 @@ const PostCard: React.FC<PostCardProps> = ({
     setVideoCurrentTime(time);
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      video.currentTime = time;
+      video.currentTime = time; // Update frame video secara langsung
     }
   }, []);
 
@@ -292,13 +292,16 @@ const PostCard: React.FC<PostCardProps> = ({
     e.stopPropagation();
     setIsSeeking(false);
     
+    // Biarkan bar tetap terlihat sejenak setelah dilepas lalu hilangkan
     setTimeout(() => {
       if (!isSeeking) setIsBarVisible(false);
     }, 1500);
 
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
+      // Sinkronkan sekali lagi
       video.currentTime = videoCurrentTime; 
+      // Lanjutkan video jika sebelumnya bermain
       if (wasPlayingRef.current) {
         video.play().catch(() => {});
       }
@@ -313,6 +316,7 @@ const PostCard: React.FC<PostCardProps> = ({
     const lastTap = lastTapVideoRef.current;
 
     if (now - lastTap < 500) {
+      // Double tap
       lastTapVideoRef.current = 0;
       if (tapTimerRef.current) {
         clearTimeout(tapTimerRef.current);
@@ -361,19 +365,19 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card – FULL WIDTH, NO BORDER RADIUS, GAP BAWAH
+  // Style card
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: '#ffffff',
-      borderRadius: '0px',                     // seamless ke pinggir layar
-      padding: isVideoPost || photoList.length > 0 ? '0' : '16px 15px', // teks only: padding horizontal 15px
+      background: '#ffffff', // 🔥 DIGANTI JADI PUTIH SOLID
+      borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
+      padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
       border: '1px solid var(--border-card)',
       position: 'relative' as const,
-      width: '100vw',                          // lebar penuh viewport
-      marginLeft: 'calc(50% - 50vw)',          // tumpah ke kiri
-      marginRight: 'calc(50% - 50vw)',         // tumpah ke kanan
-      marginBottom: '12px',                    // gap antar postingan
+      width: '100vw',
+      marginLeft: 'calc(-50vw + 50%)',
+      marginRight: 'calc(-50vw + 50%)',
+      maxWidth: '100vw',
       boxSizing: 'border-box' as const,
       boxShadow:
         isVideoPost || photoList.length > 0
@@ -610,7 +614,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     </div>
                   )}
 
-                  {/* Progress Bar yang Interaktif dan Halus */}
+                  {/* 🔥 Progress Bar yang Interaktif dan Halus 🔥 */}
                   <div
                     style={{
                       position: 'absolute',
@@ -625,7 +629,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     onPointerEnter={() => setIsBarVisible(true)}
                     onPointerLeave={() => { if (!isSeeking) setIsBarVisible(false); }}
                   >
-                    {/* Visual Bar */}
+                    {/* Visual Bar - Selalu tampil tapi tipis, menebal saat disentuh/di-hover */}
                     <div style={{
                       position: 'absolute',
                       bottom: 0,
@@ -644,13 +648,13 @@ const PostCard: React.FC<PostCardProps> = ({
                       }} />
                     </div>
 
-                    {/* Input range transparan */}
+                    {/* Input range yang transparan tapi bisa di-drag */}
                     {videoLoaded && (
                       <input
                         type="range"
                         min={0}
                         max={videoDuration || 1}
-                        step="0.001"
+                        step="0.001" // 🔥 PENTING: Membuat pergerakan slide mulus
                         value={videoCurrentTime}
                         onMouseDown={handleVideoSeekStart}
                         onTouchStart={handleVideoSeekStart}
@@ -662,9 +666,9 @@ const PostCard: React.FC<PostCardProps> = ({
                           bottom: 0,
                           left: 0,
                           width: '100%',
-                          height: '24px',
+                          height: '24px', // Area tekan lebih luas agar mudah disentuh
                           margin: 0,
-                          opacity: 0,
+                          opacity: 0, // Dibuat invisible, pengguna hanya melihat Visual Bar di atas
                           cursor: 'pointer',
                           zIndex: 5
                         }}
@@ -747,8 +751,8 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          {/* Overlay informasi – dengan padding horizontal agar teks tidak menempel */}
-          <div className="overlay" style={{ pointerEvents: 'auto', padding: '0 15px' }}>
+          {/* Overlay informasi */}
+          <div className="overlay" style={{ pointerEvents: 'auto' }}>
             <div
               style={{
                 display: 'flex',
@@ -960,7 +964,6 @@ const PostCard: React.FC<PostCardProps> = ({
         </>
       ) : (
         // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
-        // Padding horizontal 15px sudah diterapkan di cardStyle, semua konten otomatis menjorok
         <>
           <div
             style={{
