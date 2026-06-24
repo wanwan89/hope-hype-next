@@ -35,8 +35,7 @@ const RepostModal: React.FC<RepostModalProps> = ({
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0,0,0,0.7)',
-              backdropFilter: 'blur(5px)',
+              background: 'rgba(0,0,0,0.7)', // Backdrop tanpa blur agar lebih ringan
               zIndex: 99998,
             }}
           />
