@@ -361,18 +361,19 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card – HANYA SATU PERUBAHAN: `width: 100%` + `margin: 0`
+  // Style card – FULL WIDTH, NO BORDER RADIUS, GAP BAWAH
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
       background: '#ffffff',
-      borderRadius: isVideoPost || photoList.length > 0 ? '16px' : '20px',
-      padding: isVideoPost || photoList.length > 0 ? '0' : '16px',
+      borderRadius: '0px',                     // seamless ke pinggir layar
+      padding: isVideoPost || photoList.length > 0 ? '0' : '16px 15px', // teks only: padding horizontal 15px
       border: '1px solid var(--border-card)',
       position: 'relative' as const,
-      width: '100%',          // <-- TANPA CELAH
-      maxWidth: '100%',
-      margin: 0,              // <-- TANPA MARGIN NEGATIF
+      width: '100vw',                          // lebar penuh viewport
+      marginLeft: 'calc(50% - 50vw)',          // tumpah ke kiri
+      marginRight: 'calc(50% - 50vw)',         // tumpah ke kanan
+      marginBottom: '12px',                    // gap antar postingan
       boxSizing: 'border-box' as const,
       boxShadow:
         isVideoPost || photoList.length > 0
@@ -609,7 +610,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     </div>
                   )}
 
-                  {/* 🔥 Progress Bar yang Interaktif dan Halus 🔥 */}
+                  {/* Progress Bar yang Interaktif dan Halus */}
                   <div
                     style={{
                       position: 'absolute',
@@ -746,8 +747,8 @@ const PostCard: React.FC<PostCardProps> = ({
             )}
           </div>
 
-          {/* Overlay informasi */}
-          <div className="overlay" style={{ pointerEvents: 'auto' }}>
+          {/* Overlay informasi – dengan padding horizontal agar teks tidak menempel */}
+          <div className="overlay" style={{ pointerEvents: 'auto', padding: '0 15px' }}>
             <div
               style={{
                 display: 'flex',
@@ -959,6 +960,7 @@ const PostCard: React.FC<PostCardProps> = ({
         </>
       ) : (
         // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
+        // Padding horizontal 15px sudah diterapkan di cardStyle, semua konten otomatis menjorok
         <>
           <div
             style={{
