@@ -70,7 +70,10 @@
 .telegram-wrapper .tg-avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: none !important; }
 .telegram-wrapper .global-avatar { background: linear-gradient(135deg, #1f3cff, #007bb5); display: flex; align-items: center; justify-content: center; color: white; }
 .telegram-wrapper .group-avatar { background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; color: white; }
-.telegram-wrapper .tg-chat-info { flex: 1; min-width: 0; border-bottom: 1px solid var(--border-card); padding-bottom: 12px; padding-top: 2px; display: flex; flex-direction: column; justify-content: center; height: 100%; }
+
+/* FIX: border-bottom diubah menjadi none untuk menghilangkan garis pembatas */
+.telegram-wrapper .tg-chat-info { flex: 1; min-width: 0; border-bottom: none; padding-bottom: 12px; padding-top: 2px; display: flex; flex-direction: column; justify-content: center; height: 100%; }
+
 .telegram-wrapper .tg-chat-item:last-child .tg-chat-info { border-bottom: none; }
 .telegram-wrapper .tg-chat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .telegram-wrapper .tg-name { font-size: 16px; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; margin: 0; }
