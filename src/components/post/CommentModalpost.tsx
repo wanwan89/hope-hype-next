@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
@@ -25,23 +25,24 @@ const containsBadWords = (text: string) => {
   return BAD_WORDS.some(badWord => words.includes(badWord) || lowerText.includes(badWord));
 };
 
-export default function CommentModalpost() {
+// 🔥 UBAH NAMA FUNGSI INI JADI CommentModalContent 🔥
+function CommentModalContent() {
   const { t } = useTranslation();
-   const searchParams = useSearchParams(); // pastikan import dari 'next/navigation'
+  const searchParams = useSearchParams(); 
 
-useEffect(() => {
-  const openComment = searchParams?.get('openComment');
-  const postId = searchParams?.get('id');
+  useEffect(() => {
+    const openComment = searchParams?.get('openComment');
+    const postId = searchParams?.get('id');
 
-  if (openComment === 'true' && postId) {
-    setCurrentPostId(postId);
-    setCurrentCreatorId(null); // CreatorId bisa di-fetch lewat loadComments
-    setIsActive(true);
-    setActiveTab('comment');
-    document.body.style.overflow = "hidden";
-    loadComments(postId); // Panggil fungsi load komentar
-  }
-}, [searchParams]);
+    if (openComment === 'true' && postId) {
+      setCurrentPostId(postId);
+      setCurrentCreatorId(null); 
+      setIsActive(true);
+      setActiveTab('comment');
+      document.body.style.overflow = "hidden";
+      loadComments(postId); 
+    }
+  }, [searchParams]);
 
   const [isActive, setIsActive] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
@@ -1041,5 +1042,14 @@ useEffect(() => {
         </button>
       </div>
     </>
+  );
+}
+
+// 🔥 INI EXPORT DEFAULT BARU YANG SUDAH DIBUNGKUS SUSPENSE 🔥
+export default function CommentModalpost() {
+  return (
+    <Suspense fallback={null}>
+      <CommentModalContent />
+    </Suspense>
   );
 }
