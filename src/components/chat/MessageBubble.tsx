@@ -17,6 +17,19 @@ export const getStatusIcon = (status: string) => {
   return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
+// Helper untuk merender emoticon sebagai SVG
+const renderReactionIcon = (emoji: string, size = 18) => {
+  switch (emoji) {
+    case '👍': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FBBF24" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>;
+    case '❤️': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#EF4444" stroke="#EF4444" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>;
+    case '😂': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 9.05v-.1"></path><path d="M16 9.05v-.1"></path><path d="M10 14c.5 1.5 1.79 2 2 2s1.5-.5 2-2"></path><path d="M4 8l2 2"></path><path d="M20 8l-2 2"></path></svg>;
+    case '😮': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 9.05v-.1"></path><path d="M16 9.05v-.1"></path><circle cx="12" cy="15" r="2"></circle></svg>;
+    case '😢': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 9.05v-.1"></path><path d="M16 9.05v-.1"></path><path d="M16 16c-1.5-1.5-3.5-1.5-5.5 0"></path><path d="M9 12v3"></path></svg>;
+    case '🙏': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-7l-2-2"></path><path d="M12 22v-7l2-2"></path><path d="M10 13V8a2 2 0 0 1 4 0v5"></path><path d="M10 8a2 2 0 0 0-4 0v3.5"></path><path d="M14 8a2 2 0 0 1 4 0v3.5"></path></svg>;
+    default: return <span style={{ fontSize: `${size}px`, lineHeight: 1 }}>{emoji}</span>;
+  }
+};
+
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -70,7 +83,7 @@ const formatChatDate = (dateString: string) => {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${timeStr}`;
 };
 
-export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, currentUser, isFirstUnread, unreadCount, showDateSeparator, router, isSelectionMode }) {
+export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, currentUser, isFirstUnread, unreadCount, showDateSeparator, router, isSelectionMode }: any) {
   const { t } = useTranslation(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
   
@@ -337,7 +350,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
-  const isMediaOnly = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
+  const isMediaOnly = [" Mengirim Foto", " Stiker", " Voice Note"].includes(cleanMsg);
   const shouldShowText = cleanMsg && !isMediaOnly;
 
   const vnBgColor = isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)';
@@ -458,10 +471,15 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
               >
                 
                 {showReactions && !msg.is_system && !isDeleted && (
-                  <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0', zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
+                  <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0', zIndex: 100, display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                     {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-                      <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)}>
-                        {emoji}
+                      <div 
+                        key={emoji} 
+                        className="reaction-btn" 
+                        onClick={(e) => handleReactionSelect(emoji, e)}
+                        style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', cursor: 'pointer' }}
+                      >
+                        {renderReactionIcon(emoji, 26)}
                       </div>
                     ))}
                   </div>
@@ -527,7 +545,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                     {/* KONDISI C: IMAGE STACKS (TUMPANG TINDIH) */}
                     {!msg.post_id && parsedImages.length > 1 && (
                       <div style={{ position: 'relative', width: '230px', height: '260px', marginBottom: shouldShowText ? '8px' : '4px' }}>
-                        {parsedImages.slice(0, 3).reverse().map((url, indexReverse) => {
+                        {parsedImages.slice(0, 3).reverse().map((url: string, indexReverse: number) => {
                           const displayLimit = Math.min(parsedImages.length, 3);
                           const i = displayLimit - 1 - indexReverse; 
                           const isTop = i === 0;
@@ -651,8 +669,12 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 )}
 
                 {msg.reactions && Object.keys(msg.reactions).length > 0 && !isDeleted && (
-                  <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post || msg.post_id) ? '-12px' : '-16px' }}>
-                    {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
+                  <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post || msg.post_id) ? '-12px' : '-16px', display: 'flex', alignItems: 'center', gap: '2px', padding: '2px 4px' }}>
+                    {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).map((emojiStr, idx) => (
+                      <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                         {renderReactionIcon(emojiStr, 14)}
+                      </span>
+                    ))}
                   </div>
                 )}
                 
