@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import MessageBubble from './MessageBubble';
 
 export default function ChatMessageList({
@@ -21,10 +21,12 @@ export default function ChatMessageList({
   setIsSelectionMode      
 }: any) {
   
-  let touchTimer: NodeJS.Timeout;
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTouchStart = (id: string) => {
-    touchTimer = setTimeout(() => {
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    
+    touchTimerRef.current = setTimeout(() => {
       setIsSelectionMode(true);
       if (!selectedMessages.includes(id)) {
         toggleSelectMessage(id);
@@ -34,7 +36,10 @@ export default function ChatMessageList({
   };
 
   const handleTouchEnd = () => {
-    clearTimeout(touchTimer);
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
   };
 
   return (
@@ -58,8 +63,10 @@ export default function ChatMessageList({
           {messages.map((msg: any, idx: number) => {
             const isUnread = msg.user_id !== currentUser?.id && msg.status !== 'read';
             let isFirstUnread = false;
+            
             if (isUnread) {
-               const prevMsg = messages[idx + 1]; 
+               // Menggunakan idx - 1 karena urutan pesan berurutan dari indeks terkecil (lama) ke terbesar (baru)
+               const prevMsg = messages[idx - 1]; 
                if (!prevMsg || prevMsg.status === 'read' || prevMsg.user_id === currentUser?.id) {
                   isFirstUnread = true;
                }

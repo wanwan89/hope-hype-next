@@ -703,7 +703,7 @@ export default function ChatArea() {
   };
 
   const startCall = async () => {
-    if (callStatus !== 'idle') {
+    if (callStatusRef.current !== 'idle') {
       showNotif("Panggilan sedang berlangsung", "warning");
       return;
     }
@@ -734,7 +734,7 @@ export default function ChatArea() {
   };
 
   const handleIncomingCall = async (msg: any) => {
-    if (callStatus !== 'idle') {
+    if (callStatusRef.current !== 'idle') {
       await supabase.from('messages').insert([{ room_id: msg.room_id, user_id: currentUser.id, message: `Sibuk, coba lagi nanti`, is_system: true }]);
       return;
     }
@@ -766,7 +766,7 @@ export default function ChatArea() {
       });
 
       const handleCallConnected = () => {
-        if (callStatus === 'connected') return;
+        if (callStatusRef.current === 'connected') return;
         setCallStatus('connected'); 
         clearTimeout(refs.callTimeout.current);
         clearInterval(refs.callInterval.current);
@@ -777,10 +777,10 @@ export default function ChatArea() {
 
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantConnected, handleCallConnected);
       refs.lkRoom.current.on(LiveKit.RoomEvent.ParticipantDisconnected, () => {
-        if (!groupId && callStatus === 'connected') endCall(true);
+        if (!groupId && callStatusRef.current === 'connected') endCall(true);
       });
       refs.lkRoom.current.on(LiveKit.RoomEvent.Disconnected, () => {
-        if (callStatus !== 'idle') endCall(true);
+        if (callStatusRef.current !== 'idle') endCall(true);
       });
       refs.lkRoom.current.on(LiveKit.RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === LiveKit.Track.Kind.Audio) {
