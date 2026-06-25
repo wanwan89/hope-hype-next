@@ -1,83 +1,41 @@
 'use client';
 
-import { motion } from 'framer-motion';
-
 export default function GlobalLoading() {
-  const color1 = '#1f3cff'; // Biru tema
-  const color2 = '#ff4757'; // Merah tema
-
-  const dotSize = 14; // ukuran dot (px)
-  const containerWidth = 80; // lebar area gerak horizontal
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'transparent', // 🔥 Background transparan
-      }}
-    >
-      {/* Wadah animasi horizontal */}
+    <>
+      <style jsx>{`
+        .loader {
+          width: 60px;
+          aspect-ratio: 2;
+          --_g: no-repeat radial-gradient(circle closest-side, #1f3cff 90%, #0000);
+          background: 
+            var(--_g) 0%   50%,
+            var(--_g) 50%  50%,
+            var(--_g) 100% 50%;
+          background-size: calc(100% / 3) 50%;
+          animation: l3 1s infinite linear;
+        }
+        @keyframes l3 {
+          20% { background-position: 0% 0%, 50% 50%, 100% 50%; }
+          40% { background-position: 0% 100%, 50% 0%, 100% 50%; }
+          60% { background-position: 0% 50%, 50% 100%, 100% 0%; }
+          80% { background-position: 0% 50%, 50% 50%, 100% 100%; }
+        }
+      `}</style>
+
       <div
         style={{
-          position: 'relative',
-          width: `${containerWidth}px`,
-          height: '40px',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999,
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'center',
+          alignItems: 'center',
+          background: 'transparent',
         }}
       >
-        {/* --- Dot Biru (bergerak dari kiri ke kanan) --- */}
-        <motion.div
-          style={{
-            width: dotSize,
-            height: dotSize,
-            background: color1,
-            borderRadius: '50%',
-            position: 'absolute',
-            left: 0,
-            boxShadow: `0 0 12px ${color1}80`,
-          }}
-          animate={{
-            x: [0, containerWidth - dotSize, 0],
-            scale: [1, 1.6, 1], // 🔥 Membesar saat di tengah (tabrakan)
-          }}
-          transition={{
-            duration: 1.3,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            times: [0, 0.5, 1],
-          }}
-        />
-
-        {/* --- Dot Merah (bergerak dari kanan ke kiri) --- */}
-        <motion.div
-          style={{
-            width: dotSize,
-            height: dotSize,
-            background: color2,
-            borderRadius: '50%',
-            position: 'absolute',
-            right: 0,
-            boxShadow: `0 0 12px ${color2}80`,
-          }}
-          animate={{
-            x: [0, -(containerWidth - dotSize), 0],
-            scale: [1, 1.6, 1],
-          }}
-          transition={{
-            duration: 1.3,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            times: [0, 0.5, 1],
-          }}
-        />
+        <div className="loader" />
       </div>
-    </div>
+    </>
   );
 }
