@@ -1,401 +1,325 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { getUserBadge, showNotif } from '@/lib/ui-utils';
-import HypeMatchOpening from '@/components/HypeMatch/HypeMatchOpening';
-import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
-import './HypeMatchOverlay.css'; 
+import React, { useState } from 'react';
 
-export type MatchUser = {
-  id: string;
-  username: string;
-  avatar_url: string;
-  bio_hype: string; // <-- Diubah menjadi bio_hype
-  gender: string;
-  umur?: number | string;
-  pekerjaan?: string;
-  hobi?: string;
-  zodiak?: string;
-  lokasi?: string;
-  foto_tambahan?: string[];
-  pendidikan?: string;
-  minat?: string[];
-  preferensi?: string;
-  tinggi_badan?: number;
-  bahasa?: string[];
-  agama?: string;
-  merokok?: string;
-  alkohol?: string;
-  olahraga?: string;
-  tujuan?: string;
-  ig_username?: string;
-  spotify_url?: string;
-  tiktok_username?: string;
-  role?: string;
+type Props = {
+  bioForm: any;
+  setBioForm: (data: any) => void;
+  isSaving: boolean;
+  onSave: () => void;
+  onClose: () => void;
 };
 
 // ==========================================
-// KOMPONEN SVG ICON KHUSUS BIODATA
+// KOMPONEN CUSTOM DROPDOWN (Bukan bawaan sistem)
 // ==========================================
-const SvgIcon = ({ name, className = "" }: { name: string, className?: string }) => {
-  const size = 18;
-  const stroke = "currentColor";
-  const fill = "none";
-  const strokeWidth = "2";
-
-  const icons: Record<string, React.ReactNode> = {
-    location: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z" /><circle cx="12" cy="10" r="3" /></>,
-    gender: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v6m-3-3h6M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" /></>,
-    job: <><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
-    education: <><path strokeLinecap="round" strokeLinejoin="round" d="M4 19l4-2m0 0l8 4 4-2M12 3L2 8l10 5 10-5-10-5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M22 13v4m-10 5v-5" /></>,
-    height: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 3v18M16 3v18M8 6h8M8 12h8M8 18h8" /></>,
-    religion: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M8 6h8" /></>,
-    zodiac: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v4l3 3" /></>,
-    target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
-    hobby: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></>,
-    sport: <><path strokeLinecap="round" strokeLinejoin="round" d="M6 5v14M18 5v14M4 7h4M16 7h4M4 17h4M16 17h4M6 12h12" /></>,
-    smoke: <><path strokeLinecap="round" strokeLinejoin="round" d="M4 16h16M4 20h16M9 4v4M15 2v6" /></>,
-    alcohol: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 22h8M12 15v7M5 3l7 12 7-12H5z" /></>,
-  };
+const CustomSelect = ({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder 
+}: { 
+  value: string, 
+  onChange: (val: string) => void, 
+  options: { label: string, value: string }[], 
+  placeholder: string 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find(opt => opt.value === value);
 
   return (
-    <svg 
-      width={size} height={size} viewBox="0 0 24 24" 
-      fill={fill} stroke={stroke} strokeWidth={strokeWidth} 
-      className={className} style={{ marginRight: '6px', opacity: 0.8 }}
-    >
-      {icons[name] || icons.location}
-    </svg>
-  );
-};
-
-export default function HypeMatch() {
-  const router = useRouter();
-
-  const [users, setUsers] = useState<MatchUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showIntro, setShowIntro] = useState(true); 
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [dragX, setDragX] = useState(0);
-  const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
-
-  const dragRef = useRef({ startX: 0, startY: 0, isDragging: false, isScrolling: false });
-  const activeUser = users?.[currentIndex];
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-
-        const { data: authData } = await supabase.auth.getUser();
-        let myId = null;
-        let myGender = null;
-
-        if (authData?.user) {
-          myId = authData.user.id;
-
-          const { data: myProfile } = await supabase
-            .from('profiles')
-            .select('gender, avatar_url')
-            .eq('id', myId)
-            .single();
-          
-          setCurrentUser({
-            id: myId,
-            avatar_url: myProfile?.avatar_url || authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
-          });
-
-          if (myProfile) myGender = myProfile.gender;
-        }
-
-        // <-- Query Supabase diubah dari bio menjadi bio_hype
-        let query = supabase
-          .from('profiles')
-          .select(`
-            id, username, avatar_url, bio_hype, gender, umur, pekerjaan, hobi, zodiak,
-            lokasi, foto_tambahan, pendidikan, minat, preferensi, tinggi_badan, 
-            bahasa, agama, merokok, alkohol, olahraga, tujuan, ig_username, spotify_url, tiktok_username, role
-          `)
-          .limit(10);
-
-        if (myId) {
-          query = query.neq('id', myId);
-        }
-
-        if (myGender) {
-          const genderLower = myGender.toLowerCase();
-          if (genderLower === 'laki-laki' || genderLower === 'pria') {
-            query = query.in('gender', ['Perempuan', 'Wanita']);
-          } else if (genderLower === 'perempuan' || genderLower === 'wanita') {
-            query = query.in('gender', ['Laki-laki', 'Pria']);
-          }
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        if (data) {
-          const cleanUsers = data.map((profile: any) => ({
-            ...profile,
-            username: profile.username || 'Anonim',
-          }));
-          setUsers(cleanUsers);
-        }
-      } catch (error) {
-        console.error('Gagal mengambil data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const handleDragStart = (clientX: number, clientY: number) => {
-    dragRef.current = { startX: clientX, startY: clientY, isDragging: true, isScrolling: false };
-  };
-
-  const handleDragMove = (clientX: number, clientY: number) => {
-    if (!dragRef.current.isDragging) return;
-    const currentDragX = clientX - dragRef.current.startX;
-    const currentDragY = clientY - dragRef.current.startY;
-    
-    if (!dragRef.current.isScrolling && Math.abs(currentDragY) > Math.abs(currentDragX) + 5) {
-      dragRef.current.isScrolling = true;
-    }
-
-    if (dragRef.current.isScrolling) return;
-    setDragX(currentDragX);
-  };
-
-  const handleDragEnd = () => {
-    if (!dragRef.current.isDragging) return;
-    dragRef.current.isDragging = false;
-
-    if (dragRef.current.isScrolling) {
-      dragRef.current.isScrolling = false;
-      return;
-    }
-
-    const threshold = 100; 
-
-    if (dragX < -threshold) {
-      handleAction('like');
-    } else if (dragX > threshold) {
-      handleAction('pass');
-    } else {
-      setDragX(0);
-    }
-  };
-
-  const handleAction = async (action: 'like' | 'pass') => {
-    if (!activeUser || !currentUser) return;
-    setDragX(action === 'like' ? -500 : 500); 
-
-    if (action === 'like') {
-      try {
-        await supabase.from('user_likes').upsert({
-          user_id: currentUser.id,
-          liked_user_id: activeUser.id,
-        }, { 
-          onConflict: 'user_id,liked_user_id' 
-        });
-
-        const { data: matchData } = await supabase
-          .from('user_likes')
-          .select('id')
-          .eq('user_id', activeUser.id)
-          .eq('liked_user_id', currentUser.id)
-          .maybeSingle();
-
-        if (matchData) {
-          if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200]); 
-          }
-
-          showNotif('Kamu mendapatkan Match baru!', 'success');
-          setTimeout(() => {
-            setMatchedUser(activeUser);
-          }, 300);
-          return; 
-        }
-      } catch (err) {
-        console.error("Gagal memproses like:", err);
-      }
-    }
-
-    setTimeout(() => {
-      nextCard();
-    }, 300); 
-  };
-
-  const nextCard = () => {
-    setDragX(0);
-    setCurrentIndex((prev) => prev + 1);
-    
-    const scrollContainer = document.querySelector('.hm-card-scroll-area');
-    if (scrollContainer) scrollContainer.scrollTop = 0;
-  };
-
-  const handleChatNow = () => {
-    if (matchedUser) {
-      router.push(`/hypetalk/room?from=${matchedUser.id}`);
-    }
-  };
-
-  if (showIntro) {
-    return <HypeMatchOpening onComplete={() => setShowIntro(false)} />;
-  }
-
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0000cc', color: 'white' }}>
-        <h2>Memuat Data...</h2>
+    <div style={{ position: 'relative', width: '100%' }}>
+      {/* Tampilan Input Select */}
+      <div 
+        className="custom-input"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+          cursor: 'pointer', userSelect: 'none'
+        }}
+      >
+        <span style={{ color: selectedOption ? 'var(--text-main)' : 'var(--text-muted)' }}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <span className="material-icons" style={{ 
+          transform: isOpen ? 'rotate(180deg)' : 'none', 
+          transition: 'transform 0.2s ease',
+          color: 'var(--text-muted)'
+        }}>
+          expand_more
+        </span>
       </div>
-    );
-  }
 
-  return (
-    <div className="hm-overlay">
-      <div className="hm-backdrop" onClick={router.back}></div>
-      <button className="hm-btn-close" onClick={router.back}>
-        <span className="material-icons">close</span>
-      </button>
-
-      <div className="hm-card-container">
-        {activeUser ? (
+      {/* Pop-up List Pilihan */}
+      {isOpen && (
+        <>
+          {/* Overlay transparan agar kalau klik di luar, dropdown tertutup */}
           <div 
-            className="hm-match-card hm-glass-clean"
-            style={{
-              overflow: 'hidden', 
-              transform: `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`,
-              transition: dragRef.current.isDragging ? 'none' : 'transform 0.3s ease-out',
-            }}
-            onMouseDown={(e) => handleDragStart(e.clientX, e.clientY)}
-            onMouseMove={(e) => handleDragMove(e.clientX, e.clientY)}
-            onMouseUp={handleDragEnd}
-            onMouseLeave={handleDragEnd}
-            onTouchStart={(e) => handleDragStart(e.touches[0].clientX, e.touches[0].clientY)}
-            onTouchMove={(e) => handleDragMove(e.touches[0].clientX, e.touches[0].clientY)}
-            onTouchEnd={handleDragEnd}
-          >
-            <div className="hm-card-scroll-area">
-              
-              <div className="hm-card-image-wrapper">
-                <img 
-                  src={activeUser.avatar_url || 'https://via.placeholder.com/400x600'} 
-                  alt="avatar" 
-                  draggable="false" 
-                />
-                
-                {dragX < -50 && <div className="hm-swipe-indicator hm-like">LIKE</div>}
-                {dragX > 50 && <div className="hm-swipe-indicator hm-pass">NOPE</div>}
-                
-                <div className="hm-card-image-overlay">
-                  <h2 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    {activeUser.username} {activeUser.umur && <span>{activeUser.umur}</span>}
-                    
-                    {activeUser.role && (
-                      <div 
-                        className="hm-role-badge"
-                        dangerouslySetInnerHTML={{ __html: getUserBadge(activeUser.role) as string }}
-                      />
-                    )}
-                  </h2>
-                  <p>
-                    <SvgIcon name="location" />
-                    {activeUser.lokasi || "Lokasi disembunyikan"}
-                  </p>
-                  
-                  <div className="hm-scroll-hint hm-animate-bounce">
-                    <span className="material-icons">keyboard_arrow_down</span>
-                  </div>
-                </div>
+            style={{ position: 'fixed', inset: 0, zIndex: 99 }} 
+            onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} 
+          />
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 100,
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-card)',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+            maxHeight: '220px', overflowY: 'auto'
+          }}>
+            {options.map((opt, idx) => (
+              <div 
+                key={idx}
+                onClick={(e) => { e.stopPropagation(); onChange(opt.value); setIsOpen(false); }}
+                style={{
+                  padding: '14px 16px',
+                  borderBottom: idx === options.length - 1 ? 'none' : '1px solid var(--border-card)',
+                  backgroundColor: value === opt.value ? 'var(--bg-secondary)' : 'transparent',
+                  color: value === opt.value ? 'var(--primary)' : 'var(--text-main)',
+                  fontWeight: value === opt.value ? 'bold' : 'normal',
+                  cursor: 'pointer', fontSize: '14px'
+                }}
+              >
+                {opt.label}
               </div>
-
-              <div className="hm-card-details">
-                <div className="hm-detail-section">
-                  <h3>Tentang Diri</h3>
-                  {/* <-- Dirender menjadi bio_hype */}
-                  <p className="hm-bio-text">{activeUser.bio_hype || "Belum ada bio yang ditulis."}</p>
-                </div>
-
-                <div className="hm-detail-section">
-                  <h3>Informasi Umum</h3>
-                  <div className="hm-info-grid">
-                    {activeUser.gender && <div className="hm-info-chip"><SvgIcon name="gender" /> {activeUser.gender}</div>}
-                    {activeUser.pekerjaan && <div className="hm-info-chip"><SvgIcon name="job" /> {activeUser.pekerjaan}</div>}
-                    {activeUser.pendidikan && <div className="hm-info-chip"><SvgIcon name="education" /> {activeUser.pendidikan}</div>}
-                    {activeUser.tinggi_badan && <div className="hm-info-chip"><SvgIcon name="height" /> {activeUser.tinggi_badan} cm</div>}
-                    {activeUser.agama && <div className="hm-info-chip"><SvgIcon name="religion" /> {activeUser.agama}</div>}
-                    {activeUser.zodiak && <div className="hm-info-chip"><SvgIcon name="zodiac" /> {activeUser.zodiak}</div>}
-                  </div>
-                </div>
-
-                <div className="hm-detail-section">
-                  <h3>Gaya Hidup & Minat</h3>
-                  <div className="hm-info-grid">
-                    {activeUser.tujuan && <div className="hm-info-chip hm-outline"><SvgIcon name="target" /> {activeUser.tujuan}</div>}
-                    {activeUser.hobi && <div className="hm-info-chip hm-outline"><SvgIcon name="hobby" /> {activeUser.hobi}</div>}
-                    {activeUser.olahraga && <div className="hm-info-chip hm-outline"><SvgIcon name="sport" /> {activeUser.olahraga}</div>}
-                    {activeUser.merokok && <div className="hm-info-chip hm-outline"><SvgIcon name="smoke" /> {activeUser.merokok}</div>}
-                    {activeUser.alkohol && <div className="hm-info-chip hm-outline"><SvgIcon name="alcohol" /> {activeUser.alkohol}</div>}
-                  </div>
-                </div>
-
-                {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
-                  <div className="hm-detail-section" style={{ marginBottom: '40px' }}>
-                    <h3>Media Sosial</h3>
-                    <div className="hm-social-links">
-                      {activeUser.ig_username && <div className="hm-social-chip">
-                        <span style={{ fontWeight: 'bold' }}>IG</span> @{activeUser.ig_username}
-                      </div>}
-                      {activeUser.tiktok_username && <div className="hm-social-chip">
-                        <span style={{ fontWeight: 'bold' }}>TikTok</span> @{activeUser.tiktok_username}
-                      </div>}
-                      {activeUser.spotify_url && <a href={activeUser.spotify_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                        <div className="hm-social-chip" style={{ background: '#1DB954', color: 'white' }}>
-                          <span style={{ fontWeight: 'bold' }}>Spotify</span> Buka Playlist
-                        </div>
-                      </a>}
-                    </div>
-                  </div>
-                )}
-                
-                <div style={{ height: '80px' }}></div>
-              </div>
-            </div>
+            ))}
           </div>
-        ) : (
-          <div className="hm-empty-state hm-glass-clean">
-            <span className="material-icons hm-empty-icon">sentiment_dissatisfied</span>
-            <p>Tidak ada lagi pengguna di sekitarmu.</p>
-          </div>
-        )}
-      </div>
-
-      {activeUser && (
-        <div className="hm-action-buttons">
-          <button className="hm-btn-action hm-btn-pass hm-glass-clean" onClick={() => handleAction('pass')}>
-            <span className="material-icons">close</span>
-          </button>
-          <button className="hm-btn-action hm-btn-like hm-glass-clean" onClick={() => handleAction('like')}>
-            <span className="material-icons">favorite</span>
-          </button>
-        </div>
+        </>
       )}
-
-      <MatchSuccessOverlay
-        matchedUser={matchedUser}
-        currentUser={currentUser}
-        onChatNow={handleChatNow} 
-        nextCard={nextCard}
-        setMatchedUser={setMatchedUser}
-      />
     </div>
   );
-}
+};
+
+// ==========================================
+// MAIN COMPONENT (FULL SCREEN MODAL)
+// ==========================================
+const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onClose }) => {
+  const updateField = (field: string, value: any) => setBioForm({ ...bioForm, [field]: value });
+
+  return (
+    <div className="tg-modal-overlay" style={fullScreenOverlayStyle}>
+      <div className="tg-modal-content" style={fullScreenContentStyle}>
+        
+        {/* Header Lengkapi Biodata */}
+        <div style={headerStyle}>
+          <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>Lengkapi Biodata</h3>
+          <button className="close-modal-btn" onClick={onClose} style={closeBtnStyle}>
+            <span className="material-icons">close</span>
+          </button>
+        </div>
+        
+        <div className="form-grid" style={gridStyle}>
+          
+          {/* Baris 1 */}
+          <div className="input-group" style={inputGroupStyle}>
+            <input type="number" placeholder="Umur" className="custom-input"
+              value={bioForm.umur || ''} onChange={e => updateField('umur', e.target.value)} />
+          </div>
+          <div className="input-group" style={inputGroupStyle}>
+            <CustomSelect 
+              value={bioForm.gender || ''} 
+              onChange={val => updateField('gender', val)}
+              placeholder="Pilih Gender"
+              options={[ {label: 'Pria', value: 'Pria'}, {label: 'Wanita', value: 'Wanita'} ]}
+            />
+          </div>
+
+          {/* Baris 2 */}
+          <div className="input-group" style={inputGroupStyle}>
+            <input type="text" placeholder="Lokasi/Kota" className="custom-input"
+              value={bioForm.lokasi || ''} onChange={e => updateField('lokasi', e.target.value)} />
+          </div>
+          <div className="input-group" style={inputGroupStyle}>
+            <CustomSelect 
+              value={bioForm.agama || ''} 
+              onChange={val => updateField('agama', val)}
+              placeholder="Agama"
+              options={[
+                {label: 'Islam', value: 'Islam'}, {label: 'Kristen Protestan', value: 'Kristen'},
+                {label: 'Katolik', value: 'Katolik'}, {label: 'Hindu', value: 'Hindu'},
+                {label: 'Buddha', value: 'Buddha'}, {label: 'Lainnya', value: 'Lainnya'}
+              ]}
+            />
+          </div>
+
+          {/* Baris 3 */}
+          <div className="input-group" style={inputGroupStyle}>
+            <input type="text" placeholder="Pekerjaan / Jabatan" className="custom-input"
+              value={bioForm.pekerjaan || ''} onChange={e => updateField('pekerjaan', e.target.value)} />
+          </div>
+          <div className="input-group" style={inputGroupStyle}>
+            <CustomSelect 
+              value={bioForm.pendidikan || ''} 
+              onChange={val => updateField('pendidikan', val)}
+              placeholder="Pendidikan Terakhir"
+              options={[
+                {label: 'SMA/SMK Sederajat', value: 'SMA/SMK'}, {label: 'Diploma (D1-D4)', value: 'Diploma'},
+                {label: 'Sarjana (S1)', value: 'S1'}, {label: 'Pascasarjana (S2/S3)', value: 'S2/S3'}
+              ]}
+            />
+          </div>
+
+          {/* Baris 4 */}
+          <div className="input-group" style={inputGroupStyle}>
+            <input type="number" placeholder="Tinggi Badan (cm)" className="custom-input"
+              value={bioForm.tinggi_badan || ''} onChange={e => updateField('tinggi_badan', e.target.value)} />
+          </div>
+          <div className="input-group" style={inputGroupStyle}>
+            <CustomSelect 
+              value={bioForm.olahraga || ''} 
+              onChange={val => updateField('olahraga', val)}
+              placeholder="Olahraga Favorit"
+              options={[
+                {label: 'Gym / Fitness', value: 'Gym/Fitness'}, {label: 'Lari / Jogging', value: 'Lari/Jogging'},
+                {label: 'Sepak Bola / Futsal', value: 'Sepak Bola/Futsal'}, {label: 'Berenang', value: 'Berenang'},
+                {label: 'Bela Diri', value: 'Bela Diri'}, {label: 'Jarang Olahraga', value: 'Jarang Olahraga'}
+              ]}
+            />
+          </div>
+
+          {/* ======================================= */}
+          {/* BIO PROFIL UMUM & BIO HYPE MATCH          */}
+          {/* ======================================= */}
+          <div className="input-group" style={{ ...inputGroupStyle, gridColumn: '1 / -1' }}>
+            <label style={{ marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '600' }}>
+              Bio Profil Umum
+            </label>
+            <textarea 
+              placeholder="Ceritakan detail tentang dirimu (Tampil di halaman profil utama)..." 
+              className="custom-input" 
+              style={{ minHeight: '100px', resize: 'vertical' }}
+              value={bioForm.bio || ''} 
+              onChange={e => updateField('bio', e.target.value)} 
+            />
+          </div>
+
+          <div className="input-group" style={{ ...inputGroupStyle, gridColumn: '1 / -1' }}>
+            <label style={{ marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '600' }}>
+              Bio Hype Match
+            </label>
+            <textarea 
+              placeholder="Tulis kalimat singkat, lucu, atau pick-up line (Khusus tampil di Hype Match)..." 
+              className="custom-input" 
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={bioForm.bio_hype || ''} 
+              onChange={e => updateField('bio_hype', e.target.value)} 
+            />
+          </div>
+          
+          {/* Baris 5 */}
+          <div className="input-group" style={inputGroupStyle}>
+            <CustomSelect 
+              value={bioForm.tujuan || ''} 
+              onChange={val => updateField('tujuan', val)}
+              placeholder="Tujuan Bergabung"
+              options={[
+                {label: 'Nambah Teman / Relasi', value: 'Teman'}, {label: 'Cari Pasangan Serius', value: 'Pasangan'},
+                {label: 'Casual / Santai dulu', value: 'Casual'}, {label: 'Networking Profesional', value: 'Networking'}
+              ]}
+            />
+          </div>
+          <div className="input-group" style={inputGroupStyle}>
+            <input type="text" placeholder="Hobi Utama (Musik, Traveling)" className="custom-input"
+              value={bioForm.hobi || ''} onChange={e => updateField('hobi', e.target.value)} />
+          </div>
+
+          {/* Baris 6 */}
+          <div className="input-group" style={inputGroupStyle}>
+             <CustomSelect 
+              value={bioForm.merokok || ''} 
+              onChange={val => updateField('merokok', val)}
+              placeholder="Status Merokok"
+              options={[
+                {label: 'Sama sekali nggak ngerokok', value: 'Tidak Merokok'}, {label: 'Kadang-kadang (Social)', value: 'Kadang-kadang'},
+                {label: 'Perokok aktif', value: 'Perokok Aktif'}, {label: 'Tim Vape / Pods', value: 'Vape'}
+              ]}
+            />
+          </div>
+          <div className="input-group" style={inputGroupStyle}>
+            <CustomSelect 
+              value={bioForm.alkohol || ''} 
+              onChange={val => updateField('alkohol', val)}
+              placeholder="Konsumsi Alkohol"
+              options={[
+                {label: 'Sama sekali nggak minum', value: 'Tidak Minum'}, {label: 'Jarang banget', value: 'Jarang'},
+                {label: 'Minum pas nongkrong aja', value: 'Social Drinker'}, {label: 'Lumayan sering', value: 'Sering'}
+              ]}
+            />
+          </div>
+
+          {/* Media Sosial */}
+          <div className="social-inputs" style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+            <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: 'var(--text-main)' }}>Media Sosial (Opsional)</h4>
+            <input type="text" placeholder="IG Username (tanpa @)" className="custom-input"
+              value={bioForm.ig_username || ''} onChange={e => updateField('ig_username', e.target.value)} />
+            <input type="text" placeholder="TikTok Username (tanpa @)" className="custom-input"
+              value={bioForm.tiktok_username || ''} onChange={e => updateField('tiktok_username', e.target.value)} />
+            <input type="text" placeholder="Link Playlist Spotify" className="custom-input"
+              value={bioForm.spotify_url || ''} onChange={e => updateField('spotify_url', e.target.value)} />
+          </div>
+
+        </div>
+
+        {/* Spacer agar tombol tidak mepet ke konten paling bawah */}
+        <div style={{ flexGrow: 1, minHeight: '40px' }}></div>
+
+        {/* Tombol Simpan Sticky di Bawah (UPDATED) */}
+        <div style={{ 
+          position: 'sticky', bottom: 0, padding: '16px 0', 
+          backgroundColor: 'transparent' // <-- Sudah diubah menjadi transparan
+        }}>
+          <button className="action-btn" onClick={onSave} disabled={isSaving} style={btnStyle}>
+            {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// ================= STYLES =================
+
+const fullScreenOverlayStyle: React.CSSProperties = {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'var(--bg-main)', // 100% mengikuti warna background tema
+  zIndex: 100000, display: 'flex', flexDirection: 'column'
+};
+
+const fullScreenContentStyle: React.CSSProperties = {
+  width: '100%', height: '100%',
+  overflowY: 'auto', 
+  padding: '24px',
+  display: 'flex', flexDirection: 'column',
+  backgroundColor: 'var(--bg-main)' // Memastikan isi juga mengikuti tema
+};
+
+const headerStyle: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  marginBottom: '24px', paddingBottom: '16px',
+  borderBottom: '1px solid var(--border-card)' // Garis bawah sesuai tema
+};
+
+const closeBtnStyle: React.CSSProperties = {
+  background: 'var(--bg-secondary)', border: 'none', cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  padding: '8px', borderRadius: '50%', color: 'var(--text-main)' // Icon silang sesuai tema
+};
+
+const gridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, 1fr)', 
+  gap: '16px'
+};
+
+const inputGroupStyle: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column',
+  width: '100%', margin: 0, padding: 0, border: 'none', background: 'transparent'
+};
+
+const btnStyle: React.CSSProperties = {
+  width: '100%', padding: '16px',
+  backgroundColor: 'var(--primary)', color: 'white', border: 'none',
+  borderRadius: '16px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer',
+  boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)'
+};
+
+export default React.memo(BioModal);

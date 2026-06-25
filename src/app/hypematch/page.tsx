@@ -11,7 +11,7 @@ export type MatchUser = {
   id: string;
   username: string;
   avatar_url: string;
-  bio: string;
+  bio_hype: string; // <-- Diubah menjadi bio_hype
   gender: string;
   umur?: number | string;
   pekerjaan?: string;
@@ -75,7 +75,7 @@ export default function HypeMatch() {
 
   const [users, setUsers] = useState<MatchUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showIntro, setShowIntro] = useState(true); // STATE BARU: Mengontrol halaman opening
+  const [showIntro, setShowIntro] = useState(true); 
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -111,10 +111,11 @@ export default function HypeMatch() {
           if (myProfile) myGender = myProfile.gender;
         }
 
+        // <-- Query Supabase diubah dari bio menjadi bio_hype
         let query = supabase
           .from('profiles')
           .select(`
-            id, username, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak,
+            id, username, avatar_url, bio_hype, gender, umur, pekerjaan, hobi, zodiak,
             lokasi, foto_tambahan, pendidikan, minat, preferensi, tinggi_badan, 
             bahasa, agama, merokok, alkohol, olahraga, tujuan, ig_username, spotify_url, tiktok_username, role
           `)
@@ -246,13 +247,10 @@ export default function HypeMatch() {
     }
   };
 
-  // URUTAN RENDER PENTING!
-  // 1. Jika intro masih aktif, tampilkan intro dan TUNGGU tombol GO diklik
   if (showIntro) {
     return <HypeMatchOpening onComplete={() => setShowIntro(false)} />;
   }
 
-  // 2. Jika intro sudah diklik TAPI data dari Supabase belum selesai, tampilkan loading sederhana
   if (isLoading) {
     return (
       <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0000cc', color: 'white' }}>
@@ -261,7 +259,6 @@ export default function HypeMatch() {
     );
   }
 
-  // 3. Jika intro sudah lewat dan data siap, tampilkan kartu Tinder-nya!
   return (
     <div className="hm-overlay">
       <div className="hm-backdrop" onClick={router.back}></div>
@@ -323,7 +320,8 @@ export default function HypeMatch() {
               <div className="hm-card-details">
                 <div className="hm-detail-section">
                   <h3>Tentang Diri</h3>
-                  <p className="hm-bio-text">{activeUser.bio || "Belum ada bio yang ditulis."}</p>
+                  {/* <-- Dirender menjadi bio_hype */}
+                  <p className="hm-bio-text">{activeUser.bio_hype || "Belum ada bio yang ditulis."}</p>
                 </div>
 
                 <div className="hm-detail-section">
@@ -391,7 +389,6 @@ export default function HypeMatch() {
         </div>
       )}
 
-      {/* OVERLAY MATCH SUCCESS YAng SUDAH DIPISAH FILE */}
       <MatchSuccessOverlay
         matchedUser={matchedUser}
         currentUser={currentUser}
