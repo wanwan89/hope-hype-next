@@ -69,10 +69,13 @@ const formatChatDate = (dateString: string) => {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${timeStr}`;
 };
 
-export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUser, isFirstUnread, unreadCount, showDateSeparator }: any) {
+// 🔥 PROPS BARU: onEdit ditambahkan
+export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, currentUser, isFirstUnread, unreadCount, showDateSeparator }: any) {
   const { t } = useTranslation(); 
   const router = useRouter(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
+  
+  // Touch / Drag refs
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
   const isSwiping = useRef(false);
@@ -87,6 +90,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
 
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
+  const [showOptions, setShowOptions] = useState(false); // Modal Opsi
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
@@ -119,22 +123,28 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     }
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchCurrentX.current = touchStartX.current;
+  // 🔥 INTERAKSI SENTUH & MOUSE (Swipe, Double Tap, Long Press)
+  const handleStart = (clientX: number) => {
+    touchStartX.current = clientX;
+    touchCurrentX.current = clientX;
     isSwiping.current = true;
     if (bubbleRef.current) bubbleRef.current.style.transition = 'none';
 
-    if (isMe && !isDeleted) {
-      holdTimer.current = setTimeout(() => onDelete(msg.id), 500);
+    // Set Timer untuk Long Press (Modal Opsi)
+    if (!isDeleted && !msg.is_system) {
+      holdTimer.current = setTimeout(() => {
+        setShowOptions(true);
+        if (navigator.vibrate) navigator.vibrate(50);
+      }, 500);
     }
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleMove = (clientX: number) => {
     if (!isSwiping.current) return;
-    touchCurrentX.current = e.touches[0].clientX;
+    touchCurrentX.current = clientX;
     let diff = touchCurrentX.current - touchStartX.current;
     
+    // Jika user menggeser (swipe), batalkan long press
     if (Math.abs(diff) > 10) clearTimeout(holdTimer.current);
 
     if (isMe && diff < 0) {
@@ -146,12 +156,13 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleEnd = () => {
     clearTimeout(holdTimer.current);
     let diff = touchCurrentX.current - touchStartX.current;
     const now = Date.now();
     
-    if (now - lastTap.current < 400 && Math.abs(diff) < 15 && !isDeleted && !msg.is_system) {
+    // Logika Double Tap (hanya dieksekusi jika tidak sedang swipe panjang)
+    if (now - lastTap.current < 300 && Math.abs(diff) < 15 && !isDeleted && !msg.is_system) {
       setShowReactions(true);
       if (navigator.vibrate) navigator.vibrate(20);
     }
@@ -169,10 +180,21 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     isSwiping.current = false;
   };
 
+  // Wrapper untuk Touch Events (Mobile)
+  const onTouchStart = (e: React.TouchEvent) => handleStart(e.touches[0].clientX);
+  const onTouchMove = (e: React.TouchEvent) => handleMove(e.touches[0].clientX);
+  const onTouchEnd = () => handleEnd();
+
+  // Wrapper untuk Mouse Events (Desktop)
+  const onMouseDown = (e: React.MouseEvent) => handleStart(e.clientX);
+  const onMouseMove = (e: React.MouseEvent) => handleMove(e.clientX);
+  const onMouseUp = () => handleEnd();
+  const onMouseLeave = () => { clearTimeout(holdTimer.current); isSwiping.current = false; if (bubbleRef.current) { bubbleRef.current.style.transition = 'transform 0.3s'; bubbleRef.current.style.transform = 'translateX(0)'; } };
+
+  // Double click khusus desktop (opsional, karena double tap sudah tercover)
   const handleDoubleClick = (e: React.MouseEvent) => {
-    if (!isDeleted && !msg.is_system) {
-      setShowReactions(true);
-    }
+    e.stopPropagation();
+    if (!isDeleted && !msg.is_system) setShowReactions(true);
   };
 
   const handleReactionSelect = async (emoji: string, e: React.MouseEvent | React.TouchEvent) => {
@@ -188,6 +210,17 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
     
     await supabase.from('messages').update({ reactions: currentReactions }).eq('id', msg.id);
     setShowReactions(false);
+  };
+
+  // Aksi Opsi Pesan
+  const handleDeleteAction = (type: 'for_me' | 'for_everyone') => {
+    setShowOptions(false);
+    if (onDelete) onDelete(msg.id, type);
+  };
+
+  const handleEditAction = () => {
+    setShowOptions(false);
+    if (onEdit) onEdit(msg);
   };
 
   const startPlaybackVisualizer = () => {
@@ -298,36 +331,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
 
   return (
     <>
-      <style>{`
-        .reaction-menu {
-          position: absolute;
-          top: -48px;
-          background: var(--bg-panel, #ffffff);
-          padding: 8px 12px;
-          border-radius: 24px;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-          display: flex;
-          gap: 12px;
-          border: 1px solid var(--border-color);
-          z-index: 100;
-          animation: popReaction 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes popReaction {
-          0% { transform: scale(0.5); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .reaction-btn {
-          font-size: 24px;
-          cursor: pointer;
-          transition: transform 0.2s;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .reaction-btn:active {
-          transform: scale(1.3);
-        }
-      `}</style>
-
       {showDateSeparator && (
         <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 8px' }}>
           <div style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
@@ -348,16 +351,12 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
 
       <div className="hype-chat-scope" style={{ position: 'relative' }}>
         
+        {/* Preview Image Modal */}
         <AnimatePresence>
           {previewImage && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{
-                position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.95)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-              }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.95)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
               onClick={() => setPreviewImage(null)}
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', zIndex: 1000000, background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}>
@@ -370,40 +369,51 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
               </div>
               
               <motion.img
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                src={previewImage}
-                style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain' }}
+                initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
+                src={previewImage} style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain' }}
                 onClick={(e) => e.stopPropagation()} 
               />
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Modal Opsi (Long Press) */}
+        <AnimatePresence>
+          {showOptions && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99999 }}
+                onClick={() => setShowOptions(false)}
+              />
+              <motion.div 
+                initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 200, opacity: 0 }}
+                className="message-options-modal"
+              >
+                <div className="options-handle" />
+                {isMe && !isDeleted && shouldShowText && !msg.image_url && !msg.sticker_url && !msg.audio_url && (
+                  <button className="option-btn" onClick={handleEditAction}>
+                    <span className="material-icons">edit</span> Edit Pesan
+                  </button>
+                )}
+                <button className="option-btn" onClick={() => handleDeleteAction('for_me')}>
+                  <span className="material-icons">delete_outline</span> Hapus untuk Saya
+                </button>
+                {isMe && (
+                  <button className="option-btn danger" onClick={() => handleDeleteAction('for_everyone')}>
+                    <span className="material-icons">delete_forever</span> Hapus untuk Semua Orang
+                  </button>
+                )}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         <div 
           ref={bubbleRef} id={`msg-${msg.id}`}
           className={`chat-message ${isMe ? 'self' : 'other'} ${msg.is_system ? 'system' : ''}`}
-          onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onDoubleClick={handleDoubleClick}
           style={showUserDetail && !msg.is_system ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' } : {}}
         >
-
-          {showReactions && !msg.is_system && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowReactions(false)} />
-              <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0' }}>
-                {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-                  <div 
-                    key={emoji} className="reaction-btn"
-                    onClick={(e) => handleReactionSelect(emoji, e)}
-                  >
-                    {emoji}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
           {msg.is_system ? (
             <div className="system-text" style={{ 
                 background: 'rgba(0, 0, 0, 0.3)', color: 'var(--text-main, #ffffff)', padding: '6px 14px', 
@@ -423,8 +433,29 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 <img src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
               )}
               
-              <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px' }}>
+              {/* BUBBLE CONTENT: Event touch dipindah ke dalam konten agar akurat (double click & hold) */}
+              <div 
+                className="content" 
+                onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} 
+                onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}
+                onDoubleClick={handleDoubleClick}
+                style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px', cursor: 'pointer' }}
+              >
                 
+                {/* Menu Reaksi */}
+                {showReactions && !msg.is_system && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 99, cursor: 'default' }} onClick={(e) => { e.stopPropagation(); setShowReactions(false); }} />
+                    <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0' }}>
+                      {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
+                        <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)}>
+                          {emoji}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
                 {showUserDetail && (
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px', marginLeft: '6px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url) ? '4px' : '0' }}>
                     {msg.profiles?.username || 'User'} 
@@ -433,7 +464,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                 )}
                 
                 {liveReply && (
-                  <div className="reply-preview-in-chat" onClick={() => document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})} style={{ marginLeft: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0', marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0' }}>
+                  <div className="reply-preview-in-chat" onClick={(e) => { e.stopPropagation(); document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}} style={{ marginLeft: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0', marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0' }}>
                     <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
                   </div>
                 )}
@@ -443,14 +474,14 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                     <img 
                       src={getOptimizedImage(msg.image_url)} 
                       alt="Foto Kiriman" 
-                      onClick={() => setPreviewImage(msg.image_url)} 
+                      onClick={(e) => { e.stopPropagation(); setPreviewImage(msg.image_url); }} 
                       style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: 'auto', objectFit: 'cover', opacity: msg.status === 'sending' ? 0.6 : 1, cursor: 'pointer' }} 
                     />
                   </div>
                 )}
 
                 {isStoryReply && msg.sticker_url && !isDeleted ? (
-                  <div className="story-reply-card" onClick={() => handleStoryClick(msg.sticker_url)} style={{ cursor: 'pointer', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)', width: '100%' }}>
+                  <div className="story-reply-card" onClick={(e) => { e.stopPropagation(); handleStoryClick(msg.sticker_url); }} style={{ cursor: 'pointer', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)', width: '100%' }}>
                     <div style={{ position: 'relative', width: '40px', height: '55px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
                        <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
@@ -470,21 +501,13 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                   </div>
                 )}
 
-                {/* 🔥 PERUBAHAN VN: ANIMASI LOADING FRAMER & WARNA TEMA 🔥 */}
                 {msg.audio_url && !isDeleted && (
                   <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
-                    <button onClick={toggleVN} className="vn-play-btn" disabled={msg.status === 'sending'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button onClick={(e) => { e.stopPropagation(); toggleVN(); }} className="vn-play-btn" disabled={msg.status === 'sending'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {msg.status === 'sending' ? (
                         <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                          style={{
-                            width: '16px',
-                            height: '16px',
-                            border: '2px solid rgba(255, 255, 255, 0.3)',
-                            borderTopColor: '#ffffff',
-                            borderRadius: '50%',
-                          }}
+                          animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                          style={{ width: '16px', height: '16px', border: '2px solid rgba(255, 255, 255, 0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }}
                         />
                       ) : isPlaying ? (
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -496,9 +519,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, currentUse
                     <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '24px', flex: 1, marginLeft: '8px' }}>
                       {waveData.map((heightPercent, i) => (
                         <motion.div 
-                          key={i} 
-                          animate={{ height: `${heightPercent}%` }}
-                          transition={{ duration: 0.1 }}
+                          key={i} animate={{ height: `${heightPercent}%` }} transition={{ duration: 0.1 }}
                           style={{ width: '3px', background: isPlaying ? 'var(--primary-blue, #1f3cff)' : 'var(--text-muted, #8e8e93)', borderRadius: '2px' }} 
                         />
                       ))}
