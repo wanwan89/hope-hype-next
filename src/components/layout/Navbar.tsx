@@ -93,7 +93,13 @@ function NavbarContent() {
       }
       setAvatarUrl(url);
     }
-    if (chatRes.count !== null) setUnreadChatCount(chatRes.count);
+    
+    // 🔥 PERBAIKAN CHAT BADGE: Log error jika query gagal, dan set default ke 0
+    if (chatRes.error) {
+      console.error("Error mengambil unread chat:", chatRes.error.message);
+    } else if (chatRes.count !== null) {
+      setUnreadChatCount(chatRes.count);
+    }
 
     const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
     let unreadNotifs = (dbNotifRes.data || []).filter(n => !synthesizeTypes.includes(n.type)).length;
@@ -173,6 +179,37 @@ function NavbarContent() {
     return () => window.removeEventListener('notif-count-changed', handleRefresh);
   }, [pathname]);
 
+  // 🔥 PERBAIKAN CHAT BADGE: Realtime Listener agar badge bertambah otomatis saat pesan baru masuk
+  useEffect(() => {
+    let channel: any;
+
+    const setupRealtime = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const userId = session.user.id;
+
+      channel = supabase.channel('navbar-messages-realtime')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => {
+            const newMsg = payload.new;
+            // Jika pesan masuk berada di room kita dan BUKAN pesan yang kita kirim sendiri
+            if (newMsg.room_id && newMsg.room_id.includes(userId) && newMsg.user_id !== userId) {
+              setUnreadChatCount((prev) => prev + 1);
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
   if (isHiddenPage) return null;
 
   const navItems = [
@@ -215,7 +252,7 @@ function NavbarContent() {
           backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.75))',
           backdropFilter: 'blur(24px)', 
           WebkitBackdropFilter: 'blur(24px)',
-          borderTop: '1px solid var(--border-color, rgba(128, 128, 128, 0.2))',
+          borderTop: 'none', // 🔥 PERUBAHAN: Menghapus border garis atas
           boxShadow: 'none',
           display: 'flex',
           alignItems: 'center',
