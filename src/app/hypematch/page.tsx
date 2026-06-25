@@ -42,19 +42,21 @@ const SvgIcon = ({ name, className = "" }: { name: string, className?: string })
   const fill = "none";
   const strokeWidth = "2";
 
+  // FIX: Semua icon yang terdiri dari lebih dari 1 tag (<path>, <circle>, dll) 
+  // HARUS dibungkus dengan React Fragment (<> ... </>)
   const icons: Record<string, React.ReactNode> = {
-    location: <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z" /><circle cx="12" cy="10" r="3" />,
-    gender: <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v6m-3-3h6M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />,
-    job: <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />,
-    education: <path strokeLinecap="round" strokeLinejoin="round" d="M4 19l4-2m0 0l8 4 4-2M12 3L2 8l10 5 10-5-10-5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M22 13v4m-10 5v-5" />,
-    height: <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v18M16 3v18M8 6h8M8 12h8M8 18h8" />,
-    religion: <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M8 6h8" />, // Simple cross/star concept
-    zodiac: <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v4l3 3" />,
-    target: <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />,
-    hobby: <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />,
-    sport: <path strokeLinecap="round" strokeLinejoin="round" d="M6 5v14M18 5v14M4 7h4M16 7h4M4 17h4M16 17h4M6 12h12" />,
-    smoke: <path strokeLinecap="round" strokeLinejoin="round" d="M4 16h16M4 20h16M9 4v4M15 2v6" />,
-    alcohol: <path strokeLinecap="round" strokeLinejoin="round" d="M8 22h8M12 15v7M5 3l7 12 7-12H5z" />,
+    location: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z" /><circle cx="12" cy="10" r="3" /></>,
+    gender: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v6m-3-3h6M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" /></>,
+    job: <><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+    education: <><path strokeLinecap="round" strokeLinejoin="round" d="M4 19l4-2m0 0l8 4 4-2M12 3L2 8l10 5 10-5-10-5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M22 13v4m-10 5v-5" /></>,
+    height: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 3v18M16 3v18M8 6h8M8 12h8M8 18h8" /></>,
+    religion: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M8 6h8" /></>,
+    zodiac: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v4l3 3" /></>,
+    target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
+    hobby: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></>,
+    sport: <><path strokeLinecap="round" strokeLinejoin="round" d="M6 5v14M18 5v14M4 7h4M16 7h4M4 17h4M16 17h4M6 12h12" /></>,
+    smoke: <><path strokeLinecap="round" strokeLinejoin="round" d="M4 16h16M4 20h16M9 4v4M15 2v6" /></>,
+    alcohol: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 22h8M12 15v7M5 3l7 12 7-12H5z" /></>,
   };
 
   return (
@@ -232,7 +234,7 @@ export default function HypeMatch() {
           <div 
             className="match-card glass-clean"
             style={{
-              overflow: 'hidden', // Pastikan border radius kartu membungkus scroll area
+              overflow: 'hidden', 
               transform: `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`,
               transition: dragRef.current.isDragging ? 'none' : 'transform 0.3s ease-out',
             }}
@@ -244,10 +246,8 @@ export default function HypeMatch() {
             onTouchMove={(e) => handleDragMove(e.touches[0].clientX, e.touches[0].clientY)}
             onTouchEnd={handleDragEnd}
           >
-            {/* AREA BISA DI SCROLL - Tinggi 100% dari kartu */}
             <div className="card-scroll-area" style={{ height: '100%', overflowY: 'auto', position: 'relative' }}>
               
-              {/* === BOX 1: PROFIL UTAMA (Full Height) === */}
               <div style={{ position: 'relative', height: '100%', width: '100%', flexShrink: 0 }}>
                 <img 
                   src={activeUser.avatar_url || 'https://via.placeholder.com/400x600'} 
@@ -256,11 +256,9 @@ export default function HypeMatch() {
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
                 
-                {/* Indikator Swipe */}
                 {dragX < -50 && <div className="swipe-indicator like" style={{ position: 'absolute', top: 40, right: 20 }}>TERTARIK</div>}
                 {dragX > 50 && <div className="swipe-indicator pass" style={{ position: 'absolute', top: 40, left: 20 }}>LEWAT</div>}
                 
-                {/* Overlay Nama, Umur, Role, Lokasi */}
                 <div style={{ 
                   position: 'absolute', bottom: 0, left: 0, right: 0, 
                   padding: '40px 20px 20px 20px',
@@ -270,7 +268,6 @@ export default function HypeMatch() {
                 }}>
                   <h2 style={{ margin: '0 0 8px 0', fontSize: '2rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                     {activeUser.username} {activeUser.umur && <span>, {activeUser.umur}</span>}
-                    {/* Badge Role */}
                     {activeUser.role && (
                       <span style={{
                         background: 'linear-gradient(45deg, #FF3366, #FF9933)',
@@ -286,32 +283,28 @@ export default function HypeMatch() {
                     {activeUser.lokasi || "Lokasi disembunyikan"}
                   </p>
                   
-                  {/* Panah Scroll */}
                   <div style={{ textAlign: 'center', marginTop: '16px', opacity: 0.7 }} className="animate-bounce">
                     <span className="material-icons">keyboard_arrow_down</span>
                   </div>
                 </div>
               </div>
 
-              {/* === BOX 2: BIODATA LENGKAP TERPISAH === */}
               <div style={{ 
                 position: 'relative', 
-                background: 'var(--bg-main, #ffffff)', // Sesuai tema
+                background: 'var(--bg-main, #ffffff)', 
                 zIndex: 10,
-                marginTop: '-24px', // Membuat efek menimpa gambar sedikit
+                marginTop: '-24px', 
                 borderRadius: '24px 24px 0 0',
                 padding: '24px',
                 minHeight: '50%',
                 color: 'var(--text-main, #333)'
               }}>
                 
-                {/* Bio Section */}
                 <div className="detail-section" style={{ marginBottom: '24px' }}>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', fontWeight: 'bold' }}>Tentang Diri</h3>
                   <p style={{ lineHeight: '1.5', opacity: 0.8 }}>{activeUser.bio || "Belum ada bio yang ditulis."}</p>
                 </div>
 
-                {/* Grid Informasi Umum */}
                 <div className="detail-section" style={{ marginBottom: '24px' }}>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '12px', fontWeight: 'bold' }}>Informasi Umum</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -320,11 +313,10 @@ export default function HypeMatch() {
                     {activeUser.pendidikan && <div className="info-chip"><SvgIcon name="education" /> {activeUser.pendidikan}</div>}
                     {activeUser.tinggi_badan && <div className="info-chip"><SvgIcon name="height" /> {activeUser.tinggi_badan} cm</div>}
                     {activeUser.agama && <div className="info-chip"><SvgIcon name="religion" /> {activeUser.agama}</div>}
-                    {activeUser.zodiak && <div className="info-chip"><SvgIcon name="zodiac" /> {activeUser.zodiac}</div>}
+                    {activeUser.zodiak && <div className="info-chip"><SvgIcon name="zodiac" /> {activeUser.zodiak}</div>}
                   </div>
                 </div>
 
-                {/* Lifestyle & Preferensi */}
                 <div className="detail-section" style={{ marginBottom: '24px' }}>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '12px', fontWeight: 'bold' }}>Gaya Hidup & Minat</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -336,7 +328,6 @@ export default function HypeMatch() {
                   </div>
                 </div>
 
-                {/* Media Sosial Section */}
                 {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
                   <div className="detail-section" style={{ marginBottom: '40px' }}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '12px', fontWeight: 'bold' }}>Media Sosial</h3>
@@ -356,7 +347,6 @@ export default function HypeMatch() {
                   </div>
                 )}
                 
-                {/* Spacer agar tidak tertutup tombol di bawah */}
                 <div style={{ height: '80px' }}></div>
               </div>
             </div>
