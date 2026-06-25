@@ -82,7 +82,6 @@ const formatChatDate = (dateString: string) => {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${timeStr}`;
 };
 
-// Tambahkan isSelected di sini untuk sinkronisasi visual centang
 export default function MessageBubble({ 
   msg, isMe, onReply, onDelete, onEdit, onSelect, onSelectAll, currentUser, 
   isFirstUnread, unreadCount, showDateSeparator, router, isSelectionMode, isSelected 
@@ -177,7 +176,8 @@ export default function MessageBubble({
     isSwiping.current = true;
     if (bubbleRef.current) bubbleRef.current.style.transition = 'none';
 
-    if (!isDeleted && !msg.is_system) {
+    // PERBAIKAN: Menghapus filter !isDeleted agar pesan yang sudah dihapus bisa ditekan lama (hold)
+    if (!msg.is_system) {
       holdTimer.current = setTimeout(() => {
         setShowOptions(true);
         if (navigator.vibrate) navigator.vibrate(50);
@@ -219,8 +219,10 @@ export default function MessageBubble({
     }
 
     if ((isMe && diff < -50) || (!isMe && diff > 50)) {
-      onReply(msg);
-      if (navigator.vibrate) navigator.vibrate(30);
+      if (!isDeleted) {
+        onReply(msg);
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
     }
     isSwiping.current = false;
   };
@@ -245,7 +247,6 @@ export default function MessageBubble({
     if (!isDeleted && !msg.is_system && !isSelectionMode) setShowReactions(true);
   };
 
-  // FUNGSI INTI UNTUK MENGAMBIL ALIH KLIK SAAT MODE SELEKSI
   const handleBubbleSelectionClick = (e: React.MouseEvent | React.TouchEvent) => {
     if (isSelectionMode) {
       e.preventDefault();
@@ -355,17 +356,33 @@ export default function MessageBubble({
     }
   };
 
-  let cleanMsg = msg.message || "";
+  // PERBAIKAN CAPTION: Menggabungkan sumber caption dan menghilangkan tulisan default sistem
+  let cleanMsg = msg.caption || msg.post_caption || msg.message || "";
+  
   if (isStoryReply) {
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
-  const isMediaOnly = [" Mengirim Foto", " Stiker", " Voice Note"].includes(cleanMsg);
-  const shouldShowText = cleanMsg && !isMediaOnly;
+
+  // Hilangkan label sistem agar caption buatanmu yang tersisa
+  if (cleanMsg.includes("📸 Mengirim Foto")) {
+    cleanMsg = cleanMsg.replace("📸 Mengirim Foto", "").trim();
+  }
+  if (cleanMsg.includes(" Mengirim Foto")) {
+    cleanMsg = cleanMsg.replace(" Mengirim Foto", "").trim();
+  }
+
+  const isMediaOnly = ["Stiker", "Voice Note", " Voice Note", "Pesan ini telah dihapus"].includes(cleanMsg.trim());
+  const shouldShowText = cleanMsg.length > 0 && !isMediaOnly && !isDeleted;
 
   const vnBgColor = isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)';
   const vnIconColor = isMe ? 'var(--primary-blue, #1f3cff)' : '#ffffff';
   const vnWaveColor = isPlaying ? (isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)') : (isMe ? 'rgba(255,255,255,0.5)' : 'rgba(150,150,150,0.5)');
+
+  // PERBAIKAN PESAN DIHAPUS: Sembunyikan elemen secara total jika pesan dihapus dan pesan itu DARI LAWAN BICARA.
+  if (isDeleted && !isMe) {
+    return null; 
+  }
 
   return (
     <>
@@ -387,7 +404,6 @@ export default function MessageBubble({
         </div>
       )}
 
-      {/* WRAPPER UTAMA KESELURUHAN (Mengakomodasi Checkbox) */}
       <div 
         className="hype-chat-scope" 
         style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}
@@ -395,7 +411,6 @@ export default function MessageBubble({
         onTouchStartCapture={isSelectionMode ? handleBubbleSelectionClick : undefined}
       >
         
-        {/* CHECKBOX ANIMASI UNTUK MODE SELEKSI */}
         <AnimatePresence>
           {isSelectionMode && (
             <motion.div 
@@ -457,7 +472,6 @@ export default function MessageBubble({
                 >
                   <div className="options-handle" />
                   
-                  {/* PASTIKAN PASS ID MESSAGE */}
                   <button className="option-btn" onClick={(e) => { e.stopPropagation(); setShowOptions(false); if(onSelect) onSelect(msg.id); }}>
                     <span className="material-icons">check_circle_outline</span> Tandai
                   </button>
@@ -470,10 +484,14 @@ export default function MessageBubble({
                       <span className="material-icons">edit</span> Edit Pesan
                     </button>
                   )}
+
+                  {/* Tombol Hapus untuk Saya selalu muncul walau isDeleted true */}
                   <button className="option-btn" onClick={(e) => handleDeleteAction(e, 'for_me')}>
-                    <span className="material-icons">delete_outline</span> Hapus untuk Saya
+                    <span className="material-icons">delete_outline</span> {isDeleted ? 'Hapus Permanen' : 'Hapus untuk Saya'}
                   </button>
-                  {isMe && (
+
+                  {/* Tombol Hapus untuk Semua disembunyikan jika pesan sudah terhapus */}
+                  {isMe && !isDeleted && (
                     <button className="option-btn danger" onClick={(e) => handleDeleteAction(e, 'for_everyone')}>
                       <span className="material-icons">delete_forever</span> Hapus untuk Semua Orang
                     </button>
@@ -664,7 +682,7 @@ export default function MessageBubble({
                       )}
 
                       {shouldShowText && (
-                        <div className="text" style={{ opacity: msg.status === 'sending' ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post || msg.post_id) ? '0 6px' : '0', wordBreak: 'break-word' }}>
+                        <div className="text" style={{ opacity: msg.status === 'sending' ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post || msg.post_id) ? '0 6px' : '0', wordBreak: 'break-word', marginTop: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post || msg.post_id) ? '4px' : '0' }}>
                           {renderTextWithLinks(cleanMsg)}
                         </div>
                       )}

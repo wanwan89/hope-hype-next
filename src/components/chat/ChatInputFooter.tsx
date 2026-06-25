@@ -28,47 +28,7 @@ export default function ChatInputFooter({
       ) : (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           
-          {/* KOTAK REPLY - Floating di atas input bar */}
-          <AnimatePresence>
-            {replyTo && (
-              <motion.div 
-                initial={{ opacity: 0, y: 15, scale: 0.95 }} 
-                animate={{ opacity: 1, y: 0, scale: 1 }} 
-                exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                style={{ width: '100%', zIndex: 10 }}
-              >
-                <div style={{ 
-                  display: 'flex', 
-                  background: 'var(--bg-panel)', 
-                  borderRadius: '16px',
-                  padding: '10px 14px', 
-                  borderLeft: '4px solid var(--primary-blue)',
-                  borderTop: '1px solid var(--border-color)',
-                  borderRight: '1px solid var(--border-color)',
-                  borderBottom: '1px solid var(--border-color)',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
-                }}>
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ color: 'var(--primary-blue)', fontSize: '13px', fontWeight: 600, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      Membalas {replyTo.profiles?.username}
-                    </div>
-                    {/* Teks dibatasi, otomatis diisi "..." jika kepanjangan */}
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-                      {replyTo.message || 'Media'}
-                    </div>
-                  </div>
-                  <button onClick={() => setReplyTo(null)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)', paddingLeft: '12px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                    &times;
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* INPUT ROW (Kembali menggunakan class asli dari ChatArea.css milikmu) */}
+          {/* INPUT ROW */}
           <div className="input-row">
             
             <AnimatePresence>
@@ -93,60 +53,102 @@ export default function ChatInputFooter({
               )}
             </AnimatePresence>
 
-            {isRecording ? (
-              <div className="input-group-wrapper" style={{ padding: '0 16px', gap: '12px' }}>
-                <span className="online-dot"></span>
-                <span style={{ color: '#ff4757', fontWeight: 600, flexShrink: 0, fontSize: '15px' }}>
-                  {Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}
-                </span>
-                
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '3px', height: '24px', overflow: 'hidden' }}>
-                  {[...Array(12)].map((_, i) => (
-                     <motion.div 
-                       key={i} 
-                       animate={{ height: Math.max(4, (audioLevel/255) * 24 + (Math.random() * 6 - 3)) }} 
-                       transition={{ duration: 0.1 }}
-                       style={{ width: '3px', background: 'var(--text-color)', borderRadius: '2px' }} 
-                     />
-                  ))}
+            {/* KONTAINER UTAMA YANG MENYATU (Menggunakan class milikmu dengan kustomisasi layout) */}
+            <div className="input-group-wrapper" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', gap: 0 }}>
+              
+              {/* KOTAK REPLY - Terintegrasi di bagian atas dalam input bar */}
+              <AnimatePresence>
+                {replyTo && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }} 
+                    animate={{ height: 'auto', opacity: 1 }} 
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    style={{ width: '100%', overflow: 'hidden' }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      padding: '12px 14px 6px 14px', 
+                      borderLeft: '4px solid var(--primary-blue)',
+                      borderBottom: '1px solid var(--border-color)',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: 'rgba(255, 255, 255, 0.02)' /* Variasi tipis agar sedikit kontras namun senada */
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ color: 'var(--primary-blue)', fontSize: '13px', fontWeight: 600, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          Membalas {replyTo.profiles?.username}
+                        </div>
+                        {/* Teks panjang otomatis terpotong menjadi satu baris demi kerapian box (...) */}
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                          {replyTo.message || 'Media'}
+                        </div>
+                      </div>
+                      <button onClick={() => setReplyTo(null)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)', paddingLeft: '12px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        &times;
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* BARIS UTAMA INPUT / RECORDING AUDIO */}
+              {isRecording ? (
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0 16px', gap: '12px', height: '48px' }}>
+                  <span className="online-dot"></span>
+                  <span style={{ color: '#ff4757', fontWeight: 600, flexShrink: 0, fontSize: '15px' }}>
+                    {Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}
+                  </span>
+                  
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '3px', height: '24px', overflow: 'hidden' }}>
+                    {[...Array(12)].map((_, i) => (
+                       <motion.div 
+                         key={i} 
+                         animate={{ height: Math.max(4, (audioLevel/255) * 24 + (Math.random() * 6 - 3)) }} 
+                         transition={{ duration: 0.1 }}
+                         style={{ width: '3px', background: 'var(--text-color)', borderRadius: '2px' }} 
+                       />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: '12px', opacity: 0.8, whiteSpace: 'nowrap', color: 'var(--text-muted)', flexShrink: 0 }}>&lt; Geser batal</span>
                 </div>
-                <span style={{ fontSize: '12px', opacity: 0.8, whiteSpace: 'nowrap', color: 'var(--text-muted)', flexShrink: 0 }}>&lt; Geser batal</span>
-              </div>
-            ) : (
-              <div className="input-group-wrapper">
-                <button 
-                  style={{ background: 'transparent', border: 'none', padding: '12px 0 12px 14px', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} 
-                  onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}
-                >
-                  <span className="material-icons">sentiment_satisfied_alt</span>
-                </button>
-                
-                <textarea 
-                  id="chat-input"
-                  placeholder="Tulis pesan..." 
-                  value={inputValue} 
-                  onChange={handleTyping} 
-                  rows={1}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 100) + 'px';
-                  }}
-                />
-                
-                <button 
-                  style={{ background: 'transparent', border: 'none', padding: '12px 14px 12px 0', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} 
-                  onClick={handlePhotoClick} disabled={isUploadingImg}
-                >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                    <circle cx="12" cy="13" r="4"></circle>
-                  </svg>
-                </button>
-                <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
-              </div>
-            )}
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <button 
+                    style={{ background: 'transparent', border: 'none', padding: '12px 0 12px 14px', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} 
+                    onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}
+                  >
+                    <span className="material-icons">sentiment_satisfied_alt</span>
+                  </button>
+                  
+                  <textarea 
+                    id="chat-input"
+                    placeholder="Tulis pesan..." 
+                    value={inputValue} 
+                    onChange={handleTyping} 
+                    rows={1}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = Math.min(target.scrollHeight, 100) + 'px';
+                    }}
+                  />
+                  
+                  <button 
+                    style={{ background: 'transparent', border: 'none', padding: '12px 14px 12px 0', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} 
+                    onClick={handlePhotoClick} disabled={isUploadingImg}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                      <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                  </button>
+                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
+                </div>
+              )}
+            </div>
             
+            {/* BUTTON AKSI (MIC / SEND) */}
             <button 
               id="action-btn"
               className={isRecording ? 'is-recording' : ''}
