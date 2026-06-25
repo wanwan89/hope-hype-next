@@ -400,12 +400,12 @@ html.dark .hype-chat-scope .floating-call-box {
 }
 
 /* =========================================
-   🔥 CHAT BUBBLE & MESSAGES
+   🔥 CHAT BUBBLE & MESSAGES (FULL FIX)
    ========================================= */
 .hype-chat-scope .chat-messages {
   flex: 1 1 auto !important;
   padding: 12px;
-  padding-bottom: 110px !important;
+  padding-bottom: 120px !important; /* Ruang lebih agar pesan terakhir tidak tertutup input bar */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -414,29 +414,84 @@ html.dark .hype-chat-scope .floating-call-box {
   -webkit-overflow-scrolling: touch;
 }
 
-.hype-chat-scope .chat-message.self .content {
-  background: var(--chat-self-bg) !important;
-  border-radius: 18px 18px 4px 18px;
-  color: #111827; /* Teks hijau tetap hitam agar kontras di light & dark */
+/* KONTENER BARIS PESAN */
+.hype-chat-scope .chat-message {
+  display: flex;
+  width: 100%;
+  position: relative;
+  align-items: flex-end; /* Memastikan bubble selaras jika ada avatar di samping */
 }
 
-[data-theme='dark'] .hype-chat-scope .chat-message.self .content,
-html.dark .hype-chat-scope .chat-message.self .content {
-  color: #e9edef; /* Di dark mode chat hijau gelap teksnya putih/abu */
+/* Dorong ke kanan untuk pesan yang kita kirim */
+.hype-chat-scope .chat-message.self, 
+.hype-chat-scope .chat-message.me {
+  justify-content: flex-end;
 }
 
-.hype-chat-scope .chat-message.other .content {
-  background: var(--bg-panel) !important;
-  border: 1px solid var(--border-color);
-  border-radius: 18px 18px 18px 4px;
+/* Dorong ke kiri untuk pesan dari orang lain */
+.hype-chat-scope .chat-message.other {
+  justify-content: flex-start;
 }
 
+/* Rata tengah untuk notifikasi sistem */
+.hype-chat-scope .chat-message.system {
+  justify-content: center;
+  margin: 10px 0;
+}
+
+/* KOTAK ISI PESAN (BUBBLE) */
 .hype-chat-scope .chat-message .content {
   display: flex;
   flex-direction: column;
-  max-width: 78%;
+  width: fit-content;        /* PENTING: Bikin bubble mengecil menyesuaikan teks */
+  max-width: 78%;            /* PENTING: Batas maksimal lebar bubble */
+  min-width: 60px;           /* Lebar minimal agar tidak terlalu kecil */
   padding: 10px 14px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  word-wrap: break-word;     /* Memotong teks panjang agar tidak tembus ke samping */
+  word-break: break-word;
+  position: relative;
+}
+
+/* WARNA & BENTUK BUBBLE SAYA */
+.hype-chat-scope .chat-message.self .content,
+.hype-chat-scope .chat-message.me .content {
+  background: var(--chat-self-bg) !important;
+  border-radius: 18px 18px 4px 18px; /* Ujung lancip di kanan bawah */
+  color: #111827; 
+}
+
+[data-theme='dark'] .hype-chat-scope .chat-message.self .content,
+html.dark .hype-chat-scope .chat-message.self .content,
+[data-theme='dark'] .hype-chat-scope .chat-message.me .content,
+html.dark .hype-chat-scope .chat-message.me .content {
+  color: #e9edef; /* Di dark mode chat hijau gelap teksnya putih/abu */
+}
+
+/* WARNA & BENTUK BUBBLE ORANG LAIN */
+.hype-chat-scope .chat-message.other .content {
+  background: var(--bg-panel) !important;
+  border: 1px solid var(--border-color);
+  border-radius: 18px 18px 18px 4px; /* Ujung lancip di kiri bawah */
+  color: var(--text-color);
+}
+
+/* GAMBAR/VIDEO DI DALAM BUBBLE (AGAR TIDAK OVERFLOW) */
+.hype-chat-scope .chat-message .content img,
+.hype-chat-scope .chat-message .content video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin-bottom: 4px;
+  object-fit: cover;
+}
+
+/* JIKA ITU STIKER (HAPUS BACKGROUND DAN BORDER) */
+.hype-chat-scope .chat-message .content.sticker-bubble {
+   background: transparent !important;
+   border: none !important;
+   box-shadow: none !important;
+   padding: 0;
 }
 
 /* =========================================
