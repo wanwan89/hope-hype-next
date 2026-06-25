@@ -1,24 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HypeMatchOpening() {
   // State untuk mengontrol durasi loading
   const [isLoading, setIsLoading] = useState(true);
 
-  // Efek untuk menghilangkan loading screen setelah 4 detik (4000 milidetik)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 4000);
+  // KITA HAPUS useEffect setTimeout di sini
 
-    return () => clearTimeout(timer); // Membersihkan timer jika komponen di-unmount
-  }, []);
+  const bgColor = '#0000cc'; 
+  const textColor = '#f8ebd4'; 
 
-  // Palet warna (Background diubah menjadi biru pekat sesuai gambar 1000607729.jpg)
-  const bgColor = '#0000cc'; // Biru pekat
-  const textColor = '#f8ebd4'; // Krem teks (dipertahankan dari desain sebelumnya)
-
-  // Konfigurasi animasi container untuk efek berurutan (stagger)
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -30,7 +21,6 @@ export default function HypeMatchOpening() {
     },
   };
 
-  // Konfigurasi animasi per baris kata dengan efek spring (membal)
   const wordVariants = {
     hidden: { opacity: 0, y: 40, scale: 0.95 },
     visible: {
@@ -45,13 +35,23 @@ export default function HypeMatchOpening() {
     },
   };
 
+  // Fungsi ini akan dipanggil otomatis oleh Framer Motion saat animasi selesai
+  const handleAnimationComplete = (definition) => {
+    // Pastikan yang selesai adalah animasi "visible" (animasi masuk)
+    if (definition === 'visible') {
+      // Setelah animasi beres, tunggu 1.5 detik agar tulisan enak dibaca, baru hilangkan layar
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 1500); 
+    }
+  };
+
   return (
     <AnimatePresence>
       {isLoading && (
         <motion.div
-          /* Tambahan animasi exit agar memudar perlahan saat 4 detik selesai */
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.5 } }}
+          exit={{ opacity: 0, transition: { duration: 0.6 } }} // Perlambat sedikit exitnya biar lebih smooth
           style={{
             position: 'fixed',
             top: 0,
@@ -104,6 +104,7 @@ export default function HypeMatchOpening() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
+            onAnimationComplete={handleAnimationComplete} /* <-- Tambahkan trigger di sini */
             style={{
               display: 'flex',
               flexDirection: 'column',
