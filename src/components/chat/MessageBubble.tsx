@@ -12,7 +12,10 @@ export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{color: '#e2e8f0'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>;
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
   if (status === 'delivered') return <span className="status-icon delivered" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
-  if (status === 'read') return <span className="status-icon read" style={{color: '#1e3a8a', filter: 'drop-shadow(0px 1px 1.5px rgba(255,255,255,0.85))'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  
+  // 🔥 PERBAIKAN 1: Menghilangkan bayangan/shadow filter pada status read
+  if (status === 'read') return <span className="status-icon read" style={{color: '#34b7f1'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
+  
   return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
@@ -80,7 +83,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const holdTimer = useRef<any>(null);
   const lastTap = useRef(0);
 
-  // Pengecekan status hapus & edit yang lebih aman dan komprehensif
   const isDeleted = msg.is_deleted || msg.message === "Pesan ini telah dihapus" || msg.message === "Pesan telah dihapus";
   const isEdited = msg.is_edited || msg.is_edit || (msg.updated_at && new Date(msg.updated_at).getTime() - new Date(msg.created_at).getTime() > 1000);
 
@@ -343,7 +345,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   }
   const isPlaceholder = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
   
-  // 🔥 PERBAIKAN 1: Paksa bernilai true jika isDeleted aktif agar info terhapus selalu muncul
   const shouldShowText = isDeleted || (cleanMsg && !isPlaceholder);
 
   return (
@@ -513,7 +514,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
 
                 {shouldShowText && (
                   <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', wordBreak: 'break-word' }}>
-                    {/* 🔥 PERBAIKAN 2: Tampilan Pesan Dihapus yang Jelas */}
                     {isDeleted ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8, color: 'var(--text-muted)' }}>
                         <span className="material-icons" style={{ fontSize: '16px' }}>block</span>
@@ -523,6 +523,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                   </div>
                 )}
 
+                {/* AREA VOICE NOTE (VN) */}
                 {msg.audio_url && !isDeleted && (
                   <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
                     <button 
@@ -544,15 +545,16 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                         outline: 'none'
                       }}
                     >
+                      {/* 🔥 PERBAIKAN 2: Mengubah fill ke "#ffffff" agar icon play/pause VN dipastikan terlihat */}
                       {msg.status === 'sending' ? (
                         <motion.div
                           animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
                           style={{ width: '16px', height: '16px', border: '2px solid rgba(255, 255, 255, 0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }}
                         />
                       ) : isPlaying ? (
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="#ffffff"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                       ) : (
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style={{marginLeft: '3px'}}><path d="M8 5v14l11-7z"/></svg>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="#ffffff" style={{marginLeft: '3px'}}><path d="M8 5v14l11-7z"/></svg>
                       )}
                     </button>
                     
@@ -576,7 +578,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 
                 <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
                   
-                  {/* 🔥 PERBAIKAN 3: Indikator "(diedit)" yang akurat & aman di samping timestamp */}
                   {isEdited && !isDeleted && (
                     <span style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.6, marginRight: '2px' }}>
                       (diedit)
