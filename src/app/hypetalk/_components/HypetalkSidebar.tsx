@@ -1,4 +1,4 @@
-  'use client';
+'use client';
 import React from 'react';
 
 type Props = {
@@ -26,12 +26,21 @@ const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, onOpenModal, on
         <span className="material-icons">lock</span> Privasi & Status
       </button>
       {/* Bagian Hype Match yang sudah disesuaikan */}
-      <button className="menu-item btn-hype-match" onClick={onHypeMatch} style={{ marginTop: '10px' }}>
-        <span className="material-icons">favorite</span> Hype Match
+      <button className="menu-item btn-hype-match" onClick={onHypeMatch} style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path 
+            fill="none" 
+            stroke="currentColor" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth="1.5" 
+            d="m18.942 15.05l.626 2.44a2 2 0 0 1-1.44 2.434L7.433 22.67a2 2 0 0 1-2.435-1.44L1.22 6.51a2 2 0 0 1 1.44-2.434L13.354 1.33a2 2 0 0 1 2.215.912m3.371 9.11V3.543m-3.905 3.904h7.81"
+          />
+        </svg>
+        Hype Match
       </button>
     </div>
   </aside>
 );
 
 export default React.memo(HypetalkSidebar);
- 
