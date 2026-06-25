@@ -80,16 +80,6 @@ export default function HypeMatch() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
-  
-  // State untuk fitur pesan
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [customMessage, setCustomMessage] = useState(""); 
-
-  const templates = [
-    "Hai, salam kenal! 👋",
-    "Wah, kita match nih! Lagi sibuk apa hari ini?",
-    "Halo! Suka nongkrong atau jalan kemana biasanya? ✨"
-  ];
 
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false, isScrolling: false });
   const activeUser = users?.[currentIndex];
@@ -228,7 +218,6 @@ export default function HypeMatch() {
           showNotif('Kamu mendapatkan Match baru!', 'success');
           setTimeout(() => {
             setMatchedUser(activeUser);
-            setCustomMessage(""); 
           }, 300);
           return; 
         }
@@ -250,27 +239,10 @@ export default function HypeMatch() {
     if (scrollContainer) scrollContainer.scrollTop = 0;
   };
 
-  const handleSendTemplate = async (messageText: string) => {
-    if (!matchedUser || !currentUser || !messageText.trim()) return;
-    
-    try {
-      const { error } = await supabase.from('messages').insert({
-        user_id: currentUser.id,      
-        target_id: matchedUser.id,    
-        message: messageText.trim()          
-      });
-
-      if (error) throw error;
-
-      showNotif('Pesan terkirim!', 'success');
-      
-      setTimeout(() => {
-        router.push(`/hypetalk/room?from=${matchedUser.id}`);
-      }, 600); 
-
-    } catch (error: any) {
-      console.error("Gagal mengirim pesan:", error);
-      showNotif('Gagal: Cek log console untuk detail kolom!', 'error'); 
+  // Fungsi baru untuk langsung menuju room chat saat klik "Sapa Dia!"
+  const handleChatNow = () => {
+    if (matchedUser) {
+      router.push(`/hypetalk/room?from=${matchedUser.id}`);
     }
   };
 
@@ -407,16 +379,11 @@ export default function HypeMatch() {
         </div>
       )}
 
-      {/* OVERLAY MATCH SUCCESS YANG SUDAH DIPISAH FILE */}
+      {/* OVERLAY MATCH SUCCESS YANG SUDAH DIPISAH FILE (Menggunakan Props Baru) */}
       <MatchSuccessOverlay
         matchedUser={matchedUser}
         currentUser={currentUser}
-        showTemplates={showTemplates}
-        setShowTemplates={setShowTemplates}
-        templates={templates}
-        customMessage={customMessage}
-        setCustomMessage={setCustomMessage}
-        handleSendTemplate={handleSendTemplate}
+        onChatNow={handleChatNow} // Operasikan fungsi navigasi ke room chat
         nextCard={nextCard}
         setMatchedUser={setMatchedUser}
       />

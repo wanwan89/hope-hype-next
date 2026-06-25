@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HypeMatchOpening() {
-  // State untuk mengontrol durasi loading
+  // State untuk mengontrol durasi overlay secara keseluruhan
   const [isLoading, setIsLoading] = useState(true);
-
-  // KITA HAPUS useEffect setTimeout di sini
+  // State baru untuk memunculkan tombol setelah animasi selesai
+  const [showButton, setShowButton] = useState(false);
 
   const bgColor = '#0000cc'; 
   const textColor = '#f8ebd4'; 
@@ -35,14 +35,17 @@ export default function HypeMatchOpening() {
     },
   };
 
-  // Fungsi ini akan dipanggil otomatis oleh Framer Motion saat animasi selesai
-  const handleAnimationComplete = (definition) => {
-    // Pastikan yang selesai adalah animasi "visible" (animasi masuk)
+  // Variasi animasi untuk tombol "Go" agar muncul dengan mulus
+  const buttonVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  };
+
+  // Fungsi ini dipanggil otomatis oleh Framer Motion saat animasi teks selesai
+  const handleAnimationComplete = (definition: string) => {
     if (definition === 'visible') {
-      // Setelah animasi beres, tunggu 1.5 detik agar tulisan enak dibaca, baru hilangkan layar
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1500); 
+      // Alih-alih menutup layar, kita munculkan tombol "Go"
+      setShowButton(true);
     }
   };
 
@@ -51,7 +54,7 @@ export default function HypeMatchOpening() {
       {isLoading && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.6 } }} // Perlambat sedikit exitnya biar lebih smooth
+          exit={{ opacity: 0, transition: { duration: 0.6 } }}
           style={{
             position: 'fixed',
             top: 0,
@@ -60,6 +63,7 @@ export default function HypeMatchOpening() {
             height: '100vh',
             backgroundColor: bgColor,
             display: 'flex',
+            flexDirection: 'column', // Diubah menjadi column agar tombol ada di bawah
             justifyContent: 'center',
             alignItems: 'center',
             zIndex: 9999,
@@ -89,6 +93,30 @@ export default function HypeMatchOpening() {
               z-index: -1;
             }
 
+            /* Styling untuk tombol Go */
+            .hm-btn-go {
+              margin-top: 50px;
+              padding: 12px 40px;
+              font-family: 'Titan One', 'Arial Black', sans-serif;
+              font-size: 1.8rem;
+              color: ${bgColor};
+              background-color: ${textColor};
+              border: none;
+              border-radius: 30px;
+              cursor: pointer;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+              transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .hm-btn-go:hover {
+              transform: scale(1.05);
+              box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            }
+
+            .hm-btn-go:active {
+              transform: scale(0.95);
+            }
+
             @media (max-width: 768px) {
               .hm-chunky-text {
                 font-size: 3.5rem;
@@ -97,6 +125,11 @@ export default function HypeMatchOpening() {
                 width: 14px;
                 height: 14px;
               }
+              .hm-btn-go {
+                margin-top: 40px;
+                font-size: 1.4rem;
+                padding: 10px 30px;
+              }
             }
           `}</style>
 
@@ -104,7 +137,7 @@ export default function HypeMatchOpening() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            onAnimationComplete={handleAnimationComplete} /* <-- Tambahkan trigger di sini */
+            onAnimationComplete={handleAnimationComplete}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -135,6 +168,19 @@ export default function HypeMatchOpening() {
               friend
             </motion.div>
           </motion.div>
+
+          {/* Render tombol Go secara kondisional */}
+          {showButton && (
+            <motion.button
+              variants={buttonVariants}
+              initial="hidden"
+              animate="visible"
+              className="hm-btn-go"
+              onClick={() => setIsLoading(false)} // Tutup overlay saat diklik
+            >
+              GO!
+            </motion.button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
