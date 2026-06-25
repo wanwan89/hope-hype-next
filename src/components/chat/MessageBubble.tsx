@@ -83,7 +83,8 @@ const formatChatDate = (dateString: string) => {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${timeStr}`;
 };
 
-export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, currentUser, isFirstUnread, unreadCount, showDateSeparator, router, isSelectionMode }: any) {
+// Tambahkan onSelect dan onSelectAll di sini
+export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, onSelect, onSelectAll, currentUser, isFirstUnread, unreadCount, showDateSeparator, router, isSelectionMode }: any) {
   const { t } = useTranslation(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
   
@@ -416,6 +417,15 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 className="message-options-modal" style={{ zIndex: 100000 }}
               >
                 <div className="options-handle" />
+                
+                {/* TOMBOL TANDAI DAN TANDAI SEMUA DITAMBAHKAN DI SINI */}
+                <button className="option-btn" onClick={(e) => { e.stopPropagation(); setShowOptions(false); if(onSelect) onSelect(msg); }}>
+                  <span className="material-icons">check_circle_outline</span> Tandai
+                </button>
+                <button className="option-btn" onClick={(e) => { e.stopPropagation(); setShowOptions(false); if(onSelectAll) onSelectAll(); }}>
+                  <span className="material-icons">done_all</span> Tandai Semua
+                </button>
+
                 {isMe && !isDeleted && shouldShowText && !msg.image_url && !msg.sticker_url && !msg.audio_url && !msg.shared_post && !msg.post_id && (
                   <button className="option-btn" onClick={(e) => handleEditAction(e)}>
                     <span className="material-icons">edit</span> Edit Pesan

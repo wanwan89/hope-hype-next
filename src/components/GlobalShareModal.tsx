@@ -35,7 +35,6 @@ export default function GlobalShareModal() {
     isPrivate: false 
   });
 
-  // 🔥 STATE UNTUK PENGATURAN KREATOR 🔥
   const [postSettings, setPostSettings] = useState({
     isPinned: false,
     commentsDisabled: false
@@ -50,13 +49,22 @@ export default function GlobalShareModal() {
     setTimeout(() => {
       setIsOpen(false);
       setIsClosing(false);
-      setMutuals([]); // Reset saat ditutup
+      // 🔥 FIX 1: Reset semua state saat ditutup agar data postingan tidak bocor/nyangkut ke postingan berikutnya
+      setMutuals([]);
+      setShareData({ url: '', title: '', text: '', postId: '', isOwner: false, isPrivate: false });
+      setPostSettings({ isPinned: false, commentsDisabled: false });
     }, 300);
   }, []);
 
   useEffect(() => {
     window.openGlobalShare = (url, title, text, name, postId, isOwner, isPrivate) => {
-      const finalUrl = url || window.location.href;
+      // 🔥 FIX 2: Penentuan URL Dinamis. 
+      // Jika URL kosong tapi ada postId, arahkan ke route spesifik post tersebut.
+      let finalUrl = url;
+      if (!finalUrl) {
+        finalUrl = postId ? `${window.location.origin}/post/${postId}` : window.location.href;
+      }
+      
       const finalTitle = title || 'HypeTalk';
       
       let finalText = text;
@@ -78,7 +86,6 @@ export default function GlobalShareModal() {
       setIsOpen(true);
       fetchMutualFriends(); 
       
-      // Ambil status Pin & Komentar kalau ada postId
       if (postId) {
         fetchPostSettings(postId);
       }
@@ -89,7 +96,6 @@ export default function GlobalShareModal() {
     };
   }, [t]);
 
-  // 🔥 FUNGSI AMBIL PENGATURAN POSTINGAN (PIN & KOMENTAR) 🔥
   const fetchPostSettings = async (id: string) => {
     try {
       const { data, error } = await supabase
@@ -109,7 +115,6 @@ export default function GlobalShareModal() {
     }
   };
 
-  // 🔥 FUNGSI AMBIL TEMAN MUTUAL 🔥
   const fetchMutualFriends = async () => {
     setIsLoadingMutuals(true);
     try {
@@ -144,24 +149,34 @@ export default function GlobalShareModal() {
       const roomIdStr = `pv_${ids[0]}_${ids[1]}`;
       const messageContent = `Membagikan Tautan:\n${shareData.text}\n${shareData.url}`;
 
-      await supabase.from('messages').insert([{ room_id: roomIdStr, user_id: myId, message: messageContent, status: 'sent' }]);
+      const { error } = await supabase.from('messages').insert([{ room_id: roomIdStr, user_id: myId, message: messageContent, status: 'sent' }]);
+      if (error) throw error;
+      
       showNotif(`Dikirim ke ${friendName}`, 'success');
       closeModal();
     } catch (err) { showNotif('Gagal mengirim pesan', 'error'); }
   };
 
   // ==========================================
-  // 🔥 FUNGSI ALAT KREATOR 🔥
+  // 🔥 FIX 3: ALAT KREATOR MENGGUNAKAN OPTIMISTIC UI 🔥
   // ==========================================
   
   const togglePrivacy = async () => {
     if (!shareData.postId) return;
     const newStatus = !shareData.isPrivate;
+    
+    // UI Update Duluan (Optimistic)
+    setShareData(prev => ({ ...prev, isPrivate: newStatus }));
+    
     try {
-      await supabase.from('posts').update({ is_private: newStatus }).eq('id', shareData.postId);
-      setShareData(prev => ({ ...prev, isPrivate: newStatus }));
+      const { error } = await supabase.from('posts').update({ is_private: newStatus }).eq('id', shareData.postId);
+      if (error) throw error;
       showNotif(newStatus ? 'Postingan menjadi Privat' : 'Postingan menjadi Publik', 'success');
-    } catch (err) { showNotif('Gagal merubah privasi', 'error'); }
+    } catch (err) { 
+      // Rollback jika gagal
+      setShareData(prev => ({ ...prev, isPrivate: !newStatus }));
+      showNotif('Gagal merubah privasi', 'error'); 
+    }
   };
 
   const togglePin = async () => {
@@ -169,7 +184,6 @@ export default function GlobalShareModal() {
     const newStatus = !postSettings.isPinned;
 
     try {
-      // 🔥 CEK KUOTA PIN (MAKSIMAL 3) JIKA MAU MENYEMATKAN 🔥
       if (newStatus === true) {
         const { count, error: countError } = await supabase
           .from('posts')
@@ -181,15 +195,20 @@ export default function GlobalShareModal() {
 
         if (count && count >= 3) {
           showNotif('Batas maksimal sematan! Lepas sematan lain terlebih dahulu.', 'warning');
-          return; // Hentikan fungsi
+          return; 
         }
       }
 
-      // Update database kalau kuota aman
-      await supabase.from('posts').update({ is_pinned: newStatus }).eq('id', shareData.postId);
+      // UI Update Duluan (Optimistic)
       setPostSettings(prev => ({ ...prev, isPinned: newStatus }));
+      
+      const { error } = await supabase.from('posts').update({ is_pinned: newStatus }).eq('id', shareData.postId);
+      if (error) throw error;
       showNotif(newStatus ? 'Postingan disematkan' : 'Sematan dilepas', 'success');
+      
     } catch (err) { 
+      // Rollback jika gagal
+      setPostSettings(prev => ({ ...prev, isPinned: !newStatus }));
       showNotif('Gagal merubah sematan', 'error'); 
     }
   };
@@ -197,21 +216,32 @@ export default function GlobalShareModal() {
   const toggleComments = async () => {
     if (!shareData.postId) return;
     const newStatus = !postSettings.commentsDisabled;
+    
+    // UI Update Duluan (Optimistic)
+    setPostSettings(prev => ({ ...prev, commentsDisabled: newStatus }));
+    
     try {
-      await supabase.from('posts').update({ comments_disabled: newStatus }).eq('id', shareData.postId);
-      setPostSettings(prev => ({ ...prev, commentsDisabled: newStatus }));
+      const { error } = await supabase.from('posts').update({ comments_disabled: newStatus }).eq('id', shareData.postId);
+      if (error) throw error;
       showNotif(newStatus ? 'Komentar dinonaktifkan' : 'Komentar diaktifkan', 'success');
-    } catch (err) { showNotif('Gagal merubah pengaturan komentar', 'error'); }
+    } catch (err) { 
+      // Rollback jika gagal
+      setPostSettings(prev => ({ ...prev, commentsDisabled: !newStatus }));
+      showNotif('Gagal merubah pengaturan komentar', 'error'); 
+    }
   };
 
   const deletePost = async () => {
     if (!shareData.postId) return;
     if (confirm("Yakin ingin menghapus postingan ini secara permanen?")) {
       try {
-        await supabase.from('posts').delete().eq('id', shareData.postId);
+        const { error } = await supabase.from('posts').delete().eq('id', shareData.postId);
+        if (error) throw error;
+        
         showNotif("Postingan berhasil dihapus", "success");
         closeModal();
-        setTimeout(() => window.location.reload(), 800); // Reload halaman biar UI otomatis bersih
+        // Delay dikurangi sedikit biar kerasa lebih mulus transisinya
+        setTimeout(() => window.location.reload(), 400); 
       } catch (err) {
         showNotif("Gagal menghapus postingan", "error");
       }
