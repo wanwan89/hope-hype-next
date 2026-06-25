@@ -13,12 +13,29 @@ export default function MessageRequestsPage() {
   const [requestChats, setRequestChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ========== INITIAL LOAD ==========
   useEffect(() => {
     initRequests();
   }, []);
 
+  // ========== REALTIME SUBSCRIPTION ==========
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Supaya daftar request terupdate otomatis saat ada pesan baru masuk
+    const channelName = `realtime-requests-user-${currentUser.id}`;
+    const channel = supabase.channel(channelName)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
+        initRequests();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
   const initRequests = async () => {
-    setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -26,20 +43,21 @@ export default function MessageRequestsPage() {
         return;
       }
       setCurrentUser(session.user);
-      
       const userId = session.user.id;
 
       // 1. Ambil data Followers
       const { data: followerData } = await supabase.from('followers').select('follower_id').eq('following_id', userId);
       const followerIds = new Set(followerData?.map((f: any) => f.follower_id) || []);
 
-      // 2. Ambil Semua Pesan Private (Gak usah dibatasin 24 jam biar request lama tetep kelihatan)
+      // 2. Ambil Pesan Private - DIOPTIMALKAN agar hanya menarik room yang ada ID kita saja
       const { data: allMsgs } = await supabase.from("messages")
         .select("*")
-        .like('room_id', '%pv_%') // Cuma ambil chat private
+        .like('room_id', 'pv_%')      // Hanya chat private
+        .ilike('room_id', `%${userId}%`) // OPTIMASI: Hanya ambil room yang mengandung ID kita
         .order("created_at", { ascending: false });
 
-      if (!allMsgs) {
+      if (!allMsgs || allMsgs.length === 0) {
+        setRequestChats([]);
         setIsLoading(false);
         return;
       }
@@ -47,12 +65,10 @@ export default function MessageRequestsPage() {
       // 3. Kelompokkan pesan berdasarkan Room ID
       const roomMap = new Map();
       allMsgs.forEach(msg => {
-        if (msg.room_id.includes(userId)) {
-          if (!roomMap.has(msg.room_id)) {
-             roomMap.set(msg.room_id, []);
-          }
-          roomMap.get(msg.room_id).push(msg);
+        if (!roomMap.has(msg.room_id)) {
+          roomMap.set(msg.room_id, []);
         }
+        roomMap.get(msg.room_id).push(msg);
       });
 
       const pendingPartners: any[] = [];
@@ -60,56 +76,56 @@ export default function MessageRequestsPage() {
 
       // 4. Saring mana yang masuk kriteria "Request"
       for (const [roomId, msgs] of roomMap.entries()) {
-         const partnerId = roomId.replace("pv_", "").split("_").find((id: string) => id !== userId);
-         if (!partnerId) continue;
+        const partnerId = roomId.replace("pv_", "").split("_").find((id: string) => id !== userId);
+        if (!partnerId) continue;
 
-         // Cek apakah KITA pernah mengirim pesan di room ini?
-         const iHaveReplied = msgs.some((m: any) => m.user_id === userId);
-         const isFollower = followerIds.has(partnerId);
+        // Cek apakah KITA pernah mengirim pesan di room ini
+        const iHaveReplied = msgs.some((m: any) => m.user_id === userId);
+        const isFollower = followerIds.has(partnerId);
 
-         // Masuk list Request kalau: BUKAN Follower & KITA BELUM PERNAH BALAS
-         if (!isFollower && !iHaveReplied) {
-            const lastMsg = msgs[0]; // Karena udah di-order descending di awal
-            const unreadCount = msgs.filter((m: any) => m.status !== 'read' && m.user_id !== userId).length;
-            
-            unreadMap.set(partnerId, unreadCount);
-            
-            pendingPartners.push({
-               id: partnerId,
-               lastMsg
-            });
-         }
+        // Masuk list Request jika: BUKAN Follower & KITA BELUM PERNAH BALAS
+        if (!isFollower && !iHaveReplied) {
+          const lastMsg = msgs[0]; // Index 0 karena sudah di-order descending
+          const unreadCount = msgs.filter((m: any) => m.status !== 'read' && m.user_id !== userId).length;
+          
+          unreadMap.set(partnerId, unreadCount);
+          
+          pendingPartners.push({
+            id: partnerId,
+            lastMsg
+          });
+        }
       }
 
       // 5. Ambil data Profil si Pengirim
       if (pendingPartners.length > 0) {
-         const partnerIds = pendingPartners.map(p => p.id);
-         const { data: profiles } = await supabase.from("profiles").select("id, username, avatar_url, role").in("id", partnerIds);
+        const partnerIds = pendingPartners.map(p => p.id);
+        const { data: profiles } = await supabase.from("profiles").select("id, username, avatar_url, role").in("id", partnerIds);
          
-         const finalReqChats = pendingPartners.map(pending => {
-            const p = profiles?.find(prof => prof.id === pending.id);
-            if (!p) return null;
+        const finalReqChats = pendingPartners.map(pending => {
+          const p = profiles?.find(prof => prof.id === pending.id);
+          if (!p) return null;
 
-            const lastMsg = pending.lastMsg;
-            let msgPreview = lastMsg.message;
-            if (lastMsg.sticker_url) msgPreview = "Mengirim gambar";
-            if (lastMsg.audio_url) msgPreview = "Mengirim Voice Note";
+          const lastMsg = pending.lastMsg;
+          let msgPreview = lastMsg.message;
+          if (lastMsg.sticker_url) msgPreview = "Mengirim gambar";
+          if (lastMsg.audio_url) msgPreview = "Mengirim Voice Note";
 
-            return {
-              id: p.id,
-              name: p.username,
-              avatar: p.avatar_url,
-              role: p.role,
-              preview: msgPreview,
-              time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              sortTime: new Date(lastMsg.created_at).getTime(),
-              unread: unreadMap.get(p.id) || 0
-            };
-         }).filter(Boolean); // Buang yang null
+          return {
+            id: p.id,
+            name: p.username,
+            avatar: p.avatar_url,
+            role: p.role,
+            preview: msgPreview,
+            time: new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            sortTime: new Date(lastMsg.created_at).getTime(),
+            unread: unreadMap.get(p.id) || 0
+          };
+        }).filter(Boolean);
 
-         setRequestChats(finalReqChats.sort((a: any, b: any) => b.sortTime - a.sortTime));
+        setRequestChats(finalReqChats.sort((a: any, b: any) => b.sortTime - a.sortTime));
       } else {
-         setRequestChats([]);
+        setRequestChats([]);
       }
 
     } catch (err) {
@@ -120,9 +136,8 @@ export default function MessageRequestsPage() {
   };
 
   const handleOpenChat = (chatId: string) => {
-    // Arahkan ke room chat. 
-    // Nanti kalau user ngetik balesan di room sana, otomatis chat ini bakal pindah ke Beranda Utama!
-    router.push(`/hypetalk/chat?from=${chatId}`);
+    // FIX: Arahkan ke rute /room yang benar, bukan /chat
+    router.push(`/hypetalk/room?from=${chatId}`);
   };
 
   return (
@@ -165,7 +180,7 @@ export default function MessageRequestsPage() {
           </div>
         ) : (
           requestChats.map(chat => (
-            <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat.id)}>
+            <div key={chat.id} className="tg-chat-item" onClick={() => handleOpenChat(chat.id)} style={{ cursor: 'pointer' }}>
               <div className="tg-avatar global-avatar">
                 <img src={chat.avatar || "/asets/png/profile.webp"} className="tg-avatar" alt="av" />
               </div>

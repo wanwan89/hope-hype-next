@@ -6,14 +6,13 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import './Hypetalk.css';
 
-// Import komponen anak
+// Import komponen anak (HypeMatchOverlay dihapus karena sudah jadi page terpisah)
 import HypetalkHeader from './_components/HypetalkHeader';
 import ChatList from './_components/ChatList';
 import HypetalkSidebar from './_components/HypetalkSidebar';
 import UserProfileModal from './_components/UserProfileModal';
 import ChatInfoModal from './_components/ChatInfoModal';
 import PrivacySettingsModal from './_components/PrivacySettingsModal';
-import HypeMatchOverlay from './_components/HypeMatchOverlay'; 
 import SearchModal from './_components/SearchModal';
 import GroupModal from './_components/GroupModal';
 import BioModal from './_components/BioModal';
@@ -29,8 +28,8 @@ export default function HypetalkPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [potentialMatches, setPotentialMatches] = useState<any[]>([]); 
-  const [isHypeMatchOpen, setIsHypeMatchOpen] = useState(false); 
+  
+  // State bio dan setingan lainnya tetap dipertahankan
   const [bioForm, setBioForm] = useState({ umur: '', gender: 'Pria', zodiak: '', pekerjaan: '', hobi: '' });
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
@@ -285,6 +284,9 @@ export default function HypetalkPage() {
       showNotif("Profil tersimpan!", "success");
       setCurrentUser((prev: any) => ({ ...prev, ...updateData }));
       closeModal();
+      
+      // Opsional: Langsung redirect ke Hype Match setelah melengkapi bio
+      // router.push('/hypematch'); 
     } catch (err) { showNotif("Gagal simpan.", "error"); }
     finally { setIsSavingBio(false); }
   };
@@ -317,50 +319,12 @@ export default function HypetalkPage() {
     });
   };
 
+  // --- LOGIKA HYPE MATCH BARU ---
+  // Arahkan ke halaman /hypematch alih-alih membuka modal
   const handleHypeMatch = async () => {
     if (!currentUser?.gender) return openModal('bio');
-    
     setIsSidebarOpen(false);
-    const lawanJenis = currentUser.gender === "Pria" ? "Wanita" : "Pria";
-
-    try {
-      const { data: users } = await supabase
-        .from("profiles")
-        .select("*")
-        .neq("id", currentUser.id)
-        .eq("gender", lawanJenis);
-
-      if (!users || users.length === 0) {
-        return showNotif("Belum ada pasangan yang cocok saat ini.", "info");
-      }
-
-      const shuffledUsers = users.sort(() => Math.random() - 0.5);
-      setPotentialMatches(shuffledUsers);
-      setIsHypeMatchOpen(true); 
-    } catch (err) { 
-      showNotif("Gagal mengambil data pasangan.", "error");
-    }
-  };
-
-  const handleLikeUser = async (targetId: string): Promise<boolean> => {
-    try {
-      const { data: isMutual } = await supabase
-        .from('followers')
-        .select('*')
-        .eq('follower_id', targetId)
-        .eq('following_id', currentUser.id)
-        .maybeSingle();
-
-      await supabase.from('followers').insert([{ follower_id: currentUser.id, following_id: targetId }]);
-      return !!isMutual; 
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
-  };
-
-  const handlePassUser = (targetId: string) => {
-    console.log(`User ${targetId} dilewati`);
+    router.push('/hypematch');
   };
 
   const handleSearchAndChat = async () => {
@@ -399,7 +363,6 @@ export default function HypetalkPage() {
       .neq('status', 'read')
       .then();
 
-    // PERBAIKAN: Menambahkan parameter eksplisit untuk chat global
     if (chat.type === 'global') {
       router.push('/hypetalk/room?global=true'); 
     } else if (chat.type === 'group') {
@@ -461,10 +424,6 @@ export default function HypetalkPage() {
   // ========== RENDER ==========
   return (
     <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-      <style>{`
-        /* Menghapus block style ini karena sudah masuk dan di-scope di Hypetalk.css */
-      `}</style>
-
       <HypetalkHeader
         onMenuClick={() => setIsSidebarOpen(true)}
         searchQuery={searchQuery}
@@ -485,7 +444,7 @@ export default function HypetalkPage() {
         renderReadReceipt={renderReadReceipt}
       />
 
-      {!activeModal && !isHypeMatchOpen && (
+      {!activeModal && (
         <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
       )}
 
@@ -529,15 +488,7 @@ export default function HypetalkPage() {
         />
       )}
 
-      {isHypeMatchOpen && (
-        <HypeMatchOverlay
-          currentUser={currentUser}
-          potentialMatches={potentialMatches}
-          onLike={handleLikeUser}
-          onPass={handlePassUser}
-          onClose={() => setIsHypeMatchOpen(false)}
-        />
-      )}
+      {/* Komponen <HypeMatchOverlay /> dihapus dari sini */}
 
       {activeModal === 'search' && (
         <SearchModal
