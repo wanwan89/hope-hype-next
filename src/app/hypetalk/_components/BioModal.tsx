@@ -239,10 +239,10 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
         {/* Spacer agar tombol tidak mepet ke konten paling bawah */}
         <div style={{ flexGrow: 1, minHeight: '40px' }}></div>
 
-        {/* Tombol Simpan Sticky di Bawah */}
+        {/* Tombol Simpan Sticky di Bawah (UPDATED) */}
         <div style={{ 
           position: 'sticky', bottom: 0, padding: '16px 0', 
-          backgroundColor: 'var(--bg-main)', borderTop: '1px solid var(--border-card)' 
+          backgroundColor: 'transparent' // <-- Sudah diubah menjadi transparan
         }}>
           <button className="action-btn" onClick={onSave} disabled={isSaving} style={btnStyle}>
             {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -301,4 +301,3 @@ const btnStyle: React.CSSProperties = {
 };
 
 export default React.memo(BioModal);
-
