@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next';

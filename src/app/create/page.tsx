@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
@@ -40,7 +40,8 @@ const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: (val:
   </div>
 );
 
-export default function CreatePostPage() {
+// 🔥 UBAH NAMA KOMPONEN INI MENJADI CreatePostContent (Bukan default export lagi)
+function CreatePostContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -770,5 +771,18 @@ export default function CreatePostPage() {
         </>
       )}
     </div>
+  );
+}
+
+// 🔥 INI ADALAH FUNGSI BARU YANG DIEKSPOR UNTUK MEMBUNGKUS KONTEN DENGAN SUSPENSE
+export default function CreatePostPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <span className="material-icons" style={{ color: '#1f3cff', fontSize: '40px', animation: 'spin 1s linear infinite' }}>sync</span>
+      </div>
+    }>
+      <CreatePostContent />
+    </Suspense>
   );
 }

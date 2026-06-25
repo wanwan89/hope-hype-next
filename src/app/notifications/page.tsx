@@ -39,7 +39,7 @@ const UNKNOWN_ACTOR = {
   role: 'user',
 };
 
-const LIKE_TYPES = ['like', 'like_group', 'repost', 'repost_group', 'save', 'save_group', 'comment_like', 'story_likes'];
+const LIKE_TYPES = ['like', 'like_group', 'repost', 'repost_group', 'save', 'save_group', 'comment_likes', 'story_likes'];
 const COMMENT_TYPES = ['comment', 'reply'];
 const FOLLOW_TYPES = ['follow'];
 const ALL_HANDLED_TYPES = [...LIKE_TYPES, ...COMMENT_TYPES, ...FOLLOW_TYPES];
@@ -110,7 +110,7 @@ export default function NotificationsPage() {
       .update({ is_read: true })
       .eq('user_id', session.user.id)
       .eq('is_read', false)
-      .in('type', ['like', 'comment', 'repost', 'save', 'comment_like']);
+      .in('type', ['like', 'comment', 'repost', 'save', 'comment_likes']);
 
     const { data: fData } = await supabase
       .from('followers')
@@ -213,7 +213,7 @@ export default function NotificationsPage() {
         .eq('following_id', userId)
         .order('created_at', { ascending: false });
 
-      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
+      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_likes', 'follow'];
       const { data: dbNotifs } = await supabase
         .from('notifications')
         .select('*')
@@ -379,10 +379,10 @@ export default function NotificationsPage() {
 
       const formattedCommentLikes = commentLikesData.map((cl: any) => {
         const relatedComment = myComments.find((c) => c.id === cl.comment_id);
-        const nId = `comment_like-${cl.id}`;
+        const nId = `comment_likes-${cl.id}`;
         return {
           id: nId,
-          type: 'comment_like',
+          type: 'comment_likes',
           post_id: relatedComment?.post_id,
           actor_id: cl.user_id,
           created_at: cl.created_at,
@@ -520,7 +520,7 @@ export default function NotificationsPage() {
       router.push(`/data?id=${notif.actor_id}`);
     } 
     // 🔥 PERBAIKAN: Menambahkan 'reply' ke filter, dan mem-passing parameter openComment
-    else if ((notif.type === 'comment' || notif.type === 'comment_like' || notif.type === 'reply') && notif.post_id) {
+    else if ((notif.type === 'comment' || notif.type === 'comment_likes' || notif.type === 'reply') && notif.post_id) {
       router.push(`/post?id=${notif.post_id}&openComment=true`);
     } 
     else if (notif.type === 'story_likes' && notif.story_id) {
@@ -558,7 +558,7 @@ export default function NotificationsPage() {
     switch (type) {
       case 'like':
       case 'like_group':
-      case 'comment_like':
+      case 'comment_likes':
       case 'story_likes':
         return { icon: 'favorite', color: '#ff2e63' };
       case 'comment':
