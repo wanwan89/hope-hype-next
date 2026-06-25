@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
 import { getUserBadge, showNotif } from '@/lib/ui-utils'; 
 import { useTranslation } from 'react-i18next'; 
@@ -12,8 +12,6 @@ export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{color: '#e2e8f0'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>;
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
   if (status === 'delivered') return <span className="status-icon delivered" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
-  
-  // 🔥 PERBAIKAN 1: Menghilangkan bayangan/shadow filter pada status read
   if (status === 'read') return <span className="status-icon read" style={{color: '#34b7f1'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M1.8 8.5L5 11.5L11.8 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M5.8 8.5L9 11.5L15 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
   
   return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
@@ -103,6 +101,21 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const requestFrameRef = useRef<number>(0);
   
   const [waveData, setWaveData] = useState<number[]>(Array(12).fill(20));
+
+  // PARSING MULTI-IMAGE
+  const parsedImages = useMemo(() => {
+    if (!msg.image_url) return [];
+    if (Array.isArray(msg.image_url)) return msg.image_url;
+    if (typeof msg.image_url === 'string') {
+      try {
+        const parsed = JSON.parse(msg.image_url);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        if (msg.image_url.includes(',')) return msg.image_url.split(',').map((u: string) => u.trim());
+      }
+    }
+    return [msg.image_url];
+  }, [msg.image_url]);
 
   useEffect(() => {
     const handleGlobalClick = (e: any) => {
@@ -200,7 +213,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const onTouchStart = (e: React.TouchEvent) => handleStart(e.touches[0].clientX);
   const onTouchMove = (e: React.TouchEvent) => handleMove(e.touches[0].clientX);
   const onTouchEnd = () => handleEnd();
-
   const onMouseDown = (e: React.MouseEvent) => handleStart(e.clientX);
   const onMouseMove = (e: React.MouseEvent) => handleMove(e.clientX);
   const onMouseUp = () => handleEnd();
@@ -214,7 +226,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const handleReactionSelect = async (emoji: string, e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation(); 
-    
     if (!currentUser) return;
     
     const currentReactions = msg.reactions || {};
@@ -260,11 +271,8 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
             newLevels.push(Math.max(15, (val / 255) * 100)); 
         }
         
-        if (!hasData) {
-            setWaveData(Array.from({length: 12}, () => Math.max(20, Math.random() * 90)));
-        } else {
-            setWaveData(newLevels);
-        }
+        if (!hasData) setWaveData(Array.from({length: 12}, () => Math.max(20, Math.random() * 90)));
+        else setWaveData(newLevels);
       } else {
          setWaveData(Array.from({length: 12}, () => Math.max(20, Math.random() * 90)));
       }
@@ -344,7 +352,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
   const isPlaceholder = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
-  
   const shouldShowText = isDeleted || (cleanMsg && !isPlaceholder);
 
   return (
@@ -408,7 +415,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 style={{ zIndex: 100000 }}
               >
                 <div className="options-handle" />
-                {isMe && !isDeleted && shouldShowText && !msg.image_url && !msg.sticker_url && !msg.audio_url && (
+                {isMe && !isDeleted && shouldShowText && !msg.image_url && !msg.sticker_url && !msg.audio_url && !msg.shared_post && (
                   <button className="option-btn" onClick={(e) => handleEditAction(e)}>
                     <span className="material-icons">edit</span> Edit Pesan
                   </button>
@@ -455,18 +462,13 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} 
                 onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}
                 onDoubleClick={handleDoubleClick}
-                style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '8px 14px', cursor: 'pointer' }}
+                style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '4px' : '8px 14px', cursor: 'pointer' }}
               >
                 
                 {showReactions && !msg.is_system && (
                   <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0', zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
                     {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-                      <div 
-                        key={emoji} 
-                        className="reaction-btn" 
-                        onClick={(e) => handleReactionSelect(emoji, e)}
-                        onTouchStart={(e) => handleReactionSelect(emoji, e)} 
-                      >
+                      <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)} onTouchStart={(e) => handleReactionSelect(emoji, e)}>
                         {emoji}
                       </div>
                     ))}
@@ -474,26 +476,80 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 )}
 
                 {showUserDetail && (
-                  <div className="chat-username" style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url) ? '4px' : '0' }}>
+                  <div className="chat-username" style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url || msg.shared_post) ? '4px' : '0' }}>
                     {msg.profiles?.username || 'User'} 
                     <span className="chat-badge" dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
                   </div>
                 )}
                 
                 {liveReply && (
-                  <div className="reply-preview-in-chat" onClick={(e) => { e.stopPropagation(); document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}} style={{ marginLeft: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0', marginRight: (msg.image_url || msg.sticker_url) && !isStoryReply ? '4px' : '0' }}>
+                  <div className="reply-preview-in-chat" onClick={(e) => { e.stopPropagation(); document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}} style={{ marginLeft: (msg.image_url || msg.sticker_url || msg.shared_post) && !isStoryReply ? '4px' : '0', marginRight: (msg.image_url || msg.sticker_url || msg.shared_post) && !isStoryReply ? '4px' : '0' }}>
                     <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
                   </div>
                 )}
 
-                {msg.image_url && !isDeleted && (
-                  <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '14px', marginBottom: shouldShowText ? '6px' : '0' }}>
-                    <img 
-                      src={getOptimizedImage(msg.image_url)} 
-                      alt="Foto Kiriman" 
-                      onClick={(e) => { e.stopPropagation(); setPreviewImage(msg.image_url); }} 
-                      style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: 'auto', objectFit: 'cover', opacity: msg.status === 'sending' ? 0.6 : 1, cursor: 'pointer' }} 
-                    />
+                {/* AREA RENDER GAMBAR MULTIPLE (STACK) / SINGLE */}
+                {parsedImages.length > 0 && !isDeleted && (
+                  <div style={{ 
+                    position: 'relative', 
+                    width: parsedImages.length > 1 ? '240px' : 'auto', 
+                    height: parsedImages.length > 1 ? '260px' : 'auto',
+                    marginBottom: shouldShowText ? '6px' : '0' 
+                  }}>
+                    {parsedImages.slice(0, 4).reverse().map((url, i, arr) => {
+                      const isTop = i === arr.length - 1;
+                      const offset = parsedImages.length > 1 ? (arr.length - 1 - i) * 8 : 0;
+                      
+                      return (
+                        <div key={i} style={{ 
+                          position: parsedImages.length > 1 ? 'absolute' : 'relative',
+                          top: offset, left: offset,
+                          width: parsedImages.length > 1 ? `calc(100% - ${offset}px)` : '100%',
+                          height: parsedImages.length > 1 ? `calc(100% - ${offset}px)` : 'auto',
+                          zIndex: i,
+                          borderRadius: '14px', overflow: 'hidden',
+                          border: parsedImages.length > 1 ? '2px solid var(--bg-main)' : 'none',
+                          boxShadow: parsedImages.length > 1 && !isTop ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
+                        }}>
+                          <img 
+                            src={getOptimizedImage(url)} 
+                            alt="Foto Kiriman" 
+                            onClick={(e) => { e.stopPropagation(); setPreviewImage(url); }} 
+                            style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                          />
+                          
+                          {/* OVERLAY LOADING SAAT MENGIRIM (Optimistic UI) */}
+                          {msg.status === 'sending' && isTop && (
+                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }} />
+                            </div>
+                          )}
+
+                          {/* COUNTER +X JIKA LEBIH DARI 4 */}
+                          {isTop && parsedImages.length > 4 && (
+                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: '24px', fontWeight: 'bold' }}>
+                              +{parsedImages.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* AREA RENDER SHARED POST CARD */}
+                {msg.shared_post && !isDeleted && (
+                  <div className="shared-post-card" onClick={(e) => { e.stopPropagation(); router.push(`/post/${msg.shared_post.id}`); }} style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '10px', width: '240px', marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <img src={msg.shared_post.author_avatar || '/asets/png/profile.webp'} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} alt="author" />
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)' }}>{msg.shared_post.author_username || 'User'}</span>
+                    </div>
+                    {msg.shared_post.image_url && (
+                      <img src={getOptimizedImage(msg.shared_post.image_url)} style={{ width: '100%', borderRadius: '8px', maxHeight: '200px', objectFit: 'cover', marginBottom: '8px' }} alt="post" />
+                    )}
+                    <div style={{ fontSize: '12px', color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {msg.shared_post.caption || 'Membagikan postingan...'}
+                    </div>
                   </div>
                 )}
 
@@ -513,7 +569,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 )}
 
                 {shouldShowText && (
-                  <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', wordBreak: 'break-word' }}>
+                  <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '0 6px' : '0', wordBreak: 'break-word' }}>
                     {isDeleted ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8, color: 'var(--text-muted)' }}>
                         <span className="material-icons" style={{ fontSize: '16px' }}>block</span>
@@ -523,47 +579,32 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                   </div>
                 )}
 
-                {/* AREA VOICE NOTE (VN) */}
+                {/* AREA VOICE NOTE (VN) DIPERBAIKI */}
                 {msg.audio_url && !isDeleted && (
-                  <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
+                  <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || msg.shared_post || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
                     <button 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleVN(); }} 
-                      className="vn-play-btn" 
                       disabled={msg.status === 'sending'} 
                       style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '50%', 
-                        background: 'rgba(255, 255, 255, 0.25)', 
-                        border: 'none', 
-                        color: '#fff', 
-                        flexShrink: 0, 
-                        cursor: 'pointer',
-                        outline: 'none'
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                        width: '40px', height: '40px', borderRadius: '50%', 
+                        background: 'var(--primary-blue, #1f3cff)', // Background solid biru agar icon putih terlihat jelas
+                        border: 'none', color: '#fff', flexShrink: 0, cursor: 'pointer', outline: 'none',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
                       }}
                     >
-                      {/* 🔥 PERBAIKAN 2: Mengubah fill ke "#ffffff" agar icon play/pause VN dipastikan terlihat */}
                       {msg.status === 'sending' ? (
-                        <motion.div
-                          animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                          style={{ width: '16px', height: '16px', border: '2px solid rgba(255, 255, 255, 0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }}
-                        />
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: '20px', height: '20px', border: '3px solid rgba(255, 255, 255, 0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }} />
                       ) : isPlaying ? (
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="#ffffff"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <span className="material-icons" style={{ color: 'white', fontSize: '24px' }}>pause</span>
                       ) : (
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="#ffffff" style={{marginLeft: '3px'}}><path d="M8 5v14l11-7z"/></svg>
+                        <span className="material-icons" style={{ color: 'white', fontSize: '24px', marginLeft: '2px' }}>play_arrow</span>
                       )}
                     </button>
                     
-                    <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '24px', flex: 1, marginLeft: '10px' }}>
+                    <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '24px', flex: 1, marginLeft: '12px' }}>
                       {waveData.map((heightPercent, i) => (
-                        <motion.div 
-                          key={i} animate={{ height: `${heightPercent}%` }} transition={{ duration: 0.1 }}
-                          style={{ width: '3px', background: isPlaying ? 'currentColor' : 'rgba(255,255,255,0.7)', borderRadius: '2px' }} 
-                        />
+                        <motion.div key={i} animate={{ height: `${heightPercent}%` }} transition={{ duration: 0.1 }} style={{ width: '3px', background: isPlaying ? 'currentColor' : 'rgba(255,255,255,0.7)', borderRadius: '2px' }} />
                       ))}
                     </div>
                     <span style={{ fontSize: '11px', fontWeight: 800, color: 'inherit', opacity: 0.8, marginLeft: '12px', marginRight: '4px' }}>VN</span>
@@ -571,23 +612,18 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 )}
 
                 {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                  <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '-12px' : '-16px' }}>
+                  <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '-12px' : '-16px' }}>
                     {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
                   </div>
                 )}
                 
-                <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                  
+                <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '4px' : '0', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
                   {isEdited && !isDeleted && (
-                    <span style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.6, marginRight: '2px' }}>
-                      (diedit)
-                    </span>
+                    <span style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.6, marginRight: '2px' }}>(diedit)</span>
                   )}
-                  
                   <span className="timestamp" style={{ fontSize: '10px', fontWeight: 500 }}>
                     {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
                   </span>
-                  
                   {isMe && getStatusIcon(msg.status || 'sent')}
                 </div>
               </div>

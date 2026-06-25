@@ -59,35 +59,7 @@ export default function ChatInputFooter({
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {replyTo && (
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                style={{ 
-                  display: 'flex', 
-                  background: 'var(--bg-secondary)',
-                  borderRadius: '12px 12px 0 0',
-                  padding: '10px 15px', 
-                  border: '1px solid var(--border-color)',
-                  borderBottom: 'none',
-                  position: 'absolute',
-                  bottom: '100%', 
-                  left: '0',
-                  right: '0',
-                  zIndex: 40,
-                  boxShadow: '0 -4px 10px rgba(0,0,0,0.03)'
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0, borderLeft: '3px solid #8338ec', paddingLeft: '10px' }}>
-                  <div style={{color: '#8338ec', fontSize: '12px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
-                  <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
-                </div>
-                <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 5px', display: 'flex', alignItems: 'center'}}>&times;</div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%', gap: '8px' }}>
             {isRecording ? (
               <div className="slim-input-wrapper" style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: 'var(--text-main)', fontWeight: 600 }}>
@@ -112,30 +84,89 @@ export default function ChatInputFooter({
                 </div>
               </div>
             ) : (
-              <div className="slim-input-wrapper">
-                <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
-                  <span className="material-icons" style={{ color: 'var(--text-main)' }}>sentiment_satisfied_alt</span>
-                </button>
-                
-                <textarea 
-                  placeholder="Tulis pesan..." 
-                  value={inputValue} 
-                  onChange={handleTyping} 
-                  rows={1}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 100) + 'px';
-                  }}
-                />
-                
-                <button className="action-icon-btn" onClick={handlePhotoClick} disabled={isUploadingImg}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                    <circle cx="12" cy="13" r="4"></circle>
-                  </svg>
-                </button>
-                <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
+              <div 
+                className="slim-input-wrapper"
+                style={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  background: 'var(--bg-secondary)', 
+                  borderRadius: '24px',
+                  padding: '4px 6px',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {/* KOTAK BALASAN (REPLY BOX) MENYATU DENGAN INPUT */}
+                <AnimatePresence>
+                  {replyTo && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0, marginTop: 0 }} 
+                      animate={{ opacity: 1, height: 'auto', marginTop: 4 }} 
+                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        background: 'rgba(131, 56, 236, 0.1)', 
+                        borderRadius: '16px',
+                        padding: '8px 12px', 
+                        margin: '0 4px',
+                        borderLeft: '4px solid #8338ec',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: '#8338ec', fontSize: '12px', fontWeight: 'bold', marginBottom: '2px' }}>
+                            {t('replying_to', { username: replyTo.profiles?.username })}
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {replyTo.message || t('media_label')}
+                          </div>
+                        </div>
+                        <div onClick={() => setReplyTo(null)} style={{ fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)', paddingLeft: '10px', display: 'flex', alignItems: 'center' }}>
+                          &times;
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* BARIS INPUT CHAT (EMOJI, TEKS, KAMERA) */}
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '2px 0' }}>
+                  <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
+                    <span className="material-icons" style={{ color: 'var(--text-main)' }}>sentiment_satisfied_alt</span>
+                  </button>
+                  
+                  <textarea 
+                    placeholder="Tulis pesan..." 
+                    value={inputValue} 
+                    onChange={handleTyping} 
+                    rows={1}
+                    style={{ 
+                      flex: 1, 
+                      background: 'transparent', 
+                      border: 'none', 
+                      outline: 'none', 
+                      color: 'var(--text-main)', 
+                      resize: 'none', 
+                      padding: '8px 4px',
+                      fontSize: '15px',
+                      maxHeight: '100px'
+                    }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = Math.min(target.scrollHeight, 100) + 'px';
+                    }}
+                  />
+                  
+                  <button className="action-icon-btn" onClick={handlePhotoClick} disabled={isUploadingImg}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                      <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                  </button>
+                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
+                </div>
               </div>
             )}
             
@@ -148,10 +179,11 @@ export default function ChatInputFooter({
               onTouchMove={!canSend ? handleMicTouchMove : undefined} 
               onClick={() => canSend && handleSendClick()}
               style={{
-                background: 'linear-gradient(135deg, #3a86ff 0%, #8338ec 100%)', /* 🔥 PERUBAHAN: Background biru campur ungu violet */
+                background: 'linear-gradient(135deg, #3a86ff 0%, #8338ec 100%)',
                 color: '#ffffff',
                 border: 'none',
-                boxShadow: '0 4px 10px rgba(131, 56, 236, 0.3)' /* Opsional: tambahan efek glow ungu halus */
+                boxShadow: '0 4px 10px rgba(131, 56, 236, 0.3)',
+                flexShrink: 0
               }}
             >
               <AnimatePresence mode="wait">
