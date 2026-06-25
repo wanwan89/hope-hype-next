@@ -7,7 +7,6 @@
   --bg-main: #ffffff;
   --text-main: #1c1e21;
   --bg-card: #ffffff;
-  /* Garis dibuat transparan agar tidak muncul */
   --border-card: transparent; 
   --text-muted: #64748b;
   --bg-modal: #ffffff;
@@ -21,7 +20,6 @@
   --primary: #1f3cff;
   --primary-soft: rgba(31, 60, 255, 0.1);
   
-  /* 🔥 Beri tahu browser: halaman ini mendukung light mode */
   color-scheme: light;
 }
 
@@ -29,7 +27,6 @@
   --bg-main: #0a0a0a; 
   --text-main: #f8fafc;
   --bg-card: #151515;
-  /* Garis dibuat transparan agar tidak muncul */
   --border-card: transparent;
   --text-muted: #94a3b8;
   --bg-modal: #111111;
@@ -39,7 +36,6 @@
   --bg-story-seen: #2c2c2c;
   --modal-overlay: rgba(0, 0, 0, 0.7);
   
-  /* 🔥 Beri tahu browser: halaman ini mendukung dark mode */
   color-scheme: dark;
 }
 
@@ -54,52 +50,75 @@
   outline: none !important; 
   user-select: none; 
   
-  /* 🔥 Transisi tetap ada, tapi tidak untuk html & body */
+  /* Transisi tetap ada untuk perubahan tema yang mulus,
+     tapi kita akan mematikannya di elemen kunci */
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
-/* Biar inputan & pesan tetep bisa di-copy/ketik */
+/* Biar inputan & pesan tetap bisa di-copy/ketik */
 input, textarea, [contenteditable="true"], .selectable { 
   user-select: text !important; 
   -webkit-touch-callout: default; 
   outline: none !important;
 }
 
-/* 🔥 PERBAIKAN UTAMA: html & body TIDAK BOLEH BERTRANSISI */
-html, body {
+/* ============== PERBAIKAN ANTI GLITCH PUTIH ============== */
+/* 1. html & body langsung pakai variabel background, tanpa transisi */
+html {
   background-color: var(--bg-main) !important;
+  transition: none !important;
   height: 100%;
   min-height: 100%;
   scroll-behavior: smooth;
-  
-  /* 🔥 MATIKAN transisi agar tidak ada animasi flash */
-  transition: none !important;
-  
   overscroll-behavior-y: auto; 
   overscroll-behavior-x: contain; 
 }
 
-body { 
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main);
+  transition: none !important; /* MATIKAN transisi di body */
   width: 100%;
   overflow-x: hidden;
-  font-family: 'Poppins', sans-serif; 
-  color: var(--text-main); 
+  font-family: 'Poppins', sans-serif;
   
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
 
-  /* ========== 🔥 ANTI ZOOM DI SEMUA HALAMAN ========== */
-  touch-action: manipulation;           /* Mencegah double-tap zoom & pinch zoom pada mobile */
-  -ms-touch-action: manipulation;      /* Dukungan IE/Edge */
-  -webkit-text-size-adjust: 100%;      /* Mencegah penyesuaian ukuran teks otomatis yang bisa memicu zoom */
+  /* ANTI ZOOM */
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  
-  /* Tambahan untuk mencegah zoom pada input */
   -webkit-user-zoom: fixed;
   user-zoom: fixed;
+}
+
+/* 2. Container utama Next.js (jika ada) juga tanpa transisi */
+#__next, #__nuxt, #app {
+  background-color: var(--bg-main) !important;
+  transition: none !important;
+  min-height: 100vh;
+}
+
+/* 3. Semua elemen yang langsung di dalam body kita matikan transisinya
+   agar tidak ada animasi background saat halaman pertama kali dimuat.
+   Setelah halaman siap, transisi bisa diaktifkan kembali via kelas .theme-ready */
+* {
+  transition: none !important;
+}
+
+/* Transisi hanya diaktifkan jika kelas .theme-ready sudah ditambahkan */
+html.theme-ready * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
+}
+
+/* Untuk input, textarea, dsb. transisi tetap seperti semula */
+input, textarea, [contenteditable="true"], .selectable {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 /* Tombol dan link */
