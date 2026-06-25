@@ -201,10 +201,14 @@ export default function HypeMatch() {
     if (action === 'like') {
       try {
         // 1. Catat like kita di database (Asumsi nama tabel 'user_likes')
-        await supabase.from('user_likes').upsert({
-          user_id: currentUser.id,
-          liked_user_id: activeUser.id,
-        });
+// 1. Catat like kita di database
+await supabase.from('user_likes').upsert({
+  user_id: currentUser.id,
+  liked_user_id: activeUser.id,
+}, { 
+  onConflict: 'user_id,liked_user_id' // Tambahkan baris ini!
+});
+
 
         // 2. Cek apakah user yang kita like sudah pernah me-like kita sebelumnya
         const { data: matchData } = await supabase
