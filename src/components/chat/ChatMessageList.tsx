@@ -63,8 +63,8 @@ export default function ChatMessageList({
                 currentUser={currentUser}
                 isMe={msg.user_id === currentUser?.id} 
                 onReply={setReplyTo} 
-                onEdit={onEdit}      {/* 👈 WAJIB DITAMBAHKAN: Teruskan ke MessageBubble */}
-                onDelete={onDelete}  {/* 👈 PERBAIKAN: Gunakan fungsi onDelete yang asli */}
+                onEdit={onEdit}      // 👈 PERBAIKAN: Menggunakan komentar inline standar
+                onDelete={onDelete}  // 👈 PERBAIKAN: Menggunakan komentar inline standar
                 isFirstUnread={isFirstUnread}
                 unreadCount={isFirstUnread ? messages.filter((m: any) => m.user_id !== currentUser?.id && m.status !== 'read').length : 0}
                 showDateSeparator={showDateSeparator}
