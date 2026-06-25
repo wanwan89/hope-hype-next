@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import './HypeMatchOverlay.css'; 
 
 type MatchUser = {
@@ -29,7 +30,6 @@ type MatchUser = {
   ig_username?: string;
   spotify_url?: string;
   tiktok_username?: string;
-  // --- Kolom Baru ---
   role?: string;
 };
 
@@ -42,8 +42,6 @@ const SvgIcon = ({ name, className = "" }: { name: string, className?: string })
   const fill = "none";
   const strokeWidth = "2";
 
-  // FIX: Semua icon yang terdiri dari lebih dari 1 tag (<path>, <circle>, dll) 
-  // HARUS dibungkus dengan React Fragment (<> ... </>)
   const icons: Record<string, React.ReactNode> = {
     location: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z" /><circle cx="12" cy="10" r="3" /></>,
     gender: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v6m-3-3h6M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" /></>,
@@ -92,15 +90,28 @@ export default function HypeMatch() {
         setIsLoading(true);
 
         const { data: authData } = await supabase.auth.getUser();
+        let myId = null;
+        let myGender = null;
+
         if (authData?.user) {
+          myId = authData.user.id;
           setCurrentUser({
-            id: authData.user.id,
-            avatar_url: 'https://via.placeholder.com/150',
+            id: myId,
+            avatar_url: authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
           });
+
+          // Ambil profil diri sendiri untuk mengecek gender
+          const { data: myProfile } = await supabase
+            .from('profiles')
+            .select('gender')
+            .eq('id', myId)
+            .single();
+          
+          if (myProfile) myGender = myProfile.gender;
         }
 
-        // Ambil data termasuk role
-        const { data, error } = await supabase
+        // Susun Query pencarian user
+        let query = supabase
           .from('profiles')
           .select(`
             id, username, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak,
@@ -108,6 +119,23 @@ export default function HypeMatch() {
             bahasa, agama, merokok, alkohol, olahraga, tujuan, ig_username, spotify_url, tiktok_username, role
           `)
           .limit(10);
+
+        // Filter: Jangan tampilkan diri sendiri
+        if (myId) {
+          query = query.neq('id', myId);
+        }
+
+        // Filter: Tampilkan hanya gender yang berlawanan
+        if (myGender) {
+          const genderLower = myGender.toLowerCase();
+          if (genderLower === 'laki-laki' || genderLower === 'pria') {
+            query = query.in('gender', ['Perempuan', 'Wanita']);
+          } else if (genderLower === 'perempuan' || genderLower === 'wanita') {
+            query = query.in('gender', ['Laki-laki', 'Pria']);
+          }
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -167,17 +195,41 @@ export default function HypeMatch() {
   };
 
   const handleAction = async (action: 'like' | 'pass') => {
-    if (!activeUser) return;
+    if (!activeUser || !currentUser) return;
     setDragX(action === 'like' ? -500 : 500); 
 
-    setTimeout(() => {
-      if (action === 'like') {
-        const isMatch = false; 
-        if (isMatch) setMatchedUser(activeUser);
-        else nextCard();
-      } else {
-        nextCard();
+    if (action === 'like') {
+      try {
+        // 1. Catat like kita di database (Asumsi nama tabel 'user_likes')
+        await supabase.from('user_likes').upsert({
+          user_id: currentUser.id,
+          liked_user_id: activeUser.id,
+        });
+
+        // 2. Cek apakah user yang kita like sudah pernah me-like kita sebelumnya
+        const { data: matchData } = await supabase
+          .from('user_likes')
+          .select('id')
+          .eq('user_id', activeUser.id)
+          .eq('liked_user_id', currentUser.id)
+          .maybeSingle();
+
+        // 3. Jika ketemu, maka statusnya saling suka (MATCH)
+        if (matchData) {
+          showNotif('Kamu mendapatkan Match baru!', 'success');
+          setTimeout(() => {
+            setMatchedUser(activeUser);
+          }, 300);
+          return; // Hentikan eksekusi nextCard untuk memunculkan layar Match
+        }
+      } catch (err) {
+        console.error("Gagal memproses like:", err);
       }
+    }
+
+    // Jika bukan match atau memilih pass, lanjut ke kartu berikutnya
+    setTimeout(() => {
+      nextCard();
     }, 300); 
   };
 
@@ -185,15 +237,15 @@ export default function HypeMatch() {
     setDragX(0);
     setCurrentIndex((prev) => prev + 1);
     
-    const scrollContainer = document.querySelector('.card-scroll-area');
+    const scrollContainer = document.querySelector('.hm-card-scroll-area');
     if (scrollContainer) scrollContainer.scrollTop = 0;
   };
 
   if (isLoading) {
     return (
-      <div className="hype-match-overlay flex-center">
-        <div className="overlay-backdrop"></div>
-        <h2 style={{ color: 'var(--text-main)', zIndex: 10 }} className="animate-pulse">
+      <div className="hm-overlay hm-flex-center">
+        <div className="hm-backdrop"></div>
+        <h2 style={{ color: 'var(--text-main)', zIndex: 10 }} className="hm-animate-pulse">
           Mencari Hype di sekitarmu...
         </h2>
       </div>
@@ -202,19 +254,19 @@ export default function HypeMatch() {
 
   if (matchedUser) {
     return (
-      <div className="hype-match-overlay match-success-bg glass-clean">
-        <div className="match-content">
-          <h2 className="match-title">HYPE MATCH!</h2>
+      <div className="hm-overlay hm-match-success-bg hm-glass-clean">
+        <div className="hm-match-content">
+          <h2 className="hm-match-title">HYPE MATCH!</h2>
           <p>Kamu dan <strong>{matchedUser.username}</strong> saling tertarik!</p>
-          <div className="match-avatars">
-            <img src={currentUser?.avatar_url} alt="You" className="avatar-circle" />
-            <span className="material-icons favorite-icon">favorite</span>
-            <img src={matchedUser.avatar_url} alt="Them" className="avatar-circle" />
+          <div className="hm-match-avatars">
+            <img src={currentUser?.avatar_url} alt="You" className="hm-avatar-circle" />
+            <span className="material-icons hm-favorite-icon">favorite</span>
+            <img src={matchedUser.avatar_url} alt="Them" className="hm-avatar-circle" />
           </div>
-          <button className="btn-chat-now glass-clean" onClick={() => router.push(`/hypetalk/room?from=${matchedUser.id}`)}>
+          <button className="hm-btn-chat-now hm-glass-clean" onClick={() => router.push(`/hypetalk/room?from=${matchedUser.id}`)}>
             Mulai Obrolan
           </button>
-          <button className="btn-keep-swiping" onClick={() => { setMatchedUser(null); nextCard(); }}>
+          <button className="hm-btn-keep-swiping" onClick={() => { setMatchedUser(null); nextCard(); }}>
             Lanjut Mencari
           </button>
         </div>
@@ -223,16 +275,17 @@ export default function HypeMatch() {
   }
 
   return (
-    <div className="hype-match-overlay">
-      <div className="overlay-backdrop" onClick={router.back}></div>
-      <button className="btn-close-overlay" onClick={router.back}>
+    <div className="hm-overlay">
+      <div className="hm-backdrop" onClick={router.back}></div>
+      {/* Posisi tombol X sekarang fixed di luar kartu penampung */}
+      <button className="hm-btn-close" onClick={router.back}>
         <span className="material-icons">close</span>
       </button>
 
-      <div className="card-container">
+      <div className="hm-card-container">
         {activeUser ? (
           <div 
-            className="match-card glass-clean"
+            className="hm-match-card hm-glass-clean"
             style={{
               overflow: 'hidden', 
               transform: `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`,
@@ -246,101 +299,81 @@ export default function HypeMatch() {
             onTouchMove={(e) => handleDragMove(e.touches[0].clientX, e.touches[0].clientY)}
             onTouchEnd={handleDragEnd}
           >
-            <div className="card-scroll-area" style={{ height: '100%', overflowY: 'auto', position: 'relative' }}>
+            <div className="hm-card-scroll-area">
               
-              <div style={{ position: 'relative', height: '100%', width: '100%', flexShrink: 0 }}>
+              <div className="hm-card-image-wrapper">
                 <img 
                   src={activeUser.avatar_url || 'https://via.placeholder.com/400x600'} 
                   alt="avatar" 
                   draggable="false" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
                 
-                {dragX < -50 && <div className="swipe-indicator like" style={{ position: 'absolute', top: 40, right: 20 }}>TERTARIK</div>}
-                {dragX > 50 && <div className="swipe-indicator pass" style={{ position: 'absolute', top: 40, left: 20 }}>LEWAT</div>}
+                {dragX < -50 && <div className="hm-swipe-indicator hm-like">TERTARIK</div>}
+                {dragX > 50 && <div className="hm-swipe-indicator hm-pass">LEWAT</div>}
                 
-                <div style={{ 
-                  position: 'absolute', bottom: 0, left: 0, right: 0, 
-                  padding: '40px 20px 20px 20px',
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%)',
-                  color: 'white',
-                  pointerEvents: 'none'
-                }}>
-                  <h2 style={{ margin: '0 0 8px 0', fontSize: '2rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    {activeUser.username} {activeUser.umur && <span>, {activeUser.umur}</span>}
+                <div className="hm-card-image-overlay">
+                  <h2 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    {activeUser.username} {activeUser.umur && <span>{activeUser.umur}</span>}
+                    {/* Menggunakan fungsi badge sesuai instruksi */}
                     {activeUser.role && (
-                      <span style={{
-                        background: 'linear-gradient(45deg, #FF3366, #FF9933)',
-                        color: 'white', fontSize: '0.85rem', fontWeight: 'bold',
-                        padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px'
-                      }}>
-                        {activeUser.role}
-                      </span>
+                      <div className="hm-role-badge">
+                        {getUserBadge(activeUser.role)}
+                      </div>
                     )}
                   </h2>
-                  <p style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', opacity: 0.9 }}>
+                  <p>
                     <SvgIcon name="location" />
                     {activeUser.lokasi || "Lokasi disembunyikan"}
                   </p>
                   
-                  <div style={{ textAlign: 'center', marginTop: '16px', opacity: 0.7 }} className="animate-bounce">
+                  <div className="hm-scroll-hint hm-animate-bounce">
                     <span className="material-icons">keyboard_arrow_down</span>
                   </div>
                 </div>
               </div>
 
-              <div style={{ 
-                position: 'relative', 
-                background: 'var(--bg-main, #ffffff)', 
-                zIndex: 10,
-                marginTop: '-24px', 
-                borderRadius: '24px 24px 0 0',
-                padding: '24px',
-                minHeight: '50%',
-                color: 'var(--text-main, #333)'
-              }}>
-                
-                <div className="detail-section" style={{ marginBottom: '24px' }}>
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', fontWeight: 'bold' }}>Tentang Diri</h3>
-                  <p style={{ lineHeight: '1.5', opacity: 0.8 }}>{activeUser.bio || "Belum ada bio yang ditulis."}</p>
+              <div className="hm-card-details">
+                <div className="hm-detail-section">
+                  <h3>Tentang Diri</h3>
+                  <p className="hm-bio-text">{activeUser.bio || "Belum ada bio yang ditulis."}</p>
                 </div>
 
-                <div className="detail-section" style={{ marginBottom: '24px' }}>
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '12px', fontWeight: 'bold' }}>Informasi Umum</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                    {activeUser.gender && <div className="info-chip"><SvgIcon name="gender" /> {activeUser.gender}</div>}
-                    {activeUser.pekerjaan && <div className="info-chip"><SvgIcon name="job" /> {activeUser.pekerjaan}</div>}
-                    {activeUser.pendidikan && <div className="info-chip"><SvgIcon name="education" /> {activeUser.pendidikan}</div>}
-                    {activeUser.tinggi_badan && <div className="info-chip"><SvgIcon name="height" /> {activeUser.tinggi_badan} cm</div>}
-                    {activeUser.agama && <div className="info-chip"><SvgIcon name="religion" /> {activeUser.agama}</div>}
-                    {activeUser.zodiak && <div className="info-chip"><SvgIcon name="zodiac" /> {activeUser.zodiak}</div>}
+                <div className="hm-detail-section">
+                  <h3>Informasi Umum</h3>
+                  <div className="hm-info-grid">
+                    {activeUser.gender && <div className="hm-info-chip"><SvgIcon name="gender" /> {activeUser.gender}</div>}
+                    {activeUser.pekerjaan && <div className="hm-info-chip"><SvgIcon name="job" /> {activeUser.pekerjaan}</div>}
+                    {activeUser.pendidikan && <div className="hm-info-chip"><SvgIcon name="education" /> {activeUser.pendidikan}</div>}
+                    {activeUser.tinggi_badan && <div className="hm-info-chip"><SvgIcon name="height" /> {activeUser.tinggi_badan} cm</div>}
+                    {activeUser.agama && <div className="hm-info-chip"><SvgIcon name="religion" /> {activeUser.agama}</div>}
+                    {activeUser.zodiak && <div className="hm-info-chip"><SvgIcon name="zodiac" /> {activeUser.zodiak}</div>}
                   </div>
                 </div>
 
-                <div className="detail-section" style={{ marginBottom: '24px' }}>
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '12px', fontWeight: 'bold' }}>Gaya Hidup & Minat</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                    {activeUser.tujuan && <div className="info-chip outline"><SvgIcon name="target" /> {activeUser.tujuan}</div>}
-                    {activeUser.hobi && <div className="info-chip outline"><SvgIcon name="hobby" /> {activeUser.hobi}</div>}
-                    {activeUser.olahraga && <div className="info-chip outline"><SvgIcon name="sport" /> {activeUser.olahraga}</div>}
-                    {activeUser.merokok && <div className="info-chip outline"><SvgIcon name="smoke" /> {activeUser.merokok}</div>}
-                    {activeUser.alkohol && <div className="info-chip outline"><SvgIcon name="alcohol" /> {activeUser.alkohol}</div>}
+                <div className="hm-detail-section">
+                  <h3>Gaya Hidup & Minat</h3>
+                  <div className="hm-info-grid">
+                    {activeUser.tujuan && <div className="hm-info-chip hm-outline"><SvgIcon name="target" /> {activeUser.tujuan}</div>}
+                    {activeUser.hobi && <div className="hm-info-chip hm-outline"><SvgIcon name="hobby" /> {activeUser.hobi}</div>}
+                    {activeUser.olahraga && <div className="hm-info-chip hm-outline"><SvgIcon name="sport" /> {activeUser.olahraga}</div>}
+                    {activeUser.merokok && <div className="hm-info-chip hm-outline"><SvgIcon name="smoke" /> {activeUser.merokok}</div>}
+                    {activeUser.alkohol && <div className="hm-info-chip hm-outline"><SvgIcon name="alcohol" /> {activeUser.alkohol}</div>}
                   </div>
                 </div>
 
                 {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
-                  <div className="detail-section" style={{ marginBottom: '40px' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '12px', fontWeight: 'bold' }}>Media Sosial</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {activeUser.ig_username && <div className="social-chip" style={{ display: 'flex', alignItems: 'center', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '12px' }}>
-                        <span style={{ fontWeight: 'bold', marginRight: '8px' }}>IG</span> @{activeUser.ig_username}
+                  <div className="hm-detail-section" style={{ marginBottom: '40px' }}>
+                    <h3>Media Sosial</h3>
+                    <div className="hm-social-links">
+                      {activeUser.ig_username && <div className="hm-social-chip">
+                        <span style={{ fontWeight: 'bold' }}>IG</span> @{activeUser.ig_username}
                       </div>}
-                      {activeUser.tiktok_username && <div className="social-chip" style={{ display: 'flex', alignItems: 'center', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '12px' }}>
-                        <span style={{ fontWeight: 'bold', marginRight: '8px' }}>TikTok</span> @{activeUser.tiktok_username}
+                      {activeUser.tiktok_username && <div className="hm-social-chip">
+                        <span style={{ fontWeight: 'bold' }}>TikTok</span> @{activeUser.tiktok_username}
                       </div>}
-                      {activeUser.spotify_url && <a href={activeUser.spotify_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <div className="social-chip" style={{ display: 'flex', alignItems: 'center', padding: '10px', background: '#1DB954', color: 'white', borderRadius: '12px' }}>
-                          <span style={{ fontWeight: 'bold', marginRight: '8px' }}>Spotify</span> Buka Playlist
+                      {activeUser.spotify_url && <a href={activeUser.spotify_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                        <div className="hm-social-chip" style={{ background: '#1DB954', color: 'white' }}>
+                          <span style={{ fontWeight: 'bold' }}>Spotify</span> Buka Playlist
                         </div>
                       </a>}
                     </div>
@@ -352,19 +385,19 @@ export default function HypeMatch() {
             </div>
           </div>
         ) : (
-          <div className="empty-state glass-clean">
-            <span className="material-icons empty-icon">sentiment_dissatisfied</span>
+          <div className="hm-empty-state hm-glass-clean">
+            <span className="material-icons hm-empty-icon">sentiment_dissatisfied</span>
             <p>Tidak ada lagi pengguna di sekitarmu.</p>
           </div>
         )}
       </div>
 
       {activeUser && (
-        <div className="action-buttons" style={{ zIndex: 100 }}>
-          <button className="btn-action btn-pass glass-clean" onClick={() => handleAction('pass')}>
+        <div className="hm-action-buttons">
+          <button className="hm-btn-action hm-btn-pass hm-glass-clean" onClick={() => handleAction('pass')}>
             <span className="material-icons">close</span>
           </button>
-          <button className="btn-action btn-like glass-clean" onClick={() => handleAction('like')}>
+          <button className="hm-btn-action hm-btn-like hm-glass-clean" onClick={() => handleAction('like')}>
             <span className="material-icons">favorite</span>
           </button>
         </div>
