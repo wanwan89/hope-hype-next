@@ -314,11 +314,13 @@ export default function HypeMatch() {
                 <div className="hm-card-image-overlay">
                   <h2 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                     {activeUser.username} {activeUser.umur && <span>{activeUser.umur}</span>}
-                    {/* Menggunakan fungsi badge sesuai instruksi */}
+                    
+                    {/* BAGIAN YANG DIPERBAIKI: Menggunakan dangerouslySetInnerHTML */}
                     {activeUser.role && (
-                      <div className="hm-role-badge">
-                        {getUserBadge(activeUser.role)}
-                      </div>
+                      <div 
+                        className="hm-role-badge"
+                        dangerouslySetInnerHTML={{ __html: getUserBadge(activeUser.role) as string }}
+                      />
                     )}
                   </h2>
                   <p>
