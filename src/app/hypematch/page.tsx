@@ -256,29 +256,22 @@ export default function HypeMatch() {
     
     try {
       const { error } = await supabase.from('messages').insert({
-        sender_id: currentUser.id,
-
-        // PENTING: Ganti 'receiver_id' dengan nama kolom yang benar di tabel messages kamu!
-        // Misalnya: 'recipient_id', 'to_user_id', atau 'target_user'
-        receiver_id: matchedUser.id, 
-
-        // PENTING: Pastikan kolom teks pesannya bernama 'message'. Jika bukan, ganti.
-        // Misalnya: 'content', 'text', dll.
-        message: messageText
+        // Ganti nama kolom di bawah sesuai hasil SQL di atas
+        user_id: currentUser.id,      // Sesuaikan nama kolom pengirim
+        target_id: matchedUser.id,    // Sesuaikan nama kolom penerima
+        message: messageText          // Pastikan ini benar 'message'
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       showNotif('Pesan sapaan terkirim!', 'success');
       router.push(`/hypetalk/room?from=${matchedUser.id}`);
     } catch (error: any) {
       console.error("Gagal mengirim pesan:", error);
-      // Agar errornya lebih jelas kalau kolomnya masih salah
-      showNotif('Error: Cek kembali nama kolom di Database!', 'error'); 
+      showNotif('Gagal: Cek log console untuk detail kolom!', 'error'); 
     }
-  };
+};
+
 
   // Tampilan Animasi Opening yang Baru (Simple & Elegan)
   if (isLoading) {
