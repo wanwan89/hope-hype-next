@@ -1,3 +1,5 @@
+'use client';
+
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ChatInputFooter({
@@ -9,7 +11,6 @@ export default function ChatInputFooter({
   handleSendClick, editMessageId
 }: any) {
 
-  // 🔥 PERUBAHAN: Menghapus borderTop agar garis atas hilang
   return (
     <footer className="chat-input-container" style={{ padding: '8px 10px', background: 'var(--bg-main)', borderTop: 'none' }}>
       {chatState === 'i_must_approve' ? (
@@ -53,7 +54,7 @@ export default function ChatInputFooter({
             {replyTo && (
               <motion.div 
                 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                style={{ display: 'flex', background: 'rgba(29, 161, 242, 0.05)', borderRadius: '12px', padding: '8px 12px', marginBottom: '8px', border: '1px solid rgba(29, 161, 242, 0.1)', position: 'relative' }}
+                style={{ display: 'flex', background: 'rgba(31, 60, 255, 0.05)', borderRadius: '12px', padding: '8px 12px', marginBottom: '8px', border: '1px solid rgba(31, 60, 255, 0.1)', position: 'relative' }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
@@ -66,7 +67,7 @@ export default function ChatInputFooter({
 
           <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%' }}>
             {isRecording ? (
-              <div className="slim-input-wrapper" style={{ flex: 1 }}>
+              <div className="slim-input-wrapper" style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: '24px', padding: '2px 10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600 }}>
                   <span className="online-dot" style={{ background: '#ff4757' }}></span>
                   <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
@@ -85,10 +86,17 @@ export default function ChatInputFooter({
                 </div>
               </div>
             ) : (
-              <div className="slim-input-wrapper">
-                <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
-                  {/* 🔥 PERUBAHAN: Mengubah color menjadi var(--text-main) agar adaptif */}
-                  <span className="material-icons" style={{ color: 'var(--text-main)' }}>sentiment_satisfied_alt</span>
+              // 🔥 PERUBAHAN: Style background input agar lebih smooth dan blur (glass effect tipis)
+              <div className="slim-input-wrapper" style={{ 
+                display: 'flex', flex: 1, alignItems: 'center', 
+                background: 'var(--bg-secondary)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '24px', 
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)' 
+              }}>
+                <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }} style={{ padding: '8px', background: 'transparent', border: 'none' }}>
+                  <span className="material-icons" style={{ color: 'var(--text-main)', fontSize: '24px' }}>sentiment_satisfied_alt</span>
                 </button>
                 
                 <textarea 
@@ -96,6 +104,7 @@ export default function ChatInputFooter({
                   value={inputValue} 
                   onChange={handleTyping} 
                   rows={1}
+                  style={{ flex: 1, border: 'none', background: 'transparent', color: 'var(--text-main)', padding: '12px 4px', fontSize: '15px', resize: 'none', outline: 'none' }}
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
@@ -103,7 +112,7 @@ export default function ChatInputFooter({
                   }}
                 />
                 
-                <button className="action-icon-btn" onClick={handlePhotoClick} disabled={isUploadingImg}>
+                <button className="action-icon-btn" onClick={handlePhotoClick} disabled={isUploadingImg} style={{ padding: '8px', background: 'transparent', border: 'none' }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                     <circle cx="12" cy="13" r="4"></circle>
@@ -121,6 +130,7 @@ export default function ChatInputFooter({
               onTouchEnd={!canSend ? () => stopVN(false) : undefined} 
               onTouchMove={!canSend ? handleMicTouchMove : undefined} 
               onClick={() => canSend && handleSendClick()}
+              style={{ marginLeft: '8px' }}
             >
               <AnimatePresence mode="wait">
                 <motion.span
