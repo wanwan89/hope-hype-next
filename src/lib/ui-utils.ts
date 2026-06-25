@@ -121,43 +121,93 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   if (typeof window === 'undefined') return;
 
   let toast = document.getElementById("toast");
+  
+  // Buat elemen toast dan style-nya jika belum ada
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "toast";
+    
+    const style = document.createElement("style");
+    style.innerHTML = `
+      #toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translate(-50%, 20px);
+        opacity: 0;
+        visibility: hidden;
+        z-index: 999999;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        max-width: 90vw;
+        width: max-content;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
+        
+        /* Light Mode: Glass Hitam */
+        background: rgba(20, 20, 20, 0.75);
+        color: #ffffff;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+      
+      #toast.show {
+        transform: translate(-50%, 0);
+        opacity: 1;
+        visibility: visible;
+      }
+
+      /* Dark Mode: Glass Putih */
+      @media (prefers-color-scheme: dark) {
+        #toast {
+          background: rgba(255, 255, 255, 0.8);
+          color: #111111;
+          border: 1px solid rgba(0, 0, 0, 0.05);
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+      }
+      
+      /* Dukungan untuk framework dengan class .dark (seperti Tailwind) */
+      .dark #toast {
+        background: rgba(255, 255, 255, 0.8);
+        color: #111111;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+    `;
+    document.head.appendChild(style);
     document.body.appendChild(toast);
   }
   
   clearTimeout(toastTimer);
-  toast.className = "toast-card " + type;
   
-  const getIcon = (t: string) => {
-    switch (t) { 
-      case "success": return "✓"; 
-      case "warning": return "⚠"; 
-      case "error": return "✕"; 
-      default: return "i"; 
-    }
-  };
-
-  toast.innerHTML = `
-    <div class="toast-icon-wrap ${type}"><div class="toast-icon">${getIcon(type)}</div></div>
-    <div class="toast-content">
-      <div class="toast-title">${title}</div>
-      ${message ? `<div class="toast-subtitle">${message}</div>` : ""}
-    </div>
-    <button class="toast-close" style="background:transparent;border:none;color:inherit;cursor:pointer;">✕</button>
-  `;
+  // Tampilkan hanya teks, gabungkan title dan message jika keduanya ada
+  toast.textContent = message ? `${title} - ${message}` : title;
   
+  // Animasi masuk
   requestAnimationFrame(() => toast!.classList.add("show"));
   
-  const closeBtn = toast.querySelector(".toast-close") as HTMLElement;
-  if (closeBtn) closeBtn.onclick = () => hideToast();
-  
-  toastTimer = setTimeout(() => hideToast(), 3200);
+  // Animasi keluar otomatis
+  toastTimer = setTimeout(() => hideToast(), 3000);
 }
 
 export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-  showToast(type === 'error' ? 'Gagal' : type === 'success' ? 'Berhasil' : 'Info', msg, type);
+  // Karena desain minimalis, kita hilangkan icon type dan fokus pada pesan
+  let prefix = "";
+  if (type === 'error') prefix = "Gagal";
+  else if (type === 'success') prefix = "Berhasil";
+  else if (type === 'warning') prefix = "Peringatan";
+  
+  // Jika ada prefix, pisahkan dengan isi pesan. Jika tidak, jadikan pesan sebagai title langsung.
+  if (prefix) {
+    showToast(prefix, msg);
+  } else {
+    showToast(msg);
+  }
 };
 
 // =======================
