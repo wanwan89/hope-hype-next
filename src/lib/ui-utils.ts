@@ -1,158 +1,151 @@
-// src/lib/ui-utils.ts
-
+// src/lib/ui-utils.tsx
+import React from 'react';
 import { supabase } from '@/lib/supabase';
 
 // =======================
 // DYNAMIC BADGE SYSTEM
 // =======================
-export function getUserBadge(role: string): string {
-  if (!role) return "";
-  let badge = "";
+export function getUserBadge(role: string): React.ReactNode {
+  if (!role) return null;
   const roleLower = role.toLowerCase();
 
   if (roleLower === "admin") {
-    badge += `
-      <style>
-        @keyframes drawLeftToRight {
-          0%   { stroke-dashoffset: 1; opacity: 0; }
-          15%  { opacity: 1; }
-          50%  { stroke-dashoffset: 0; opacity: 1; }
-          70%  { opacity: 0; }
-          100% { stroke-dashoffset: 1; opacity: 0; }
-        }
+    return (
+      <>
+        <style>{`
+          @keyframes drawLeftToRight {
+            0%   { stroke-dashoffset: 1; opacity: 0; }
+            15%  { opacity: 1; }
+            50%  { stroke-dashoffset: 0; opacity: 1; }
+            70%  { opacity: 0; }
+            100% { stroke-dashoffset: 1; opacity: 0; }
+          }
 
-        .admin-badge-container {
-          background: linear-gradient(135deg, #1f3cff, #bc13fe);
-          color: white;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 10px;
-          margin-left: 5px;
-          display: inline-flex;
-          align-items: center;
-          vertical-align: middle;
-          font-weight: 500;
-          box-shadow: none;
-          border: none;
-        }
+          .admin-badge-container {
+            background: linear-gradient(135deg, #1f3cff, #bc13fe);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 5px;
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            font-weight: 500;
+            box-shadow: none;
+            border: none;
+          }
 
-        .scribble-path-admin {
-          stroke: white;
-          stroke-width: 3;
-          stroke-linecap: round;
-          stroke-linejoin: round;
-          fill: none;
-          stroke-dasharray: 1;
-          stroke-dashoffset: 1;
-          animation: drawLeftToRight 2.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-        }
-      </style>
+          .scribble-path-admin {
+            stroke: white;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            stroke-dasharray: 1;
+            stroke-dashoffset: 1;
+            animation: drawLeftToRight 2.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+          }
+        `}</style>
 
-      <span class="admin-badge-container">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>
-        
-        <svg width="26" height="12" viewBox="0 0 60 20" style="overflow: visible;">
-          <path class="scribble-path-admin" d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6" pathLength="1" />
-          <path class="scribble-path-admin" d="M28 4v12 M28 4h8 M28 10h6 M28 16h8" pathLength="1" />
-          <path class="scribble-path-admin" d="M45 4l5 12 5-12" pathLength="1" />
-        </svg>
-      </span>`;
+        <span className="admin-badge-container">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '5px' }}>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          
+          <svg width="26" height="12" viewBox="0 0 60 20" style={{ overflow: 'visible' }}>
+            <path className="scribble-path-admin" d="M10 4v12 M10 4c10 0 12 4 12 6s-2 6-12 6" pathLength="1" />
+            <path className="scribble-path-admin" d="M28 4v12 M28 4h8 M28 10h6 M28 16h8" pathLength="1" />
+            <path className="scribble-path-admin" d="M45 4l5 12 5-12" pathLength="1" />
+          </svg>
+        </span>
+      </>
+    );
   }
 
   if (roleLower === "verified") {
-    badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+    return (
+      <span className="verified-badge" style={{ marginLeft: '5px' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" style={{ verticalAlign: 'middle' }}>
+          <circle cx="12" cy="12" r="10" fill="#1DA1F2" />
+          <path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    );
   }
 
-// -- CROWN BADGES dengan SVG statis & teks animasi keluar ke kanan --
-if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") {
-  // CSS untuk animasi teks berulang dari dalam SVG
-  const crownStyles = `
-    <style>
-      .crown-badge-wrapper {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        margin-left: 5px;
-        vertical-align: middle;
-        width: 18px;
-        height: 18px;
-        overflow: hidden; /* penting: agar teks tidak terlihat di luar ikon */
-        flex-shrink: 0;
-      }
-      .crown-icon {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-      }
-      .crown-text {
-        position: absolute;
-        left: -100%; /* mulai dari luar kiri (dalam area ikon) */
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 8px;
-        font-weight: 900;
-        white-space: nowrap;
-        line-height: 1;
-        color: #ffffff;
-        text-shadow: 0 0 4px rgba(0,0,0,0.7);
-        animation: crown-text-slide 2s ease-in-out infinite;
-        z-index: 2;
-      }
-      @keyframes crown-text-slide {
-        0% {
-          left: -100%;
-          opacity: 0;
-        }
-        15% {
-          opacity: 1;
-        }
-        50% {
-          left: 40%;
-          opacity: 1;
-        }
-        85% {
-          opacity: 0;
-        }
-        100% {
-          left: 110%;
-          opacity: 0;
-        }
-      }
-    </style>`;
+  // -- CROWN BADGES dengan SVG statis & teks animasi keluar ke kanan --
+  if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") {
+    let fillColor = "";
+    let labelText = "";
+    
+    if (roleLower === "crown1") {
+      fillColor = "#EF4444";  // merah
+      labelText = "BEAST";
+    } else if (roleLower === "crown2") {
+      fillColor = "#EAB308";  // kuning
+      labelText = "PRO";
+    } else {
+      fillColor = "#3B82F6";  // biru
+      labelText = "LEGEND";
+    }
 
-  // Tentukan warna SVG & teks
-  let fillColor = "";
-  let labelText = "";
-  if (roleLower === "crown1") {
-    fillColor = "#EF4444";  // merah
-    labelText = "BEAST";
-  } else if (roleLower === "crown2") {
-    fillColor = "#EAB308";  // kuning
-    labelText = "PRO";
-  } else {
-    fillColor = "#3B82F6";  // biru
-    labelText = "LEGEND";
+    return (
+      <>
+        <style>{`
+          .crown-badge-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 5px;
+            vertical-align: middle;
+            width: 18px;
+            height: 18px;
+            overflow: hidden;
+            flex-shrink: 0;
+          }
+          .crown-icon {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+          }
+          .crown-text {
+            position: absolute;
+            left: -100%;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 8px;
+            font-weight: 900;
+            white-space: nowrap;
+            line-height: 1;
+            color: #ffffff;
+            text-shadow: 0 0 4px rgba(0,0,0,0.7);
+            animation: crown-text-slide 2s ease-in-out infinite;
+            z-index: 2;
+          }
+          @keyframes crown-text-slide {
+            0% { left: -100%; opacity: 0; }
+            15% { opacity: 1; }
+            50% { left: 40%; opacity: 1; }
+            85% { opacity: 0; }
+            100% { left: 110%; opacity: 0; }
+          }
+        `}</style>
+        <span className="crown-badge-wrapper">
+          <svg className="crown-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={fillColor}>
+            <g fill={fillColor}>
+              <path d="m14.092 10.75l-.75 2.5H9.908l.75-2.5h3.434Z" />
+              <path fillRule="evenodd" d="M3.464 3.464C2 4.93 2 7.286 2 12c0 4.714 0 7.071 1.464 8.535C4.93 22 7.286 22 12 22c4.714 0 7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464Zm7.752 2.818a.75.75 0 0 1 .502.934l-.61 2.034h3.434l.74-2.465a.75.75 0 0 1 1.436.43l-.61 2.035H18a.75.75 0 0 1 0 1.5h-2.342l-.75 2.5H17a.75.75 0 0 1 0 1.5h-2.542l-.74 2.465a.75.75 0 0 1-1.436-.43l.61-2.035H9.458l-.74 2.465a.75.75 0 1 1-1.436-.43l.61-2.035H6a.75.75 0 0 1 0-1.5h2.342l.75-2.5H7a.75.75 0 0 1 0-1.5h2.542l.74-2.465a.75.75 0 0 1 .934-.503Z" clipRule="evenodd" />
+            </g>
+          </svg>
+          <span className="crown-text">{labelText}</span>
+        </span>
+      </>
+    );
   }
 
-  badge += crownStyles;
-  badge += `
-    <span class="crown-badge-wrapper">
-      <!-- SVG tetap diam sebagai background -->
-      <svg class="crown-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${fillColor}">
-        <g fill="${fillColor}">
-          <path d="m14.092 10.75l-.75 2.5H9.908l.75-2.5h3.434Z"/>
-          <path fill-rule="evenodd" d="M3.464 3.464C2 4.93 2 7.286 2 12c0 4.714 0 7.071 1.464 8.535C4.93 22 7.286 22 12 22c4.714 0 7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464Zm7.752 2.818a.75.75 0 0 1 .502.934l-.61 2.034h3.434l.74-2.465a.75.75 0 0 1 1.436.43l-.61 2.035H18a.75.75 0 0 1 0 1.5h-2.342l-.75 2.5H17a.75.75 0 0 1 0 1.5h-2.542l-.74 2.465a.75.75 0 0 1-1.436-.43l.61-2.035H9.458l-.74 2.465a.75.75 0 1 1-1.436-.43l.61-2.035H6a.75.75 0 0 1 0-1.5h2.342l.75-2.5H7a.75.75 0 0 1 0-1.5h2.542l.74-2.465a.75.75 0 0 1 .934-.503Z" clip-rule="evenodd"/>
-        </g>
-      </svg>
-      <!-- Teks yang bergerak berulang dari dalam ke kanan -->
-      <span class="crown-text">${labelText}</span>
-    </span>`;
-}
-
-  return badge;
+  return null;
 }
 
 // =======================
