@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase'; // Pastikan path ini sesuai dengan file supabase kamu
-import './HypeMatchOverlay.css'; // Import file CSS khusus di sini
+import './HypeMatchOverlay.css'; // Import file CSS khusus di bawah
 
 type MatchUser = {
   id: string;
@@ -44,25 +44,24 @@ export default function HypeMatch() {
       try {
         setIsLoading(true);
 
-        // 1. Ambil session user kamu sendiri (Opsional)
+        // 1. Ambil session user kamu sendiri
         const { data: authData } = await supabase.auth.getUser();
         if (authData?.user) {
           setCurrentUser({
             id: authData.user.id,
-            avatar_url: 'https://via.placeholder.com/150', // Bisa disesuaikan dengan avatar asli
+            avatar_url: 'https://via.placeholder.com/150',
           });
         }
 
-        // 2. Tarik data dari tabel profiles (FIXED: Menggunakan 'username' bukan 'user')
+        // 2. Tarik data dari tabel profiles
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak')
-          .limit(10); // Ambil 10 data
+          .limit(10);
 
         if (error) throw error;
 
         if (data) {
-          // Berikan fallback nama jika username kebetulan kosong di database
           const cleanUsers = data.map((profile: any) => ({
             ...profile,
             username: profile.username || 'Anonim',
@@ -145,7 +144,7 @@ export default function HypeMatch() {
       if (action === 'like') {
         console.log('Menyukai user:', activeUser.id);
         
-        const isMatch = false; // Ubah jadi true kalau kamu mau ngetest layar MATCH!
+        const isMatch = false; // Set true jika ingin testing modul match-success screen
         
         if (isMatch) {
           setMatchedUser(activeUser);
@@ -174,12 +173,14 @@ export default function HypeMatch() {
     router.back(); 
   };
 
-  // Tampilan Loading sebelum data siap
+  // Tampilan Loading Sinkron dengan Tema Global
   if (isLoading) {
     return (
       <div className="hype-match-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div className="overlay-backdrop"></div>
-        <h2 style={{ color: 'white', zIndex: 10 }}>Mencari Hype di sekitarmu...</h2>
+        <h2 style={{ color: 'var(--text-main)', zIndex: 10 }} className="animate-pulse text-lg font-medium">
+          Mencari Hype di sekitarmu...
+        </h2>
       </div>
     );
   }
