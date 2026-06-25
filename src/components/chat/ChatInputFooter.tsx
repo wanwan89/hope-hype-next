@@ -8,8 +8,9 @@ export default function ChatInputFooter({
   handlePhotoSelect, canSend, handleMicTouchStart, stopVN, handleMicTouchMove,
   handleSendClick, editMessageId
 }: any) {
+
+  // 🔥 PERUBAHAN: Menghapus borderTop agar garis atas hilang
   return (
-    {/* 🔥 PERUBAHAN: Menghapus borderTop agar garis atas hilang */}
     <footer className="chat-input-container" style={{ padding: '8px 10px', background: 'var(--bg-main)', borderTop: 'none' }}>
       {chatState === 'i_must_approve' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'center' }}>

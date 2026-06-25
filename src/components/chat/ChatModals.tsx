@@ -18,7 +18,8 @@ export default function ChatModals({
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', zIndex: 9999999, display: 'flex', flexDirection: 'column' }}
           >
-            <div style={{ padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+            {/* 🔥 PERUBAHAN: Background header diubah menjadi hitam solid (#000000) */}
+            <div style={{ padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000000', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
               <button onClick={() => { setPendingImage(null); setPendingImagePreview(null); setImageCaption(''); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
                 <span className="material-icons" style={{fontSize: '28px'}}>close</span>
               </button>
@@ -37,7 +38,7 @@ export default function ChatModals({
                   value={imageCaption}
                   onChange={(e) => setImageCaption(e.target.value)}
                   rows={1}
-                  style={{ width: '100%', padding: '8px 4px', fontSize: '15px' }}
+                  style={{ width: '100%', padding: '8px 4px', fontSize: '15px', color: 'var(--text-main)', background: 'transparent', border: 'none', outline: 'none' }}
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
@@ -57,15 +58,17 @@ export default function ChatModals({
       <AnimatePresence>
         {isGroupSettingsOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            {/* 🔥 PERUBAHAN: Overlay diubah dari rgba transparan menjadi var(--bg-main) solid */}
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+              style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)' }}
               onClick={() => setIsGroupSettingsOpen(false)}
             />
+            {/* 🔥 PERUBAHAN: Background modal list anggota menggunakan var(--bg-card) yang solid */}
             <motion.div 
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              style={{ position: 'relative', background: 'var(--bg-main)', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '85vh' }}
+              style={{ position: 'relative', background: 'var(--bg-card)', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '85vh' }}
             >
               <div style={{ width: '40px', height: '5px', background: 'var(--border-color)', borderRadius: '10px', margin: '0 auto 10px' }} />
               
@@ -82,7 +85,7 @@ export default function ChatModals({
                         placeholder="Username atau #ShortID" 
                         value={inviteSearch} 
                         onChange={e => setInviteSearch(e.target.value)} 
-                        style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-color)', outline: 'none' }}
+                        style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-main)', outline: 'none' }}
                       />
                       <button 
                         onClick={handleAddMember} 
@@ -121,7 +124,7 @@ export default function ChatModals({
                         <input 
                           value={newGroupName} 
                           onChange={e => setNewGroupName(e.target.value)} 
-                          style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-color)', textAlign: 'center', fontWeight: 'bold' }}
+                          style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-main)', textAlign: 'center', fontWeight: 'bold', outline: 'none' }}
                         />
                         <button 
                           onClick={() => updateGroupInfo('name', newGroupName)} 
