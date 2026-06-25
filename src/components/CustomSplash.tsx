@@ -4,13 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function SplashContent() {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setReady(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <motion.div
       key="splash"
@@ -103,21 +96,39 @@ function SplashContent() {
 export default function CustomSplash() {
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
 
+  // Efek pertama: tentukan apakah splash perlu ditampilkan (berdasarkan sessionStorage)
   useEffect(() => {
     try {
       const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
       if (!hasSeenSplash) {
+        // Baru pertama kali di sesi ini → tampilkan
         setIsVisible(true);
+        // Tandai segera agar refresh tidak ulangi
         sessionStorage.setItem('hasSeenSplash', 'true');
       } else {
+        // Sudah pernah lihat → jangan tampilkan
         setIsVisible(false);
       }
     } catch (error) {
-      // Jika sessionStorage tidak tersedia (misal di SSR atau browser tertentu)
+      // Jika sessionStorage tidak tersedia (misal SSR atau browser tertentu)
       setIsVisible(false);
     }
   }, []);
 
+  // Efek kedua: timer untuk menyembunyikan splash setelah 2,5 detik
+  useEffect(() => {
+    // Hanya jalankan timer jika splash sedang terlihat
+    if (isVisible !== true) return;
+
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+    }, 2500);
+
+    // Bersihkan timer jika komponen unmount atau isVisible berubah
+    return () => clearTimeout(timer);
+  }, [isVisible]);
+
+  // Selama state masih null atau false, jangan render apa-apa
   if (isVisible === null || isVisible === false) return null;
 
   return (
