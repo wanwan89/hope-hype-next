@@ -522,4 +522,21 @@
   border-top: 1px solid var(--border-card);
   padding-top: 10px;
 }
-  
+  .custom-input {
+  width: 100%;
+  padding: 14px 16px;
+  background-color: var(--bg-secondary, #f1f5f9);
+  border: 1px solid var(--border-card, transparent);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text-main, #333);
+  box-sizing: border-box;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.custom-input:focus {
+  border-color: var(--primary, #2563eb);
+  background-color: var(--bg-card, #ffffff);
+}
