@@ -18,27 +18,40 @@ export default function ChatModals({
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', zIndex: 9999999, display: 'flex', flexDirection: 'column' }}
           >
-            {/* 🔥 PERUBAHAN: Background header diubah menjadi hitam solid (#000000) */}
-            <div style={{ padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000000', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-              <button onClick={() => { setPendingImage(null); setPendingImagePreview(null); setImageCaption(''); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+            {/* 🔥 PERBAIKAN 1: Hapus position 'absolute' dan ganti dengan flexShrink: 0. 
+                 Agar header mengambil ruang statis di atas dan tidak bertumpuk dengan gambar */}
+            <div style={{ flexShrink: 0, padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000000', zIndex: 10 }}>
+              <button onClick={() => { setPendingImage(null); setPendingImagePreview(null); setImageCaption(''); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                 <span className="material-icons" style={{fontSize: '28px'}}>close</span>
               </button>
               <span style={{ color: 'white', fontWeight: 600, fontSize: '16px' }}>Kirim Foto</span>
-              <div style={{width: '28px'}}></div>
+              
+              {/* Tombol placeholder untuk fitur Edit/Crop ke depannya */}
+              <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => alert("Fitur edit/crop bisa dihubungkan ke library seperti react-easy-crop nantinya!")}>
+                <span className="material-icons" style={{fontSize: '24px'}}>crop</span>
+              </button>
             </div>
 
-            <div style={{ flex: 1, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img src={pendingImagePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="preview full" />
+            {/* 🔥 PERBAIKAN 2: Tambahkan minHeight: 0 dan overflow: hidden.
+                 Ini adalah kunci wajib agar gambar beresolusi raksasa tidak "mendobrak" flexbox ke bawah */}
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img 
+                src={pendingImagePreview} 
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                alt="preview full" 
+              />
             </div>
 
-            <div style={{ padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+            {/* 🔥 PERBAIKAN 3: Tambahkan flexShrink: 0 pada area input.
+                 Agar posisi area chat dan tombol kirim ini terkunci kokoh di bawah layar */}
+            <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
               <div className="slim-input-wrapper" style={{ flex: 1, background: 'var(--bg-secondary)' }}>
                 <textarea 
                   placeholder="Tambahkan keterangan..." 
                   value={imageCaption}
                   onChange={(e) => setImageCaption(e.target.value)}
                   rows={1}
-                  style={{ width: '100%', padding: '8px 4px', fontSize: '15px', color: 'var(--text-main)', background: 'transparent', border: 'none', outline: 'none' }}
+                  style={{ width: '100%', padding: '8px 4px', fontSize: '15px', color: 'var(--text-main)', background: 'transparent', border: 'none', outline: 'none', resize: 'none' }}
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
@@ -58,13 +71,11 @@ export default function ChatModals({
       <AnimatePresence>
         {isGroupSettingsOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-            {/* 🔥 PERUBAHAN: Overlay diubah dari rgba transparan menjadi var(--bg-main) solid */}
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ position: 'absolute', inset: 0, background: 'var(--bg-main)' }}
               onClick={() => setIsGroupSettingsOpen(false)}
             />
-            {/* 🔥 PERUBAHAN: Background modal list anggota menggunakan var(--bg-card) yang solid */}
             <motion.div 
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
