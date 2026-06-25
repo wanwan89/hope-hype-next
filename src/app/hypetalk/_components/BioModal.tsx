@@ -301,3 +301,4 @@ const btnStyle: React.CSSProperties = {
 };
 
 export default React.memo(BioModal);
+
