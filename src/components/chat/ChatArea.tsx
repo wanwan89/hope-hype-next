@@ -95,7 +95,6 @@ export default function ChatArea() {
 
   const callStatusRef = useRef(callStatus);
   
-  // --- STATE FITUR SELEKSI MASSAL ---
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
 
@@ -396,8 +395,8 @@ export default function ChatArea() {
     refs.audio.current?.send.play().catch(()=>{});
 
     if (editMessageId) {
-      setMessages(prev => prev.map(m => m.id === editMessageId ? { ...m, message: content } : m));
-      await supabase.from('messages').update({ message: content }).eq('id', editMessageId);
+      setMessages(prev => prev.map(m => m.id === editMessageId ? { ...m, message: content, is_edited: true } : m));
+      await supabase.from('messages').update({ message: content, is_edited: true }).eq('id', editMessageId);
       setEditMessageId(null);
       setInputValue('');
       return;
@@ -654,31 +653,26 @@ export default function ChatArea() {
     setMsgOptions(null); 
   };
 
-  // --- PEMBARUAN FUNGSI HAPUS PESAN (SOFT DELETE) ---
-  const handleDeleteMessage = async (msgOrId: any) => {
-    const targetId = typeof msgOrId === 'object' ? msgOrId?.id : msgOrId;
-    if (!targetId) return;
+  const handleDeleteMessage = async (msgOrId: any, type: 'for_me' | 'for_everyone' = 'for_me') => {
+    const targetMsg = typeof msgOrId === 'object' ? msgOrId : messages.find(m => m.id === msgOrId);
+    if (!targetMsg) return;
 
     const confirmDelete = window.confirm("Apakah kamu yakin ingin menghapus pesan ini?");
     if (!confirmDelete) return;
 
-    // Memperbarui State Lokal agar langsung terlihat perubahannya
-    setMessages(prev => prev.map(m => m.id === targetId ? { ...m, message: 'Pesan ini telah dihapus', is_deleted: true } : m));
-    setMsgOptions(null);
-
-    // Memperbarui DB (Soft Delete)
-    const { error } = await supabase.from('messages')
-      .update({ message: 'Pesan ini telah dihapus', is_deleted: true })
-      .eq('id', targetId);
-      
-    if (error) {
-      showNotif("Gagal menghapus pesan", "error");
+    if (type === 'for_everyone') {
+      // Perbarui state lokal secara instan untuk soft-delete
+      setMessages(prev => prev.map(m => m.id === targetMsg.id ? { ...m, message: 'Pesan ini telah dihapus', is_deleted: true } : m));
+      await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', is_deleted: true }).eq('id', targetMsg.id);
+      showNotif("Pesan berhasil dihapus untuk semua orang", "success");
     } else {
-      showNotif("Pesan berhasil dihapus", "success");
+      // Hapus hanya dari visual state lokal atau db personal (jika dihandle kolom terpisah)
+      setMessages(prev => prev.filter(m => m.id !== targetMsg.id));
+      showNotif("Pesan dihapus untuk Anda", "success");
     }
+    setMsgOptions(null);
   };
 
-  // --- FUNGSI UNTUK SELEKSI MASSAL ---
   const toggleSelectMessage = (id: string) => {
     setSelectedMessages(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
   };
@@ -865,13 +859,11 @@ export default function ChatArea() {
 
   return (
     <div className="telegram-chat hype-chat-scope">
-      {/* 1. Komponen Popup Panggilan */}
       <ChatCallPopup 
         callStatus={callStatus} callData={callData} refs={refs} 
         connectLiveKit={connectLiveKit} endCall={endCall} currentUser={currentUser} 
       />
 
-      {/* 2. Komponen Header Obrolan (Telah diperbarui untuk menerima props Seleksi Massal) */}
       <ChatHeader 
         router={router} targetId={targetId} headerInfo={headerInfo} 
         displayStatus={displayStatus} chatState={chatState} roomId={roomId}
@@ -882,7 +874,6 @@ export default function ChatArea() {
         selectedMessages={selectedMessages}
       />
 
-      {/* 3. Komponen List Pesan Utama (Telah diperbarui) */}
       <ChatMessageList 
         isLoading={isLoading} 
         t={t} 
@@ -898,10 +889,9 @@ export default function ChatArea() {
         isSelectionMode={isSelectionMode}
         selectedMessages={selectedMessages}
         toggleSelectMessage={toggleSelectMessage}
-        setIsSelectionMode={setIsSelectionMode} // Memungkinkan long press untuk mengaktifkan mode seleksi
+        setIsSelectionMode={setIsSelectionMode} 
       />
 
-      {/* 4. Komponen Input Teks / Bawah */}
       <ChatInputFooter 
         chatState={chatState} headerInfo={headerInfo} handleTolakRequest={handleTolakRequest} 
         handleTerimaRequest={handleTerimaRequest} isStickerOpen={isStickerOpen} 
@@ -914,7 +904,6 @@ export default function ChatArea() {
         handleMicTouchMove={handleMicTouchMove} handleSendClick={handleSendClick} editMessageId={editMessageId}
       />
 
-      {/* 5. Komponen Modals (Gambar Fullscreen & Settings Grup) */}
       <ChatModals 
         pendingImagePreview={pendingImagePreview} setPendingImage={setPendingImage} 
         setPendingImagePreview={setPendingImagePreview} setImageCaption={setImageCaption} 
@@ -926,7 +915,6 @@ export default function ChatArea() {
         headerInfo={headerInfo} handleGroupPhotoUpload={handleGroupPhotoUpload} newGroupName={newGroupName} 
         setNewGroupName={setNewGroupName} updateGroupInfo={updateGroupInfo} isOwner={isOwner} kickMember={kickMember}
       />
-
     </div>
   );
 }
