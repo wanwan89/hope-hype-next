@@ -315,8 +315,12 @@
   50% { opacity: .5; }
 }
 
-/* CSS Match Success */
-.hm-match-success-bg { background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%) !important; z-index: 10000; }
+/* FIX 3: CSS Match Success (Gradien Biru) */
+.hm-match-success-bg { 
+  background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%) !important; 
+  z-index: 10000; 
+}
+
 .hm-match-content { text-align: center; padding: 40px 20px; color: white; width: 100%; max-width: 400px; }
 .hm-match-title { font-size: 3.5rem; font-weight: 900; font-style: italic; margin-bottom: 10px; text-shadow: 0 4px 15px rgba(0,0,0,0.2); }
 .hm-match-avatars { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 50px 0; }
@@ -330,5 +334,7 @@
 }
 
 .hm-btn-chat-now, .hm-btn-keep-swiping { width: 100%; padding: 16px; border-radius: 30px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-bottom: 16px; border: none; }
-.hm-btn-chat-now { background: white; color: #ff758c; }
+
+/* FIX 3: Warna tombol menyesuaikan background biru */
+.hm-btn-chat-now { background: white; color: #0072ff; }
 .hm-btn-keep-swiping { background: transparent; color: white; border: 2px solid white; }

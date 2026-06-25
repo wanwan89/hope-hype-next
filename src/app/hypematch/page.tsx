@@ -95,18 +95,20 @@ export default function HypeMatch() {
 
         if (authData?.user) {
           myId = authData.user.id;
-          setCurrentUser({
-            id: myId,
-            avatar_url: authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
-          });
 
-          // Ambil profil diri sendiri untuk mengecek gender
+          // FIX 2: Ambil profil diri sendiri untuk mengecek gender SEKALIGUS avatar_url
           const { data: myProfile } = await supabase
             .from('profiles')
-            .select('gender')
+            .select('gender, avatar_url')
             .eq('id', myId)
             .single();
           
+          setCurrentUser({
+            id: myId,
+            // Prioritaskan avatar dari database profiles (jika user sudah ubah foto)
+            avatar_url: myProfile?.avatar_url || authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
+          });
+
           if (myProfile) myGender = myProfile.gender;
         }
 
@@ -200,15 +202,13 @@ export default function HypeMatch() {
 
     if (action === 'like') {
       try {
-        // 1. Catat like kita di database (Asumsi nama tabel 'user_likes')
-// 1. Catat like kita di database
-await supabase.from('user_likes').upsert({
-  user_id: currentUser.id,
-  liked_user_id: activeUser.id,
-}, { 
-  onConflict: 'user_id,liked_user_id' // Tambahkan baris ini!
-});
-
+        // 1. Catat like kita di database
+        await supabase.from('user_likes').upsert({
+          user_id: currentUser.id,
+          liked_user_id: activeUser.id,
+        }, { 
+          onConflict: 'user_id,liked_user_id' 
+        });
 
         // 2. Cek apakah user yang kita like sudah pernah me-like kita sebelumnya
         const { data: matchData } = await supabase
@@ -220,6 +220,12 @@ await supabase.from('user_likes').upsert({
 
         // 3. Jika ketemu, maka statusnya saling suka (MATCH)
         if (matchData) {
+          
+          // FIX 1: Kasih getaran (Haptic Feedback) jika didukung perangkat
+          if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200]); 
+          }
+
           showNotif('Kamu mendapatkan Match baru!', 'success');
           setTimeout(() => {
             setMatchedUser(activeUser);
@@ -281,7 +287,6 @@ await supabase.from('user_likes').upsert({
   return (
     <div className="hm-overlay">
       <div className="hm-backdrop" onClick={router.back}></div>
-      {/* Posisi tombol X sekarang fixed di luar kartu penampung */}
       <button className="hm-btn-close" onClick={router.back}>
         <span className="material-icons">close</span>
       </button>
@@ -319,7 +324,6 @@ await supabase.from('user_likes').upsert({
                   <h2 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                     {activeUser.username} {activeUser.umur && <span>{activeUser.umur}</span>}
                     
-                    {/* BAGIAN YANG DIPERBAIKI: Menggunakan dangerouslySetInnerHTML */}
                     {activeUser.role && (
                       <div 
                         className="hm-role-badge"
