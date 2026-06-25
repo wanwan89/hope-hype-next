@@ -23,7 +23,14 @@ type Props = {
   onClose: () => void;
 };
 
-const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLike, onPass, onClose }) => {
+// FIX 1: Berikan default value array kosong [] pada potentialMatches agar tidak undefined saat SSR
+const HypeMatchOverlay: React.FC<Props> = ({ 
+  currentUser, 
+  potentialMatches = [], 
+  onLike, 
+  onPass, 
+  onClose 
+}) => {
   const router = useRouter();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -34,7 +41,8 @@ const HypeMatchOverlay: React.FC<Props> = ({ currentUser, potentialMatches, onLi
   
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false });
 
-  const activeUser = potentialMatches[currentIndex];
+  // FIX 2: Gunakan optional chaining (?.) untuk mencegah error "Cannot read properties of undefined"
+  const activeUser = potentialMatches?.[currentIndex];
 
   const handleDragStart = (clientX: number, clientY: number) => {
     dragRef.current = { startX: clientX, startY: clientY, isDragging: true };
