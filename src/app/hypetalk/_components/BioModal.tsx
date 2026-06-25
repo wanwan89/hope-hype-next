@@ -176,21 +176,8 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
           </div>
 
           {/* ======================================= */}
-          {/* BIO PROFIL UMUM & BIO HYPE MATCH          */}
+          {/* BIO HYPE MATCH                          */}
           {/* ======================================= */}
-          <div className="input-group" style={{ ...inputGroupStyle, gridColumn: '1 / -1' }}>
-            <label style={{ marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '600' }}>
-              Bio Profil Umum
-            </label>
-            <textarea 
-              placeholder="Ceritakan detail tentang dirimu (Tampil di halaman profil utama)..." 
-              className="custom-input" 
-              style={{ minHeight: '100px', resize: 'vertical' }}
-              value={bioForm.bio || ''} 
-              onChange={e => updateField('bio', e.target.value)} 
-            />
-          </div>
-
           <div className="input-group" style={{ ...inputGroupStyle, gridColumn: '1 / -1' }}>
             <label style={{ marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '600' }}>
               Bio Hype Match

@@ -65,9 +65,8 @@ export function getUserBadge(role: string): string {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
 
-  // -- CROWN BADGES (tanpa teks animasi, ukuran 14px) --
+  // -- CROWN BADGES --
   if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") {
-    // Tentukan warna mahkota
     let fillColor = "";
     if (roleLower === "crown1") {
       fillColor = "#EF4444";  // merah
@@ -77,7 +76,6 @@ export function getUserBadge(role: string): string {
       fillColor = "#3B82F6";  // biru
     }
 
-    // Ikon mahkota statis, ukuran 14x14
     badge += `
       <span style="display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle; width:14px; height:14px;">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${fillColor}" width="14" height="14">
@@ -122,38 +120,38 @@ export function showToast(title: string, message: string = "", type: "info" | "s
 
   let toast = document.getElementById("toast");
   
-  // Buat elemen toast dan style-nya jika belum ada
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "toast";
     
     const style = document.createElement("style");
+    // Diperbarui: Pindah ke atas (top: 30px) & Animasi slide-down yang lebih natural (cubic-bezier)
     style.innerHTML = `
       #toast {
         position: fixed;
-        bottom: 30px;
+        top: 30px;
         left: 50%;
-        transform: translate(-50%, 20px);
+        transform: translate(-50%, -40px);
         opacity: 0;
         visibility: hidden;
         z-index: 999999;
-        padding: 10px 20px;
-        border-radius: 6px;
+        padding: 12px 24px;
+        border-radius: 12px;
         font-size: 14px;
         font-weight: 500;
         text-align: center;
         max-width: 90vw;
         width: max-content;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0.3s ease;
         pointer-events: none;
         
-        /* Light Mode: Glass Hitam */
-        background: rgba(20, 20, 20, 0.75);
+        /* Wadah Terlihat Jelas: Glass Hitam */
+        background: rgba(25, 25, 25, 0.95);
         color: #ffffff;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
       }
       
       #toast.show {
@@ -165,18 +163,17 @@ export function showToast(title: string, message: string = "", type: "info" | "s
       /* Dark Mode: Glass Putih */
       @media (prefers-color-scheme: dark) {
         #toast {
-          background: rgba(255, 255, 255, 0.8);
+          background: rgba(255, 255, 255, 0.95);
           color: #111111;
-          border: 1px solid rgba(0, 0, 0, 0.05);
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
         }
       }
       
-      /* Dukungan untuk framework dengan class .dark (seperti Tailwind) */
       .dark #toast {
-        background: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.95);
         color: #111111;
-        border: 1px solid rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.1);
       }
     `;
     document.head.appendChild(style);
@@ -185,24 +182,24 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   
   clearTimeout(toastTimer);
   
-  // Tampilkan hanya teks, gabungkan title dan message jika keduanya ada
   toast.textContent = message ? `${title} - ${message}` : title;
   
-  // Animasi masuk
-  requestAnimationFrame(() => toast!.classList.add("show"));
+  // Memaksa browser meregistrasi state awal sebelum menempelkan class 'show' agar transisinya terpancing
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      toast!.classList.add("show");
+    });
+  });
   
-  // Animasi keluar otomatis
   toastTimer = setTimeout(() => hideToast(), 3000);
 }
 
 export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-  // Karena desain minimalis, kita hilangkan icon type dan fokus pada pesan
   let prefix = "";
   if (type === 'error') prefix = "Gagal";
   else if (type === 'success') prefix = "Berhasil";
   else if (type === 'warning') prefix = "Peringatan";
   
-  // Jika ada prefix, pisahkan dengan isi pesan. Jika tidak, jadikan pesan sebagai title langsung.
   if (prefix) {
     showToast(prefix, msg);
   } else {
