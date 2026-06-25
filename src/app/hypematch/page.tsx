@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase'; // Pastikan path ini sesuai dengan file supabase kamu
-import './HypeMatchOverlay.css'; // Import file CSS khusus di bawah
+import { supabase } from '@/lib/supabase';
+import './HypeMatchOverlay.css'; 
 
 type MatchUser = {
   id: string;
@@ -14,37 +14,45 @@ type MatchUser = {
   pekerjaan?: string;
   hobi?: string;
   zodiak?: string;
+  // --- Kolom Baru ---
+  lokasi?: string;
+  foto_tambahan?: string[];
+  pendidikan?: string;
+  minat?: string[];
+  preferensi?: string;
+  tinggi_badan?: number;
+  bahasa?: string[];
+  agama?: string;
+  merokok?: string;
+  alkohol?: string;
+  olahraga?: string;
+  tujuan?: string;
+  ig_username?: string;
+  spotify_url?: string;
+  tiktok_username?: string;
 };
 
 export default function HypeMatch() {
   const router = useRouter();
 
-  // State untuk Data Supabase
   const [users, setUsers] = useState<MatchUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // State Bawaan UI Kamu
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
-  const [dragY, setDragY] = useState(0); 
   const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
-  const [isShowingProfile, setIsShowingProfile] = useState(false); 
   
-  const dragRef = useRef({ startX: 0, startY: 0, isDragging: false });
+  // Ref untuk deteksi swipe vs scroll
+  const dragRef = useRef({ startX: 0, startY: 0, isDragging: false, isScrolling: false });
 
-  // Ambil user yang aktif berdasarkan index
   const activeUser = users?.[currentIndex];
 
-  // ==========================================
-  // LOGIC AMBIL DATA DARI SUPABASE
-  // ==========================================
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
 
-        // 1. Ambil session user kamu sendiri
         const { data: authData } = await supabase.auth.getUser();
         if (authData?.user) {
           setCurrentUser({
@@ -53,10 +61,14 @@ export default function HypeMatch() {
           });
         }
 
-        // 2. Tarik data dari tabel profiles
+        // Ambil SEMUA kolom termasuk yang baru ditambahkan
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak')
+          .select(`
+            id, username, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak,
+            lokasi, foto_tambahan, pendidikan, minat, preferensi, tinggi_badan, 
+            bahasa, agama, merokok, alkohol, olahraga, tujuan, ig_username, spotify_url, tiktok_username
+          `)
           .limit(10);
 
         if (error) throw error;
@@ -78,11 +90,8 @@ export default function HypeMatch() {
     fetchData();
   }, []);
 
-  // ==========================================
-  // LOGIC SWIPE & ANIMASI (TIDAK DIUBAH)
-  // ==========================================
   const handleDragStart = (clientX: number, clientY: number) => {
-    dragRef.current = { startX: clientX, startY: clientY, isDragging: true };
+    dragRef.current = { startX: clientX, startY: clientY, isDragging: true, isScrolling: false };
   };
 
   const handleDragMove = (clientX: number, clientY: number) => {
@@ -90,69 +99,48 @@ export default function HypeMatch() {
     const currentDragX = clientX - dragRef.current.startX;
     const currentDragY = clientY - dragRef.current.startY;
     
-    if (isShowingProfile) {
-      if (currentDragY > 0) setDragY(currentDragY);
-      return;
+    // Deteksi apakah user sedang scroll ke bawah atau swipe ke samping
+    if (!dragRef.current.isScrolling && Math.abs(currentDragY) > Math.abs(currentDragX) + 5) {
+      dragRef.current.isScrolling = true;
     }
 
+    // Jika sedang scroll vertikal, jangan geser kartu ke samping
+    if (dragRef.current.isScrolling) return;
+
     setDragX(currentDragX);
-    setDragY(currentDragY);
   };
 
-  const handleDragEnd = async () => {
+  const handleDragEnd = () => {
     if (!dragRef.current.isDragging) return;
     dragRef.current.isDragging = false;
 
-    const threshold = 100; 
-
-    if (isShowingProfile) {
-      if (dragY > threshold) {
-        setIsShowingProfile(false); 
-      }
-      setDragY(0);
+    // Reset jika ini murni scroll
+    if (dragRef.current.isScrolling) {
+      dragRef.current.isScrolling = false;
       return;
     }
 
-    if (Math.abs(dragX) > Math.abs(dragY)) {
-      if (dragX < -threshold) {
-        handleAction('like');
-      } else if (dragX > threshold) {
-        handleAction('pass');
-      } else {
-        setDragX(0);
-        setDragY(0);
-      }
+    const threshold = 100; 
+
+    if (dragX < -threshold) {
+      handleAction('like');
+    } else if (dragX > threshold) {
+      handleAction('pass');
     } else {
-      if (dragY < -threshold) {
-        setIsShowingProfile(true);
-        setDragX(0);
-        setDragY(0);
-      } else {
-        setDragX(0);
-        setDragY(0);
-      }
+      setDragX(0);
     }
   };
 
   const handleAction = async (action: 'like' | 'pass') => {
     if (!activeUser) return;
-    
     setDragX(action === 'like' ? -500 : 500); 
 
-    setTimeout(async () => {
-      setIsShowingProfile(false); 
+    setTimeout(() => {
       if (action === 'like') {
-        console.log('Menyukai user:', activeUser.id);
-        
-        const isMatch = false; // Set true jika ingin testing modul match-success screen
-        
-        if (isMatch) {
-          setMatchedUser(activeUser);
-        } else {
-          nextCard();
-        }
+        const isMatch = false; // Set true jika mau testing layar MATCH
+        if (isMatch) setMatchedUser(activeUser);
+        else nextCard();
       } else {
-        console.log('Melewati user:', activeUser.id);
         nextCard();
       }
     }, 300); 
@@ -160,44 +148,37 @@ export default function HypeMatch() {
 
   const nextCard = () => {
     setDragX(0);
-    setDragY(0);
     setCurrentIndex((prev) => prev + 1);
+    
+    // Reset scroll posisi ke atas saat ganti orang
+    const scrollContainer = document.querySelector('.card-scroll-area');
+    if (scrollContainer) scrollContainer.scrollTop = 0;
   };
 
-  const handleStartChat = () => {
-    if (!matchedUser) return;
-    router.push(`/hypetalk/room?from=${matchedUser.id}`); 
-  };
-
-  const handleClose = () => {
-    router.back(); 
-  };
-
-  // Tampilan Loading Sinkron dengan Tema Global
   if (isLoading) {
     return (
-      <div className="hype-match-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="hype-match-overlay flex-center">
         <div className="overlay-backdrop"></div>
-        <h2 style={{ color: 'var(--text-main)', zIndex: 10 }} className="animate-pulse text-lg font-medium">
+        <h2 style={{ color: 'var(--text-main)', zIndex: 10 }} className="animate-pulse">
           Mencari Hype di sekitarmu...
         </h2>
       </div>
     );
   }
 
-  // Tampilan saat MATCH terjadi
   if (matchedUser) {
     return (
       <div className="hype-match-overlay match-success-bg glass-clean">
+        {/* Konten Match Tetap Sama */}
         <div className="match-content">
           <h2 className="match-title">HYPE MATCH!</h2>
           <p>Kamu dan <strong>{matchedUser.username}</strong> saling tertarik!</p>
           <div className="match-avatars">
-            <img src={currentUser?.avatar_url || 'https://via.placeholder.com/150'} alt="You" className="avatar-circle" />
+            <img src={currentUser?.avatar_url} alt="You" className="avatar-circle" />
             <span className="material-icons favorite-icon">favorite</span>
-            <img src={matchedUser.avatar_url || 'https://via.placeholder.com/150'} alt="Them" className="avatar-circle" />
+            <img src={matchedUser.avatar_url} alt="Them" className="avatar-circle" />
           </div>
-          <button className="btn-chat-now glass-clean" onClick={handleStartChat}>
+          <button className="btn-chat-now glass-clean" onClick={() => router.push(`/hypetalk/room?from=${matchedUser.id}`)}>
             Mulai Obrolan
           </button>
           <button className="btn-keep-swiping" onClick={() => { setMatchedUser(null); nextCard(); }}>
@@ -208,23 +189,19 @@ export default function HypeMatch() {
     );
   }
 
-  // Tampilan Overlay Utama
   return (
     <div className="hype-match-overlay">
-      <div className="overlay-backdrop" onClick={handleClose}></div>
-      
-      <button className="btn-close-overlay" onClick={handleClose}>
+      <div className="overlay-backdrop" onClick={router.back}></div>
+      <button className="btn-close-overlay" onClick={router.back}>
         <span className="material-icons">close</span>
       </button>
 
       <div className="card-container">
         {activeUser ? (
           <div 
-            className={`match-card glass-clean ${isShowingProfile ? 'profile-open' : ''}`}
+            className="match-card glass-clean"
             style={{
-              transform: isShowingProfile 
-                ? `translateY(${dragY}px)` 
-                : `translate(${dragX}px, ${dragY}px) rotate(${dragX * 0.05}deg)`,
+              transform: `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`,
               transition: dragRef.current.isDragging ? 'none' : 'transform 0.3s ease-out',
             }}
             onMouseDown={(e) => handleDragStart(e.clientX, e.clientY)}
@@ -235,57 +212,72 @@ export default function HypeMatch() {
             onTouchMove={(e) => handleDragMove(e.touches[0].clientX, e.touches[0].clientY)}
             onTouchEnd={handleDragEnd}
           >
-            <div className="card-image-wrapper">
-              <img src={activeUser.avatar_url || 'https://via.placeholder.com/400x600'} alt="avatar" draggable="false" />
-              {!isShowingProfile && dragX < -50 && <div className="swipe-indicator like">TERTARIK</div>}
-              {!isShowingProfile && dragX > 50 && <div className="swipe-indicator pass">LEWAT</div>}
-            </div>
-
-            {!isShowingProfile && dragY === 0 && dragX === 0 && (
-              <div className="swipe-up-hint">
-                <span className="material-icons">keyboard_double_arrow_up</span>
-                <p>Geser ke atas untuk profil</p>
-              </div>
-            )}
-
-            <div className={`card-info ${isShowingProfile ? 'expanded' : ''}`}>
-              {isShowingProfile && (
-                <div className="swipe-down-hint">
-                  <span className="material-icons">keyboard_arrow_down</span>
-                </div>
-              )}
+            {/* AREA BISA DI SCROLL */}
+            <div className="card-scroll-area">
               
-              <div className="info-header">
-                <h2>
-                  {activeUser.username} 
-                  {activeUser.umur ? <span className="user-age">{activeUser.umur}</span> : ''}
-                </h2>
-                {isShowingProfile && <span className="gender-badge">{activeUser.gender}</span>}
-              </div>
-              
-              <p className={`bio-text ${isShowingProfile ? 'full' : ''}`}>
-                {activeUser.bio || "Belum ada bio."}
-              </p>
-
-              {isShowingProfile && (
-                <div className="extra-info">
-                  {activeUser.zodiak && (
-                    <div className="info-tag">
-                      <span className="material-icons">stars</span> {activeUser.zodiak}
-                    </div>
-                  )}
-                  {activeUser.pekerjaan && (
-                    <div className="info-tag">
-                      <span className="material-icons">work</span> {activeUser.pekerjaan}
-                    </div>
-                  )}
-                  {activeUser.hobi && (
-                    <div className="info-tag">
-                      <span className="material-icons">sports_esports</span> {activeUser.hobi}
-                    </div>
-                  )}
+              {/* Gambar Utama (Full View) */}
+              <div className="card-image-wrapper">
+                <img src={activeUser.avatar_url || 'https://via.placeholder.com/400x600'} alt="avatar" draggable="false" />
+                {dragX < -50 && <div className="swipe-indicator like">TERTARIK</div>}
+                {dragX > 50 && <div className="swipe-indicator pass">LEWAT</div>}
+                
+                {/* Overlay Nama di Gambar */}
+                <div className="card-image-overlay">
+                  <h2>
+                    {activeUser.username} {activeUser.umur && <span>, {activeUser.umur}</span>}
+                  </h2>
+                  <p><span className="material-icons">location_on</span> {activeUser.lokasi || "Lokasi disembunyikan"}</p>
                 </div>
-              )}
+              </div>
+
+              {/* Detail Profile Tambahan Di Bawah Gambar */}
+              <div className="card-details">
+                <div className="scroll-hint">
+                  <span className="material-icons animate-bounce">keyboard_arrow_down</span>
+                  <p>Scroll untuk info lengkap</p>
+                </div>
+
+                {/* Bio Section */}
+                <div className="detail-section">
+                  <h3>Tentang Diri</h3>
+                  <p className="bio-text">{activeUser.bio || "Belum ada bio."}</p>
+                </div>
+
+                {/* Grid Informasi Umum */}
+                <div className="detail-section">
+                  <h3>Informasi Umum</h3>
+                  <div className="info-grid">
+                    {activeUser.gender && <div className="info-chip"><span className="material-icons">wc</span> {activeUser.gender}</div>}
+                    {activeUser.pekerjaan && <div className="info-chip"><span className="material-icons">work</span> {activeUser.pekerjaan}</div>}
+                    {activeUser.pendidikan && <div className="info-chip"><span className="material-icons">school</span> {activeUser.pendidikan}</div>}
+                    {activeUser.tinggi_badan && <div className="info-chip"><span className="material-icons">height</span> {activeUser.tinggi_badan} cm</div>}
+                    {activeUser.agama && <div className="info-chip"><span className="material-icons">mosque</span> {activeUser.agama}</div>}
+                    {activeUser.zodiak && <div className="info-chip"><span className="material-icons">stars</span> {activeUser.zodiak}</div>}
+                  </div>
+                </div>
+
+                {/* Lifestyle & Preferensi */}
+                <div className="detail-section">
+                  <h3>Gaya Hidup & Minat</h3>
+                  <div className="info-grid">
+                    {activeUser.tujuan && <div className="info-chip outline"><span className="material-icons">track_changes</span> Mencari: {activeUser.tujuan}</div>}
+                    {activeUser.hobi && <div className="info-chip outline"><span className="material-icons">sports_esports</span> {activeUser.hobi}</div>}
+                    {activeUser.olahraga && <div className="info-chip outline"><span className="material-icons">fitness_center</span> {activeUser.olahraga}</div>}
+                    {activeUser.merokok && <div className="info-chip outline"><span className="material-icons">smoking_rooms</span> Merokok: {activeUser.merokok}</div>}
+                    {activeUser.alkohol && <div className="info-chip outline"><span className="material-icons">wine_bar</span> Minum: {activeUser.alkohol}</div>}
+                  </div>
+                </div>
+
+                {/* Media Sosial Section */}
+                {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
+                  <div className="detail-section social-links">
+                    <h3>Media Sosial</h3>
+                    {activeUser.ig_username && <div className="social-chip"><img src="/ig-icon.png" alt="IG" /> @{activeUser.ig_username}</div>}
+                    {activeUser.tiktok_username && <div className="social-chip"><img src="/tiktok-icon.png" alt="TikTok" /> @{activeUser.tiktok_username}</div>}
+                    {activeUser.spotify_url && <a href={activeUser.spotify_url} target="_blank" className="social-chip"><img src="/spotify-icon.png" alt="Spotify" /> Spotify Profile</a>}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -296,7 +288,7 @@ export default function HypeMatch() {
         )}
       </div>
 
-      {activeUser && !isShowingProfile && (
+      {activeUser && (
         <div className="action-buttons">
           <button className="btn-action btn-pass glass-clean" onClick={() => handleAction('pass')}>
             <span className="material-icons">close</span>

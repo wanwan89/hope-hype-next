@@ -492,3 +492,34 @@
 .telegram-wrapper .extra-info { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
 .telegram-wrapper .info-tag { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 12px; border-radius: 16px; font-size: 12px; color: #ddd; display: flex; align-items: center; gap: 4px; }
 .telegram-wrapper .info-tag .material-icons { font-size: 14px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Jadi 2 kolom */
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.form-grid input, .form-grid select, .form-grid textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+  background: var(--bg-input);
+  color: var(--text-main);
+}
+
+.form-grid textarea {
+  grid-column: span 2; /* Bio lebar penuh */
+  height: 80px;
+}
+
+.social-inputs {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border-card);
+  padding-top: 10px;
+}
+ 
