@@ -83,9 +83,9 @@ export default function HypeMatch() {
   // State untuk fitur template sapaan
   const [showTemplates, setShowTemplates] = useState(false);
   const templates = [
-    "Hai, salam kenal! ✨",
+    "Hai, salam kenal! ",
     "Wah, kita match nih! Lagi sibuk apa hari ini?",
-    "Halo! Suka nongkrong atau jalan kemana biasanya? 👀"
+    "Halo! Suka nongkrong atau jalan kemana biasanya? "
   ];
 
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false, isScrolling: false });
@@ -248,37 +248,45 @@ export default function HypeMatch() {
     if (scrollContainer) scrollContainer.scrollTop = 0;
   };
 
-  // Fungsi untuk mengirim pesan template secara otomatis
+  // ==========================================
+  // FUNGSI KIRIM PESAN TEMPLATE (DIPERBAIKI)
+  // ==========================================
   const handleSendTemplate = async (messageText: string) => {
     if (!matchedUser || !currentUser) return;
     
     try {
-      // Menyimpan pesan otomatis ke database chat.
-      // Catatan: Pastikan nama tabel pesan kamu adalah 'messages' dan kolomnya sesuai.
-      // Jika nama tabel/kolom chat kamu berbeda, sesuaikan bagian `.from('messages')` ini.
-      await supabase.from('messages').insert({
+      const { error } = await supabase.from('messages').insert({
         sender_id: currentUser.id,
-        receiver_id: matchedUser.id,
+
+        // PENTING: Ganti 'receiver_id' dengan nama kolom yang benar di tabel messages kamu!
+        // Misalnya: 'recipient_id', 'to_user_id', atau 'target_user'
+        receiver_id: matchedUser.id, 
+
+        // PENTING: Pastikan kolom teks pesannya bernama 'message'. Jika bukan, ganti.
+        // Misalnya: 'content', 'text', dll.
         message: messageText
       });
 
+      if (error) {
+        throw error;
+      }
+
       showNotif('Pesan sapaan terkirim!', 'success');
-      // Arahkan ke room chat setelah pesan terkirim
       router.push(`/hypetalk/room?from=${matchedUser.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gagal mengirim pesan:", error);
-      showNotif('Gagal mengirim pesan', 'error');
+      // Agar errornya lebih jelas kalau kolomnya masih salah
+      showNotif('Error: Cek kembali nama kolom di Database!', 'error'); 
     }
   };
 
-  // Tampilan Animasi Loading Cinematic
+  // Tampilan Animasi Opening yang Baru (Simple & Elegan)
   if (isLoading) {
     return (
       <div className="hm-overlay hm-flex-center">
         <div className="hm-backdrop"></div>
         <div className="hm-loader-overlay">
           <h1 className="hm-loader-text">HYPE MATCH</h1>
-          <p className="hm-loader-sub">Mencari kecocokan di sekitarmu...</p>
         </div>
       </div>
     );
@@ -317,7 +325,6 @@ export default function HypeMatch() {
                   draggable="false" 
                 />
                 
-                {/* Teks Swipe yang sudah diganti */}
                 {dragX < -50 && <div className="hm-swipe-indicator hm-like">LIKE</div>}
                 {dragX > 50 && <div className="hm-swipe-indicator hm-pass">NOPE</div>}
                 
@@ -414,7 +421,7 @@ export default function HypeMatch() {
         </div>
       )}
 
-      {/* OVERLAY MATCH SUCCESS (Transisi Smooth di atas layar) */}
+      {/* OVERLAY MATCH SUCCESS */}
       <div className={`hm-match-overlay-container hm-match-success-bg ${matchedUser ? 'show' : ''}`}>
         {matchedUser && (
           <div className="hm-match-content">
