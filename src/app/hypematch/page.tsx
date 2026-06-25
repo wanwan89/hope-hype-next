@@ -75,6 +75,7 @@ export default function HypeMatch() {
 
   const [users, setUsers] = useState<MatchUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showIntro, setShowIntro] = useState(true); // STATE BARU: Mengontrol halaman opening
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -239,17 +240,28 @@ export default function HypeMatch() {
     if (scrollContainer) scrollContainer.scrollTop = 0;
   };
 
-  // Fungsi baru untuk langsung menuju room chat saat klik "Sapa Dia!"
   const handleChatNow = () => {
     if (matchedUser) {
       router.push(`/hypetalk/room?from=${matchedUser.id}`);
     }
   };
 
-  if (isLoading) {
-    return <HypeMatchOpening />;
+  // URUTAN RENDER PENTING!
+  // 1. Jika intro masih aktif, tampilkan intro dan TUNGGU tombol GO diklik
+  if (showIntro) {
+    return <HypeMatchOpening onComplete={() => setShowIntro(false)} />;
   }
 
+  // 2. Jika intro sudah diklik TAPI data dari Supabase belum selesai, tampilkan loading sederhana
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0000cc', color: 'white' }}>
+        <h2>Memuat Data...</h2>
+      </div>
+    );
+  }
+
+  // 3. Jika intro sudah lewat dan data siap, tampilkan kartu Tinder-nya!
   return (
     <div className="hm-overlay">
       <div className="hm-backdrop" onClick={router.back}></div>
@@ -379,15 +391,14 @@ export default function HypeMatch() {
         </div>
       )}
 
-      {/* OVERLAY MATCH SUCCESS YANG SUDAH DIPISAH FILE (Menggunakan Props Baru) */}
+      {/* OVERLAY MATCH SUCCESS YAng SUDAH DIPISAH FILE */}
       <MatchSuccessOverlay
         matchedUser={matchedUser}
         currentUser={currentUser}
-        onChatNow={handleChatNow} // Operasikan fungsi navigasi ke room chat
+        onChatNow={handleChatNow} 
         nextCard={nextCard}
         setMatchedUser={setMatchedUser}
       />
-
     </div>
   );
 }
