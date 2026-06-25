@@ -65,7 +65,7 @@ export function getUserBadge(role: string): string {
     badge += `<span class="verified-badge" style="margin-left:5px;"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="#1DA1F2"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   }
 
-  // -- CROWN BADGES --
+  // -- CROWN BADGES (tanpa teks animasi, ukuran 14px) --
   if (roleLower === "crown1" || roleLower === "crown2" || roleLower === "crown3") {
     let fillColor = "";
     if (roleLower === "crown1") {
@@ -118,33 +118,35 @@ export function hideToast() {
 export function showToast(title: string, message: string = "", type: "info" | "success" | "warning" | "error" = "info") {
   if (typeof window === 'undefined') return;
 
-  // 1. Injeksi Style dipisah agar tidak ter-skip oleh sisa memori Hot Reload
-  if (!document.getElementById("toast-style-khusus")) {
+  // 1. Injeksi Style untuk desain Slide Down & Fit Content
+  if (!document.getElementById("toast-dynamic-styles")) {
     const style = document.createElement("style");
-    style.id = "toast-style-khusus";
+    style.id = "toast-dynamic-styles";
     style.innerHTML = `
       #toast {
         position: fixed;
-        top: 30px;
+        top: 30px; /* Posisi di atas */
         left: 50%;
-        transform: translate(-50%, -40px);
+        transform: translate(-50%, -40px); /* Mulai agak ke atas untuk animasi slide down */
         opacity: 0;
         visibility: hidden;
-        z-index: 9999999; /* Pastikan selalu paling atas */
-        padding: 12px 24px;
+        z-index: 9999999;
+        
+        /* Box menyesuaikan konten */
+        width: max-content;
+        max-width: 90vw;
+        
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
         border-radius: 12px;
         font-family: system-ui, -apple-system, sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        text-align: center;
-        max-width: 90vw;
-        width: max-content;
         transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0.3s ease;
-        pointer-events: none;
         
-        /* Desain Wadah: Glassmorphism Hitam */
-        background: rgba(25, 25, 25, 0.95) !important;
-        color: #ffffff !important;
+        /* Desain Glass Hitam / Gelap */
+        background: rgba(25, 25, 25, 0.95);
+        color: #ffffff;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.15);
@@ -152,32 +154,45 @@ export function showToast(title: string, message: string = "", type: "info" | "s
       }
       
       #toast.show {
-        transform: translate(-50%, 0);
+        transform: translate(-50%, 0); /* Meluncur turun ke posisi aslinya */
         opacity: 1;
         visibility: visible;
+        pointer-events: auto;
       }
 
-      /* Dark Mode otomatis: Glass Putih */
+      /* Dark mode override */
       @media (prefers-color-scheme: dark) {
         #toast {
-          background: rgba(255, 255, 255, 0.95) !important;
-          color: #111111 !important;
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+          background: rgba(255, 255, 255, 0.95);
+          color: #111111;
+          border-color: rgba(0, 0, 0, 0.1);
         }
       }
-      
-      /* Jika pakai class "dark" dari Tailwind */
-      .dark #toast {
-        background: rgba(255, 255, 255, 0.95) !important;
-        color: #111111 !important;
-        border: 1px solid rgba(0, 0, 0, 0.1);
+
+      /* Style bawaan class yang digenerate script ini */
+      .toast-icon-wrap {
+        display: flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border-radius: 50%; font-weight: bold; font-size: 12px; color: white; flex-shrink: 0;
       }
+      .toast-icon-wrap.success { background: #10B981; }
+      .toast-icon-wrap.error { background: #EF4444; }
+      .toast-icon-wrap.warning { background: #F59E0B; }
+      .toast-icon-wrap.info { background: #3B82F6; }
+
+      .toast-content {
+        display: flex; flex-direction: column; text-align: left;
+      }
+      .toast-title { font-weight: 600; font-size: 14px; line-height: 1.2; }
+      .toast-subtitle { font-size: 12px; opacity: 0.8; margin-top: 4px; line-height: 1.3; }
+      
+      .toast-close {
+        margin-left: 8px; font-size: 16px; opacity: 0.6; transition: opacity 0.2s; padding: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      .toast-close:hover { opacity: 1; }
     `;
     document.head.appendChild(style);
   }
 
-  // 2. Buat div container toast jika belum ada
   let toast = document.getElementById("toast");
   if (!toast) {
     toast = document.createElement("div");
@@ -185,21 +200,44 @@ export function showToast(title: string, message: string = "", type: "info" | "s
     document.body.appendChild(toast);
   }
   
-  // 3. Reset dan jalankan toast
   clearTimeout(toastTimer);
-  toast.classList.remove("show"); // Reset state animasi jika dipanggil beruntun
+  toast.classList.remove("show"); // Reset biar bisa dianimasikan ulang jika diklik cepat
+  toast.className = "toast-card " + type; // Set class sesuai parameter
   
-  toast.textContent = message ? `${title} - ${message}` : title;
+  const getIcon = (t: string) => {
+    switch (t) { 
+      case "success": return "✓"; 
+      case "warning": return "⚠"; 
+      case "error": return "✕"; 
+      default: return "i"; 
+    }
+  };
+
+  toast.innerHTML = `
+    <div class="toast-icon-wrap ${type}"><div class="toast-icon">${getIcon(type)}</div></div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      ${message ? `<div class="toast-subtitle">${message}</div>` : ""}
+    </div>
+    <button class="toast-close" style="background:transparent;border:none;color:inherit;cursor:pointer;">✕</button>
+  `;
   
-  // Beri jeda sejenak untuk memancing ulang transisi CSS
+  // Double rAF untuk memancing browser me-restart animasi CSS Transition
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       toast!.classList.add("show");
     });
   });
   
-  toastTimer = setTimeout(() => hideToast(), 3000);
+  const closeBtn = toast.querySelector(".toast-close") as HTMLElement;
+  if (closeBtn) closeBtn.onclick = () => hideToast();
+  
+  toastTimer = setTimeout(() => hideToast(), 3200);
 }
+
+export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+  showToast(type === 'error' ? 'Gagal' : type === 'success' ? 'Berhasil' : 'Info', msg, type);
+};
 
 // =======================
 // IMAGE UTILS (CROPPING)
