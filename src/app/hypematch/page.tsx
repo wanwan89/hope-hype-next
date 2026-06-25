@@ -68,7 +68,6 @@ const SvgIcon = ({ name, className = "" }: { name: string, className?: string })
   );
 };
 
-
 export default function HypeMatch() {
   const router = useRouter();
 
@@ -80,16 +79,17 @@ export default function HypeMatch() {
   const [dragX, setDragX] = useState(0);
   const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
   
-  // State untuk fitur template sapaan
+  // State untuk fitur pesan
   const [showTemplates, setShowTemplates] = useState(false);
+  const [customMessage, setCustomMessage] = useState(""); // <-- State untuk Pesan Custom
+
   const templates = [
-    "Hai, salam kenal! ",
+    "Hai, salam kenal! 👋",
     "Wah, kita match nih! Lagi sibuk apa hari ini?",
-    "Halo! Suka nongkrong atau jalan kemana biasanya? "
+    "Halo! Suka nongkrong atau jalan kemana biasanya? ✨"
   ];
 
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false, isScrolling: false });
-
   const activeUser = users?.[currentIndex];
 
   useEffect(() => {
@@ -175,7 +175,6 @@ export default function HypeMatch() {
     }
 
     if (dragRef.current.isScrolling) return;
-
     setDragX(currentDragX);
   };
 
@@ -227,6 +226,7 @@ export default function HypeMatch() {
           showNotif('Kamu mendapatkan Match baru!', 'success');
           setTimeout(() => {
             setMatchedUser(activeUser);
+            setCustomMessage(""); // Reset custom message input tiap kali match baru
           }, 300);
           return; 
         }
@@ -249,38 +249,72 @@ export default function HypeMatch() {
   };
 
   // ==========================================
-  // FUNGSI KIRIM PESAN TEMPLATE (DIPERBAIKI)
+  // FUNGSI KIRIM PESAN FIX & DELAY
   // ==========================================
   const handleSendTemplate = async (messageText: string) => {
-    if (!matchedUser || !currentUser) return;
+    if (!matchedUser || !currentUser || !messageText.trim()) return;
     
     try {
       const { error } = await supabase.from('messages').insert({
-        // Ganti nama kolom di bawah sesuai hasil SQL di atas
-        user_id: currentUser.id,      // Sesuaikan nama kolom pengirim
-        target_id: matchedUser.id,    // Sesuaikan nama kolom penerima
-        message: messageText          // Pastikan ini benar 'message'
+        user_id: currentUser.id,      
+        target_id: matchedUser.id,    
+        message: messageText.trim()          
       });
 
       if (error) throw error;
 
-      showNotif('Pesan sapaan terkirim!', 'success');
-      router.push(`/hypetalk/room?from=${matchedUser.id}`);
+      showNotif('Pesan terkirim!', 'success');
+      
+      // FIX 1: Tambahkan jeda waktu agar database punya waktu untuk sinkronisasi 
+      // sebelum dialihkan ke room chat, meminimalisir delay kemunculan pesan.
+      setTimeout(() => {
+        router.push(`/hypetalk/room?from=${matchedUser.id}`);
+      }, 600); 
+
     } catch (error: any) {
       console.error("Gagal mengirim pesan:", error);
       showNotif('Gagal: Cek log console untuk detail kolom!', 'error'); 
     }
-};
+  };
 
 
-  // Tampilan Animasi Opening yang Baru (Simple & Elegan)
+  // ==========================================
+  // ANIMASI OPENING BARU (LEBIH FRENDLY & KECIL)
+  // ==========================================
   if (isLoading) {
     return (
-      <div className="hm-overlay hm-flex-center">
-        <div className="hm-backdrop"></div>
-        <div className="hm-loader-overlay">
-          <h1 className="hm-loader-text">HYPE MATCH</h1>
+      <div className="hm-overlay hm-flex-center" style={{ zIndex: 9999 }}>
+        <div className="hm-backdrop" style={{ backgroundColor: 'rgba(15, 23, 42, 0.9)' }}></div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 10 }}>
+          <div className="hm-heart-beat" style={{ fontSize: '2.5rem', marginBottom: '10px' }}>💖</div>
+          <h1 style={{ 
+            fontSize: '1.2rem', 
+            fontWeight: 'bold', 
+            color: 'white', 
+            letterSpacing: '1.5px',
+            animation: 'hmFadeBounce 1.5s infinite' 
+          }}>
+            HYPE MATCH
+          </h1>
+          <p style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '6px', fontWeight: '300' }}>
+            Mencari match di sekitarmu...
+          </p>
         </div>
+
+        {/* Gaya Khusus Animasi Disematkan Disini */}
+        <style>{`
+          @keyframes hmFadeBounce {
+            0%, 100% { opacity: 0.6; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-4px); }
+          }
+          @keyframes hmHeartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+          }
+          .hm-heart-beat {
+            animation: hmHeartBeat 1s infinite ease-in-out;
+          }
+        `}</style>
       </div>
     );
   }
@@ -443,19 +477,48 @@ export default function HypeMatch() {
               </>
             ) : (
               <div className="hm-templates-container">
-                <p style={{marginBottom: '15px', fontWeight: 'bold', fontSize: '1.1rem'}}>Pilih pesan pembuka:</p>
+                <p style={{marginBottom: '15px', fontWeight: 'bold', fontSize: '1rem', color: '#fff'}}>Pilih pesan atau ketik sendiri:</p>
+                
                 {templates.map((txt, index) => (
                   <button 
                     key={index} 
                     className="hm-btn-template" 
                     onClick={() => handleSendTemplate(txt)}
+                    style={{ marginBottom: '8px' }}
                   >
                     {txt}
                   </button>
                 ))}
+
+                {/* FIX 2: INPUT PESAN CUSTOM */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', width: '100%', maxWidth: '300px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Ketik sapaan manis..."
+                    value={customMessage}
+                    onChange={(e) => setCustomMessage(e.target.value)}
+                    style={{
+                      flex: 1, padding: '12px', borderRadius: '20px', 
+                      border: 'none', outline: 'none', backgroundColor: '#f1f5f9',
+                      color: '#0f172a', fontSize: '0.9rem'
+                    }}
+                  />
+                  <button 
+                    onClick={() => handleSendTemplate(customMessage)}
+                    style={{
+                      padding: '0 16px', borderRadius: '20px', backgroundColor: '#ec4899', 
+                      color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                      opacity: customMessage.trim() ? 1 : 0.5
+                    }}
+                    disabled={!customMessage.trim()}
+                  >
+                    Kirim
+                  </button>
+                </div>
+
                 <button 
                   className="hm-btn-keep-swiping" 
-                  style={{marginTop: '15px', padding: '10px'}} 
+                  style={{marginTop: '20px', padding: '10px'}} 
                   onClick={() => setShowTemplates(false)}
                 >
                   Batal
