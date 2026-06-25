@@ -1,6 +1,7 @@
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase'; // Pastikan path ini sesuai dengan file supabase kamu
 import './HypeMatchOverlay.css'; // Import file CSS khusus di sini
 
 type MatchUser = {
@@ -15,24 +16,15 @@ type MatchUser = {
   zodiak?: string;
 };
 
-type Props = {
-  currentUser: any;
-  potentialMatches: MatchUser[]; 
-  onLike: (userId: string) => Promise<boolean>; 
-  onPass: (userId: string) => void;
-  onClose: () => void;
-};
-
-// FIX 1: Berikan default value array kosong [] pada potentialMatches agar tidak undefined saat SSR
-const HypeMatchOverlay: React.FC<Props> = ({ 
-  currentUser, 
-  potentialMatches = [], 
-  onLike, 
-  onPass, 
-  onClose 
-}) => {
+export default function HypeMatch() {
   const router = useRouter();
 
+  // State untuk Data Supabase
+  const [users, setUsers] = useState<MatchUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // State Bawaan UI Kamu
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [dragY, setDragY] = useState(0); 
@@ -41,9 +33,55 @@ const HypeMatchOverlay: React.FC<Props> = ({
   
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false });
 
-  // FIX 2: Gunakan optional chaining (?.) untuk mencegah error "Cannot read properties of undefined"
-  const activeUser = potentialMatches?.[currentIndex];
+  // Ambil user yang aktif berdasarkan index
+  const activeUser = users?.[currentIndex];
 
+  // ==========================================
+  // LOGIC AMBIL DATA DARI SUPABASE
+  // ==========================================
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+
+        // 1. Ambil session user kamu sendiri (Opsional)
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user) {
+          setCurrentUser({
+            id: authData.user.id,
+            avatar_url: 'https://via.placeholder.com/150', // Bisa disesuaikan dengan avatar asli
+          });
+        }
+
+        // 2. Tarik data dari tabel profiles
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, user, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak')
+          .limit(10); // Ambil 10 data
+
+        if (error) throw error;
+
+        if (data) {
+          // Format data agar sesuai dengan kebutuhan UI kamu (user -> username)
+          const formattedUsers = data.map((profile: any) => ({
+            ...profile,
+            username: profile.user || 'Anonim', 
+          }));
+          setUsers(formattedUsers);
+        }
+      } catch (error) {
+        console.error('Gagal mengambil data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // ==========================================
+  // LOGIC SWIPE & ANIMASI (TIDAK DIUBAH)
+  // ==========================================
   const handleDragStart = (clientX: number, clientY: number) => {
     dragRef.current = { startX: clientX, startY: clientY, isDragging: true };
   };
@@ -105,14 +143,18 @@ const HypeMatchOverlay: React.FC<Props> = ({
     setTimeout(async () => {
       setIsShowingProfile(false); 
       if (action === 'like') {
-        const isMatch = await onLike(activeUser.id);
+        // Disini tempat kamu insert ke table likes Supabase nantinya
+        console.log('Menyukai user:', activeUser.id);
+        
+        const isMatch = false; // Ubah jadi true kalau kamu mau ngetest layar MATCH!
+        
         if (isMatch) {
           setMatchedUser(activeUser);
         } else {
           nextCard();
         }
       } else {
-        onPass(activeUser.id);
+        console.log('Melewati user:', activeUser.id);
         nextCard();
       }
     }, 300); 
@@ -126,9 +168,22 @@ const HypeMatchOverlay: React.FC<Props> = ({
 
   const handleStartChat = () => {
     if (!matchedUser) return;
-    onClose(); 
     router.push(`/hypetalk/room?from=${matchedUser.id}`); 
   };
+
+  const handleClose = () => {
+    router.back(); // Kembali ke halaman sebelumnya karena ini file tunggal
+  };
+
+  // Tampilan Loading sebelum data siap
+  if (isLoading) {
+    return (
+      <div className="hype-match-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div className="overlay-backdrop"></div>
+        <h2 style={{ color: 'white', zIndex: 10 }}>Mencari Hype di sekitarmu...</h2>
+      </div>
+    );
+  }
 
   // Tampilan saat MATCH terjadi
   if (matchedUser) {
@@ -156,9 +211,9 @@ const HypeMatchOverlay: React.FC<Props> = ({
   // Tampilan Overlay Utama
   return (
     <div className="hype-match-overlay">
-      <div className="overlay-backdrop" onClick={onClose}></div>
+      <div className="overlay-backdrop" onClick={handleClose}></div>
       
-      <button className="btn-close-overlay" onClick={onClose}>
+      <button className="btn-close-overlay" onClick={handleClose}>
         <span className="material-icons">close</span>
       </button>
 
@@ -253,6 +308,4 @@ const HypeMatchOverlay: React.FC<Props> = ({
       )}
     </div>
   );
-};
-
-export default React.memo(HypeMatchOverlay);
+}
