@@ -644,7 +644,6 @@ export default function ChatArea() {
     sendMessage();
   };
 
-  // 👈 WAJIB DITAMBAHKAN: Handler untuk memproses trigger EDIT pesan ke input box
   const handleEditMessage = (msg: any) => {
     if (!msg) return;
     setEditMessageId(msg.id);
@@ -652,7 +651,6 @@ export default function ChatArea() {
     setMsgOptions(null); 
   };
 
-  // 👈 WAJIB DITAMBAHKAN: Handler untuk memproses trigger HAPUS pesan langsung ke database Supabase
   const handleDeleteMessage = async (msgOrId: any) => {
     const targetId = typeof msgOrId === 'object' ? msgOrId?.id : msgOrId;
     if (!targetId) return;
@@ -660,7 +658,6 @@ export default function ChatArea() {
     const confirmDelete = window.confirm("Apakah kamu yakin ingin menghapus pesan ini?");
     if (!confirmDelete) return;
 
-    // Optimistic Update: Hapus instan di sisi UI biar kerasa cepat
     setMessages(prev => prev.filter(m => m.id !== targetId));
     setMsgOptions(null);
 
@@ -940,8 +937,8 @@ export default function ChatArea() {
         setMsgOptions={setMsgOptions} 
         typingUser={typingUser} 
         refs={refs}
-        onEdit={handleEditMessage}       {/* 👈 PERBAIKAN: Oper fungsi Edit ke sub-komponen */}
-        onDelete={handleDeleteMessage}   {/* 👈 PERBAIKAN: Oper fungsi Hapus ke sub-komponen */}
+        onEdit={handleEditMessage}
+        onDelete={handleDeleteMessage}
       />
 
       {/* 4. Komponen Input Teks / Bawah */}
