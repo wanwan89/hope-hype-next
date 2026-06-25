@@ -6,9 +6,14 @@ import { supabase } from '@/lib/supabase';
 import { showNotif, getUserBadge } from '@/lib/ui-utils'; 
 import * as LiveKit from 'livekit-client';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion'; 
-import MessageBubble from './MessageBubble';
 import './ChatArea.css';
+
+// Import komponen UI yang sudah dipisah
+import ChatCallPopup from './ChatCallPopup';
+import ChatHeader from './ChatHeader';
+import ChatMessageList from './ChatMessageList';
+import ChatInputFooter from './ChatInputFooter';
+import ChatModals from './ChatModals';
 
 const formatLastSeen = (dateStr: string) => {
   if (!dateStr) return '';
@@ -883,455 +888,52 @@ export default function ChatArea() {
         }
       `}</style>
 
-      {(callStatus !== 'idle') && (
-        <div className="call-floating-popup">
-          <img src={callData.partnerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="partner" />
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-              {callData.partnerName}
-            </div>
-            <div style={{ color: callStatus === 'connected' ? '#888' : '#2ecc71', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {callStatus === 'connected' ? (
-                <span>{Math.floor(callData.seconds / 60)}:{String(callData.seconds % 60).padStart(2, '0')}</span>
-              ) : (
-                <>
-                  <span className="material-icons" style={{ fontSize: '12px' }}>ring_volume</span> 
-                  {callStatus === 'calling' ? 'Memanggil...' : 'Menghubungi...'}
-                </>
-              )}
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {callStatus === 'incoming' && (
-              <button className="global-call-btn" style={{ background: '#2ecc71', boxShadow: '0 4px 10px rgba(46, 204, 113, 0.4)' }} onClick={() => { refs.audio.current?.ring.pause(); connectLiveKit(callData.room); }}>
-                <span className="material-icons" style={{ fontSize: '20px' }}>call</span>
-              </button>
-            )}
-            <button className="global-call-btn" style={{ background: '#ff4757', boxShadow: '0 4px 10px rgba(255, 71, 87, 0.4)' }} onClick={async () => {
-                const currentRoom = callData.room;
-                const isIncoming = callStatus === 'incoming';
-                const isConnected = callStatus === 'connected';
-                endCall(true);
-                if (isIncoming) await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan Ditolak`, is_system: true }]);
-                else if (isConnected) await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan berakhir (${Math.floor(callData.seconds / 60)}:${String(callData.seconds % 60).padStart(2, '0')})`, is_system: true }]);
-                else await supabase.from('messages').insert([{ room_id: currentRoom, user_id: currentUser.id, message: `Panggilan dibatalkan`, is_system: true }]);
-              }}>
-              <span className="material-icons" style={{ fontSize: '20px' }}>call_end</span>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 1. Komponen Popup Panggilan */}
+      <ChatCallPopup 
+        callStatus={callStatus} callData={callData} refs={refs} 
+        connectLiveKit={connectLiveKit} endCall={endCall} currentUser={currentUser} 
+      />
 
-      <header className="chat-header">
-        <div className="header-left">
-          <button className="menu-btn" onClick={() => router.push('/hypetalk')}><span className="material-icons">arrow_back</span></button>
-          {targetId && <img src={headerInfo.avatar || '/asets/png/profile.webp'} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)' }} />}
-          <div className="header-info">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {headerInfo.title}
-              {roomId !== 'room-1' && targetId && headerInfo.role && <span dangerouslySetInnerHTML={{ __html: getUserBadge(headerInfo.role) }} />}
-            </h3>
-            <div className="status-container">
-              <span className={displayStatus === 'Online' || displayStatus.includes('mengetik') ? "status-typing" : "status-online"} style={{ color: displayStatus === 'Online' ? '#2ecc71' : '' }}>
-                {displayStatus}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="header-right">
-          {targetId ? (
-            <button className="btn-call" style={{ opacity: chatState === 'normal' ? 1 : 0.3 }} onClick={() => { if (chatState === 'normal') startCall(); else showNotif("Permintaan pesan belum disetujui", "warning"); }}>
-              <span className="material-icons">call</span>
-            </button>
-          ) : groupId ? (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>INVITE</button>
-              {isOwner && <button onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }} style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>SETTINGS</button>}
-            </div>
-          ) : null}
-        </div>
-      </header>
+      {/* 2. Komponen Header Obrolan */}
+      <ChatHeader 
+        router={router} targetId={targetId} headerInfo={headerInfo} 
+        displayStatus={displayStatus} chatState={chatState} roomId={roomId}
+        groupId={groupId} isOwner={isOwner} setGroupModalTab={setGroupModalTab} 
+        setIsGroupSettingsOpen={setIsGroupSettingsOpen} startCall={startCall} 
+      />
 
-      <main className="chat-messages">
-        {isLoading ? (
-          <div className="chat-loading-screen">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className={`skeleton-msg ${i % 2 === 0 ? 'left' : 'right'}`}>
-                <div className="skeleton-avatar"></div><div className="skeleton-bubble"></div>
-              </div>
-            ))}
-            <div className="loading-chat-hint">{t('connecting_chat')}</div>
-          </div>
-        ) : (
-          <>
-            <div className="encryption-notice">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
-              <span>{t('encryption_notice')}</span>
-            </div>
-            {messages.map((msg, idx) => {
-              const isUnread = msg.user_id !== currentUser?.id && msg.status !== 'read';
-              let isFirstUnread = false;
-              if (isUnread) {
-                 const prevMsg = messages[idx + 1]; 
-                 if (!prevMsg || prevMsg.status === 'read' || prevMsg.user_id === currentUser?.id) {
-                    isFirstUnread = true;
-                 }
-              }
+      {/* 3. Komponen List Pesan Utama */}
+      <ChatMessageList 
+        isLoading={isLoading} t={t} messages={messages} currentUser={currentUser} 
+        setReplyTo={setReplyTo} setMsgOptions={setMsgOptions} typingUser={typingUser} refs={refs}
+      />
 
-          // GANTI JADI SEPERTI INI
-          let showDateSeparator = false;
-          if (idx === 0) {
-            // Selalu munculkan separator di pesan paling pertama
-            showDateSeparator = true; 
-          } else {
-            const prevMsg = messages[idx - 1];
-            
-            // Cek perubahan hari
-            const currDate = new Date(msg.created_at).toDateString();
-            const prevDate = new Date(prevMsg.created_at).toDateString();
-            
-            // Cek selisih waktu
-            const prevTime = new Date(prevMsg.created_at).getTime();
-            const currTime = new Date(msg.created_at).getTime();
-            const diffInHours = (currTime - prevTime) / (1000 * 60 * 60);
+      {/* 4. Komponen Input Teks / Bawah */}
+      <ChatInputFooter 
+        chatState={chatState} headerInfo={headerInfo} handleTolakRequest={handleTolakRequest} 
+        handleTerimaRequest={handleTerimaRequest} isStickerOpen={isStickerOpen} 
+        setIsStickerOpen={setIsStickerOpen} fetchStickers={fetchStickers} t={t} 
+        stickers={stickers} sendMessage={sendMessage} replyTo={replyTo} setReplyTo={setReplyTo} 
+        isRecording={isRecording} recordTime={recordTime} audioLevel={audioLevel} 
+        inputValue={inputValue} handleTyping={handleTyping} handlePhotoClick={handlePhotoClick} 
+        isUploadingImg={isUploadingImg} fileInputRef={fileInputRef} handlePhotoSelect={handlePhotoSelect} 
+        canSend={canSend} handleMicTouchStart={handleMicTouchStart} stopVN={stopVN} 
+        handleMicTouchMove={handleMicTouchMove} handleSendClick={handleSendClick} editMessageId={editMessageId}
+      />
 
-            // Munculkan separator jika beda hari ATAU jaraknya 5 jam lebih
-            if (currDate !== prevDate || diffInHours >= 5) {
-              showDateSeparator = true;
-            }
-          }
+      {/* 5. Komponen Modals (Gambar Fullscreen & Settings Grup) */}
+      <ChatModals 
+        pendingImagePreview={pendingImagePreview} setPendingImage={setPendingImage} 
+        setPendingImagePreview={setPendingImagePreview} setImageCaption={setImageCaption} 
+        imageCaption={imageCaption} handleSendImageFullScreen={handleSendImageFullScreen} 
+        isUploadingImg={isUploadingImg} isGroupSettingsOpen={isGroupSettingsOpen} 
+        setIsGroupSettingsOpen={setIsGroupSettingsOpen} groupModalTab={groupModalTab} 
+        inviteSearch={inviteSearch} setInviteSearch={setInviteSearch} handleAddMember={handleAddMember} 
+        isUpdatingGroup={isUpdatingGroup} groupMembers={groupMembers} currentUser={currentUser} 
+        headerInfo={headerInfo} handleGroupPhotoUpload={handleGroupPhotoUpload} newGroupName={newGroupName} 
+        setNewGroupName={setNewGroupName} updateGroupInfo={updateGroupInfo} isOwner={isOwner} kickMember={kickMember}
+      />
 
-              return (
-                <MessageBubble 
-                  key={msg.id} 
-                  msg={msg} 
-                  currentUser={currentUser}
-                  isMe={msg.user_id === currentUser?.id} 
-                  onReply={setReplyTo} 
-                  onDelete={(id:any) => setMsgOptions(messages.find(m => m.id === id))} 
-                  isFirstUnread={isFirstUnread}
-                  unreadCount={isFirstUnread ? messages.filter(m => m.user_id !== currentUser?.id && m.status !== 'read').length : 0}
-                  showDateSeparator={showDateSeparator}
-                />
-              );
-            })}
-            
-            {typingUser && (
-              <div className="chat-message other" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '8px', marginBottom: '8px', paddingLeft: '12px' }}>
-                <img src={typingUser.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
-                <div className="content" style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', background: 'var(--bg-panel)', padding: '8px 14px', borderRadius: '14px 14px 14px 4px', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary-blue)', marginBottom: '4px' }}>{typingUser.username}</div>
-                  <div className="typing-bubble" style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '14px' }}>
-                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out' }}></span>
-                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.2s' }}></span>
-                    <span style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.4s' }}></span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-        <div ref={refs.scroll} />
-      </main>
-
-      <footer className="chat-input-container" style={{ padding: '8px 10px', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)' }}>
-        {chatState === 'i_must_approve' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>{headerInfo.title} bukan pengikutmu. Terima pesan untuk membalas dan melakukan panggilan.</p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={handleTolakRequest} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: 'none', background: '#ff4757', color: 'white', fontWeight: 600 }}>Tolak</button>
-              <button onClick={handleTerimaRequest} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: 'none', background: '#1f3cff', color: 'white', fontWeight: 600 }}>Terima</button>
-            </div>
-          </div>
-        ) : chatState === 'i_am_blocked_by_request' ? (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Menunggu permintaan pesan diterima oleh {headerInfo.title}.</p>
-          </div>
-        ) : (
-          <>
-            <AnimatePresence>
-              {isStickerOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-                  id="sticker-menu" style={{ position: 'absolute', bottom: '100%', left: '10px', right: '10px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 -4px 15px rgba(0,0,0,0.1)', padding: '10px', zIndex: 10 }}
-                >
-                  <div className="sticker-search-wrapper"><input placeholder={t('search_sticker')} onChange={(e) => fetchStickers(e.target.value)} /></div>
-                  <div id="sticker-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', maxHeight: '180px', overflowY: 'auto', marginTop: '10px' }}>
-                    {stickers.map((s, idx) => (
-                      <img 
-                        key={idx} src={s.images.fixed_width_small.url} alt="sticker" 
-                        style={{ width: '100%', height: 'auto', borderRadius: '8px', cursor: 'pointer' }}
-                        onClick={() => {
-                          sendMessage(undefined, s.images.fixed_width.url);
-                          setIsStickerOpen(false); 
-                        }} 
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {replyTo && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  style={{ display: 'flex', background: 'rgba(29, 161, 242, 0.05)', borderRadius: '12px', padding: '8px 12px', marginBottom: '8px', border: '1px solid rgba(29, 161, 242, 0.1)', position: 'relative' }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{color: 'var(--primary-blue)', fontSize: '11px', fontWeight: 'bold'}}>{t('replying_to', { username: replyTo.profiles?.username })}</div>
-                    <div style={{fontSize: '13px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{replyTo.message || t('media_label')}</div>
-                  </div>
-                  <div onClick={() => setReplyTo(null)} style={{fontSize: '22px', cursor: 'pointer', color: '#94a3b8', padding: '0 5px'}}>&times;</div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%' }}>
-              
-              {isRecording ? (
-                <div className="slim-input-wrapper" style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: '#ff4757', fontWeight: 600 }}>
-                    <span className="online-dot" style={{ background: '#ff4757' }}></span>
-                    <span>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
-                    
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '3px', height: '24px', overflow: 'hidden' }}>
-                      {[...Array(12)].map((_, i) => (
-                         <motion.div 
-                           key={i} 
-                           animate={{ height: Math.max(4, (audioLevel/255) * 24 + (Math.random() * 6 - 3)) }} 
-                           transition={{ duration: 0.1 }}
-                           style={{ width: '3px', background: '#ff4757', borderRadius: '2px' }} 
-                         />
-                      ))}
-                    </div>
-                    <span style={{ fontSize: '11px', opacity: 0.6, whiteSpace: 'nowrap' }}>&lt; Geser batal</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="slim-input-wrapper">
-                  {/* Ikon stiker yang dibuat selalu warna biru tema */}
-                  <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
-                    <span className="material-icons" style={{ color: 'var(--primary-blue)' }}>sentiment_satisfied_alt</span>
-                  </button>
-                  
-                  <textarea 
-                    placeholder="Tulis pesan..." 
-                    value={inputValue} 
-                    onChange={handleTyping} 
-                    rows={1}
-                    onInput={(e) => {
-                      const target = e.target as HTMLTextAreaElement;
-                      target.style.height = 'auto';
-                      target.style.height = Math.min(target.scrollHeight, 100) + 'px';
-                    }}
-                  />
-                  
-                  {/* FIX: Ikon lampiran diubah menjadi icon kamera SVG */}
-                  <button className="action-icon-btn" onClick={handlePhotoClick} disabled={isUploadingImg}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                      <circle cx="12" cy="13" r="4"></circle>
-                    </svg>
-                  </button>
-                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
-                </div>
-              )}
-              
-              <button 
-                className="send-btn-round"
-                onMouseDown={!canSend ? handleMicTouchStart : undefined} 
-                onMouseUp={!canSend ? () => stopVN(false) : undefined} 
-                onTouchStart={!canSend ? handleMicTouchStart : undefined} 
-                onTouchEnd={!canSend ? () => stopVN(false) : undefined} 
-                onTouchMove={!canSend ? handleMicTouchMove : undefined} 
-                onClick={() => canSend && handleSendClick()}
-              >
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={editMessageId ? 'edit' : canSend ? 'send' : 'mic'}
-                    initial={{ scale: 0, opacity: 0, rotate: -45 }}
-                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                    exit={{ scale: 0, opacity: 0, rotate: 45 }}
-                    transition={{ duration: 0.15 }}
-                    className="material-icons"
-                    style={{ fontSize: '20px' }}
-                  >
-                    {editMessageId ? 'check' : (canSend ? 'send' : 'mic')}
-                  </motion.span>
-                </AnimatePresence>
-              </button>
-
-            </div>
-          </>
-        )}
-      </footer>
-
-      <AnimatePresence>
-        {pendingImagePreview && (
-          <motion.div 
-            initial={{ opacity: 0, y: '100%' }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            style={{ 
-              position: 'fixed', inset: 0, background: 'var(--bg-main)', zIndex: 9999999, 
-              display: 'flex', flexDirection: 'column'
-            }}
-          >
-            <div style={{ padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-              <button onClick={() => { setPendingImage(null); setPendingImagePreview(null); setImageCaption(''); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
-                <span className="material-icons" style={{fontSize: '28px'}}>close</span>
-              </button>
-              <span style={{ color: 'white', fontWeight: 600, fontSize: '16px' }}>Kirim Foto</span>
-              <div style={{width: '28px'}}></div>
-            </div>
-
-            <div style={{ flex: 1, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img src={pendingImagePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="preview full" />
-            </div>
-
-            {/* FIX: Layout khusus form chat saat edit/preview foto dirapihkan agar tidak tertutup */}
-            <div style={{ padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              <div className="slim-input-wrapper" style={{ flex: 1, background: 'var(--bg-secondary)' }}>
-                <textarea 
-                  placeholder="Tambahkan keterangan..." 
-                  value={imageCaption}
-                  onChange={(e) => setImageCaption(e.target.value)}
-                  rows={1}
-                  style={{ width: '100%', padding: '8px 4px', fontSize: '15px' }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 100) + 'px';
-                  }}
-                  autoFocus
-                />
-              </div>
-              <button 
-                onClick={handleSendImageFullScreen} 
-                disabled={isUploadingImg}
-                className="send-btn-round"
-              >
-                {isUploadingImg ? (
-                   <span className="material-icons" style={{ animation: 'spinLoading 1s linear infinite' }}>autorenew</span>
-                ) : (
-                   <span className="material-icons">send</span>
-                )}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isGroupSettingsOpen && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-              onClick={() => setIsGroupSettingsOpen(false)}
-            />
-            <motion.div 
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              style={{ position: 'relative', background: 'var(--bg-main)', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '85vh' }}
-            >
-              <div style={{ width: '40px', height: '5px', background: 'var(--border-color)', borderRadius: '10px', margin: '0 auto 10px' }} />
-              
-              <h3 style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                {groupModalTab === 'invite' ? 'Tambah Anggota' : 'Pengaturan Grup'}
-                <span className="material-icons" style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setIsGroupSettingsOpen(false)}>close</span>
-              </h3>
-
-              <div style={{ overflowY: 'auto', paddingRight: '4px', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {groupModalTab === 'invite' ? (
-                  <>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <input 
-                        placeholder="Username atau #ShortID" 
-                        value={inviteSearch} 
-                        onChange={e => setInviteSearch(e.target.value)} 
-                        style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-color)', outline: 'none' }}
-                      />
-                      <button 
-                        onClick={handleAddMember} 
-                        disabled={isUpdatingGroup || !inviteSearch.trim()}
-                        style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '12px', fontWeight: 'bold', opacity: (isUpdatingGroup || !inviteSearch.trim()) ? 0.7 : 1, cursor: 'pointer' }}
-                      >
-                        Tambah
-                      </button>
-                    </div>
-                    <div>
-                      <h4 style={{ fontSize: '14px', marginBottom: '10px', color: 'var(--text-muted)' }}>Daftar Anggota ({groupMembers.length})</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {groupMembers.map(m => (
-                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-secondary)', padding: '10px', borderRadius: '12px' }}>
-                            <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt="avatar"/>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{m.profiles?.username}</div>
-                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{m.user_id === currentUser?.id ? 'Kamu' : 'Member'}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ position: 'relative' }}>
-                        <img src={headerInfo.avatar || '/asets/png/profile.webp'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-color)' }} alt="group avatar" />
-                        <label style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-blue)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                          <span className="material-icons" style={{ fontSize: '16px' }}>edit</span>
-                          <input type="file" hidden accept="image/*" onChange={handleGroupPhotoUpload} disabled={isUpdatingGroup} />
-                        </label>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
-                        <input 
-                          value={newGroupName} 
-                          onChange={e => setNewGroupName(e.target.value)} 
-                          style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-color)', textAlign: 'center', fontWeight: 'bold' }}
-                        />
-                        <button 
-                          onClick={() => updateGroupInfo('name', newGroupName)} 
-                          disabled={isUpdatingGroup || newGroupName === headerInfo.title || !newGroupName.trim()}
-                          style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '12px', fontWeight: 'bold', opacity: (isUpdatingGroup || newGroupName === headerInfo.title) ? 0.7 : 1, cursor: 'pointer' }}
-                        >
-                          Simpan
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 style={{ fontSize: '14px', marginBottom: '10px', color: 'var(--text-muted)' }}>Manajemen Anggota</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {groupMembers.map(m => (
-                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-secondary)', padding: '10px', borderRadius: '12px' }}>
-                            <img src={m.profiles?.avatar_url || '/asets/png/profile.webp'} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt="avatar"/>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{m.profiles?.username}</div>
-                            </div>
-                            {isOwner && m.user_id !== currentUser?.id && (
-                              <button 
-                                onClick={() => kickMember(m.user_id, m.profiles?.username)}
-                                style={{ background: 'rgba(255, 71, 87, 0.1)', color: '#ff4757', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                              >
-                                Keluarkan
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
