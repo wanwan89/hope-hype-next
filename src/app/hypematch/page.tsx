@@ -80,6 +80,14 @@ export default function HypeMatch() {
   const [dragX, setDragX] = useState(0);
   const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
   
+  // State untuk fitur template sapaan
+  const [showTemplates, setShowTemplates] = useState(false);
+  const templates = [
+    "Hai, salam kenal! ✨",
+    "Wah, kita match nih! Lagi sibuk apa hari ini?",
+    "Halo! Suka nongkrong atau jalan kemana biasanya? 👀"
+  ];
+
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false, isScrolling: false });
 
   const activeUser = users?.[currentIndex];
@@ -96,7 +104,6 @@ export default function HypeMatch() {
         if (authData?.user) {
           myId = authData.user.id;
 
-          // FIX 2: Ambil profil diri sendiri untuk mengecek gender SEKALIGUS avatar_url
           const { data: myProfile } = await supabase
             .from('profiles')
             .select('gender, avatar_url')
@@ -105,14 +112,12 @@ export default function HypeMatch() {
           
           setCurrentUser({
             id: myId,
-            // Prioritaskan avatar dari database profiles (jika user sudah ubah foto)
             avatar_url: myProfile?.avatar_url || authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
           });
 
           if (myProfile) myGender = myProfile.gender;
         }
 
-        // Susun Query pencarian user
         let query = supabase
           .from('profiles')
           .select(`
@@ -122,12 +127,10 @@ export default function HypeMatch() {
           `)
           .limit(10);
 
-        // Filter: Jangan tampilkan diri sendiri
         if (myId) {
           query = query.neq('id', myId);
         }
 
-        // Filter: Tampilkan hanya gender yang berlawanan
         if (myGender) {
           const genderLower = myGender.toLowerCase();
           if (genderLower === 'laki-laki' || genderLower === 'pria') {
@@ -202,7 +205,6 @@ export default function HypeMatch() {
 
     if (action === 'like') {
       try {
-        // 1. Catat like kita di database
         await supabase.from('user_likes').upsert({
           user_id: currentUser.id,
           liked_user_id: activeUser.id,
@@ -210,7 +212,6 @@ export default function HypeMatch() {
           onConflict: 'user_id,liked_user_id' 
         });
 
-        // 2. Cek apakah user yang kita like sudah pernah me-like kita sebelumnya
         const { data: matchData } = await supabase
           .from('user_likes')
           .select('id')
@@ -218,10 +219,7 @@ export default function HypeMatch() {
           .eq('liked_user_id', currentUser.id)
           .maybeSingle();
 
-        // 3. Jika ketemu, maka statusnya saling suka (MATCH)
         if (matchData) {
-          
-          // FIX 1: Kasih getaran (Haptic Feedback) jika didukung perangkat
           if (typeof window !== 'undefined' && 'vibrate' in navigator) {
             navigator.vibrate([200, 100, 200]); 
           }
@@ -230,14 +228,13 @@ export default function HypeMatch() {
           setTimeout(() => {
             setMatchedUser(activeUser);
           }, 300);
-          return; // Hentikan eksekusi nextCard untuk memunculkan layar Match
+          return; 
         }
       } catch (err) {
         console.error("Gagal memproses like:", err);
       }
     }
 
-    // Jika bukan match atau memilih pass, lanjut ke kartu berikutnya
     setTimeout(() => {
       nextCard();
     }, 300); 
@@ -251,34 +248,37 @@ export default function HypeMatch() {
     if (scrollContainer) scrollContainer.scrollTop = 0;
   };
 
+  // Fungsi untuk mengirim pesan template secara otomatis
+  const handleSendTemplate = async (messageText: string) => {
+    if (!matchedUser || !currentUser) return;
+    
+    try {
+      // Menyimpan pesan otomatis ke database chat.
+      // Catatan: Pastikan nama tabel pesan kamu adalah 'messages' dan kolomnya sesuai.
+      // Jika nama tabel/kolom chat kamu berbeda, sesuaikan bagian `.from('messages')` ini.
+      await supabase.from('messages').insert({
+        sender_id: currentUser.id,
+        receiver_id: matchedUser.id,
+        message: messageText
+      });
+
+      showNotif('Pesan sapaan terkirim!', 'success');
+      // Arahkan ke room chat setelah pesan terkirim
+      router.push(`/hypetalk/room?from=${matchedUser.id}`);
+    } catch (error) {
+      console.error("Gagal mengirim pesan:", error);
+      showNotif('Gagal mengirim pesan', 'error');
+    }
+  };
+
+  // Tampilan Animasi Loading Cinematic
   if (isLoading) {
     return (
       <div className="hm-overlay hm-flex-center">
         <div className="hm-backdrop"></div>
-        <h2 style={{ color: 'var(--text-main)', zIndex: 10 }} className="hm-animate-pulse">
-          Mencari Hype di sekitarmu...
-        </h2>
-      </div>
-    );
-  }
-
-  if (matchedUser) {
-    return (
-      <div className="hm-overlay hm-match-success-bg hm-glass-clean">
-        <div className="hm-match-content">
-          <h2 className="hm-match-title">HYPE MATCH!</h2>
-          <p>Kamu dan <strong>{matchedUser.username}</strong> saling tertarik!</p>
-          <div className="hm-match-avatars">
-            <img src={currentUser?.avatar_url} alt="You" className="hm-avatar-circle" />
-            <span className="material-icons hm-favorite-icon">favorite</span>
-            <img src={matchedUser.avatar_url} alt="Them" className="hm-avatar-circle" />
-          </div>
-          <button className="hm-btn-chat-now hm-glass-clean" onClick={() => router.push(`/hypetalk/room?from=${matchedUser.id}`)}>
-            Mulai Obrolan
-          </button>
-          <button className="hm-btn-keep-swiping" onClick={() => { setMatchedUser(null); nextCard(); }}>
-            Lanjut Mencari
-          </button>
+        <div className="hm-loader-overlay">
+          <h1 className="hm-loader-text">HYPE MATCH</h1>
+          <p className="hm-loader-sub">Mencari kecocokan di sekitarmu...</p>
         </div>
       </div>
     );
@@ -317,8 +317,9 @@ export default function HypeMatch() {
                   draggable="false" 
                 />
                 
-                {dragX < -50 && <div className="hm-swipe-indicator hm-like">TERTARIK</div>}
-                {dragX > 50 && <div className="hm-swipe-indicator hm-pass">LEWAT</div>}
+                {/* Teks Swipe yang sudah diganti */}
+                {dragX < -50 && <div className="hm-swipe-indicator hm-like">LIKE</div>}
+                {dragX > 50 && <div className="hm-swipe-indicator hm-pass">NOPE</div>}
                 
                 <div className="hm-card-image-overlay">
                   <h2 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -412,6 +413,59 @@ export default function HypeMatch() {
           </button>
         </div>
       )}
+
+      {/* OVERLAY MATCH SUCCESS (Transisi Smooth di atas layar) */}
+      <div className={`hm-match-overlay-container hm-match-success-bg ${matchedUser ? 'show' : ''}`}>
+        {matchedUser && (
+          <div className="hm-match-content">
+            <h2 className="hm-match-title">HYPE MATCH!</h2>
+            <p>Kamu dan <strong>{matchedUser.username}</strong> saling tertarik!</p>
+            
+            <div className="hm-match-avatars">
+              <img src={currentUser?.avatar_url} alt="You" className="hm-avatar-circle" />
+              <span className="material-icons hm-favorite-icon">favorite</span>
+              <img src={matchedUser.avatar_url} alt="Them" className="hm-avatar-circle" />
+            </div>
+
+            {/* Logika Toggle Tombol vs Template */}
+            {!showTemplates ? (
+              <>
+                <button className="hm-btn-chat-now hm-glass-clean" onClick={() => setShowTemplates(true)}>
+                  Sapa Dia!
+                </button>
+                <button className="hm-btn-keep-swiping" onClick={() => { 
+                  setMatchedUser(null); 
+                  setShowTemplates(false);
+                  nextCard(); 
+                }}>
+                  Lanjut Mencari
+                </button>
+              </>
+            ) : (
+              <div className="hm-templates-container">
+                <p style={{marginBottom: '15px', fontWeight: 'bold', fontSize: '1.1rem'}}>Pilih pesan pembuka:</p>
+                {templates.map((txt, index) => (
+                  <button 
+                    key={index} 
+                    className="hm-btn-template" 
+                    onClick={() => handleSendTemplate(txt)}
+                  >
+                    {txt}
+                  </button>
+                ))}
+                <button 
+                  className="hm-btn-keep-swiping" 
+                  style={{marginTop: '15px', padding: '10px'}} 
+                  onClick={() => setShowTemplates(false)}
+                >
+                  Batal
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
