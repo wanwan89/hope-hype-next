@@ -80,8 +80,10 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const holdTimer = useRef<any>(null);
   const lastTap = useRef(0);
 
-  // FIX: Tambahkan msg.is_deleted jika backend kamu menggunakan boolean flag
-  const isDeleted = msg.message === "Pesan ini telah dihapus" || msg.message === "Pesan telah dihapus" || msg.is_deleted;
+  // Pengecekan status hapus & edit yang lebih aman dan komprehensif
+  const isDeleted = msg.is_deleted || msg.message === "Pesan ini telah dihapus" || msg.message === "Pesan telah dihapus";
+  const isEdited = msg.is_edited || msg.is_edit || (msg.updated_at && new Date(msg.updated_at).getTime() - new Date(msg.created_at).getTime() > 1000);
+
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
@@ -334,14 +336,15 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     }
   };
 
-  // Pastikan teks placeholder untuk foto/VN tidak tertimpa jika pesan terhapus
   let cleanMsg = msg.message || "";
   if (isStoryReply) {
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
   const isPlaceholder = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
-  const shouldShowText = cleanMsg && (!isPlaceholder || isDeleted);
+  
+  // 🔥 PERBAIKAN 1: Paksa bernilai true jika isDeleted aktif agar info terhapus selalu muncul
+  const shouldShowText = isDeleted || (cleanMsg && !isPlaceholder);
 
   return (
     <>
@@ -510,10 +513,10 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
 
                 {shouldShowText && (
                   <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', wordBreak: 'break-word' }}>
-                    {/* FIX 1: Tampilan Pesan Dihapus yang Jelas */}
+                    {/* 🔥 PERBAIKAN 2: Tampilan Pesan Dihapus yang Jelas */}
                     {isDeleted ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}>
-                        <span className="material-icons" style={{ fontSize: '14px' }}>block</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8, color: 'var(--text-muted)' }}>
+                        <span className="material-icons" style={{ fontSize: '16px' }}>block</span>
                         {t('msg_deleted') || "Pesan ini telah dihapus"}
                       </span>
                     ) : renderTextWithLinks(cleanMsg)}
@@ -573,10 +576,10 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 
                 <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
                   
-                  {/* FIX 2: Indikator "(diedit)" di samping timestamp */}
-                  {msg.is_edited && !isDeleted && (
-                    <span style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.7, marginRight: '2px' }}>
-                      diedit
+                  {/* 🔥 PERBAIKAN 3: Indikator "(diedit)" yang akurat & aman di samping timestamp */}
+                  {isEdited && !isDeleted && (
+                    <span style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.6, marginRight: '2px' }}>
+                      (diedit)
                     </span>
                   )}
                   
