@@ -38,6 +38,7 @@ function NavbarContent() {
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
   useEffect(() => {
+    // pathname bisa null di beberapa edge case SSR
     if (pathname !== '/') {
       setIsVisible(true);
       return;
@@ -57,19 +58,21 @@ function NavbarContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [pathname]);
 
+  // Safe fallback untuk searchParams karena bisa null saat build _not-found
+  const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
+
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/hypetalk/room', '/saldo', 
     '/story', '/pending', '/historycoin', '/withdraw'
   ].some(path => pathname?.includes(path)) || 
-  (pathname === '/voice' && searchParams?.get('id') !== null);
+  (pathname === '/voice' && hasVoiceId);
 
   const fetchBadgesAndUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const userId = session.user.id;
 
-    // 1. Ambil Profil, Chat, dan Data Database Notif
     const [profileRes, chatRes, dbNotifRes] = await Promise.all([
       supabase.from('profiles').select('avatar_url').eq('id', userId).single(),
       supabase.from('messages')
@@ -92,24 +95,20 @@ function NavbarContent() {
     }
     if (chatRes.count !== null) setUnreadChatCount(chatRes.count);
 
-    // 2. Filter "Notifikasi Hantu" yang menyangkut di 1 (tipe lama diabaikan)
     const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
     let unreadNotifs = (dbNotifRes.data || []).filter(n => !synthesizeTypes.includes(n.type)).length;
 
-    // 3. Ambil Local Storage untuk notif yang sudah dibaca
     let readSet = new Set<string>();
     if (typeof window !== 'undefined') {
       try { readSet = new Set(JSON.parse(localStorage.getItem('read_notifs_local') || '[]')); } catch (e) {}
     }
 
-    // 4. Ambil IDs untuk melakukan pengecekan live notif (Sama dengan Notification Page)
     const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
     const postIds = myPosts?.map((p: any) => p.id) || [];
     
     const { data: myComments } = await supabase.from('comments').select('id').eq('user_id', userId);
     const commentIds = myComments?.map((c: any) => c.id) || [];
 
-    // 5. Jalankan query pararel agar cepat (Mengambil Followers, Likes, Comments dll)
     const promises: Promise<any>[] = [
       supabase.from('followers').select('follower_id').eq('following_id', userId),
       supabase.from('coin_transactions').select('id').eq('user_id', userId).gt('amount', 0).limit(20),
@@ -135,14 +134,12 @@ function NavbarContent() {
 
     const [fRes, coinRes, payRes, likesRes, commentsRes, repostsRes, savesRes, cLikesRes] = await Promise.all(promises);
 
-    // 6. Kalkulasi 100% sinkron dengan Notification Page
     (fRes.data || []).forEach((f: any) => { if (!readSet.has(`follow-${f.follower_id}`)) unreadNotifs++; });
     (coinRes.data || []).forEach((c: any) => { if (!readSet.has(`coin-${c.id}`)) unreadNotifs++; });
     (payRes.data || []).forEach((p: any) => { if (!readSet.has(`pay-${p.id}`)) unreadNotifs++; });
     (commentsRes.data || []).forEach((c: any) => { if (!readSet.has(`comment-${c.id}`)) unreadNotifs++; });
     (cLikesRes.data || []).forEach((cl: any) => { if (!readSet.has(`comment_like-${cl.id}`)) unreadNotifs++; });
 
-    // Grouping counter (Untuk Like, Repost, Save agar angkanya akurat dengan UI Notif)
     const countGrouped = (data: any[], type: string) => {
       const byPost: Record<string, any[]> = {};
       data.forEach((item: any) => {
@@ -228,7 +225,7 @@ function NavbarContent() {
         }}
       >
         {navItems.map((item) => {
-          const isInsideVoiceRoom = pathname === '/voice' && searchParams?.get('id') !== null;
+          const isInsideVoiceRoom = pathname === '/voice' && hasVoiceId;
           const isActive = pathname === item.path || (item.path === '/voice-room' && pathname === '/voice' && !isInsideVoiceRoom);
           const Icon = item.icon;
           const isClicked = clickedItem === item.name;
