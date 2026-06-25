@@ -118,14 +118,10 @@ export function hideToast() {
 export function showToast(title: string, message: string = "", type: "info" | "success" | "warning" | "error" = "info") {
   if (typeof window === 'undefined') return;
 
-  let toast = document.getElementById("toast");
-  
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "toast";
-    
+  // 1. Injeksi Style dipisah agar tidak ter-skip oleh sisa memori Hot Reload
+  if (!document.getElementById("toast-style-khusus")) {
     const style = document.createElement("style");
-    // Diperbarui: Pindah ke atas (top: 30px) & Animasi slide-down yang lebih natural (cubic-bezier)
+    style.id = "toast-style-khusus";
     style.innerHTML = `
       #toast {
         position: fixed;
@@ -134,9 +130,10 @@ export function showToast(title: string, message: string = "", type: "info" | "s
         transform: translate(-50%, -40px);
         opacity: 0;
         visibility: hidden;
-        z-index: 999999;
+        z-index: 9999999; /* Pastikan selalu paling atas */
         padding: 12px 24px;
         border-radius: 12px;
+        font-family: system-ui, -apple-system, sans-serif;
         font-size: 14px;
         font-weight: 500;
         text-align: center;
@@ -145,9 +142,9 @@ export function showToast(title: string, message: string = "", type: "info" | "s
         transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0.3s ease;
         pointer-events: none;
         
-        /* Wadah Terlihat Jelas: Glass Hitam */
-        background: rgba(25, 25, 25, 0.95);
-        color: #ffffff;
+        /* Desain Wadah: Glassmorphism Hitam */
+        background: rgba(25, 25, 25, 0.95) !important;
+        color: #ffffff !important;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.15);
@@ -160,31 +157,41 @@ export function showToast(title: string, message: string = "", type: "info" | "s
         visibility: visible;
       }
 
-      /* Dark Mode: Glass Putih */
+      /* Dark Mode otomatis: Glass Putih */
       @media (prefers-color-scheme: dark) {
         #toast {
-          background: rgba(255, 255, 255, 0.95);
-          color: #111111;
+          background: rgba(255, 255, 255, 0.95) !important;
+          color: #111111 !important;
           border: 1px solid rgba(0, 0, 0, 0.1);
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
         }
       }
       
+      /* Jika pakai class "dark" dari Tailwind */
       .dark #toast {
-        background: rgba(255, 255, 255, 0.95);
-        color: #111111;
+        background: rgba(255, 255, 255, 0.95) !important;
+        color: #111111 !important;
         border: 1px solid rgba(0, 0, 0, 0.1);
       }
     `;
     document.head.appendChild(style);
+  }
+
+  // 2. Buat div container toast jika belum ada
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
     document.body.appendChild(toast);
   }
   
+  // 3. Reset dan jalankan toast
   clearTimeout(toastTimer);
+  toast.classList.remove("show"); // Reset state animasi jika dipanggil beruntun
   
   toast.textContent = message ? `${title} - ${message}` : title;
   
-  // Memaksa browser meregistrasi state awal sebelum menempelkan class 'show' agar transisinya terpancing
+  // Beri jeda sejenak untuk memancing ulang transisi CSS
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       toast!.classList.add("show");
@@ -193,19 +200,6 @@ export function showToast(title: string, message: string = "", type: "info" | "s
   
   toastTimer = setTimeout(() => hideToast(), 3000);
 }
-
-export const showNotif = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-  let prefix = "";
-  if (type === 'error') prefix = "Gagal";
-  else if (type === 'success') prefix = "Berhasil";
-  else if (type === 'warning') prefix = "Peringatan";
-  
-  if (prefix) {
-    showToast(prefix, msg);
-  } else {
-    showToast(msg);
-  }
-};
 
 // =======================
 // IMAGE UTILS (CROPPING)
