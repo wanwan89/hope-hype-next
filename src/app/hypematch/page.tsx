@@ -3,9 +3,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
+import HypeMatchOpening from '@/components/HypeMatch/HypeMatchOpening';
+import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
 import './HypeMatchOverlay.css'; 
 
-type MatchUser = {
+export type MatchUser = {
   id: string;
   username: string;
   avatar_url: string;
@@ -81,7 +83,7 @@ export default function HypeMatch() {
   
   // State untuk fitur pesan
   const [showTemplates, setShowTemplates] = useState(false);
-  const [customMessage, setCustomMessage] = useState(""); // <-- State untuk Pesan Custom
+  const [customMessage, setCustomMessage] = useState(""); 
 
   const templates = [
     "Hai, salam kenal! 👋",
@@ -226,7 +228,7 @@ export default function HypeMatch() {
           showNotif('Kamu mendapatkan Match baru!', 'success');
           setTimeout(() => {
             setMatchedUser(activeUser);
-            setCustomMessage(""); // Reset custom message input tiap kali match baru
+            setCustomMessage(""); 
           }, 300);
           return; 
         }
@@ -248,9 +250,6 @@ export default function HypeMatch() {
     if (scrollContainer) scrollContainer.scrollTop = 0;
   };
 
-  // ==========================================
-  // FUNGSI KIRIM PESAN FIX & DELAY
-  // ==========================================
   const handleSendTemplate = async (messageText: string) => {
     if (!matchedUser || !currentUser || !messageText.trim()) return;
     
@@ -265,8 +264,6 @@ export default function HypeMatch() {
 
       showNotif('Pesan terkirim!', 'success');
       
-      // FIX 1: Tambahkan jeda waktu agar database punya waktu untuk sinkronisasi 
-      // sebelum dialihkan ke room chat, meminimalisir delay kemunculan pesan.
       setTimeout(() => {
         router.push(`/hypetalk/room?from=${matchedUser.id}`);
       }, 600); 
@@ -277,46 +274,8 @@ export default function HypeMatch() {
     }
   };
 
-
-  // ==========================================
-  // ANIMASI OPENING BARU (LEBIH FRENDLY & KECIL)
-  // ==========================================
   if (isLoading) {
-    return (
-      <div className="hm-overlay hm-flex-center" style={{ zIndex: 9999 }}>
-        <div className="hm-backdrop" style={{ backgroundColor: 'rgba(15, 23, 42, 0.9)' }}></div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 10 }}>
-          <div className="hm-heart-beat" style={{ fontSize: '2.5rem', marginBottom: '10px' }}>💖</div>
-          <h1 style={{ 
-            fontSize: '1.2rem', 
-            fontWeight: 'bold', 
-            color: 'white', 
-            letterSpacing: '1.5px',
-            animation: 'hmFadeBounce 1.5s infinite' 
-          }}>
-            HYPE MATCH
-          </h1>
-          <p style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '6px', fontWeight: '300' }}>
-            Mencari match di sekitarmu...
-          </p>
-        </div>
-
-        {/* Gaya Khusus Animasi Disematkan Disini */}
-        <style>{`
-          @keyframes hmFadeBounce {
-            0%, 100% { opacity: 0.6; transform: translateY(0); }
-            50% { opacity: 1; transform: translateY(-4px); }
-          }
-          @keyframes hmHeartBeat {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.15); }
-          }
-          .hm-heart-beat {
-            animation: hmHeartBeat 1s infinite ease-in-out;
-          }
-        `}</style>
-      </div>
-    );
+    return <HypeMatchOpening />;
   }
 
   return (
@@ -448,86 +407,19 @@ export default function HypeMatch() {
         </div>
       )}
 
-      {/* OVERLAY MATCH SUCCESS */}
-      <div className={`hm-match-overlay-container hm-match-success-bg ${matchedUser ? 'show' : ''}`}>
-        {matchedUser && (
-          <div className="hm-match-content">
-            <h2 className="hm-match-title">HYPE MATCH!</h2>
-            <p>Kamu dan <strong>{matchedUser.username}</strong> saling tertarik!</p>
-            
-            <div className="hm-match-avatars">
-              <img src={currentUser?.avatar_url} alt="You" className="hm-avatar-circle" />
-              <span className="material-icons hm-favorite-icon">favorite</span>
-              <img src={matchedUser.avatar_url} alt="Them" className="hm-avatar-circle" />
-            </div>
-
-            {/* Logika Toggle Tombol vs Template */}
-            {!showTemplates ? (
-              <>
-                <button className="hm-btn-chat-now hm-glass-clean" onClick={() => setShowTemplates(true)}>
-                  Sapa Dia!
-                </button>
-                <button className="hm-btn-keep-swiping" onClick={() => { 
-                  setMatchedUser(null); 
-                  setShowTemplates(false);
-                  nextCard(); 
-                }}>
-                  Lanjut Mencari
-                </button>
-              </>
-            ) : (
-              <div className="hm-templates-container">
-                <p style={{marginBottom: '15px', fontWeight: 'bold', fontSize: '1rem', color: '#fff'}}>Pilih pesan atau ketik sendiri:</p>
-                
-                {templates.map((txt, index) => (
-                  <button 
-                    key={index} 
-                    className="hm-btn-template" 
-                    onClick={() => handleSendTemplate(txt)}
-                    style={{ marginBottom: '8px' }}
-                  >
-                    {txt}
-                  </button>
-                ))}
-
-                {/* FIX 2: INPUT PESAN CUSTOM */}
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', width: '100%', maxWidth: '300px' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Ketik sapaan manis..."
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    style={{
-                      flex: 1, padding: '12px', borderRadius: '20px', 
-                      border: 'none', outline: 'none', backgroundColor: '#f1f5f9',
-                      color: '#0f172a', fontSize: '0.9rem'
-                    }}
-                  />
-                  <button 
-                    onClick={() => handleSendTemplate(customMessage)}
-                    style={{
-                      padding: '0 16px', borderRadius: '20px', backgroundColor: '#ec4899', 
-                      color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer',
-                      opacity: customMessage.trim() ? 1 : 0.5
-                    }}
-                    disabled={!customMessage.trim()}
-                  >
-                    Kirim
-                  </button>
-                </div>
-
-                <button 
-                  className="hm-btn-keep-swiping" 
-                  style={{marginTop: '20px', padding: '10px'}} 
-                  onClick={() => setShowTemplates(false)}
-                >
-                  Batal
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {/* OVERLAY MATCH SUCCESS YANG SUDAH DIPISAH FILE */}
+      <MatchSuccessOverlay
+        matchedUser={matchedUser}
+        currentUser={currentUser}
+        showTemplates={showTemplates}
+        setShowTemplates={setShowTemplates}
+        templates={templates}
+        customMessage={customMessage}
+        setCustomMessage={setCustomMessage}
+        handleSendTemplate={handleSendTemplate}
+        nextCard={nextCard}
+        setMatchedUser={setMatchedUser}
+      />
 
     </div>
   );
