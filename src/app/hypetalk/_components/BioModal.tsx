@@ -37,13 +37,13 @@ const CustomSelect = ({
           cursor: 'pointer', userSelect: 'none'
         }}
       >
-        <span style={{ color: selectedOption ? 'var(--text-main, #333)' : '#888' }}>
+        <span style={{ color: selectedOption ? 'var(--text-main)' : 'var(--text-muted)' }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <span className="material-icons" style={{ 
           transform: isOpen ? 'rotate(180deg)' : 'none', 
           transition: 'transform 0.2s ease',
-          color: '#888'
+          color: 'var(--text-muted)'
         }}>
           expand_more
         </span>
@@ -59,8 +59,8 @@ const CustomSelect = ({
           />
           <div style={{
             position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 100,
-            backgroundColor: 'var(--bg-card, #ffffff)',
-            border: '1px solid var(--border-card, #eef0f2)',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-card)',
             borderRadius: '12px',
             boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
             maxHeight: '220px', overflowY: 'auto'
@@ -71,9 +71,9 @@ const CustomSelect = ({
                 onClick={(e) => { e.stopPropagation(); onChange(opt.value); setIsOpen(false); }}
                 style={{
                   padding: '14px 16px',
-                  borderBottom: idx === options.length - 1 ? 'none' : '1px solid var(--border-card, #eef0f2)',
-                  backgroundColor: value === opt.value ? 'var(--bg-secondary, #f1f5f9)' : 'transparent',
-                  color: value === opt.value ? 'var(--primary, #2563eb)' : 'var(--text-main, #333)',
+                  borderBottom: idx === options.length - 1 ? 'none' : '1px solid var(--border-card)',
+                  backgroundColor: value === opt.value ? 'var(--bg-secondary)' : 'transparent',
+                  color: value === opt.value ? 'var(--primary)' : 'var(--text-main)',
                   fontWeight: value === opt.value ? 'bold' : 'normal',
                   cursor: 'pointer', fontSize: '14px'
                 }}
@@ -100,7 +100,7 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
         
         {/* Header Lengkapi Biodata */}
         <div style={headerStyle}>
-          <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800' }}>Lengkapi Biodata</h3>
+          <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>Lengkapi Biodata</h3>
           <button className="close-modal-btn" onClick={onClose} style={closeBtnStyle}>
             <span className="material-icons">close</span>
           </button>
@@ -242,7 +242,7 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
         {/* Tombol Simpan Sticky di Bawah */}
         <div style={{ 
           position: 'sticky', bottom: 0, padding: '16px 0', 
-          backgroundColor: 'var(--bg-main, #ffffff)', borderTop: '1px solid var(--border-card, #eef0f2)' 
+          backgroundColor: 'var(--bg-main)', borderTop: '1px solid var(--border-card)' 
         }}>
           <button className="action-btn" onClick={onSave} disabled={isSaving} style={btnStyle}>
             {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -258,27 +258,28 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
 
 const fullScreenOverlayStyle: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'var(--bg-main, #ffffff)', // Sesuai dengan tema utama
+  backgroundColor: 'var(--bg-main)', // 100% mengikuti warna background tema
   zIndex: 100000, display: 'flex', flexDirection: 'column'
 };
 
 const fullScreenContentStyle: React.CSSProperties = {
   width: '100%', height: '100%',
-  overflowY: 'auto', // Scroll keseluruhan
+  overflowY: 'auto', 
   padding: '24px',
-  display: 'flex', flexDirection: 'column'
+  display: 'flex', flexDirection: 'column',
+  backgroundColor: 'var(--bg-main)' // Memastikan isi juga mengikuti tema
 };
 
 const headerStyle: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   marginBottom: '24px', paddingBottom: '16px',
-  borderBottom: '1px solid var(--border-card, #eef0f2)'
+  borderBottom: '1px solid var(--border-card)' // Garis bawah sesuai tema
 };
 
 const closeBtnStyle: React.CSSProperties = {
-  background: 'var(--bg-secondary, #f1f5f9)', border: 'none', cursor: 'pointer',
+  background: 'var(--bg-secondary)', border: 'none', cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  padding: '8px', borderRadius: '50%', color: 'var(--text-main, #333)'
+  padding: '8px', borderRadius: '50%', color: 'var(--text-main)' // Icon silang sesuai tema
 };
 
 const gridStyle: React.CSSProperties = {
@@ -294,7 +295,7 @@ const inputGroupStyle: React.CSSProperties = {
 
 const btnStyle: React.CSSProperties = {
   width: '100%', padding: '16px',
-  backgroundColor: 'var(--primary, #2563eb)', color: 'white', border: 'none',
+  backgroundColor: 'var(--primary)', color: 'white', border: 'none',
   borderRadius: '16px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer',
   boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)'
 };
