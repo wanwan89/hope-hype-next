@@ -53,21 +53,21 @@ export default function HypeMatch() {
           });
         }
 
-        // 2. Tarik data dari tabel profiles
+        // 2. Tarik data dari tabel profiles (FIXED: Menggunakan 'username' bukan 'user')
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, user, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak')
+          .select('id, username, avatar_url, bio, gender, umur, pekerjaan, hobi, zodiak')
           .limit(10); // Ambil 10 data
 
         if (error) throw error;
 
         if (data) {
-          // Format data agar sesuai dengan kebutuhan UI kamu (user -> username)
-          const formattedUsers = data.map((profile: any) => ({
+          // Berikan fallback nama jika username kebetulan kosong di database
+          const cleanUsers = data.map((profile: any) => ({
             ...profile,
-            username: profile.user || 'Anonim', 
+            username: profile.username || 'Anonim',
           }));
-          setUsers(formattedUsers);
+          setUsers(cleanUsers);
         }
       } catch (error) {
         console.error('Gagal mengambil data:', error);
@@ -143,7 +143,6 @@ export default function HypeMatch() {
     setTimeout(async () => {
       setIsShowingProfile(false); 
       if (action === 'like') {
-        // Disini tempat kamu insert ke table likes Supabase nantinya
         console.log('Menyukai user:', activeUser.id);
         
         const isMatch = false; // Ubah jadi true kalau kamu mau ngetest layar MATCH!
@@ -172,7 +171,7 @@ export default function HypeMatch() {
   };
 
   const handleClose = () => {
-    router.back(); // Kembali ke halaman sebelumnya karena ini file tunggal
+    router.back(); 
   };
 
   // Tampilan Loading sebelum data siap
