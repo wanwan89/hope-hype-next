@@ -9,9 +9,31 @@ export default function ChatMessageList({
   setMsgOptions, 
   typingUser, 
   refs,
-  onEdit,     // 👈 WAJIB DITAMBAHKAN: Menerima fungsi edit dari ChatArea
-  onDelete    // 👈 WAJIB DITAMBAHKAN: Menerima fungsi hapus dari ChatArea
+  onEdit,
+  onDelete,
+  router,                 // Diterima dari ChatArea untuk rute navigasi post
+  isSelectionMode,        // Props seleksi
+  selectedMessages,       // Props seleksi
+  toggleSelectMessage,    // Props seleksi
+  setIsSelectionMode      // Membantu interaksi long-press jika diperlukan
 }: any) {
+  
+  let touchTimer: NodeJS.Timeout;
+
+  const handleTouchStart = (id: string) => {
+    touchTimer = setTimeout(() => {
+      setIsSelectionMode(true);
+      if (!selectedMessages.includes(id)) {
+        toggleSelectMessage(id);
+      }
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+  };
+
+  const handleTouchEnd = () => {
+    clearTimeout(touchTimer);
+  };
+
   return (
     <main className="chat-messages">
       {isLoading ? (
@@ -56,19 +78,73 @@ export default function ChatMessageList({
               }
             }
 
+            const isMe = msg.user_id === currentUser?.id;
+            const hasMediaCard = msg.post_id || msg.image_url;
+
             return (
-              <MessageBubble 
+              <div 
                 key={msg.id} 
-                msg={msg} 
-                currentUser={currentUser}
-                isMe={msg.user_id === currentUser?.id} 
-                onReply={setReplyTo} 
-                onEdit={onEdit}      // 👈 PERBAIKAN: Menggunakan komentar inline standar
-                onDelete={onDelete}  // 👈 PERBAIKAN: Menggunakan komentar inline standar
-                isFirstUnread={isFirstUnread}
-                unreadCount={isFirstUnread ? messages.filter((m: any) => m.user_id !== currentUser?.id && m.status !== 'read').length : 0}
-                showDateSeparator={showDateSeparator}
-              />
+                className={`message-wrapper ${isSelectionMode ? 'selection-mode-active' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+                onTouchStart={() => handleTouchStart(msg.id)}
+                onTouchEnd={handleTouchEnd}
+                onTouchMove={handleTouchEnd}
+              >
+                {/* Checkbox Massal */}
+                {isSelectionMode && (
+                  <div className="msg-checkbox-container" onClick={() => toggleSelectMessage(msg.id)}>
+                    <input 
+                      type="checkbox" 
+                      className="msg-checkbox" 
+                      checked={selectedMessages.includes(msg.id)} 
+                      readOnly 
+                    />
+                  </div>
+                )}
+                
+                <div style={{ flex: 1, pointerEvents: isSelectionMode ? 'none' : 'auto' }}>
+                  {msg.is_deleted ? (
+                    /* KONDISI A: PESAN TELAH DIHAPUS */
+                    <div className={`chat-message ${isMe ? 'me' : 'other'}`}>
+                      <div className="content deleted-message">
+                        <i>Pesan ini telah dihapus</i>
+                      </div>
+                    </div>
+                  ) : hasMediaCard ? (
+                    /* KONDISI B: UI KARTU INSTAGRAM UNTUK POST / GAMBAR */
+                    <div className={`chat-message ${isMe ? 'me' : 'other'}`}>
+                      <div className="ig-card" onClick={() => msg.post_id && router.push('/post/' + msg.post_id)}>
+                        <div className="ig-card-img-wrapper">
+                          <img src={msg.post_cover || msg.image_url} alt="media" className="ig-card-img" loading="lazy" />
+                        </div>
+                        {(msg.post_title || msg.post_caption || msg.message) && (
+                          <div className="ig-card-content">
+                            {msg.post_title && <div className="ig-card-title">{msg.post_title}</div>}
+                            {(msg.post_caption || msg.message) && (
+                               <div className="ig-caption">
+                                 {msg.post_caption || (msg.message !== "📸 Mengirim Foto" && msg.message)}
+                               </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* KONDISI DEFAULT: BUBBLE TEXT BIASA */
+                    <MessageBubble 
+                      msg={msg} 
+                      currentUser={currentUser}
+                      isMe={isMe} 
+                      onReply={setReplyTo} 
+                      onEdit={onEdit}      
+                      onDelete={onDelete}  
+                      isFirstUnread={isFirstUnread}
+                      unreadCount={isFirstUnread ? messages.filter((m: any) => m.user_id !== currentUser?.id && m.status !== 'read').length : 0}
+                      showDateSeparator={showDateSeparator}
+                    />
+                  )}
+                </div>
+              </div>
             );
           })}
           

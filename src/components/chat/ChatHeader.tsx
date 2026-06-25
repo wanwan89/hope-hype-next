@@ -2,8 +2,28 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 
 export default function ChatHeader({
   router, targetId, headerInfo, displayStatus, chatState, roomId,
-  groupId, isOwner, setGroupModalTab, setIsGroupSettingsOpen, startCall
+  groupId, isOwner, setGroupModalTab, setIsGroupSettingsOpen, startCall,
+  isSelectionMode, setIsSelectionMode, selectAllMessages, handleBulkDelete, selectedMessages
 }: any) {
+  
+  // Tampilan Khusus jika Mode Seleksi Massal Aktif
+  if (isSelectionMode) {
+    return (
+      <header className="chat-header selection-mode" style={{ background: 'var(--bg-panel)', display: 'flex', justifyContent: 'space-between', padding: '10px 15px', borderBottom: '1px solid var(--border-color)' }}>
+        <button className="menu-btn" onClick={() => setIsSelectionMode(false)} style={{ color: 'var(--text-color)', background: 'transparent', border: 'none', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          Batal
+        </button>
+        <button onClick={selectAllMessages} style={{ color: 'var(--primary-blue)', background: 'transparent', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+          Pilih Semua
+        </button>
+        <button onClick={handleBulkDelete} style={{ color: '#e74c3c', background: 'transparent', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }} disabled={selectedMessages.length === 0}>
+          Hapus ({selectedMessages.length})
+        </button>
+      </header>
+    );
+  }
+
+  // Tampilan Header Normal
   return (
     <header className="chat-header">
       <div className="header-left">

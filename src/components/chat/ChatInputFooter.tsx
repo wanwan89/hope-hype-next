@@ -18,7 +18,7 @@ export default function ChatInputFooter({
         padding: '8px 10px', 
         background: 'var(--bg-main)', 
         borderTop: 'none',
-        boxShadow: 'none', // Dihilangkan sesuai permintaan
+        boxShadow: 'none', 
         transition: 'background-color 0.3s ease',
         zIndex: 50,
         position: 'relative'
@@ -63,7 +63,7 @@ export default function ChatInputFooter({
 
           <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%', gap: '8px' }}>
             {isRecording ? (
-              <div className="slim-input-wrapper" style={{ flex: 1 }}>
+              <div className="slim-input-wrapper" style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '10px', color: 'var(--text-main)', fontWeight: 600 }}>
                   <span className="online-dot" style={{ background: '#ff4757' }}></span>
                   <span style={{ color: '#ff4757' }}>{Math.floor(recordTime/60)}:{String(recordTime%60).padStart(2,'0')}</span>
@@ -86,6 +86,7 @@ export default function ChatInputFooter({
                 className="slim-input-wrapper"
                 style={{ 
                   flex: 1, 
+                  minWidth: 0, // PENTING: Mencegah parent melebar akibat text-overflow
                   display: 'flex', 
                   flexDirection: 'column', 
                   background: 'var(--bg-secondary)', 
@@ -100,7 +101,7 @@ export default function ChatInputFooter({
                       initial={{ opacity: 0, height: 0, marginTop: 0 }} 
                       animate={{ opacity: 1, height: 'auto', marginTop: 4 }} 
                       exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                      style={{ overflow: 'hidden' }}
+                      style={{ overflow: 'hidden', width: '100%' }}
                     >
                       <div style={{ 
                         display: 'flex', 
@@ -110,18 +111,20 @@ export default function ChatInputFooter({
                         margin: '0 4px',
                         borderLeft: '4px solid #8338ec',
                         alignItems: 'center',
-                        textAlign: 'left' // Rata kiri
+                        justifyContent: 'space-between',
+                        textAlign: 'left',
+                        maxWidth: '100%'
                       }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ color: '#8338ec', fontSize: '12px', fontWeight: 'bold', marginBottom: '2px' }}>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ color: '#8338ec', fontSize: '12px', fontWeight: 'bold', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {t('replying_to', { username: replyTo.profiles?.username })}
                           </div>
-                          {/* Pemotongan teks otomatis */}
-                          <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {/* Teks dibatasi dengan width 100% dan ellipsis */}
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                             {replyTo.message || t('media_label')}
                           </div>
                         </div>
-                        <div onClick={() => setReplyTo(null)} style={{ fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)', paddingLeft: '10px', display: 'flex', alignItems: 'center' }}>
+                        <div onClick={() => setReplyTo(null)} style={{ fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)', paddingLeft: '10px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                           &times;
                         </div>
                       </div>
@@ -177,10 +180,10 @@ export default function ChatInputFooter({
               onTouchMove={!canSend ? handleMicTouchMove : undefined} 
               onClick={() => canSend && handleSendClick()}
               style={{
-                background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)', // Gradasi biru glosi
+                background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)',
                 color: '#ffffff',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                boxShadow: 'none', // Tanpa bayangan
+                boxShadow: 'none',
                 flexShrink: 0,
                 width: '42px',
                 height: '42px',

@@ -37,7 +37,6 @@ export default function ChatArea() {
   const groupId = searchParams?.get('group');
   const groupName = searchParams?.get('gname');
   
-  // Tangkap 3 tipe parameter panggilan
   const autoCall = searchParams?.get('autoCall');
   const answerCall = searchParams?.get('answerCall');
   const incomingCall = searchParams?.get('incomingCall');
@@ -95,6 +94,10 @@ export default function ChatArea() {
   const [callData, setCallData] = useState<any>({ seconds: 0, partnerName: '', partnerAvatar: '', room: '' });
 
   const callStatusRef = useRef(callStatus);
+  
+  // --- STATE FITUR SELEKSI MASSAL ---
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
 
   useEffect(() => {
     callStatusRef.current = callStatus;
@@ -651,6 +654,7 @@ export default function ChatArea() {
     setMsgOptions(null); 
   };
 
+  // --- PEMBARUAN FUNGSI HAPUS PESAN (SOFT DELETE) ---
   const handleDeleteMessage = async (msgOrId: any) => {
     const targetId = typeof msgOrId === 'object' ? msgOrId?.id : msgOrId;
     if (!targetId) return;
@@ -658,15 +662,50 @@ export default function ChatArea() {
     const confirmDelete = window.confirm("Apakah kamu yakin ingin menghapus pesan ini?");
     if (!confirmDelete) return;
 
-    setMessages(prev => prev.filter(m => m.id !== targetId));
+    // Memperbarui State Lokal agar langsung terlihat perubahannya
+    setMessages(prev => prev.map(m => m.id === targetId ? { ...m, message: 'Pesan ini telah dihapus', is_deleted: true } : m));
     setMsgOptions(null);
 
-    const { error } = await supabase.from('messages').delete().eq('id', targetId);
+    // Memperbarui DB (Soft Delete)
+    const { error } = await supabase.from('messages')
+      .update({ message: 'Pesan ini telah dihapus', is_deleted: true })
+      .eq('id', targetId);
+      
     if (error) {
       showNotif("Gagal menghapus pesan", "error");
     } else {
       showNotif("Pesan berhasil dihapus", "success");
     }
+  };
+
+  // --- FUNGSI UNTUK SELEKSI MASSAL ---
+  const toggleSelectMessage = (id: string) => {
+    setSelectedMessages(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+  };
+
+  const selectAllMessages = () => {
+    setSelectedMessages(messages.map(m => m.id));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMessages.length === 0) return;
+    const confirmDelete = window.confirm(`Apakah kamu yakin ingin menghapus ${selectedMessages.length} pesan?`);
+    if (!confirmDelete) return;
+
+    setMessages(prev => prev.map(m => selectedMessages.includes(m.id) ? { ...m, message: 'Pesan ini telah dihapus', is_deleted: true } : m));
+
+    const { error } = await supabase.from('messages')
+      .update({ message: 'Pesan ini telah dihapus', is_deleted: true })
+      .in('id', selectedMessages);
+
+    if (error) {
+      showNotif("Gagal menghapus pesan massal", "error");
+    } else {
+      showNotif("Pesan massal berhasil dihapus", "success");
+    }
+
+    setIsSelectionMode(false);
+    setSelectedMessages([]);
   };
 
   const startCall = async () => {
@@ -826,108 +865,24 @@ export default function ChatArea() {
 
   return (
     <div className="telegram-chat hype-chat-scope">
-      
-      <style>{`
-        @keyframes pulseCall {
-          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-          70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
-          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-        }
-        @keyframes slideDownCall {
-          from { transform: translate(-50%, -120%); opacity: 0; }
-          to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        .call-floating-popup {
-          position: fixed; top: max(env(safe-area-inset-top, 20px), 20px); left: 50%;
-          transform: translateX(-50%); background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
-          border: 1px solid rgba(46, 204, 113, 0.4); border-radius: 24px; padding: 12px 20px;
-          display: flex; align-items: center; gap: 15px; z-index: 9999999;
-          box-shadow: 0 15px 35px rgba(0,0,0,0.5); width: 90%; max-width: 360px;
-          animation: slideDownCall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
-        @keyframes pulseCallGlobal {
-          0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
-          70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-        }
-        .global-call-btn { border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
-        .global-call-btn:active { transform: scale(0.9); }
-        
-        .slim-input-wrapper {
-          display: flex;
-          align-items: flex-end;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
-          border-radius: 24px; 
-          padding: 6px 12px;
-          flex: 1;
-          gap: 4px;
-        }
-        .slim-input-wrapper textarea {
-          flex: 1;
-          resize: none;
-          border: none;
-          background: transparent;
-          outline: none;
-          color: var(--text-color);
-          font-size: 15px;
-          line-height: 20px;
-          max-height: 100px;
-          padding: 6px 0;
-        }
-        .action-icon-btn {
-          border: none;
-          background: transparent;
-          color: var(--text-muted);
-          padding: 6px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          border-radius: 50%;
-          transition: background 0.2s, color 0.2s;
-        }
-        .action-icon-btn:active {
-          background: rgba(255,255,255,0.1);
-        }
-        .action-icon-btn .material-icons {
-          font-size: 24px;
-        }
-        .send-btn-round {
-          background: var(--primary-blue);
-          border: none;
-          color: white;
-          width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-left: 8px;
-          box-shadow: 0 4px 10px rgba(31, 60, 255, 0.3);
-          transition: transform 0.2s;
-        }
-        .send-btn-round:active {
-          transform: scale(0.9);
-        }
-      `}</style>
-
       {/* 1. Komponen Popup Panggilan */}
       <ChatCallPopup 
         callStatus={callStatus} callData={callData} refs={refs} 
         connectLiveKit={connectLiveKit} endCall={endCall} currentUser={currentUser} 
       />
 
-      {/* 2. Komponen Header Obrolan */}
+      {/* 2. Komponen Header Obrolan (Telah diperbarui untuk menerima props Seleksi Massal) */}
       <ChatHeader 
         router={router} targetId={targetId} headerInfo={headerInfo} 
         displayStatus={displayStatus} chatState={chatState} roomId={roomId}
         groupId={groupId} isOwner={isOwner} setGroupModalTab={setGroupModalTab} 
-        setIsGroupSettingsOpen={setIsGroupSettingsOpen} startCall={startCall} 
+        setIsGroupSettingsOpen={setIsGroupSettingsOpen} startCall={startCall}
+        isSelectionMode={isSelectionMode} setIsSelectionMode={setIsSelectionMode}
+        selectAllMessages={selectAllMessages} handleBulkDelete={handleBulkDelete}
+        selectedMessages={selectedMessages}
       />
 
-      {/* 3. Komponen List Pesan Utama */}
+      {/* 3. Komponen List Pesan Utama (Telah diperbarui) */}
       <ChatMessageList 
         isLoading={isLoading} 
         t={t} 
@@ -939,6 +894,11 @@ export default function ChatArea() {
         refs={refs}
         onEdit={handleEditMessage}
         onDelete={handleDeleteMessage}
+        router={router}
+        isSelectionMode={isSelectionMode}
+        selectedMessages={selectedMessages}
+        toggleSelectMessage={toggleSelectMessage}
+        setIsSelectionMode={setIsSelectionMode} // Memungkinkan long press untuk mengaktifkan mode seleksi
       />
 
       {/* 4. Komponen Input Teks / Bawah */}

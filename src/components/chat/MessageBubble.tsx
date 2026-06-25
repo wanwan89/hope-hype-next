@@ -341,7 +341,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
-  const isMediaOnly = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
+  const isMediaOnly = ["Mengirim Foto", " Stiker", "Voice Note"].includes(cleanMsg);
   const shouldShowText = cleanMsg && !isMediaOnly;
 
   // Warna khusus untuk Play Button VN agar tidak nabrak dengan background

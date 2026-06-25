@@ -796,3 +796,106 @@ html.dark .hype-chat-scope .custom-modal-content {
 html.dark .hype-chat-scope .encryption-notice {
   background: rgba(255, 255, 255, 0.05);
 }
+
+/* =========================================
+   STYLING KARTU ALA INSTAGRAM & FITUR SELEKSI
+   ========================================= */
+
+/* Soft Delete styling */
+.deleted-message {
+  font-style: italic;
+  color: var(--text-muted) !important;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  padding: 8px 14px;
+  border-radius: 14px;
+  opacity: 0.8;
+}
+
+/* Container untuk Mode Seleksi */
+.message-wrapper {
+  transition: background-color 0.2s ease, transform 0.2s;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+.message-wrapper.selection-mode-active {
+  background-color: rgba(29, 161, 242, 0.05); /* Sedikit highlight jika mode aktif */
+  margin-bottom: 2px;
+}
+.msg-checkbox-container {
+  width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.msg-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary-blue);
+  cursor: pointer;
+}
+
+/* Kartu Postingan/Foto ala IG */
+.ig-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ig-card:active {
+  transform: scale(0.98);
+}
+.chat-message.me .ig-card {
+  border-bottom-right-radius: 4px; /* Supaya tetap selaras dengan arah bubble */
+}
+.chat-message.other .ig-card {
+  border-bottom-left-radius: 4px;
+}
+
+.ig-card-img-wrapper {
+  width: 100%;
+  aspect-ratio: 4 / 5; /* Rasio khas IG Portrait */
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ig-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.3s;
+}
+
+.ig-card-content {
+  padding: 12px;
+  background: var(--bg-panel);
+}
+.ig-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ig-caption {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-wrap: break-word;
+}
