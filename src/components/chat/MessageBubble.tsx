@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import './MessageBubble.css';
 
-// FIX 3: Warna ceklis abu-abu (belum dibaca) & biru tua + shadow (dibaca)
 export const getStatusIcon = (status: string) => {
   if (status === 'sending') return <span className="status-icon sending" style={{color: '#e2e8f0'}}><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>;
   if (status === 'sent') return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
@@ -81,7 +80,8 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const holdTimer = useRef<any>(null);
   const lastTap = useRef(0);
 
-  const isDeleted = msg.message === "Pesan ini telah dihapus" || msg.message === "Pesan telah dihapus";
+  // FIX: Tambahkan msg.is_deleted jika backend kamu menggunakan boolean flag
+  const isDeleted = msg.message === "Pesan ini telah dihapus" || msg.message === "Pesan telah dihapus" || msg.is_deleted;
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
@@ -101,7 +101,8 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const [waveData, setWaveData] = useState<number[]>(Array(12).fill(20));
 
   useEffect(() => {
-    const handleGlobalClick = () => {
+    const handleGlobalClick = (e: any) => {
+      if (e.target?.closest('.reaction-menu')) return;
       if (showReactions) setShowReactions(false);
     };
 
@@ -207,7 +208,9 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   };
 
   const handleReactionSelect = async (emoji: string, e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
     e.stopPropagation(); 
+    
     if (!currentUser) return;
     
     const currentReactions = msg.reactions || {};
@@ -331,6 +334,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     }
   };
 
+  // Pastikan teks placeholder untuk foto/VN tidak tertimpa jika pesan terhapus
   let cleanMsg = msg.message || "";
   if (isStoryReply) {
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
@@ -453,14 +457,18 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 {showReactions && !msg.is_system && (
                   <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0', zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
                     {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-                      <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)}>
+                      <div 
+                        key={emoji} 
+                        className="reaction-btn" 
+                        onClick={(e) => handleReactionSelect(emoji, e)}
+                        onTouchStart={(e) => handleReactionSelect(emoji, e)} 
+                      >
                         {emoji}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* FIX 5: Username & Badge dikecilkan & dinamis hitam/putih sesuai mode */}
                 {showUserDetail && (
                   <div className="chat-username" style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url) ? '4px' : '0' }}>
                     {msg.profiles?.username || 'User'} 
@@ -502,30 +510,54 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
 
                 {shouldShowText && (
                   <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', wordBreak: 'break-word' }}>
-                    {isDeleted ? t('msg_deleted') : renderTextWithLinks(cleanMsg)}
+                    {/* FIX 1: Tampilan Pesan Dihapus yang Jelas */}
+                    {isDeleted ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}>
+                        <span className="material-icons" style={{ fontSize: '14px' }}>block</span>
+                        {t('msg_deleted') || "Pesan ini telah dihapus"}
+                      </span>
+                    ) : renderTextWithLinks(cleanMsg)}
                   </div>
                 )}
 
                 {msg.audio_url && !isDeleted && (
                   <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
-                    <button onClick={(e) => { e.stopPropagation(); toggleVN(); }} className="vn-play-btn" disabled={msg.status === 'sending'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleVN(); }} 
+                      className="vn-play-btn" 
+                      disabled={msg.status === 'sending'} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '50%', 
+                        background: 'rgba(255, 255, 255, 0.25)', 
+                        border: 'none', 
+                        color: '#fff', 
+                        flexShrink: 0, 
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
                       {msg.status === 'sending' ? (
                         <motion.div
                           animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
                           style={{ width: '16px', height: '16px', border: '2px solid rgba(255, 255, 255, 0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }}
                         />
                       ) : isPlaying ? (
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                       ) : (
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{marginLeft: '2px'}}><path d="M8 5v14l11-7z"/></svg>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style={{marginLeft: '3px'}}><path d="M8 5v14l11-7z"/></svg>
                       )}
                     </button>
                     
-                    <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '24px', flex: 1, marginLeft: '8px' }}>
+                    <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '24px', flex: 1, marginLeft: '10px' }}>
                       {waveData.map((heightPercent, i) => (
                         <motion.div 
                           key={i} animate={{ height: `${heightPercent}%` }} transition={{ duration: 0.1 }}
-                          style={{ width: '3px', background: isPlaying ? 'currentColor' : 'rgba(255,255,255,0.5)', borderRadius: '2px' }} 
+                          style={{ width: '3px', background: isPlaying ? 'currentColor' : 'rgba(255,255,255,0.7)', borderRadius: '2px' }} 
                         />
                       ))}
                     </div>
@@ -540,9 +572,18 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 )}
                 
                 <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '0', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  
+                  {/* FIX 2: Indikator "(diedit)" di samping timestamp */}
+                  {msg.is_edited && !isDeleted && (
+                    <span style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.7, marginRight: '2px' }}>
+                      diedit
+                    </span>
+                  )}
+                  
                   <span className="timestamp" style={{ fontSize: '10px', fontWeight: 500 }}>
                     {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
                   </span>
+                  
                   {isMe && getStatusIcon(msg.status || 'sent')}
                 </div>
               </div>
