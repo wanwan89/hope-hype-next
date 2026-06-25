@@ -80,7 +80,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const holdTimer = useRef<any>(null);
   const lastTap = useRef(0);
 
-  const isDeleted = msg.message === "Pesan ini telah dihapus";
+  const isDeleted = msg.message === "Pesan ini telah dihapus" || msg.message === "Pesan telah dihapus";
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
@@ -99,7 +99,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   
   const [waveData, setWaveData] = useState<number[]>(Array(12).fill(20));
 
-  // 🔥 PERUBAHAN: Global Listener agar Reaction tertutup saat klik tempat lain
   useEffect(() => {
     const handleGlobalClick = () => {
       if (showReactions) setShowReactions(false);
@@ -221,12 +220,14 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     setShowReactions(false);
   };
 
-  const handleDeleteAction = (type: 'for_me' | 'for_everyone') => {
+  const handleDeleteAction = (e: React.MouseEvent, type: 'for_me' | 'for_everyone') => {
+    e.stopPropagation();
     setShowOptions(false);
     if (onDelete) onDelete(msg.id, type);
   };
 
-  const handleEditAction = () => {
+  const handleEditAction = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setShowOptions(false);
     if (onEdit) onEdit(msg);
   };
@@ -396,19 +397,19 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
               <motion.div 
                 initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 200, opacity: 0 }}
                 className="message-options-modal"
+                style={{ zIndex: 100000 }}
               >
                 <div className="options-handle" />
                 {isMe && !isDeleted && shouldShowText && !msg.image_url && !msg.sticker_url && !msg.audio_url && (
-                  <button className="option-btn" onClick={handleEditAction} style={{ color: 'var(--text-main)' }}>
+                  <button className="option-btn" onClick={(e) => handleEditAction(e)}>
                     <span className="material-icons">edit</span> Edit Pesan
                   </button>
                 )}
-                {/* 🔥 PERUBAHAN: Menyesuaikan warna color ke var(--text-main) agar terbaca jelas saat mode gelap */}
-                <button className="option-btn" onClick={() => handleDeleteAction('for_me')} style={{ color: 'var(--text-main)' }}>
+                <button className="option-btn" onClick={(e) => handleDeleteAction(e, 'for_me')}>
                   <span className="material-icons">delete_outline</span> Hapus untuk Saya
                 </button>
                 {isMe && (
-                  <button className="option-btn danger" onClick={() => handleDeleteAction('for_everyone')} style={{ color: '#ff4757' }}>
+                  <button className="option-btn danger" onClick={(e) => handleDeleteAction(e, 'for_everyone')}>
                     <span className="material-icons">delete_forever</span> Hapus untuk Semua Orang
                   </button>
                 )}
@@ -449,7 +450,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px', cursor: 'pointer' }}
               >
                 
-                {/* 🔥 PERUBAHAN: Menghapus div overlay fixed yang memblokir klik global, diganti listener global */}
                 {showReactions && !msg.is_system && (
                   <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0', zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
                     {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (

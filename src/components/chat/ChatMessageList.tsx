@@ -1,7 +1,16 @@
 import MessageBubble from './MessageBubble';
 
 export default function ChatMessageList({
-  isLoading, t, messages, currentUser, setReplyTo, setMsgOptions, typingUser, refs
+  isLoading, 
+  t, 
+  messages, 
+  currentUser, 
+  setReplyTo, 
+  setMsgOptions, 
+  typingUser, 
+  refs,
+  onEdit,     // 👈 WAJIB DITAMBAHKAN: Menerima fungsi edit dari ChatArea
+  onDelete    // 👈 WAJIB DITAMBAHKAN: Menerima fungsi hapus dari ChatArea
 }: any) {
   return (
     <main className="chat-messages">
@@ -54,7 +63,8 @@ export default function ChatMessageList({
                 currentUser={currentUser}
                 isMe={msg.user_id === currentUser?.id} 
                 onReply={setReplyTo} 
-                onDelete={(id:any) => setMsgOptions(messages.find((m: any) => m.id === id))} 
+                onEdit={onEdit}      {/* 👈 WAJIB DITAMBAHKAN: Teruskan ke MessageBubble */}
+                onDelete={onDelete}  {/* 👈 PERBAIKAN: Gunakan fungsi onDelete yang asli */}
                 isFirstUnread={isFirstUnread}
                 unreadCount={isFirstUnread ? messages.filter((m: any) => m.user_id !== currentUser?.id && m.status !== 'read').length : 0}
                 showDateSeparator={showDateSeparator}

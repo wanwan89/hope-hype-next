@@ -1,9 +1,9 @@
-/* src/components/chat/MessageBubble.css */
+* src/components/chat/MessageBubble.css */
 
 /* 🔥 WRAPPER SCOPE UTAMA 🔥 */
 .hype-chat-scope .chat-message { 
   display: flex; 
-  width: 100%; 
+  width: 1/00%; 
   margin-bottom: 6px;
   align-items: flex-end; 
   background: transparent !important; 
@@ -65,11 +65,24 @@
   border-radius: 12px 12px 12px 2px; 
 }
 
-/* DARK MODE BUBBLE */
+/* 🔥 DARK MODE BUBBLE (DIPERBAIKI) 🔥 */
 [data-theme='dark'] .hype-chat-scope .chat-message.self .content,
-html.dark .hype-chat-scope .chat-message.self .content { background: #005c4b !important; color: #e9edef; }
+html.dark .hype-chat-scope .chat-message.self .content { 
+  background: #005c4b !important; 
+  color: #e9edef !important; 
+}
+
 [data-theme='dark'] .hype-chat-scope .chat-message.other .content,
-html.dark .hype-chat-scope .chat-message.other .content { background: #202c33 !important; color: #e9edef; }
+html.dark .hype-chat-scope .chat-message.other .content { 
+  background: #202c33 !important; 
+  color: #e9edef !important; 
+}
+
+/* Paksa teks dalam bubble ikut berubah warna di mode gelap */
+[data-theme='dark'] .hype-chat-scope .chat-message .text,
+html.dark .hype-chat-scope .chat-message .text {
+  color: #e9edef !important;
+}
 
 /* REPLY BOX DI DALAM BUBBLE */
 .hype-chat-scope .reply-preview-in-chat { 
@@ -107,7 +120,7 @@ html.dark .hype-chat-scope .chat-message.other .content { background: #202c33 !i
 /* PESAN DIHAPUS JADI MIRING */
 .hype-chat-scope .chat-message .text.deleted {
   font-style: italic !important;
-  color: var(--text-muted);
+  color: var(--text-muted) !important;
   opacity: 0.7;
   font-size: 12.5px;
 }
@@ -165,11 +178,22 @@ html.dark .hype-chat-scope .chat-message.other .content { background: #202c33 !i
   font-weight: 600;
   color: var(--text-main, #333);
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, background 0.2s;
 }
 .hype-chat-scope .option-btn:active { opacity: 0.7; }
-.hype-chat-scope .option-btn.danger { color: #ff4757; }
-.hype-chat-scope .option-btn.danger .material-icons { color: #ff4757; }
+.hype-chat-scope .option-btn.danger { color: #ff4757 !important; }
+.hype-chat-scope .option-btn.danger .material-icons { color: #ff4757 !important; }
+
+/* 🔥 PERBAIKAN: WARNA TEKS TOMBOL UNTUK DARK MODE 🔥 */
+[data-theme='dark'] .hype-chat-scope .option-btn,
+html.dark .hype-chat-scope .option-btn {
+  background: #2a2a2a !important;
+  color: #e9edef !important;
+}
+[data-theme='dark'] .hype-chat-scope .option-btn.danger,
+html.dark .hype-chat-scope .option-btn.danger {
+  color: #ff4757 !important;
+}
 
 /* ========== MENU REAKSI ========== */
 .hype-chat-scope .reaction-menu {
