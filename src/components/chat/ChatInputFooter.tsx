@@ -9,7 +9,8 @@ export default function ChatInputFooter({
   handleSendClick, editMessageId
 }: any) {
   return (
-    <footer className="chat-input-container" style={{ padding: '8px 10px', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)' }}>
+    {/* 🔥 PERUBAHAN: Menghapus borderTop agar garis atas hilang */}
+    <footer className="chat-input-container" style={{ padding: '8px 10px', background: 'var(--bg-main)', borderTop: 'none' }}>
       {chatState === 'i_must_approve' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'center' }}>
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>{headerInfo.title} bukan pengikutmu. Terima pesan untuk membalas dan melakukan panggilan.</p>
@@ -85,7 +86,8 @@ export default function ChatInputFooter({
             ) : (
               <div className="slim-input-wrapper">
                 <button className="action-icon-btn" onClick={() => { setIsStickerOpen(!isStickerOpen); if(!isStickerOpen) fetchStickers(); }}>
-                  <span className="material-icons" style={{ color: 'var(--primary-blue)' }}>sentiment_satisfied_alt</span>
+                  {/* 🔥 PERUBAHAN: Mengubah color menjadi var(--text-main) agar adaptif */}
+                  <span className="material-icons" style={{ color: 'var(--text-main)' }}>sentiment_satisfied_alt</span>
                 </button>
                 
                 <textarea 
