@@ -1,4 +1,4 @@
-  'use client';
+'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; 
@@ -69,13 +69,11 @@ const formatChatDate = (dateString: string) => {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}, ${timeStr}`;
 };
 
-// 🔥 PROPS BARU: onEdit ditambahkan
 export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, currentUser, isFirstUnread, unreadCount, showDateSeparator }: any) {
   const { t } = useTranslation(); 
   const router = useRouter(); 
   const bubbleRef = useRef<HTMLDivElement>(null);
   
-  // Touch / Drag refs
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
   const isSwiping = useRef(false);
@@ -90,7 +88,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
 
   const [liveReply, setLiveReply] = useState<any>(msg.reply_to_msg || null);
   const [showReactions, setShowReactions] = useState(false);
-  const [showOptions, setShowOptions] = useState(false); // Modal Opsi
+  const [showOptions, setShowOptions] = useState(false); 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
@@ -100,6 +98,24 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const requestFrameRef = useRef<number>(0);
   
   const [waveData, setWaveData] = useState<number[]>(Array(12).fill(20));
+
+  // 🔥 PERUBAHAN: Global Listener agar Reaction tertutup saat klik tempat lain
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      if (showReactions) setShowReactions(false);
+    };
+
+    if (showReactions) {
+      setTimeout(() => {
+        window.addEventListener('click', handleGlobalClick);
+        window.addEventListener('touchstart', handleGlobalClick);
+      }, 10);
+    }
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('touchstart', handleGlobalClick);
+    };
+  }, [showReactions]);
 
   useEffect(() => {
     if (msg.reply_to && !msg.reply_to_msg && !liveReply) {
@@ -123,14 +139,12 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     }
   }, []);
 
-  // 🔥 INTERAKSI SENTUH & MOUSE (Swipe, Double Tap, Long Press)
   const handleStart = (clientX: number) => {
     touchStartX.current = clientX;
     touchCurrentX.current = clientX;
     isSwiping.current = true;
     if (bubbleRef.current) bubbleRef.current.style.transition = 'none';
 
-    // Set Timer untuk Long Press (Modal Opsi)
     if (!isDeleted && !msg.is_system) {
       holdTimer.current = setTimeout(() => {
         setShowOptions(true);
@@ -144,7 +158,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     touchCurrentX.current = clientX;
     let diff = touchCurrentX.current - touchStartX.current;
     
-    // Jika user menggeser (swipe), batalkan long press
     if (Math.abs(diff) > 10) clearTimeout(holdTimer.current);
 
     if (isMe && diff < 0) {
@@ -161,7 +174,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     let diff = touchCurrentX.current - touchStartX.current;
     const now = Date.now();
     
-    // Logika Double Tap (hanya dieksekusi jika tidak sedang swipe panjang)
     if (now - lastTap.current < 300 && Math.abs(diff) < 15 && !isDeleted && !msg.is_system) {
       setShowReactions(true);
       if (navigator.vibrate) navigator.vibrate(20);
@@ -180,25 +192,22 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     isSwiping.current = false;
   };
 
-  // Wrapper untuk Touch Events (Mobile)
   const onTouchStart = (e: React.TouchEvent) => handleStart(e.touches[0].clientX);
   const onTouchMove = (e: React.TouchEvent) => handleMove(e.touches[0].clientX);
   const onTouchEnd = () => handleEnd();
 
-  // Wrapper untuk Mouse Events (Desktop)
   const onMouseDown = (e: React.MouseEvent) => handleStart(e.clientX);
   const onMouseMove = (e: React.MouseEvent) => handleMove(e.clientX);
   const onMouseUp = () => handleEnd();
   const onMouseLeave = () => { clearTimeout(holdTimer.current); isSwiping.current = false; if (bubbleRef.current) { bubbleRef.current.style.transition = 'transform 0.3s'; bubbleRef.current.style.transform = 'translateX(0)'; } };
 
-  // Double click khusus desktop (opsional, karena double tap sudah tercover)
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isDeleted && !msg.is_system) setShowReactions(true);
   };
 
   const handleReactionSelect = async (emoji: string, e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); 
     if (!currentUser) return;
     
     const currentReactions = msg.reactions || {};
@@ -212,7 +221,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     setShowReactions(false);
   };
 
-  // Aksi Opsi Pesan
   const handleDeleteAction = (type: 'for_me' | 'for_everyone') => {
     setShowOptions(false);
     if (onDelete) onDelete(msg.id, type);
@@ -351,7 +359,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
 
       <div className="hype-chat-scope" style={{ position: 'relative' }}>
         
-        {/* Preview Image Modal */}
         <AnimatePresence>
           {previewImage && (
             <motion.div
@@ -392,15 +399,16 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
               >
                 <div className="options-handle" />
                 {isMe && !isDeleted && shouldShowText && !msg.image_url && !msg.sticker_url && !msg.audio_url && (
-                  <button className="option-btn" onClick={handleEditAction}>
+                  <button className="option-btn" onClick={handleEditAction} style={{ color: 'var(--text-main)' }}>
                     <span className="material-icons">edit</span> Edit Pesan
                   </button>
                 )}
-                <button className="option-btn" onClick={() => handleDeleteAction('for_me')}>
+                {/* 🔥 PERUBAHAN: Menyesuaikan warna color ke var(--text-main) agar terbaca jelas saat mode gelap */}
+                <button className="option-btn" onClick={() => handleDeleteAction('for_me')} style={{ color: 'var(--text-main)' }}>
                   <span className="material-icons">delete_outline</span> Hapus untuk Saya
                 </button>
                 {isMe && (
-                  <button className="option-btn danger" onClick={() => handleDeleteAction('for_everyone')}>
+                  <button className="option-btn danger" onClick={() => handleDeleteAction('for_everyone')} style={{ color: '#ff4757' }}>
                     <span className="material-icons">delete_forever</span> Hapus untuk Semua Orang
                   </button>
                 )}
@@ -433,7 +441,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 <img src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
               )}
               
-              {/* BUBBLE CONTENT: Event touch dipindah ke dalam konten agar akurat (double click & hold) */}
               <div 
                 className="content" 
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} 
@@ -442,18 +449,15 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply)) ? '4px' : '10px 14px', cursor: 'pointer' }}
               >
                 
-                {/* Menu Reaksi */}
+                {/* 🔥 PERUBAHAN: Menghapus div overlay fixed yang memblokir klik global, diganti listener global */}
                 {showReactions && !msg.is_system && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 99, cursor: 'default' }} onClick={(e) => { e.stopPropagation(); setShowReactions(false); }} />
-                    <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0' }}>
-                      {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-                        <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)}>
-                          {emoji}
-                        </div>
-                      ))}
-                    </div>
-                  </>
+                  <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0', zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
+                    {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
+                      <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)}>
+                        {emoji}
+                      </div>
+                    ))}
+                  </div>
                 )}
 
                 {showUserDetail && (
