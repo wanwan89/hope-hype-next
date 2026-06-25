@@ -34,7 +34,7 @@ const renderTextWithLinks = (text: string) => {
   return parts.map((part, i) => {
     if (part.match(urlRegex)) {
       return (
-        <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 600 }} onClick={(e) => e.stopPropagation()}>{part}</a>
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 600, color: 'inherit' }} onClick={(e) => e.stopPropagation()}>{part}</a>
       );
     }
     return <span key={i}>{part}</span>;
@@ -81,6 +81,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
   const holdTimer = useRef<any>(null);
   const lastTap = useRef(0);
 
+  // LOGIKA HAPUS & EDIT
   const isDeleted = msg.is_deleted || msg.message === "Pesan ini telah dihapus" || msg.message === "Pesan telah dihapus";
   const isEdited = msg.is_edited || msg.is_edit || (msg.updated_at && new Date(msg.updated_at).getTime() - new Date(msg.created_at).getTime() > 1000);
 
@@ -122,7 +123,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
       if (e.target?.closest('.reaction-menu')) return;
       if (showReactions) setShowReactions(false);
     };
-
     if (showReactions) {
       setTimeout(() => {
         window.addEventListener('click', handleGlobalClick);
@@ -283,7 +283,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
 
   const toggleVN = () => {
     if (msg.status === 'sending') return;
-
     if (isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
@@ -298,7 +297,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
           cancelAnimationFrame(requestFrameRef.current);
           setWaveData(Array(12).fill(20));
         };
-        
         try {
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             const src = ctx.createMediaElementSource(audioRef.current);
@@ -314,13 +312,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
       setIsPlaying(true);
       startPlaybackVisualizer();
     }
-  };
-
-  const handleStoryClick = async (url: string) => {
-    try {
-      const { data } = await supabase.from('stories').select('id').eq('image_url', url).maybeSingle();
-      if (data && data.id) router.push(`/story/${data.id}`);
-    } catch (err) { console.error(err); }
   };
 
   const handleDownloadImage = async (url: string) => {
@@ -341,7 +332,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
       document.body.removeChild(a);
       showNotif("Foto berhasil disimpan!", "success");
     } catch (err) {
-      console.error(err);
       showNotif("Gagal mengunduh foto", "error");
     }
   };
@@ -351,8 +341,13 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
     cleanMsg = cleanMsg.replace("Membalas ceritamu", "").trim();
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
-  const isPlaceholder = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
-  const shouldShowText = isDeleted || (cleanMsg && !isPlaceholder);
+  const isMediaOnly = ["📸 Mengirim Foto", "🎨 Stiker", "🎤 Voice Note"].includes(cleanMsg);
+  const shouldShowText = cleanMsg && !isMediaOnly;
+
+  // Warna khusus untuk Play Button VN agar tidak nabrak dengan background
+  const vnBgColor = isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)';
+  const vnIconColor = isMe ? 'var(--primary-blue, #1f3cff)' : '#ffffff';
+  const vnWaveColor = isPlaying ? (isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)') : (isMe ? 'rgba(255,255,255,0.5)' : 'rgba(150,150,150,0.5)');
 
   return (
     <>
@@ -391,7 +386,6 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                   <span className="material-icons" style={{fontSize: '32px'}}>download</span>
                 </button>
               </div>
-              
               <motion.img
                 initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                 src={previewImage} style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain' }}
@@ -411,8 +405,7 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
               />
               <motion.div 
                 initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 200, opacity: 0 }}
-                className="message-options-modal"
-                style={{ zIndex: 100000 }}
+                className="message-options-modal" style={{ zIndex: 100000 }}
               >
                 <div className="options-handle" />
                 {isMe && !isDeleted && shouldShowText && !msg.image_url && !msg.sticker_url && !msg.audio_url && !msg.shared_post && (
@@ -462,13 +455,17 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} 
                 onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}
                 onDoubleClick={handleDoubleClick}
-                style={{ display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '4px' : '8px 14px', cursor: 'pointer' }}
+                style={{ 
+                  display: 'flex', flexDirection: 'column', width: 'fit-content', minWidth: 0, 
+                  padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) && !isDeleted ? '4px' : '8px 14px', 
+                  cursor: 'pointer' 
+                }}
               >
                 
-                {showReactions && !msg.is_system && (
+                {showReactions && !msg.is_system && !isDeleted && (
                   <div className="reaction-menu" style={{ [isMe ? 'right' : 'left']: '0', zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
                     {['👍','❤️','😂','😮','😢','🙏'].map(emoji => (
-                      <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)} onTouchStart={(e) => handleReactionSelect(emoji, e)}>
+                      <div key={emoji} className="reaction-btn" onClick={(e) => handleReactionSelect(emoji, e)}>
                         {emoji}
                       </div>
                     ))}
@@ -476,150 +473,198 @@ export default function MessageBubble({ msg, isMe, onReply, onDelete, onEdit, cu
                 )}
 
                 {showUserDetail && (
-                  <div className="chat-username" style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url || msg.shared_post) ? '4px' : '0' }}>
+                  <div className="chat-username" style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url || msg.shared_post) && !isDeleted ? '4px' : '0' }}>
                     {msg.profiles?.username || 'User'} 
                     <span className="chat-badge" dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
                   </div>
                 )}
                 
-                {liveReply && (
-                  <div className="reply-preview-in-chat" onClick={(e) => { e.stopPropagation(); document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}} style={{ marginLeft: (msg.image_url || msg.sticker_url || msg.shared_post) && !isStoryReply ? '4px' : '0', marginRight: (msg.image_url || msg.sticker_url || msg.shared_post) && !isStoryReply ? '4px' : '0' }}>
+                {/* INI ADALAH BAGIAN PREVIEW REPLY DI DALAM BUBBLE CHAT */}
+                {liveReply && !isDeleted && (
+                  <div className="reply-preview-in-chat" onClick={(e) => { e.stopPropagation(); document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}} 
+                    style={{ 
+                      marginLeft: (msg.image_url || msg.sticker_url || msg.shared_post) && !isStoryReply ? '4px' : '0', 
+                      marginRight: (msg.image_url || msg.sticker_url || msg.shared_post) && !isStoryReply ? '4px' : '0',
+                      textAlign: 'left',      // PERBAIKAN: Posisi teks rata kiri
+                      whiteSpace: 'nowrap',   // PERBAIKAN: Jadikan 1 baris
+                      overflow: 'hidden',     // PERBAIKAN: Sembunyikan teks sisa
+                      textOverflow: 'ellipsis',// PERBAIKAN: Berikan titik-titik (...)
+                      maxWidth: '100%',       // PERBAIKAN: Sesuaikan lebar batas parent
+                      display: 'block'
+                    }}>
                     <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
                   </div>
                 )}
 
-                {/* AREA RENDER GAMBAR MULTIPLE (STACK) / SINGLE */}
-                {parsedImages.length > 0 && !isDeleted && (
-                  <div style={{ 
-                    position: 'relative', 
-                    width: parsedImages.length > 1 ? '240px' : 'auto', 
-                    height: parsedImages.length > 1 ? '260px' : 'auto',
-                    marginBottom: shouldShowText ? '6px' : '0' 
-                  }}>
-                    {parsedImages.slice(0, 4).reverse().map((url, i, arr) => {
-                      const isTop = i === arr.length - 1;
-                      const offset = parsedImages.length > 1 ? (arr.length - 1 - i) * 8 : 0;
-                      
-                      return (
-                        <div key={i} style={{ 
-                          position: parsedImages.length > 1 ? 'absolute' : 'relative',
-                          top: offset, left: offset,
-                          width: parsedImages.length > 1 ? `calc(100% - ${offset}px)` : '100%',
-                          height: parsedImages.length > 1 ? `calc(100% - ${offset}px)` : 'auto',
-                          zIndex: i,
-                          borderRadius: '14px', overflow: 'hidden',
-                          border: parsedImages.length > 1 ? '2px solid var(--bg-main)' : 'none',
-                          boxShadow: parsedImages.length > 1 && !isTop ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
-                        }}>
-                          <img 
-                            src={getOptimizedImage(url)} 
-                            alt="Foto Kiriman" 
-                            onClick={(e) => { e.stopPropagation(); setPreviewImage(url); }} 
-                            style={{ display: 'block', maxWidth: '240px', maxHeight: '300px', width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
-                          />
-                          
-                          {/* OVERLAY LOADING SAAT MENGIRIM (Optimistic UI) */}
-                          {msg.status === 'sending' && isTop && (
-                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }} />
-                            </div>
-                          )}
-
-                          {/* COUNTER +X JIKA LEBIH DARI 4 */}
-                          {isTop && parsedImages.length > 4 && (
-                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: '24px', fontWeight: 'bold' }}>
-                              +{parsedImages.length - 4}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* AREA RENDER SHARED POST CARD */}
-                {msg.shared_post && !isDeleted && (
-                  <div className="shared-post-card" onClick={(e) => { e.stopPropagation(); router.push(`/post/${msg.shared_post.id}`); }} style={{ background: 'var(--bg-secondary)', borderRadius: '12px', padding: '10px', width: '240px', marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)', cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <img src={msg.shared_post.author_avatar || '/asets/png/profile.webp'} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} alt="author" />
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)' }}>{msg.shared_post.author_username || 'User'}</span>
-                    </div>
-                    {msg.shared_post.image_url && (
-                      <img src={getOptimizedImage(msg.shared_post.image_url)} style={{ width: '100%', borderRadius: '8px', maxHeight: '200px', objectFit: 'cover', marginBottom: '8px' }} alt="post" />
+                {/* HANYA TAMPILKAN LOGIKA INI JIKA PESAN TIDAK DIHAPUS */}
+                {!isDeleted ? (
+                  <>
+                    {/* AREA RENDER GAMBAR MULTIPLE (STACK IG) ATAU SINGLE NORMAL */}
+                    {parsedImages.length === 1 && (
+                      <div style={{ position: 'relative', maxWidth: '280px', borderRadius: '12px', overflow: 'hidden', marginBottom: shouldShowText ? '6px' : '0' }}>
+                        <img 
+                          src={getOptimizedImage(parsedImages[0])} 
+                          alt="Foto" 
+                          onClick={(e) => { e.stopPropagation(); setPreviewImage(parsedImages[0]); }} 
+                          style={{ display: 'block', width: '100%', maxHeight: '350px', objectFit: 'cover', cursor: 'pointer' }} 
+                        />
+                        {msg.status === 'sending' && (
+                           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }} />
+                           </div>
+                        )}
+                      </div>
                     )}
-                    <div style={{ fontSize: '12px', color: 'var(--text-main)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {msg.shared_post.caption || 'Membagikan postingan...'}
-                    </div>
-                  </div>
-                )}
 
-                {isStoryReply && msg.sticker_url && !isDeleted ? (
-                  <div className="story-reply-card" onClick={(e) => { e.stopPropagation(); handleStoryClick(msg.sticker_url); }} style={{ cursor: 'pointer', background: 'var(--bg-secondary)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: '1px solid var(--border-color)', width: '100%' }}>
-                    <div style={{ position: 'relative', width: '40px', height: '55px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
-                       <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, fontStyle: 'italic', flex: 1 }}>Membalas Cerita...</div>
-                  </div>
+                    {parsedImages.length > 1 && (
+                      <div style={{ 
+                        position: 'relative', width: '230px', height: '260px', marginBottom: shouldShowText ? '8px' : '4px' 
+                      }}>
+                        {parsedImages.slice(0, 3).reverse().map((url, indexReverse) => {
+                          // Karena direverse, indexReverse 0 = layar paling bawah. 
+                          // index asli i adalah urutan dari tampilan atas.
+                          const displayLimit = Math.min(parsedImages.length, 3);
+                          const i = displayLimit - 1 - indexReverse; 
+                          const isTop = i === 0;
+                          const offset = i * 8; // Efek tumpang tindih berjarak 8px
+                          
+                          return (
+                            <div key={i} style={{ 
+                              position: 'absolute', top: offset, left: offset, zIndex: 10 - i,
+                              width: `calc(100% - 16px)`, height: `calc(100% - 16px)`,
+                              borderRadius: '14px', overflow: 'hidden',
+                              border: isMe ? '2px solid rgba(255,255,255,0.3)' : '2px solid var(--bg-main)',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                            }}>
+                              <img 
+                                src={getOptimizedImage(url)} 
+                                alt={`Foto ${i+1}`} 
+                                onClick={(e) => { e.stopPropagation(); setPreviewImage(url); }} 
+                                style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                              />
+                              
+                              {/* Overlay loading hanya di layar teratas */}
+                              {msg.status === 'sending' && isTop && (
+                                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }} />
+                                </div>
+                              )}
+
+                              {/* Angka Sisa Gambar jika > 3 */}
+                              {isTop && parsedImages.length > 3 && (
+                                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: '24px', fontWeight: 'bold', pointerEvents: 'none' }}>
+                                  +{parsedImages.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* AREA RENDER SHARED POST CARD */}
+                    {msg.shared_post && (
+                      <div className="shared-post-card" onClick={(e) => { e.stopPropagation(); router.push(`/post/${msg.shared_post.id}`); }} style={{ background: isMe ? 'rgba(255,255,255,0.1)' : 'var(--bg-secondary)', borderRadius: '12px', padding: '10px', width: '250px', marginBottom: shouldShowText ? '8px' : '0', border: isMe ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-color)', cursor: 'pointer', transition: '0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <img src={msg.shared_post.author_avatar || '/asets/png/profile.webp'} style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #ccc' }} alt="author" />
+                          <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'inherit' }}>{msg.shared_post.author_username || 'User'}</span>
+                        </div>
+                        {msg.shared_post.image_url && (
+                          <div style={{ width: '100%', height: '160px', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px', background: '#000' }}>
+                            <img src={getOptimizedImage(msg.shared_post.image_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post cover" />
+                          </div>
+                        )}
+                        <div style={{ fontSize: '12px', color: 'inherit', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', opacity: 0.9 }}>
+                          {msg.shared_post.caption || 'Membagikan postingan...'}
+                        </div>
+                        <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '8px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span className="material-icons" style={{ fontSize: '12px' }}>open_in_new</span> Lihat Postingan
+                        </div>
+                      </div>
+                    )}
+
+                    {isStoryReply && msg.sticker_url ? (
+                      <div className="story-reply-card" onClick={(e) => { e.stopPropagation(); handleStoryClick(msg.sticker_url); }} style={{ cursor: 'pointer', background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--bg-secondary)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: isMe ? 'none' : '1px solid var(--border-color)', width: '100%' }}>
+                        <div style={{ position: 'relative', width: '40px', height: '55px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                           <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'inherit', opacity: 0.8, fontWeight: 600, fontStyle: 'italic', flex: 1 }}>Membalas Cerita...</div>
+                      </div>
+                    ) : (
+                      msg.sticker_url && !isStoryReply && (
+                        <div style={{ position: 'relative' }}>
+                          <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '12px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0' }} />
+                        </div>
+                      )
+                    )}
+
+                    {shouldShowText && (
+                      <div className="text" style={{ opacity: msg.status === 'sending' ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '0 6px' : '0', wordBreak: 'break-word' }}>
+                        {renderTextWithLinks(cleanMsg)}
+                      </div>
+                    )}
+
+                    {/* AREA VOICE NOTE (VN) DENGAN WARNA DINAMIS */}
+                    {msg.audio_url && (
+                      <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || msg.shared_post || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
+                        <button 
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleVN(); }} 
+                          disabled={msg.status === 'sending'} 
+                          style={{ 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                            width: '42px', height: '42px', borderRadius: '50%', 
+                            background: vnBgColor,
+                            border: 'none', color: vnIconColor, flexShrink: 0, cursor: 'pointer', outline: 'none',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.15)', transition: 'background 0.2s'
+                          }}
+                        >
+                          {msg.status === 'sending' ? (
+                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: '20px', height: '20px', border: `3px solid ${vnIconColor}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
+                          ) : isPlaying ? (
+                            <span className="material-icons" style={{ fontSize: '24px' }}>pause</span>
+                          ) : (
+                            <span className="material-icons" style={{ fontSize: '24px', marginLeft: '2px' }}>play_arrow</span>
+                          )}
+                        </button>
+                        
+                        <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '26px', flex: 1, marginLeft: '12px' }}>
+                          {waveData.map((heightPercent, i) => (
+                            <motion.div key={i} animate={{ height: `${heightPercent}%` }} transition={{ duration: 0.1 }} style={{ width: '3px', background: vnWaveColor, borderRadius: '2px' }} />
+                          ))}
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'inherit', opacity: 0.8, marginLeft: '12px', marginRight: '4px' }}>
+                          VN
+                        </span>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  msg.sticker_url && !isDeleted && !isStoryReply && (
-                    <div style={{ position: 'relative' }}>
-                      <img src={msg.sticker_url} className="chat-sticker" alt="sticker" style={{ borderRadius: '12px', maxWidth: '200px', display: 'block', marginBottom: shouldShowText ? '6px' : '0' }} />
-                    </div>
-                  )
-                )}
-
-                {shouldShowText && (
-                  <div className={`text ${isDeleted ? "deleted" : ""}`} style={{ fontStyle: isDeleted ? 'italic' : 'normal', opacity: (isDeleted || msg.status === 'sending') ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '0 6px' : '0', wordBreak: 'break-word' }}>
-                    {isDeleted ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8, color: 'var(--text-muted)' }}>
-                        <span className="material-icons" style={{ fontSize: '16px' }}>block</span>
-                        {t('msg_deleted') || "Pesan ini telah dihapus"}
-                      </span>
-                    ) : renderTextWithLinks(cleanMsg)}
+                  /* TAMPILAN JIKA PESAN DIHAPUS (UNTUK SEMUA ORANG) */
+                  <div style={{ 
+                    fontStyle: 'italic', 
+                    color: isMe ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)', 
+                    display: 'flex', alignItems: 'center', gap: '6px', 
+                    padding: '2px 0', fontSize: '13.5px'
+                  }}>
+                    <span className="material-icons" style={{ fontSize: '16px' }}>block</span>
+                    {t('msg_deleted') || "Pesan ini telah dihapus"}
                   </div>
                 )}
 
-                {/* AREA VOICE NOTE (VN) DIPERBAIKI */}
-                {msg.audio_url && !isDeleted && (
-                  <div className={`vn-custom-player ${isPlaying ? 'playing' : ''}`} style={{ marginTop: (msg.image_url || msg.sticker_url || msg.shared_post || shouldShowText) ? '6px' : '0', display: 'flex', alignItems: 'center', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '0 6px' : '0', opacity: msg.status === 'sending' ? 0.6 : 1 }}>
-                    <button 
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleVN(); }} 
-                      disabled={msg.status === 'sending'} 
-                      style={{ 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                        width: '40px', height: '40px', borderRadius: '50%', 
-                        background: 'var(--primary-blue, #1f3cff)', // Background solid biru agar icon putih terlihat jelas
-                        border: 'none', color: '#fff', flexShrink: 0, cursor: 'pointer', outline: 'none',
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                      }}
-                    >
-                      {msg.status === 'sending' ? (
-                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: '20px', height: '20px', border: '3px solid rgba(255, 255, 255, 0.3)', borderTopColor: '#ffffff', borderRadius: '50%' }} />
-                      ) : isPlaying ? (
-                        <span className="material-icons" style={{ color: 'white', fontSize: '24px' }}>pause</span>
-                      ) : (
-                        <span className="material-icons" style={{ color: 'white', fontSize: '24px', marginLeft: '2px' }}>play_arrow</span>
-                      )}
-                    </button>
-                    
-                    <div className="vn-waveform" style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '24px', flex: 1, marginLeft: '12px' }}>
-                      {waveData.map((heightPercent, i) => (
-                        <motion.div key={i} animate={{ height: `${heightPercent}%` }} transition={{ duration: 0.1 }} style={{ width: '3px', background: isPlaying ? 'currentColor' : 'rgba(255,255,255,0.7)', borderRadius: '2px' }} />
-                      ))}
-                    </div>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: 'inherit', opacity: 0.8, marginLeft: '12px', marginRight: '4px' }}>VN</span>
-                  </div>
-                )}
-
-                {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                {msg.reactions && Object.keys(msg.reactions).length > 0 && !isDeleted && (
                   <div className="message-reactions" style={{ bottom: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '-12px' : '-16px' }}>
                     {[...new Set(Object.values(msg.reactions as Record<string, string>))].slice(0,3).join('')}
                   </div>
                 )}
                 
-                <div className="message-info" style={{ paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '6px' : '0', paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) ? '4px' : '0', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                {/* FOOTER INFORMASI PESAN (WAKTU & STATUS EDITED) */}
+                <div className="message-info" style={{ 
+                  paddingRight: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) && !isDeleted ? '6px' : '0', 
+                  paddingBottom: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post) && !isDeleted ? '4px' : '0', 
+                  display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' 
+                }}>
                   {isEdited && !isDeleted && (
-                    <span style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.6, marginRight: '2px' }}>(diedit)</span>
+                    <span style={{ fontSize: '10.5px', fontStyle: 'italic', opacity: 0.75, marginRight: '2px' }}>(diedit)</span>
                   )}
                   <span className="timestamp" style={{ fontSize: '10px', fontWeight: 500 }}>
                     {new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}

@@ -9,6 +9,7 @@ interface MediaItem {
   caption: string;
   croppedAreaPixels: any;
   croppedPreview: string | null;
+  croppedFile: File | null; // Menyimpan file hasil crop asli dalam bentuk File object
 }
 
 // --- Komponen Utama ---
@@ -37,10 +38,11 @@ export default function ChatModals({
       setImages([{
         id: Math.random().toString(36).substring(7),
         originalUrl: pendingImagePreview,
-        file: null, // Asumsikan state parent menangani file asli jika hanya 1
+        file: null, 
         caption: imageCaption || '',
         croppedAreaPixels: null,
         croppedPreview: null,
+        croppedFile: null,
       }]);
       setCurrentIndex(0);
     }
@@ -56,6 +58,7 @@ export default function ChatModals({
     });
   }, [currentIndex]);
 
+  // FUNGSI FIX: Memproses crop langsung di sini & sinkronisasi ke Parent Component
   const handleSaveCrop = async () => {
     const currentImg = images[currentIndex];
     if (currentImg && currentImg.croppedAreaPixels) {
@@ -63,11 +66,23 @@ export default function ChatModals({
         const croppedBlob = await getCroppedImg(currentImg.originalUrl, currentImg.croppedAreaPixels);
         if (croppedBlob) {
           const croppedUrl = URL.createObjectURL(croppedBlob);
+          
+          // Konversi Blob menjadi File agar kompatibel dengan sistem upload backend/parent
+          const originalName = (currentImg.file as File)?.name || `image_${Date.now()}.jpg`;
+          const croppedFile = new File([croppedBlob], `cropped_${originalName}`, { type: croppedBlob.type || 'image/jpeg' });
+
           setImages(prev => {
             const newImages = [...prev];
             newImages[currentIndex].croppedPreview = croppedUrl;
+            newImages[currentIndex].croppedFile = croppedFile; // Simpan file hasil potong
             return newImages;
           });
+
+          // SINKRONISASI KRUSIAL: Update state milik parent jika ini gambar pertama/utama
+          if (currentIndex === 0) {
+            if (typeof setPendingImage === 'function') setPendingImage(croppedFile);
+            if (typeof setPendingImagePreview === 'function') setPendingImagePreview(croppedUrl);
+          }
         }
       } catch (error) {
         console.error("Gagal membuat preview crop", error);
@@ -89,6 +104,7 @@ export default function ChatModals({
         caption: '',
         croppedAreaPixels: null,
         croppedPreview: null,
+        croppedFile: null,
       }));
 
       setImages(prev => [...prev, ...newImages]);
@@ -113,27 +129,18 @@ export default function ChatModals({
     setIsCropping(false);
   };
 
-  // Fungsi saat tombol Kirim ditekan
-  const handleInstantSend = async () => {
-    // Proses semua gambar dalam array
-    const processedImages = await Promise.all(images.map(async (img) => {
-      let finalFile: Blob | File | string | null = img.file || img.originalUrl;
-
-      // Jika ada hasil crop, proses jadi Blob
-      if (img.croppedAreaPixels) {
-        try {
-          const croppedBlob = await getCroppedImg(img.originalUrl, img.croppedAreaPixels);
-          if (croppedBlob) finalFile = croppedBlob;
-        } catch (e) {
-          console.error("Gagal melakukan crop gambar", e);
-        }
+  // FUNGSI FIX: Mengirim instan tanpa perlu re-generate crop async lagi
+  const handleInstantSend = () => {
+    images.forEach((item, idx) => {
+      // Ambil file crop jika ada, jika tidak gunakan file asli, paling akhir string URL-nya
+      const fileToSend = item.croppedFile || item.file || item.originalUrl;
+      
+      // Keamanan ganda: pastikan parent state terupdate tepat sebelum dikirim
+      if (idx === 0 && item.croppedFile) {
+        if (typeof setPendingImage === 'function') setPendingImage(item.croppedFile);
       }
-      return { fileData: finalFile, caption: img.caption };
-    }));
 
-    // Kirim secara iteratif agar sesuai dengan fungsi parent lama (Bisa diubah jadi passing array jika parent mendukung)
-    processedImages.forEach((item) => {
-      handleSendImageFullScreen(item.fileData, item.caption);
+      handleSendImageFullScreen(fileToSend, item.caption);
     });
 
     // Reset & Tutup Modal
@@ -193,7 +200,7 @@ export default function ChatModals({
               )}
             </div>
 
-            {/* THUMBNAIL CAROUSEL (Maks 10 Foto) */}
+            {/* THUMBNAIL CAROUSEL */}
             {!isCropping && (
               <div style={{ padding: '10px 16px', background: '#111', display: 'flex', gap: '10px', overflowX: 'auto', alignItems: 'center', borderTop: '1px solid #333' }}>
                 {images.map((img, idx) => (
@@ -257,7 +264,6 @@ export default function ChatModals({
 
       <AnimatePresence>
         {isGroupSettingsOpen && (
-             // ... Isi modal grup dari kode Anda sebelumnya ...
              <div></div>
         )}
       </AnimatePresence>
@@ -274,6 +280,7 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
+// OPTIMISASI UTILITY: Menggambar langsung ke ukuran target agar performa lebih mulus
 async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
@@ -281,26 +288,24 @@ async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob | n
 
   if (!ctx) return null;
 
-  canvas.width = image.width;
-  canvas.height = image.height;
-  ctx.drawImage(image, 0, 0);
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
 
-  const croppedCanvas = document.createElement('canvas');
-  const croppedCtx = croppedCanvas.getContext('2d');
-
-  if (!croppedCtx) return null;
-
-  croppedCanvas.width = pixelCrop.width;
-  croppedCanvas.height = pixelCrop.height;
-
-  croppedCtx.drawImage(
-    canvas, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
-    0, 0, pixelCrop.width, pixelCrop.height
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
   );
 
   return new Promise((resolve, reject) => {
-    croppedCanvas.toBlob((blob) => {
-      if (!blob) reject(new Error('Canvas is empty'));
+    canvas.toBlob((blob) => {
+      if (!blob) reject(new Error('Canvas kosong'));
       else resolve(blob);
     }, 'image/jpeg', 0.9);
   });
