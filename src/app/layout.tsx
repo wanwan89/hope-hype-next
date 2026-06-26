@@ -22,6 +22,7 @@ import SearchWrapper from "@/components/layout/SearchWrapperpost";
 import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar";
+import Sidebar from "@/components/layout/Sidebar"; // 👈 BARU: Di-import di sini agar tidak error lagi
 import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
@@ -336,7 +337,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      // Cegah pinch zoom jika lebih dari satu jari
       if (e.touches.length > 1) {
         e.preventDefault();
       }
@@ -428,7 +428,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-        {/* 🔥 SCRIPT TEMA SUPER AWAL: langsung setel background-color inline */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
