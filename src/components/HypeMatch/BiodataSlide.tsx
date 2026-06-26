@@ -48,6 +48,14 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
     (activeUser.minat && activeUser.minat.length > 0)
   );
 
+  // Style untuk chip agar icon dan teks sejajar rapi, serta menggunakan var(--text-main)
+  const chipBaseStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    color: 'var(--text-main)',
+  };
+
   return (
     <div 
       className={`hm-biodata-slide ${showBiodata ? 'open' : ''}`}
@@ -94,23 +102,23 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
               <h4 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px' }}>Info & Gaya Hidup</h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {activeUser.gender && <div className="hm-info-chip"><SvgIcon name="gender" /> {activeUser.gender}</div>}
-                {activeUser.pendidikan && <div className="hm-info-chip"><SvgIcon name="education" /> {activeUser.pendidikan}</div>}
-                {activeUser.tinggi_badan && <div className="hm-info-chip"><SvgIcon name="height" /> {activeUser.tinggi_badan} cm</div>}
-                {activeUser.zodiak && <div className="hm-info-chip"><SvgIcon name="zodiac" /> {activeUser.zodiak}</div>}
-                {activeUser.agama && <div className="hm-info-chip"><SvgIcon name="religion" /> {activeUser.agama}</div>}
-                {activeUser.tujuan && <div className="hm-info-chip"><SvgIcon name="target" /> {activeUser.tujuan}</div>}
-                {activeUser.preferensi && <div className="hm-info-chip"><SvgIcon name="heart" /> {activeUser.preferensi}</div>}
-                {activeUser.hobi && <div className="hm-info-chip"><SvgIcon name="hobby" /> {activeUser.hobi}</div>}
-                {activeUser.olahraga && <div className="hm-info-chip"><SvgIcon name="sport" /> {activeUser.olahraga}</div>}
-                {activeUser.merokok && <div className="hm-info-chip"><SvgIcon name="smoke" /> {activeUser.merokok}</div>}
-                {activeUser.alkohol && <div className="hm-info-chip"><SvgIcon name="alcohol" /> {activeUser.alkohol}</div>}
+                {activeUser.gender && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="gender" /> <span>{activeUser.gender}</span></div>}
+                {activeUser.pendidikan && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="education" /> <span>{activeUser.pendidikan}</span></div>}
+                {activeUser.tinggi_badan && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="height" /> <span>{activeUser.tinggi_badan} cm</span></div>}
+                {activeUser.zodiak && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="zodiac" /> <span>{activeUser.zodiak}</span></div>}
+                {activeUser.agama && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="religion" /> <span>{activeUser.agama}</span></div>}
+                {activeUser.tujuan && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="target" /> <span>{activeUser.tujuan}</span></div>}
+                {activeUser.preferensi && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="heart" /> <span>{activeUser.preferensi}</span></div>}
+                {activeUser.hobi && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="hobby" /> <span>{activeUser.hobi}</span></div>}
+                {activeUser.olahraga && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="sport" /> <span>{activeUser.olahraga}</span></div>}
+                {activeUser.merokok && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="smoke" /> <span>{activeUser.merokok}</span></div>}
+                {activeUser.alkohol && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="alcohol" /> <span>{activeUser.alkohol}</span></div>}
                 
                 {activeUser.bahasa && activeUser.bahasa.length > 0 && (
-                  <div className="hm-info-chip"><SvgIcon name="language" /> {activeUser.bahasa.join(', ')}</div>
+                  <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="language" /> <span>{activeUser.bahasa.join(', ')}</span></div>
                 )}
                 {activeUser.minat && activeUser.minat.length > 0 && (
-                  <div className="hm-info-chip"><SvgIcon name="fire" /> {activeUser.minat.join(', ')}</div>
+                  <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="fire" /> <span>{activeUser.minat.join(', ')}</span></div>
                 )}
               </div>
             </div>
@@ -121,9 +129,9 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
               <h4 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px' }}>Hubungkan</h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {activeUser.ig_username && <div className="hm-info-chip" style={{ borderColor: 'rgba(225, 48, 108, 0.5)' }}><SvgIcon name="social" /> @{activeUser.ig_username}</div>}
-                {activeUser.tiktok_username && <div className="hm-info-chip"><SvgIcon name="social" /> @{activeUser.tiktok_username}</div>}
-                {activeUser.spotify_url && <div className="hm-info-chip" style={{ borderColor: 'rgba(30, 215, 96, 0.5)' }}><SvgIcon name="social" /> Spotify</div>}
+                {activeUser.ig_username && <div className="hm-info-chip" style={{ ...chipBaseStyle, borderColor: 'rgba(225, 48, 108, 0.5)' }}><SvgIcon name="social" /> <span>@{activeUser.ig_username}</span></div>}
+                {activeUser.tiktok_username && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="social" /> <span>@{activeUser.tiktok_username}</span></div>}
+                {activeUser.spotify_url && <div className="hm-info-chip" style={{ ...chipBaseStyle, borderColor: 'rgba(30, 215, 96, 0.5)' }}><SvgIcon name="social" /> <span>Spotify</span></div>}
               </div>
             </div>
           )}
