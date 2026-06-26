@@ -18,7 +18,6 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import NextTopLoader from 'nextjs-toploader';
 
 import "./globals.css";
-import Sidebar from "@/components/layout/Sidebarpost";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
 import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
