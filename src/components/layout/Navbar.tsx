@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Home, Bell, MessageCircle, User, Mic } from 'lucide-react';
@@ -28,9 +28,6 @@ function NavbarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [isVisible, setIsVisible] = useState(true);
-  const prevScrollY = useRef(0);
-
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -54,36 +51,15 @@ function NavbarContent() {
     };
   }, []);
 
-  useEffect(() => {
-    // pathname bisa null di beberapa edge case SSR
-    if (pathname !== '/') {
-      setIsVisible(true);
-      return;
-    }
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY > prevScrollY.current && currentScrollY > 50) {
-        setIsVisible(false);
-      } else if (currentScrollY < prevScrollY.current) {
-        setIsVisible(true);
-      }
-      prevScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [pathname]);
-
   // Safe fallback untuk searchParams karena bisa null saat build _not-found
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
+  // Hapus /hypetalk/room dan voice room dari pengecekan agar navbar tetap muncul
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
-    '/create', '/search', '/hypetalk/room', '/saldo', 
-    '/story', '/pending', '/historycoin', '/withdraw'
-  ].some(path => pathname?.includes(path)) || 
-  (pathname === '/voice' && hasVoiceId);
+    '/create', '/search', '/saldo', '/story', 
+    '/pending', '/historycoin', '/withdraw'
+  ].some(path => pathname?.includes(path));
 
   const fetchBadgesAndUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -111,7 +87,7 @@ function NavbarContent() {
       setAvatarUrl(url);
     }
     
-    // 🔥 PERBAIKAN CHAT BADGE: Log error jika query gagal, dan set default ke 0
+    // Log error jika query gagal, dan set default ke 0
     if (chatRes.error) {
       console.error("Error mengambil unread chat:", chatRes.error.message);
     } else if (chatRes.count !== null) {
@@ -200,7 +176,7 @@ function NavbarContent() {
     return () => window.removeEventListener('notif-count-changed', handleRefresh);
   }, [pathname, isLoggedIn]);
 
-  // 🔥 PERBAIKAN CHAT BADGE: Realtime Listener agar badge bertambah otomatis saat pesan baru masuk
+  // Realtime Listener agar badge bertambah otomatis saat pesan baru masuk
   useEffect(() => {
     let channel: any;
 
@@ -271,10 +247,6 @@ function NavbarContent() {
         zIndex: 9000,
         display: 'flex',
         justifyContent: 'center',
-        transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease',
-        transform: isVisible ? 'translateY(0)' : 'translateY(150%)',
-        opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none',
       }}
     >
       <nav
@@ -285,7 +257,7 @@ function NavbarContent() {
           backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.75))',
           backdropFilter: 'blur(24px)', 
           WebkitBackdropFilter: 'blur(24px)',
-          borderTop: 'none', // 🔥 PERUBAHAN: Menghapus border garis atas
+          borderTop: 'none', 
           boxShadow: 'none',
           display: 'flex',
           alignItems: 'center',
