@@ -105,9 +105,9 @@ export default function SearchWrapperpost() {
   if (!mounted || isHidden) return null;
 
   return (
-    <div className="header-main-wrapper">
+    <div className="header-main-wrapper" style={{ background: 'var(--bg-main)' }}>
       {/* Kotak pencarian + tombol */}
-      <div className="search-wrapper glass-effect">
+      <div className="search-wrapper glass-effect" style={{ background: 'var(--bg-main)' }}>
         <div className="brutal-input-container">
           <input
             type="text"
@@ -115,7 +115,11 @@ export default function SearchWrapperpost() {
             className="brutal-input"
             readOnly
             onClick={() => router.push('/search')}
-            style={{ cursor: 'pointer' }}
+            style={{ 
+              cursor: 'pointer',
+              background: 'var(--bg-input)', // Mengikuti warna input di global CSS
+              color: 'var(--text-main)'
+            }}
           />
         </div>
 
@@ -136,7 +140,7 @@ export default function SearchWrapperpost() {
         </button>
       </div>
 
-      {/* 🔥 Loading Progress Bar yang Lebih Profesional 🔥 */}
+      {/* 🔥 Loading Progress Bar 🔥 */}
       {isUploading && (
         <div
           style={{
@@ -156,7 +160,7 @@ export default function SearchWrapperpost() {
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
-              background: 'var(--bg-secondary)',
+              background: 'var(--bg-card)', // DIUBAH: Menyesuaikan warna card di dark/light mode
               borderRadius: '16px',
               padding: '14px 18px',
               width: '100%',
@@ -170,17 +174,15 @@ export default function SearchWrapperpost() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {uploadProgress < 100 ? (
-                  /* 🔥 ANIMASI SPINNER BULAT SEMPURNA 🔥
-                    Menggunakan border dengan satu sisi berwarna beda
-                  */
+                  /* Animasi Spinner Bulat */
                   <div
                     style={{
                       width: '16px',
                       height: '16px',
                       borderRadius: '50%',
-                      border: '2.5px solid var(--border-card)', // Lingkaran dasar (pudar)
-                      borderTopColor: 'var(--primary)',         // Sisi yang berputar
-                      animation: 'spin 1s linear infinite',     // Animasi putaran
+                      border: '2.5px solid var(--bg-input)', // DIUBAH: Lingkaran dasar menyesuaikan background input
+                      borderTopColor: 'var(--primary)',      
+                      animation: 'spin 1s linear infinite',  
                     }}
                   />
                 ) : (
@@ -215,7 +217,7 @@ export default function SearchWrapperpost() {
               style={{
                 width: '100%',
                 height: '4px',
-                background: 'var(--bg-main)',
+                background: 'var(--bg-input)', // DIUBAH: Latar belakang bar line menggunakan bg-input agar tidak bertabrakan dengan bg-main
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}
@@ -236,7 +238,7 @@ export default function SearchWrapperpost() {
 
       {/* Story */}
       {stories.length > 0 && (
-        <div className="stories-container">
+        <div className="stories-container" style={{ background: 'var(--bg-main)' }}>
           {stories.map((story) => (
             <div
               key={story.id}
@@ -250,7 +252,7 @@ export default function SearchWrapperpost() {
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  background: 'var(--bg-main)', 
+                  background: 'var(--bg-main)', // Tetap menggunakan bg-main agar menyatu dengan background belakang
                 }}
               >
                 <img
@@ -260,11 +262,11 @@ export default function SearchWrapperpost() {
                   }
                   alt="avatar"
                   style={{
-                    border: '2px solid var(--bg-main)', 
+                    border: '2px solid var(--bg-main)', // Border mengikuti warna background agar terlihat "terpotong" (cut-out effect)
                   }}
                 />
               </div>
-              <span className="story-name">
+              <span className="story-name" style={{ color: 'var(--text-main)' }}>
                 {story.profiles?.username}
               </span>
             </div>
