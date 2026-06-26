@@ -115,6 +115,9 @@ export default function Gallerypost() {
 
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
+  
+  // State untuk melacak background upload
+  const [uploadStatus, setUploadStatus] = useState<'uploading' | 'success' | 'error' | null>(null);
 
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
@@ -136,6 +139,39 @@ export default function Gallerypost() {
     isError,
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
+
+  // Global Event Listener untuk Background Upload
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedIsUploading = localStorage.getItem('isUploading');
+      if (storedIsUploading === 'true') {
+        setUploadStatus('uploading');
+      }
+
+      const handleUploadStart = () => setUploadStatus('uploading');
+      
+      const handleUploadSuccess = () => {
+        setUploadStatus('success');
+        refetch(); // Langsung tarik feed terbaru saat upload selesai
+        setTimeout(() => setUploadStatus(null), 3000); // Hilangkan notif setelah 3 detik
+      };
+
+      const handleUploadError = () => {
+        setUploadStatus('error');
+        setTimeout(() => setUploadStatus(null), 4000);
+      };
+
+      window.addEventListener('postUploadStart', handleUploadStart);
+      window.addEventListener('postUploadSuccess', handleUploadSuccess);
+      window.addEventListener('postUploadError', handleUploadError);
+
+      return () => {
+        window.removeEventListener('postUploadStart', handleUploadStart);
+        window.removeEventListener('postUploadSuccess', handleUploadSuccess);
+        window.removeEventListener('postUploadError', handleUploadError);
+      };
+    }
+  }, [refetch]);
 
   useEffect(() => {
     const init = async () => {
@@ -241,6 +277,40 @@ export default function Gallerypost() {
 
     fetchInteractions();
   }, [allPosts, currentUser]);
+
+  // Handler Upload Postingan ke Background
+  const handleSubmitPost = async (fileData: any) => {
+    // 1. Trigger event mulai upload ke global listener
+    window.dispatchEvent(new Event('postUploadStart'));
+    localStorage.setItem('isUploading', 'true');
+    localStorage.setItem('uploadProgress', '0');
+  
+    // 2. Langsung tutup galeri / balik ke beranda biar user bebas scrolling
+    router.push('/');
+  
+    try {
+      // 3. Eksekusi upload ke Supabase di background
+      // ... Di sini tempat logika insert Supabase Storage / Database kamu ...
+  
+      // Contoh dispatch progress jika pakai library yang support progress
+      // const progressEvent = new CustomEvent('postUploadProgress', { detail: 50 });
+      // window.dispatchEvent(progressEvent);
+  
+      // 4. Kalau upload selesai
+      window.dispatchEvent(new Event('postUploadSuccess'));
+      
+      // Bersihkan storage
+      localStorage.removeItem('isUploading');
+      localStorage.removeItem('uploadProgress');
+  
+    } catch (error) {
+      console.error('Upload gagal:', error);
+      window.dispatchEvent(new Event('postUploadError'));
+      
+      localStorage.removeItem('isUploading');
+      localStorage.removeItem('uploadProgress');
+    }
+  };
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return router.push('/login');
@@ -481,7 +551,22 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh' }}>
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative' }}>
+      
+      {/* Indikator Status Upload */}
+      {uploadStatus && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 50, padding: '10px 16px',
+          background: uploadStatus === 'error' ? '#ff4d4f' : uploadStatus === 'success' ? '#52c41a' : '#1890ff',
+          color: '#fff', fontSize: '13px', fontWeight: 'bold', textAlign: 'center',
+          transition: 'all 0.3s ease'
+        }}>
+          {uploadStatus === 'uploading' && 'Mengunggah postingan ke background...'}
+          {uploadStatus === 'success' && 'Berhasil! Postinganmu sudah diterbitkan.'}
+          {uploadStatus === 'error' && 'Gagal mengunggah postingan. Silakan coba lagi.'}
+        </div>
+      )}
+
       <RepostModal
         isOpen={!!repostModal}
         postId={repostModal?.postId || ''}
