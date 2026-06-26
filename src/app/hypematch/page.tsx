@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import HypeMatchOpening from '@/components/HypeMatch/HypeMatchOpening';
 import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
+import BiodataSlide from './BiodataSlide'; // <--- IMPORT DISINI (Sesuaikan Path)
 import './HypeMatchOverlay.css';
 
 export type MatchUser = {
@@ -35,9 +36,6 @@ export type MatchUser = {
   role?: string;
 };
 
-// ==========================================
-// KOMPONEN SVG ICON KEKINIAN
-// ==========================================
 const SvgIcon = ({ name, className = "", size = 20, style }: { name: string, className?: string, size?: number, style?: React.CSSProperties }) => {
   const stroke = "currentColor";
   const fill = "none";
@@ -46,32 +44,15 @@ const SvgIcon = ({ name, className = "", size = 20, style }: { name: string, cla
   const icons: Record<string, React.ReactNode> = {
     arrowLeft: <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />,
     arrowUp: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />,
-    arrowDown: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />,
     filter: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16m-7 6h7" />,
     x: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18 6L6 18M6 6l12 12" />,
     heart: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />,
     location: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
-    gender: <><circle cx="12" cy="10" r="4"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v7"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 18h6"/></>,
-    job: <><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
-    education: <><path strokeLinecap="round" strokeLinejoin="round" d="M22 10v6M2 10l10-5 10 5-10 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M6 12v5c3 3 9 3 12 0v-5"/></>,
-    height: <><path strokeLinecap="round" strokeLinejoin="round" d="M22 12h-4M22 4h-4M22 20h-4M14 4l-4-4-4 4M14 20l-4 4-4-4M10 0v24"/></>,
-    religion: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M8 6h8" /></>,
-    zodiac: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path strokeLinecap="round" strokeLinejoin="round" d="M8 12a4 4 0 0 1 8 0"/></>,
-    target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
-    hobby: <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />,
-    sport: <path strokeLinecap="round" strokeLinejoin="round" d="M14.4 14.4 9.6 9.6M18.65 21.35a2 2 0 0 1-2.83 0l-5.66-5.66a2 2 0 0 1 0-2.83l.71-.71a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83l-.71.71ZM7.15 2.65a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83l-.71.71a2 2 0 0 1-2.83 0L7 6.19a2 2 0 0 1 0-2.83l.15-.71Z"/>,
-    smoke: <path strokeLinecap="round" strokeLinejoin="round" d="M18 20H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2ZM12 6V2M8 6V4M16 6V4"/>,
-    alcohol: <path strokeLinecap="round" strokeLinejoin="round" d="M8 22h8M12 15v7M12 15a7.5 7.5 0 0 0 7.5-7.5c0-4.14-3.36-7.5-7.5-7.5s-7.5 3.36-7.5 7.5A7.5 7.5 0 0 0 12 15z"/>,
-    language: <><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
-    social: <><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path strokeLinecap="round" strokeLinejoin="round" d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></>
+    target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>
   };
 
   return (
-    <svg 
-      width={size} height={size} viewBox="0 0 24 24" 
-      fill={fill} stroke={stroke} strokeWidth={strokeWidth} 
-      className={className} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={strokeWidth} className={className} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
       {icons[name] || icons.location}
     </svg>
   );
@@ -94,7 +75,6 @@ export default function HypeMatch() {
   const activeUser = users?.[currentIndex];
 
   useEffect(() => {
-    // [KODE FETCH DATA SAMA SEPERTI SEBELUMNYA]
     const fetchData = async () => {
       try {
         setIsLoading(true);
@@ -165,8 +145,7 @@ export default function HypeMatch() {
 
   const handleDragMove = (clientX: number) => {
     if (!dragRef.current.isDragging) return;
-    const currentDragX = clientX - dragRef.current.startX;
-    setDragX(currentDragX);
+    setDragX(clientX - dragRef.current.startX);
   };
 
   const handleDragEnd = () => {
@@ -235,7 +214,6 @@ export default function HypeMatch() {
   if (isLoading) return <div className="hm-loading"><h2>Memuat Data...</h2></div>;
 
   const stackedUsers = users.slice(currentIndex, currentIndex + 3);
-
   const likeBtnScale = 1 + (dragX > 0 ? Math.min(dragX / 300, 0.3) : 0);
   const passBtnScale = 1 + (dragX < 0 ? Math.min(Math.abs(dragX) / 300, 0.3) : 0);
 
@@ -304,18 +282,14 @@ export default function HypeMatch() {
           </div>
         )}
 
-        {/* ACTION BUTTONS */}
         {activeUser && (
           <div className="hm-fixed-action-bar">
             <button className="hm-action-btn btn-pass" onClick={(e) => { e.stopPropagation(); handleAction('pass'); }} style={{ transform: `scale(${passBtnScale})` }}>
               <SvgIcon name="x" className="hm-no-margin" size={28} />
             </button>
-            
-            {/* GANTI ICON KE ARROW UP */}
             <button className="hm-action-btn btn-fire" onClick={(e) => { e.stopPropagation(); setShowBiodata(true); }}>
               <SvgIcon name="arrowUp" className="hm-no-margin" size={24} />
             </button>
-
             <button className="hm-action-btn btn-like" onClick={(e) => { e.stopPropagation(); handleAction('like'); }} style={{ transform: `scale(${likeBtnScale})` }}>
               <SvgIcon name="heart" className="hm-no-margin" size={28} />
             </button>
@@ -323,73 +297,12 @@ export default function HypeMatch() {
         )}
       </div>
 
-      {/* SLIDE-UP BIODATA (Lebih Clean & Lengkap) */}
-      <div 
-        className={`hm-biodata-slide ${showBiodata ? 'open' : ''}`}
-        style={{
-          transition: 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
-          transform: showBiodata ? 'translateY(0)' : 'translateY(100%)'
-        }}
-      >
-        <div 
-          className="hm-biodata-header" 
-          onClick={() => setShowBiodata(false)}
-          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', padding: '10px 0' }}
-        >
-          {/* SVG PANAH KE BAWAH DI TENGAH ATAS */}
-          <SvgIcon name="arrowDown" size={28} style={{ color: '#ccc' }} />
-        </div>
-        
-        {activeUser && (
-          <div className="hm-biodata-content">
-            <h2 className="hm-biodata-title">{activeUser.username} {activeUser.umur && `, ${activeUser.umur}`}</h2>
-            <p className="hm-biodata-subtitle">{activeUser.pekerjaan || "Belum ada pekerjaan"}</p>
-            
-            <div className="hm-biodata-section">
-              <h4>Tentang Saya</h4>
-              <p>{activeUser.bio_hype || "Belum ada bio yang ditulis."}</p>
-            </div>
-
-            <div className="hm-biodata-section">
-              <h4>Informasi Dasar</h4>
-              <div className="hm-chips-wrapper">
-                {activeUser.gender && <div className="hm-info-chip"><SvgIcon name="gender" size={16} /> {activeUser.gender}</div>}
-                {activeUser.pendidikan && <div className="hm-info-chip"><SvgIcon name="education" size={16} /> {activeUser.pendidikan}</div>}
-                {activeUser.tinggi_badan && <div className="hm-info-chip"><SvgIcon name="height" size={16} /> {activeUser.tinggi_badan} cm</div>}
-                {activeUser.zodiak && <div className="hm-info-chip"><SvgIcon name="zodiac" size={16} /> {activeUser.zodiak}</div>}
-                {activeUser.agama && <div className="hm-info-chip"><SvgIcon name="religion" size={16} /> {activeUser.agama}</div>}
-                {activeUser.bahasa && activeUser.bahasa.length > 0 && <div className="hm-info-chip"><SvgIcon name="language" size={16} /> {activeUser.bahasa.join(', ')}</div>}
-              </div>
-            </div>
-
-            <div className="hm-biodata-section">
-              <h4>Gaya Hidup & Minat</h4>
-              <div className="hm-chips-wrapper">
-                {activeUser.tujuan && <div className="hm-info-chip"><SvgIcon name="target" size={16} /> {activeUser.tujuan}</div>}
-                {activeUser.preferensi && <div className="hm-info-chip"><SvgIcon name="heart" size={16} /> {activeUser.preferensi}</div>}
-                {activeUser.hobi && <div className="hm-info-chip"><SvgIcon name="hobby" size={16} /> {activeUser.hobi}</div>}
-                {activeUser.minat && activeUser.minat.length > 0 && <div className="hm-info-chip"><SvgIcon name="fire" size={16} /> {activeUser.minat.join(', ')}</div>}
-                {activeUser.olahraga && <div className="hm-info-chip"><SvgIcon name="sport" size={16} /> {activeUser.olahraga}</div>}
-                {activeUser.merokok && <div className="hm-info-chip"><SvgIcon name="smoke" size={16} /> {activeUser.merokok}</div>}
-                {activeUser.alkohol && <div className="hm-info-chip"><SvgIcon name="alcohol" size={16} /> {activeUser.alkohol}</div>}
-              </div>
-            </div>
-
-            {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
-              <div className="hm-biodata-section">
-                <h4>Sosial Media</h4>
-                <div className="hm-chips-wrapper">
-                  {activeUser.ig_username && <div className="hm-info-chip"><SvgIcon name="social" size={16} /> @{activeUser.ig_username}</div>}
-                  {activeUser.tiktok_username && <div className="hm-info-chip"><SvgIcon name="social" size={16} /> @{activeUser.tiktok_username}</div>}
-                  {activeUser.spotify_url && <div className="hm-info-chip"><SvgIcon name="social" size={16} /> Spotify Connected</div>}
-                </div>
-              </div>
-            )}
-
-            <div style={{ height: '80px' }}></div>
-          </div>
-        )}
-      </div>
+      {/* TINGGAL PANGGIL KOMPONEN BARU DISINI */}
+      <BiodataSlide 
+        activeUser={activeUser} 
+        showBiodata={showBiodata} 
+        setShowBiodata={setShowBiodata} 
+      />
 
       <MatchSuccessOverlay
         matchedUser={matchedUser}
