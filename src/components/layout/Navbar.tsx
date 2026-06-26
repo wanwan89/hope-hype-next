@@ -59,9 +59,10 @@ function NavbarContent() {
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/saldo', '/story', 
     '/pending', '/historycoin', '/withdraw',
-    '/hypetalk/room', // Menambahkan rute room chat
-    '/voice/'         // Menambahkan rute voice room (menggunakan /voice/ karena biasanya ada ID setelahnya)
-  ].some(path => pathname?.includes(path));
+    '/hypetalk/room', 
+    // Ganti menjadi pengecekan yang mencakup variasi voice
+    '/voice' // Ini akan menangkap /voice, /voice/, /voice-room, /voice/123
+].some(path => pathname?.startsWith(path)); // Gunakan startsWith agar lebih presisi
 
   const fetchBadgesAndUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
