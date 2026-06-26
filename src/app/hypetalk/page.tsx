@@ -46,8 +46,7 @@ export default function HypetalkPage() {
   });
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
-  // --- STATES FITUR HAPUS (SWIPE & LONG PRESS) ---
-  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  // --- STATES FITUR SELEKSI ---
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
   
@@ -282,13 +281,12 @@ export default function HypetalkPage() {
   }, [roomIdsStr, currentUser]);
 
 
-  // ========== LONG PRESS & SWIPE DELETE HANDLERS ==========
+  // ========== LONG PRESS & SELEKSI HANDLERS ==========
   
   const handlePressStart = (chat: any) => {
     if (chat.type === 'global') return;
     if (chat.type === 'group' && chat.isMember) return;
 
-    // Trigger seleksi jika ditahan 600ms
     pressTimerRef.current = setTimeout(() => {
       if (!isSelectionMode) {
         setIsSelectionMode(true);
@@ -302,15 +300,6 @@ export default function HypetalkPage() {
 
   const handlePressEnd = () => {
     if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
-  };
-
-  const handleSwipeRight = (chatId: string) => {
-    if (!isSelectionMode) {
-      setChatToDelete(chatId);
-      if (typeof navigator !== 'undefined' && "vibrate" in navigator) {
-        navigator.vibrate(50);
-      }
-    }
   };
 
   const toggleSelection = (chatId: string) => {
@@ -332,7 +321,6 @@ export default function HypetalkPage() {
   const cancelSelection = () => {
     setIsSelectionMode(false);
     setSelectedChats(new Set());
-    setChatToDelete(null);
   };
 
   const executeDeleteRooms = async (chatIdsToDel: string[]) => {
@@ -357,7 +345,6 @@ export default function HypetalkPage() {
       setChats(prev => prev.filter(c => !chatIdsToDel.includes(c.id)));
       setRequestChats(prev => prev.filter(c => !chatIdsToDel.includes(c.id)));
       
-      setChatToDelete(null);
       cancelSelection();
       showNotif("Obrolan berhasil dihapus", "success");
     } catch (err) {
@@ -365,10 +352,9 @@ export default function HypetalkPage() {
     }
   };
 
-
   // ========== HANDLER FUNCTIONS STANDAR ==========
   const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
-  const closeModal = () => { setActiveModal(null); setChatToDelete(null); };
+  const closeModal = () => { setActiveModal(null); };
 
   const handleSaveBio = async () => {
     setIsSavingBio(true);
@@ -520,42 +506,39 @@ export default function HypetalkPage() {
     <ConfirmProvider>
       <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         
-        {/* HEADER DEFAULT */}
-        {!isSelectionMode && (
-          <HypetalkHeader
-            onMenuClick={() => setIsSidebarOpen(true)}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        )}
+        {/* HEADER DEFAULT TETAP MUNCUL AGAR SEARCH BAR ADA DI ATAS */}
+        <HypetalkHeader
+          onMenuClick={() => setIsSidebarOpen(true)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
 
-        {/* ACTION BAR SELEKSI (Berbasis gambar 1000608220.jpg) */}
+        {/* ACTION BAR SELEKSI DI BAWAH SEARCH BAR (Sesuai 1000608223.jpg) */}
         <AnimatePresence>
           {isSelectionMode && (
             <motion.div 
-              initial={{ y: -50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -50, opacity: 0 }}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '16px',
-                background: '#0f1115', // Warna gelap
+                padding: '12px 16px',
+                background: '#0f1115', // Background hitam
                 borderBottom: '1px solid #1f232b',
-                position: 'sticky',
-                top: 0,
-                zIndex: 20
+                zIndex: 20,
+                overflow: 'hidden'
               }}
             >
-               <button onClick={cancelSelection} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}>Batal</button>
+               <button onClick={cancelSelection} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '500', cursor: 'pointer', padding: 0 }}>Batal</button>
                <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '16px' }}>{selectedChats.size} Terpilih</span>
                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <button onClick={selectAllChats} style={{ background: 'none', border: 'none', color: '#2b93ff', fontSize: '14px', cursor: 'pointer' }}>Tandai Semua</button>
+                  <button onClick={selectAllChats} style={{ background: 'none', border: 'none', color: '#2b93ff', fontSize: '14px', cursor: 'pointer', padding: 0 }}>Tandai Semua</button>
                   <button 
                     onClick={() => executeDeleteRooms(Array.from(selectedChats))} 
                     disabled={selectedChats.size === 0} 
-                    style={{ background: 'none', border: 'none', color: selectedChats.size === 0 ? 'var(--text-muted)' : '#ff3b30', fontWeight: 'bold', fontSize: '14px', cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: selectedChats.size === 0 ? 'var(--text-muted)' : '#667799', fontWeight: 'bold', fontSize: '14px', cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer', padding: 0 }}
                   >
                     Hapus
                   </button>
@@ -576,59 +559,17 @@ export default function HypetalkPage() {
           handleOpenChat={handleOpenChat}
           handleAvatarClick={handleAvatarClick}
           renderReadReceipt={renderReadReceipt}
-          // PROPS BARU UNTUK HAPUS DAN SELEKSI
+          // Props baru untuk seleksi & swipe delete
           isSelectionMode={isSelectionMode}
           selectedChats={selectedChats}
           onPressStart={handlePressStart}
           onPressEnd={handlePressEnd}
-          onSwipeRight={handleSwipeRight}
+          onDeleteChat={executeDeleteRooms}
         />
 
         {!activeModal && !isSelectionMode && (
           <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
         )}
-
-        {/* MODAL HAPUS SATUAN SLIDE KANAN (Berbasis gambar 1000608221.jpg) */}
-        <AnimatePresence>
-          {chatToDelete && !isSelectionMode && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ 
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-                background: 'rgba(0,0,0,0.6)', 
-                zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' 
-              }}
-            >
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                style={{ 
-                  background: 'transparent', padding: '24px', borderRadius: '16px', 
-                  minWidth: '280px', textAlign: 'center' 
-                }}
-              >
-                <h3 style={{ marginBottom: '20px', color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>
-                  Hapus Obrolan?
-                </h3>
-                <button 
-                  onClick={() => executeDeleteRooms([chatToDelete])} 
-                  style={{ display: 'block', width: '100%', padding: '14px', background: '#ff0000', color: 'white', border: 'none', borderRadius: '10px', marginBottom: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  Hapus Room
-                </button>
-                <button 
-                  onClick={() => setChatToDelete(null)} 
-                  style={{ display: 'block', width: '100%', padding: '14px', background: '#1a2232', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  Batal
-                </button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
         
@@ -639,6 +580,7 @@ export default function HypetalkPage() {
           onHypeMatch={handleHypeMatch} 
         />
 
+        {/* MODALS SAMA SEPERTI SEBELUMNYA ... */}
         {activeModal === 'user-profile' && selectedProfile && (
           <UserProfileModal
             profile={selectedProfile}
