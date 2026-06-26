@@ -1,8 +1,13 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react'; // MODIFIKASI: Tambahkan useRef
 import { useRouter } from 'next/navigation';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, useMotionValue, animate } from 'framer-motion'; // MODIFIKASI: useTransform dihapus karena sudah pakai Lottie
 import ChatItem from './ChatItem';
+
+// BARU: Import Lottie dan file JSON animasinya
+import Lottie, { LottieRefCurrentProps } from 'lottie-react';
+// Sesuaikan path ini dengan lokasi file JSON kamu yang sebenarnya
+import trashAnimationData from '@/assets/lottie/tempat-sampah.json'; 
 
 type Props = {
   isLoading: boolean;
@@ -16,8 +21,6 @@ type Props = {
   handleOpenChat: (chat: any) => void;
   handleAvatarClick: (e: React.MouseEvent, chatId: string, chatType: string) => void;
   renderReadReceipt: (chat: any) => React.ReactNode;
-  
-  // Fitur seleksi & hapus
   isSelectionMode?: boolean;
   selectedChats?: Set<string>;
   onPressStart?: (chat: any) => void;
@@ -25,53 +28,64 @@ type Props = {
   onDeleteChat?: (chatIds: string[]) => void;
 };
 
-// Komponen Pembungkus untuk 1 Chat agar State Animasinya tidak bertabrakan
 const SwipeableChatRow = ({
   chat, isSelectionMode, isSelected, onPressStart, onPressEnd, onDeleteChat, handleOpenChat,
   typingStatus, mutedChats, onlineUsers, currentUser, handleAvatarClick, renderReadReceipt
 }: any) => {
   const x = useMotionValue(0);
-  // Animasikan buka tutup tong sampah. Ketika ditarik, derajat tutup meningkat ke 45 (terbuka dari engsel kanan)
-  const lidRotate = useTransform(x, [0, 200], [0, 45]);
   const [isDeleted, setIsDeleted] = useState(false);
+  
+  // BARU: Referensi untuk mengontrol play/stop Lottie
+  const lottieRef = useRef<LottieRefCurrentProps>(null);
 
   const isGlobalOrActiveGroup = chat.type === 'global' || (chat.type === 'group' && chat.isMember);
   const canSwipe = !isSelectionMode && !isGlobalOrActiveGroup;
+
+  // BARU: Fungsi untuk memutar animasi saat ditarik
+  const handleDrag = (e: any, info: any) => {
+    if (info.offset.x > 50 && lottieRef.current) {
+      lottieRef.current.play(); // Mainkan animasi saat mulai diswipe
+    }
+  };
 
   const handleDragEnd = (e: any, info: any) => {
     const screenMiddle = typeof window !== 'undefined' ? window.innerWidth * 0.4 : 150;
     
     if (info.offset.x > screenMiddle) {
-      // Jika dislide sampai tengah layar (atau 40%), jalankan animasi hapus otomatis
       setIsDeleted(true);
       animate(x, window.innerWidth, { duration: 0.2 }).then(() => {
         if (onDeleteChat) onDeleteChat([chat.id]);
       });
     } else {
-      // Batal hapus, kembalikan posisi semula
       animate(x, 0, { type: "spring", bounce: 0, duration: 0.4 });
+      
+      // BARU: Reset animasi jika swipe dibatalkan
+      if (lottieRef.current) {
+        lottieRef.current.stop();
+      }
     }
   };
 
-  if (isDeleted) return null; // Hilangkan sesaat sesudah dihapus untuk menyembunyikan efek jeda data 
+  if (isDeleted) return null; 
 
   return (
     <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
-      {/* Background Kotak Biru dengan Icon Tong Sampah */}
+      
+      {/* Background Kotak Biru dengan Animasi Tong Sampah Lottie */}
       {canSwipe && (
         <div style={{
           position: 'absolute', inset: 0, backgroundColor: '#2b93ff',
           display: 'flex', alignItems: 'center', paddingLeft: '24px'
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-            {/* Tutup Tong Sampah yang bereaksi pada tarikan (engsel sudut kanan bawah) */}
-            <motion.path
-              d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-              style={{ rotate: lidRotate, transformOrigin: '80% 80%' }}
+          {/* BARU: Ganti SVG dengan komponen Lottie */}
+          <div style={{ width: '40px', height: '40px' }}>
+            <Lottie 
+              lottieRef={lottieRef}
+              animationData={trashAnimationData} 
+              loop={false}
+              autoplay={false}
             />
-            {/* Bagian Bawah Tong Sampah */}
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12z" />
-          </svg>
+          </div>
         </div>
       )}
 
@@ -85,6 +99,7 @@ const SwipeableChatRow = ({
         drag={canSwipe ? "x" : false}
         dragConstraints={{ left: 0, right: typeof window !== 'undefined' ? window.innerWidth : 400 }}
         dragElastic={0.1}
+        onDrag={canSwipe ? handleDrag : undefined} // BARU: Panggil fungsi handleDrag
         onDragEnd={canSwipe ? handleDragEnd : undefined}
         onTouchStart={() => onPressStart?.(chat)}
         onTouchEnd={() => onPressEnd?.()}
@@ -93,13 +108,13 @@ const SwipeableChatRow = ({
         onMouseUp={() => onPressEnd?.()}
         onMouseLeave={() => onPressEnd?.()}
       >
-        {/* CHECKBOX SELEKSI BERBENTUK BULAT */}
+        {/* CHECKBOX SELEKSI */}
         {isSelectionMode && !isGlobalOrActiveGroup && (
           <div className="chat-checkbox" style={{ padding: '0 0 0 16px', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleOpenChat(chat)}>
             <div style={{
               width: '24px', height: '24px', borderRadius: '50%',
-              border: isSelected ? 'none' : '2px solid #555', // Warna border default jika belum dipencet
-              backgroundColor: isSelected ? '#2b93ff' : 'transparent', // Biru solid jika dipilih
+              border: isSelected ? 'none' : '2px solid #555', 
+              backgroundColor: isSelected ? '#2b93ff' : 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.2s ease-in-out'
             }}>
