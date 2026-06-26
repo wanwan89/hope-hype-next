@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
@@ -67,18 +67,43 @@ export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// --- CSS in JS Styles (Bisa dipindah ke file CSS-mu) ---
+// --- CSS in JS Styles ---
 const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', 
-  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999, backdropFilter: 'blur(4px)'
+  position: 'fixed', 
+  inset: 0, 
+  background: 'rgba(0,0,0,0.6)', 
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'center', 
+  zIndex: 999999 
+  // backdropFilter: 'blur(4px)' dihapus
 };
+
 const modalStyle: React.CSSProperties = {
-  background: 'var(--bg-card, #1a1a1a)', padding: '20px', borderRadius: '16px', 
-  width: '90%', maxWidth: '320px', border: '1px solid var(--border-card, #333)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+  background: 'var(--bg-card, #1a1a1a)', 
+  padding: '20px', 
+  borderRadius: '16px', 
+  width: '90%', 
+  maxWidth: '320px', 
+  border: '1px solid var(--border-card, #333)', 
+  boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
 };
+
 const btnCancelStyle: React.CSSProperties = {
-  background: 'transparent', border: 'none', color: 'var(--text-muted, #aaa)', padding: '8px 16px', fontWeight: 600, cursor: 'pointer'
+  background: 'transparent', 
+  border: 'none', 
+  color: 'var(--text-muted, #aaa)', 
+  padding: '8px 16px', 
+  fontWeight: 600, 
+  cursor: 'pointer'
 };
+
 const btnConfirmStyle: React.CSSProperties = {
-  background: '#ff4757', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer'
+  background: '#007BFF', // Diubah dari #ff4757 (merah) menjadi #007BFF (biru)
+  border: 'none', 
+  color: '#fff', 
+  padding: '8px 16px', 
+  borderRadius: '8px', 
+  fontWeight: 600, 
+  cursor: 'pointer'
 };

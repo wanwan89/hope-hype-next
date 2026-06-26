@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ConfirmProvider } from '@/components/ConfirmProvider';
 import './Hypetalk.css';
 
 // Import komponen anak
@@ -44,13 +46,12 @@ export default function HypetalkPage() {
   });
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
-  // --- STATES FITUR HAPUS ROOM (LONG PRESS) ---
-  const [longPressChatId, setLongPressChatId] = useState<string | null>(null);
+  // --- STATES FITUR HAPUS (SWIPE & LONG PRESS) ---
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
   
-  const timer2sRef = useRef<NodeJS.Timeout | null>(null);
-  const timer4sRef = useRef<NodeJS.Timeout | null>(null);
+  const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // ========== LIFECYCLE & INIT ==========
   useEffect(() => {
@@ -231,7 +232,7 @@ export default function HypetalkPage() {
               time: lastGroupMsg ? new Date(lastGroupMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
               sortTime: lastGroupMsg ? new Date(lastGroupMsg.created_at).getTime() : Date.now() - 1000,
               unread: grpUnread,
-              isMember: true // Status bahwa user masih menjadi anggota grup ini
+              isMember: true 
             });
           }
         });
@@ -281,33 +282,36 @@ export default function HypetalkPage() {
   }, [roomIdsStr, currentUser]);
 
 
-  // ========== LONG PRESS & DELETE HANDLERS ==========
+  // ========== LONG PRESS & SWIPE DELETE HANDLERS ==========
   
-  const clearPressTimers = () => {
-    if (timer2sRef.current) clearTimeout(timer2sRef.current);
-    if (timer4sRef.current) clearTimeout(timer4sRef.current);
-  };
-
   const handlePressStart = (chat: any) => {
-    // Abaikan jika global atau masih dalam grup
     if (chat.type === 'global') return;
     if (chat.type === 'group' && chat.isMember) return;
 
-    timer2sRef.current = setTimeout(() => {
-      if (!isSelectionMode) setLongPressChatId(chat.id);
-    }, 2000);
+    // Trigger seleksi jika ditahan 600ms
+    pressTimerRef.current = setTimeout(() => {
+      if (!isSelectionMode) {
+        setIsSelectionMode(true);
+        setSelectedChats(new Set([chat.id]));
+        if (typeof navigator !== 'undefined' && "vibrate" in navigator) {
+          navigator.vibrate(50);
+        }
+      }
+    }, 600);
+  };
 
-    timer4sRef.current = setTimeout(() => {
-      setLongPressChatId(null);
-      setIsSelectionMode(true);
-      setSelectedChats(new Set([chat.id]));
+  const handlePressEnd = () => {
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+  };
+
+  const handleSwipeRight = (chatId: string) => {
+    if (!isSelectionMode) {
+      setChatToDelete(chatId);
       if (typeof navigator !== 'undefined' && "vibrate" in navigator) {
         navigator.vibrate(50);
       }
-    }, 4000);
+    }
   };
-
-  const handlePressEnd = () => clearPressTimers();
 
   const toggleSelection = (chatId: string) => {
     setSelectedChats(prev => {
@@ -328,12 +332,10 @@ export default function HypetalkPage() {
   const cancelSelection = () => {
     setIsSelectionMode(false);
     setSelectedChats(new Set());
-    setLongPressChatId(null);
+    setChatToDelete(null);
   };
 
   const executeDeleteRooms = async (chatIdsToDel: string[]) => {
-    if (!confirm(`Hapus ${chatIdsToDel.length} obrolan secara permanen?`)) return;
-    
     try {
       for (const cId of chatIdsToDel) {
         const chat = chats.find(c => c.id === cId) || requestChats.find(c => c.id === cId);
@@ -354,6 +356,8 @@ export default function HypetalkPage() {
       
       setChats(prev => prev.filter(c => !chatIdsToDel.includes(c.id)));
       setRequestChats(prev => prev.filter(c => !chatIdsToDel.includes(c.id)));
+      
+      setChatToDelete(null);
       cancelSelection();
       showNotif("Obrolan berhasil dihapus", "success");
     } catch (err) {
@@ -364,7 +368,7 @@ export default function HypetalkPage() {
 
   // ========== HANDLER FUNCTIONS STANDAR ==========
   const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
-  const closeModal = () => { setActiveModal(null); setLongPressChatId(null); };
+  const closeModal = () => { setActiveModal(null); setChatToDelete(null); };
 
   const handleSaveBio = async () => {
     setIsSavingBio(true);
@@ -513,126 +517,187 @@ export default function HypetalkPage() {
 
   // ========== RENDER ==========
   return (
-    <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-      <HypetalkHeader
-        onMenuClick={() => setIsSidebarOpen(true)}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+    <ConfirmProvider>
+      <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+        
+        {/* HEADER DEFAULT */}
+        {!isSelectionMode && (
+          <HypetalkHeader
+            onMenuClick={() => setIsSidebarOpen(true)}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        )}
 
-      {/* ACTION BAR SELEKSI */}
-      {isSelectionMode && (
-        <div className="selection-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, zIndex: 10 }}>
-           <button onClick={cancelSelection} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>Batal</button>
-           <span style={{ fontWeight: '600' }}>{selectedChats.size} Terpilih</span>
-           <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={selectAllChats} style={{ background: 'none', border: 'none', color: '#00a2ff', fontSize: '14px', cursor: 'pointer' }}>Tandai Semua</button>
-              <button onClick={() => executeDeleteRooms(Array.from(selectedChats))} disabled={selectedChats.size === 0} style={{ background: 'none', border: 'none', color: selectedChats.size === 0 ? 'var(--text-muted)' : 'red', fontWeight: 'bold', fontSize: '14px', cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer' }}>Hapus</button>
-           </div>
-        </div>
-      )}
+        {/* ACTION BAR SELEKSI (Berbasis gambar 1000608220.jpg) */}
+        <AnimatePresence>
+          {isSelectionMode && (
+            <motion.div 
+              initial={{ y: -50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -50, opacity: 0 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px',
+                background: '#0f1115', // Warna gelap
+                borderBottom: '1px solid #1f232b',
+                position: 'sticky',
+                top: 0,
+                zIndex: 20
+              }}
+            >
+               <button onClick={cancelSelection} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}>Batal</button>
+               <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '16px' }}>{selectedChats.size} Terpilih</span>
+               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  <button onClick={selectAllChats} style={{ background: 'none', border: 'none', color: '#2b93ff', fontSize: '14px', cursor: 'pointer' }}>Tandai Semua</button>
+                  <button 
+                    onClick={() => executeDeleteRooms(Array.from(selectedChats))} 
+                    disabled={selectedChats.size === 0} 
+                    style={{ background: 'none', border: 'none', color: selectedChats.size === 0 ? 'var(--text-muted)' : '#ff3b30', fontWeight: 'bold', fontSize: '14px', cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Hapus
+                  </button>
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* MODAL HAPUS SATUAN (2 DETIK) */}
-      {longPressChatId && !isSelectionMode && (
-        <div className="single-delete-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '12px', minWidth: '250px', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ marginBottom: '16px' }}>Hapus Obrolan?</h3>
-            <button onClick={() => executeDeleteRooms([longPressChatId])} style={{ display: 'block', width: '100%', padding: '12px', background: 'red', color: 'white', border: 'none', borderRadius: '8px', marginBottom: '8px', fontSize: '16px', cursor: 'pointer' }}>Hapus Room</button>
-            <button onClick={() => setLongPressChatId(null)} style={{ display: 'block', width: '100%', padding: '12px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' }}>Batal</button>
-          </div>
-        </div>
-      )}
-
-      <ChatList
-        isLoading={isLoading}
-        filteredChats={filteredChats}
-        requestChats={requestChats}
-        searchQuery={searchQuery}
-        typingStatus={typingStatus}
-        mutedChats={mutedChats}
-        onlineUsers={onlineUsers}
-        currentUser={currentUser}
-        handleOpenChat={handleOpenChat}
-        handleAvatarClick={handleAvatarClick}
-        renderReadReceipt={renderReadReceipt}
-        // PROPS BARU UNTUK HAPUS DAN SELEKSI
-        isSelectionMode={isSelectionMode}
-        selectedChats={selectedChats}
-        onPressStart={handlePressStart}
-        onPressEnd={handlePressEnd}
-      />
-
-      {!activeModal && !isSelectionMode && (
-        <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
-      )}
-
-      <div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
-      
-      <HypetalkSidebar
-        isOpen={isSidebarOpen}
-        currentUser={currentUser}
-        onOpenModal={openModal}
-        onHypeMatch={handleHypeMatch} 
-      />
-
-      {activeModal === 'user-profile' && selectedProfile && (
-        <UserProfileModal
-          profile={selectedProfile}
-          isBlocking={isBlocking}
-          onClose={closeModal}
-          onChat={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }}
-          onShowInfo={() => setActiveModal('chat-info')}
-          onBlock={() => handleBlockUser(selectedProfile.id)}
-        />
-      )}
-
-      {activeModal === 'chat-info' && selectedProfile && (
-        <ChatInfoModal
-          profile={selectedProfile}
+        <ChatList
+          isLoading={isLoading}
+          filteredChats={filteredChats}
+          requestChats={requestChats}
+          searchQuery={searchQuery}
+          typingStatus={typingStatus}
           mutedChats={mutedChats}
-          onToggleMute={handleToggleMute}
-          onBack={() => setActiveModal('user-profile')}
-          onClose={closeModal}
+          onlineUsers={onlineUsers}
+          currentUser={currentUser}
+          handleOpenChat={handleOpenChat}
+          handleAvatarClick={handleAvatarClick}
+          renderReadReceipt={renderReadReceipt}
+          // PROPS BARU UNTUK HAPUS DAN SELEKSI
+          isSelectionMode={isSelectionMode}
+          selectedChats={selectedChats}
+          onPressStart={handlePressStart}
+          onPressEnd={handlePressEnd}
+          onSwipeRight={handleSwipeRight}
         />
-      )}
 
-      {activeModal === 'privacy-settings' && (
-        <PrivacySettingsModal
-          privacySettings={privacySettings}
-          setPrivacySettings={setPrivacySettings}
-          isSaving={isSavingPrivacy}
-          onSave={handleSavePrivacy}
-          onClose={closeModal}
-        />
-      )}
+        {!activeModal && !isSelectionMode && (
+          <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
+        )}
 
-      {activeModal === 'search' && (
-        <SearchModal
-          searchId={searchUserId}
-          setSearchId={setSearchUserId}
-          onSearch={handleSearchAndChat}
-          onClose={closeModal}
-        />
-      )}
+        {/* MODAL HAPUS SATUAN SLIDE KANAN (Berbasis gambar 1000608221.jpg) */}
+        <AnimatePresence>
+          {chatToDelete && !isSelectionMode && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ 
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+                background: 'rgba(0,0,0,0.6)', 
+                zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' 
+              }}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                style={{ 
+                  background: 'transparent', padding: '24px', borderRadius: '16px', 
+                  minWidth: '280px', textAlign: 'center' 
+                }}
+              >
+                <h3 style={{ marginBottom: '20px', color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>
+                  Hapus Obrolan?
+                </h3>
+                <button 
+                  onClick={() => executeDeleteRooms([chatToDelete])} 
+                  style={{ display: 'block', width: '100%', padding: '14px', background: '#ff0000', color: 'white', border: 'none', borderRadius: '10px', marginBottom: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  Hapus Room
+                </button>
+                <button 
+                  onClick={() => setChatToDelete(null)} 
+                  style={{ display: 'block', width: '100%', padding: '14px', background: '#1a2232', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  Batal
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {activeModal === 'group' && (
-        <GroupModal
-          groupName={groupName}
-          setGroupName={setGroupName}
-          onCreate={handleCreateGroup}
-          onClose={closeModal}
+        <div className={`tg-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+        
+        <HypetalkSidebar
+          isOpen={isSidebarOpen}
+          currentUser={currentUser}
+          onOpenModal={openModal}
+          onHypeMatch={handleHypeMatch} 
         />
-      )}
 
-      {activeModal === 'bio' && (
-        <BioModal
-          bioForm={bioForm}
-          setBioForm={setBioForm}
-          isSaving={isSavingBio}
-          onSave={handleSaveBio}
-          onClose={closeModal}
-        />
-      )}
-    </div>
+        {activeModal === 'user-profile' && selectedProfile && (
+          <UserProfileModal
+            profile={selectedProfile}
+            isBlocking={isBlocking}
+            onClose={closeModal}
+            onChat={() => { closeModal(); router.push(`/hypetalk/room?from=${selectedProfile.id}`); }}
+            onShowInfo={() => setActiveModal('chat-info')}
+            onBlock={() => handleBlockUser(selectedProfile.id)}
+          />
+        )}
+
+        {activeModal === 'chat-info' && selectedProfile && (
+          <ChatInfoModal
+            profile={selectedProfile}
+            mutedChats={mutedChats}
+            onToggleMute={handleToggleMute}
+            onBack={() => setActiveModal('user-profile')}
+            onClose={closeModal}
+          />
+        )}
+
+        {activeModal === 'privacy-settings' && (
+          <PrivacySettingsModal
+            privacySettings={privacySettings}
+            setPrivacySettings={setPrivacySettings}
+            isSaving={isSavingPrivacy}
+            onSave={handleSavePrivacy}
+            onClose={closeModal}
+          />
+        )}
+
+        {activeModal === 'search' && (
+          <SearchModal
+            searchId={searchUserId}
+            setSearchId={setSearchUserId}
+            onSearch={handleSearchAndChat}
+            onClose={closeModal}
+          />
+        )}
+
+        {activeModal === 'group' && (
+          <GroupModal
+            groupName={groupName}
+            setGroupName={setGroupName}
+            onCreate={handleCreateGroup}
+            onClose={closeModal}
+          />
+        )}
+
+        {activeModal === 'bio' && (
+          <BioModal
+            bioForm={bioForm}
+            setBioForm={setBioForm}
+            isSaving={isSavingBio}
+            onSave={handleSaveBio}
+            onClose={closeModal}
+          />
+        )}
+      </div>
+    </ConfirmProvider>
   );
 }
