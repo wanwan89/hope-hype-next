@@ -1,5 +1,4 @@
 import React from 'react';
-import './HypeMatchOverlay.css';
 
 // Tipe data disamakan dengan yang ada di main file
 type MatchUser = {
