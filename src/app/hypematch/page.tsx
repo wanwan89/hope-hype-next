@@ -38,17 +38,17 @@ export type MatchUser = {
 // ==========================================
 // KOMPONEN SVG ICON KEKINIAN (DENGAN PROP SIZE)
 // ==========================================
-const SvgIcon = ({ name, className = "", size = 20 }: { name: string, className?: string, size?: number }) => {
+const SvgIcon = ({ name, className = "", size = 20, style }: { name: string, className?: string, size?: number, style?: React.CSSProperties }) => {
   const stroke = "currentColor";
   const fill = "none";
   const strokeWidth = "2";
 
   const icons: Record<string, React.ReactNode> = {
     arrowLeft: <><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></>,
-    filter: <><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></>,
-    x: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 6L6 18M6 6l12 12" /></>,
-    heart: <><path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></>,
-    fire: <><path strokeLinecap="round" strokeLinejoin="round" d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></>,
+    filter: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16m-7 6h7" /></>,
+    x: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18 6L6 18M6 6l12 12" /></>,
+    heart: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></>,
+    fire: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></>,
     location: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
     gender: <><circle cx="12" cy="10" r="4"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v7"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 18h6"/></>,
     job: <><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
@@ -67,7 +67,7 @@ const SvgIcon = ({ name, className = "", size = 20 }: { name: string, className?
     <svg 
       width={size} height={size} viewBox="0 0 24 24" 
       fill={fill} stroke={stroke} strokeWidth={strokeWidth} 
-      className={className} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}
+      className={className} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
     >
       {icons[name] || icons.location}
     </svg>
@@ -87,7 +87,6 @@ export default function HypeMatch() {
   const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
 
   const [showBiodata, setShowBiodata] = useState(false);
-  const [showFilter, setShowFilter] = useState(false);
 
   const dragRef = useRef({ startX: 0, startY: 0, isDragging: false });
   const activeUser = users?.[currentIndex];
@@ -241,26 +240,12 @@ export default function HypeMatch() {
   return (
     <div className="hm-overlay">
       
-      {/* HEADER: KEMBALI DI KIRI, FILTER DI KANAN */}
+      {/* HEADER: HYPEMATCH LOGO DI KIRI, FILTER DI KANAN */}
       <div className="hm-header">
-        <button className="hm-icon-btn" onClick={() => router.back()}>
-          <SvgIcon name="arrowLeft" className="hm-no-margin" />
-        </button>
-        <button className="hm-icon-btn" onClick={() => setShowFilter(!showFilter)}>
-          <SvgIcon name="filter" className="hm-no-margin" />
-        </button>
-      </div>
-
-      {/* FILTER MODAL */}
-      <div className={`hm-filter-modal ${showFilter ? 'open' : ''}`}>
-        <h4>Filter Pencarian</h4>
-        <label>Rentang Usia (Cth: 18 - 30)</label>
-        <div className="hm-filter-inputs">
-          <input type="number" placeholder="Min" />
-          <input type="number" placeholder="Max" />
-        </div>
-        <button className="hm-btn-apply" onClick={() => setShowFilter(false)}>
-          Terapkan
+        <h1 className="hm-logo-text">HypeMatch</h1>
+        {/* Tombol filter akan mengarahkan ke halaman pencarian/filter spesifik */}
+        <button className="hm-icon-btn-transparent" onClick={() => router.push('/hypematch/filter')}>
+          <SvgIcon name="filter" size={26} />
         </button>
       </div>
 
@@ -280,8 +265,8 @@ export default function HypeMatch() {
                   zIndex: 10 - idx,
                   transform: isTop 
                     ? `translateX(${dragX}px) rotate(${dragX * 0.05}deg)` 
-                    : `scale(${1 - idx * 0.06}) translateY(${idx * 20}px)`,
-                  opacity: 1 - (idx * 0.15),
+                    : `scale(${1 - idx * 0.04}) translateY(${idx * 15}px)`,
+                  opacity: 1 - (idx * 0.1),
                   transition: (isTop && dragRef.current.isDragging) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease',
                 }}
                 onMouseDown={(e) => isTop && handleDragStart(e.clientX, e.clientY)}
@@ -306,19 +291,29 @@ export default function HypeMatch() {
                   </>
                 )}
 
+                {/* OVERLAY TEKS DI DALAM KARTU */}
                 <div className="hm-card-info-overlay">
                   <h2 className="hm-card-title">
                     {user.username} {user.umur && <span>{user.umur}</span>}
                     
-                    {/* Badge dibungkus dalam wrapper agar ukurannya lebih besar */}
                     {user.role && (
                       <div className="hm-role-badge-wrapper" dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) as string }} />
                     )}
                   </h2>
-                  <p className="hm-card-subtitle">
-                    <SvgIcon name="location" className="hm-no-margin" style={{marginRight: '6px'}} /> 
-                    {user.lokasi || "Lokasi disembunyikan"}
-                  </p>
+                  
+                  {/* Tampilan ala pil/tag lokasi seperti di gambar referensi */}
+                  <div className="hm-card-pills">
+                    <div className="hm-pill">
+                      <SvgIcon name="location" size={14} style={{marginRight: 4}} /> 
+                      {user.lokasi || "Lokasi disembunyikan"}
+                    </div>
+                    {user.tujuan && (
+                      <div className="hm-pill">
+                        <SvgIcon name="target" size={14} style={{marginRight: 4}} />
+                        {user.tujuan}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -329,35 +324,35 @@ export default function HypeMatch() {
             <p>Tidak ada lagi pengguna di sekitarmu.</p>
           </div>
         )}
+
+        {/* ACTION BUTTONS: FLOATING OVER THE BOTTOM OF THE CARD */}
+        {activeUser && (
+          <div className="hm-fixed-action-bar">
+            <button 
+              className="hm-action-btn btn-pass" 
+              onClick={(e) => { e.stopPropagation(); handleAction('pass'); }}
+              style={{ transform: `scale(${passBtnScale})` }}
+            >
+              <SvgIcon name="x" className="hm-no-margin" size={28} />
+            </button>
+            
+            <button 
+              className="hm-action-btn btn-fire" 
+              onClick={(e) => { e.stopPropagation(); setShowBiodata(true); }}
+            >
+              <SvgIcon name="fire" className="hm-no-margin" size={22} />
+            </button>
+
+            <button 
+              className="hm-action-btn btn-like" 
+              onClick={(e) => { e.stopPropagation(); handleAction('like'); }}
+              style={{ transform: `scale(${likeBtnScale})` }}
+            >
+              <SvgIcon name="heart" className="hm-no-margin" size={28} />
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* ACTION BUTTONS (X, API, LOVE) */}
-      {activeUser && (
-        <div className="hm-action-bar">
-          <button 
-            className="hm-action-btn btn-pass" 
-            onClick={() => handleAction('pass')}
-            style={{ transform: `scale(${passBtnScale})` }}
-          >
-            <SvgIcon name="x" className="hm-no-margin" size={26} />
-          </button>
-          
-          <button 
-            className="hm-action-btn btn-fire" 
-            onClick={() => setShowBiodata(true)}
-          >
-            <SvgIcon name="fire" className="hm-no-margin" size={38} />
-          </button>
-
-          <button 
-            className="hm-action-btn btn-like" 
-            onClick={() => handleAction('like')}
-            style={{ transform: `scale(${likeBtnScale})` }}
-          >
-            <SvgIcon name="heart" className="hm-no-margin" size={26} />
-          </button>
-        </div>
-      )}
 
       {/* SLIDE-UP BIODATA */}
       <div className={`hm-biodata-slide ${showBiodata ? 'open' : ''}`}>
