@@ -31,6 +31,11 @@ import Providers from '@/components/Providers';
 // 🔥 TAMBAHAN: Import ConfirmProvider (Sesuaikan path dengan tempat kamu menyimpan filenya)
 import { ConfirmProvider } from '@/components/ConfirmProvider'; 
 
+// 🔥 BARU: Import Lottie dan file JSON animasi offline
+import Lottie from 'lottie-react';
+// Pastikan path ini sesuai dengan lokasi kamu menyimpan lost-conection.json
+import lostConnectionData from '@/assets/lottie/lost-conection.json'; 
+
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -360,6 +365,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const renderUI = () => (
     <>
       <GlobalShareModal />
+      
+      {/* 🔥 BAGIAN YANG DIMODIFIKASI: Tampilan Saat Offline */}
       {!isOnline && (
         <div
           className="offline-global-overlay"
@@ -374,10 +381,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             zIndex: 9999999,
           }}
         >
-          <div className="offline-card" style={{ textAlign: 'center', padding: '2rem', borderRadius: '1.5rem', background: 'rgba(20,20,25,0.95)', border: '1px solid rgba(255,255,255,0.1)', maxWidth: '320px', width: '90%' }}>
-            <div className="offline-icon-ring"><span className="material-icons" style={{ fontSize: '32px' }}>wifi_off</span></div>
-            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800', margin: '0.5rem 0 0.25rem' }}>Koneksi Terputus</h3>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>kamu sedang offline,aktifkan internet</p>
+          <div className="offline-card" style={{ 
+            textAlign: 'center', 
+            padding: '2rem', 
+            borderRadius: '1.5rem', 
+            background: 'rgba(20,20,25,0.95)', 
+            border: '1px solid rgba(255,255,255,0.1)', 
+            maxWidth: '320px', 
+            width: '90%',
+            display: 'flex', // Ditambahkan agar animasi berada di tengah secara rapi
+            flexDirection: 'column', 
+            alignItems: 'center' 
+          }}>
+            {/* Lottie Animation menggantikan ikon material sebelumnya */}
+            <div style={{ width: '150px', height: '150px', marginBottom: '10px' }}>
+              <Lottie
+                animationData={lostConnectionData}
+                loop={true} // Animasi berulang terus menerus
+                autoplay={true} // Animasi langsung berjalan otomatis
+              />
+            </div>
+            
+            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800', margin: '0.5rem 0 0.25rem' }}>
+              Koneksi Terputus
+            </h3>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>
+              Kamu sedang offline, aktifkan internet.
+            </p>
           </div>
         </div>
       )}
