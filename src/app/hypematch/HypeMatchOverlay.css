@@ -4,8 +4,8 @@
 .hm-overlay { 
   position: fixed; 
   inset: 0; 
-  background-color: var(--bg-main, #121212); 
-  color: var(--text-main, #ffffff); 
+  background-color: var(--bg-main); 
+  color: var(--text-main); 
   display: flex; 
   flex-direction: column; 
   overflow: hidden; 
@@ -33,9 +33,9 @@
 }
 
 .hm-icon-btn { 
-  background: var(--bg-card, rgba(255,255,255,0.1)); 
-  border: 1px solid var(--border-card, transparent); 
-  color: var(--text-main, #fff); 
+  background: var(--bg-card); 
+  border: 1px solid var(--border-card); 
+  color: var(--text-main); 
   border-radius: 50%; 
   width: 45px; 
   height: 45px; 
@@ -68,10 +68,9 @@
   height: 65vh; 
   border-radius: 20px; 
   overflow: hidden; 
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4); 
   will-change: transform; 
-  background-color: var(--bg-card, #1e1e1e); 
-  border: 1px solid var(--border-card, transparent);
+  background-color: var(--bg-card); 
+  border: 1px solid var(--border-card);
 }
 
 .hm-card-img { 
@@ -89,7 +88,7 @@
 
 .hm-card-title { 
   font-size: 26px; font-weight: bold; display: flex; align-items: center; 
-  gap: 8px; margin: 0 0 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); 
+  gap: 8px; margin: 0 0 5px;
 }
 
 .hm-role-badge-wrapper {
@@ -113,22 +112,18 @@
 .hm-action-btn { 
   border: none; border-radius: 50%; display: flex; 
   align-items: center; justify-content: center; cursor: pointer; 
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
-  /* Transisi mulus untuk animasi drag membesar */
   transition: transform 0.1s ease-out, background 0.2s; 
 }
 .hm-action-btn:active { transform: scale(0.85) !important; }
 
-.btn-pass { width: 60px; height: 60px; background: var(--bg-card, #fff); color: #fd5c63; }
-.btn-like { width: 60px; height: 60px; background: var(--bg-card, #fff); color: #00e676; }
+.btn-pass { width: 60px; height: 60px; background: var(--bg-card); color: #fd5c63; }
+.btn-like { width: 60px; height: 60px; background: var(--bg-card); color: #00e676; }
 
-/* Tombol Api Dibuat Jauh Lebih Besar */
 .btn-fire { 
   width: 75px; 
   height: 75px; 
-  background: var(--bg-card, #fff); 
+  background: var(--bg-card); 
   color: #ff9800; 
-  box-shadow: 0 8px 25px rgba(255, 152, 0, 0.3);
 }
 
 /* ==================================
@@ -144,7 +139,7 @@
 
 .hm-empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 100%; color: var(--text-muted, #888); text-align: center;
+  height: 100%; color: var(--text-muted); text-align: center;
 }
 .hm-empty-icon { width: 60px; height: 60px; margin-bottom: 16px; opacity: 0.5; }
 .hm-loading { display: flex; height: 100vh; justify-content: center; align-items: center; }
@@ -154,9 +149,9 @@
    ================================== */
 .hm-biodata-slide { 
   position: absolute; bottom: 0; left: 0; right: 0; 
-  background: var(--bg-card, #1e1e1e); 
-  color: var(--text-main, #ffffff);
-  border-top: 1px solid var(--border-card, rgba(255,255,255,0.1));
+  background: var(--bg-card); 
+  color: var(--text-main);
+  border-top: 1px solid var(--border-card);
   height: 75vh; border-radius: 30px 30px 0 0; z-index: 100; 
   transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
   transform: translateY(100%); display: flex; flex-direction: column; 
@@ -164,11 +159,10 @@
 
 .hm-biodata-slide.open { 
   transform: translateY(0); 
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.5); 
 }
 
 .hm-biodata-header { display: flex; justify-content: center; padding: 15px; cursor: pointer; }
-.hm-biodata-handle { width: 50px; height: 5px; background: var(--text-muted, rgba(255,255,255,0.3)); border-radius: 10px; }
+.hm-biodata-handle { width: 50px; height: 5px; background: var(--text-muted); border-radius: 10px; }
 
 .hm-biodata-content { padding: 20px; overflow-y: auto; flex: 1; }
 .hm-biodata-title { margin: 0 0 5px 0; font-size: 24px; }
@@ -179,11 +173,11 @@
 .hm-biodata-section p { line-height: 1.5; font-size: 14px; margin: 0; }
 
 .hm-info-chip { 
-  background: var(--bg-secondary, rgba(255,255,255,0.08)); 
-  border: 1px solid var(--border-card, rgba(255,255,255,0.1));
+  background: var(--bg-secondary); 
+  border: 1px solid var(--border-card);
   padding: 8px 14px; border-radius: 20px; font-size: 13px; 
   display: inline-flex; align-items: center; margin: 0 8px 8px 0; 
-  color: var(--text-main, #fff);
+  color: var(--text-main);
 }
 
 /* ==================================
@@ -191,10 +185,9 @@
    ================================== */
 .hm-filter-modal { 
   position: absolute; top: 70px; right: 20px; 
-  background: var(--bg-card, #222); color: var(--text-main, #fff);
+  background: var(--bg-card); color: var(--text-main);
   padding: 20px; border-radius: 15px; z-index: 150; 
-  box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
-  border: 1px solid var(--border-card, rgba(255,255,255,0.1)); 
+  border: 1px solid var(--border-card); 
   display: none; 
 }
 .hm-filter-modal.open { display: block; }
@@ -203,11 +196,11 @@
 .hm-filter-inputs { display: flex; gap: 10px; margin-top: 10px; }
 .hm-filter-inputs input {
   width: 60px; padding: 8px; border-radius: 8px; 
-  border: 1px solid var(--border-card, rgba(255,255,255,0.2));
-  background: var(--bg-main, #111); color: var(--text-main, #fff);
+  border: 1px solid var(--border-card);
+  background: var(--bg-main); color: var(--text-main);
 }
 .hm-btn-apply {
   width: 100%; padding: 10px; margin-top: 15px; 
-  background: var(--text-main, #fff); color: var(--bg-main, #000); 
+  background: var(--text-main); color: var(--bg-main); 
   border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
 }
