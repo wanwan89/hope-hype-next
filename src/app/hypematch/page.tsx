@@ -39,7 +39,7 @@ export type MatchUser = {
 // KOMPONEN SVG ICON
 // ==========================================
 const SvgIcon = ({ name, className = "" }: { name: string, className?: string }) => {
-  const size = 20;
+  const size = 22;
   const stroke = "currentColor";
   const fill = "none";
   const strokeWidth = "2";
@@ -87,7 +87,6 @@ export default function HypeMatch() {
   const [dragX, setDragX] = useState(0);
   const [matchedUser, setMatchedUser] = useState<MatchUser | null>(null);
 
-  // States Baru
   const [showBiodata, setShowBiodata] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
 
@@ -159,7 +158,6 @@ export default function HypeMatch() {
   }, []);
 
   const handleDragStart = (clientX: number, clientY: number) => {
-    // Jangan izinkan swipe kalau biodata sedang terbuka
     if (showBiodata) return; 
     dragRef.current = { startX: clientX, startY: clientY, isDragging: true };
   };
@@ -235,47 +233,119 @@ export default function HypeMatch() {
   if (showIntro) return <HypeMatchOpening onComplete={() => setShowIntro(false)} />;
   if (isLoading) return <div className="hm-loading"><h2>Memuat Data...</h2></div>;
 
-  // Mendapatkan max 3 user untuk stack effect
   const stackedUsers = users.slice(currentIndex, currentIndex + 3);
 
   return (
     <div className="hm-overlay">
-      {/* BACKGROUND MENGHINDARI CSS TERPISAH */}
+      {/* PENYESUAIAN CSS UNTUK LAYOUT YANG LEBIH SOLID */}
       <style dangerouslySetInnerHTML={{__html: `
-        .hm-overlay { position: fixed; inset: 0; background: #111; color: white; display: flex; flex-direction: column; overflow: hidden; font-family: sans-serif; }
-        .hm-header { display: flex; justify-content: space-between; padding: 20px; z-index: 50; }
-        .hm-icon-btn { background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(10px); transition: 0.2s; }
+        .hm-overlay { 
+          position: fixed; inset: 0; 
+          background: #111; color: white; 
+          display: flex; flex-direction: column; 
+          overflow: hidden; font-family: sans-serif; 
+          width: 100vw; height: 100dvh;
+        }
+
+        /* HEADER DIPERBAIKI (Tombol di pojok) */
+        .hm-header { 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: center; 
+          padding: 15px 20px; 
+          width: 100%; 
+          box-sizing: border-box; /* Mencegah overflow */
+          z-index: 50; 
+        }
+        .hm-icon-btn { 
+          background: rgba(255,255,255,0.15); border: none; color: white; 
+          border-radius: 50%; width: 45px; height: 45px; 
+          display: flex; align-items: center; justify-content: center; 
+          cursor: pointer; backdrop-filter: blur(10px); transition: 0.2s; 
+        }
         .hm-icon-btn:active { transform: scale(0.9); }
-        .hm-stack-container { flex: 1; position: relative; margin: 0 20px; display: flex; align-items: center; justify-content: center; }
-        .hm-card-item { position: absolute; width: 100%; max-width: 400px; height: 65vh; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); will-change: transform; }
-        .hm-card-img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-        .hm-card-info-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 60px 20px 20px; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%); pointer-events: none; }
-        .hm-card-title { font-size: 24px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin: 0 0 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
+
+        /* CONTAINER CARD DIPERBAIKI (Agar card tidak 0px / hilang) */
+        .hm-stack-container { 
+          flex: 1; 
+          width: 100%; 
+          position: relative; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+        }
+        .hm-card-item { 
+          position: absolute; 
+          width: calc(100% - 40px); /* Margin 20px kiri kanan */
+          max-width: 400px; 
+          height: 65vh; 
+          border-radius: 20px; 
+          overflow: hidden; 
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+          will-change: transform; 
+          background-color: #2a2a40; /* Warna fallback jika foto gagal muat */
+        }
+        .hm-card-img { 
+          width: 100%; height: 100%; object-fit: cover; pointer-events: none; 
+          position: absolute; top: 0; left: 0;
+        }
+        .hm-card-info-overlay { 
+          position: absolute; bottom: 0; left: 0; right: 0; 
+          padding: 60px 20px 20px; 
+          background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%); 
+          pointer-events: none; z-index: 2;
+        }
+        .hm-card-title { font-size: 26px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin: 0 0 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
         .hm-card-subtitle { font-size: 15px; opacity: 0.9; margin: 0; display: flex; align-items: center; gap: 6px; }
         
-        .hm-action-bar { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 20px; z-index: 50; }
-        .hm-action-btn { border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: 0.2s; }
+        /* ACTION BAR */
+        .hm-action-bar { 
+          display: flex; justify-content: center; align-items: center; 
+          gap: 25px; padding: 20px; z-index: 50; 
+          margin-bottom: 10px;
+        }
+        .hm-action-btn { 
+          border: none; border-radius: 50%; display: flex; 
+          align-items: center; justify-content: center; cursor: pointer; 
+          box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: 0.2s; 
+        }
         .hm-action-btn:active { transform: scale(0.9); }
         .btn-pass { width: 60px; height: 60px; background: #fff; color: #fd5c63; }
         .btn-fire { width: 50px; height: 50px; background: #fff; color: #ff9800; }
         .btn-like { width: 60px; height: 60px; background: #fff; color: #00e676; }
 
-        .hm-biodata-slide { position: absolute; bottom: 0; left: 0; right: 0; background: #1a1a2e; height: 75vh; border-radius: 30px 30px 0 0; z-index: 100; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); transform: translateY(100%); display: flex; flex-direction: column; }
-        .hm-biodata-slide.open { transform: translateY(0); box-shadow: 0 -10px 40px rgba(0,0,0,0.5); }
+        /* BIODATA SLIDE-UP */
+        .hm-biodata-slide { 
+          position: absolute; bottom: 0; left: 0; right: 0; background: #1a1a2e; 
+          height: 75vh; border-radius: 30px 30px 0 0; z-index: 100; 
+          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
+          transform: translateY(100%); display: flex; flex-direction: column; 
+        }
+        .hm-biodata-slide.open { transform: translateY(0); box-shadow: 0 -10px 40px rgba(0,0,0,0.7); }
         .hm-biodata-header { display: flex; justify-content: center; padding: 15px; }
         .hm-biodata-handle { width: 50px; height: 5px; background: rgba(255,255,255,0.3); border-radius: 10px; }
         .hm-biodata-content { padding: 20px; overflow-y: auto; flex: 1; }
         .hm-info-chip { background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; margin: 0 8px 8px 0; }
         
-        .hm-filter-modal { position: absolute; top: 70px; right: 20px; background: #222; padding: 20px; border-radius: 15px; z-index: 150; box-shadow: 0 5px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); display: none; }
+        /* MODAL FILTER */
+        .hm-filter-modal { 
+          position: absolute; top: 70px; right: 20px; background: #222; 
+          padding: 20px; border-radius: 15px; z-index: 150; 
+          box-shadow: 0 5px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); display: none; 
+        }
         .hm-filter-modal.open { display: block; }
         
-        .swipe-stamp { position: absolute; top: 40px; padding: 5px 15px; border: 4px solid; border-radius: 10px; font-size: 30px; font-weight: bold; text-transform: uppercase; z-index: 10; transform: rotate(-15deg); opacity: 0; }
-        .stamp-like { right: 40px; color: #00e676; border-color: #00e676; transform: rotate(15deg); }
-        .stamp-pass { left: 40px; color: #fd5c63; border-color: #fd5c63; }
+        /* STAMP LIKE / NOPE */
+        .swipe-stamp { 
+          position: absolute; top: 40px; padding: 5px 15px; border: 4px solid; 
+          border-radius: 10px; font-size: 30px; font-weight: bold; text-transform: uppercase; 
+          z-index: 10; opacity: 0; 
+        }
+        .stamp-like { right: 30px; color: #00e676; border-color: #00e676; transform: rotate(15deg); }
+        .stamp-pass { left: 30px; color: #fd5c63; border-color: #fd5c63; transform: rotate(-15deg); }
       `}}/>
 
-      {/* HEADER */}
+      {/* HEADER: KEMBALI DI KIRI, FILTER DI KANAN */}
       <div className="hm-header">
         <button className="hm-icon-btn" onClick={() => router.back()}>
           <SvgIcon name="arrowLeft" />
@@ -285,7 +355,7 @@ export default function HypeMatch() {
         </button>
       </div>
 
-      {/* FILTER MODAL (DUMMY/PLACEHOLDER) */}
+      {/* FILTER MODAL */}
       <div className={`hm-filter-modal ${showFilter ? 'open' : ''}`}>
         <h4 style={{ margin: '0 0 10px' }}>Filter Pencarian</h4>
         <label style={{ fontSize: '13px', opacity: 0.8 }}>Rentang Usia (Cth: 18 - 30)</label>
@@ -306,7 +376,6 @@ export default function HypeMatch() {
         {stackedUsers.length > 0 ? (
           stackedUsers.map((user, idx) => {
             const isTop = idx === 0;
-            // Background array memberi variasi warna pada card di belakang (jika pinggirannya terlihat)
             const bgColors = ['#1a1a2e', '#2a2a40', '#3b3b55'];
             
             return (
@@ -316,10 +385,9 @@ export default function HypeMatch() {
                 style={{
                   backgroundColor: bgColors[idx % bgColors.length],
                   zIndex: 10 - idx,
-                  // Terapkan translasi dan rotasi jika sedang di-drag, atau terapkan efek skala untuk card belakang
                   transform: isTop 
                     ? `translateX(${dragX}px) rotate(${dragX * 0.05}deg)` 
-                    : `scale(${1 - idx * 0.05}) translateY(${idx * 25}px)`,
+                    : `scale(${1 - idx * 0.06}) translateY(${idx * 20}px)`,
                   opacity: 1 - (idx * 0.15),
                   transition: (isTop && dragRef.current.isDragging) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease',
                 }}
@@ -331,9 +399,13 @@ export default function HypeMatch() {
                 onTouchMove={(e) => isTop && handleDragMove(e.touches[0].clientX)}
                 onTouchEnd={() => isTop && handleDragEnd()}
               >
-                <img src={user.avatar_url || 'https://via.placeholder.com/400x600'} alt="avatar" className="hm-card-img" draggable="false" />
+                <img 
+                  src={user.avatar_url || 'https://via.placeholder.com/400x600'} 
+                  alt="avatar" 
+                  className="hm-card-img" 
+                  draggable="false" 
+                />
                 
-                {/* Stamp Like / Pass (Hanya untuk Top Card saat digeser) */}
                 {isTop && (
                   <>
                     <div className="swipe-stamp stamp-like" style={{ opacity: dragX > 50 ? (dragX / 100) : 0 }}>LIKE</div>
@@ -414,7 +486,6 @@ export default function HypeMatch() {
               </div>
             </div>
 
-            {/* Tambahan margin bawah agar tidak terhalang batas layar */}
             <div style={{ height: '50px' }}></div>
           </div>
         )}
