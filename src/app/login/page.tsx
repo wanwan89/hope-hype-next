@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'; // Sesuaikan path ini
 import './Login.css';
 
 type Mode = 'login' | 'signup';
-type LoadingState = 'google' | 'discord' | 'passkey' | 'magiclink' | 'credentials' | null;
+type LoadingState = 'google' | 'discord' | 'passkey' | 'magiclink' | 'credentials' | 'reset' | null;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +16,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState<LoadingState>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  
+  // 🔥 State baru untuk toggle form Email/Password
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   // --- Form State ---
   const [username, setUsername] = useState('');
@@ -132,6 +135,27 @@ export default function LoginPage() {
     }
   };
 
+  // 🔥 Handler Lupa Password
+  const handleForgotPassword = async () => {
+    if (!email || !email.includes('@')) {
+      handleError('Please enter your email first to reset your password.');
+      return;
+    }
+    setLoading('reset');
+    clearMessages();
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      });
+      if (error) throw error;
+      handleSuccess('Password reset link sent to your email.');
+    } catch (err: any) {
+      handleError(err.message || 'Failed to send reset link');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const handlePasskey = async () => {
     setLoading('passkey');
     clearMessages();
@@ -150,6 +174,7 @@ export default function LoginPage() {
 
   const toggleMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
+    setShowEmailForm(true); // 🔥 Otomatis buka form saat pindah mode
     clearMessages();
   };
 
@@ -168,8 +193,29 @@ export default function LoginPage() {
 
   return (
     <div className="auth-layout">
-      <div className="auth-container" role="main">
+      <div className="auth-container" role="main" style={{ position: 'relative' }}>
         
+        {/* 🔥 Tombol Close (X) di Pojok Kanan Atas */}
+        <button 
+          onClick={() => router.back()} 
+          style={{ 
+            position: 'absolute', 
+            top: '20px', 
+            right: '20px', 
+            background: 'none', 
+            border: 'none', 
+            color: '#9ca3af', 
+            cursor: 'pointer',
+            padding: '4px'
+          }}
+          aria-label="Close"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+
         {/* Indikator Pemanis Modal */}
         <div className="modal-handle"></div>
         
@@ -225,62 +271,96 @@ export default function LoginPage() {
           <span>OR</span>
         </div>
 
-        {/* Main Form */}
-        <form onSubmit={handleCredentialsAuth} className="auth-form" noValidate>
-          {mode === 'signup' && (
-            <div className="form-group slide-down">
-              <label htmlFor="username">Username</label>
+        {/* 🔥 Tombol Expand Email ATAU Form Utama */}
+        {!showEmailForm ? (
+          <button 
+            type="button" 
+            className="btn-social" 
+            style={{ width: '100%', marginTop: '10px' }}
+            onClick={() => setShowEmailForm(true)}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+            Continue with Email
+          </button>
+        ) : (
+          <form onSubmit={handleCredentialsAuth} className="auth-form" style={{ animation: 'slideDown 0.3s ease-out' }} noValidate>
+            {mode === 'signup' && (
+              <div className="form-group slide-down">
+                <label htmlFor="username">Username</label>
+                <input 
+                  id="username" type="text" value={username} 
+                  onChange={(e) => setUsername(e.target.value)} 
+                  placeholder="hypeuser" disabled={loading !== null}
+                />
+              </div>
+            )}
+
+            <div className="form-group">
+              <label htmlFor="email">Email</label>
               <input 
-                id="username" type="text" value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-                placeholder="hypeuser" disabled={loading !== null}
+                id="email" type="email" value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                placeholder="name@example.com" disabled={loading !== null}
               />
             </div>
-          )}
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input 
-              id="email" type="email" value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              placeholder="name@example.com" disabled={loading !== null}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input 
-              id="password" type="password" value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              placeholder="••••••••" disabled={loading !== null}
-            />
-          </div>
-
-          {mode === 'signup' && (
-            <div className="form-group slide-down">
-              <label htmlFor="confirmPassword">Confirm Password</label>
+            <div className="form-group">
+              <label htmlFor="password">Password</label>
               <input 
-                id="confirmPassword" type="password" value={confirmPassword} 
-                onChange={(e) => setConfirmPassword(e.target.value)} 
+                id="password" type="password" value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
                 placeholder="••••••••" disabled={loading !== null}
               />
             </div>
-          )}
 
-          <button type="submit" className="btn-primary mt-2" disabled={loading !== null}>
-            {loading === 'credentials' ? <LoaderIcon /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
-          </button>
+            {/* 🔥 Link Forgot Password */}
+            {mode === 'login' && (
+              <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
+                <button 
+                  type="button" 
+                  onClick={handleForgotPassword} 
+                  disabled={loading !== null}
+                  style={{ 
+                    background: 'none', border: 'none', 
+                    color: '#9ca3af', fontSize: '13px', 
+                    cursor: 'pointer', padding: 0,
+                    textDecoration: 'underline'
+                  }}
+                >
+                  {loading === 'reset' ? 'Sending...' : 'Forgot password?'}
+                </button>
+              </div>
+            )}
 
-          {mode === 'login' && (
-            <button type="button" className="btn-magic-link" onClick={handleMagicLink} disabled={loading !== null}>
-              {loading === 'magiclink' ? 'Sending...' : 'Send Magic Link Instead'}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-              </svg>
+            {mode === 'signup' && (
+              <div className="form-group slide-down">
+                <label htmlFor="confirmPassword">Confirm Password</label>
+                <input 
+                  id="confirmPassword" type="password" value={confirmPassword} 
+                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                  placeholder="••••••••" disabled={loading !== null}
+                />
+              </div>
+            )}
+
+            <button type="submit" className="btn-primary mt-2" disabled={loading !== null}>
+              {loading === 'credentials' ? <LoaderIcon /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
             </button>
-          )}
-        </form>
+
+            {mode === 'login' && (
+              <button type="button" className="btn-magic-link" onClick={handleMagicLink} disabled={loading !== null}>
+                {loading === 'magiclink' ? 'Sending...' : 'Send Magic Link Instead'}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              </button>
+            )}
+          </form>
+        )}
 
         {/* Footer */}
         <footer className="auth-footer">
