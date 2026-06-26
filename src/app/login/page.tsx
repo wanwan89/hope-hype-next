@@ -170,6 +170,9 @@ export default function LoginPage() {
     <div className="auth-layout">
       <div className="auth-container" role="main">
         
+        {/* Indikator Pemanis Modal */}
+        <div className="modal-handle"></div>
+        
         {/* Header */}
         <header className="auth-header">
           <LogoSVG />
