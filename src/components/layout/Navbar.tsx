@@ -58,7 +58,9 @@ function NavbarContent() {
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/saldo', '/story', 
-    '/pending', '/historycoin', '/withdraw'
+    '/pending', '/historycoin', '/withdraw',
+    '/hypetalk/room', // Menambahkan rute room chat
+    '/voice/'         // Menambahkan rute voice room (menggunakan /voice/ karena biasanya ada ID setelahnya)
   ].some(path => pathname?.includes(path));
 
   const fetchBadgesAndUser = async () => {
