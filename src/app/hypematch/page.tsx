@@ -36,10 +36,10 @@ export type MatchUser = {
 };
 
 // ==========================================
-// KOMPONEN SVG ICON
+// KOMPONEN SVG ICON KEKINIAN
 // ==========================================
 const SvgIcon = ({ name, className = "" }: { name: string, className?: string }) => {
-  const size = 22;
+  const size = 20;
   const stroke = "currentColor";
   const fill = "none";
   const strokeWidth = "2";
@@ -47,28 +47,28 @@ const SvgIcon = ({ name, className = "" }: { name: string, className?: string })
   const icons: Record<string, React.ReactNode> = {
     arrowLeft: <><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></>,
     filter: <><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></>,
-    x: <><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></>,
-    heart: <><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></>,
-    fire: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2c0 0-4 3-4 7s2 5 2 5-3-3-3-6c0-2 2-4 2-4s-3 3-3 7c0 4.418 3.582 8 8 8s8-3.582 8-8c0-4-3-7-3-7s2 2 2 4c0 3-3 6-3 6s2-1 2-5c0-4-4-7-4-7z" /></>,
-    location: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z" /><circle cx="12" cy="10" r="3" /></>,
-    gender: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v6m-3-3h6M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" /></>,
-    job: <><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
-    education: <><path strokeLinecap="round" strokeLinejoin="round" d="M4 19l4-2m0 0l8 4 4-2M12 3L2 8l10 5 10-5-10-5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M22 13v4m-10 5v-5" /></>,
-    height: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 3v18M16 3v18M8 6h8M8 12h8M8 18h8" /></>,
+    x: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 6L6 18M6 6l12 12" /></>,
+    heart: <><path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></>,
+    fire: <><path strokeLinecap="round" strokeLinejoin="round" d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></>,
+    location: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
+    gender: <><circle cx="12" cy="10" r="4"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v7"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 18h6"/></>,
+    job: <><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+    education: <><path strokeLinecap="round" strokeLinejoin="round" d="M22 10v6M2 10l10-5 10 5-10 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M6 12v5c3 3 9 3 12 0v-5"/></>,
+    height: <><path strokeLinecap="round" strokeLinejoin="round" d="M22 12h-4M22 4h-4M22 20h-4M14 4l-4-4-4 4M14 20l-4 4-4-4M10 0v24"/></>,
     religion: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M8 6h8" /></>,
-    zodiac: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v4l3 3" /></>,
+    zodiac: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path strokeLinecap="round" strokeLinejoin="round" d="M8 12a4 4 0 0 1 8 0"/></>,
     target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
     hobby: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></>,
-    sport: <><path strokeLinecap="round" strokeLinejoin="round" d="M6 5v14M18 5v14M4 7h4M16 7h4M4 17h4M16 17h4M6 12h12" /></>,
-    smoke: <><path strokeLinecap="round" strokeLinejoin="round" d="M4 16h16M4 20h16M9 4v4M15 2v6" /></>,
-    alcohol: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 22h8M12 15v7M5 3l7 12 7-12H5z" /></>,
+    sport: <><path strokeLinecap="round" strokeLinejoin="round" d="M14.4 14.4 9.6 9.6M18.65 21.35a2 2 0 0 1-2.83 0l-5.66-5.66a2 2 0 0 1 0-2.83l.71-.71a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83l-.71.71ZM7.15 2.65a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83l-.71.71a2 2 0 0 1-2.83 0L7 6.19a2 2 0 0 1 0-2.83l.15-.71Z"/></>,
+    smoke: <><path strokeLinecap="round" strokeLinejoin="round" d="M18 20H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2ZM12 6V2M8 6V4M16 6V4"/></>,
+    alcohol: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 22h8M12 15v7M12 15a7.5 7.5 0 0 0 7.5-7.5c0-4.14-3.36-7.5-7.5-7.5s-7.5 3.36-7.5 7.5A7.5 7.5 0 0 0 12 15z"/></>,
   };
 
   return (
     <svg 
       width={size} height={size} viewBox="0 0 24 24" 
       fill={fill} stroke={stroke} strokeWidth={strokeWidth} 
-      className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}
+      className={className} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}
     >
       {icons[name] || icons.location}
     </svg>
@@ -237,136 +237,26 @@ export default function HypeMatch() {
 
   return (
     <div className="hm-overlay">
-      {/* PENYESUAIAN CSS UNTUK LAYOUT YANG LEBIH SOLID */}
-      <style dangerouslySetInnerHTML={{__html: `
-        .hm-overlay { 
-          position: fixed; inset: 0; 
-          background: #111; color: white; 
-          display: flex; flex-direction: column; 
-          overflow: hidden; font-family: sans-serif; 
-          width: 100vw; height: 100dvh;
-        }
-
-        /* HEADER DIPERBAIKI (Tombol di pojok) */
-        .hm-header { 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: center; 
-          padding: 15px 20px; 
-          width: 100%; 
-          box-sizing: border-box; /* Mencegah overflow */
-          z-index: 50; 
-        }
-        .hm-icon-btn { 
-          background: rgba(255,255,255,0.15); border: none; color: white; 
-          border-radius: 50%; width: 45px; height: 45px; 
-          display: flex; align-items: center; justify-content: center; 
-          cursor: pointer; backdrop-filter: blur(10px); transition: 0.2s; 
-        }
-        .hm-icon-btn:active { transform: scale(0.9); }
-
-        /* CONTAINER CARD DIPERBAIKI (Agar card tidak 0px / hilang) */
-        .hm-stack-container { 
-          flex: 1; 
-          width: 100%; 
-          position: relative; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-        }
-        .hm-card-item { 
-          position: absolute; 
-          width: calc(100% - 40px); /* Margin 20px kiri kanan */
-          max-width: 400px; 
-          height: 65vh; 
-          border-radius: 20px; 
-          overflow: hidden; 
-          box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-          will-change: transform; 
-          background-color: #2a2a40; /* Warna fallback jika foto gagal muat */
-        }
-        .hm-card-img { 
-          width: 100%; height: 100%; object-fit: cover; pointer-events: none; 
-          position: absolute; top: 0; left: 0;
-        }
-        .hm-card-info-overlay { 
-          position: absolute; bottom: 0; left: 0; right: 0; 
-          padding: 60px 20px 20px; 
-          background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%); 
-          pointer-events: none; z-index: 2;
-        }
-        .hm-card-title { font-size: 26px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin: 0 0 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
-        .hm-card-subtitle { font-size: 15px; opacity: 0.9; margin: 0; display: flex; align-items: center; gap: 6px; }
-        
-        /* ACTION BAR */
-        .hm-action-bar { 
-          display: flex; justify-content: center; align-items: center; 
-          gap: 25px; padding: 20px; z-index: 50; 
-          margin-bottom: 10px;
-        }
-        .hm-action-btn { 
-          border: none; border-radius: 50%; display: flex; 
-          align-items: center; justify-content: center; cursor: pointer; 
-          box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: 0.2s; 
-        }
-        .hm-action-btn:active { transform: scale(0.9); }
-        .btn-pass { width: 60px; height: 60px; background: #fff; color: #fd5c63; }
-        .btn-fire { width: 50px; height: 50px; background: #fff; color: #ff9800; }
-        .btn-like { width: 60px; height: 60px; background: #fff; color: #00e676; }
-
-        /* BIODATA SLIDE-UP */
-        .hm-biodata-slide { 
-          position: absolute; bottom: 0; left: 0; right: 0; background: #1a1a2e; 
-          height: 75vh; border-radius: 30px 30px 0 0; z-index: 100; 
-          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
-          transform: translateY(100%); display: flex; flex-direction: column; 
-        }
-        .hm-biodata-slide.open { transform: translateY(0); box-shadow: 0 -10px 40px rgba(0,0,0,0.7); }
-        .hm-biodata-header { display: flex; justify-content: center; padding: 15px; }
-        .hm-biodata-handle { width: 50px; height: 5px; background: rgba(255,255,255,0.3); border-radius: 10px; }
-        .hm-biodata-content { padding: 20px; overflow-y: auto; flex: 1; }
-        .hm-info-chip { background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; margin: 0 8px 8px 0; }
-        
-        /* MODAL FILTER */
-        .hm-filter-modal { 
-          position: absolute; top: 70px; right: 20px; background: #222; 
-          padding: 20px; border-radius: 15px; z-index: 150; 
-          box-shadow: 0 5px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); display: none; 
-        }
-        .hm-filter-modal.open { display: block; }
-        
-        /* STAMP LIKE / NOPE */
-        .swipe-stamp { 
-          position: absolute; top: 40px; padding: 5px 15px; border: 4px solid; 
-          border-radius: 10px; font-size: 30px; font-weight: bold; text-transform: uppercase; 
-          z-index: 10; opacity: 0; 
-        }
-        .stamp-like { right: 30px; color: #00e676; border-color: #00e676; transform: rotate(15deg); }
-        .stamp-pass { left: 30px; color: #fd5c63; border-color: #fd5c63; transform: rotate(-15deg); }
-      `}}/>
-
+      
       {/* HEADER: KEMBALI DI KIRI, FILTER DI KANAN */}
       <div className="hm-header">
         <button className="hm-icon-btn" onClick={() => router.back()}>
-          <SvgIcon name="arrowLeft" />
+          <SvgIcon name="arrowLeft" className="hm-no-margin" />
         </button>
         <button className="hm-icon-btn" onClick={() => setShowFilter(!showFilter)}>
-          <SvgIcon name="filter" />
+          <SvgIcon name="filter" className="hm-no-margin" />
         </button>
       </div>
 
       {/* FILTER MODAL */}
       <div className={`hm-filter-modal ${showFilter ? 'open' : ''}`}>
-        <h4 style={{ margin: '0 0 10px' }}>Filter Pencarian</h4>
-        <label style={{ fontSize: '13px', opacity: 0.8 }}>Rentang Usia (Cth: 18 - 30)</label>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <input type="number" placeholder="Min" style={{ width: '60px', padding: '5px', borderRadius: '5px', border: 'none' }}/>
-          <input type="number" placeholder="Max" style={{ width: '60px', padding: '5px', borderRadius: '5px', border: 'none' }}/>
+        <h4>Filter Pencarian</h4>
+        <label>Rentang Usia (Cth: 18 - 30)</label>
+        <div className="hm-filter-inputs">
+          <input type="number" placeholder="Min" />
+          <input type="number" placeholder="Max" />
         </div>
-        <button 
-          onClick={() => setShowFilter(false)}
-          style={{ width: '100%', padding: '8px', marginTop: '15px', background: 'white', color: 'black', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
-        >
+        <button className="hm-btn-apply" onClick={() => setShowFilter(false)}>
           Terapkan
         </button>
       </div>
@@ -376,7 +266,7 @@ export default function HypeMatch() {
         {stackedUsers.length > 0 ? (
           stackedUsers.map((user, idx) => {
             const isTop = idx === 0;
-            const bgColors = ['#1a1a2e', '#2a2a40', '#3b3b55'];
+            const bgColors = ['var(--bg-card)', 'var(--bg-secondary)', 'var(--border-card)'];
             
             return (
               <div 
@@ -416,18 +306,23 @@ export default function HypeMatch() {
                 <div className="hm-card-info-overlay">
                   <h2 className="hm-card-title">
                     {user.username} {user.umur && <span>{user.umur}</span>}
-                    {user.role && <div dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) as string }} style={{ zoom: 0.8 }}/>}
+                    
+                    {/* Badge dibungkus dalam wrapper agar ukurannya lebih besar */}
+                    {user.role && (
+                      <div className="hm-role-badge-wrapper" dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) as string }} />
+                    )}
                   </h2>
                   <p className="hm-card-subtitle">
-                    <SvgIcon name="location" /> {user.lokasi || "Lokasi disembunyikan"}
+                    <SvgIcon name="location" className="hm-no-margin" style={{marginRight: '6px'}} /> 
+                    {user.lokasi || "Lokasi disembunyikan"}
                   </p>
                 </div>
               </div>
             );
           })
         ) : (
-          <div style={{ textAlign: 'center', opacity: 0.5 }}>
-            <SvgIcon name="x" className="hm-empty-icon" />
+          <div className="hm-empty-state">
+            <SvgIcon name="x" className="hm-empty-icon hm-no-margin" />
             <p>Tidak ada lagi pengguna di sekitarmu.</p>
           </div>
         )}
@@ -437,37 +332,37 @@ export default function HypeMatch() {
       {activeUser && (
         <div className="hm-action-bar">
           <button className="hm-action-btn btn-pass" onClick={() => handleAction('pass')}>
-            <SvgIcon name="x" />
+            <SvgIcon name="x" className="hm-no-margin" />
           </button>
           
           <button className="hm-action-btn btn-fire" onClick={() => setShowBiodata(true)}>
-            <SvgIcon name="fire" />
+            <SvgIcon name="fire" className="hm-no-margin" />
           </button>
 
           <button className="hm-action-btn btn-like" onClick={() => handleAction('like')}>
-            <SvgIcon name="heart" />
+            <SvgIcon name="heart" className="hm-no-margin" />
           </button>
         </div>
       )}
 
       {/* SLIDE-UP BIODATA */}
       <div className={`hm-biodata-slide ${showBiodata ? 'open' : ''}`}>
-        <div className="hm-biodata-header" onClick={() => setShowBiodata(false)} style={{ cursor: 'pointer' }}>
+        <div className="hm-biodata-header" onClick={() => setShowBiodata(false)}>
           <div className="hm-biodata-handle"></div>
         </div>
         
         {activeUser && (
           <div className="hm-biodata-content">
-            <h2 style={{ marginBottom: '5px' }}>{activeUser.username}</h2>
-            <p style={{ opacity: 0.7, marginTop: 0, marginBottom: '20px' }}>{activeUser.pekerjaan || "Belum ada pekerjaan"}</p>
+            <h2 className="hm-biodata-title">{activeUser.username}</h2>
+            <p className="hm-biodata-subtitle">{activeUser.pekerjaan || "Belum ada pekerjaan"}</p>
             
-            <div style={{ marginBottom: '25px' }}>
-              <h4 style={{ margin: '0 0 10px', color: '#ff9800' }}>Tentang Saya</h4>
-              <p style={{ lineHeight: 1.5, fontSize: '15px' }}>{activeUser.bio_hype || "Belum ada bio yang ditulis."}</p>
+            <div className="hm-biodata-section">
+              <h4>Tentang Saya</h4>
+              <p>{activeUser.bio_hype || "Belum ada bio yang ditulis."}</p>
             </div>
 
-            <div style={{ marginBottom: '25px' }}>
-              <h4 style={{ margin: '0 0 10px', color: '#ff9800' }}>Informasi Dasar</h4>
+            <div className="hm-biodata-section">
+              <h4>Informasi Dasar</h4>
               <div>
                 {activeUser.gender && <div className="hm-info-chip"><SvgIcon name="gender" /> {activeUser.gender}</div>}
                 {activeUser.pendidikan && <div className="hm-info-chip"><SvgIcon name="education" /> {activeUser.pendidikan}</div>}
@@ -476,8 +371,8 @@ export default function HypeMatch() {
               </div>
             </div>
 
-            <div style={{ marginBottom: '25px' }}>
-              <h4 style={{ margin: '0 0 10px', color: '#ff9800' }}>Gaya Hidup & Minat</h4>
+            <div className="hm-biodata-section">
+              <h4>Gaya Hidup & Minat</h4>
               <div>
                 {activeUser.tujuan && <div className="hm-info-chip"><SvgIcon name="target" /> {activeUser.tujuan}</div>}
                 {activeUser.hobi && <div className="hm-info-chip"><SvgIcon name="hobby" /> {activeUser.hobi}</div>}
