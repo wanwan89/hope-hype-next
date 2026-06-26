@@ -170,16 +170,19 @@ export default function SearchWrapperpost() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {uploadProgress < 100 ? (
-                  <span
-                    className="material-icons"
+                  /* 🔥 ANIMASI SPINNER BULAT SEMPURNA 🔥
+                    Menggunakan border dengan satu sisi berwarna beda
+                  */
+                  <div
                     style={{
-                      fontSize: '18px',
-                      color: 'var(--text-muted)',
-                      animation: 'spin 1.5s linear infinite',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      border: '2.5px solid var(--border-card)', // Lingkaran dasar (pudar)
+                      borderTopColor: 'var(--primary)',         // Sisi yang berputar
+                      animation: 'spin 1s linear infinite',     // Animasi putaran
                     }}
-                  >
-                    sync
-                  </span>
+                  />
                 ) : (
                   <span
                     className="material-icons"
@@ -212,7 +215,7 @@ export default function SearchWrapperpost() {
               style={{
                 width: '100%',
                 height: '4px',
-                background: 'var(--bg-main)', // Warna track yang lebih gelap dari bg-secondary
+                background: 'var(--bg-main)',
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}
