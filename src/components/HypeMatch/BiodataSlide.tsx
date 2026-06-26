@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 
-// SvgIcon Standalone yang sudah di-update dengan penambahan icon 'fire'
+// SvgIcon Standalone
 const SvgIcon = ({ name, className = "", size = 18, style }: { name: string, className?: string, size?: number, style?: React.CSSProperties }) => {
   const stroke = "currentColor";
   const fill = "none";
@@ -40,7 +40,6 @@ interface BiodataSlideProps {
 
 export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }: BiodataSlideProps) {
   
-  // Deteksi apakah user punya data detail/atribute hidup atau tidak
   const hasDetails = activeUser && (
     activeUser.gender || activeUser.pendidikan || activeUser.tinggi_badan || 
     activeUser.zodiak || activeUser.agama || activeUser.tujuan || 
@@ -54,27 +53,30 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
       className={`hm-biodata-slide ${showBiodata ? 'open' : ''}`}
       style={{
         transition: 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
-        transform: showBiodata ? 'translateY(0)' : 'translateY(100%)'
+        transform: showBiodata ? 'translateY(0)' : 'translateY(100%)',
+        backgroundColor: 'var(--bg-modal)', // Mengikuti warna modal global
+        color: 'var(--text-main)', // Mengikuti warna text utama
+        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)' // Opsional: Tambah shadow agar terlihat melayang dari card
       }}
     >
-      {/* Handle Penutup Slide yang Lebih Clean */}
+      {/* Handle Penutup Slide */}
       <div 
         className="hm-biodata-header" 
         onClick={() => setShowBiodata(false)}
         style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', padding: '12px 0' }}
       >
-        <div style={{ width: '40px', height: '5px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '10px' }}></div>
+        <div style={{ width: '40px', height: '5px', backgroundColor: 'var(--text-muted)', opacity: 0.5, borderRadius: '10px' }}></div>
       </div>
       
       {activeUser && (
         <div className="hm-biodata-content" style={{ padding: '0 20px 40px 20px' }}>
           
-          {/* Main Header Utama (Nama, Umur, Pekerjaan) */}
+          {/* Main Header Utama */}
           <div style={{ marginBottom: '24px' }}>
-            <h2 className="hm-biodata-title" style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            <h2 className="hm-biodata-title" style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0', color: 'var(--text-main)' }}>
               {activeUser.username}{activeUser.umur && `, ${activeUser.umur}`}
             </h2>
-            <p className="hm-biodata-subtitle" style={{ opacity: 0.7, margin: 0, fontSize: '15px' }}>
+            <p className="hm-biodata-subtitle" style={{ margin: 0, fontSize: '15px', color: 'var(--text-muted)' }}>
               {activeUser.pekerjaan || "Belum mengisi pekerjaan"}
             </p>
           </div>
@@ -82,15 +84,15 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
           {/* Section: Tentang Saya */}
           {activeUser.bio_hype && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', uppercase: 'true', opacity: 0.5, marginBottom: '8px', letterSpacing: '0.5px' }}>Tentang Saya</h4>
-              <p style={{ lineHeight: '1.5', fontSize: '15px', margin: 0 }}>{activeUser.bio_hype}</p>
+              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.5px' }}>Tentang Saya</h4>
+              <p style={{ lineHeight: '1.5', fontSize: '15px', margin: 0, color: 'var(--text-main)' }}>{activeUser.bio_hype}</p>
             </div>
           )}
 
-          {/* Section Informasi & Gaya Hidup disatukan biar minimalis */}
+          {/* Section Informasi & Gaya Hidup */}
           {hasDetails && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', opacity: 0.5, marginBottom: '12px', letterSpacing: '0.5px' }}>Info & Gaya Hidup</h4>
+              <h4 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px' }}>Info & Gaya Hidup</h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {activeUser.gender && <div className="hm-info-chip"><SvgIcon name="gender" /> {activeUser.gender}</div>}
                 {activeUser.pendidikan && <div className="hm-info-chip"><SvgIcon name="education" /> {activeUser.pendidikan}</div>}
@@ -117,11 +119,11 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
           {/* Section: Sosial Media */}
           {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', opacity: 0.5, marginBottom: '12px', letterSpacing: '0.5px' }}>Hubungkan</h4>
+              <h4 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px' }}>Hubungkan</h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {activeUser.ig_username && <div className="hm-info-chip" style={{ borderColor: 'rgba(225, 48, 108, 0.3)' }}><SvgIcon name="social" /> @{activeUser.ig_username}</div>}
+                {activeUser.ig_username && <div className="hm-info-chip" style={{ borderColor: 'rgba(225, 48, 108, 0.5)' }}><SvgIcon name="social" /> @{activeUser.ig_username}</div>}
                 {activeUser.tiktok_username && <div className="hm-info-chip"><SvgIcon name="social" /> @{activeUser.tiktok_username}</div>}
-                {activeUser.spotify_url && <div className="hm-info-chip" style={{ borderColor: 'rgba(30, 215, 96, 0.3)' }}><SvgIcon name="social" /> Spotify</div>}
+                {activeUser.spotify_url && <div className="hm-info-chip" style={{ borderColor: 'rgba(30, 215, 96, 0.5)' }}><SvgIcon name="social" /> Spotify</div>}
               </div>
             </div>
           )}
