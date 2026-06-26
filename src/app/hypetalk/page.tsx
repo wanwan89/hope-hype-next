@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { getUserBadge, showNotif } from '@/lib/ui-utils';
+import { showNotif } from '@/lib/ui-utils';
 import './Hypetalk.css';
 
-// Import komponen anak (HypeMatchOverlay dihapus karena sudah jadi page terpisah)
+// Import komponen anak
 import HypetalkHeader from './_components/HypetalkHeader';
 import ChatList from './_components/ChatList';
 import HypetalkSidebar from './_components/HypetalkSidebar';
@@ -29,7 +29,6 @@ export default function HypetalkPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   
-  // State bio dan setingan lainnya tetap dipertahankan
   const [bioForm, setBioForm] = useState({ umur: '', gender: 'Pria', zodiak: '', pekerjaan: '', hobi: '' });
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
@@ -44,6 +43,14 @@ export default function HypetalkPage() {
     last_seen: 'public'
   });
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+
+  // --- STATES FITUR HAPUS ROOM (LONG PRESS) ---
+  const [longPressChatId, setLongPressChatId] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
+  
+  const timer2sRef = useRef<NodeJS.Timeout | null>(null);
+  const timer4sRef = useRef<NodeJS.Timeout | null>(null);
 
   // ========== LIFECYCLE & INIT ==========
   useEffect(() => {
@@ -223,7 +230,8 @@ export default function HypetalkPage() {
               preview: grpPreview,
               time: lastGroupMsg ? new Date(lastGroupMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
               sortTime: lastGroupMsg ? new Date(lastGroupMsg.created_at).getTime() : Date.now() - 1000,
-              unread: grpUnread
+              unread: grpUnread,
+              isMember: true // Status bahwa user masih menjadi anggota grup ini
             });
           }
         });
@@ -272,9 +280,91 @@ export default function HypetalkPage() {
     return () => { channels.forEach(c => c && supabase.removeChannel(c)); };
   }, [roomIdsStr, currentUser]);
 
-  // ========== HANDLER FUNCTIONS ==========
+
+  // ========== LONG PRESS & DELETE HANDLERS ==========
+  
+  const clearPressTimers = () => {
+    if (timer2sRef.current) clearTimeout(timer2sRef.current);
+    if (timer4sRef.current) clearTimeout(timer4sRef.current);
+  };
+
+  const handlePressStart = (chat: any) => {
+    // Abaikan jika global atau masih dalam grup
+    if (chat.type === 'global') return;
+    if (chat.type === 'group' && chat.isMember) return;
+
+    timer2sRef.current = setTimeout(() => {
+      if (!isSelectionMode) setLongPressChatId(chat.id);
+    }, 2000);
+
+    timer4sRef.current = setTimeout(() => {
+      setLongPressChatId(null);
+      setIsSelectionMode(true);
+      setSelectedChats(new Set([chat.id]));
+      if (typeof navigator !== 'undefined' && "vibrate" in navigator) {
+        navigator.vibrate(50);
+      }
+    }, 4000);
+  };
+
+  const handlePressEnd = () => clearPressTimers();
+
+  const toggleSelection = (chatId: string) => {
+    setSelectedChats(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(chatId)) newSet.delete(chatId);
+      else newSet.add(chatId);
+      return newSet;
+    });
+  };
+
+  const selectAllChats = () => {
+    const deletable = chats
+      .filter(c => c.type === 'private' || (c.type === 'group' && !c.isMember))
+      .map(c => c.id);
+    setSelectedChats(new Set(deletable));
+  };
+
+  const cancelSelection = () => {
+    setIsSelectionMode(false);
+    setSelectedChats(new Set());
+    setLongPressChatId(null);
+  };
+
+  const executeDeleteRooms = async (chatIdsToDel: string[]) => {
+    if (!confirm(`Hapus ${chatIdsToDel.length} obrolan secara permanen?`)) return;
+    
+    try {
+      for (const cId of chatIdsToDel) {
+        const chat = chats.find(c => c.id === cId) || requestChats.find(c => c.id === cId);
+        if (!chat) continue;
+        
+        let roomId = '';
+        if (chat.type === 'private') {
+          const ids = [currentUser.id, chat.id].sort();
+          roomId = `pv_${ids[0]}_${ids[1]}`;
+        } else if (chat.type === 'group') {
+          roomId = `group_${chat.id}`;
+        }
+
+        if (roomId) {
+          await supabase.from('messages').delete().eq('room_id', roomId);
+        }
+      }
+      
+      setChats(prev => prev.filter(c => !chatIdsToDel.includes(c.id)));
+      setRequestChats(prev => prev.filter(c => !chatIdsToDel.includes(c.id)));
+      cancelSelection();
+      showNotif("Obrolan berhasil dihapus", "success");
+    } catch (err) {
+      showNotif("Gagal menghapus obrolan", "error");
+    }
+  };
+
+
+  // ========== HANDLER FUNCTIONS STANDAR ==========
   const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
-  const closeModal = () => setActiveModal(null);
+  const closeModal = () => { setActiveModal(null); setLongPressChatId(null); };
 
   const handleSaveBio = async () => {
     setIsSavingBio(true);
@@ -284,9 +374,6 @@ export default function HypetalkPage() {
       showNotif("Profil tersimpan!", "success");
       setCurrentUser((prev: any) => ({ ...prev, ...updateData }));
       closeModal();
-      
-      // Opsional: Langsung redirect ke Hype Match setelah melengkapi bio
-      // router.push('/hypematch'); 
     } catch (err) { showNotif("Gagal simpan.", "error"); }
     finally { setIsSavingBio(false); }
   };
@@ -319,8 +406,6 @@ export default function HypetalkPage() {
     });
   };
 
-  // --- LOGIKA HYPE MATCH BARU ---
-  // Arahkan ke halaman /hypematch alih-alih membuka modal
   const handleHypeMatch = async () => {
     if (!currentUser?.gender) return openModal('bio');
     setIsSidebarOpen(false);
@@ -348,6 +433,15 @@ export default function HypetalkPage() {
   };
 
   const handleOpenChat = async (chat: any) => {
+    if (isSelectionMode) {
+      if (chat.type !== 'global' && !(chat.type === 'group' && chat.isMember)) {
+        toggleSelection(chat.id);
+      } else if (chat.type === 'group' && chat.isMember) {
+        showNotif("Harus keluar dari grup untuk menghapus chat ini", "info");
+      }
+      return;
+    }
+
     setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
     let roomIdToRead = '';
     if (chat.type === 'global') roomIdToRead = 'room-1';
@@ -363,13 +457,9 @@ export default function HypetalkPage() {
       .neq('status', 'read')
       .then();
 
-    if (chat.type === 'global') {
-      router.push('/hypetalk/room?global=true'); 
-    } else if (chat.type === 'group') {
-      router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
-    } else {
-      router.push(`/hypetalk/room?from=${chat.id}`);
-    }
+    if (chat.type === 'global') router.push('/hypetalk/room?global=true'); 
+    else if (chat.type === 'group') router.push(`/hypetalk/room?group=${chat.id}&gname=${encodeURIComponent(chat.name)}`);
+    else router.push(`/hypetalk/room?from=${chat.id}`);
   };
 
   const handleAvatarClick = async (e: React.MouseEvent, chatId: string, chatType: string) => {
@@ -430,6 +520,29 @@ export default function HypetalkPage() {
         onSearchChange={setSearchQuery}
       />
 
+      {/* ACTION BAR SELEKSI */}
+      {isSelectionMode && (
+        <div className="selection-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, zIndex: 10 }}>
+           <button onClick={cancelSelection} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>Batal</button>
+           <span style={{ fontWeight: '600' }}>{selectedChats.size} Terpilih</span>
+           <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={selectAllChats} style={{ background: 'none', border: 'none', color: '#00a2ff', fontSize: '14px', cursor: 'pointer' }}>Tandai Semua</button>
+              <button onClick={() => executeDeleteRooms(Array.from(selectedChats))} disabled={selectedChats.size === 0} style={{ background: 'none', border: 'none', color: selectedChats.size === 0 ? 'var(--text-muted)' : 'red', fontWeight: 'bold', fontSize: '14px', cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer' }}>Hapus</button>
+           </div>
+        </div>
+      )}
+
+      {/* MODAL HAPUS SATUAN (2 DETIK) */}
+      {longPressChatId && !isSelectionMode && (
+        <div className="single-delete-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: '12px', minWidth: '250px', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ marginBottom: '16px' }}>Hapus Obrolan?</h3>
+            <button onClick={() => executeDeleteRooms([longPressChatId])} style={{ display: 'block', width: '100%', padding: '12px', background: 'red', color: 'white', border: 'none', borderRadius: '8px', marginBottom: '8px', fontSize: '16px', cursor: 'pointer' }}>Hapus Room</button>
+            <button onClick={() => setLongPressChatId(null)} style={{ display: 'block', width: '100%', padding: '12px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' }}>Batal</button>
+          </div>
+        </div>
+      )}
+
       <ChatList
         isLoading={isLoading}
         filteredChats={filteredChats}
@@ -442,9 +555,14 @@ export default function HypetalkPage() {
         handleOpenChat={handleOpenChat}
         handleAvatarClick={handleAvatarClick}
         renderReadReceipt={renderReadReceipt}
+        // PROPS BARU UNTUK HAPUS DAN SELEKSI
+        isSelectionMode={isSelectionMode}
+        selectedChats={selectedChats}
+        onPressStart={handlePressStart}
+        onPressEnd={handlePressEnd}
       />
 
-      {!activeModal && (
+      {!activeModal && !isSelectionMode && (
         <button className="tg-fab" onClick={() => openModal('search')}><span className="material-icons">chat</span></button>
       )}
 
@@ -487,8 +605,6 @@ export default function HypetalkPage() {
           onClose={closeModal}
         />
       )}
-
-      {/* Komponen <HypeMatchOverlay /> dihapus dari sini */}
 
       {activeModal === 'search' && (
         <SearchModal

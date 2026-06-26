@@ -15,12 +15,19 @@ type Props = {
   handleOpenChat: (chat: any) => void;
   handleAvatarClick: (e: React.MouseEvent, chatId: string, chatType: string) => void;
   renderReadReceipt: (chat: any) => React.ReactNode;
+  
+  // PROPS TAMBAHAN UNTUK FITUR SELEKSI DAN LONG PRESS
+  isSelectionMode?: boolean;
+  selectedChats?: Set<string>;
+  onPressStart?: (chat: any) => void;
+  onPressEnd?: () => void;
 };
 
 const ChatList: React.FC<Props> = ({
   isLoading, filteredChats, requestChats, searchQuery,
   typingStatus, mutedChats, onlineUsers, currentUser,
-  handleOpenChat, handleAvatarClick, renderReadReceipt
+  handleOpenChat, handleAvatarClick, renderReadReceipt,
+  isSelectionMode, selectedChats, onPressStart, onPressEnd
 }) => {
   const router = useRouter();
 
@@ -55,19 +62,55 @@ const ChatList: React.FC<Props> = ({
           ))}
         </>
       ) : (
-        filteredChats.map(chat => (
-          <ChatItem
-            key={chat.id}
-            chat={chat}
-            typingStatus={typingStatus}
-            mutedChats={mutedChats}
-            onlineUsers={onlineUsers}
-            currentUser={currentUser}
-            onOpenChat={handleOpenChat}
-            onAvatarClick={handleAvatarClick}
-            renderReadReceipt={renderReadReceipt}
-          />
-        ))
+        filteredChats.map(chat => {
+          const isSelected = selectedChats?.has(chat.id);
+          const isGlobalOrActiveGroup = chat.type === 'global' || (chat.type === 'group' && chat.isMember);
+
+          return (
+            <div
+              key={chat.id}
+              className="chat-item-wrapper"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: isSelected ? 'rgba(0, 162, 255, 0.15)' : 'transparent',
+                transition: 'background-color 0.2s',
+                position: 'relative'
+              }}
+              // EVENT LISTENER UNTUK LONG-PRESS
+              onTouchStart={() => onPressStart?.(chat)}
+              onTouchEnd={() => onPressEnd?.()}
+              onTouchMove={() => onPressEnd?.()} // Batal saat discroll
+              onMouseDown={() => onPressStart?.(chat)}
+              onMouseUp={() => onPressEnd?.()}
+              onMouseLeave={() => onPressEnd?.()}
+            >
+              {isSelectionMode && !isGlobalOrActiveGroup && (
+                <div className="chat-checkbox" style={{ padding: '0 0 0 16px', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleOpenChat(chat)}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected || false}
+                    readOnly
+                    style={{ transform: 'scale(1.3)', cursor: 'pointer' }}
+                  />
+                </div>
+              )}
+              
+              <div style={{ flex: 1, minWidth: 0, pointerEvents: isSelectionMode ? 'none' : 'auto' }}>
+                <ChatItem
+                  chat={chat}
+                  typingStatus={typingStatus}
+                  mutedChats={mutedChats}
+                  onlineUsers={onlineUsers}
+                  currentUser={currentUser}
+                  onOpenChat={handleOpenChat}
+                  onAvatarClick={handleAvatarClick}
+                  renderReadReceipt={renderReadReceipt}
+                />
+              </div>
+            </div>
+          );
+        })
       )}
     </main>
   );
