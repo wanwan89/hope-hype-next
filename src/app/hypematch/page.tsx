@@ -36,10 +36,9 @@ export type MatchUser = {
 };
 
 // ==========================================
-// KOMPONEN SVG ICON KEKINIAN
+// KOMPONEN SVG ICON KEKINIAN (DENGAN PROP SIZE)
 // ==========================================
-const SvgIcon = ({ name, className = "" }: { name: string, className?: string }) => {
-  const size = 20;
+const SvgIcon = ({ name, className = "", size = 20 }: { name: string, className?: string, size?: number }) => {
   const stroke = "currentColor";
   const fill = "none";
   const strokeWidth = "2";
@@ -235,6 +234,10 @@ export default function HypeMatch() {
 
   const stackedUsers = users.slice(currentIndex, currentIndex + 3);
 
+  // Kalkulasi skala untuk efek animasi dinamis membesar pada tombol saat drag (max scale 30%)
+  const likeBtnScale = 1 + (dragX > 0 ? Math.min(dragX / 300, 0.3) : 0);
+  const passBtnScale = 1 + (dragX < 0 ? Math.min(Math.abs(dragX) / 300, 0.3) : 0);
+
   return (
     <div className="hm-overlay">
       
@@ -322,7 +325,7 @@ export default function HypeMatch() {
           })
         ) : (
           <div className="hm-empty-state">
-            <SvgIcon name="x" className="hm-empty-icon hm-no-margin" />
+            <SvgIcon name="x" className="hm-empty-icon hm-no-margin" size={60} />
             <p>Tidak ada lagi pengguna di sekitarmu.</p>
           </div>
         )}
@@ -331,16 +334,27 @@ export default function HypeMatch() {
       {/* ACTION BUTTONS (X, API, LOVE) */}
       {activeUser && (
         <div className="hm-action-bar">
-          <button className="hm-action-btn btn-pass" onClick={() => handleAction('pass')}>
-            <SvgIcon name="x" className="hm-no-margin" />
+          <button 
+            className="hm-action-btn btn-pass" 
+            onClick={() => handleAction('pass')}
+            style={{ transform: `scale(${passBtnScale})` }}
+          >
+            <SvgIcon name="x" className="hm-no-margin" size={26} />
           </button>
           
-          <button className="hm-action-btn btn-fire" onClick={() => setShowBiodata(true)}>
-            <SvgIcon name="fire" className="hm-no-margin" />
+          <button 
+            className="hm-action-btn btn-fire" 
+            onClick={() => setShowBiodata(true)}
+          >
+            <SvgIcon name="fire" className="hm-no-margin" size={38} />
           </button>
 
-          <button className="hm-action-btn btn-like" onClick={() => handleAction('like')}>
-            <SvgIcon name="heart" className="hm-no-margin" />
+          <button 
+            className="hm-action-btn btn-like" 
+            onClick={() => handleAction('like')}
+            style={{ transform: `scale(${likeBtnScale})` }}
+          >
+            <SvgIcon name="heart" className="hm-no-margin" size={26} />
           </button>
         </div>
       )}
