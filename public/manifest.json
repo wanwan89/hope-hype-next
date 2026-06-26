@@ -1,12 +1,12 @@
 {
   "name": "Hypeco",
   "short_name": "Hypeco",
-  "description": "Cretive ",
+  "description": "Creative",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
-  "theme_color": "#1f3cff",
+  "theme_color": "#ffffff", 
   "icons": [
     {
       "src": "/logohypeco.png",

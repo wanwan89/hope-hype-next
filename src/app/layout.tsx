@@ -28,12 +28,11 @@ import GlobalShareModal from '@/components/GlobalShareModal';
 import CustomSplash from '@/components/CustomSplash';
 import Providers from '@/components/Providers';
 
-// 🔥 TAMBAHAN: Import ConfirmProvider (Sesuaikan path dengan tempat kamu menyimpan filenya)
+// 🔥 TAMBAHAN: Import ConfirmProvider
 import { ConfirmProvider } from '@/components/ConfirmProvider'; 
 
 // 🔥 BARU: Import Lottie dan file JSON animasi offline
 import Lottie from 'lottie-react';
-// Pastikan path ini sesuai dengan lokasi kamu menyimpan lost-conection.json
 import lostConnectionData from '@/assets/lottie/lost-conection.json'; 
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
@@ -366,7 +365,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <>
       <GlobalShareModal />
       
-      {/* 🔥 BAGIAN YANG DIMODIFIKASI: Tampilan Saat Offline */}
+      {/* 🔥 BAGIAN YANG DIMODIFIKASI: Tampilan Saat Offline Transparan */}
       {!isOnline && (
         <div
           className="offline-global-overlay"
@@ -376,7 +375,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            background: 'rgba(0,0,0,0.75)',
+            background: 'rgba(0,0,0,0.6)', // Tetap ada sedikit shadow agar Lottie/Teks terlihat jelas di atas background web
             backdropFilter: 'blur(4px)',
             zIndex: 9999999,
           }}
@@ -385,20 +384,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             textAlign: 'center', 
             padding: '2rem', 
             borderRadius: '1.5rem', 
-            background: 'rgba(20,20,25,0.95)', 
-            border: '1px solid rgba(255,255,255,0.1)', 
+            background: 'transparent', /* 🔴 DIUBAH KE TRANSPARAN */
+            border: 'none', /* 🔴 BORDER DIHILANGKAN */
             maxWidth: '320px', 
             width: '90%',
-            display: 'flex', // Ditambahkan agar animasi berada di tengah secara rapi
+            display: 'flex',
             flexDirection: 'column', 
             alignItems: 'center' 
           }}>
-            {/* Lottie Animation menggantikan ikon material sebelumnya */}
+            {/* Lottie Animation */}
             <div style={{ width: '150px', height: '150px', marginBottom: '10px' }}>
               <Lottie
                 animationData={lostConnectionData}
-                loop={true} // Animasi berulang terus menerus
-                autoplay={true} // Animasi langsung berjalan otomatis
+                loop={true} 
+                autoplay={true} 
               />
             </div>
             
@@ -444,7 +443,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {/* 🟢 SIDEBAR SANG LEGENDA SUDAH DIHAPUS DARI SINI */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         {isHomePage && <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}><SearchWrapper /></div>}
         <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
@@ -484,7 +482,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1f3cff" />
+        
+        {/* 🔥 META THEME COLOR DINAMIS BERDASARKAN MODE SYSTEM 🔥 */}
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
+        
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
@@ -531,7 +533,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <I18nextProvider i18n={i18n}>
             <ThemeProvider>
-              {/* 🔥 TAMBAHAN: Wrap aplikasi dengan ConfirmProvider */}
               <ConfirmProvider>
                 {renderUI()}
                 <LoginPopup />
