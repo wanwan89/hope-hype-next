@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
@@ -31,7 +31,7 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
+const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: any }) => {
   if (!posts.length) return null;
   return (
     <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
@@ -45,7 +45,7 @@ const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
           return (
             <div
               key={`sugg-${String(sp.id)}`}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/post?id=${String(sp.id)}&from=home`; }}
+              onClick={() => router.push(`/post?id=${String(sp.id)}&from=home`)}
               style={{
                 minWidth: '150px', maxWidth: '150px', background: 'var(--bg-card)', borderRadius: '14px',
                 overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start',
@@ -137,7 +137,6 @@ export default function Gallerypost() {
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
 
-  // --- Inisialisasi user ---
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -162,7 +161,6 @@ export default function Gallerypost() {
     init();
   }, []);
 
-  // Fetch rekomendasi
   useEffect(() => {
     const fetchSuggestedPosts = async () => {
       try {
@@ -183,7 +181,6 @@ export default function Gallerypost() {
     fetchSuggestedPosts();
   }, []);
 
-  // --- Ambil Interaksi (Likes, dsb) berdasarkan allPosts ---
   useEffect(() => {
     if (!currentUser || allPosts.length === 0) return;
 
@@ -246,11 +243,13 @@ export default function Gallerypost() {
   }, [allPosts, currentUser]);
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
-    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
+    if (!currentUserRef.current) return router.push('/login');
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
+    
     setMyLikedPosts(prev => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
+    
     try {
       if (isLiked) {
         await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
@@ -261,26 +260,28 @@ export default function Gallerypost() {
         }
       }
     } catch (err) { }
-  }, [router]); // Dependency array diperbarui
+  }, [router]);
 
   const handleSave = useCallback(async (postId: string) => {
-    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
+    if (!currentUserRef.current) return router.push('/login');
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
+    
     setMySavedPosts(prev => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+    
     try {
       if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
     } catch (err) { }
-  }, [router]); // Dependency array diperbarui
+  }, [router]);
 
   const openRepostModal = useCallback((postId: string, creatorId: string) => {
-    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
+    if (!currentUserRef.current) return router.push('/login');
     const alreadyReposted = myRepostedPostsRef.current.has(postId);
     setRepostNote("");
     setRepostModal({ isOpen: true, postId, creatorId, isUnrepost: alreadyReposted });
-  }, [router]); // Dependency array diperbarui
+  }, [router]);
 
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
@@ -290,9 +291,11 @@ export default function Gallerypost() {
     setRepostModal(null);
     setAnimatingReposts(prev => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts(prev => { const n = new Set(prev); n.delete(postId); return n; }), 500);
+    
     const wasReposted = myRepostedPostsRef.current.has(postId);
     setMyRepostedPosts(prev => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+    
     try {
       if (isUnrepost) {
         await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
@@ -308,12 +311,14 @@ export default function Gallerypost() {
 
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
-    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
+    if (!currentUserRef.current) return router.push('/login');
     if (currentUserRef.current.id === creatorId) return;
+    
     const isFollowing = followedUsersRef.current.has(creatorId);
     setAnimatingFollows(prev => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows(prev => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
     setFollowedUsers(prev => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
+    
     try {
       if (isFollowing) {
         await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
@@ -322,14 +327,14 @@ export default function Gallerypost() {
         await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
     } catch (err) { }
-  }, [router]); // Dependency array diperbarui
+  }, [router]);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
-      if (!currentUserRef.current) return router.push('/login'); // Diperbarui
+      if (!currentUserRef.current) return router.push('/login');
       setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
@@ -344,7 +349,7 @@ export default function Gallerypost() {
         }, 360);
       }
     }
-  }, [handleLike, router]); // Dependency array diperbarui
+  }, [handleLike, router]);
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -386,7 +391,7 @@ export default function Gallerypost() {
 
     return (
       <React.Fragment key={post.id}>
-        {index === 3 && <MemoizedSlider posts={suggestedPosts} />}
+        {index === 3 && <MemoizedSlider posts={suggestedPosts} router={router} />}
         {index === 7 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
         <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
           <PostCard

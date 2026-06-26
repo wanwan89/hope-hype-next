@@ -23,24 +23,35 @@ import MusicSheet from '@/components/create/MusicSheet';
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
-// Komponen Toggle Sederhana untuk Opsi Lainnya
+// 🔥 FIX: Komponen Toggle Sederhana dengan Border yang Jelas di Light/Dark Mode
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
   <div
     onClick={() => onChange(!checked)}
     style={{
-      width: '42px', height: '24px', background: checked ? '#1f3cff' : 'var(--border-card)',
-      borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s'
+      width: '42px', 
+      height: '24px', 
+      background: checked ? '#1f3cff' : 'var(--bg-main)', // bg-main agar kontras
+      border: checked ? '1px solid #1f3cff' : '1px solid var(--text-muted)', // Border jelas
+      borderRadius: '20px', 
+      position: 'relative', 
+      cursor: 'pointer', 
+      transition: 'all 0.3s'
     }}
   >
     <div style={{
-      width: '18px', height: '18px', background: '#fff', borderRadius: '50%',
-      position: 'absolute', top: '3px', left: checked ? '21px' : '3px', transition: 'left 0.3s',
+      width: '18px', 
+      height: '18px', 
+      background: '#fff', 
+      borderRadius: '50%',
+      position: 'absolute', 
+      top: '2px', // Disesuaikan dengan border 1px
+      left: checked ? '20px' : '2px', 
+      transition: 'left 0.3s',
       boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
     }} />
   </div>
 );
 
-// 🔥 UBAH NAMA KOMPONEN INI MENJADI CreatePostContent (Bukan default export lagi)
 function CreatePostContent() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -90,7 +101,7 @@ function CreatePostContent() {
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
-  const [isProcessingEdit, setIsProcessingEdit] = useState(false); // State Loading Crop
+  const [isProcessingEdit, setIsProcessingEdit] = useState(false);
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -100,7 +111,6 @@ function CreatePostContent() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // 🔥 Durasi maksimal klip video (dalam detik)
   const MAX_VIDEO_CLIP = 60;
 
   // ==================== EFFECTS ====================
@@ -231,7 +241,7 @@ function CreatePostContent() {
 
   const handleSaveCrop = async () => {
     if (!imageForCrop || !croppedAreaPixels) return;
-    setIsProcessingEdit(true); // Mulai loading processing
+    setIsProcessingEdit(true); 
     try {
       const blob = await getCroppedImg(imageForCrop, croppedAreaPixels);
       setCroppedImages(prev => [...prev, blob]);
@@ -265,7 +275,7 @@ function CreatePostContent() {
     else { 
       setRawImagesQueue([]); 
       setImageForCrop(null); 
-      setStep('post'); // 🔥 Fix Bug: Dulu setStep('pick') bikin layar putih 
+      setStep('post');
     }
   };
 
@@ -404,11 +414,8 @@ function CreatePostContent() {
     const wordCount = countWords(caption);
     const maxWords = postType === 'text' ? 150 : 100;
     if (wordCount > maxWords) {
-      setIsSubmitting(false);
       return showNotif(`Caption maksimal ${maxWords} kata!`, "warning");
     }
-
-    setIsSubmitting(true);
 
     // Fitur: Simpan ke perangkat jika dipilih
     if (saveToDevice) {
@@ -427,12 +434,21 @@ function CreatePostContent() {
       }
     }
 
+    setIsSubmitting(true);
+    
+    // Mulai animasi loading di SearchWrapper (Background Upload)
     localStorage.setItem('isUploading', 'true');
     updateGlobalProgress(0);
     window.dispatchEvent(new CustomEvent('postUploadStart'));
 
-    if (!isDraft) router.push('/');
+    // 🔥 FIX: Redirect Langsung tanpa nunggu upload selesai
+    if (!isDraft) {
+      router.push('/');
+    } else {
+      router.back();
+    }
 
+    // Eksekusi fungsi background
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -447,13 +463,13 @@ function CreatePostContent() {
         let finalImageUrl: string | null = existingImageUrl;
         let finalVideoUrl: string | null = existingVideoUrl;
 
+        // Upload Media
         if (postType === 'image' && croppedImages.length > 0) {
           const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image')));
           if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
             window.dispatchEvent(new CustomEvent('postUploadError'));
             localStorage.removeItem('isUploading');
             showNotif("Postingan ditolak! Konten sensitif.", "error");
-            setIsSubmitting(false);
             return;
           }
           finalImageUrl = results.map(r => r.secure_url).join(',');
@@ -464,7 +480,6 @@ function CreatePostContent() {
             window.dispatchEvent(new CustomEvent('postUploadError'));
             localStorage.removeItem('isUploading');
             showNotif("Video ditolak! Sampul sensitif.", "error");
-            setIsSubmitting(false);
             return;
           }
           finalImageUrl = coverRes.secure_url;
@@ -479,15 +494,17 @@ function CreatePostContent() {
         }
 
         updateGlobalProgress(70);
-        let newPostId: string | null = null;
+        let newPostData = null; // Menyimpan data utuh untuk diteruskan ke Feed
 
+        // Simpan ke Database
         if (destination === "story") {
-          await supabase.from("stories").insert({
+          const { data } = await supabase.from("stories").insert({
             creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
             content: caption.trim(), audio_src: selectedMusic?.previewUrl,
             title: selectedMusic?.trackName, artist: selectedMusic?.artistName,
             visibility, is_ad: isBusinessUser ? isAd : false,
-          });
+          }).select('*, profiles(*)').single();
+          newPostData = data;
         } else {
           const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
           const payload = {
@@ -496,22 +513,30 @@ function CreatePostContent() {
             audio_src: selectedMusic?.previewUrl, title: selectedMusic?.trackName,
             artist: selectedMusic?.artistName, status: isDraft ? "draft" : "approved",
             is_ad: isBusinessUser ? isAd : false,
-            comments_disabled: !allowComments, // 🔥 Opsi allow comments
+            comments_disabled: !allowComments,
           };
-          if (draftId) { await supabase.from("posts").update(payload).eq('id', draftId); newPostId = draftId; }
-          else { const { data: newPost } = await supabase.from("posts").insert(payload).select('id').single(); newPostId = newPost?.id; }
+          
+          if (draftId) { 
+            await supabase.from("posts").update(payload).eq('id', draftId);
+            const { data } = await supabase.from("posts").select('*, profiles(*)').eq('id', draftId).single();
+            newPostData = data;
+          } else { 
+            const { data } = await supabase.from("posts").insert(payload).select('*, profiles(*)').single(); 
+            newPostData = data;
+          }
         }
 
         updateGlobalProgress(85);
 
-        if (!isDraft && (newPostId || destination === "story")) {
+        // Notifikasi Mentions
+        if (!isDraft && (newPostData?.id || destination === "story")) {
           const mentions = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
           if (mentions.length > 0) {
             const { data: tagged } = await supabase.from('profiles').select('id, username').in('username', mentions);
             if (tagged) {
               const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
               const notifs = tagged.filter(u => u.id !== myUserId).map(u => ({
-                user_id: u.id, actor_id: myUserId, post_id: newPostId ? parseInt(newPostId) : null,
+                user_id: u.id, actor_id: myUserId, post_id: destination === "feed" ? newPostData.id : null,
                 type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`,
               }));
               if (notifs.length) await supabase.from("notifications").insert(notifs);
@@ -520,18 +545,20 @@ function CreatePostContent() {
         }
 
         updateGlobalProgress(100);
-        window.dispatchEvent(new CustomEvent('postUploadSuccess'));
-        localStorage.removeItem('isUploading'); localStorage.removeItem('uploadProgress');
+        
+        // 🔥 FIX: Kirim data utuh agar saat ditangkap di halaman utama/feed, datanya langsung dirender tanpa refresh
+        window.dispatchEvent(new CustomEvent('postUploadSuccess', { detail: newPostData }));
+        
+        localStorage.removeItem('isUploading'); 
+        localStorage.removeItem('uploadProgress');
         showNotif(isDraft ? "Draft tersimpan" : "Postingan berhasil!", "success");
         audioRef.current?.pause();
-        if (isDraft) router.back();
       } catch (err: any) {
         console.error(err);
         window.dispatchEvent(new CustomEvent('postUploadError'));
-        localStorage.removeItem('isUploading'); localStorage.removeItem('uploadProgress');
+        localStorage.removeItem('isUploading'); 
+        localStorage.removeItem('uploadProgress');
         showNotif("Gagal upload", "error");
-      } finally {
-        setIsSubmitting(false);
       }
     })();
   };
@@ -541,7 +568,6 @@ function CreatePostContent() {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#080808', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          {/* 🔥 Fix Bug: Handle Cancel properly biar layar ga putih */}
           <button onClick={() => { if (postType === 'image') handleCancelCrop(); else { handleRemoveVideo(); setStep('post'); } }} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <span className="material-icons">arrow_back</span>
           </button>
@@ -642,16 +668,7 @@ function CreatePostContent() {
   // ==================== RENDER ====================
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
-      {/* 🔥 Loading Overlay dengan Teks "Mengirim..." saat proses simpan data */}
-      {isSubmitting && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <span className="material-icons" style={{ fontSize: '50px', color: '#1f3cff', animation: 'spin 1.2s linear infinite' }}>sync</span>
-          <p style={{ color: '#fff', fontSize: '16px', fontWeight: 700, marginTop: '16px' }}>Mengirim...</p>
-        </div>
-      )}
+      {/* ❌ Overlay Loading Dihapus Total Sesuai Permintaan ❌ */}
 
       {step === 'edit' && renderEditorScreen()}
 
@@ -774,7 +791,6 @@ function CreatePostContent() {
   );
 }
 
-// 🔥 INI ADALAH FUNGSI BARU YANG DIEKSPOR UNTUK MEMBUNGKUS KONTEN DENGAN SUSPENSE
 export default function CreatePostPage() {
   return (
     <Suspense fallback={
