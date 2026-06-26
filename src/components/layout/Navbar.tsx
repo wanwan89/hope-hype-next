@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Home, Bell, MessageCircle, User, Mic } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,16 +26,33 @@ function CircularChase() {
 function NavbarContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [isVisible, setIsVisible] = useState(true);
   const prevScrollY = useRef(0);
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
+
+  // 1. Cek status login secara real-time
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // pathname bisa null di beberapa edge case SSR
@@ -173,11 +190,15 @@ function NavbarContent() {
   };
 
   useEffect(() => {
-    fetchBadgesAndUser();
-    const handleRefresh = () => fetchBadgesAndUser();
+    if (isLoggedIn) {
+      fetchBadgesAndUser();
+    }
+    const handleRefresh = () => {
+      if (isLoggedIn) fetchBadgesAndUser();
+    };
     window.addEventListener('notif-count-changed', handleRefresh);
     return () => window.removeEventListener('notif-count-changed', handleRefresh);
-  }, [pathname]);
+  }, [pathname, isLoggedIn]);
 
   // 🔥 PERBAIKAN CHAT BADGE: Realtime Listener agar badge bertambah otomatis saat pesan baru masuk
   useEffect(() => {
@@ -203,12 +224,14 @@ function NavbarContent() {
         .subscribe();
     };
 
-    setupRealtime();
+    if (isLoggedIn) {
+      setupRealtime();
+    }
 
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isLoggedIn]);
 
   if (isHiddenPage) return null;
 
@@ -221,11 +244,21 @@ function NavbarContent() {
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, item: (typeof navItems)[0], isActive: boolean) => {
+    // 2. Cek apakah tab yang diklik membutuhkan login
+    const requiresLogin = ['Chat', 'Voice', 'Notif'].includes(item.name);
+
+    if (requiresLogin && !isLoggedIn) {
+      e.preventDefault();
+      router.push('/login');
+      return;
+    }
+
     if (isActive) {
       e.preventDefault();
       setAnimatingIcon(item.name);
       setTimeout(() => window.location.reload(), 800);
     }
+    
     setClickedItem(item.name);
     setTimeout(() => setClickedItem(null), 300);
   };

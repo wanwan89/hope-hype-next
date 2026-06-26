@@ -37,6 +37,7 @@ function ProfileContent() {
   // 🔥 STATE MANAGEMENT 🔥
   // ==========================================
   const [isMounted, setIsMounted] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false); // State baru untuk cek kewajiban login
   const [myId, setMyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
@@ -106,7 +107,11 @@ function ProfileContent() {
       if (urlId) query = query.eq('id', urlId);
       else if (urlUser) query = query.eq('username', urlUser);
       else if (currentUserId) query = query.eq('id', currentUserId);
-      else { router.push('/login'); return; }
+      else {
+        // Tampilkan kotak login jika user mengakses "Profil Saya" tanpa login
+        if (isComponentActive) setNeedsLogin(true);
+        return; 
+      }
 
       const { data: profData, error } = await query.single();
       if (error || !profData) return;
@@ -235,14 +240,12 @@ function ProfileContent() {
         if (isMe) {
           const { data: drafts } = await supabase
             .from('posts')
-            // 🔥 TAMBAH is_pinned 🔥
             .select('id, image_url, video_url, views, status, is_pinned')
             .eq('creator_id', profile.id)
             .eq('status', 'draft')
             .order('created_at', { ascending: false });
           const { data: approveds } = await supabase
             .from('posts')
-            // 🔥 TAMBAH is_pinned 🔥
             .select('id, image_url, video_url, views, status, is_pinned')
             .eq('creator_id', profile.id)
             .eq('status', 'approved')
@@ -252,7 +255,6 @@ function ProfileContent() {
         } else {
           const { data, error } = await supabase
             .from('posts')
-            // 🔥 TAMBAH is_pinned 🔥
             .select('id, image_url, video_url, views, status, is_pinned')
             .eq('creator_id', profile.id)
             .eq('status', 'approved')
@@ -263,7 +265,6 @@ function ProfileContent() {
       } else if (type === 'private') {
         const { data, error } = await supabase
           .from('posts')
-          // 🔥 TAMBAH is_pinned 🔥
           .select('id, image_url, video_url, views, status, is_pinned')
           .eq('creator_id', profile.id)
           .eq('is_private', true)
@@ -287,7 +288,6 @@ function ProfileContent() {
             if (postIds.length > 0) {
               const { data: pData, error: pError } = await supabase
                 .from('posts')
-                // 🔥 TAMBAH is_pinned 🔥
                 .select('id, image_url, video_url, views, status, is_pinned')
                 .in('id', postIds)
                 .order('created_at', { ascending: false });
@@ -447,6 +447,49 @@ function ProfileContent() {
   // ==========================================
   // 🔥 RENDER 🔥
   // ==========================================
+
+  // UI Khusus ketika user belum login
+  if (needsLogin) {
+    return (
+      <div className="profile-page-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '20px', background: 'var(--bg-main)' }}>
+        <div style={{
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-card)',
+          padding: '40px 24px',
+          borderRadius: '24px',
+          textAlign: 'center',
+          maxWidth: '320px',
+          width: '100%',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.1)'
+        }}>
+          <span className="material-icons" style={{ fontSize: '56px', color: '#1f3cff', marginBottom: '16px' }}>lock_person</span>
+          <h2 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '8px' }}>Silakan Login</h2>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: '1.5' }}>
+            Masuk ke akun Anda untuk melihat dan mengelola profil secara penuh.
+          </p>
+          <button
+            onClick={() => router.push('/login')}
+            style={{
+              width: '100%',
+              background: '#1f3cff',
+              color: 'white',
+              border: 'none',
+              padding: '14px 0',
+              borderRadius: '14px',
+              fontWeight: 'bold',
+              fontSize: '15px',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              boxShadow: '0 4px 12px rgba(31, 60, 255, 0.2)'
+            }}
+          >
+            Login Sekarang
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)' }}></div>;
 
   const isMe = myId === profile.id;
@@ -600,10 +643,9 @@ function ProfileContent() {
 
       <ActionSheet
         isOpen={isActionSheetOpen}
-        isMutual={isMutual} // 🔥 Kirim status berteman ke ActionSheet
+        isMutual={isMutual} 
         onClose={() => setIsActionSheetOpen(false)}
         onSetNickname={() => {
-          // 🔥 Logika pop-up atau input ganti nama nanti bisa ditaruh di sini
           setIsActionSheetOpen(false);
           showNotif("Fitur ganti nama panggilan segera hadir!", "info");
         }}

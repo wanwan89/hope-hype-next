@@ -246,7 +246,7 @@ export default function Gallerypost() {
   }, [allPosts, currentUser]);
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
     setMyLikedPosts(prev => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
@@ -261,10 +261,10 @@ export default function Gallerypost() {
         }
       }
     } catch (err) { }
-  }, []);
+  }, [router]); // Dependency array diperbarui
 
   const handleSave = useCallback(async (postId: string) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
     setMySavedPosts(prev => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
@@ -273,14 +273,14 @@ export default function Gallerypost() {
       if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
     } catch (err) { }
-  }, []);
+  }, [router]); // Dependency array diperbarui
 
   const openRepostModal = useCallback((postId: string, creatorId: string) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
     const alreadyReposted = myRepostedPostsRef.current.has(postId);
     setRepostNote("");
     setRepostModal({ isOpen: true, postId, creatorId, isUnrepost: alreadyReposted });
-  }, []);
+  }, [router]); // Dependency array diperbarui
 
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
@@ -308,7 +308,7 @@ export default function Gallerypost() {
 
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
     e.stopPropagation();
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (!currentUserRef.current) return router.push('/login'); // Diperbarui
     if (currentUserRef.current.id === creatorId) return;
     const isFollowing = followedUsersRef.current.has(creatorId);
     setAnimatingFollows(prev => new Set(prev).add(creatorId));
@@ -322,14 +322,14 @@ export default function Gallerypost() {
         await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
     } catch (err) { }
-  }, []);
+  }, [router]); // Dependency array diperbarui
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
-      if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+      if (!currentUserRef.current) return router.push('/login'); // Diperbarui
       setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
@@ -344,7 +344,7 @@ export default function Gallerypost() {
         }, 360);
       }
     }
-  }, [handleLike]);
+  }, [handleLike, router]); // Dependency array diperbarui
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
