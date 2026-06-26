@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import HypeMatchOpening from '@/components/HypeMatch/HypeMatchOpening';
 import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
-import BiodataSlide from './BiodataSlide'; // <--- IMPORT DISINI (Sesuaikan Path)
+import BiodataSlide from '@/components/HypeMatch/BiodataSlide';
+
 import './HypeMatchOverlay.css';
 
 export type MatchUser = {
