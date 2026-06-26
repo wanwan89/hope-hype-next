@@ -3,6 +3,9 @@
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+// Import Lottie dan file JSON animasi
+import Lottie from 'lottie-react';
+import emptyLottie from '@/assets/lottie/empty.json'; 
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -128,7 +131,6 @@ function SearchContent() {
   };
 
   const fetchSearchResults = async () => {
-    // ... (Kode fetchSearchResults sama persis seperti sebelumnya)
     setIsLoading(true);
     try {
       const isHashtag = query.startsWith('#');
@@ -187,7 +189,6 @@ function SearchContent() {
   };
 
   const handleFollowToggle = async (e: any, targetUserId: string) => {
-    // ... (Sama seperti sebelumnya)
     e.stopPropagation();
     if (!currentUser) return alert("Silakan login untuk mengikuti user.");
     if (currentUser.id === targetUserId) return; 
@@ -327,14 +328,14 @@ function SearchContent() {
         )}
 
         {/* ================================
-            HASIL PENCARIAN BAWAHNYA (TIDAK BERUBAH)
+            HASIL PENCARIAN BAWAHNYA 
         ================================= */}
         {query && (
           isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>Mencari...</div>
           ) : (
             <>
-              {/* Blok Kreator Ditemukan & Postingan Terkait (Biarkan Sama) */}
+              {/* Blok Kreator Ditemukan */}
               {users.length > 0 && (
                 <div style={{ marginBottom: '30px' }}>
                   <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>KREATOR DITEMUKAN</h3>
@@ -404,10 +405,13 @@ function SearchContent() {
                 </div>
               )}
 
+              {/* 🔥 STATE KOSONG: MENGGUNAKAN LOTTIE 🔥 */}
               {posts.length === 0 && recommendedPosts.length > 0 && (
                 <div style={{ marginTop: '20px' }}>
-                  <div style={{ textAlign: 'center', padding: '20px 0 40px 0' }}>
-                    <span className="material-icons" style={{ fontSize: '48px', color: 'var(--border-card)' }}>search_off</span>
+                  <div style={{ textAlign: 'center', padding: '20px 0 40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: '180px', height: '180px' }}>
+                      <Lottie animationData={emptyLottie} loop={true} />
+                    </div>
                     <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginTop: '10px' }}>Tidak ada hasil yang cocok.</p>
                   </div>
 
