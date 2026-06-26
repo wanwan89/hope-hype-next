@@ -793,11 +793,8 @@ function CreatePostContent() {
 
 export default function CreatePostPage() {
   return (
-    <Suspense fallback={
-      <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <span className="material-icons" style={{ color: '#1f3cff', fontSize: '40px', animation: 'spin 1s linear infinite' }}>sync</span>
-      </div>
-    }>
+    // Fallback diubah menjadi div kosong agar tidak ada efek loading lingkaran (sync)
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}></div>}>
       <CreatePostContent />
     </Suspense>
   );

@@ -7,6 +7,9 @@ import { Copy, X, Send, Lock, Unlock, MessageSquareOff, MessageSquare, Trash2, T
 import { supabase } from '@/lib/supabase';
 import './GlobalShareModal.css';
 
+// 🔥 IMPORT CUSTOM CONFIRM HOOK KAMU DI SINI
+import { useConfirm } from '@/components/ConfirmProvider'; 
+
 declare global {
   interface Window {
     openGlobalShare?: (
@@ -23,6 +26,10 @@ declare global {
 
 export default function GlobalShareModal() {
   const { t } = useTranslation();
+  
+  // 🔥 INISIALISASI HOOK
+  const { confirm } = useConfirm();
+
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   
@@ -157,15 +164,10 @@ export default function GlobalShareModal() {
     } catch (err) { showNotif('Gagal mengirim pesan', 'error'); }
   };
 
-  // ==========================================
-  // 🔥 FIX 3: ALAT KREATOR MENGGUNAKAN OPTIMISTIC UI 🔥
-  // ==========================================
-  
   const togglePrivacy = async () => {
     if (!shareData.postId) return;
     const newStatus = !shareData.isPrivate;
     
-    // UI Update Duluan (Optimistic)
     setShareData(prev => ({ ...prev, isPrivate: newStatus }));
     
     try {
@@ -173,7 +175,6 @@ export default function GlobalShareModal() {
       if (error) throw error;
       showNotif(newStatus ? 'Postingan menjadi Privat' : 'Postingan menjadi Publik', 'success');
     } catch (err) { 
-      // Rollback jika gagal
       setShareData(prev => ({ ...prev, isPrivate: !newStatus }));
       showNotif('Gagal merubah privasi', 'error'); 
     }
@@ -199,7 +200,6 @@ export default function GlobalShareModal() {
         }
       }
 
-      // UI Update Duluan (Optimistic)
       setPostSettings(prev => ({ ...prev, isPinned: newStatus }));
       
       const { error } = await supabase.from('posts').update({ is_pinned: newStatus }).eq('id', shareData.postId);
@@ -207,7 +207,6 @@ export default function GlobalShareModal() {
       showNotif(newStatus ? 'Postingan disematkan' : 'Sematan dilepas', 'success');
       
     } catch (err) { 
-      // Rollback jika gagal
       setPostSettings(prev => ({ ...prev, isPinned: !newStatus }));
       showNotif('Gagal merubah sematan', 'error'); 
     }
@@ -217,7 +216,6 @@ export default function GlobalShareModal() {
     if (!shareData.postId) return;
     const newStatus = !postSettings.commentsDisabled;
     
-    // UI Update Duluan (Optimistic)
     setPostSettings(prev => ({ ...prev, commentsDisabled: newStatus }));
     
     try {
@@ -225,30 +223,35 @@ export default function GlobalShareModal() {
       if (error) throw error;
       showNotif(newStatus ? 'Komentar dinonaktifkan' : 'Komentar diaktifkan', 'success');
     } catch (err) { 
-      // Rollback jika gagal
       setPostSettings(prev => ({ ...prev, commentsDisabled: !newStatus }));
       showNotif('Gagal merubah pengaturan komentar', 'error'); 
     }
   };
 
+  // 🔥 PERUBAHAN UTAMA DI SINI
   const deletePost = async () => {
     if (!shareData.postId) return;
-    if (confirm("Yakin ingin menghapus postingan ini secara permanen?")) {
+
+    // Menutup modal share opsional, jika kamu ingin saat dialog konfirmasi muncul, modal share tertutup
+    // closeModal(); 
+    
+    // Panggil custom confirm yang mengembalikan Promise<boolean>
+    const isConfirmed = await confirm("Yakin ingin menghapus postingan ini secara permanen?");
+    
+    if (isConfirmed) {
       try {
         const { error } = await supabase.from('posts').delete().eq('id', shareData.postId);
         if (error) throw error;
         
         showNotif("Postingan berhasil dihapus", "success");
         closeModal();
-        // Delay dikurangi sedikit biar kerasa lebih mulus transisinya
+        
         setTimeout(() => window.location.reload(), 400); 
       } catch (err) {
         showNotif("Gagal menghapus postingan", "error");
       }
     }
   };
-
-  // ==========================================
 
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(shareData.url); showNotif(t('link_copied', 'Tautan berhasil disalin!'), 'success'); closeModal(); } catch (err) { showNotif('Gagal menyalin tautan', 'error'); }
@@ -322,7 +325,6 @@ export default function GlobalShareModal() {
               )}
             </div>
 
-            {/* 🔥 BARIS 3: ALAT KREATOR (MUNCUL JIKA PEMILIK) 🔥 */}
             {shareData.isOwner && shareData.postId && (
               <>
                 <div className="g-divider"></div>

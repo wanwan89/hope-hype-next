@@ -8,6 +8,9 @@ import * as LiveKit from 'livekit-client';
 import { useTranslation } from 'react-i18next';
 import './ChatArea.css';
 
+// 🔥 IMPORT CUSTOM CONFIRM HOOK KAMU DI SINI
+import { useConfirm } from '@/components/ConfirmProvider'; 
+
 // Import komponen UI yang sudah dipisah
 import ChatCallPopup from './ChatCallPopup';
 import ChatHeader from './ChatHeader';
@@ -32,6 +35,9 @@ export default function ChatArea() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useTranslation(); 
+  
+  // 🔥 INISIALISASI HOOK
+  const { confirm } = useConfirm();
   
   const fromId = searchParams?.get('from');
   const groupId = searchParams?.get('group');
@@ -244,9 +250,11 @@ export default function ChatArea() {
     setIsUpdatingGroup(false);
   };
 
+  // 🔥 REFAKTOR 1: kickMember
   const kickMember = async (targetUserId: string, targetName: string) => {
     if (!groupId || !isOwner) return;
-    const confirmKick = window.confirm(`Apakah kamu yakin ingin mengeluarkan ${targetName} dari grup?`);
+    
+    const confirmKick = await confirm(`Apakah kamu yakin ingin mengeluarkan ${targetName} dari grup?`);
     if (!confirmKick) return;
 
     const { error } = await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', targetUserId);
@@ -653,11 +661,12 @@ export default function ChatArea() {
     setMsgOptions(null); 
   };
 
+  // 🔥 REFAKTOR 2: handleDeleteMessage
   const handleDeleteMessage = async (msgOrId: any, type: 'for_me' | 'for_everyone' = 'for_me') => {
     const targetMsg = typeof msgOrId === 'object' ? msgOrId : messages.find(m => m.id === msgOrId);
     if (!targetMsg) return;
 
-    const confirmDelete = window.confirm("Apakah kamu yakin ingin menghapus pesan ini?");
+    const confirmDelete = await confirm("Apakah kamu yakin ingin menghapus pesan ini?");
     if (!confirmDelete) return;
 
     if (type === 'for_everyone') {
@@ -681,9 +690,11 @@ export default function ChatArea() {
     setSelectedMessages(messages.map(m => m.id));
   };
 
+  // 🔥 REFAKTOR 3: handleBulkDelete
   const handleBulkDelete = async () => {
     if (selectedMessages.length === 0) return;
-    const confirmDelete = window.confirm(`Apakah kamu yakin ingin menghapus ${selectedMessages.length} pesan?`);
+    
+    const confirmDelete = await confirm(`Apakah kamu yakin ingin menghapus ${selectedMessages.length} pesan?`);
     if (!confirmDelete) return;
 
     setMessages(prev => prev.map(m => selectedMessages.includes(m.id) ? { ...m, message: 'Pesan ini telah dihapus', is_deleted: true } : m));

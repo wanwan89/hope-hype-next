@@ -49,8 +49,9 @@ export default function SubmitButtons({ isSubmitting, destination, draftId, onSu
           transform: 'translateZ(0)',
         }}
       >
-        <span style={{ position: 'relative', zIndex: 2, textShadow: isSubmitting ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none', color: isSubmitting ? 'var(--text-muted)' : '#fff' }}>
-          {isSubmitting ? `Menyiapkan...` : (draftId ? 'Publikasikan Draf' : 'Posting')}
+        {/* Teks diubah menjadi Memposting... dan properti textShadow dihapus */}
+        <span style={{ position: 'relative', zIndex: 2, color: isSubmitting ? 'var(--text-muted)' : '#fff' }}>
+          {isSubmitting ? 'Memposting...' : (draftId ? 'Publikasikan Draf' : 'Posting')}
         </span>
       </button>
     </div>

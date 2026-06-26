@@ -28,6 +28,9 @@ import GlobalShareModal from '@/components/GlobalShareModal';
 import CustomSplash from '@/components/CustomSplash';
 import Providers from '@/components/Providers';
 
+// 🔥 TAMBAHAN: Import ConfirmProvider (Sesuaikan path dengan tempat kamu menyimpan filenya)
+import { ConfirmProvider } from '@/components/ConfirmProvider'; 
+
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -498,9 +501,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <I18nextProvider i18n={i18n}>
             <ThemeProvider>
-              {renderUI()}
-              <LoginPopup />
-              {!hideOverlays && <Overlays />}
+              {/* 🔥 TAMBAHAN: Wrap aplikasi dengan ConfirmProvider */}
+              <ConfirmProvider>
+                {renderUI()}
+                <LoginPopup />
+                {!hideOverlays && <Overlays />}
+              </ConfirmProvider>
             </ThemeProvider>
           </I18nextProvider>
         </Providers>
