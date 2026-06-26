@@ -22,7 +22,6 @@ import SearchWrapper from "@/components/layout/SearchWrapperpost";
 import Overlays from "@/components/ui/Overlayspost";
 import LoginPopup from "@/components/auth/LoginPopuppost";
 import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar"; // 👈 BARU: Di-import di sini agar tidak error lagi
 import { ThemeProvider } from '@/components/ThemeProvider';
 import GlobalShareModal from '@/components/GlobalShareModal';
 
@@ -81,7 +80,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isStandaloneApp = isVoicePage || isStoryPage || isDailyCekPage;
   const hasNavbar = isHomePage || isNotifPage || isPostPage || isVoicePage;
   const isFullscreenPage = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage;
-  const hideSidebar = isStandaloneApp || isDataPage || isSettingsPage || isVipPage || isContactPage;
   const hideNavbar = isStoryPage || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
@@ -413,7 +411,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {!hideSidebar && <Sidebar />}
+      {/* 🟢 SIDEBAR SANG LEGENDA SUDAH DIHAPUS DARI SINI */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         {isHomePage && <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}><SearchWrapper /></div>}
         <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
