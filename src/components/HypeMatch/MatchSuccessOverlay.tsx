@@ -1,4 +1,6 @@
+'use client';
 import React from 'react';
+import { motion } from 'framer-motion';
 
 // Tipe data disamakan dengan yang ada di main file
 type MatchUser = {
@@ -29,12 +31,11 @@ export default function MatchSuccessOverlay({
 
   return (
     <>
-      {/* CSS Di-embed langsung di dalam komponen */}
       <style>{`
         .hm-match-overlay-container {
           position: fixed;
           inset: 0;
-          background: linear-gradient(180deg, #00b4ff 0%, #0066ff 100%); /* Background Biru */
+          background: linear-gradient(180deg, #00b4ff 0%, #0066ff 100%); 
           z-index: 99999;
           display: flex;
           flex-direction: column;
@@ -59,31 +60,82 @@ export default function MatchSuccessOverlay({
           width: 100%;
           padding: 0 20px;
           box-sizing: border-box;
-          animation: matchPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        .hm-match-title {
+        /* --- DESAIN TEKS MATCH SEPERTI GAMBAR --- */
+        .hm-match-text-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-bottom: 25px;
+        }
+
+        .hm-its-a-text {
           font-family: 'Montserrat', 'Segoe UI', Helvetica, Arial, sans-serif;
-          font-size: 55px;
+          font-size: 24px;
+          font-weight: 800;
+          font-style: italic;
+          color: #ffffff; /* Menggunakan putih agar kontras dengan background biru */
+          letter-spacing: 2px;
+          margin: 0 0 -5px 0;
+          z-index: 4;
+          position: relative;
+        }
+
+        .hm-match-word-container {
+          position: relative;
+          display: flex;
+          justify-content: center;
+          height: 150px; /* Memberikan ruang agar outline bawah tidak memotong elemen di bawahnya */
+          width: 100%;
+        }
+
+        .hm-match-word {
+          font-family: 'Montserrat', 'Segoe UI', Helvetica, Arial, sans-serif;
+          font-size: 75px;
           font-weight: 900;
           font-style: italic;
-          color: #ffffff;
-          margin-bottom: 10px;
-          letter-spacing: 2px;
-          /* Tanpa shadow */
+          margin: 0;
+          line-height: 1;
+          letter-spacing: 1px;
+          position: absolute;
         }
 
-        .hm-match-text {
+        .hm-main-match {
+          background: linear-gradient(90deg, #ff007a 0%, #ff7300 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          z-index: 3;
+          top: 0;
+        }
+
+        .hm-outline-1 {
+          top: 35px;
+          -webkit-text-stroke: 1.5px #ffffff;
+          -webkit-text-fill-color: transparent;
+          z-index: 2;
+        }
+
+        .hm-outline-2 {
+          top: 70px;
+          -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.3);
+          -webkit-text-fill-color: transparent;
+          z-index: 1;
+        }
+
+        /* --- SISA DESAIN UI --- */
+        .hm-match-desc {
           font-size: 18px;
           margin-bottom: 20px;
+          z-index: 10;
         }
 
         .hm-match-avatars {
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 40px 0;
-          position: relative; /* Penting untuk love icon di tengah */
+          margin: 20px 0 40px 0;
+          position: relative; 
         }
 
         .hm-avatar-circle {
@@ -93,20 +145,18 @@ export default function MatchSuccessOverlay({
           border: 4px solid #fff;
           object-fit: cover; 
           margin: 0 15px;
-          background-color: #ddd; /* fallback color */
-          /* Tanpa shadow */
+          background-color: #ddd; 
         }
 
         .hm-favorite-icon {
-          color: #ffffff; 
+          color: #ff1e56; /* WARNA MERAH MENYALA */
           font-size: 60px; 
           position: absolute;
           left: 50%;
           top: 50%;
-          transform: translate(-50%, -50%); /* Posisi persis di tengah */
+          transform: translate(-50%, -50%); 
           z-index: 10;
           animation: heartbeat 1s infinite;
-          /* Tanpa shadow */
         }
 
         .hm-btn-chat-now {
@@ -122,7 +172,6 @@ export default function MatchSuccessOverlay({
           width: 100%; 
           max-width: 320px; 
           transition: transform 0.2s;
-          /* Tanpa shadow */
         }
         .hm-btn-chat-now:active { transform: scale(0.95); }
 
@@ -144,26 +193,81 @@ export default function MatchSuccessOverlay({
           background: rgba(255,255,255,0.1); 
         }
 
-        /* ANIMASI */
         @keyframes heartbeat {
           0% { transform: translate(-50%, -50%) scale(1); }
           50% { transform: translate(-50%, -50%) scale(1.2); }
           100% { transform: translate(-50%, -50%) scale(1); }
         }
-
-        @keyframes matchPop {
-          0% { transform: scale(0.5); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
       `}</style>
 
       {/* Konten Overlay */}
       <div className={`hm-match-overlay-container show`}>
-        <div className="hm-match-content">
-          <h2 className="hm-match-title">HYPE MATCH!</h2>
-          <p className="hm-match-text">Kamu dan <strong>{matchedUser.username}</strong> saling tertarik!</p>
+        <motion.div 
+          className="hm-match-content"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           
-          <div className="hm-match-avatars">
+          {/* Framer Motion Animasi Teks */}
+          <div className="hm-match-text-container">
+            <motion.h3 
+              className="hm-its-a-text"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+            >
+              IT'S A
+            </motion.h3>
+
+            <div className="hm-match-word-container">
+              {/* Layer 3: Outline paling bawah */}
+              <motion.h1 
+                className="hm-match-word hm-outline-2"
+                initial={{ opacity: 0, y: -40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, type: "spring", stiffness: 150 }}
+              >
+                MATCH!
+              </motion.h1>
+
+              {/* Layer 2: Outline tengah */}
+              <motion.h1 
+                className="hm-match-word hm-outline-1"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45, type: "spring", stiffness: 150 }}
+              >
+                MATCH!
+              </motion.h1>
+
+              {/* Layer 1: Text Gradient Utama */}
+              <motion.h1 
+                className="hm-match-word hm-main-match"
+                initial={{ opacity: 0, scale: 0.3 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", bounce: 0.5 }}
+              >
+                MATCH!
+              </motion.h1>
+            </div>
+          </div>
+
+          <motion.p 
+            className="hm-match-desc"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            Kamu dan <strong>{matchedUser.username}</strong> saling tertarik!
+          </motion.p>
+          
+          <motion.div 
+            className="hm-match-avatars"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.9, type: "spring", bounce: 0.4 }}
+          >
             <img 
               src={currentUser?.avatar_url || 'https://via.placeholder.com/150'} 
               alt="You" 
@@ -177,19 +281,31 @@ export default function MatchSuccessOverlay({
               alt="Them" 
               className="hm-avatar-circle" 
             />
-          </div>
+          </motion.div>
 
-          <button className="hm-btn-chat-now" onClick={onChatNow}>
+          <motion.button 
+            className="hm-btn-chat-now" 
+            onClick={onChatNow}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.1 }}
+          >
             Sapa Dia!
-          </button>
+          </motion.button>
           
-          <button className="hm-btn-keep-swiping" onClick={() => { 
-            setMatchedUser(null); 
-            nextCard(); 
-          }}>
+          <motion.button 
+            className="hm-btn-keep-swiping" 
+            onClick={() => { 
+              setMatchedUser(null); 
+              nextCard(); 
+            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2 }}
+          >
             Lanjut Mencari
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     </>
   );

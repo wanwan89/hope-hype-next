@@ -64,7 +64,7 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
         transform: showBiodata ? 'translateY(0)' : 'translateY(100%)',
         backgroundColor: 'var(--bg-modal)', // Mengikuti warna modal global
         color: 'var(--text-main)', // Mengikuti warna text utama
-        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)' // Opsional: Tambah shadow agar terlihat melayang dari card
+        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)' 
       }}
     >
       {/* Handle Penutup Slide */}
@@ -89,18 +89,27 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
             </p>
           </div>
           
-          {/* Section: Tentang Saya */}
+          {/* =========================================
+              SECTION: TENTANG SAYA (BIO_HYPE) 
+              Di sini tempat bio dimunculkan
+              ========================================= */}
           {activeUser.bio_hype && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.5px' }}>Tentang Saya</h4>
-              <p style={{ lineHeight: '1.5', fontSize: '15px', margin: 0, color: 'var(--text-main)' }}>{activeUser.bio_hype}</p>
+              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                Tentang Saya
+              </h4>
+              <p style={{ lineHeight: '1.6', fontSize: '15px', margin: 0, color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
+                {activeUser.bio_hype}
+              </p>
             </div>
           )}
 
           {/* Section Informasi & Gaya Hidup */}
           {hasDetails && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px' }}>Info & Gaya Hidup</h4>
+              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                Info & Gaya Hidup
+              </h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {activeUser.gender && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="gender" /> <span>{activeUser.gender}</span></div>}
                 {activeUser.pendidikan && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="education" /> <span>{activeUser.pendidikan}</span></div>}
@@ -127,7 +136,9 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
           {/* Section: Sosial Media */}
           {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px' }}>Hubungkan</h4>
+              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                Sosial Media
+              </h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {activeUser.ig_username && <div className="hm-info-chip" style={{ ...chipBaseStyle, borderColor: 'rgba(225, 48, 108, 0.5)' }}><SvgIcon name="social" /> <span>@{activeUser.ig_username}</span></div>}
                 {activeUser.tiktok_username && <div className="hm-info-chip" style={chipBaseStyle}><SvgIcon name="social" /> <span>@{activeUser.tiktok_username}</span></div>}
