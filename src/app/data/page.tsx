@@ -452,40 +452,41 @@ function ProfileContent() {
   if (needsLogin) {
     return (
       <div className="profile-page-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '20px', background: 'var(--bg-main)' }}>
-        <div style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-card)',
-          padding: '40px 24px',
-          borderRadius: '24px',
-          textAlign: 'center',
-          maxWidth: '320px',
-          width: '100%',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.1)'
-        }}>
-          <span className="material-icons" style={{ fontSize: '56px', color: '#1f3cff', marginBottom: '16px' }}>lock_person</span>
-          <h2 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '8px' }}>Silakan Login</h2>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: '1.5' }}>
-            Masuk ke akun Anda untuk melihat dan mengelola profil secara penuh.
-          </p>
-          <button
-            onClick={() => router.push('/login')}
-            style={{
-              width: '100%',
-              background: '#1f3cff',
-              color: 'white',
-              border: 'none',
-              padding: '14px 0',
-              borderRadius: '14px',
-              fontWeight: 'bold',
-              fontSize: '15px',
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-              boxShadow: '0 4px 12px rgba(31, 60, 255, 0.2)'
-            }}
-          >
-            Login Sekarang
-          </button>
-        </div>
+        
+        {/* SVG Profile Icon */}
+        <svg 
+          width="72" 
+          height="72" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="#1f3cff" 
+          strokeWidth="1.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          style={{ marginBottom: '24px' }}
+        >
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+
+        <button
+          onClick={() => router.push('/login')}
+          style={{
+            width: '100%',
+            maxWidth: '280px',
+            background: '#1f3cff',
+            color: 'white',
+            border: 'none',
+            padding: '14px 0',
+            borderRadius: '14px',
+            fontWeight: 'bold',
+            fontSize: '16px',
+            cursor: 'pointer',
+            transition: 'background 0.2s'
+          }}
+        >
+          Login
+        </button>
       </div>
     );
   }
