@@ -10,7 +10,10 @@
   --border-card: transparent; 
   --text-muted: #64748b;
   --bg-modal: #ffffff;
-  --bg-input: #f1f5f9;
+  
+  /* [UPDATED] Warna input box diubah jadi abu-abu yang lebih terlihat */
+  --bg-input: #e2e8f0; 
+  
   --icon-fill: #1c1e21;
   --bg-secondary: #e4e6eb; 
   --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
@@ -185,7 +188,8 @@ a, button, select, .menu-item-tiktok, .card-btn {
   from { opacity: 0.6; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
- /* Tambahkan di globals.css */
+
+/* Tambahkan di globals.css */
 html, body {
   overscroll-behavior-y: none;
 }
