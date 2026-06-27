@@ -1,12 +1,12 @@
 'use client';
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, useMotionValue, animate } from 'framer-motion';
+import { motion, useMotionValue, animate, useTransform } from 'framer-motion';
 import ChatItem from './ChatItem';
 
 // Import Lottie dan file JSON animasinya
 import Lottie, { LottieRefCurrentProps } from 'lottie-react';
-import trashAnimationData from '@/assets/lottie/tempat-sampah.json'; 
+import trashAnimationData = require('@/assets/lottie/tempat-sampah.json'); 
 
 type Props = {
   isLoading: boolean;
@@ -151,57 +151,153 @@ const ChatList: React.FC<Props> = ({
 }) => {
   const router = useRouter();
 
-  return (
-    <main className="tg-chat-list" style={{ overflowX: 'hidden' }}>
-      {!isLoading && requestChats.length > 0 && !searchQuery && (
-        <div className="message-request-banner" onClick={() => router.push('/hypetalk/requests')}>
-          <div className="req-left">
-            <span className="material-icons">mark_email_unread</span>
-            <div className="req-text">
-              <h4>Permintaan Pesan</h4>
-              <p>{requestChats.length} pesan belum dibalas</p>
-            </div>
-          </div>
-          <span className="material-icons arrow">chevron_right</span>
-        </div>
-      )}
+  // --- LOGIKA PULL TO REFRESH ---
+  const pullY = useMotionValue(0);
+  const startY = useRef(0);
+  const startX = useRef(0);
+  const isPullingRef = useRef(false);
 
-      {isLoading ? (
-        <>
-          {/* PERUBAHAN DI SINI: Array diubah menjadi 4 */}
-          {[...Array(4)].map((_, index) => (
-            <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
-              <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }}></div>
-              <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="skeleton-box" style={{ width: '40%', height: '16px' }}></div>
-                  <div className="skeleton-box" style={{ width: '30px', height: '12px' }}></div>
-                </div>
-                <div className="skeleton-box" style={{ width: '70%', height: '14px' }}></div>
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const isAtTop = typeof window !== 'undefined' && window.scrollY === 0;
+    // Mengaktifkan fitur tarik hanya jika scroll kontainer berada di paling atas
+    if (e.currentTarget.scrollTop === 0 && isAtTop) {
+      startY.current = e.touches[0].clientY;
+      startX.current = e.touches[0].clientX;
+      isPullingRef.current = true;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPullingRef.current) return;
+
+    const currentY = e.touches[0].clientY;
+    const currentX = e.touches[0].clientX;
+    
+    const diffY = currentY - startY.current;
+    const diffX = Math.abs(currentX - startX.current);
+
+    // Proteksi: Jika mendeteksi gerakan horizontal (X) lebih dominan, batalkan pull-down Y
+    if (diffX > Math.abs(diffY) && pullY.get() === 0) {
+      isPullingRef.current = false;
+      return;
+    }
+
+    if (diffY > 0) {
+      // Efek karet kembalul (rubber banding) maksimum tarikan 70px
+      const resistance = Math.min(diffY * 0.4, 70);
+      pullY.set(resistance);
+      
+      // Mencegah bounce bawaan browser/safari iOS saat menarik
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isPullingRef.current) return;
+    isPullingRef.current = false;
+
+    // Jika tarikan melewati batas batas 55px, picu refresh data
+    if (pullY.get() >= 55) {
+      window.dispatchEvent(new Event('global-refresh'));
+    }
+
+    // Kembalikan posisi kontainer list ke semula dengan animasi spring halus
+    animate(pullY, 0, { type: 'spring', bounce: 0, duration: 0.3 });
+  };
+
+  // Transformasi animasi untuk Icon Indikator Refresh
+  const indicatorY = useTransform(pullY, [0, 60], [-35, 12]);
+  const indicatorOpacity = useTransform(pullY, [0, 45], [0, 1]);
+  const indicatorRotate = useTransform(pullY, [0, 60], [0, 360]);
+
+  return (
+    <main 
+      className="tg-chat-list" 
+      style={{ overflowX: 'hidden', position: 'relative' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* INDIKATOR ANIMASI PULL TO REFRESH */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '40px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          y: indicatorY,
+          opacity: indicatorOpacity,
+          pointerEvents: 'none',
+          zIndex: 50,
+        }}
+      >
+        <motion.span 
+          className="material-icons"
+          style={{
+            rotate: indicatorRotate,
+            color: '#2b93ff',
+            fontSize: '28px',
+          }}
+        >
+          autorenew
+        </motion.span>
+      </motion.div>
+
+      {/* WRAPPER KONTEN UTAMA YANG TERDORONG KE BAWAH */}
+      <motion.div style={{ y: pullY }}>
+        {!isLoading && requestChats.length > 0 && !searchQuery && (
+          <div className="message-request-banner" onClick={() => router.push('/hypetalk/requests')}>
+            <div className="req-left">
+              <span className="material-icons">mark_email_unread</span>
+              <div className="req-text">
+                <h4>Permintaan Pesan</h4>
+                <p>{requestChats.length} pesan belum dibalas</p>
               </div>
             </div>
-          ))}
-        </>
-      ) : (
-        filteredChats.map(chat => (
-          <SwipeableChatRow
-            key={chat.id}
-            chat={chat}
-            isSelectionMode={isSelectionMode}
-            isSelected={selectedChats?.has(chat.id)}
-            onPressStart={onPressStart}
-            onPressEnd={onPressEnd}
-            onDeleteChat={onDeleteChat}
-            handleOpenChat={handleOpenChat}
-            typingStatus={typingStatus}
-            mutedChats={mutedChats}
-            onlineUsers={onlineUsers}
-            currentUser={currentUser}
-            handleAvatarClick={handleAvatarClick}
-            renderReadReceipt={renderReadReceipt}
-          />
-        ))
-      )}
+            <span className="material-icons arrow">chevron_right</span>
+          </div>
+        )}
+
+        {isLoading ? (
+          <>
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
+                <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }}></div>
+                <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="skeleton-box" style={{ width: '40%', height: '16px' }}></div>
+                    <div className="skeleton-box" style={{ width: '30px', height: '12px' }}></div>
+                  </div>
+                  <div className="skeleton-box" style={{ width: '70%', height: '14px' }}></div>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : (
+          filteredChats.map(chat => (
+            <SwipeableChatRow
+              key={chat.id}
+              chat={chat}
+              isSelectionMode={isSelectionMode}
+              isSelected={selectedChats?.has(chat.id)}
+              onPressStart={onPressStart}
+              onPressEnd={onPressEnd}
+              onDeleteChat={onDeleteChat}
+              handleOpenChat={handleOpenChat}
+              typingStatus={typingStatus}
+              mutedChats={mutedChats}
+              onlineUsers={onlineUsers}
+              currentUser={currentUser}
+              handleAvatarClick={handleAvatarClick}
+              renderReadReceipt={renderReadReceipt}
+            />
+          ))
+        )}
+      </motion.div>
     </main>
   );
 };

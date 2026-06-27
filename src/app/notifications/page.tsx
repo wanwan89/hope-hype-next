@@ -5,12 +5,19 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import './Notifications.css';
 
 import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
 import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
 import NotificationListView from '@/components/notifications/NotificationListView';
+
+// --- IMPORT UNTUK ANIMASI REFRESH ---
+import { motion, useMotionValue, animate, useTransform } from 'framer-motion';
+import Lottie from 'lottie-react';
+// Pastikan path refres.json ini sesuai dengan struktur folder kamu
+import refreshAnimationData from '@/assets/lottie/refres.json'; 
 
 const getReadNotifs = (): string[] => {
   if (typeof window === 'undefined') return [];
@@ -44,7 +51,6 @@ const COMMENT_TYPES = ['comment', 'reply'];
 const FOLLOW_TYPES = ['follow'];
 const ALL_HANDLED_TYPES = [...LIKE_TYPES, ...COMMENT_TYPES, ...FOLLOW_TYPES];
 
-// 🔥 FUNGSI BARU: FORMAT PESAN AGAR GIFT & STIKER RAPI 🔥
 const formatMessage = (msg: string | undefined | null) => {
   if (!msg) return '';
   if (msg.includes('GIFT||')) {
@@ -363,7 +369,6 @@ export default function NotificationsPage() {
       const finalRepostsNotifs = groupActions(repostsData, 'repost');
       const finalSavesNotifs = groupActions(savesData, 'save');
 
-      // 🔥 FORMAT PESAN KOMENTAR/GIFT/STIKER 🔥
       const formattedComments = commentsData.map((c: any) => ({
         id: `comment-${c.id}`,
         type: 'comment',
@@ -415,7 +420,6 @@ export default function NotificationsPage() {
         totalCount: 1,
       }));
 
-      // 🔥 MEMASTIKAN STORY_LIKE & REPLY TERTANGKAP DAN TERFORMAT 🔥
       const normalizedDbNotifs = filteredDbNotifs
         .map((n) => {
           let msg = formatMessage(n.message);
@@ -519,7 +523,6 @@ export default function NotificationsPage() {
     if (notif.type === 'follow' && notif.actor_id) {
       router.push(`/data?id=${notif.actor_id}`);
     } 
-    // 🔥 PERBAIKAN: Menambahkan 'reply' ke filter, dan mem-passing parameter openComment
     else if ((notif.type === 'comment' || notif.type === 'comment_likes' || notif.type === 'reply') && notif.post_id) {
       router.push(`/post?id=${notif.post_id}&openComment=true`);
     } 
@@ -553,6 +556,77 @@ export default function NotificationsPage() {
       }
     }
   };
+
+  const refetch = async () => {
+    if (currentUser?.id) {
+      await Promise.all([
+        loadNotifications(currentUser.id),
+        loadFriendStories(myFollowings),
+        loadRecommendedFriends(currentUser.id, myFollowings)
+      ]);
+    }
+  };
+  useGlobalRefresh(refetch);
+
+
+  // --- LOGIKA PULL TO REFRESH ---
+  const pullY = useMotionValue(0);
+  const startY = useRef(0);
+  const startX = useRef(0);
+  const isPullingRef = useRef(false);
+  const isRefreshing = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const isAtTop = e.currentTarget.scrollTop === 0;
+    if (isAtTop && !isRefreshing.current) {
+      startY.current = e.touches[0].clientY;
+      startX.current = e.touches[0].clientX;
+      isPullingRef.current = true;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPullingRef.current) return;
+
+    const currentY = e.touches[0].clientY;
+    const currentX = e.touches[0].clientX;
+    const diffY = currentY - startY.current;
+    const diffX = Math.abs(currentX - startX.current);
+
+    if (diffX > Math.abs(diffY) && pullY.get() === 0) {
+      isPullingRef.current = false;
+      return;
+    }
+
+    if (diffY > 0) {
+      // Menarik maksimum 75px
+      const resistance = Math.min(diffY * 0.4, 75);
+      pullY.set(resistance);
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (!isPullingRef.current) return;
+    isPullingRef.current = false;
+
+    // Jika tarikan melewati batas batas 55px, picu refresh
+    if (pullY.get() >= 55) {
+      isRefreshing.current = true;
+      // Tahan Lottie di posisi 60px saat loading
+      animate(pullY, 60, { type: 'spring', bounce: 0, duration: 0.3 });
+      
+      await refetch();
+      
+      // Kembalikan ke atas setelah selesai refresh
+      isRefreshing.current = false;
+      animate(pullY, 0, { type: 'spring', bounce: 0, duration: 0.3 });
+    } else {
+      // Jika tidak cukup ditarik, langsung kembalikan
+      animate(pullY, 0, { type: 'spring', bounce: 0, duration: 0.3 });
+    }
+  };
+
 
   const getIconAndColor = (type: string) => {
     switch (type) {
@@ -632,13 +706,42 @@ export default function NotificationsPage() {
     }
   };
 
+  const lottieOpacity = useTransform(pullY, [0, 20, 60], [0, 0.5, 1]);
+
   return (
-    <div className="notif-page-container">
+    <div 
+      className="notif-page-container"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ overflowY: 'auto' }}
+    >
       {activeView === 'main' ? (
         <div className="notif-main-view">
-          <header className="notif-header">
+          
+          {/* HEADER (TETAP DI ATAS) */}
+          <header className="notif-header" style={{ position: 'relative', zIndex: 10 }}>
             <h2>{t('notifications', 'Notifikasi')}</h2>
           </header>
+
+          {/* KONTEM LOTTIE ANIMASI REFRESH */}
+          <motion.div
+            style={{
+              height: pullY, // Tinggi terbuka seiring ditarik
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              overflow: 'hidden',
+              opacity: lottieOpacity,
+            }}
+          >
+            <div style={{ width: '40px', height: '40px' }}>
+              <Lottie 
+                animationData={refreshAnimationData} 
+                loop={true} 
+              />
+            </div>
+          </motion.div>
 
           <FriendStoriesTray
             friends={friendStories}

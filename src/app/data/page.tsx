@@ -6,10 +6,12 @@ import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import Lottie from 'lottie-react';
-import playAnimation from '@/assets/lottie/play.json'; // 🔥 Import Lottie JSON
-import { motion, AnimatePresence } from 'framer-motion'; // 🔥 Import Framer Motion
+import playAnimation from '@/assets/lottie/play.json'; 
+import refreshAnimation from '@/assets/lottie/refresh.json'; // 🔥 Import Lottie Refresh JSON
+import { motion, AnimatePresence } from 'framer-motion'; 
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh'; // 🔥 Import Hook Global Refresh
 
-// Import komponen anak (pastikan path sesuai)
+// Import komponen anak
 import ProfileHeader from './ProfileHeader';
 import ProfileInfo from './ProfileInfo';
 import ProfileTabs from './ProfileTabs';
@@ -40,8 +42,8 @@ function ProfileContent() {
   // 🔥 STATE MANAGEMENT 🔥
   // ==========================================
   const [isMounted, setIsMounted] = useState(false);
-  const [needsLogin, setNeedsLogin] = useState(false); // State baru untuk cek kewajiban login
-  const [authText, setAuthText] = useState('Login'); // 🔥 State untuk animasi teks tombol
+  const [needsLogin, setNeedsLogin] = useState(false); 
+  const [authText, setAuthText] = useState('Login'); 
   const [myId, setMyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
@@ -53,6 +55,7 @@ function ProfileContent() {
   const [activeTab, setActiveTab] = useState<'post' | 'private' | 'like' | 'repost' | 'simpan'>('post');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false); // 🔥 State untuk animasi refresh
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -64,6 +67,30 @@ function ProfileContent() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // ==========================================
+  // 🔥 GLOBAL REFRESH LOGIC 🔥
+  // ==========================================
+  const refetch = async () => {
+    setIsRefreshing(true);
+    try {
+      // Ambil data profil terbaru dan postingan pada tab aktif secara paralel
+      await Promise.all([
+        loadProfile(true),
+        loadPostsTab(activeTab, true)
+      ]);
+    } catch (error) {
+      console.error("Gagal melakukan refresh data:", error);
+    } finally {
+      // Beri sedikit delay manis (500ms) agar animasi Lottie tidak tertutup terlalu kaku
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  };
+
+  // 🔥 Pasang hook global refresh disini
+  useGlobalRefresh(refetch);
 
   // ==========================================
   // 🔥 LIFECYCLE & DATA FETCHING 🔥
@@ -78,12 +105,11 @@ function ProfileContent() {
     };
   }, []);
 
-  // 🔥 Effect untuk animasi ganti teks tombol Login/Sign Up
   useEffect(() => {
     if (needsLogin) {
       const interval = setInterval(() => {
         setAuthText((prev) => (prev === 'Login' ? 'Sign Up' : 'Login'));
-      }, 3000); // Teks berganti setiap 3 detik
+      }, 3000); 
       return () => clearInterval(interval);
     }
   }, [needsLogin]);
@@ -122,7 +148,6 @@ function ProfileContent() {
       else if (urlUser) query = query.eq('username', urlUser);
       else if (currentUserId) query = query.eq('id', currentUserId);
       else {
-        // Tampilkan kotak login jika user mengakses "Profil Saya" tanpa login
         if (isComponentActive) setNeedsLogin(true);
         return; 
       }
@@ -320,7 +345,6 @@ function ProfileContent() {
   // ==========================================
   // 🔥 EVENT HANDLERS 🔥
   // ==========================================
-
   const handlePostClick = (postId: string, status: string) => {
     if (!postId) return;
     if (status === 'draft') {
@@ -462,18 +486,14 @@ function ProfileContent() {
   // 🔥 RENDER 🔥
   // ==========================================
 
-  // UI Khusus ketika user belum login
   if (needsLogin) {
     return (
       <div className="profile-page-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '20px', background: 'var(--bg-main)' }}>
-        
-        {/* 🔥 Lottie diperbesar menjadi 250px */}
         <div style={{ width: '250px', marginBottom: '24px' }}>
           <Lottie animationData={playAnimation} loop={true} />
         </div>
-
         <button
-          onClick={() => router.push('/login')} // 🔥 Tetap mengarah ke halaman login
+          onClick={() => router.push('/login')} 
           style={{
             width: '100%',
             maxWidth: '280px',
@@ -486,13 +506,12 @@ function ProfileContent() {
             fontSize: '16px',
             cursor: 'pointer',
             transition: 'background 0.2s',
-            overflow: 'hidden', // 🔥 Mencegah teks meluber saat animasi
+            overflow: 'hidden', 
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center'
           }}
         >
-          {/* 🔥 Animasi teks tombol ganti dengan Framer Motion */}
           <AnimatePresence mode="wait">
             <motion.span
               key={authText}
@@ -578,6 +597,31 @@ function ProfileContent() {
         onBack={() => router.back()}
         onMenuClick={() => setIsSidebarOpen(true)}
       />
+
+      {/* 🔥 ANIMASI REFRESH BERGERAK DARI BAWAH HEADER 🔥 */}
+      <AnimatePresence>
+        {isRefreshing && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: '64px', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              overflow: 'hidden',
+              background: 'var(--bg-main)',
+              width: '100%',
+              borderBottom: '1px solid var(--border-card, rgba(255,255,255,0.05))'
+            }}
+          >
+            <div style={{ width: '45px', height: '45px' }}>
+              <Lottie animationData={refreshAnimation} loop={true} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="profile-top-section">
         <ProfileInfo
