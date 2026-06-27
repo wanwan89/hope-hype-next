@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
@@ -80,12 +80,14 @@ export default function NotificationsPage() {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (activeView !== 'main') {
       markCategoryAsRead(activeView);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView]);
 
   const initUserAndData = async () => {
@@ -502,7 +504,7 @@ export default function NotificationsPage() {
     window.dispatchEvent(new Event('notif-count-changed'));
   };
 
-  const handleNotifClick = async (notif: any) => {
+  const handleNotifClick = useCallback(async (notif: any) => {
     if (!notif.is_read) {
       setRawNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
 
@@ -530,9 +532,9 @@ export default function NotificationsPage() {
     else if (notif.post_id) {
       router.push(`/post?id=${notif.post_id}`);
     }
-  };
+  }, [router]);
 
-  const handleFollowAction = async (e: React.MouseEvent, targetId: string) => {
+  const handleFollowAction = useCallback(async (e: React.MouseEvent, targetId: string) => {
     e.stopPropagation();
     if (!currentUser) return;
     const isFollowing = myFollowings.has(targetId);
@@ -550,9 +552,9 @@ export default function NotificationsPage() {
         showNotif('Berhasil mengikuti!', 'success');
       }
     }
-  };
+  }, [currentUser, myFollowings]);
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     if (currentUser?.id) {
       await Promise.all([
         loadNotifications(currentUser.id),
@@ -560,15 +562,15 @@ export default function NotificationsPage() {
         loadRecommendedFriends(currentUser.id, myFollowings)
       ]);
     }
-  };
+  }, [currentUser, myFollowings]);
   useGlobalRefresh(refetch);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     await refetch();
     await new Promise(resolve => setTimeout(resolve, 800));
-  };
+  }, [refetch]);
 
-  const getIconAndColor = (type: string) => {
+  const getIconAndColor = useCallback((type: string) => {
     switch (type) {
       case 'like':
       case 'like_group':
@@ -598,38 +600,44 @@ export default function NotificationsPage() {
       default:
         return { icon: 'notifications', color: '#3b82f6' };
     }
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const dateObj = new Date(dateString);
     const isToday = new Date().toDateString() === dateObj.toDateString();
     return isToday
       ? `${t('today', 'Hari ini')}, ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
       : dateObj.toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
+  }, [t]);
 
-  const calculateBadges = (types: string[]) => {
-    return rawNotifs
-      .filter((n) => !n.is_read && types.includes(n.type))
-      .reduce((sum, n) => sum + (n.totalCount || 1), 0);
-  };
+  // OPTIMASI: Menggunakan useMemo agar perhitungan batch notifikasi tidak membebani render
+  const unreadCounts = useMemo(() => {
+    const calculateBadges = (types: string[]) => {
+      return rawNotifs
+        .filter((n) => !n.is_read && types.includes(n.type))
+        .reduce((sum, n) => sum + (n.totalCount || 1), 0);
+    };
 
-  const unreadCounts = {
-    like: calculateBadges(LIKE_TYPES),
-    comment: calculateBadges(COMMENT_TYPES),
-    follow: calculateBadges(FOLLOW_TYPES),
-    other: rawNotifs
-      .filter((n) => !n.is_read && !ALL_HANDLED_TYPES.includes(n.type))
-      .reduce((sum, n) => sum + (n.totalCount || 1), 0),
-  };
+    return {
+      like: calculateBadges(LIKE_TYPES),
+      comment: calculateBadges(COMMENT_TYPES),
+      follow: calculateBadges(FOLLOW_TYPES),
+      other: rawNotifs
+        .filter((n) => !n.is_read && !ALL_HANDLED_TYPES.includes(n.type))
+        .reduce((sum, n) => sum + (n.totalCount || 1), 0),
+    };
+  }, [rawNotifs]);
 
-  const filteredNotifs = rawNotifs.filter((n) => {
-    if (activeView === 'like') return LIKE_TYPES.includes(n.type);
-    if (activeView === 'comment') return COMMENT_TYPES.includes(n.type);
-    if (activeView === 'follow') return n.type === 'follow';
-    if (activeView === 'other') return !ALL_HANDLED_TYPES.includes(n.type);
-    return true;
-  });
+  // OPTIMASI: Membungkus filteredNotifs dengan useMemo
+  const filteredNotifs = useMemo(() => {
+    return rawNotifs.filter((n) => {
+      if (activeView === 'like') return LIKE_TYPES.includes(n.type);
+      if (activeView === 'comment') return COMMENT_TYPES.includes(n.type);
+      if (activeView === 'follow') return n.type === 'follow';
+      if (activeView === 'other') return !ALL_HANDLED_TYPES.includes(n.type);
+      return true;
+    });
+  }, [rawNotifs, activeView]);
 
   const getTitleByView = () => {
     switch (activeView) {
@@ -651,15 +659,14 @@ export default function NotificationsPage() {
       
       {activeView === 'main' ? (
         <>
-          {/* HEADER STATIS (Diam di atas, tidak ikut terscroll/ditarik) */}
-          <header className="notif-header" style={{ position: 'relative', zIndex: 10, flexShrink: 0, background: 'var(--bg-main, #fff)', borderBottom: '1px solid var(--border-color, rgba(0,0,0,0.05))' }}>
+          {/* HEADER STATIS: borderBottom telah dihapus di sini */}
+          <header className="notif-header" style={{ position: 'relative', zIndex: 10, flexShrink: 0, background: 'var(--bg-main, #fff)' }}>
             <h2 style={{ margin: 0, padding: '16px 20px', fontSize: '20px', fontWeight: 'bold' }}>
               {t('notifications', 'Notifikasi')}
             </h2>
           </header>
 
           {/* AREA SCROLL DENGAN PULL-TO-REFRESH DI BAWAH HEADER */}
-          {/* overscrollBehaviorY: 'none' Mencegah fitur refresh ganda bawaan browser Android/Chrome */}
           <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none', position: 'relative' }}>
             <RefreshableWrapper onRefresh={handleRefresh}>
               <div className="notif-main-view" style={{ minHeight: '100%', paddingBottom: '20px' }}>
@@ -714,7 +721,6 @@ export default function NotificationsPage() {
           </div>
         </>
       ) : (
-        /* AREA KATEGORI JUGA PERLU PENCEGAHAN DOUBLE REFRESH */
         <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none' }}>
           <RefreshableWrapper onRefresh={handleRefresh}>
             <NotificationListView
@@ -734,4 +740,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-

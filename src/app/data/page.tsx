@@ -73,7 +73,6 @@ function ProfileContent() {
   // ==========================================
   const refetch = async () => {
     try {
-      // Ambil data profil terbaru dan postingan pada tab aktif secara paralel
       await Promise.all([
         loadProfile(true),
         loadPostsTab(activeTab, true)
@@ -552,7 +551,11 @@ function ProfileContent() {
   }
 
   return (
-    <div className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`}>
+    // 🔥 PENGATURAN FLEXBOX: Membuat container menjadi 100vh dan tidak bisa discroll secara keseluruhan
+    <div 
+      className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`} 
+      style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}
+    >
       <style>{`
         .avatar-container { margin: 0 auto 12px; display: flex; justify-content: center; align-items: center; }
         .story-ring, .normal-ring { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
@@ -579,53 +582,61 @@ function ProfileContent() {
         .drag-handle { width: 40px; height: 5px; background: var(--border-card); border-radius: 10px; margin: 0 auto 5px; }
         .close-icon { color: var(--text-muted); cursor: pointer; }
         .noscroll { overflow: hidden !important; touch-action: none; }
+        
+        /* 🔥 PENGATURAN BARU: Menghapus border line pada ProfileHeader (secara paksa/global di komponen ini saja) */
+        header, .profile-header, [class*="header"], [class*="Header"] {
+          border-bottom: none !important;
+          box-shadow: none !important;
+        }
       `}</style>
 
-      {/* Header dibiarkan di luar wrapper agar tetap di posisinya (fixed/sticky) */}
-      <ProfileHeader
-        isMe={isMe}
-        username={profile.username}
-        isPrivate={profile.is_private}
-        onBack={() => router.back()}
-        onMenuClick={() => setIsSidebarOpen(true)}
-      />
+      {/* 🔥 AREA STATIS (Header, Profil Info, Tabs): Dibungkus div dengan flexShrink: 0 agar tidak ikut ter-scroll */}
+      <div style={{ flexShrink: 0, zIndex: 10, background: 'var(--bg-main)' }}>
+        <ProfileHeader
+          isMe={isMe}
+          username={profile.username}
+          isPrivate={profile.is_private}
+          onBack={() => router.back()}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
 
-      {/* 🔥 KONTEN UTAMA DIBUNGKUS WRAPPER */}
-      <RefreshableWrapper onRefresh={refetch}>
-        <div>
-          <div className="profile-top-section">
-            <ProfileInfo
-              profile={profile}
-              stats={stats}
+        <div className="profile-top-section">
+          <ProfileInfo
+            profile={profile}
+            stats={stats}
+            isMe={isMe}
+            isFollowing={isFollowing}
+            isMutual={isMutual}
+            hasStory={hasStory}
+            storyIdToGo={storyIdToGo}
+            onAvatarClick={handleAvatarClick}
+            onChat={handleGoToChat}
+            onToggleFollow={toggleFollow}
+            onEdit={() => setIsEditModalOpen(true)}
+            onShare={handleShareProfile}
+            onOpenActionSheet={() => setIsActionSheetOpen(true)}
+            onOpenFollowers={() => handleOpenFollowModal('followers')}
+            onOpenFollowing={() => handleOpenFollowModal('following')}
+            t={t}
+          />
+
+          {(!profile.is_private || isMe || isMutual) && (
+            <ProfileTabs
               isMe={isMe}
-              isFollowing={isFollowing}
               isMutual={isMutual}
-              hasStory={hasStory}
-              storyIdToGo={storyIdToGo}
-              onAvatarClick={handleAvatarClick}
-              onChat={handleGoToChat}
-              onToggleFollow={toggleFollow}
-              onEdit={() => setIsEditModalOpen(true)}
-              onShare={handleShareProfile}
-              onOpenActionSheet={() => setIsActionSheetOpen(true)}
-              onOpenFollowers={() => handleOpenFollowModal('followers')}
-              onOpenFollowing={() => handleOpenFollowModal('following')}
+              profile={profile}
+              activeTab={activeTab}
+              onTabChange={(tab) => setActiveTab(tab as any)}
               t={t}
             />
+          )}
+        </div>
+      </div>
 
-            {(!profile.is_private || isMe || isMutual) && (
-              <ProfileTabs
-                isMe={isMe}
-                isMutual={isMutual}
-                profile={profile}
-                activeTab={activeTab}
-                onTabChange={(tab) => setActiveTab(tab as any)}
-                t={t}
-              />
-            )}
-          </div>
-
-          <div className="post-grid-container">
+      {/* 🔥 AREA SCROLL DINAMIS (Postingan): Hanya bagian ini yang dapat di-scroll dan menggunakan pull-to-refresh */}
+      <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none', position: 'relative' }}>
+        <RefreshableWrapper onRefresh={refetch}>
+          <div className="post-grid-container" style={{ minHeight: '100%', paddingBottom: '20px' }}>
             <PostGrid
               posts={posts}
               isLoadingPosts={isLoadingPosts}
@@ -637,10 +648,10 @@ function ProfileContent() {
               t={t}
             />
           </div>
-        </div>
-      </RefreshableWrapper>
+        </RefreshableWrapper>
+      </div>
 
-      {/* Komponen Modal dan Sidebar */}
+      {/* Komponen Modal dan Sidebar (Tetap tidak berubah) */}
       {isMe && (
         <SidebarMenu
           isOpen={isSidebarOpen}
