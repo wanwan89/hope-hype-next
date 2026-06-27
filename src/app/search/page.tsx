@@ -3,7 +3,6 @@
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-// Import Lottie dan file JSON animasi
 import Lottie from 'lottie-react';
 import emptyLottie from '@/assets/lottie/empty.json'; 
 
@@ -20,17 +19,23 @@ function SearchContent() {
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
-  const [recommendedPosts, setRecommendedPosts] = useState<any[]>([]);
   
-  // 🔥 STATE BARU: TREN & SARAN PENCARIAN 🔥
+  // STATE TAMPILAN AWAL
+  const [recommendedPosts, setRecommendedPosts] = useState<any[]>([]); 
+  const [categoryRecommendations, setCategoryRecommendations] = useState<any[]>([]); 
   const [trendingKeywords, setTrendingKeywords] = useState<string[]>([]);
+  
+  // STATE AUTOCOMPLETE & HISTORY
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLocalQuery(query);
-    setShowSuggestions(false); // Tutup saran saat query URL berubah
+    setShowSuggestions(false);
   }, [query]);
 
   useEffect(() => {
@@ -43,9 +48,14 @@ function SearchContent() {
       }
     };
     initUser();
+
+    // Load Local History
+    const savedHistory = localStorage.getItem('hype_recent_searches');
+    if (savedHistory) {
+      setRecentSearches(JSON.parse(savedHistory));
+    }
   }, []);
 
-  // 🔥 DETEKSI KETIKAN UNTUK MEMUNCULKAN SARAN (AUTOCOMPLETE) 🔥
   useEffect(() => {
     if (localQuery.trim().length > 1 && localQuery !== query) {
       fetchSuggestions(localQuery);
@@ -56,75 +66,83 @@ function SearchContent() {
     }
   }, [localQuery, query]);
 
-  // 🔥 FUNGSI: MENCARI SARAN KATA KUNCI DARI DATABASE 🔥
   const fetchSuggestions = async (text: string) => {
     try {
-      // Cari histori yang mirip dengan ketikan user
-      const { data } = await supabase
-        .from('search_history')
-        .select('query')
-        .ilike('query', `%${text}%`)
-        .limit(30);
-      
+      const { data } = await supabase.from('search_history').select('query').ilike('query', `%${text}%`).limit(30);
       if (data) {
-        // Hapus duplikat agar saran terlihat rapi
         const uniqueSuggestions = Array.from(new Set(data.map(item => item.query.toLowerCase())));
-        setSearchSuggestions(uniqueSuggestions.slice(0, 6)); // Ambil 6 saran terbaik
+        setSearchSuggestions(uniqueSuggestions.slice(0, 6));
       }
     } catch (err) {
       console.error("Gagal mengambil saran", err);
     }
   };
 
-  // 🔥 FUNGSI: MENYIMPAN PENCARIAN KE DATABASE 🔥
   const saveSearchToHistory = async (text: string) => {
     if (!text.trim()) return;
+    const cleanText = text.trim().toLowerCase();
+    
+    const newRecent = [cleanText, ...recentSearches.filter(item => item !== cleanText)].slice(0, 15);
+    setRecentSearches(newRecent);
+    localStorage.setItem('hype_recent_searches', JSON.stringify(newRecent));
+
     try {
-      await supabase.from('search_history').insert([{ query: text.trim().toLowerCase() }]);
+      await supabase.from('search_history').insert([{ query: cleanText }]);
     } catch (err) {
       console.error("Gagal menyimpan histori pencarian", err);
     }
+  };
+
+  const deleteHistoryItem = (e: React.MouseEvent, textToRemove: string) => {
+    e.stopPropagation(); 
+    const newRecent = recentSearches.filter(item => item !== textToRemove);
+    setRecentSearches(newRecent);
+    localStorage.setItem('hype_recent_searches', JSON.stringify(newRecent));
   };
 
   useEffect(() => {
     if (query) {
       fetchSearchResults();
     } else {
-      fetchTrendingSearches();
+      fetchInitialDiscoverData();
     }
   }, [query]);
 
-  // 🔥 FUNGSI: MENGAMBIL PENCARIAN TERPOPULER DARI HISTORI RIIL 🔥
-  const fetchTrendingSearches = async () => {
+  // 🔥 MENGAMBIL DATA DISCOVER DARI DATABASE 🔥
+  const fetchInitialDiscoverData = async () => {
     setIsLoading(true);
     try {
-      // Ambil 200 pencarian terakhir untuk dihitung mana yang paling sering muncul
-      const { data } = await supabase
-        .from('search_history')
-        .select('query')
-        .order('created_at', { ascending: false })
-        .limit(200);
-
+      // 1. Ambil Tren
+      const { data: trendData } = await supabase.from('search_history').select('query').order('created_at', { ascending: false }).limit(200);
       const counts: Record<string, number> = {};
-      
-      if (data && data.length > 0) {
-        data.forEach(item => {
-          counts[item.query] = (counts[item.query] || 0) + 1;
-        });
-
-        // Urutkan dari yang terbanyak
-        const sorted = Object.entries(counts)
-          .sort((a, b) => b[1] - a[1])
-          .map(entry => entry[0])
-          .slice(0, 8); // Ambil Top 8
-          
+      if (trendData && trendData.length > 0) {
+        trendData.forEach(item => { counts[item.query] = (counts[item.query] || 0) + 1; });
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(entry => entry[0]).slice(0, 8);
         setTrendingKeywords(sorted);
       } else {
-        // Fallback jika database masih kosong
         setTrendingKeywords(['jagung bakar', 'hope hype', 'musik viral', 'tutorial ui']);
       }
+
+      // 2. Ambil Rekomendasi Kategori langsung dari relasi Database
+      const { data: recPosts } = await supabase.from('posts')
+        .select(`
+          id, image_url, video_url, bio, 
+          profiles:creator_id(username),
+          categories(name)
+        `)
+        .eq('status', 'approved')
+        .limit(20); // Ambil 20 untuk diacak
+      
+      if (recPosts && recPosts.length > 0) {
+        const shuffled = recPosts.sort(() => Math.random() - 0.5).slice(0, 5); // Tampilkan 5 saja
+        const categorized = shuffled.map((post: any) => ({
+          ...post,
+          categoryName: post.categories?.name || "Eksplorasi"
+        }));
+        setCategoryRecommendations(categorized);
+      }
     } catch (error) {
-      setTrendingKeywords(['jagung bakar', 'hope hype', 'musik viral']);
+      console.error("Gagal memuat discover data", error);
     } finally {
       setIsLoading(false);
     }
@@ -136,12 +154,7 @@ function SearchContent() {
       const isHashtag = query.startsWith('#');
 
       if (!isHashtag) {
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url, bio, is_private')
-          .ilike('username', `%${query}%`)
-          .limit(5);
-        
+        const { data: userData } = await supabase.from('profiles').select('id, username, avatar_url, bio, is_private').ilike('username', `%${query}%`).limit(5);
         let usersWithPosts = [];
         if (userData && userData.length > 0) {
           const userIds = userData.map(u => u.id);
@@ -171,20 +184,18 @@ function SearchContent() {
     }
   };
 
-  // 🔥 TRIGGER KETIKA ENTER DITEKAN 🔥
   const handleSearchEnter = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && localQuery.trim() !== '') {
       setShowSuggestions(false);
-      await saveSearchToHistory(localQuery); // Simpan ke DB
+      await saveSearchToHistory(localQuery);
       router.push(`/search?q=${encodeURIComponent(localQuery.trim())}`);
     }
   };
 
-  // 🔥 TRIGGER KETIKA SARAN ATAU TRENDING DIKLIK 🔥
   const executeSearch = async (keyword: string) => {
     setLocalQuery(keyword);
     setShowSuggestions(false);
-    await saveSearchToHistory(keyword); // Simpan ke DB
+    await saveSearchToHistory(keyword);
     router.push(`/search?q=${encodeURIComponent(keyword)}`);
   };
 
@@ -222,7 +233,6 @@ function SearchContent() {
           <span className="material-icons">arrow_back</span>
         </button>
         
-        {/* WRAPPER RELATIVE UNTUK MENAMPUNG DROPDOWN SARAN */}
         <div ref={wrapperRef} style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons" style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)', fontSize: '18px', zIndex: 2 }}>search</span>
           <input 
@@ -239,11 +249,11 @@ function SearchContent() {
             }}
           />
 
-          {/* 🔥 DROPDOWN AUTOCOMPLETE SARAN PENCARIAN (GLASSMORPHISM) 🔥 */}
+          {/* DROPDOWN AUTOCOMPLETE */}
           {showSuggestions && searchSuggestions.length > 0 && (
             <div style={{
               position: 'absolute', top: '48px', left: 0, right: 0,
-              background: 'rgba(20, 20, 20, 0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+              background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(16px)',
               borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.3)', overflow: 'hidden', zIndex: 100, display: 'flex', flexDirection: 'column'
             }}>
@@ -258,7 +268,6 @@ function SearchContent() {
                   }}
                 >
                   <span className="material-icons" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>search</span>
-                  {/* Highlight kata yang cocok */}
                   <span>
                     {sugg.split(new RegExp(`(${localQuery})`, 'gi')).map((part, i) => 
                       part.toLowerCase() === localQuery.toLowerCase() ? <strong key={i} style={{ color: '#fff' }}>{part}</strong> : <span key={i} style={{ color: 'var(--text-muted)' }}>{part}</span>
@@ -279,63 +288,109 @@ function SearchContent() {
           </div>
         )}
 
-        {/* 🔥 TAMPILAN PENCARIAN POPULER (DENGAN SVG KEREN) 🔥 */}
+        {/* =========================================
+            TAMPILAN AWAL (SAAT BELUM ADA PENCARIAN)
+        ========================================== */}
         {!query && (
-          <div style={{ marginTop: '10px' }}>
-            <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="material-icons" style={{ color: '#ff2e63', fontSize: '18px' }}>trending_up</span>
-              PENCARIAN TERPOPULER
-            </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             
-            {isLoading ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Memuat tren...</div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {trendingKeywords.map((kw, i) => (
-                  <div 
-                    key={i}
-                    onClick={() => executeSearch(kw)}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      backdropFilter: 'blur(10px)',
-                      padding: '8px 16px',
-                      borderRadius: '20px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: 'var(--text-main)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      transition: 'transform 0.15s ease'
-                    }}
-                    onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-                    onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    {/* SVG ICON SEDERHANA UNTUK TRENDING */}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#1f3cff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    {kw}
-                  </div>
-                ))}
+            {/* 1. RIWAYAT PENCARIAN (Max 3, dengan tombol hapus dan lihat semua) */}
+            {recentSearches.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="material-icons" style={{ fontSize: '18px' }}>history</span>
+                  RIWAYAT PENCARIAN
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {recentSearches.slice(0, showAllHistory ? recentSearches.length : 3).map((historyItem, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 15px', background: 'var(--bg-secondary)', borderRadius: '12px', cursor: 'pointer' }} onClick={() => executeSearch(historyItem)}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', fontSize: '14px' }}>
+                        <span className="material-icons" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>schedule</span>
+                        {historyItem}
+                      </div>
+                      <button onClick={(e) => deleteHistoryItem(e, historyItem)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '4px' }}>
+                        <span className="material-icons" style={{ fontSize: '18px' }}>close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {recentSearches.length > 3 && (
+                  <button onClick={() => setShowAllHistory(!showAllHistory)} style={{ marginTop: '10px', background: 'none', border: 'none', color: '#1f3cff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', padding: '0' }}>
+                    {showAllHistory ? 'Sembunyikan' : 'Lihat Semua Riwayat'}
+                  </button>
+                )}
               </div>
             )}
+
+            {/* 2. REKOMENDASI PENCARIAN / KATEGORI */}
+            {categoryRecommendations.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="material-icons" style={{ color: '#00d2ff', fontSize: '18px' }}>explore</span>
+                  REKOMENDASI PENCARIAN
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {categoryRecommendations.map((post) => (
+                    <div key={post.id} onClick={() => router.push(`/#post-${post.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border-card)', borderRadius: '12px', cursor: 'pointer' }}>
+                      <div style={{ flex: 1, paddingRight: '15px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>{post.categoryName}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          Pencarian terkait dengan @{post.profiles?.username} - {post.bio || 'Jelajahi lebih lanjut.'}
+                        </div>
+                      </div>
+                      <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', position: 'relative', flexShrink: 0, background: 'var(--bg-secondary)' }}>
+                        <img src={getThumbnail(post)} alt="Kategori" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {post.video_url && <span className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontSize: '20px', background: 'rgba(0,0,0,0.4)', borderRadius: '50%' }}>play_arrow</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. SEDANG TREN / VIRAL */}
+            <div>
+              <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="material-icons" style={{ color: '#ff2e63', fontSize: '18px' }}>trending_up</span>
+                SEDANG TREN
+              </h3>
+              
+              {isLoading ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Memuat tren...</div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {trendingKeywords.map((kw, i) => (
+                    <div 
+                      key={i}
+                      onClick={() => executeSearch(kw)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                        backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: '20px',
+                        fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#1f3cff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      {kw}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
-        {/* ================================
-            HASIL PENCARIAN BAWAHNYA 
-        ================================= */}
+        {/* =========================================
+            HASIL PENCARIAN (SAAT ADA QUERY)
+        ========================================== */}
         {query && (
           isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>Mencari...</div>
           ) : (
             <>
-              {/* Blok Kreator Ditemukan */}
               {users.length > 0 && (
                 <div style={{ marginBottom: '30px' }}>
                   <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>KREATOR DITEMUKAN</h3>
@@ -405,7 +460,7 @@ function SearchContent() {
                 </div>
               )}
 
-              {/* 🔥 STATE KOSONG: MENGGUNAKAN LOTTIE 🔥 */}
+              {/* STATE KOSONG: MENGGUNAKAN LOTTIE */}
               {posts.length === 0 && recommendedPosts.length > 0 && (
                 <div style={{ marginTop: '20px' }}>
                   <div style={{ textAlign: 'center', padding: '20px 0 40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

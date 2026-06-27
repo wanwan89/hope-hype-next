@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion'; // Ditambahkan framer-motion
 import './SearchWrapper.css';
 
 export default function SearchWrapperpost() {
@@ -19,6 +20,10 @@ export default function SearchWrapperpost() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // State untuk animasi teks placeholder
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const placeholders = ['Cari kreator...', 'Cari postingan...', 'Cari trending...'];
+
   const isHidden =
     pathname?.includes('hypetalk') ||
     pathname?.includes('chat') ||
@@ -27,6 +32,15 @@ export default function SearchWrapperpost() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Effect untuk mengganti teks placeholder setiap 2.5 detik
+  useEffect(() => {
+    if (!mounted || isHidden) return;
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [mounted, isHidden, placeholders.length]);
 
   // Listener upload
   useEffect(() => {
@@ -108,17 +122,55 @@ export default function SearchWrapperpost() {
     <div className="header-main-wrapper" style={{ background: 'var(--bg-main)' }}>
       {/* Kotak pencarian + tombol */}
       <div className="search-wrapper glass-effect" style={{ background: 'var(--bg-main)' }}>
-        <div className="brutal-input-container">
+        <div 
+          className="brutal-input-container" 
+          style={{ position: 'relative', flex: 1, display: 'flex' }}
+        >
+          {/* Custom Animated Placeholder */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: '16px', // Menyesuaikan jarak padding kiri (sesuaikan jika berbeda di CSS)
+              display: 'flex',
+              alignItems: 'center',
+              pointerEvents: 'none',
+              overflow: 'hidden',
+            }}
+          >
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={placeholderIndex}
+                initial={{ y: 15, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -15, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  color: 'var(--text-muted, #888)', // Warna teks placeholder
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {placeholders[placeholderIndex]}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+
           <input
             type="text"
-            placeholder={t('search_placeholder')}
             className="brutal-input"
             readOnly
             onClick={() => router.push('/search')}
             style={{ 
               cursor: 'pointer',
-              background: 'var(--bg-input)', // Mengikuti warna input di global CSS
-              color: 'var(--text-main)'
+              background: 'var(--bg-input)', 
+              color: 'var(--text-main)',
+              width: '100%',
+              outline: 'none', // Mencegah bingkai biru aktif saat fokus di desktop
+              WebkitTapHighlightColor: 'transparent', // Mencegah blok warna biru saat ditekan di HP
+              caretColor: 'transparent', // Menyembunyikan kursor kedip
             }}
           />
         </div>
@@ -134,6 +186,8 @@ export default function SearchWrapperpost() {
             background: 'var(--primary)',
             color: '#fff',
             border: 'none',
+            outline: 'none',
+            WebkitTapHighlightColor: 'transparent', // Mencegah blok warna biru di tombol
           }}
         >
           <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
@@ -160,7 +214,7 @@ export default function SearchWrapperpost() {
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
-              background: 'var(--bg-card)', // DIUBAH: Menyesuaikan warna card di dark/light mode
+              background: 'var(--bg-card)', 
               borderRadius: '16px',
               padding: '14px 18px',
               width: '100%',
@@ -174,13 +228,12 @@ export default function SearchWrapperpost() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {uploadProgress < 100 ? (
-                  /* Animasi Spinner Bulat */
                   <div
                     style={{
                       width: '16px',
                       height: '16px',
                       borderRadius: '50%',
-                      border: '2.5px solid var(--bg-input)', // DIUBAH: Lingkaran dasar menyesuaikan background input
+                      border: '2.5px solid var(--bg-input)', 
                       borderTopColor: 'var(--primary)',      
                       animation: 'spin 1s linear infinite',  
                     }}
@@ -217,7 +270,7 @@ export default function SearchWrapperpost() {
               style={{
                 width: '100%',
                 height: '4px',
-                background: 'var(--bg-input)', // DIUBAH: Latar belakang bar line menggunakan bg-input agar tidak bertabrakan dengan bg-main
+                background: 'var(--bg-input)', 
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}
@@ -252,7 +305,7 @@ export default function SearchWrapperpost() {
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  background: 'var(--bg-main)', // Tetap menggunakan bg-main agar menyatu dengan background belakang
+                  background: 'var(--bg-main)', 
                 }}
               >
                 <img
@@ -262,7 +315,7 @@ export default function SearchWrapperpost() {
                   }
                   alt="avatar"
                   style={{
-                    border: '2px solid var(--bg-main)', // Border mengikuti warna background agar terlihat "terpotong" (cut-out effect)
+                    border: '2px solid var(--bg-main)', 
                   }}
                 />
               </div>
