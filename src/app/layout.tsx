@@ -35,9 +35,6 @@ import { ConfirmProvider } from '@/components/ConfirmProvider';
 import Lottie from 'lottie-react';
 import lostConnectionData from '@/assets/lottie/lost-conection.json'; 
 
-// 🔥 TAMBAHAN: Import Wrapper Refresh Global
-import RefreshableWrapper from '@/components/RefreshableWrapper';
-
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -363,17 +360,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // 🔥 FUNGSI GLOBAL REFRESH HANDLER 🔥
-  const handleGlobalRefresh = async () => {
-    // Mengecek apakah halaman saat ini sudah mendaftarkan fungsi refetch-nya
-    if (typeof window !== 'undefined' && (window as any).pageRefreshHandler) {
-      await (window as any).pageRefreshHandler();
-    } else {
-      // Jika tidak ada fungsi yang didaftarkan (misal di halaman statis), tunggu 1 detik saja
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  };
-
   // --- RENDER CONTENT HELPER ---
   const renderUI = () => (
     <>
@@ -455,12 +441,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Kolom Search Tidak Dibungkus agar Diam di Atas */}
         {isHomePage && <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}><SearchWrapper /></div>}
         
-        {/* 🔥 BUNGKUS KONTEN HALAMAN (MAIN) DENGAN WRAPPER LOTTIE 🔥 */}
-        <RefreshableWrapper onRefresh={handleGlobalRefresh}>
-          <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
-            {children}
-          </main>
-        </RefreshableWrapper>
+        {/* 🔥 KONTEN UTAMA (Tanpa RefreshableWrapper) 🔥 */}
+        <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
+          {children}
+        </main>
         
       </div>
 
@@ -470,7 +454,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="id" suppressHydrationWarning>
-      {/* Head dan scripts lainnya tetap persis sama */}
       <head>
         <script
           dangerouslySetInnerHTML={{
