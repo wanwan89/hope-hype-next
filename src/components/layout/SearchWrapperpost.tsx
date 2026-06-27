@@ -168,28 +168,23 @@ export default function SearchWrapperpost() {
             </AnimatePresence>
           </div>
 
-          <input
-            type="text"
-            className="brutal-input"
-            readOnly
-            onClick={() => router.push('/search')}
-            style={{ 
-              cursor: 'pointer',
-              color: 'var(--text-main)',
-              width: '100%',
-              outline: 'none',
-              WebkitTapHighlightColor: 'transparent',
-              caretColor: 'transparent',
-              
-              /* 🔥 UPDATE: Warna background dan border transparan disamakan dengan SearchContent 🔥 */
-              background: 'rgba(128, 128, 128, 0.12)', 
-              border: '1px solid rgba(128, 128, 128, 0.15)',
-              borderRadius: '24px',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              zIndex: 1
-            }}
-          />
+<input
+  type="text"
+  className="brutal-input"
+  readOnly
+  onClick={() => router.push('/search')}
+  style={{ 
+    cursor: 'pointer',
+    color: 'var(--text-main)',
+    width: '100%',
+    outline: 'none',
+    WebkitTapHighlightColor: 'transparent',
+    caretColor: 'transparent',
+    position: 'relative',
+    zIndex: 1
+  }}
+/>
+
         </div>
 
         <button
