@@ -16,6 +16,7 @@ function SearchContent() {
   const [posts, setPosts] = useState<any[]>([]);
   
   const [localQuery, setLocalQuery] = useState(query);
+  const [isFocused, setIsFocused] = useState(false); // State untuk mengatur efek glow pada input
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
@@ -131,10 +132,10 @@ function SearchContent() {
           categories(name)
         `)
         .eq('status', 'approved')
-        .limit(20); // Ambil 20 untuk diacak
+        .limit(20); 
       
       if (recPosts && recPosts.length > 0) {
-        const shuffled = recPosts.sort(() => Math.random() - 0.5).slice(0, 5); // Tampilkan 5 saja
+        const shuffled = recPosts.sort(() => Math.random() - 0.5).slice(0, 5);
         const categorized = shuffled.map((post: any) => ({
           ...post,
           categoryName: post.categories?.name || "Eksplorasi"
@@ -234,17 +235,27 @@ function SearchContent() {
         </button>
         
         <div ref={wrapperRef} style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <span className="material-icons" style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)', fontSize: '18px', zIndex: 2 }}>search</span>
+          <span className="material-icons" style={{ position: 'absolute', left: '12px', color: isFocused ? 'var(--primary)' : 'var(--text-muted)', fontSize: '18px', zIndex: 2, transition: 'color 0.3s ease' }}>search</span>
           <input 
             type="text" 
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
             onKeyDown={handleSearchEnter}
-            onFocus={() => { if (localQuery.length > 1) setShowSuggestions(true); }}
+            onFocus={() => { 
+              setIsFocused(true);
+              if (localQuery.length > 1) setShowSuggestions(true); 
+            }}
+            onBlur={() => {
+              // Timeout kecil agar onMouseDown di dropdown sempat tertrigger sebelum blur
+              setTimeout(() => setIsFocused(false), 150); 
+            }}
             placeholder="Cari kreator, postingan, #hashtag..."
             style={{ 
               width: '100%', padding: '10px 15px 10px 38px', borderRadius: '24px', 
-              background: 'var(--bg-secondary)', color: 'var(--text-main)', border: '1px solid var(--border-card)',
+              background: 'var(--bg-input)', color: 'var(--text-main)', 
+              border: '1px solid var(--border-card)',
+              boxShadow: isFocused ? '0 0 0 3px var(--primary-soft)' : 'none',
+              transition: 'box-shadow 0.3s ease',
               fontSize: '14px', outline: 'none', position: 'relative', zIndex: 1
             }}
           />
@@ -253,24 +264,24 @@ function SearchContent() {
           {showSuggestions && searchSuggestions.length > 0 && (
             <div style={{
               position: 'absolute', top: '48px', left: 0, right: 0,
-              background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(16px)',
-              borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)', overflow: 'hidden', zIndex: 100, display: 'flex', flexDirection: 'column'
+              background: 'var(--bg-card)', backdropFilter: 'blur(16px)',
+              borderRadius: '16px', border: '1px solid var(--border-card)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 100, display: 'flex', flexDirection: 'column'
             }}>
               {searchSuggestions.map((sugg, idx) => (
                 <div 
                   key={idx}
-                  onClick={() => executeSearch(sugg)}
+                  onMouseDown={() => executeSearch(sugg)} // Gunakan onMouseDown agar trigger sebelum onBlur input
                   style={{
                     padding: '12px 16px', color: 'var(--text-main)', fontSize: '14px',
                     display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer',
-                    borderBottom: idx === searchSuggestions.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)'
+                    borderBottom: idx === searchSuggestions.length - 1 ? 'none' : '1px solid var(--border-card)'
                   }}
                 >
                   <span className="material-icons" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>search</span>
                   <span>
                     {sugg.split(new RegExp(`(${localQuery})`, 'gi')).map((part, i) => 
-                      part.toLowerCase() === localQuery.toLowerCase() ? <strong key={i} style={{ color: '#fff' }}>{part}</strong> : <span key={i} style={{ color: 'var(--text-muted)' }}>{part}</span>
+                      part.toLowerCase() === localQuery.toLowerCase() ? <strong key={i} style={{ color: 'var(--primary)' }}>{part}</strong> : <span key={i} style={{ color: 'var(--text-muted)' }}>{part}</span>
                     )}
                   </span>
                 </div>
@@ -315,7 +326,7 @@ function SearchContent() {
                   ))}
                 </div>
                 {recentSearches.length > 3 && (
-                  <button onClick={() => setShowAllHistory(!showAllHistory)} style={{ marginTop: '10px', background: 'none', border: 'none', color: '#1f3cff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', padding: '0' }}>
+                  <button onClick={() => setShowAllHistory(!showAllHistory)} style={{ marginTop: '10px', background: 'none', border: 'none', color: 'var(--primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', padding: '0' }}>
                     {showAllHistory ? 'Sembunyikan' : 'Lihat Semua Riwayat'}
                   </button>
                 )}
@@ -364,14 +375,14 @@ function SearchContent() {
                       key={i}
                       onClick={() => executeSearch(kw)}
                       style={{
-                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: '20px',
+                        background: 'var(--bg-secondary)', border: '1px solid var(--border-card)',
+                        padding: '8px 16px', borderRadius: '20px',
                         fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        display: 'flex', alignItems: 'center', gap: '8px'
                       }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#1f3cff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       {kw}
                     </div>
@@ -415,7 +426,7 @@ function SearchContent() {
                             {!isMe && (
                               <button 
                                 onClick={(e) => handleFollowToggle(e, user.id)}
-                                style={{ background: isFollowing ? 'var(--bg-secondary)' : '#1f3cff', color: isFollowing ? 'var(--text-main)' : '#fff', border: isFollowing ? '1px solid var(--border-card)' : 'none', padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}
+                                style={{ background: isFollowing ? 'var(--bg-secondary)' : 'var(--primary)', color: isFollowing ? 'var(--text-main)' : '#fff', border: isFollowing ? '1px solid var(--border-card)' : 'none', padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}
                               >
                                 {isFollowing ? 'Mengikuti' : 'Ikuti'}
                               </button>

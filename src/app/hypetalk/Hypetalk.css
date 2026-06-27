@@ -20,7 +20,7 @@
   height: 100dvh; /* Menggunakan 100dvh agar presisi di browser mobile */
   display: flex;
   flex-direction: column;
-  background: var(--bg-main);
+  background-color: var(--bg-main);
   box-shadow: none;
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   overflow: hidden; /* Mengunci scroll agar tidak bocor ke body */
@@ -34,7 +34,7 @@
 
 /* HEADER */
 .telegram-wrapper .tg-header {
-  background: var(--bg-main);
+  background-color: var(--bg-main);
   z-index: 20;
   padding-top: env(safe-area-inset-top);
   flex-shrink: 0;
@@ -48,8 +48,21 @@
 
 /* SEARCH */
 .telegram-wrapper .tg-search-container { padding: 4px 16px 12px; }
-.telegram-wrapper .tg-search-box { display: flex; align-items: center; background: var(--bg-secondary); border-radius: 12px; padding: 10px 16px; gap: 12px; border: 1px solid transparent; transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
-.telegram-wrapper .tg-search-box:focus-within { background: var(--bg-card); border-color: var(--primary); box-shadow: 0 4px 12px rgba(31, 60, 255, 0.08); }
+.telegram-wrapper .tg-search-box { 
+  display: flex; 
+  align-items: center; 
+  background-color: var(--bg-input); /* FIX: Menggunakan variabel --bg-input */
+  border-radius: 12px; 
+  padding: 10px 16px; 
+  gap: 12px; 
+  border: 1px solid var(--border-card); /* FIX: Menggunakan variabel --border-card */
+  transition: box-shadow 0.3s ease; 
+}
+.telegram-wrapper .tg-search-box:focus-within { 
+  background-color: var(--bg-input); /* FIX: Background tidak berubah saat fokus */
+  border-color: var(--border-card); 
+  box-shadow: 0 0 0 3px var(--primary-soft); 
+}
 .telegram-wrapper .tg-search-box .material-icons { color: var(--text-muted); font-size: 20px; }
 .telegram-wrapper .tg-search-box:focus-within .material-icons { color: var(--primary); }
 .telegram-wrapper .tg-search-box input { flex: 1; border: none; background: transparent; outline: none; font-size: 15px; color: var(--text-main); }
@@ -62,12 +75,12 @@
   overflow-x: hidden; /* Penting: Mencegah scroll horizontal saat melakukan swipe */
   padding-bottom: 110px;
   -webkit-overflow-scrolling: touch;
-  background: var(--bg-main);
+  background-color: var(--bg-main);
 }
 .telegram-wrapper .tg-chat-list::-webkit-scrollbar { width: 0; display: none; }
 
 .telegram-wrapper .tg-chat-item { display: flex; align-items: center; gap: 14px; padding: 10px 16px; cursor: pointer; user-select: none; position: relative; animation: fadeIn 0.3s ease forwards; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s ease; }
-.telegram-wrapper .tg-chat-item:active { background: var(--bg-secondary); }
+.telegram-wrapper .tg-chat-item:active { background-color: var(--bg-secondary); }
 .telegram-wrapper .tg-avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: none !important; }
 .telegram-wrapper .global-avatar { background: linear-gradient(135deg, #1f3cff, #007bb5); display: flex; align-items: center; justify-content: center; color: white; }
 .telegram-wrapper .group-avatar { background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; color: white; }
@@ -98,7 +111,7 @@
   animation: fadeIn 0.2s ease;
 }
 .telegram-wrapper .tg-modal-content {
-  background: var(--bg-card);
+  background-color: var(--bg-card);
   width: 100%;
   max-width: 480px;
   border-top-left-radius: 24px;
@@ -114,9 +127,24 @@
 
 .telegram-wrapper .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .telegram-wrapper .modal-header h3 { color: var(--text-main); font-size: 18px; font-weight: 700; margin: 0; }
-.telegram-wrapper .close-modal-btn { background: var(--bg-secondary); border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
+.telegram-wrapper .close-modal-btn { background-color: var(--bg-secondary); border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
 .telegram-wrapper .close-modal-btn:active { transform: scale(0.9); }
-.telegram-wrapper .input-group { display: flex; align-items: center; background: var(--bg-secondary); border-radius: 12px; padding: 12px 16px; gap: 12px; border: 1px solid var(--border-card); width: 100%; margin-bottom: 16px; box-sizing: border-box; }
+.telegram-wrapper .input-group { 
+  display: flex; 
+  align-items: center; 
+  background-color: var(--bg-input); /* FIX: Menggunakan variabel --bg-input */
+  border-radius: 12px; 
+  padding: 12px 16px; 
+  gap: 12px; 
+  border: 1px solid var(--border-card); 
+  width: 100%; 
+  margin-bottom: 16px; 
+  box-sizing: border-box; 
+  transition: box-shadow 0.3s ease;
+}
+.telegram-wrapper .input-group:focus-within {
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
 .telegram-wrapper .input-group input, .telegram-wrapper .input-group select { flex: 1; border: none; background: transparent; outline: none; font-size: 14px; color: var(--text-main); width: 100%; }
 .telegram-wrapper .input-group .material-icons { color: var(--text-muted); font-size: 18px; }
 .telegram-wrapper .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
@@ -127,28 +155,28 @@
 .telegram-wrapper .love-btn { background: linear-gradient(135deg, #1DA1F2, #1f3cff); border-radius: 15px; }
 
 /* WA PROFILE CARD */
-.telegram-wrapper .wa-profile-card { width: 100%; max-width: 280px; background: var(--bg-card); border-radius: 16px; overflow: hidden; box-shadow: none; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.telegram-wrapper .wa-profile-img-container { width: 100%; padding-top: 100%; position: relative; background: var(--bg-secondary); }
+.telegram-wrapper .wa-profile-card { width: 100%; max-width: 280px; background-color: var(--bg-card); border-radius: 16px; overflow: hidden; box-shadow: none; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.telegram-wrapper .wa-profile-img-container { width: 100%; padding-top: 100%; position: relative; background-color: var(--bg-secondary); }
 .telegram-wrapper .wa-profile-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 .telegram-wrapper .wa-profile-name-bar { position: absolute; bottom: 0; left: 0; width: 100%; padding: 24px 16px 12px; background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.8)); }
-.telegram-wrapper .wa-profile-actions { display: flex; justify-content: space-around; padding: 16px 10px; background: var(--bg-card); border-top: 1px solid var(--border-card); }
-.telegram-wrapper .wa-action-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: transform 0.2s; }
+.telegram-wrapper .wa-profile-actions { display: flex; justify-content: space-around; padding: 16px 10px; background-color: var(--bg-card); border-top: 1px solid var(--border-card); }
+.telegram-wrapper .wa-action-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: transform 0.2s; color: var(--text-main); }
 .telegram-wrapper .wa-action-btn:active { transform: scale(0.9); }
 
 /* MESSAGE REQUEST BANNER */
-.telegram-wrapper .message-request-banner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-secondary); margin: 0 16px 10px 16px; border-radius: 12px; cursor: pointer; transition: transform 0.2s; }
+.telegram-wrapper .message-request-banner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background-color: var(--bg-secondary); margin: 0 16px 10px 16px; border-radius: 12px; cursor: pointer; transition: transform 0.2s; }
 .telegram-wrapper .message-request-banner:active { transform: scale(0.98); }
 .telegram-wrapper .req-left { display: flex; align-items: center; gap: 12px; }
-.telegram-wrapper .req-left .material-icons { color: var(--primary); background: var(--primary-soft); padding: 8px; border-radius: 50%; }
+.telegram-wrapper .req-left .material-icons { color: var(--primary); background-color: var(--primary-soft); padding: 8px; border-radius: 50%; }
 .telegram-wrapper .req-text h4 { margin: 0; font-size: 14px; color: var(--text-main); font-weight: 700; }
 .telegram-wrapper .req-text p { margin: 0; font-size: 12px; color: var(--text-muted); }
 .telegram-wrapper .message-request-banner .arrow { color: var(--text-muted); }
 
 /* SKELETON & TOGGLE */
 .telegram-wrapper .skeleton-box { background-color: var(--bg-secondary); border-radius: 4px; animation: skeletonPulse 1.5s infinite ease-in-out; }
-.telegram-wrapper .ios-toggle { position: relative; width: 44px; height: 24px; appearance: none; background: var(--border-card); outline: none; border-radius: 20px; transition: 0.4s; cursor: pointer; }
-.telegram-wrapper .ios-toggle:checked { background: #2ecc71; }
-.telegram-wrapper .ios-toggle::before { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; top: 2px; left: 2px; background: white; transition: 0.4s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.telegram-wrapper .ios-toggle { position: relative; width: 44px; height: 24px; appearance: none; background-color: var(--border-card); outline: none; border-radius: 20px; transition: 0.4s; cursor: pointer; }
+.telegram-wrapper .ios-toggle:checked { background-color: #2ecc71; }
+.telegram-wrapper .ios-toggle::before { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; top: 2px; left: 2px; background-color: white; transition: 0.4s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 .telegram-wrapper .ios-toggle:checked::before { transform: translateX(20px); }
 .telegram-wrapper .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-card); }
 .telegram-wrapper .settings-row:last-child { border-bottom: none; }
@@ -159,14 +187,14 @@
 .telegram-wrapper .doi-profile-box img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid var(--bg-secondary); margin-bottom: 12px; box-shadow: none; }
 .telegram-wrapper .doi-profile-box h2 { font-size: 20px; color: var(--text-main); margin-bottom: 16px; font-weight: 800; }
 .telegram-wrapper .doi-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.telegram-wrapper .d-tag { background: var(--bg-secondary); color: var(--text-main); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
+.telegram-wrapper .d-tag { background-color: var(--bg-secondary); color: var(--text-main); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
 
 /* ========== FAB BUTTON ========== */
 .telegram-wrapper .tg-fab {
   position: absolute;
   bottom: calc(95px + env(safe-area-inset-bottom));
   right: 20px;
-  width: 56px; height: 56px; border-radius: 50%; background: var(--primary); border: none; color: white;
+  width: 56px; height: 56px; border-radius: 50%; background-color: var(--primary); border: none; color: white;
   box-shadow: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50;
   -webkit-tap-highlight-color: transparent;
@@ -197,7 +225,7 @@
   left: 50%;
   width: 100%;
   max-width: 320px;
-  background: var(--bg-main);
+  background-color: var(--bg-main);
   transform: translateX(calc(-50% - 100vw));
   z-index: 99991;
   display: flex;
@@ -213,13 +241,13 @@
   .telegram-wrapper .tg-sidebar.open { transform: translateX(0); }
 }
 
-.telegram-wrapper .sidebar-header { padding: 40px 20px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-card); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.telegram-wrapper .sidebar-header { padding: 40px 20px 20px; background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-card); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .telegram-wrapper .side-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
 .telegram-wrapper .sidebar-user-info { display: flex; flex-direction: column; gap: 2px; }
 .telegram-wrapper .side-username { font-size: 18px; font-weight: 700; color: var(--text-main); margin: 0; }
 .telegram-wrapper .side-id { font-size: 13px; color: var(--text-muted); cursor: pointer; transition: color 0.2s; margin: 0; -webkit-tap-highlight-color: transparent;}
 .telegram-wrapper .side-id:active { color: var(--primary); }
-.telegram-wrapper .btn-edit-bio { background: var(--primary); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 5px; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
+.telegram-wrapper .btn-edit-bio { background-color: var(--primary); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 5px; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
 .telegram-wrapper .btn-edit-bio:active { transform: scale(0.95); }
 
 .telegram-wrapper .sidebar-menu { display: flex; flex-direction: column; padding: 10px 0; overflow-y: auto; }
@@ -228,8 +256,8 @@
 .telegram-wrapper .menu-item .material-icons { color: var(--text-muted); }
 .telegram-wrapper .btn-cari-doi { color: var(--primary) !important; justify-content: space-between; }
 .telegram-wrapper .btn-cari-doi .material-icons { color: var(--primary) !important; }
-.telegram-wrapper .limit-badge { background: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
-[data-theme='dark'] .telegram-wrapper .limit-badge { background: rgba(239,68,68,0.15); }
+.telegram-wrapper .limit-badge { background-color: #fee2e2; color: #ef4444; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 800; }
+[data-theme='dark'] .telegram-wrapper .limit-badge { background-color: rgba(239,68,68,0.15); }
 
 /* =========================================
    HYPE MATCH OVERLAY (SWIPE CARD)
@@ -451,7 +479,7 @@
   transition: transform 0.2s;
 }
 
-.telegram-wrapper .btn-chat-now { background: #ff4757; color: white; border: none; }
+.telegram-wrapper .btn-chat-now { background-color: #ff4757; color: white; border: none; }
 .telegram-wrapper .btn-keep-swiping { background: transparent; color: white; border: 1px solid rgba(255, 255, 255, 0.3); }
 .telegram-wrapper .btn-chat-now:active, .telegram-wrapper .btn-keep-swiping:active { transform: scale(0.95); }
 
@@ -505,14 +533,21 @@
   width: 100%;
   padding: 10px;
   border-radius: 8px;
+  background-color: var(--bg-input); /* FIX: Menggunakan variabel --bg-input */
   border: 1px solid var(--border-card);
-  background: var(--bg-input);
   color: var(--text-main);
+  outline: none;
+  transition: box-shadow 0.3s ease;
+}
+
+.form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus {
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .form-grid textarea {
   grid-column: span 2; /* Bio lebar penuh */
   height: 80px;
+  resize: vertical;
 }
 
 .social-inputs {
@@ -523,21 +558,23 @@
   border-top: 1px solid var(--border-card);
   padding-top: 10px;
 }
-  .custom-input {
+
+.custom-input {
   width: 100%;
   padding: 14px 16px;
-  background-color: var(--bg-secondary, #f1f5f9);
-  border: 1px solid var(--border-card, transparent);
+  background-color: var(--bg-input) !important; /* FIX: Menggunakan variabel --bg-input secara tegas */
+  border: 1px solid var(--border-card) !important;
   border-radius: 12px;
   font-size: 14px;
-  color: var(--text-main, #333);
+  color: var(--text-main);
   box-sizing: border-box;
   outline: none;
-  transition: all 0.2s ease;
+  transition: box-shadow 0.3s ease;
   font-family: inherit;
 }
 
 .custom-input:focus {
-  border-color: var(--primary, #2563eb);
-  background-color: var(--bg-card, #ffffff);
+  background-color: var(--bg-input) !important; /* FIX: Warna tidak berubah saat fokus */
+  border-color: var(--border-card) !important;
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
