@@ -552,7 +552,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // --- HOOK REFRESH GLOBAL ---
   const refetch = async () => {
     if (currentUser?.id) {
       await Promise.all([
@@ -564,10 +563,8 @@ export default function NotificationsPage() {
   };
   useGlobalRefresh(refetch);
 
-  // --- Fungsi Handle Refresh Pull-to-Refresh ---
   const handleRefresh = async () => {
     await refetch();
-    // Jeda tambahan sedikit untuk efek animasi pull-to-refresh yang lebih mulus
     await new Promise(resolve => setTimeout(resolve, 800));
   };
 
@@ -650,19 +647,20 @@ export default function NotificationsPage() {
   };
 
   return (
-    // Mengubah container menjadi flex column dengan tinggi fixed 100dvh dan overflow hidden
-    // agar scroll bisa dilokalisir di area bawah header.
     <div className="notif-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       
       {activeView === 'main' ? (
         <>
-          {/* HEADER STATIS */}
-          <header className="notif-header" style={{ position: 'relative', zIndex: 10, flexShrink: 0, background: 'var(--bg-main, #fff)' }}>
-            <h2>{t('notifications', 'Notifikasi')}</h2>
+          {/* HEADER STATIS (Diam di atas, tidak ikut terscroll/ditarik) */}
+          <header className="notif-header" style={{ position: 'relative', zIndex: 10, flexShrink: 0, background: 'var(--bg-main, #fff)', borderBottom: '1px solid var(--border-color, rgba(0,0,0,0.05))' }}>
+            <h2 style={{ margin: 0, padding: '16px 20px', fontSize: '20px', fontWeight: 'bold' }}>
+              {t('notifications', 'Notifikasi')}
+            </h2>
           </header>
 
-          {/* AREA SCROLL DENGAN PULL-TO-REFRESH */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          {/* AREA SCROLL DENGAN PULL-TO-REFRESH DI BAWAH HEADER */}
+          {/* overscrollBehaviorY: 'none' Mencegah fitur refresh ganda bawaan browser Android/Chrome */}
+          <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none', position: 'relative' }}>
             <RefreshableWrapper onRefresh={handleRefresh}>
               <div className="notif-main-view" style={{ minHeight: '100%', paddingBottom: '20px' }}>
                 
@@ -716,8 +714,8 @@ export default function NotificationsPage() {
           </div>
         </>
       ) : (
-        /* KETIKA DI DALAM CATEGORY VIEW (NotificationListView) */
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        /* AREA KATEGORI JUGA PERLU PENCEGAHAN DOUBLE REFRESH */
+        <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none' }}>
           <RefreshableWrapper onRefresh={handleRefresh}>
             <NotificationListView
               title={getTitleByView()}
