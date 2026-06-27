@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useRef, ReactNode, useEffect } from 'react';
-import Lottie from 'lottie-react';
-// Sesuaikan path JSON lottie kamu dengan yang ada di project
-import refreshAnimation from '@/assets/lottie/refres.json'; 
+import Lottie, { LottieRefCurrentProps } from 'lottie-react';
+import refreshAnimation from '@/assets/lottie/refres.json';
 
 interface RefreshableWrapperProps {
   children: ReactNode;
@@ -14,83 +13,64 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
+  const lottieRef = useRef<LottieRefCurrentProps>(null);
   const startY = useRef(0);
   const isAtTop = useRef(true);
 
-  // Cek apakah posisi scroll sedang berada paling atas
-  useEffect(() => {
-    const handleScroll = () => {
-      isAtTop.current = window.scrollY <= 0;
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isAtTop.current || isRefreshing) return;
-    startY.current = e.touches[0].clientY;
+  // Fungsi untuk update frame Lottie berdasarkan tarikan jari (0 sampai 100%)
+  const updateLottieFrame = (distance: number) => {
+    if (!lottieRef.current) return;
+    
+    // Normalisasi jarak: misalnya 0px - 100px menjadi 0.0 - 1.0 (frame 0% - 100%)
+    const progress = Math.min(distance / 100, 1);
+    const totalFrames = lottieRef.current.getDuration(true);
+    const frame = progress * totalFrames;
+    
+    lottieRef.current.goToAndStop(frame, true);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isAtTop.current || isRefreshing || startY.current === 0) return;
+    if (!isAtTop.current || isRefreshing) return;
     
     const currentY = e.touches[0].clientY;
     const distance = currentY - startY.current;
 
-    // Jika diusap ke bawah (distance > 0), beri efek "karet" (resistance)
     if (distance > 0) {
-      // Mencegah scroll bawaan browser (jika ada) saat kita menarik ke bawah
-      if (document.body.style.overscrollBehaviorY !== 'none') {
-        document.body.style.overscrollBehaviorY = 'none';
-      }
-      setPullDistance(Math.min(distance * 0.4, 80)); // Maksimal tinggi area lottie 80px
+      const dampenedDistance = Math.min(distance * 0.5, 120); // Maksimal 120px
+      setPullDistance(dampenedDistance);
+      updateLottieFrame(dampenedDistance); // 🔥 Animasi ikut gerak di sini
     }
   };
 
   const handleTouchEnd = async () => {
     startY.current = 0;
-    document.body.style.overscrollBehaviorY = 'auto'; // Kembalikan default
-
-    if (pullDistance > 60 && !isRefreshing) {
+    if (pullDistance > 80 && !isRefreshing) {
       setIsRefreshing(true);
-      setPullDistance(60); // Tahan Lottie di layar
-
-      await onRefresh(); // Tunggu fetch data selesai
-
+      // Mainkan animasi secara normal saat loading
+      lottieRef.current?.play(); 
+      await onRefresh();
       setIsRefreshing(false);
     }
-    
-    setPullDistance(0); // Sembunyikan Lottie
+    setPullDistance(0);
   };
 
   return (
-    <div 
-      onTouchStart={handleTouchStart} 
-      onTouchMove={handleTouchMove} 
-      onTouchEnd={handleTouchEnd}
-      style={{ position: 'relative', width: '100%', minHeight: '100%' }}
-    >
-      {/* Area Lottie Animation */}
-      <div 
-        style={{ 
-          height: pullDistance, 
-          overflow: 'hidden', 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          transition: isRefreshing || pullDistance === 0 ? 'height 0.3s ease' : 'none'
-        }}
-      >
+    <div onTouchStart={(e) => startY.current = e.touches[0].clientY} 
+         onTouchMove={handleTouchMove} 
+         onTouchEnd={handleTouchEnd}
+         style={{ position: 'relative', width: '100%' }}>
+      
+      <div style={{ height: pullDistance, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '60px', height: '60px' }}>
           <Lottie 
+            lottieRef={lottieRef} // 🔥 Sambungkan ke ref
             animationData={refreshAnimation} 
-            loop={true} 
-            autoplay={isRefreshing || pullDistance > 0} 
+            loop={isRefreshing} // Loop hanya saat loading
+            autoplay={false}    // Kita kontrol manual via frame
           />
         </div>
       </div>
 
-      {/* Konten Halaman */}
       {children}
     </div>
   );
