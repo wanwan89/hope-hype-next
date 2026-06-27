@@ -9,13 +9,8 @@ type Props = {
 };
 
 const GroupModal: React.FC<Props> = ({ groupName, setGroupName, onCreate, onClose }) => (
-  // Tambahkan z-index tinggi di sini untuk memastikan dia di atas navbar
-  <div className="tg-modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
-    <div 
-      className="tg-modal-content" 
-      onClick={(e) => e.stopPropagation()}
-      style={{ marginBottom: '60px' }} // Tambahan ruang agar tidak tertutup navbar
-    >
+  <div className="tg-modal-overlay" onClick={onClose}>
+    <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
       <div className="modal-header">
         <h3>Buat Grup Baru</h3>
         <button className="close-modal-btn" onClick={onClose}>

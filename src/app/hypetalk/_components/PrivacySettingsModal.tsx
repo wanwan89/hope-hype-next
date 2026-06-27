@@ -10,9 +10,14 @@ type Props = {
 };
 
 const PrivacySettingsModal: React.FC<Props> = ({ privacySettings, setPrivacySettings, isSaving, onSave, onClose }) => (
-  <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
+  <div className="tg-modal-overlay" onClick={onClose}>
     <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header"><h3>Privasi & Status</h3><button className="close-modal-btn" onClick={onClose}><span className="material-icons">close</span></button></div>
+      <div className="modal-header">
+        <h3>Privasi & Status</h3>
+        <button className="close-modal-btn" onClick={onClose}>
+          <span className="material-icons">close</span>
+        </button>
+      </div>
       
       <div className="settings-row" style={{ marginTop: '10px' }}>
         <div>
@@ -43,7 +48,9 @@ const PrivacySettingsModal: React.FC<Props> = ({ privacySettings, setPrivacySett
         </div>
       </div>
 
-      <button className="action-btn" style={{ marginTop: '20px' }} onClick={onSave} disabled={isSaving}>Simpan Pengaturan</button>
+      <button className="action-btn" style={{ marginTop: '20px' }} onClick={onSave} disabled={isSaving}>
+        Simpan Pengaturan
+      </button>
     </div>
   </div>
 );

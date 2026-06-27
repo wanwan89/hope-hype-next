@@ -97,15 +97,14 @@
 .telegram-wrapper .tg-chat-item.unread .tg-preview { color: var(--text-main); font-weight: 500; }
 .telegram-wrapper .tg-unread-badge { background: var(--primary); color: white; font-size: 11px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 6px; flex-shrink: 0; }
 .telegram-wrapper .tg-unread-badge.bump { animation: badgeBounce 0.4s ease; }
-
 /* ========== MODAL UMUM ========== */
 .telegram-wrapper .tg-modal-overlay {
   position: fixed;
   inset: 0;
   background: var(--modal-overlay);
   backdrop-filter: blur(5px);
-  /* Pastikan z-index cukup tinggi agar menimpa segalanya */
-  z-index: 99990; 
+  /* Z-index ditingkatkan agar menutupi navbar */
+  z-index: 99999; 
   display: flex;
   align-items: flex-end; /* Memastikan posisi modal di bawah */
   justify-content: center;
@@ -119,27 +118,27 @@
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
   padding: 24px;
-  /* KUNCI: Tambahkan padding-bottom dinamis untuk navbar */
-  padding-bottom: calc(24px + env(safe-area-inset-bottom)); 
+  
+  /* FIX: Menggunakan padding-bottom 85px untuk mendorong konten naik di atas navbar */
+  padding-bottom: calc(85px + env(safe-area-inset-bottom)); 
+  margin-bottom: 0; 
+  
   animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
   flex-direction: column;
-  z-index: 99991;
+  z-index: 99999;
   border: 1px solid var(--border-card);
-  
-  /* Tambahkan ini agar modal tidak mentok di bawah */
-  margin-bottom: 0; 
-  /* Jika masih tertutup, tambahkan margin-bottom: 60px; (sebagai cadangan) */
 }
 
 .telegram-wrapper .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .telegram-wrapper .modal-header h3 { color: var(--text-main); font-size: 18px; font-weight: 700; margin: 0; }
 .telegram-wrapper .close-modal-btn { background-color: var(--bg-secondary); border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
 .telegram-wrapper .close-modal-btn:active { transform: scale(0.9); }
+
 .telegram-wrapper .input-group { 
   display: flex; 
   align-items: center; 
-  background-color: var(--bg-input); /* FIX: Menggunakan variabel --bg-input */
+  background-color: var(--bg-input); 
   border-radius: 12px; 
   padding: 12px 16px; 
   gap: 12px; 
