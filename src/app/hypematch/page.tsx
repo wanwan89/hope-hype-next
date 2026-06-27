@@ -220,22 +220,23 @@ export default function HypeMatch() {
 
   return (
     <div className="hm-overlay">
-      {/* Impor font Titan One khusus untuk halaman ini jika belum ada secara global */}
+      {/* UBAH BAGIAN INI: Impor font Poppins khusus untuk halaman ini */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Titan+One&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
       `}</style>
 
       <div className="hm-header">
-        {/* Mengubah font menjadi Titan One, warnanya menjadi pink, dan menghilangkan bayangan */}
+        {/* UBAH BAGIAN INI: Mengubah font menjadi Poppins */}
         <h1 
           className="hm-logo-text" 
           style={{ 
-            fontFamily: "'Titan One', 'Arial Black', sans-serif", 
+            fontFamily: "'Poppins', sans-serif", 
+            fontWeight: 700,
             color: "#FF1493", 
             letterSpacing: "-1px",
             textTransform: "lowercase",
             margin: 0,
-            textShadow: "none" // Menambahkan ini agar teks tidak berbayang
+            textShadow: "none"
           }}
         >
           hypematch
