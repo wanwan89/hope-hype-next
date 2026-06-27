@@ -287,6 +287,9 @@ body section[style*="max-width"],
 .icon-btn.reposted .icon { fill: var(--primary); }
 .icon-btn.active .icon { fill: var(--primary); }
 
+/* FIX: Warna kuning khusus untuk tombol bookmark yang aktif */
+.icon-btn.save-btn.active .icon { fill: #FBBF24 !important; }
+
 .save-count, .repost-count, .like-count, .comment-count {
   color: var(--text-main);
 }
