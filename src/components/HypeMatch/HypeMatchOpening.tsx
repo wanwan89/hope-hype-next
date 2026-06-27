@@ -20,7 +20,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
   const bgColor = '#0000cc'; 
   const textColor = '#f8ebd4'; 
 
-  // Variasi animasi masuk untuk setiap kata (menggunakan parameter custom 'i' untuk stagger)
+  // Variasi animasi masuk untuk setiap kata
   const wordVariants = {
     hidden: { opacity: 0, y: 40, scale: 0.95 },
     visible: (i: number) => ({
@@ -43,21 +43,21 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
       topTextControls.start("visible");
       bottomTextControls.start("visible");
 
-      // Tunggu animasi masuk selesai (kira-kira 1.5 detik)
+      // Tunggu animasi masuk selesai
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // 2. Teks membelah (Hype Match ke atas, Make a friend ke bawah) memberi ruang
-      // Menggunakan await agar langkah selanjutnya menunggu pergeseran ini selesai
-      topTextControls.start({ y: -60, transition: { duration: 0.6, ease: 'easeInOut' } });
-      await bottomTextControls.start({ y: 60, transition: { duration: 0.6, ease: 'easeInOut' } });
+      // 2. Teks membelah (atas & bawah) SECARA BERSAMAAN + MENGEKIL (scale: 0.85)
+      // Jarak 'y' diperbesar jadi -100 dan 100 untuk mengakomodasi Lottie yang lebih besar
+      topTextControls.start({ y: -100, scale: 0.85, transition: { duration: 0.6, ease: 'easeInOut' } });
+      bottomTextControls.start({ y: 100, scale: 0.85, transition: { duration: 0.6, ease: 'easeInOut' } });
 
       // 3. Lottie muncul (Pop up)
       await lottieControls.start({
         opacity: 1,
         scale: 1,
-        x: '-50%', // Menjaga agar tetap berada tepat di tengah (centring)
+        x: '-50%',
         y: '-50%',
-        transition: { type: 'spring', damping: 12, stiffness: 100 }
+        transition: { type: 'spring', damping: 12, stiffness: 100, delay: 0.2 } // delay sedikit agar smooth dengan teks yang membelah
       });
 
       // 4. Memunculkan tombol GO!
@@ -101,6 +101,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
               text-transform: lowercase;
               position: relative;
               z-index: 10;
+              transform-origin: center center; /* Memastikan saat scale down, mengecilnya terpusat */
             }
 
             .hm-dot {
@@ -112,7 +113,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
             }
 
             .hm-btn-go {
-              margin-top: 80px; /* Margin diperbesar sedikit karena ada ruang lottie */
+              margin-top: 180px; /* Margin diperbesar lumayan jauh agar tombol agak kebawah */
               padding: 12px 40px;
               font-family: 'Titan One', 'Arial Black', sans-serif;
               font-size: 1.8rem;
@@ -131,14 +132,14 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
             @media (max-width: 768px) {
               .hm-chunky-text { font-size: 3.5rem; }
               .hm-dot { width: 14px; height: 14px; }
-              .hm-btn-go { margin-top: 60px; font-size: 1.4rem; padding: 10px 30px; }
+              .hm-btn-go { margin-top: 140px; font-size: 1.4rem; padding: 10px 30px; }
             }
           `}</style>
 
           {/* Wrapper Relative untuk menampung Teks dan Lottie di tengah */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             
-            {/* 🔥 Lottie Love Animation (Absolute Center) */}
+            {/* 🔥 Lottie Love Animation (Absolute Center & Ukuran Diperbesar) */}
             <motion.div
               initial={{ opacity: 0, scale: 0, x: '-50%', y: '-50%' }}
               animate={lottieControls}
@@ -146,10 +147,10 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
-                width: '140px',
-                height: '140px',
+                width: '220px', /* Ukuran diperbesar dari 140px */
+                height: '220px',
                 zIndex: 5, 
-                pointerEvents: 'none' // Agar tidak menghalangi klik ke elemen lain
+                pointerEvents: 'none' 
               }}
             >
               <Lottie animationData={loveAnimation} loop={true} />
@@ -179,7 +180,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
               className="hm-btn-go"
-              onClick={() => setIsVisible(false)} // Memicu animasi exit
+              onClick={() => setIsVisible(false)} 
             >
               GO!
             </motion.button>
