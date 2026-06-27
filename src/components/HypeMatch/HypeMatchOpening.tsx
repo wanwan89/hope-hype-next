@@ -38,7 +38,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
 
   useEffect(() => {
     const runAnimationSequence = async () => {
-      // 1. Teks berkumpul (Animasi Masuk)
+      // 1. Teks berkumpul (Animasi Masuk) dengan ukuran yang SAMA
       topTextControls.start("visible");
       bottomTextControls.start("visible");
 
@@ -46,11 +46,21 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // 2. Teks membelah (atas & bawah) SECARA BERSAMAAN
-      // Scale dihapus karena ukuran teks sudah kita bedakan dari awal via CSS
-      topTextControls.start({ y: -100, transition: { duration: 0.6, ease: 'easeInOut' } });
-      bottomTextControls.start({ y: 100, transition: { duration: 0.6, ease: 'easeInOut' } });
+      // Teks Atas: Bergerak ke atas (y: -80) dan MENGEKIL (scale: 0.8) agar terlihat mundur ke belakang
+      topTextControls.start({ 
+        y: -80, 
+        scale: 0.8, 
+        transition: { duration: 0.6, ease: 'easeInOut' } 
+      });
+      
+      // Teks Bawah: Bergerak ke bawah (y: 110) dengan ukuran tetap
+      bottomTextControls.start({ 
+        y: 110, 
+        transition: { duration: 0.6, ease: 'easeInOut' } 
+      });
 
-      // 3. Lottie muncul (Pop up)
+      // 3. Lottie muncul (Pop up) di tengah
+      // Karena teks atas 'y'-nya hanya -80 dan Lottie berukuran 220px, Lottie akan tumpang tindih (menimpa) teks atas.
       await lottieControls.start({
         opacity: 1,
         scale: 1,
@@ -93,22 +103,22 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
             .hm-chunky-text {
               font-family: 'Titan One', 'Arial Black', Impact, sans-serif;
               color: ${textColor};
+              font-size: 5rem; /* Ukuran awal DIBUAT SAMA untuk atas dan bawah */
               line-height: 0.8;
               letter-spacing: -2px;
               margin: 0;
               text-transform: lowercase;
               position: relative;
+              transform-origin: center center; /* Memastikan mengecilnya ke arah tengah */
             }
 
-            /* Teks Atas: Ukuran lebih kecil, posisi di BELAKANG Lottie */
+            /* Teks Atas: z-index lebih kecil agar tertimpa Lottie */
             .hm-text-top {
-              font-size: 4rem;
               z-index: 2; 
             }
 
-            /* Teks Bawah: Ukuran lebih besar, posisi di DEPAN Lottie */
+            /* Teks Bawah: z-index lebih besar agar menimpa Lottie (jika bersentuhan) */
             .hm-text-bottom {
-              font-size: 5rem;
               z-index: 10; 
             }
 
@@ -120,9 +130,10 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
               z-index: -1;
             }
 
+            /* Container absolut agar kemunculan tombol tidak menggeser elemen tengah */
             .hm-btn-container {
               position: absolute;
-              bottom: 12%; /* Jarak dari bawah layar */
+              bottom: 12%; 
               left: 0;
               width: 100%;
               display: flex;
@@ -143,8 +154,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
             }
 
             @media (max-width: 768px) {
-              .hm-text-top { font-size: 3rem; }
-              .hm-text-bottom { font-size: 3.8rem; }
+              .hm-chunky-text { font-size: 3.5rem; }
               .hm-dot { width: 14px; height: 14px; }
               .hm-btn-go { font-size: 1.4rem; padding: 10px 30px; }
               .hm-btn-container { bottom: 10%; }
@@ -171,7 +181,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
               <Lottie animationData={loveAnimation} loop={true} />
             </motion.div>
 
-            {/* Grup Atas: "hype match" */}
+            {/* Grup Atas: "hype match" (Akan mengecil dan tertimpa Lottie) */}
             <motion.div custom={0} variants={wordVariants} initial="hidden" animate={topTextControls} className="hm-chunky-text hm-text-top" style={{ marginLeft: '0px' }}>
               <span className="hm-dot" style={{ backgroundColor: '#fcd34d', top: '-5px', left: '-15px' }}></span>hype
             </motion.div>
@@ -179,7 +189,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
               <span className="hm-dot" style={{ backgroundColor: '#fb923c', top: '15px', right: '-25px' }}></span>match
             </motion.div>
             
-            {/* Grup Bawah: "make a friend" */}
+            {/* Grup Bawah: "make a friend" (Ukuran tetap) */}
             <motion.div custom={2} variants={wordVariants} initial="hidden" animate={bottomTextControls} className="hm-chunky-text hm-text-bottom" style={{ marginLeft: '-15px', marginTop: '10px' }}>
               <span className="hm-dot" style={{ backgroundColor: '#4ade80', top: '25px', left: '-25px' }}></span>make a
             </motion.div>
@@ -189,13 +199,11 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
 
           </div>
 
-          {/* Container absolute agar saat tombol muncul, layout tengah tidak loncat */}
           <div className="hm-btn-container">
             {showButton && (
               <motion.button
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                // Memindahkan efek hover ke framer-motion agar tidak konflik dengan animasi masuk
                 whileHover={{ scale: 1.05, boxShadow: "0 6px 12px rgba(0,0,0,0.4)" }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.4 }}
