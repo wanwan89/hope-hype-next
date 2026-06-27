@@ -7,7 +7,7 @@ import HypeMatchOpening from '@/components/HypeMatch/HypeMatchOpening';
 import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
 import BiodataSlide from '@/components/HypeMatch/BiodataSlide';
 import Lottie from 'lottie-react';
-import fireAnimation from './fire.json';
+import fireAnimation from '@/assets/lottie/fire.json';
 
 import './HypeMatchOverlay.css';
 
