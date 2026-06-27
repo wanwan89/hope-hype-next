@@ -1,61 +1,79 @@
 'use client';
 import React from 'react';
 
-// SvgIcon Standalone dengan Penambahan Warna & Bentuk Spesifik
+// SvgIcon Standalone dengan Penambahan Warna & Bentuk Spesifik yang mirip Screenshot
 const SvgIcon = ({ name, className = "", size = 18, style }: { name: string, className?: string, size?: number, style?: React.CSSProperties }) => {
   const strokeWidth = "2";
 
-  // Konfigurasi path dan warna masing-masing icon
+  // Konfigurasi path dan warna masing-masing icon (disesuaikan mirip gambar)
   const icons: Record<string, React.ReactNode> = {
     arrowDown: (
       <path stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
     ),
     heart: (
-      <path fill="#ec4899" stroke="#ec4899" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      <path fill="none" stroke="#ec4899" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     ),
+    // Icon Wanita (Simbol Venus ♀) - Warna Biru
     gender: (
       <>
-        <circle cx="12" cy="10" r="4" stroke="#3b82f6" fill="none" strokeWidth={strokeWidth} />
-        <path stroke="#3b82f6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 14v7M9 18h6M15.5 8.5 21 3M17 3h4v4" />
+        <circle cx="12" cy="10" r="5" stroke="#3b82f6" fill="none" strokeWidth={strokeWidth} />
+        <path stroke="#3b82f6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 15v7M9 19h6" />
       </>
     ),
+    // Icon Pendidikan (Topi Toga) - Warna Oranye
     education: (
       <>
         <path stroke="#f59e0b" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M22 10v6M2 10l10-5 10 5-10 5z" />
         <path stroke="#f59e0b" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M6 12v5c3 3 9 3 12 0v-5" />
       </>
     ),
+    // Icon Tinggi (Garis ukur) - Warna Hijau
     height: (
-      <path stroke="#10b981" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M22 12h-4M22 4h-4M22 20h-4M14 4l-4-4-4 4M14 20l-4 4-4-4M10 0v24" />
+      <>
+        <path stroke="#10b981" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 3v18M8 6l4-3 4 3M8 18l4 3 4-3" />
+        <path stroke="#10b981" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M4 12h4M4 7h4M4 17h4" />
+      </>
     ),
+    // Icon Agama (Garis vertikal & horizontal minimalis) - Warna Ungu
     religion: (
-      <path stroke="#8b5cf6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 2v20M8 6h8M8 18h8" />
+      <path stroke="#8b5cf6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 4v16M8 10h8M9 15h6" />
     ),
+    // Icon Zodiak (Lingkaran dengan titik) - Warna Nila/Indigo
     zodiac: (
       <>
-        <circle cx="12" cy="12" r="10" stroke="#6366f1" fill="none" strokeWidth={strokeWidth} />
-        <path stroke="#6366f1" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 2a10 10 0 0 1 10 10" />
-        <circle cx="12" cy="12" r="3" fill="#6366f1" stroke="none" />
+        <circle cx="12" cy="12" r="9" stroke="#6366f1" fill="none" strokeWidth={strokeWidth} />
+        <circle cx="12" cy="12" r="2.5" fill="#6366f1" stroke="none" />
       </>
     ),
+    // Icon Target/Teman (Bullseye) - Warna Merah
     target: (
       <>
-        <circle cx="12" cy="12" r="10" stroke="#ef4444" fill="none" strokeWidth={strokeWidth} />
-        <circle cx="12" cy="12" r="6" stroke="#ef4444" fill="none" strokeWidth={strokeWidth} />
-        <circle cx="12" cy="12" r="2" fill="#ef4444" stroke="none" />
+        <circle cx="12" cy="12" r="9" stroke="#ef4444" fill="none" strokeWidth={strokeWidth} />
+        <circle cx="12" cy="12" r="5" stroke="#ef4444" fill="none" strokeWidth={strokeWidth} />
+        <circle cx="12" cy="12" r="1.5" fill="#ef4444" stroke="none" />
       </>
     ),
+    // Icon Hobi/Menyanyi (Bentuk palet artistik) - Warna Merah Muda
     hobby: (
       <path stroke="#f43f5e" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M12 22a10 10 0 1 1 10-10c0 2-2.5 3-4 3s-1.5-2-3-2-2 2-4 2-2-2-4-2-2.5-1-2.5 1 2 5 2 5z" />
     ),
+    // Icon Olahraga (Link/Rantai) - Warna Oranye
     sport: (
-      <path stroke="#f97316" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M14.4 14.4 9.6 9.6M18.65 21.35a2 2 0 0 1-2.83 0l-5.66-5.66a2 2 0 0 1 0-2.83l.71-.71a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83l-.71.71ZM7.15 2.65a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83l-.71.71a2 2 0 0 1-2.83 0L7 6.19a2 2 0 0 1 0-2.83l.15-.71Z" />
+      <>
+        <path stroke="#f97316" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path stroke="#f97316" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </>
     ),
+    // Icon Rokok (Bentuk Batang Rokok dengan Asap) - Warna Abu-abu
     smoke: (
-      <path stroke="#78716c" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M18 20H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2ZM12 6V2M8 6V4M16 6V4" />
+      <>
+        <rect x="2" y="12" width="20" height="4" rx="1" stroke="#78716c" fill="none" strokeWidth={strokeWidth} />
+        <path stroke="#78716c" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M17 12v4M5 8c0-1.5 1-2 1-3.5M9 8c0-1.5 1-2.5 1-4" />
+      </>
     ),
+    // Icon Alkohol (Gelas Wine) - Warna Kuning
     alcohol: (
-      <path stroke="#eab308" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M8 22h8M12 15v7M12 15a7.5 7.5 0 0 0 7.5-7.5c0-4.14-3.36-7.5-7.5-7.5s-7.5 3.36-7.5 7.5A7.5 7.5 0 0 0 12 15z" />
+      <path stroke="#eab308" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M8 22h8M12 15v7M16.7 3 12 15 7.3 3z" />
     ),
     language: (
       <>
@@ -64,9 +82,8 @@ const SvgIcon = ({ name, className = "", size = 18, style }: { name: string, cla
       </>
     ),
     fire: (
-      <path fill="#ff5722" stroke="#ff5722" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M17.657 18.585A8 8 0 1112 4.5c.35 0 .695.028 1.03.082C11.96 5.83 11 7.55 11 9.5c0 3 2.5 4.5 4.5 5a5 5 0 014.157 4.085z" />
+      <path fill="none" stroke="#ff5722" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2c0 0-5 4.5-5 11a5 5 0 0 0 10 0c0-6.5-5-11-5-11z" />
     ),
-    // Brand Icons
     ig: (
       <>
         <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="#E1306C" fill="none" strokeWidth={strokeWidth} />
@@ -110,6 +127,10 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
     alignItems: 'center',
     gap: '6px',
     color: 'var(--text-main)',
+    border: '1px solid var(--border-color, #e2e8f0)', // Outline persis gambar
+    padding: '4px 10px', 
+    borderRadius: '20px', 
+    fontSize: '14px' 
   };
 
   return (
@@ -138,6 +159,7 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
             <h2 className="hm-biodata-title" style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0', color: 'var(--text-main)' }}>
               {activeUser.username}{activeUser.umur && `, ${activeUser.umur}`}
             </h2>
+            {/* Teks Mahasiswa/Pekerjaan dikembalikan di sini */}
             <p className="hm-biodata-subtitle" style={{ margin: 0, fontSize: '15px', color: 'var(--text-muted)' }}>
               {activeUser.pekerjaan || "Belum mengisi pekerjaan"}
             </p>
@@ -145,7 +167,7 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
           
           {activeUser.bio_hype && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
                 Tentang Saya
               </h4>
               <p style={{ lineHeight: '1.6', fontSize: '15px', margin: 0, color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
@@ -156,7 +178,7 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
 
           {hasDetails && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
                 Info & Gaya Hidup
               </h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -184,11 +206,10 @@ export default function BiodataSlide({ activeUser, showBiodata, setShowBiodata }
 
           {(activeUser.ig_username || activeUser.tiktok_username || activeUser.spotify_url) && (
             <div className="hm-biodata-section" style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
                 Sosial Media
               </h4>
               <div className="hm-chips-wrapper" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {/* Menggunakan kunci icon khusus "ig", "tiktok", dan "spotify" yang sudah dilengkapi style brand-nya */}
                 {activeUser.ig_username && <div className="hm-info-chip" style={{ ...chipBaseStyle, borderColor: 'rgba(225, 48, 108, 0.3)' }}><SvgIcon name="ig" /> <span>@{activeUser.ig_username}</span></div>}
                 {activeUser.tiktok_username && <div className="hm-info-chip" style={{ ...chipBaseStyle, borderColor: 'rgba(254, 44, 85, 0.3)' }}><SvgIcon name="tiktok" /> <span>@{activeUser.tiktok_username}</span></div>}
                 {activeUser.spotify_url && <div className="hm-info-chip" style={{ ...chipBaseStyle, borderColor: 'rgba(30, 215, 96, 0.3)' }}><SvgIcon name="spotify" /> <span>Spotify</span></div>}
