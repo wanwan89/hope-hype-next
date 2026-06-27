@@ -8,6 +8,7 @@ import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
 import BiodataSlide from '@/components/HypeMatch/BiodataSlide';
 import Lottie from 'lottie-react';
 import fireAnimation from '@/assets/lottie/fire.json';
+import emptyAnimation from '@/assets/lottie/empty.json'; // Import Lottie empty animation
 
 import './HypeMatchOverlay.css';
 
@@ -307,7 +308,12 @@ export default function HypeMatch() {
           })
         ) : (
           <div className="hm-empty-state">
-            <SvgIcon name="x" className="hm-empty-icon hm-no-margin" size={60} />
+            {/* Lottie Animation menggantikan SvgIcon "x" */}
+            <Lottie 
+              animationData={emptyAnimation} 
+              loop={true} 
+              style={{ width: 120, height: 120, margin: '0 auto 16px' }} 
+            />
             <p>Tidak ada lagi pengguna di sekitarmu.</p>
           </div>
         )}

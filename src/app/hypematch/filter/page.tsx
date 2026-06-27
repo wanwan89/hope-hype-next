@@ -36,10 +36,9 @@ export default function HypeMatchFilter() {
     router.back();
   };
 
-  // Warna Aksen Biru
-  const ACCENT_COLOR = '#007AFF'; // Warna biru ala iOS/Modern
-  const ACCENT_BG = 'rgba(0, 122, 255, 0.1)';
-  const ACCENT_SHADOW = 'rgba(0, 122, 255, 0.25)';
+  // Warna Aksen Biru yang baru
+  const NEW_ACCENT_COLOR = '#1f3cff'; 
+  const NEW_ACCENT_BG = 'rgba(31, 60, 255, 0.1)'; // Menyesuaikan transparansi dengan warna baru
 
   return (
     <div 
@@ -93,9 +92,9 @@ export default function HypeMatchFilter() {
                     flex: 1,
                     padding: '12px 10px',
                     borderRadius: '12px',
-                    border: isActive ? `2px solid ${ACCENT_COLOR}` : '1px solid var(--border-color, #e0e0e0)',
-                    backgroundColor: isActive ? ACCENT_BG : 'var(--bg-secondary, #f5f5f5)',
-                    color: isActive ? ACCENT_COLOR : 'var(--text-main)',
+                    border: isActive ? `2px solid ${NEW_ACCENT_COLOR}` : '1px solid var(--border-color, #e0e0e0)',
+                    backgroundColor: isActive ? NEW_ACCENT_BG : 'var(--bg-secondary, #f5f5f5)',
+                    color: isActive ? NEW_ACCENT_COLOR : 'var(--text-main)',
                     cursor: 'pointer',
                     fontWeight: '600',
                     fontSize: '0.9rem',
@@ -115,7 +114,7 @@ export default function HypeMatchFilter() {
             <h3 style={{ fontSize: '1rem', color: 'var(--text-muted, #757575)', margin: 0, fontWeight: '500' }}>
               Batas Usia Maksimal
             </h3>
-            <span style={{ fontWeight: '700', color: ACCENT_COLOR }}>
+            <span style={{ fontWeight: '700', color: NEW_ACCENT_COLOR }}>
               {ageRange[1]} Tahun
             </span>
           </div>
@@ -127,7 +126,7 @@ export default function HypeMatchFilter() {
             onChange={(e) => setAgeRange([18, parseInt(e.target.value)])}
             style={{ 
               width: '100%', 
-              accentColor: ACCENT_COLOR,
+              accentColor: NEW_ACCENT_COLOR,
               cursor: 'pointer'
             }}
           />
@@ -139,7 +138,7 @@ export default function HypeMatchFilter() {
             <h3 style={{ fontSize: '1rem', color: 'var(--text-muted, #757575)', margin: 0, fontWeight: '500' }}>
               Jarak Maksimal
             </h3>
-            <span style={{ fontWeight: '700', color: ACCENT_COLOR }}>
+            <span style={{ fontWeight: '700', color: NEW_ACCENT_COLOR }}>
               {maxDistance} km
             </span>
           </div>
@@ -151,7 +150,7 @@ export default function HypeMatchFilter() {
             onChange={(e) => setMaxDistance(parseInt(e.target.value))}
             style={{ 
               width: '100%', 
-              accentColor: ACCENT_COLOR,
+              accentColor: NEW_ACCENT_COLOR,
               cursor: 'pointer'
             }}
           />
@@ -172,9 +171,9 @@ export default function HypeMatchFilter() {
                   style={{
                     padding: '10px 16px',
                     borderRadius: '20px', // Style pil/chip membulat
-                    border: isActive ? `2px solid ${ACCENT_COLOR}` : '1px solid var(--border-color, #e0e0e0)',
-                    backgroundColor: isActive ? ACCENT_BG : 'var(--bg-secondary, #f5f5f5)',
-                    color: isActive ? ACCENT_COLOR : 'var(--text-main)',
+                    border: isActive ? `2px solid ${NEW_ACCENT_COLOR}` : '1px solid var(--border-color, #e0e0e0)',
+                    backgroundColor: isActive ? NEW_ACCENT_BG : 'var(--bg-secondary, #f5f5f5)',
+                    color: isActive ? NEW_ACCENT_COLOR : 'var(--text-main)',
                     cursor: 'pointer',
                     fontWeight: '600',
                     fontSize: '0.9rem',
@@ -199,14 +198,15 @@ export default function HypeMatchFilter() {
         style={{
           width: '100%',
           padding: '16px',
-          backgroundColor: ACCENT_COLOR,
+          backgroundColor: NEW_ACCENT_COLOR,
           color: '#ffffff',
           border: 'none',
           borderRadius: '100px', // Pil melengkung penuh
           fontSize: '1.05rem',
           fontWeight: 'bold',
           cursor: 'pointer',
-          boxShadow: `0 8px 20px ${ACCENT_SHADOW}`,
+          // Menghilangkan efek shadow
+          boxShadow: 'none', 
           position: 'sticky',
           bottom: '20px', // Supaya tetap mengambang di bawah jika layar di scroll
           transition: 'transform 0.1s ease'
