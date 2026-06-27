@@ -6,7 +6,7 @@
   max-width: 100%;
   margin-left: calc(-50vw + 50%);
   margin-right: calc(-50vw + 50%);
-  background-color: var(--bg-main, #ffffff);
+  background-color: var(--bg-main);
   display: flex;
   flex-direction: column;
 }
@@ -21,10 +21,11 @@
   display: flex;
   align-items: center;
   gap: 15px;
+  /* Menggunakan var(--bg-main) dengan transparansi untuk efek glass */
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
-  border-bottom: 1px solid var(--border-card, rgba(0,0,0,0.05));
+  border-bottom: 1px solid var(--border-card);
   box-sizing: border-box;
   border-radius: 0; 
 }
@@ -32,7 +33,7 @@
 /* Dark Mode Override untuk Search Bar Wrapper */
 [data-theme='dark'] .search-wrapper,
 html.dark .search-wrapper {
-  background: rgba(21, 23, 26, 0.85);
+  background: rgba(10, 10, 10, 0.85); /* Disesuaikan dengan var(--bg-main) dark mode */
 }
 
 /* --- INPUT PENCARIAN --- */
@@ -47,22 +48,22 @@ html.dark .search-wrapper {
   padding: 8px 18px;
   font-size: 14px;
   font-family: 'Inter', 'Poppins', sans-serif;
-  color: var(--text-main, #1a1a1a);
+  color: var(--text-main);
   
-  /* 🔥 FIX: Gunakan background transparan abu-abu yang konsisten */
-  background: rgba(128, 128, 128, 0.12) !important;
-  border: 1px solid rgba(128, 128, 128, 0.15) !important;
-  border-radius: 24px; /* Samakan dengan radius 24px di SearchContent */
+  /* 🔥 FIX: Menggunakan variabel global agar otomatis mengikuti Light/Dark Mode */
+  background-color: var(--bg-input) !important;
+  border: 1px solid var(--border-card) !important;
+  border-radius: 24px;
   outline: none;
   font-weight: 600;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Saat form input ditekan/fokus */
 .brutal-input:focus {
-  background: rgba(128, 128, 128, 0.18); /* Sedikit lebih pekat saat fokus */
-  border-color: var(--text-main, #1a1a1a);
-  box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.2); 
+  background-color: var(--bg-secondary) !important; /* Berubah sedikit saat diklik */
+  border-color: var(--text-muted) !important;
+  box-shadow: 0 0 0 3px var(--primary-soft); /* Efek glow biru dari variabel global */
 }
 
 /* --- TOMBOL TAMBAH (+) --- */
@@ -74,8 +75,9 @@ html.dark .search-wrapper {
   height: 40px;
   border-radius: 50%;
   border: none;
-  background-color: var(--text-main, #1a1a1a);
-  color: var(--bg-main, #fff);
+  /* Disesuaikan agar kontras: background mengikuti warna teks utama, icon mengikuti warna background */
+  background-color: var(--text-main);
+  color: var(--bg-main);
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
@@ -96,12 +98,12 @@ html.dark .search-wrapper {
   gap: 16px;
   padding: 12px 16px 16px 16px;
   overflow-x: auto;
-  background: var(--bg-main, #ffffff);
+  background-color: var(--bg-main);
   scrollbar-width: none;
   -ms-overflow-style: none;
   position: relative;
   z-index: 1;
-  border-bottom: 1px solid var(--border-card, rgba(0,0,0,0.05));
+  border-bottom: 1px solid var(--border-card);
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
   width: 100%;
@@ -135,7 +137,7 @@ html.dark .search-wrapper {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: var(--accent-story); /* Menggunakan gradient story dari Global CSS kamu */
   border-radius: 50%;
   z-index: 0;
 }
@@ -157,8 +159,8 @@ html.dark .search-wrapper {
   height: 62px;
   border-radius: 50%;
   object-fit: cover;
-  background: var(--bg-secondary);
-  border: 3px solid var(--bg-main, #ffffff);
+  background-color: var(--bg-secondary);
+  border: 3px solid var(--bg-main); /* Border disesuaikan agar match dengan background */
   transition: border-color 0.3s ease;
 }
 
