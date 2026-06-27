@@ -8,7 +8,9 @@ import { useTranslation } from 'react-i18next';
 import Lottie from 'lottie-react';
 import playAnimation from '@/assets/lottie/play.json'; 
 import { motion, AnimatePresence } from 'framer-motion'; 
-import { useGlobalRefresh } from '@/hooks/useGlobalRefresh'; // 🔥 Import Hook Global Refresh
+
+// 🔥 GANTI: Import RefreshableWrapper langsung ke sini
+import RefreshableWrapper from '@/components/RefreshableWrapper';
 
 // Import komponen anak
 import ProfileHeader from './ProfileHeader';
@@ -67,7 +69,7 @@ function ProfileContent() {
   const [isSaving, setIsSaving] = useState(false);
 
   // ==========================================
-  // 🔥 GLOBAL REFRESH LOGIC 🔥
+  // 🔥 REFRESH LOGIC 🔥
   // ==========================================
   const refetch = async () => {
     try {
@@ -80,9 +82,6 @@ function ProfileContent() {
       console.error("Gagal melakukan refresh data:", error);
     }
   };
-
-  // 🔥 Pasang hook global refresh disini
-  useGlobalRefresh(refetch);
 
   // ==========================================
   // 🔥 LIFECYCLE & DATA FETCHING 🔥
@@ -582,6 +581,7 @@ function ProfileContent() {
         .noscroll { overflow: hidden !important; touch-action: none; }
       `}</style>
 
+      {/* Header dibiarkan di luar wrapper agar tetap di posisinya (fixed/sticky) */}
       <ProfileHeader
         isMe={isMe}
         username={profile.username}
@@ -590,51 +590,57 @@ function ProfileContent() {
         onMenuClick={() => setIsSidebarOpen(true)}
       />
 
-      <div className="profile-top-section">
-        <ProfileInfo
-          profile={profile}
-          stats={stats}
-          isMe={isMe}
-          isFollowing={isFollowing}
-          isMutual={isMutual}
-          hasStory={hasStory}
-          storyIdToGo={storyIdToGo}
-          onAvatarClick={handleAvatarClick}
-          onChat={handleGoToChat}
-          onToggleFollow={toggleFollow}
-          onEdit={() => setIsEditModalOpen(true)}
-          onShare={handleShareProfile}
-          onOpenActionSheet={() => setIsActionSheetOpen(true)}
-          onOpenFollowers={() => handleOpenFollowModal('followers')}
-          onOpenFollowing={() => handleOpenFollowModal('following')}
-          t={t}
-        />
+      {/* 🔥 KONTEN UTAMA DIBUNGKUS WRAPPER */}
+      <RefreshableWrapper onRefresh={refetch}>
+        <div>
+          <div className="profile-top-section">
+            <ProfileInfo
+              profile={profile}
+              stats={stats}
+              isMe={isMe}
+              isFollowing={isFollowing}
+              isMutual={isMutual}
+              hasStory={hasStory}
+              storyIdToGo={storyIdToGo}
+              onAvatarClick={handleAvatarClick}
+              onChat={handleGoToChat}
+              onToggleFollow={toggleFollow}
+              onEdit={() => setIsEditModalOpen(true)}
+              onShare={handleShareProfile}
+              onOpenActionSheet={() => setIsActionSheetOpen(true)}
+              onOpenFollowers={() => handleOpenFollowModal('followers')}
+              onOpenFollowing={() => handleOpenFollowModal('following')}
+              t={t}
+            />
 
-        {(!profile.is_private || isMe || isMutual) && (
-          <ProfileTabs
-            isMe={isMe}
-            isMutual={isMutual}
-            profile={profile}
-            activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab as any)}
-            t={t}
-          />
-        )}
-      </div>
+            {(!profile.is_private || isMe || isMutual) && (
+              <ProfileTabs
+                isMe={isMe}
+                isMutual={isMutual}
+                profile={profile}
+                activeTab={activeTab}
+                onTabChange={(tab) => setActiveTab(tab as any)}
+                t={t}
+              />
+            )}
+          </div>
 
-      <div className="post-grid-container">
-        <PostGrid
-          posts={posts}
-          isLoadingPosts={isLoadingPosts}
-          isMe={isMe}
-          isMutual={isMutual}
-          profile={profile}
-          activeTab={activeTab}
-          onPostClick={handlePostClick}
-          t={t}
-        />
-      </div>
+          <div className="post-grid-container">
+            <PostGrid
+              posts={posts}
+              isLoadingPosts={isLoadingPosts}
+              isMe={isMe}
+              isMutual={isMutual}
+              profile={profile}
+              activeTab={activeTab}
+              onPostClick={handlePostClick}
+              t={t}
+            />
+          </div>
+        </div>
+      </RefreshableWrapper>
 
+      {/* Komponen Modal dan Sidebar */}
       {isMe && (
         <SidebarMenu
           isOpen={isSidebarOpen}
