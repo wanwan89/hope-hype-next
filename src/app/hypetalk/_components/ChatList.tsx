@@ -73,7 +73,7 @@ const SwipeableChatRow = ({
       {/* Background Kotak Merah dengan Animasi Tong Sampah Lottie */}
       {canSwipe && (
         <div style={{
-          position: 'absolute', inset: 0, backgroundColor: '#ef4444', // DIUBAH KE MERAH
+          position: 'absolute', inset: 0, backgroundColor: '#ef4444', 
           display: 'flex', alignItems: 'center', paddingLeft: '24px'
         }}>
           {/* Komponen Lottie */}
@@ -168,7 +168,8 @@ const ChatList: React.FC<Props> = ({
 
       {isLoading ? (
         <>
-          {[...Array(6)].map((_, index) => (
+          {/* PERUBAHAN DI SINI: Array diubah menjadi 4 */}
+          {[...Array(4)].map((_, index) => (
             <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
               <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }}></div>
               <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>

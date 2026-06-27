@@ -40,6 +40,13 @@
 }
 
 /* === RESET GLOBAL & ANTI-BLUE HIGHLIGHT + ANTI ZOOM === */
+/* FULL FIX: HILANGKAN SCROLLBAR GLOBAL DI SINI */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -50,8 +57,10 @@
   outline: none !important; 
   user-select: none; 
   
-  /* Transisi tetap ada untuk perubahan tema yang mulus,
-     tapi kita akan mematikannya di elemen kunci */
+  /* HIDE SCROLLBAR GLOBAL UNTUK FIREFOX & IE */
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+  
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
@@ -63,7 +72,6 @@ input, textarea, [contenteditable="true"], .selectable {
 }
 
 /* ============== PERBAIKAN ANTI GLITCH PUTIH ============== */
-/* 1. html & body langsung pakai variabel background, tanpa transisi */
 html {
   background-color: var(--bg-main) !important;
   transition: none !important;
@@ -77,7 +85,7 @@ html {
 body {
   background-color: var(--bg-main) !important;
   color: var(--text-main);
-  transition: none !important; /* MATIKAN transisi di body */
+  transition: none !important; 
   width: 100%;
   overflow-x: hidden;
   font-family: 'Poppins', sans-serif;
@@ -86,7 +94,6 @@ body {
   -moz-user-select: none;
   -ms-user-select: none;
 
-  /* ANTI ZOOM */
   touch-action: manipulation;
   -ms-touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
@@ -97,31 +104,24 @@ body {
   user-zoom: fixed;
 }
 
-/* 2. Container utama Next.js (jika ada) juga tanpa transisi */
 #__next, #__nuxt, #app {
   background-color: var(--bg-main) !important;
   transition: none !important;
   min-height: 100vh;
 }
 
-/* 3. Semua elemen yang langsung di dalam body kita matikan transisinya
-   agar tidak ada animasi background saat halaman pertama kali dimuat.
-   Setelah halaman siap, transisi bisa diaktifkan kembali via kelas .theme-ready */
 * {
   transition: none !important;
 }
 
-/* Transisi hanya diaktifkan jika kelas .theme-ready sudah ditambahkan */
 html.theme-ready * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
-/* Untuk input, textarea, dsb. transisi tetap seperti semula */
 input, textarea, [contenteditable="true"], .selectable {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Tombol dan link */
 a, button, select, .menu-item-tiktok, .card-btn {
   -webkit-tap-highlight-color: transparent !important;
   outline: none !important;
@@ -168,6 +168,7 @@ a, button, select, .menu-item-tiktok, .card-btn {
   padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
 }
 
+/* Class ini tetap dipertahankan jika ada elemen spesifik yang butuh */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
