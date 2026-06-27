@@ -23,7 +23,7 @@ export default function SearchWrapperpost() {
   // State untuk animasi teks placeholder
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
-  // 🔥 UPDATE: Hanya kata yang berganti-ganti saja
+  // 🔥 Hanya kata yang berganti-ganti saja
   const placeholders = ['kreator...', 'postingan...', 'trending...'];
 
   const isHidden =
@@ -39,7 +39,7 @@ export default function SearchWrapperpost() {
   useEffect(() => {
     if (!mounted || isHidden) return;
     
-    // 🔥 UPDATE: Mengubah interval menjadi 20000 ms (20 detik)
+    // Interval 20000 ms (20 detik)
     const interval = setInterval(() => {
       setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
     }, 20000); 
@@ -142,17 +142,18 @@ export default function SearchWrapperpost() {
               alignItems: 'center',
               pointerEvents: 'none',
               overflow: 'hidden',
-              gap: '4px', // Memberi sedikit jarak antara "Cari" dan kata yang berubah
+              gap: '4px',
               color: 'var(--text-muted, #888)',
               fontSize: '14px',
               fontWeight: 500,
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              zIndex: 2
             }}
           >
-            {/* 🔥 Teks statis */}
+            {/* Teks statis */}
             <span>Cari</span>
 
-            {/* 🔥 Teks animasi yang berubah */}
+            {/* Teks animasi yang berubah */}
             <AnimatePresence mode="wait">
               <motion.span
                 key={placeholderIndex}
@@ -179,6 +180,14 @@ export default function SearchWrapperpost() {
               outline: 'none',
               WebkitTapHighlightColor: 'transparent',
               caretColor: 'transparent',
+              
+              /* 🔥 UPDATE: Warna background dan border transparan disamakan dengan SearchContent 🔥 */
+              background: 'rgba(128, 128, 128, 0.12)', 
+              border: '1px solid rgba(128, 128, 128, 0.15)',
+              borderRadius: '24px',
+              transition: 'all 0.3s ease',
+              position: 'relative',
+              zIndex: 1
             }}
           />
         </div>
