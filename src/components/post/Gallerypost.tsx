@@ -137,20 +137,71 @@ export default function Gallerypost() {
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
 
-  // Global Event Listener untuk Background Upload (Tanpa Indikator UI, Hanya Logika Refetch)
+  // Global Event Listener untuk Background Upload
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const handleUploadSuccess = () => {
-        refetch(); // Langsung tarik feed terbaru saat upload selesai
+        refetch();
       };
-
       window.addEventListener('postUploadSuccess', handleUploadSuccess);
-
       return () => {
         window.removeEventListener('postUploadSuccess', handleUploadSuccess);
       };
     }
   }, [refetch]);
+
+  // ==========================================
+  // FITUR BARU: AUTO UNMUTE SAAT VOLUME NAIK
+  // ==========================================
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Fungsi untuk mengubah status mute secara global
+    const forceUnmuteGlobal = () => {
+      if (isGloballyMuted) {
+        setIsGloballyMuted(false);
+        document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+          el.muted = false;
+          // Coba play media kalau posisinya tertunda/paused
+          if (el.paused) el.play().catch(() => {});
+        });
+      }
+    };
+
+    // 1. Deteksi hardware keydown (Berguna jika web dijadikan PWA / WebView)
+    const handleVolumeKey = (e: KeyboardEvent) => {
+      if (
+        e.key === 'AudioVolumeUp' || 
+        e.code === 'AudioVolumeUp' || 
+        e.keyCode === 24 || // Keycode Android Volume Up
+        e.keyCode === 175   // Keycode standar multimedia web
+      ) {
+        forceUnmuteGlobal();
+      }
+    };
+
+    // 2. Deteksi perubahan volume dari control media bawaan
+    const handleVolumeChange = (e: Event) => {
+      const target = e.target as HTMLMediaElement;
+      // Pastikan yang men-trigger adalah elemen Video atau Audio
+      if (target && (target.tagName === 'VIDEO' || target.tagName === 'AUDIO')) {
+        // Jika user melakukan unmute atau menaikkan volume di atas 0
+        if (!target.muted && target.volume > 0) {
+          forceUnmuteGlobal();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleVolumeKey);
+    // Kita gunakan capture phase (true) karena event media tidak bubble ke document
+    document.addEventListener('volumechange', handleVolumeChange, true);
+
+    return () => {
+      window.removeEventListener('keydown', handleVolumeKey);
+      document.removeEventListener('volumechange', handleVolumeChange, true);
+    };
+  }, [isGloballyMuted]);
+  // ==========================================
 
   useEffect(() => {
     const init = async () => {
@@ -257,31 +308,20 @@ export default function Gallerypost() {
     fetchInteractions();
   }, [allPosts, currentUser]);
 
-  // Handler Upload Postingan ke Background
   const handleSubmitPost = async (fileData: any) => {
-    // 1. Trigger event mulai upload ke global listener
     window.dispatchEvent(new Event('postUploadStart'));
     localStorage.setItem('isUploading', 'true');
     localStorage.setItem('uploadProgress', '0');
   
-    // 2. Langsung tutup galeri / balik ke beranda biar user bebas scrolling
     router.push('/');
   
     try {
-      // 3. Eksekusi upload ke Supabase di background
-      // ... Di sini tempat logika insert Supabase Storage / Database kamu ...
-  
-      // 4. Kalau upload selesai
       window.dispatchEvent(new Event('postUploadSuccess'));
-      
-      // Bersihkan storage
       localStorage.removeItem('isUploading');
       localStorage.removeItem('uploadProgress');
-  
     } catch (error) {
       console.error('Upload gagal:', error);
       window.dispatchEvent(new Event('postUploadError'));
-      
       localStorage.removeItem('isUploading');
       localStorage.removeItem('uploadProgress');
     }
