@@ -11,6 +11,7 @@ import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
 import { useFeed } from '@/hooks/useFeed';
+import RefreshableWrapper from '@/components/RefreshableWrapper'; // Ditambahkan import RefreshableWrapper
 import './Gallery.css';
 
 function shuffleArray(array: any[]) {
@@ -136,7 +137,15 @@ export default function Gallerypost() {
     isError,
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
-     useGlobalRefresh(refetch);
+  
+  useGlobalRefresh(refetch);
+
+  // Fungsi baru untuk handle tarik refresh (Pull to Refresh)
+  const handleRefresh = async () => {
+    await refetch();
+    // Jeda sedikit agar animasinya lebih natural sebelum loading iconnya hilang
+    await new Promise(resolve => setTimeout(resolve, 800));
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -569,21 +578,24 @@ export default function Gallerypost() {
       />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      <Virtuoso
-        useWindowScroll
-        data={allPosts}
-        endReached={loadMore}
-        overscan={{ main: 600, reverse: 600 }}
-        increaseViewportBy={{ top: 400, bottom: 400 }}
-        itemContent={renderItem}
-        components={{
-          Footer: () => isFetchingNextPage ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-              <div className="pure-spinner"></div>
-            </div>
-          ) : null
-        }}
-      />
+      {/* Komponen Virtuoso Dibungkus Oleh RefreshableWrapper agar bisa mendeteksi gestur tarik */}
+      <RefreshableWrapper onRefresh={handleRefresh}>
+        <Virtuoso
+          useWindowScroll
+          data={allPosts}
+          endReached={loadMore}
+          overscan={{ main: 600, reverse: 600 }}
+          increaseViewportBy={{ top: 400, bottom: 400 }}
+          itemContent={renderItem}
+          components={{
+            Footer: () => isFetchingNextPage ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                <div className="pure-spinner"></div>
+              </div>
+            ) : null
+          }}
+        />
+      </RefreshableWrapper>
     </section>
   );
 }
