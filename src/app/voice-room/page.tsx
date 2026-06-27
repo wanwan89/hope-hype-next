@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
+import RefreshableWrapper from '@/components/RefreshableWrapper';
 import './VoiceLobby.css';
 
 const KATEGORI_MAP = [
@@ -60,32 +61,47 @@ export default function VoiceLobbyPage() {
 
   useEffect(() => { fetchUser(); }, [router]);
 
+  // Ekstrak fungsi fetchRooms agar bisa dipakai oleh UseEffect & handleRefresh
+  const fetchRooms = useCallback(async (category: string) => {
+    setIsLoadingRooms(true);
+    try {
+      let query = supabase.from('rooms').select('id, name, description').eq('is_active', true);
+      if (category !== 'Populer') {
+        query = query.eq('category', category);
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+      const { data: fetchedRooms, error } = await query;
+      if (error) throw error;
+      if (!fetchedRooms || fetchedRooms.length === 0) {
+        setRooms([]); 
+        return;
+      }
+      const roomIds = fetchedRooms.map(r => r.id);
+      const { data: occupiedSlots } = await supabase.from('room_slots').select('room_id').in('room_id', roomIds).not('profile_id', 'is', null);
+      const onlineCounts: Record<string, number> = {};
+      if (occupiedSlots) {
+        occupiedSlots.forEach(slot => { onlineCounts[slot.room_id] = (onlineCounts[slot.room_id] || 0) + 1; });
+      }
+      setRooms(fetchedRooms.map(room => ({ ...room, onlineCount: onlineCounts[room.id] || 0 })));
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setIsLoadingRooms(false); 
+    }
+  }, []);
+
   useEffect(() => {
-    const loadRooms = async () => {
-      setIsLoadingRooms(true);
-      try {
-        let query = supabase.from('rooms').select('id, name, description').eq('is_active', true);
-        if (activeCategory !== 'Populer') {
-          query = query.eq('category', activeCategory);
-        } else {
-          query = query.order('created_at', { ascending: false });
-        }
-        const { data: fetchedRooms, error } = await query;
-        if (error) throw error;
-        if (!fetchedRooms || fetchedRooms.length === 0) {
-          setRooms([]); return;
-        }
-        const roomIds = fetchedRooms.map(r => r.id);
-        const { data: occupiedSlots } = await supabase.from('room_slots').select('room_id').in('room_id', roomIds).not('profile_id', 'is', null);
-        const onlineCounts: Record<string, number> = {};
-        if (occupiedSlots) {
-          occupiedSlots.forEach(slot => { onlineCounts[slot.room_id] = (onlineCounts[slot.room_id] || 0) + 1; });
-        }
-        setRooms(fetchedRooms.map(room => ({ ...room, onlineCount: onlineCounts[room.id] || 0 })));
-      } catch (err) { console.error(err); } finally { setIsLoadingRooms(false); }
-    };
-    loadRooms();
-  }, [activeCategory]);
+    fetchRooms(activeCategory);
+  }, [activeCategory, fetchRooms]);
+
+  // Fungsi Pull-to-Refresh
+  const handleRefresh = async () => {
+    await fetchUser();
+    await fetchRooms(activeCategory);
+    // Tambahkan delay natural sebelum loading hilang
+    await new Promise(resolve => setTimeout(resolve, 800));
+  };
 
   const handleStartSinging = async () => {
     if (!currentUser) return showNotif(t('login_warning'), "warning");
@@ -188,8 +204,23 @@ export default function VoiceLobbyPage() {
   };
 
   return (
-    <div className="voice-lobby-container">
-      <header className="lobby-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="voice-lobby-container" style={{ position: 'relative' }}>
+      
+      {/* HEADER DIBUAT STICKY AGAR TETAP DIAM SAAT PULL TO REFRESH */}
+      <header 
+        className="lobby-header" 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          position: 'sticky', 
+          top: 0, 
+          zIndex: 100, 
+          background: 'var(--bg-main)', /* Pastikan header punya warna latar belakang menutupi konten bawahnya */
+          padding: '16px 20px', /* Sesuaikan padding jika perlu */
+          borderBottom: '1px solid var(--border-card)'
+        }}
+      >
         <div className="header-profile">
           <img src={currentUser?.avatar_url || '/asets/png/profile.webp'} alt="Av" />
           <div className="header-info">
@@ -216,53 +247,61 @@ export default function VoiceLobbyPage() {
         </button>
       </header>
 
-      <section className="hero-banner">
-        <h2>{t('hero_title')}</h2>
-        <p>{t('hero_desc')}</p>
-        <button className="btn-start-singing" onClick={handleStartSinging}>
-          <span className="material-icons">mic</span>
-          {t('hero_btn')}
-        </button>
-      </section>
+      {/* KONTEN DIBUNGKUS REFRESHABLE WRAPPER AGAR BISA DI-PULL BAWAH */}
+      <RefreshableWrapper onRefresh={handleRefresh}>
+        <div style={{ paddingBottom: '80px' }}> {/* Memberi sedikit ruang kosong di bawah elemen saat discroll */}
+          
+          <section className="hero-banner">
+            <h2>{t('hero_title')}</h2>
+            <p>{t('hero_desc')}</p>
+            <button className="btn-start-singing" onClick={handleStartSinging}>
+              <span className="material-icons">mic</span>
+              {t('hero_btn')}
+            </button>
+          </section>
 
-      <div className="tabs-container">
-        {KATEGORI_MAP.map(kat => (
-          <span
-            key={kat.id}
-            className={`voice-tab-item ${activeCategory === kat.id ? 'active' : ''}`}
-            onClick={() => setActiveCategory(kat.id)}
-          >
-            {t(kat.label)}
-          </span>
-        ))}
-      </div>
-
-      <main className="room-list">
-        {isLoadingRooms ? (
-          [1,2,3].map(i => <div key={i} className="skeleton-card" style={{height:'60px', borderRadius:'18px', background:'var(--bg-card)', marginBottom:'10px'}} />)
-        ) : rooms.length === 0 ? (
-          <div className="no-rooms-info" style={{textAlign:'center', color:'var(--text-muted)', marginTop:'40px'}}>
-            {t('no_rooms')}
+          <div className="tabs-container">
+            {KATEGORI_MAP.map(kat => (
+              <span
+                key={kat.id}
+                className={`voice-tab-item ${activeCategory === kat.id ? 'active' : ''}`}
+                onClick={() => setActiveCategory(kat.id)}
+              >
+                {t(kat.label)}
+              </span>
+            ))}
           </div>
-        ) : (
-          rooms.map(room => (
-            <div key={room.id} className="room-card" onClick={() => router.push(`/voice?id=${room.id}&name=${encodeURIComponent(room.name)}`)}>
-              <div className="room-thumb"><span className="material-icons">graphic_eq</span></div>
-              <div className="room-info">
-                <h4>{room.name.toUpperCase()}</h4>
-                <p>{room.description}</p>
-              </div>
-              <div className="room-status">
-                <div className="online-pill">
-                   <div className="dot-green" style={{width:'6px', height:'6px', borderRadius:'50%', background:'currentColor'}}></div>
-                   {room.onlineCount} Online
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </main>
 
+          <main className="room-list">
+            {isLoadingRooms ? (
+              [1,2,3].map(i => <div key={i} className="skeleton-card" style={{height:'60px', borderRadius:'18px', background:'var(--bg-card)', marginBottom:'10px'}} />)
+            ) : rooms.length === 0 ? (
+              <div className="no-rooms-info" style={{textAlign:'center', color:'var(--text-muted)', marginTop:'40px'}}>
+                {t('no_rooms')}
+              </div>
+            ) : (
+              rooms.map(room => (
+                <div key={room.id} className="room-card" onClick={() => router.push(`/voice?id=${room.id}&name=${encodeURIComponent(room.name)}`)}>
+                  <div className="room-thumb"><span className="material-icons">graphic_eq</span></div>
+                  <div className="room-info">
+                    <h4>{room.name.toUpperCase()}</h4>
+                    <p>{room.description}</p>
+                  </div>
+                  <div className="room-status">
+                    <div className="online-pill">
+                      <div className="dot-green" style={{width:'6px', height:'6px', borderRadius:'50%', background:'currentColor'}}></div>
+                      {room.onlineCount} Online
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </main>
+
+        </div>
+      </RefreshableWrapper>
+
+      {/* --- MODALS & BOTTOM SHEETS DIBIARKAN DI BAWAH KARENA MENGGUNAKAN PORTAL/OVERLAY --- */}
       {isModalOpen && (
         <div className="voice-modal-overlay active" onClick={() => setIsModalOpen(false)}>
           <div className="voice-modal-content" onClick={e => e.stopPropagation()}>
