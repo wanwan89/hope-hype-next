@@ -6,12 +6,32 @@ import { supabase } from '@/lib/supabase';
 import { showNotif, getUserBadge } from '@/lib/ui-utils';
 import './Blocked.css';
 
+// 1. Interface untuk profil user agar lebih aman dari tipe "any"
+interface BlockedUser {
+  id: string;
+  username: string;
+  avatar_url: string;
+  role: string;
+}
+
+// 2. Fungsi optimasi gambar (konsisten dengan standar komponen Anda)
+const getOptimizedImage = (url: string | null, username: string) => {
+  if (!url) return `https://ui-avatars.com/api/?name=${username}&background=random`;
+  
+  let cleanUrl = url.trim();
+  // Optimasi Cloudinary: resize dan kompresi format webp otomatis
+  if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
+    return cleanUrl.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
+  }
+  return cleanUrl;
+};
+
 export default function BlockedUsersPage() {
   const router = useRouter();
   
   const [mounted, setMounted] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
-  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
 
@@ -23,8 +43,9 @@ export default function BlockedUsersPage() {
   const fetchBlockedUsers = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
         router.push('/login');
         return;
       }
@@ -32,7 +53,7 @@ export default function BlockedUsersPage() {
       const currentUserId = session.user.id;
       setMyId(currentUserId);
 
-      // 1. Ambil daftar ID user yang kita blokir
+      // Ambil daftar ID user yang kita blokir
       const { data: blockedData, error: blockErr } = await supabase
         .from('blocked_users')
         .select('blocked_id')
@@ -40,6 +61,7 @@ export default function BlockedUsersPage() {
 
       if (blockErr) throw blockErr;
 
+      // Jika tidak ada user yang diblokir, hentikan proses
       if (!blockedData || blockedData.length === 0) {
         setBlockedUsers([]);
         setIsLoading(false);
@@ -48,7 +70,7 @@ export default function BlockedUsersPage() {
 
       const blockedIds = blockedData.map(b => b.blocked_id);
 
-      // 2. Ambil detail profil dari ID tersebut
+      // Ambil detail profil dari ID tersebut
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, role')
@@ -58,7 +80,7 @@ export default function BlockedUsersPage() {
 
       setBlockedUsers(profiles || []);
     } catch (error: any) {
-      console.error(error);
+      console.error("Error fetching blocked users:", error);
       showNotif("Gagal memuat daftar blokir", "error");
     } finally {
       setIsLoading(false);
@@ -68,8 +90,8 @@ export default function BlockedUsersPage() {
   const handleUnblock = async (targetId: string, targetName: string) => {
     if (!myId) return;
     
-    // Opsional: Kasih konfirmasi biar gak kepencet
-    if (!confirm(`Yakin ingin membuka blokir ${targetName}?`)) return;
+    // Konfirmasi natif (bisa diganti dengan custom modal jika ada)
+    if (!window.confirm(`Yakin ingin membuka blokir @${targetName}?`)) return;
 
     setUnblockingId(targetId);
     try {
@@ -80,27 +102,33 @@ export default function BlockedUsersPage() {
 
       if (error) throw error;
 
-      showNotif(`Blokir ${targetName} telah dibuka.`, "success");
+      showNotif(`Blokir @${targetName} telah dibuka.`, "success");
       
       // Hapus user dari state (UI) tanpa harus reload halaman
       setBlockedUsers(prev => prev.filter(user => user.id !== targetId));
     } catch (error: any) {
-      showNotif(error.message, "error");
+      console.error("Error unblocking user:", error);
+      showNotif("Terjadi kesalahan saat membuka blokir", "error");
     } finally {
       setUnblockingId(null);
     }
   };
 
+  // Mencegah hydration mismatch error di Next.js
   if (!mounted) return <div className="bl-wrapper"></div>;
 
   return (
     <div className="bl-wrapper">
       <header className="bl-header">
-        <button className="bl-back-btn" onClick={() => router.back()}>
+        <button 
+          className="bl-back-btn" 
+          onClick={() => router.back()} 
+          aria-label="Kembali"
+        >
           <span className="material-icons">arrow_back</span>
         </button>
         <h2>Pengguna Diblokir</h2>
-        <div style={{ width: '32px' }}></div> {/* Spacer biar judul di tengah */}
+        <div style={{ width: '32px' }}></div> {/* Spacer biar judul tepat di tengah */}
       </header>
 
       <main className="bl-content">
@@ -109,7 +137,7 @@ export default function BlockedUsersPage() {
         </p>
 
         {isLoading ? (
-          // Skeleton Loading
+          // SKELETON LOADING
           <div className="bl-list">
             {[1, 2, 3].map(i => (
               <div key={i} className="bl-item-skeleton">
@@ -120,7 +148,7 @@ export default function BlockedUsersPage() {
             ))}
           </div>
         ) : blockedUsers.length === 0 ? (
-          // Empty State
+          // EMPTY STATE
           <div className="bl-empty">
             <div className="bl-empty-icon">
               <span className="material-icons">gpp_good</span>
@@ -129,19 +157,23 @@ export default function BlockedUsersPage() {
             <p>Anda belum memblokir pengguna siapa pun.</p>
           </div>
         ) : (
-          // List User Diblokir
+          // LIST USER DIBLOKIR
           <div className="bl-list">
             {blockedUsers.map((user) => (
               <div key={user.id} className="bl-item">
                 <img 
-                  src={user.avatar_url || '/asets/png/profile.webp'} 
+                  src={getOptimizedImage(user.avatar_url, user.username)} 
                   alt={user.username} 
-                  className="bl-avatar" 
+                  className="bl-avatar"
+                  loading="lazy"
                 />
                 <div className="bl-info">
                   <span className="bl-name">
                     {user.username} 
-                    <span dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) }} />
+                    <span 
+                      dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) }} 
+                      style={{ display: 'inline-flex', alignItems: 'center' }}
+                    />
                   </span>
                   <span className="bl-username">
                     @{user.username.toLowerCase().replace(/\s/g, '')}
