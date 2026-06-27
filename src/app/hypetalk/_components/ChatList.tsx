@@ -1,12 +1,11 @@
 'use client';
-import React, { useState, useRef } from 'react'; // MODIFIKASI: Tambahkan useRef
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, useMotionValue, animate } from 'framer-motion'; // MODIFIKASI: useTransform dihapus karena sudah pakai Lottie
+import { motion, useMotionValue, animate } from 'framer-motion';
 import ChatItem from './ChatItem';
 
-// BARU: Import Lottie dan file JSON animasinya
+// Import Lottie dan file JSON animasinya
 import Lottie, { LottieRefCurrentProps } from 'lottie-react';
-// Sesuaikan path ini dengan lokasi file JSON kamu yang sebenarnya
 import trashAnimationData from '@/assets/lottie/tempat-sampah.json'; 
 
 type Props = {
@@ -35,16 +34,16 @@ const SwipeableChatRow = ({
   const x = useMotionValue(0);
   const [isDeleted, setIsDeleted] = useState(false);
   
-  // BARU: Referensi untuk mengontrol play/stop Lottie
+  // Referensi untuk mengontrol play/stop Lottie
   const lottieRef = useRef<LottieRefCurrentProps>(null);
 
   const isGlobalOrActiveGroup = chat.type === 'global' || (chat.type === 'group' && chat.isMember);
   const canSwipe = !isSelectionMode && !isGlobalOrActiveGroup;
 
-  // BARU: Fungsi untuk memutar animasi saat ditarik
+  // Fungsi untuk memutar animasi saat ditarik
   const handleDrag = (e: any, info: any) => {
     if (info.offset.x > 50 && lottieRef.current) {
-      lottieRef.current.play(); // Mainkan animasi saat mulai diswipe
+      lottieRef.current.play();
     }
   };
 
@@ -59,7 +58,7 @@ const SwipeableChatRow = ({
     } else {
       animate(x, 0, { type: "spring", bounce: 0, duration: 0.4 });
       
-      // BARU: Reset animasi jika swipe dibatalkan
+      // Reset animasi jika swipe dibatalkan
       if (lottieRef.current) {
         lottieRef.current.stop();
       }
@@ -71,13 +70,13 @@ const SwipeableChatRow = ({
   return (
     <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
       
-      {/* Background Kotak Biru dengan Animasi Tong Sampah Lottie */}
+      {/* Background Kotak Merah dengan Animasi Tong Sampah Lottie */}
       {canSwipe && (
         <div style={{
-          position: 'absolute', inset: 0, backgroundColor: '#2b93ff',
+          position: 'absolute', inset: 0, backgroundColor: '#ef4444', // DIUBAH KE MERAH
           display: 'flex', alignItems: 'center', paddingLeft: '24px'
         }}>
-          {/* BARU: Ganti SVG dengan komponen Lottie */}
+          {/* Komponen Lottie */}
           <div style={{ width: '40px', height: '40px' }}>
             <Lottie 
               lottieRef={lottieRef}
@@ -99,7 +98,7 @@ const SwipeableChatRow = ({
         drag={canSwipe ? "x" : false}
         dragConstraints={{ left: 0, right: typeof window !== 'undefined' ? window.innerWidth : 400 }}
         dragElastic={0.1}
-        onDrag={canSwipe ? handleDrag : undefined} // BARU: Panggil fungsi handleDrag
+        onDrag={canSwipe ? handleDrag : undefined}
         onDragEnd={canSwipe ? handleDragEnd : undefined}
         onTouchStart={() => onPressStart?.(chat)}
         onTouchEnd={() => onPressEnd?.()}

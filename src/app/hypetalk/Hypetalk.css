@@ -9,7 +9,7 @@
 
 /* ROOT WRAPPER SCOPE */
 .telegram-wrapper {
-  position: absolute;
+  position: fixed; /* Diubah ke fixed agar halaman tidak ikut ter-scroll */
   top: 0;
   left: 0;
   right: 0;
@@ -17,13 +17,13 @@
   margin: 0 auto;
   width: 100%;
   max-width: 480px;
-  height: 100%;
+  height: 100dvh; /* Menggunakan 100dvh agar presisi di browser mobile */
   display: flex;
   flex-direction: column;
   background: var(--bg-main);
   box-shadow: none;
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-  overflow: hidden;
+  overflow: hidden; /* Mengunci scroll agar tidak bocor ke body */
   border-left: 1px solid var(--border-card);
   border-right: 1px solid var(--border-card);
 }
@@ -59,6 +59,7 @@
 .telegram-wrapper .tg-chat-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden; /* Penting: Mencegah scroll horizontal saat melakukan swipe */
   padding-bottom: 110px;
   -webkit-overflow-scrolling: touch;
   background: var(--bg-main);
