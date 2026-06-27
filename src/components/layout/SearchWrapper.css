@@ -57,10 +57,11 @@ html.dark .search-wrapper {
   transition: all 0.3s ease;
 }
 
+/* --- BAGIAN YANG DIPERBAIKI (TIDAK BIRU LAGI) --- */
 .brutal-input:focus {
   background: var(--bg-main, #fff);
-  border-color: #1f3cff;
-  box-shadow: 0 0 0 3px rgba(31, 60, 255, 0.15);
+  border-color: var(--text-main, #1a1a1a);
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1); /* Bayangan netral, bukan biru */
 }
 
 /* --- TOMBOL TAMBAH (+) --- */
