@@ -11,6 +11,7 @@ import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
 import { useFeed } from '@/hooks/useFeed';
+ import RefreshableWrapper from '@/components/RefreshableWrapper'; 
 import './Gallery.css';
 
 function shuffleArray(array: any[]) {
@@ -566,35 +567,38 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative' }}>
-      
-      <RepostModal
-        isOpen={!!repostModal}
-        postId={repostModal?.postId || ''}
-        creatorId={repostModal?.creatorId || ''}
-        note={repostNote}
-        setNote={setRepostNote}
-        onClose={() => setRepostModal(null)}
-        onConfirm={handleConfirmRepost}
-        isUnrepost={repostModal?.isUnrepost || false}
-      />
-      <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
+    // 🔥 BUNGKUS DENGAN WRAPPER DAN MASUKKAN FUNGSI REFETCH
+    <RefreshableWrapper onRefresh={async () => { await refetch(); }}>
+      <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative' }}>
+        
+        <RepostModal
+          isOpen={!!repostModal}
+          postId={repostModal?.postId || ''}
+          creatorId={repostModal?.creatorId || ''}
+          note={repostNote}
+          setNote={setRepostNote}
+          onClose={() => setRepostModal(null)}
+          onConfirm={handleConfirmRepost}
+          isUnrepost={repostModal?.isUnrepost || false}
+        />
+        <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      <Virtuoso
-        useWindowScroll
-        data={allPosts}
-        endReached={loadMore}
-        overscan={{ main: 600, reverse: 600 }}
-        increaseViewportBy={{ top: 400, bottom: 400 }}
-        itemContent={renderItem}
-        components={{
-          Footer: () => isFetchingNextPage ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-              <div className="pure-spinner"></div>
-            </div>
-          ) : null
-        }}
-      />
-    </section>
+        <Virtuoso
+          useWindowScroll
+          data={allPosts}
+          endReached={loadMore}
+          overscan={{ main: 600, reverse: 600 }}
+          increaseViewportBy={{ top: 400, bottom: 400 }}
+          itemContent={renderItem}
+          components={{
+            Footer: () => isFetchingNextPage ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                <div className="pure-spinner"></div>
+              </div>
+            ) : null
+          }}
+        />
+      </section>
+    </RefreshableWrapper>
   );
 }
