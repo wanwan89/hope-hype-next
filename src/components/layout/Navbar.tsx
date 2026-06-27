@@ -62,7 +62,7 @@ function NavbarContent() {
     '/hypetalk/room', 
     // Ganti menjadi pengecekan yang mencakup variasi voice
     '/voice' // Ini akan menangkap /voice, /voice/, /voice-room, /voice/123
-].some(path => pathname?.startsWith(path)); // Gunakan startsWith agar lebih presisi
+  ].some(path => pathname?.startsWith(path)); // Gunakan startsWith agar lebih presisi
 
   const fetchBadgesAndUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -323,7 +323,8 @@ function NavbarContent() {
                     <div key="icon" style={{ display: 'flex' }}>
                       <Icon
                         size={24}
-                        color={isActive ? '#1f3cff' : 'currentColor'}
+                        /* [UPDATED] Menggunakan var(--icon-fill) atau fallback var(--text-main) agar adaptif terhadap Light/Dark Mode */
+                        color={isActive ? '#1f3cff' : 'var(--icon-fill, var(--text-main))'}
                         fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
                         strokeWidth={isActive ? 2.5 : 2}
                         style={{ opacity: isActive ? 1 : 0.6 }} 
