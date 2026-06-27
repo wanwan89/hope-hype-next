@@ -1,5 +1,6 @@
 'use client';
 
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -229,7 +230,7 @@ export default function HypetalkPage() {
               avatar: g.groups.photo_url || '/asets/png/profile.webp',
               preview: grpPreview,
               time: lastGroupMsg ? new Date(lastGroupMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-              sortTime: lastGroupMsg ? new Date(lastGroupMsg.created_at).getTime() : Date.now() - 1000,
+              sortTime: lastGroupMsg ? new Date(lastGlobalMsg ? lastGlobalMsg.created_at : lastGroupMsg.created_at).getTime() : Date.now() - 1000,
               unread: grpUnread,
               isMember: true 
             });
@@ -250,6 +251,15 @@ export default function HypetalkPage() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => { loadAllChats(userId, true); })
       .subscribe();
   };
+
+  // --- IMPLEMENTASI GLOBAL REFRESH HOOK ---
+  const refetch = async () => {
+    if (currentUser?.id) {
+      await loadAllChats(currentUser.id, true); // Refresh data chat di background
+    }
+  };
+  useGlobalRefresh(refetch);
+
 
   const roomIdsStr = chats.map(c => c.id).sort().join(',');
   useEffect(() => {
@@ -513,7 +523,7 @@ export default function HypetalkPage() {
           onSearchChange={setSearchQuery}
         />
 
-        {/* ACTION BAR SELEKSI DI BAWAH SEARCH BAR (Sesuai 1000608223.jpg) */}
+        {/* ACTION BAR SELEKSI DI BAWAH SEARCH BAR */}
         <AnimatePresence>
           {isSelectionMode && (
             <motion.div 
@@ -525,7 +535,7 @@ export default function HypetalkPage() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '12px 16px',
-                background: '#0f1115', // Background hitam
+                background: '#0f1115',
                 borderBottom: '1px solid #1f232b',
                 zIndex: 20,
                 overflow: 'hidden'
@@ -559,7 +569,6 @@ export default function HypetalkPage() {
           handleOpenChat={handleOpenChat}
           handleAvatarClick={handleAvatarClick}
           renderReadReceipt={renderReadReceipt}
-          // Props baru untuk seleksi & swipe delete
           isSelectionMode={isSelectionMode}
           selectedChats={selectedChats}
           onPressStart={handlePressStart}
@@ -580,7 +589,7 @@ export default function HypetalkPage() {
           onHypeMatch={handleHypeMatch} 
         />
 
-        {/* MODALS SAMA SEPERTI SEBELUMNYA ... */}
+        {/* MODALS */}
         {activeModal === 'user-profile' && selectedProfile && (
           <UserProfileModal
             profile={selectedProfile}
