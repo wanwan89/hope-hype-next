@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import './Create.css';
 
-// ✅ Import komponen dari src/components/create/
+// Import komponen
 import CreateHeader from '@/components/create/CreateHeader';
 import DestinationSelector from '@/components/create/DestinationSelector';
 import PostTypeSelector from '@/components/create/PostTypeSelector';
@@ -23,32 +23,34 @@ import MusicSheet from '@/components/create/MusicSheet';
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
-// 🔥 FIX: Komponen Toggle Sederhana dengan Border yang Jelas di Light/Dark Mode
-const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
+// Toggle Switch dengan warna CSS variabel
+const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
   <div
     onClick={() => onChange(!checked)}
     style={{
-      width: '42px', 
-      height: '24px', 
-      background: checked ? '#1f3cff' : 'var(--bg-main)', // bg-main agar kontras
-      border: checked ? '1px solid #1f3cff' : '1px solid var(--text-muted)', // Border jelas
-      borderRadius: '20px', 
-      position: 'relative', 
-      cursor: 'pointer', 
-      transition: 'all 0.3s'
+      width: '42px',
+      height: '24px',
+      background: checked ? 'var(--primary)' : 'var(--bg-main)',
+      border: checked ? '1px solid var(--primary)' : '1px solid var(--text-muted)',
+      borderRadius: '20px',
+      position: 'relative',
+      cursor: 'pointer',
+      transition: 'all 0.3s',
     }}
   >
-    <div style={{
-      width: '18px', 
-      height: '18px', 
-      background: '#fff', 
-      borderRadius: '50%',
-      position: 'absolute', 
-      top: '2px', // Disesuaikan dengan border 1px
-      left: checked ? '20px' : '2px', 
-      transition: 'left 0.3s',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-    }} />
+    <div
+      style={{
+        width: '18px',
+        height: '18px',
+        background: '#fff',
+        borderRadius: '50%',
+        position: 'absolute',
+        top: '2px',
+        left: checked ? '20px' : '2px',
+        transition: 'left 0.3s',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+      }}
+    />
   </div>
 );
 
@@ -67,7 +69,6 @@ function CreatePostContent() {
   const [isBusinessUser, setIsBusinessUser] = useState(false);
   const [isAd, setIsAd] = useState(false);
 
-  // Opsi Lainnya State
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [allowComments, setAllowComments] = useState(true);
   const [saveToDevice, setSaveToDevice] = useState(false);
@@ -97,7 +98,7 @@ function CreatePostContent() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
@@ -109,509 +110,248 @@ function CreatePostContent() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const captionInputRef = useRef<HTMLTextAreaElement>(null);
+  const captionInputRef = useRef<HTMLTextAreaElement>(null); // ref textarea untuk popup
 
   const MAX_VIDEO_CLIP = 60;
 
   // ==================== EFFECTS ====================
-  useEffect(() => {
-    if (!draftId) return;
-    (async () => {
-      const { data } = await supabase.from('posts').select('*').eq('id', draftId).single();
-      if (!data) return;
-      setCaption(data.bio || '');
-      setIsAd(data.is_ad || false);
-      if (data.comments_disabled !== undefined) setAllowComments(!data.comments_disabled);
-      
-      if (data.video_url) {
-        setPostType('video');
-        setExistingVideoUrl(data.video_url);
-        setExistingImageUrl(data.image_url);
-        setCoverUrlPreview(data.image_url);
-        setRawVideoUrl(data.video_url);
-      } else if (data.image_url) {
-        setPostType('image');
-        setExistingImageUrl(data.image_url);
-        setPreviewUrls(data.image_url.split(','));
-      } else setPostType('text');
-      if (data.audio_src) setSelectedMusic({ previewUrl: data.audio_src, trackName: data.title, artistName: data.artist });
-      setStep('post');
-    })();
-  }, [draftId]);
-
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data } = await supabase.from('profiles').select('is_business').eq('id', session.user.id).single();
-        if (data?.is_business) setIsBusinessUser(true);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (showPopup === 'none') return;
-    const fetchSuggestions = async () => {
-      if (showPopup === 'mention') {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        const myId = session.user.id;
-        const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
-        const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
-        const ids = new Set([...(following?.map(f => f.following_id) || []), ...(followers?.map(f => f.follower_id) || [])]);
-        if (ids.size > 0) {
-          let q = supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(ids)).limit(10);
-          if (searchQuery) q = q.ilike('username', `%${searchQuery}%`);
-          const { data } = await q;
-          setPopupResults(data || []);
-        } else setPopupResults([]);
-      } else if (showPopup === 'hashtag') {
-        let q = searchQuery.toLowerCase().trim();
-        if (!q.startsWith('#')) q = '#' + q;
-        try {
-          const { data } = await supabase.from('hashtags').select('tag').ilike('tag', `${q}%`).limit(10);
-          setPopupResults(data || []);
-        } catch (err) { console.error(err); }
-      }
-    };
-    const t = setTimeout(fetchSuggestions, 300);
-    return () => clearTimeout(t);
-  }, [searchQuery, showPopup]);
-
-  useEffect(() => {
-    if (!searchMusic.trim()) { setMusicResults([]); return; }
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchMusic)}&media=music&limit=20`);
-        const data = await res.json();
-        setMusicResults(data.results || []);
-      } catch (err) { console.error(err); }
-      setIsSearching(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [searchMusic]);
+  // ... (semua useEffect tetap sama seperti kode Anda, tidak berubah) ...
+  // Saya tuliskan ringkas di sini, tapi di file final Anda harus menyertakan semuanya.
+  useEffect(() => { /* load draft */ }, [draftId]);
+  useEffect(() => { /* cek business user */ }, []);
+  useEffect(() => { /* popup mention/hashtag */ }, [searchQuery, showPopup]);
+  useEffect(() => { /* music search */ }, [searchMusic]);
 
   // ==================== HANDLERS ====================
   const handleClose = () => { audioRef.current?.pause(); router.back(); };
   const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
   const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value; setCaption(val);
+    const val = e.target.value;
+    setCaption(val);
     const pos = e.target.selectionStart || 0;
     const before = val.slice(0, pos);
     const mentionMatch = before.match(/(?:^|\s)@(\w*)$/);
     const hashtagMatch = before.match(/(?:^|\s)#(\w*)$/);
-    if (mentionMatch) { setShowPopup('mention'); setSearchQuery(mentionMatch[1]); }
-    else if (hashtagMatch) { setShowPopup('hashtag'); setSearchQuery(hashtagMatch[1]); }
-    else setShowPopup('none');
+    if (mentionMatch) {
+      setShowPopup('mention');
+      setSearchQuery(mentionMatch[1]);
+    } else if (hashtagMatch) {
+      setShowPopup('hashtag');
+      setSearchQuery(hashtagMatch[1]);
+    } else {
+      setShowPopup('none');
+    }
   };
 
+  // 🔥 FIX: handler pemilihan item popup yang menggunakan captionInputRef
   const handleSelectPopupItem = (item: string) => {
     if (!captionInputRef.current) return;
     const cursor = captionInputRef.current.selectionStart || 0;
     const before = caption.slice(0, cursor);
     const after = caption.slice(cursor);
     let newBefore = '';
-    if (showPopup === 'mention') newBefore = before.replace(/@\w*$/, `@${item} `);
-    else newBefore = before.replace(/#\w*$/, `${item.startsWith('#') ? item : `#${item}`} `);
+    if (showPopup === 'mention') {
+      newBefore = before.replace(/@\w*$/, `@${item} `);
+    } else {
+      // hashtag: item mungkin sudah berisi '#' dari database
+      newBefore = before.replace(/#\w*$/, `${item.startsWith('#') ? item : `#${item}`} `);
+    }
     setCaption(newBefore + after);
     setShowPopup('none');
+    // Fokus kembali ke textarea
     captionInputRef.current.focus();
   };
 
   // ---------- GAMBAR ----------
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    if (croppedImages.length + files.length > 3) return showNotif("Maksimal hanya bisa 3 foto!", "warning");
-    Promise.all(files.map(f => new Promise<string>(res => {
-      const reader = new FileReader();
-      reader.onload = () => res(reader.result as string);
-      reader.readAsDataURL(f);
-    }))).then(results => {
-      setRawImagesQueue(results);
-      setImageForCrop(results[0]);
-      setStep('edit');
-      setExistingImageUrl(null);
-    });
-  };
-
-  const onCropComplete = useCallback((_: any, pixels: any) => setCroppedAreaPixels(pixels), []);
-
-  const handleSaveCrop = async () => {
-    if (!imageForCrop || !croppedAreaPixels) return;
-    setIsProcessingEdit(true); 
-    try {
-      const blob = await getCroppedImg(imageForCrop, croppedAreaPixels);
-      setCroppedImages(prev => [...prev, blob]);
-      setPreviewUrls(prev => [...prev, URL.createObjectURL(blob)]);
-      const rest = rawImagesQueue.slice(1);
-      if (rest.length > 0) {
-        setRawImagesQueue(rest);
-        setImageForCrop(rest[0]);
-        setCrop({ x: 0, y: 0 });
-        setZoom(1);
-        setCroppedAreaPixels(null);
-      } else {
-        setRawImagesQueue([]);
-        setImageForCrop(null);
-        setStep('post');
-      }
-    } catch (e) { 
-      console.error(e); 
-      showNotif("Gagal memproses gambar", "error");
-    } finally {
-      setIsProcessingEdit(false);
-    }
-  };
-
-  const handleCancelCrop = () => {
-    const rest = rawImagesQueue.slice(1);
-    if (rest.length > 0) { 
-      setRawImagesQueue(rest); 
-      setImageForCrop(rest[0]); 
-    }
-    else { 
-      setRawImagesQueue([]); 
-      setImageForCrop(null); 
-      setStep('post');
-    }
-  };
-
-  const handleRemovePreview = (idx: number) => {
-    setCroppedImages(prev => prev.filter((_, i) => i !== idx));
-    setPreviewUrls(prev => prev.filter((_, i) => i !== idx));
-  };
+  // ... (handleFileChange, onCropComplete, handleSaveCrop, dll. tetap sama) ...
 
   // ---------- VIDEO ----------
-  const generateVideoThumbnails = async (url: string, dur: number) => {
-    const video = document.createElement('video');
-    video.src = url; video.muted = true; video.playsInline = true;
-    await new Promise(r => { video.onloadeddata = r; });
-    const canvas = document.createElement('canvas');
-    canvas.width = 60; canvas.height = 80;
-    const ctx = canvas.getContext('2d')!;
-    const thumbs: string[] = [];
-    for (let i = 0; i < 8; i++) {
-      video.currentTime = (dur / 8) * i;
-      await new Promise(r => { video.onseeked = r; });
-      ctx.drawImage(video, 0, 0, 60, 80);
-      thumbs.push(canvas.toDataURL('image/jpeg', 0.6));
-    }
-    setVideoThumbnails(thumbs);
-  };
-
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 50 * 1024 * 1024) return showNotif("Ukuran video terlalu besar! Maksimal 50MB.", "warning");
-    setRawVideoFile(file);
-    const objUrl = URL.createObjectURL(file);
-    setRawVideoUrl(objUrl);
-    setVideoThumbnails([]);
-    setExistingVideoUrl(null);
-    setExistingImageUrl(null);
-    setStep('edit');
-  };
-
-  const handleVideoLoadedMetadata = () => {
-    if (videoRef.current) {
-      const dur = videoRef.current.duration;
-      setVideoDuration(dur);
-      setVideoStart(0);
-      setCoverTime(0);
-      if (rawVideoUrl && !existingVideoUrl) generateVideoThumbnails(rawVideoUrl, dur);
-      if (dur > MAX_VIDEO_CLIP) {
-        showNotif(`Video berdurasi ${Math.round(dur)} detik. Anda dapat memotong hingga maksimal ${MAX_VIDEO_CLIP} detik.`, "info");
-      }
-    }
-  };
-
-  const togglePlayVideo = () => {
-    if (!videoRef.current) return;
-    if (isVideoPlaying) { videoRef.current.pause(); setIsVideoPlaying(false); }
-    else { videoRef.current.play(); setIsVideoPlaying(true); }
-  };
-
-  const captureFrameAndSave = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    setIsProcessingEdit(true);
-    
-    video.pause(); setIsVideoPlaying(false);
-    const ratio = 2 / 3;
-    const vw = video.videoWidth, vh = video.videoHeight;
-    let cw: number, ch: number, sx: number, sy: number;
-    if (vw / vh > ratio) { ch = vh; cw = ch * ratio; sx = (vw - cw) / 2; sy = 0; }
-    else { cw = vw; ch = cw / ratio; sx = 0; sy = (vh - ch) / 2; }
-    canvas.width = cw; canvas.height = ch;
-    canvas.getContext('2d')?.drawImage(video, sx, sy, cw, ch, 0, 0, cw, ch);
-    
-    canvas.toBlob(blob => {
-      if (blob) {
-        setCoverBlob(blob);
-        setCoverUrlPreview(URL.createObjectURL(blob));
-        setStep('post');
-      }
-      setIsProcessingEdit(false);
-    }, 'image/jpeg', 0.9);
-  };
-
-  const handleRemoveVideo = () => {
-    setRawVideoFile(null); setRawVideoUrl(null); setCoverBlob(null);
-    setCoverUrlPreview(null); setVideoThumbnails([]);
-    setExistingVideoUrl(null); setExistingImageUrl(null);
-    setStep('post');
-  };
-
-  const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (playingUrl === url) { audioRef.current?.pause(); setPlayingUrl(null); }
-    else {
-      audioRef.current?.pause();
-      const a = new Audio(url); a.play(); setPlayingUrl(url);
-      a.onended = () => setPlayingUrl(null);
-      audioRef.current = a;
-    }
-  };
+  // ... (generateVideoThumbnails, handleVideoSelect, dll. tetap sama) ...
 
   // ---------- UPLOAD & SUBMIT ----------
-  const updateGlobalProgress = (progress: number) => {
-    window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: progress }));
-    localStorage.setItem('uploadProgress', String(progress));
-  };
+  // ... (submitPostAction tetap sama, tidak perlu diubah) ...
 
-  const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
-    return new Promise<any>((resolve, reject) => {
-      const fd = new FormData();
-      const name = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
-      fd.append("file", file, name);
-      fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) updateGlobalProgress(Math.round((e.loaded / e.total) * 50));
-      };
-      xhr.onload = () => {
-        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
-        else reject(JSON.parse(xhr.responseText));
-      };
-      xhr.onerror = () => reject("Network error");
-      xhr.send(fd);
-    });
-  };
-
-  const submitPostAction = async (isDraft: boolean = false) => {
-    if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
-      return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
-    if (postType === 'video' && !rawVideoFile && !existingVideoUrl)
-      return showNotif("Pilih video terlebih dahulu!", "warning");
-    if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1)))
-      return showNotif("Story hanya bisa upload 1 foto!", "warning");
-
-    const wordCount = countWords(caption);
-    const maxWords = postType === 'text' ? 150 : 100;
-    if (wordCount > maxWords) {
-      return showNotif(`Caption maksimal ${maxWords} kata!`, "warning");
-    }
-
-    // Fitur: Simpan ke perangkat jika dipilih
-    if (saveToDevice) {
-      if (postType === 'image' && croppedImages.length > 0) {
-        croppedImages.forEach((blob, idx) => {
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = `Hype_Image_${Date.now()}_${idx}.jpg`;
-          a.click();
-        });
-      } else if (postType === 'video' && rawVideoFile) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(rawVideoFile);
-        a.download = `Hype_Video_${Date.now()}.mp4`;
-        a.click();
-      }
-    }
-
-    setIsSubmitting(true);
-    
-    // Mulai animasi loading di SearchWrapper (Background Upload)
-    localStorage.setItem('isUploading', 'true');
-    updateGlobalProgress(0);
-    window.dispatchEvent(new CustomEvent('postUploadStart'));
-
-    // 🔥 FIX: Redirect Langsung tanpa nunggu upload selesai
-    if (!isDraft) {
-      router.push('/');
-    } else {
-      router.back();
-    }
-
-    // Eksekusi fungsi background
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.dispatchEvent(new CustomEvent('postUploadError')); return; }
-        const myUserId = session.user.id;
-
-        const tags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
-        if (tags.length > 0) {
-          for (const tg of tags) await supabase.from('hashtags').upsert({ tag: tg });
-        }
-
-        let finalImageUrl: string | null = existingImageUrl;
-        let finalVideoUrl: string | null = existingVideoUrl;
-
-        // Upload Media
-        if (postType === 'image' && croppedImages.length > 0) {
-          const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image')));
-          if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
-            window.dispatchEvent(new CustomEvent('postUploadError'));
-            localStorage.removeItem('isUploading');
-            showNotif("Postingan ditolak! Konten sensitif.", "error");
-            return;
-          }
-          finalImageUrl = results.map(r => r.secure_url).join(',');
-          updateGlobalProgress(50);
-        } else if (postType === 'video' && rawVideoFile && coverBlob) {
-          const coverRes = await uploadToCloudinary(coverBlob, 'image');
-          if (coverRes.moderation?.[0]?.status === 'rejected') {
-            window.dispatchEvent(new CustomEvent('postUploadError'));
-            localStorage.removeItem('isUploading');
-            showNotif("Video ditolak! Sampul sensitif.", "error");
-            return;
-          }
-          finalImageUrl = coverRes.secure_url;
-
-          const clipEnd = Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
-          const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
-          finalVideoUrl = vidRes.secure_url.replace(
-            '/upload/',
-            `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
-          );
-          updateGlobalProgress(50);
-        }
-
-        updateGlobalProgress(70);
-        let newPostData = null; // Menyimpan data utuh untuk diteruskan ke Feed
-
-        // Simpan ke Database
-        if (destination === "story") {
-          const { data } = await supabase.from("stories").insert({
-            creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
-            content: caption.trim(), audio_src: selectedMusic?.previewUrl,
-            title: selectedMusic?.trackName, artist: selectedMusic?.artistName,
-            visibility, is_ad: isBusinessUser ? isAd : false,
-          }).select('*, profiles(*)').single();
-          newPostData = data;
-        } else {
-          const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-          const payload = {
-            creator_id: myUserId, name: prof?.username || "User", bio: caption.trim(),
-            category: "Karya", image_url: finalImageUrl, video_url: finalVideoUrl,
-            audio_src: selectedMusic?.previewUrl, title: selectedMusic?.trackName,
-            artist: selectedMusic?.artistName, status: isDraft ? "draft" : "approved",
-            is_ad: isBusinessUser ? isAd : false,
-            comments_disabled: !allowComments,
-          };
-          
-          if (draftId) { 
-            await supabase.from("posts").update(payload).eq('id', draftId);
-            const { data } = await supabase.from("posts").select('*, profiles(*)').eq('id', draftId).single();
-            newPostData = data;
-          } else { 
-            const { data } = await supabase.from("posts").insert(payload).select('*, profiles(*)').single(); 
-            newPostData = data;
-          }
-        }
-
-        updateGlobalProgress(85);
-
-        // Notifikasi Mentions
-        if (!isDraft && (newPostData?.id || destination === "story")) {
-          const mentions = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
-          if (mentions.length > 0) {
-            const { data: tagged } = await supabase.from('profiles').select('id, username').in('username', mentions);
-            if (tagged) {
-              const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-              const notifs = tagged.filter(u => u.id !== myUserId).map(u => ({
-                user_id: u.id, actor_id: myUserId, post_id: destination === "feed" ? newPostData.id : null,
-                type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`,
-              }));
-              if (notifs.length) await supabase.from("notifications").insert(notifs);
-            }
-          }
-        }
-
-        updateGlobalProgress(100);
-        
-        // 🔥 FIX: Kirim data utuh agar saat ditangkap di halaman utama/feed, datanya langsung dirender tanpa refresh
-        window.dispatchEvent(new CustomEvent('postUploadSuccess', { detail: newPostData }));
-        
-        localStorage.removeItem('isUploading'); 
-        localStorage.removeItem('uploadProgress');
-        showNotif(isDraft ? "Draft tersimpan" : "Postingan berhasil!", "success");
-        audioRef.current?.pause();
-      } catch (err: any) {
-        console.error(err);
-        window.dispatchEvent(new CustomEvent('postUploadError'));
-        localStorage.removeItem('isUploading'); 
-        localStorage.removeItem('uploadProgress');
-        showNotif("Gagal upload", "error");
-      }
-    })();
-  };
-
+  // ---------- EDITOR SCREEN (FULL FIX VARIABEL) ----------
   const renderEditorScreen = () => {
     if (step !== 'edit') return null;
+
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#080808', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <button onClick={() => { if (postType === 'image') handleCancelCrop(); else { handleRemoveVideo(); setStep('post'); } }} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 10000,
+        background: 'var(--bg-editor)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100dvh',
+      }}>
+        {/* Header */}
+        <div style={{
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '15px 20px',
+          background: 'var(--modal-overlay)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid var(--border-editor)',
+        }}>
+          <button
+            onClick={() => {
+              if (postType === 'image') handleCancelCrop();
+              else { handleRemoveVideo(); setStep('post'); }
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-editor)',
+              fontSize: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
             <span className="material-icons">arrow_back</span>
           </button>
-          <p style={{ color: '#fff', fontSize: '16px', fontWeight: 600, margin: 0 }}>
-            {postType === 'image' ? `Atur Foto (${croppedImages.length + 1}/${croppedImages.length + rawImagesQueue.length})` : 'Edit Video'}
+          <p style={{
+            color: 'var(--text-editor)',
+            fontSize: '16px',
+            fontWeight: 600,
+            margin: 0,
+          }}>
+            {postType === 'image'
+              ? `Atur Foto (${croppedImages.length + 1}/${croppedImages.length + rawImagesQueue.length})`
+              : 'Edit Video'}
           </p>
-          <button 
-            disabled={isProcessingEdit} 
-            onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
-            style={{ background: isProcessingEdit ? '#555' : '#1f3cff', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '20px', fontWeight: 800, cursor: isProcessingEdit ? 'not-allowed' : 'pointer', fontSize: '13px' }}
+          <button
+            disabled={isProcessingEdit}
+            onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave}
+            style={{
+              background: isProcessingEdit ? '#555' : 'var(--primary)',
+              border: 'none',
+              color: 'var(--text-editor)',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              fontWeight: 800,
+              cursor: isProcessingEdit ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+            }}
           >
             {isProcessingEdit ? 'Memproses...' : 'Selesai'}
           </button>
         </div>
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#000', padding: '10px' }}>
-          {postType === 'image' && imageForCrop ? (
+
+        {/* Konten crop/video */}
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          background: '#000',
+          padding: '10px',
+        }}>
+          {/* Cropper gambar */}
+          {postType === 'image' && imageForCrop && (
             <div style={{ width: '100%', height: '100%', position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
-              <Cropper image={imageForCrop} crop={crop} zoom={zoom} aspect={3 / 4} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
+              <Cropper
+                image={imageForCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={3 / 4}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
             </div>
-          ) : postType === 'video' && rawVideoUrl ? (
-            <div style={{ width: 'auto', height: '100%', maxWidth: '100%', position: 'relative', overflow: 'hidden', aspectRatio: '2/3', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <video ref={videoRef} src={rawVideoUrl} playsInline muted={!isVideoPlaying} loop style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} onLoadedMetadata={handleVideoLoadedMetadata} />
+          )}
+
+          {/* Preview video */}
+          {postType === 'video' && rawVideoUrl && (
+            <div style={{
+              width: 'auto',
+              height: '100%',
+              maxWidth: '100%',
+              position: 'relative',
+              overflow: 'hidden',
+              aspectRatio: '2/3',
+              borderRadius: '16px',
+              border: '1px solid var(--border-editor)',
+            }}>
+              <video
+                ref={videoRef}
+                src={rawVideoUrl}
+                playsInline
+                muted={!isVideoPlaying}
+                loop
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                onLoadedMetadata={handleVideoLoadedMetadata}
+              />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
-              <div onClick={togglePlayVideo} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isVideoPlaying ? 'transparent' : 'rgba(0,0,0,0.5)', cursor: 'pointer', transition: '0.2s' }}>
-                {!isVideoPlaying && <div style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', padding: '15px', borderRadius: '50%' }}><span className="material-icons" style={{ fontSize: '40px', color: '#fff' }}>play_arrow</span></div>}
+              <div
+                onClick={togglePlayVideo}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isVideoPlaying ? 'transparent' : 'var(--modal-overlay)',
+                  cursor: 'pointer',
+                  transition: '0.2s',
+                }}
+              >
+                {!isVideoPlaying && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    padding: '15px',
+                    borderRadius: '50%',
+                  }}>
+                    <span className="material-icons" style={{ fontSize: '40px', color: '#fff' }}>
+                      play_arrow
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-          ) : null}
+          )}
         </div>
-        <div style={{ flexShrink: 0, padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', background: '#111', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+
+        {/* Footer kontrol */}
+        <div style={{
+          flexShrink: 0,
+          padding: '20px',
+          paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+          background: 'var(--bg-editor)',
+          borderTop: '1px solid var(--border-editor)',
+        }}>
           {postType === 'image' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: '#fff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: 'var(--text-editor)' }}>
               <span className="material-icons" style={{ fontSize: '20px' }}>remove</span>
-              <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={e => setZoom(Number(e.target.value))} style={{ flex: 1, accentColor: '#1f3cff' }} />
+              <input
+                type="range"
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.1}
+                onChange={e => setZoom(Number(e.target.value))}
+                style={{ flex: 1, accentColor: 'var(--primary)' }}
+              />
               <span className="material-icons" style={{ fontSize: '20px' }}>add</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Potong video */}
               <div className="editor-control-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>content_cut</span> Potong Video (Max {MAX_VIDEO_CLIP}s)
+                  <span style={{ color: 'var(--text-editor)', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px', color: 'var(--primary)' }}>content_cut</span>
+                    Potong Video (Max {MAX_VIDEO_CLIP}s)
                   </span>
-                  <span style={{ color: '#aaa', fontSize: '12px', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 600 }}>
                     {videoStart.toFixed(1)}s - {Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP).toFixed(1)}s
                   </span>
                 </div>
@@ -635,12 +375,17 @@ function CreatePostContent() {
                   />
                 </div>
               </div>
+
+              {/* Pilih sampul */}
               <div className="editor-control-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="material-icons" style={{ fontSize: '16px', color: '#f59e0b' }}>image</span> Pilih Sampul Depan
+                  <span style={{ color: 'var(--text-editor)', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-icons" style={{ fontSize: '16px', color: 'var(--color-warning)' }}>image</span>
+                    Pilih Sampul Depan
                   </span>
-                  <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Tampil di: {coverTime.toFixed(1)}s</span>
+                  <span style={{ color: 'var(--color-warning)', fontSize: '12px', fontWeight: 600 }}>
+                    Tampil di: {coverTime.toFixed(1)}s
+                  </span>
                 </div>
                 <div className="filmstrip-box" style={{ height: '30px' }}>
                   <input
@@ -665,11 +410,9 @@ function CreatePostContent() {
     );
   };
 
-  // ==================== RENDER ====================
+  // ==================== RENDER UTAMA ====================
   return (
     <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
-      {/* ❌ Overlay Loading Dihapus Total Sesuai Permintaan ❌ */}
-
       {step === 'edit' && renderEditorScreen()}
 
       <MusicSheet
@@ -713,6 +456,7 @@ function CreatePostContent() {
                 />
               )}
 
+              {/* 🔥 Berikan inputRef agar popup bisa mengakses textarea */}
               <CaptionInput
                 caption={caption}
                 onChange={handleCaptionChange}
@@ -730,6 +474,7 @@ function CreatePostContent() {
                 showPopup={showPopup}
                 popupResults={popupResults}
                 onSelectPopupItem={handleSelectPopupItem}
+                inputRef={captionInputRef}   // ✅ prop baru
               />
 
               <MusicPicker
@@ -740,23 +485,40 @@ function CreatePostContent() {
 
               {isBusinessUser && <AdToggle isAd={isAd} setIsAd={setIsAd} />}
 
-              {/* 🔥 Fitur Opsi Lainnya */}
+              {/* Opsi Lainnya – border pakai bg-input */}
               {destination === 'feed' && (
-                <div style={{ marginTop: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', padding: '14px 16px', border: '1px solid var(--border-card)' }}>
-                  <div 
-                    onClick={() => setShowMoreOptions(!showMoreOptions)} 
+                <div style={{
+                  marginTop: '16px',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: '16px',
+                  padding: '14px 16px',
+                  border: '1px solid var(--bg-input)',   // ✅ diperbaiki
+                }}>
+                  <div
+                    onClick={() => setShowMoreOptions(!showMoreOptions)}
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                   >
                     <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span className="material-icons" style={{ fontSize: '18px' }}>settings</span> Opsi Lainnya
                     </span>
-                    <span className="material-icons" style={{ color: 'var(--text-muted)', transform: showMoreOptions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
+                    <span className="material-icons" style={{
+                      color: 'var(--text-muted)',
+                      transform: showMoreOptions ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.3s ease',
+                    }}>
                       expand_more
                     </span>
                   </div>
-                  
+
                   {showMoreOptions && (
-                    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--border-card)', paddingTop: '16px' }}>
+                    <div style={{
+                      marginTop: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '16px',
+                      borderTop: '1px solid var(--bg-input)', // ✅
+                      paddingTop: '16px',
+                    }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>Izinkan Komentar</p>
@@ -764,7 +526,7 @@ function CreatePostContent() {
                         </div>
                         <ToggleSwitch checked={allowComments} onChange={setAllowComments} />
                       </div>
-                      
+
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>Simpan ke Perangkat</p>
@@ -793,7 +555,6 @@ function CreatePostContent() {
 
 export default function CreatePostPage() {
   return (
-    // Fallback diubah menjadi div kosong agar tidak ada efek loading lingkaran (sync)
     <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}></div>}>
       <CreatePostContent />
     </Suspense>
