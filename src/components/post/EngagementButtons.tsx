@@ -28,12 +28,13 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
           handleSave(postId);
         }}
       >
-        <svg viewBox="0 0 24 24" className="icon" fill="currentColor"
-          style={{
-            /* UBAH WARNA DI SINI: Dari biru (#1f3cff) menjadi kuning (#FBBF24) */
-            color: mySavedPosts.has(postId) ? "#FBBF24" : "var(--text-main)", 
-            transition: '0.2s' 
-          }}>
+        <svg 
+          viewBox="0 0 24 24" 
+          className="icon" 
+          /* PERBAIKAN: Masukkan warna langsung ke atribut fill, hapus currentColor */
+          fill={mySavedPosts.has(postId) ? "#FBBF24" : "var(--text-main)"}
+          style={{ transition: '0.2s' }}
+        >
           {mySavedPosts.has(postId)
             ? <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
             : <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" />}
@@ -69,7 +70,6 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
           <path d="M12.1 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3 9.24 3 10.91 3.81 12 5.09 13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5 22 12.28 18.6 15.36 13.55 20.04z"/>
         </svg>
         
-        {/* UBAH BAGIAN INI: */}
         <span className="like-count" style={{ color: 'var(--text-main)' }}>
           {counts[postId]?.likes || 0}
         </span>
