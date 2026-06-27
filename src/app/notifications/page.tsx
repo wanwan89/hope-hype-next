@@ -12,6 +12,7 @@ import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
 import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
 import NotificationListView from '@/components/notifications/NotificationListView';
+import RefreshableWrapper from '@/components/RefreshableWrapper'; // Pastikan path ini sesuai
 
 const getReadNotifs = (): string[] => {
   if (typeof window === 'undefined') return [];
@@ -563,6 +564,13 @@ export default function NotificationsPage() {
   };
   useGlobalRefresh(refetch);
 
+  // --- Fungsi Handle Refresh Pull-to-Refresh ---
+  const handleRefresh = async () => {
+    await refetch();
+    // Jeda tambahan sedikit untuk efek animasi pull-to-refresh yang lebih mulus
+    await new Promise(resolve => setTimeout(resolve, 800));
+  };
+
   const getIconAndColor = (type: string) => {
     switch (type) {
       case 'like':
@@ -642,72 +650,88 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="notif-page-container" style={{ overflowY: 'auto' }}>
+    // Mengubah container menjadi flex column dengan tinggi fixed 100dvh dan overflow hidden
+    // agar scroll bisa dilokalisir di area bawah header.
+    <div className="notif-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+      
       {activeView === 'main' ? (
-        <div className="notif-main-view">
-          
-          <header className="notif-header" style={{ position: 'relative', zIndex: 10 }}>
+        <>
+          {/* HEADER STATIS */}
+          <header className="notif-header" style={{ position: 'relative', zIndex: 10, flexShrink: 0, background: 'var(--bg-main, #fff)' }}>
             <h2>{t('notifications', 'Notifikasi')}</h2>
           </header>
 
-          <FriendStoriesTray
-            friends={friendStories}
-            currentUser={currentUser}
-            myStatusText={myStatusText}
-            onAddStatus={() => setShowStatusInput(true)}
-            router={router}
-            onFriendNoteClick={(id) => router.push(`/data?id=${id}`)}
-          />
+          {/* AREA SCROLL DENGAN PULL-TO-REFRESH */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <RefreshableWrapper onRefresh={handleRefresh}>
+              <div className="notif-main-view" style={{ minHeight: '100%', paddingBottom: '20px' }}>
+                
+                <FriendStoriesTray
+                  friends={friendStories}
+                  currentUser={currentUser}
+                  myStatusText={myStatusText}
+                  onAddStatus={() => setShowStatusInput(true)}
+                  router={router}
+                  onFriendNoteClick={(id) => router.push(`/data?id=${id}`)}
+                />
 
-          {showStatusInput && (
-            <div className="status-input-container">
-              <input
-                type="text"
-                placeholder="Tulis note (Maks. 60 Karakter)"
-                maxLength={60}
-                defaultValue={myStatusText}
-                autoFocus
-                className="status-input"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleUpdateStatus(e.currentTarget.value);
-                }}
-              />
-              <button onClick={() => setShowStatusInput(false)} className="back-btn">
-                <span className="material-icons">close</span>
-              </button>
-            </div>
-          )}
+                {showStatusInput && (
+                  <div className="status-input-container">
+                    <input
+                      type="text"
+                      placeholder="Tulis note (Maks. 60 Karakter)"
+                      maxLength={60}
+                      defaultValue={myStatusText}
+                      autoFocus
+                      className="status-input"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleUpdateStatus(e.currentTarget.value);
+                      }}
+                    />
+                    <button onClick={() => setShowStatusInput(false)} className="back-btn">
+                      <span className="material-icons">close</span>
+                    </button>
+                  </div>
+                )}
 
-          {pendingCount > 0 && (
-            <div className="pending-alert-box" onClick={() => router.push('/pending')}>
-              <div className="pending-alert-left">
-                <div className="pending-icon-wrap">
-                  <span className="material-icons" style={{ fontSize: '20px' }}>pending_actions</span>
-                </div>
-                <div className="pending-text">
-                  <span className="pending-title">Menunggu Review <span>({pendingCount})</span></span>
-                  <span className="pending-desc">Karyamu sedang dalam antrean pengecekan.</span>
-                </div>
+                {pendingCount > 0 && (
+                  <div className="pending-alert-box" onClick={() => router.push('/pending')}>
+                    <div className="pending-alert-left">
+                      <div className="pending-icon-wrap">
+                        <span className="material-icons" style={{ fontSize: '20px' }}>pending_actions</span>
+                      </div>
+                      <div className="pending-text">
+                        <span className="pending-title">Menunggu Review <span>({pendingCount})</span></span>
+                        <span className="pending-desc">Karyamu sedang dalam antrean pengecekan.</span>
+                      </div>
+                    </div>
+                    <span className="material-icons pending-chevron">chevron_right</span>
+                  </div>
+                )}
+
+                <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
+                <RecommendedFriends recommended={recommendedFriends} onFollow={handleFollowAction} myFollowings={myFollowings} />
               </div>
-              <span className="material-icons pending-chevron">chevron_right</span>
-            </div>
-          )}
-
-          <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
-          <RecommendedFriends recommended={recommendedFriends} onFollow={handleFollowAction} myFollowings={myFollowings} />
-        </div>
+            </RefreshableWrapper>
+          </div>
+        </>
       ) : (
-        <NotificationListView
-          title={getTitleByView()}
-          notifs={filteredNotifs}
-          onBack={() => setActiveView('main')}
-          handleNotifClick={handleNotifClick}
-          handleFollowBack={handleFollowAction}
-          myFollowings={myFollowings}
-          router={router}
-          formatDate={formatDate}
-          getIconAndColor={getIconAndColor}
-        />
+        /* KETIKA DI DALAM CATEGORY VIEW (NotificationListView) */
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <RefreshableWrapper onRefresh={handleRefresh}>
+            <NotificationListView
+              title={getTitleByView()}
+              notifs={filteredNotifs}
+              onBack={() => setActiveView('main')}
+              handleNotifClick={handleNotifClick}
+              handleFollowBack={handleFollowAction}
+              myFollowings={myFollowings}
+              router={router}
+              formatDate={formatDate}
+              getIconAndColor={getIconAndColor}
+            />
+          </RefreshableWrapper>
+        </div>
       )}
     </div>
   );

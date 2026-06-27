@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next';
 import Lottie from 'lottie-react';
 import playAnimation from '@/assets/lottie/play.json'; 
 import { motion, AnimatePresence } from 'framer-motion'; 
-import { useGlobalRefresh } from '@/hooks/useGlobalRefresh'; // 🔥 Import Hook Global Refresh
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
+import RefreshableWrapper from '@/components/RefreshableWrapper';
 
 // Import komponen anak
 import ProfileHeader from './ProfileHeader';
@@ -71,7 +72,6 @@ function ProfileContent() {
   // ==========================================
   const refetch = async () => {
     try {
-      // Ambil data profil terbaru dan postingan pada tab aktif secara paralel
       await Promise.all([
         loadProfile(true),
         loadPostsTab(activeTab, true)
@@ -81,7 +81,6 @@ function ProfileContent() {
     }
   };
 
-  // 🔥 Pasang hook global refresh disini
   useGlobalRefresh(refetch);
 
   // ==========================================
@@ -334,9 +333,6 @@ function ProfileContent() {
     }
   };
 
-  // ==========================================
-  // 🔥 EVENT HANDLERS 🔥
-  // ==========================================
   const handlePostClick = (postId: string, status: string) => {
     if (!postId) return;
     if (status === 'draft') {
@@ -486,23 +482,7 @@ function ProfileContent() {
         </div>
         <button
           onClick={() => router.push('/login')} 
-          style={{
-            width: '100%',
-            maxWidth: '280px',
-            background: '#1f3cff',
-            color: 'white',
-            border: 'none',
-            padding: '14px 0',
-            borderRadius: '14px',
-            fontWeight: 'bold',
-            fontSize: '16px',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-            overflow: 'hidden', 
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
+          style={{ width: '100%', maxWidth: '280px', background: '#1f3cff', color: 'white', border: 'none', padding: '14px 0', borderRadius: '14px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', transition: 'background 0.2s', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
         >
           <AnimatePresence mode="wait">
             <motion.span
@@ -528,7 +508,7 @@ function ProfileContent() {
 
   if (blockStatus === 'blocking_me') {
     return (
-      <div className="profile-page-container" style={{ position: 'fixed', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
+      <div className="profile-page-container" style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
         <ProfileHeader isMe={isMe} username={profile.username} isPrivate={profile.is_private} onBack={() => router.back()} onMenuClick={() => {}} />
         <div style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)'}}>
           <span className="material-icons" style={{fontSize: '60px', opacity: 0.5}}>no_accounts</span>
@@ -540,7 +520,7 @@ function ProfileContent() {
 
   if (blockStatus === 'blocked_by_me') {
     return (
-      <div className="profile-page-container" style={{ position: 'fixed', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
+      <div className="profile-page-container" style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
         <ProfileHeader isMe={isMe} username={profile.username} isPrivate={profile.is_private} onBack={() => router.back()} onMenuClick={() => {}} />
         <div style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center'}}>
           <span className="material-icons" style={{fontSize: '60px', color: '#ef4444'}}>block</span>
@@ -553,137 +533,89 @@ function ProfileContent() {
   }
 
   return (
-    <div className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`}>
+    <div className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       <style>{`
+        .profile-scroll-area { flex: 1; overflow-y: auto; touch-action: pan-y; }
+        .noscroll { overflow: hidden !important; touch-action: none; }
+        /* CSS Tambahan untuk style profil */
         .avatar-container { margin: 0 auto 12px; display: flex; justify-content: center; align-items: center; }
         .story-ring, .normal-ring { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
         .story-ring { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); animation: pulseStory 2s infinite alternate; }
         .normal-ring { border: 2px solid var(--border-color); background: transparent; }
         .profile-avatar-img { width: 82px; height: 82px; border-radius: 50%; object-fit: cover; border: 3.5px solid var(--bg-main); background: var(--bg-secondary); }
         @keyframes pulseStory { 0% { filter: brightness(1); } 100% { filter: brightness(1.2); } }
-        .edit-avatar-preview { width: 95px; height: 95px; border-radius: 50%; object-fit: cover; border: 3px solid #1f3cff; cursor: pointer; margin-bottom: 15px; background: var(--bg-secondary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .profile-tabs { display: flex; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid var(--border-card); scrollbar-width: none; }
         .profile-tabs::-webkit-scrollbar { display: none; }
         .profile-tab-item { padding: 14px 20px; color: var(--text-muted); font-weight: 600; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s; display: flex; align-items: center; gap: 4px; }
         .profile-tab-item.active { color: var(--text-main); font-weight: 800; border-bottom: 2px solid transparent; }
-        .full-screen-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-main); z-index: 99999; transform: translateY(100%); transition: transform 0.3s ease-in-out; display: flex; flex-direction: column; opacity: 0; pointer-events: none; }
-        .full-screen-modal.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-        .full-screen-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border-card); background: var(--bg-main); }
-        .full-screen-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg-main); }
-        .full-screen-body.no-padding { padding: 0; }
-        .icon-btn-header { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; }
-        .icon-btn-header.text-btn { color: #1f3cff; font-weight: 700; font-size: 15px; }
-        .p-follow-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-secondary); border-top-left-radius: 24px; border-top-right-radius: 24px; z-index: 99999; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 85dvh; display: flex; flex-direction: column; }
-        .p-follow-sheet.open { transform: translateY(0); }
-        .follow-sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border-card); }
-        .follow-sheet-body { padding: 15px 20px; overflow-y: auto; }
-        .drag-handle { width: 40px; height: 5px; background: var(--border-card); border-radius: 10px; margin: 0 auto 5px; }
-        .close-icon { color: var(--text-muted); cursor: pointer; }
-        .noscroll { overflow: hidden !important; touch-action: none; }
       `}</style>
 
-      <ProfileHeader
-        isMe={isMe}
-        username={profile.username}
-        isPrivate={profile.is_private}
-        onBack={() => router.back()}
-        onMenuClick={() => setIsSidebarOpen(true)}
-      />
-
-      <div className="profile-top-section">
-        <ProfileInfo
-          profile={profile}
-          stats={stats}
+      {/* HEADER STATIS */}
+      <div style={{ flexShrink: 0 }}>
+        <ProfileHeader
           isMe={isMe}
-          isFollowing={isFollowing}
-          isMutual={isMutual}
-          hasStory={hasStory}
-          storyIdToGo={storyIdToGo}
-          onAvatarClick={handleAvatarClick}
-          onChat={handleGoToChat}
-          onToggleFollow={toggleFollow}
-          onEdit={() => setIsEditModalOpen(true)}
-          onShare={handleShareProfile}
-          onOpenActionSheet={() => setIsActionSheetOpen(true)}
-          onOpenFollowers={() => handleOpenFollowModal('followers')}
-          onOpenFollowing={() => handleOpenFollowModal('following')}
-          t={t}
-        />
-
-        {(!profile.is_private || isMe || isMutual) && (
-          <ProfileTabs
-            isMe={isMe}
-            isMutual={isMutual}
-            profile={profile}
-            activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab as any)}
-            t={t}
-          />
-        )}
-      </div>
-
-      <div className="post-grid-container">
-        <PostGrid
-          posts={posts}
-          isLoadingPosts={isLoadingPosts}
-          isMe={isMe}
-          isMutual={isMutual}
-          profile={profile}
-          activeTab={activeTab}
-          onPostClick={handlePostClick}
-          t={t}
+          username={profile.username}
+          isPrivate={profile.is_private}
+          onBack={() => router.back()}
+          onMenuClick={() => setIsSidebarOpen(true)}
         />
       </div>
 
-      {isMe && (
-        <SidebarMenu
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          t={t}
-          onShare={handleShareProfile}
-        />
-      )}
+      {/* AREA KONTEN DENGAN PULL-TO-REFRESH */}
+      <div className="profile-scroll-area">
+        <RefreshableWrapper onRefresh={refetch}>
+          <div className="profile-top-section">
+            <ProfileInfo
+              profile={profile}
+              stats={stats}
+              isMe={isMe}
+              isFollowing={isFollowing}
+              isMutual={isMutual}
+              hasStory={hasStory}
+              storyIdToGo={storyIdToGo}
+              onAvatarClick={handleAvatarClick}
+              onChat={handleGoToChat}
+              onToggleFollow={toggleFollow}
+              onEdit={() => setIsEditModalOpen(true)}
+              onShare={handleShareProfile}
+              onOpenActionSheet={() => setIsActionSheetOpen(true)}
+              onOpenFollowers={() => handleOpenFollowModal('followers')}
+              onOpenFollowing={() => handleOpenFollowModal('following')}
+              t={t}
+            />
 
-      <EditProfileModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        editData={editData}
-        setEditData={setEditData}
-        selectedFile={selectedFile}
-        setSelectedFile={setSelectedFile}
-        previewUrl={previewUrl}
-        setPreviewUrl={setPreviewUrl}
-        isSaving={isSaving}
-        onSave={handleSaveSettings}
-        fileInputRef={fileInputRef}
-        t={t}
-      />
+            {(!profile.is_private || isMe || isMutual) && (
+              <ProfileTabs
+                isMe={isMe}
+                isMutual={isMutual}
+                profile={profile}
+                activeTab={activeTab}
+                onTabChange={(tab) => setActiveTab(tab as any)}
+                t={t}
+              />
+            )}
+          </div>
 
-      <FollowModal
-        isOpen={isFollowModalOpen}
-        type={followModalType}
-        list={followList}
-        isLoading={isFollowLoading}
-        onClose={() => setIsFollowModalOpen(false)}
-        onUserClick={(userId) => {
-          setIsFollowModalOpen(false);
-          router.push(`/data?id=${userId}`);
-        }}
-        t={t}
-      />
+          <div className="post-grid-container">
+            <PostGrid
+              posts={posts}
+              isLoadingPosts={isLoadingPosts}
+              isMe={isMe}
+              isMutual={isMutual}
+              profile={profile}
+              activeTab={activeTab}
+              onPostClick={handlePostClick}
+              t={t}
+            />
+          </div>
+        </RefreshableWrapper>
+      </div>
 
-      <ActionSheet
-        isOpen={isActionSheetOpen}
-        isMutual={isMutual} 
-        onClose={() => setIsActionSheetOpen(false)}
-        onSetNickname={() => {
-          setIsActionSheetOpen(false);
-          showNotif("Fitur ganti nama panggilan segera hadir!", "info");
-        }}
-        onReport={handleReportUser}
-        onBlock={handleBlockUser}
-      />
-
+      {/* MODALS TETAP DI LUAR */}
+      {isMe && <SidebarMenu isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} t={t} onShare={handleShareProfile} />}
+      <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editData={editData} setEditData={setEditData} selectedFile={selectedFile} setSelectedFile={setSelectedFile} previewUrl={previewUrl} setPreviewUrl={setPreviewUrl} isSaving={isSaving} onSave={handleSaveSettings} fileInputRef={fileInputRef} t={t} />
+      <FollowModal isOpen={isFollowModalOpen} type={followModalType} list={followList} isLoading={isFollowLoading} onClose={() => setIsFollowModalOpen(false)} onUserClick={(userId) => { setIsFollowModalOpen(false); router.push(`/data?id=${userId}`); }} t={t} />
+      <ActionSheet isOpen={isActionSheetOpen} isMutual={isMutual} onClose={() => setIsActionSheetOpen(false)} onSetNickname={() => { setIsActionSheetOpen(false); showNotif("Fitur ganti nama panggilan segera hadir!", "info"); }} onReport={handleReportUser} onBlock={handleBlockUser} />
     </div>
   );
 }
