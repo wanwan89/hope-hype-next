@@ -7,6 +7,7 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import Lottie from 'lottie-react';
 import playAnimation from '@/assets/lottie/play.json'; // 🔥 Import Lottie JSON
+import { motion, AnimatePresence } from 'framer-motion'; // 🔥 Import Framer Motion
 
 // Import komponen anak (pastikan path sesuai)
 import ProfileHeader from './ProfileHeader';
@@ -40,6 +41,7 @@ function ProfileContent() {
   // ==========================================
   const [isMounted, setIsMounted] = useState(false);
   const [needsLogin, setNeedsLogin] = useState(false); // State baru untuk cek kewajiban login
+  const [authText, setAuthText] = useState('Login'); // 🔥 State untuk animasi teks tombol
   const [myId, setMyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ followers: 0, following: 0, likes: 0 });
@@ -75,6 +77,16 @@ function ProfileContent() {
       setIsFollowModalOpen(false);
     };
   }, []);
+
+  // 🔥 Effect untuk animasi ganti teks tombol Login/Sign Up
+  useEffect(() => {
+    if (needsLogin) {
+      const interval = setInterval(() => {
+        setAuthText((prev) => (prev === 'Login' ? 'Sign Up' : 'Login'));
+      }, 3000); // Teks berganti setiap 3 detik
+      return () => clearInterval(interval);
+    }
+  }, [needsLogin]);
 
   useEffect(() => {
     let isComponentActive = true;
@@ -455,13 +467,13 @@ function ProfileContent() {
     return (
       <div className="profile-page-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '20px', background: 'var(--bg-main)' }}>
         
-        {/* 🔥 Diubah menjadi Lottie Animation */}
-        <div style={{ width: '100px', marginBottom: '24px' }}>
+        {/* 🔥 Lottie diperbesar menjadi 250px */}
+        <div style={{ width: '250px', marginBottom: '24px' }}>
           <Lottie animationData={playAnimation} loop={true} />
         </div>
 
         <button
-          onClick={() => router.push('/login')}
+          onClick={() => router.push('/login')} // 🔥 Tetap mengarah ke halaman login
           style={{
             width: '100%',
             maxWidth: '280px',
@@ -473,10 +485,26 @@ function ProfileContent() {
             fontWeight: 'bold',
             fontSize: '16px',
             cursor: 'pointer',
-            transition: 'background 0.2s'
+            transition: 'background 0.2s',
+            overflow: 'hidden', // 🔥 Mencegah teks meluber saat animasi
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
           }}
         >
-          Login
+          {/* 🔥 Animasi teks tombol ganti dengan Framer Motion */}
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={authText}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{ display: 'inline-block' }}
+            >
+              {authText}
+            </motion.span>
+          </AnimatePresence>
         </button>
       </div>
     );
