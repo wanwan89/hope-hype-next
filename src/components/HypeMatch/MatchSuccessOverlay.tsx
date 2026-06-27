@@ -35,7 +35,8 @@ export default function MatchSuccessOverlay({
         .hm-match-overlay-container {
           position: fixed;
           inset: 0;
-          background: linear-gradient(180deg, #00b4ff 0%, #0066ff 100%); 
+          /* Mengubah background menjadi warna biru solid brand (#0000cc) */
+          background: #0000cc; 
           z-index: 99999;
           display: flex;
           flex-direction: column;
@@ -71,11 +72,11 @@ export default function MatchSuccessOverlay({
         }
 
         .hm-its-a-text {
-          font-family: 'Montserrat', 'Segoe UI', Helvetica, Arial, sans-serif;
+          font-family: 'Titan One', 'Montserrat', sans-serif;
           font-size: 24px;
           font-weight: 800;
           font-style: italic;
-          color: #ffffff; /* Menggunakan putih agar kontras dengan background biru */
+          color: #ffffff; 
           letter-spacing: 2px;
           margin: 0 0 -5px 0;
           z-index: 4;
@@ -86,12 +87,12 @@ export default function MatchSuccessOverlay({
           position: relative;
           display: flex;
           justify-content: center;
-          height: 150px; /* Memberikan ruang agar outline bawah tidak memotong elemen di bawahnya */
+          height: 150px; 
           width: 100%;
         }
 
         .hm-match-word {
-          font-family: 'Montserrat', 'Segoe UI', Helvetica, Arial, sans-serif;
+          font-family: 'Titan One', 'Montserrat', sans-serif;
           font-size: 75px;
           font-weight: 900;
           font-style: italic;
@@ -149,7 +150,7 @@ export default function MatchSuccessOverlay({
         }
 
         .hm-favorite-icon {
-          color: #ff1e56; /* WARNA MERAH MENYALA */
+          color: #ff1e56; 
           font-size: 60px; 
           position: absolute;
           left: 50%;
@@ -161,7 +162,7 @@ export default function MatchSuccessOverlay({
 
         .hm-btn-chat-now {
           background: #ffffff; 
-          color: #0066ff; 
+          color: #0000cc; /* Warna teks tombol disamakan dengan tema biru */
           padding: 16px 40px; 
           border-radius: 30px;
           font-weight: bold; 

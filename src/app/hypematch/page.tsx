@@ -220,8 +220,25 @@ export default function HypeMatch() {
 
   return (
     <div className="hm-overlay">
+      {/* Impor font Titan One khusus untuk halaman ini jika belum ada secara global */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Titan+One&display=swap');
+      `}</style>
+
       <div className="hm-header">
-        <h1 className="hm-logo-text">HypeMatch</h1>
+        {/* Mengubah font menjadi Titan One dan warnanya menjadi biru */}
+        <h1 
+          className="hm-logo-text" 
+          style={{ 
+            fontFamily: "'Titan One', 'Arial Black', sans-serif", 
+            color: "#0000cc", 
+            letterSpacing: "-1px",
+            textTransform: "lowercase",
+            margin: 0
+          }}
+        >
+          hypematch
+        </h1>
         <button className="hm-icon-btn-transparent" onClick={() => router.push('/hypematch/filter')}>
           <SvgIcon name="filter" size={26} />
         </button>
@@ -285,12 +302,15 @@ export default function HypeMatch() {
 
         {activeUser && (
           <div className="hm-fixed-action-bar">
+            {/* Tombol X (Pass) tetap 28 */}
             <button className="hm-action-btn btn-pass" onClick={(e) => { e.stopPropagation(); handleAction('pass'); }} style={{ transform: `scale(${passBtnScale})` }}>
               <SvgIcon name="x" className="hm-no-margin" size={28} />
             </button>
+            {/* Tombol Panah Atas (Detail) dibesarkan menjadi 40 */}
             <button className="hm-action-btn btn-fire" onClick={(e) => { e.stopPropagation(); setShowBiodata(true); }}>
-              <SvgIcon name="arrowUp" className="hm-no-margin" size={24} />
+              <SvgIcon name="arrowUp" className="hm-no-margin" size={40} />
             </button>
+            {/* Tombol Hati (Like) tetap 28 */}
             <button className="hm-action-btn btn-like" onClick={(e) => { e.stopPropagation(); handleAction('like'); }} style={{ transform: `scale(${likeBtnScale})` }}>
               <SvgIcon name="heart" className="hm-no-margin" size={28} />
             </button>
@@ -298,7 +318,6 @@ export default function HypeMatch() {
         )}
       </div>
 
-      {/* TINGGAL PANGGIL KOMPONEN BARU DISINI */}
       <BiodataSlide 
         activeUser={activeUser} 
         showBiodata={showBiodata} 
