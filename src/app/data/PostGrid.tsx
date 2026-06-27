@@ -1,6 +1,15 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+// 🔥 IMPORT LOTTIE SECARA DINAMIS (Mencegah SSR Error di Next.js) 🔥
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+
+// 🔥 IMPORT FILE LOTTIE JSON 🔥
+// Sesuaikan dengan alias Next.js Anda (biasanya @ merujuk ke folder src)
+import lockAnimation from '@/assets/lottie/lock.json';
+import kittyAnimation from '@/assets/lottie/kitty.json';
 
 type Props = {
   posts: any[];
@@ -52,11 +61,15 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
     );
   }
 
+  // 🔥 STATE: AKUN PRIVAT 🔥
   if (profile.is_private && !isMutual && !isMe) {
     return (
       <div className="post-grid">
         <div className="no-posts-v2">
-          <div className="no-posts-icon-circle"><span className="material-icons">lock</span></div>
+          {/* Lottie Animasi Lock */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+            <Lottie animationData={lockAnimation} loop={true} style={{ width: 120, height: 120 }} />
+          </div>
           <h3>Akun Private</h3>
           <p>Harus saling mengikuti (berteman) untuk melihat postingan dan karya mereka.</p>
         </div>
@@ -64,11 +77,15 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
     );
   }
 
+  // 🔥 STATE: AKTIVITAS PRIVAT (LIKE / REPOST DISEMBUNYIKAN) 🔥
   if ((activeTab === 'like' && !isMe && profile.hide_likes) || (activeTab === 'repost' && !isMe && profile.hide_reposts)) {
     return (
       <div className="post-grid">
         <div className="no-posts-v2">
-          <div className="no-posts-icon-circle"><span className="material-icons">lock</span></div>
+          {/* Lottie Animasi Lock */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+            <Lottie animationData={lockAnimation} loop={true} style={{ width: 120, height: 120 }} />
+          </div>
           <h3>Aktivitas Privat</h3>
           <p>Pengguna menyembunyikan riwayat aktivitas ini.</p>
         </div>
@@ -76,12 +93,18 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
     );
   }
 
+  // 🔥 STATE: TIDAK ADA POSTINGAN (PUBLIK MAUPUN PRIVAT) 🔥
   if (posts.length === 0) {
     return (
       <div className="post-grid">
         <div className="no-posts-v2">
-          <div className="no-posts-icon-circle">
-            <span className="material-icons">{activeTab === 'private' ? 'lock' : 'auto_awesome'}</span>
+          {/* Lottie Kondisional: Lock untuk privat, Kitty untuk selain privat */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+            <Lottie 
+              animationData={activeTab === 'private' ? lockAnimation : kittyAnimation} 
+              loop={true} 
+              style={{ width: 150, height: 150 }} 
+            />
           </div>
           <h3>{activeTab === 'private' ? 'Tidak ada postingan privat' : t('no_posts', 'Belum ada postingan')}</h3>
           {isMe && activeTab === 'post' && (

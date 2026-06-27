@@ -2,9 +2,9 @@
 
 import React, { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase'; // Sesuaikan path ini
+import { supabase } from '@/lib/supabase';
 import Lottie from 'lottie-react';
-import pinCodeAnimation from '@/assets/lottie/pincode.json'; // Import Lottie JSON
+import pinCodeAnimation from '@/assets/lottie/pincode.json';
 import './Login.css';
 
 type Mode = 'login' | 'signup';
@@ -13,22 +13,18 @@ type LoadingState = 'google' | 'discord' | 'passkey' | 'magiclink' | 'credential
 export default function LoginPage() {
   const router = useRouter();
 
-  // --- UI State ---
   const [mode, setMode] = useState<Mode>('login');
   const [loading, setLoading] = useState<LoadingState>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   
-  // 🔥 State baru untuk toggle form Email/Password
   const [showEmailForm, setShowEmailForm] = useState(false);
 
-  // --- Form State ---
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // --- Reset & Notifications ---
   const clearMessages = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -44,7 +40,6 @@ export default function LoginPage() {
     setSuccessMsg(msg);
   };
 
-  // --- Validations ---
   const validateForm = (): boolean => {
     if (!email || !email.includes('@')) {
       handleError('Please enter a valid email address.');
@@ -72,7 +67,6 @@ export default function LoginPage() {
     return true;
   };
 
-  // --- Auth Handlers ---
   const handleCredentialsAuth = async (e: FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -137,7 +131,6 @@ export default function LoginPage() {
     }
   };
 
-  // 🔥 Handler Lupa Password
   const handleForgotPassword = async () => {
     if (!email || !email.includes('@')) {
       handleError('Please enter your email first to reset your password.');
@@ -176,34 +169,24 @@ export default function LoginPage() {
 
   const toggleMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
-    setShowEmailForm(true); // 🔥 Otomatis buka form saat pindah mode
+    setShowEmailForm(true); 
     clearMessages();
   };
 
-  // --- SVG Icons ---
   const LoaderIcon = () => (
-    <svg className="spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg className="auth-spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
     </svg>
   );
 
   return (
     <div className="auth-layout">
-      <div className="auth-container" role="main" style={{ position: 'relative' }}>
+      <div className="auth-container" role="main">
         
-        {/* 🔥 Tombol Close (X) di Pojok Kanan Atas */}
+        {/* Tombol Close (X) dengan warna dari CSS Variable */}
         <button 
           onClick={() => router.back()} 
-          style={{ 
-            position: 'absolute', 
-            top: '20px', 
-            right: '20px', 
-            background: 'none', 
-            border: 'none', 
-            color: '#9ca3af', 
-            cursor: 'pointer',
-            padding: '4px'
-          }}
+          className="auth-btn-close"
           aria-label="Close"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -212,27 +195,22 @@ export default function LoginPage() {
           </svg>
         </button>
 
-        {/* Indikator Pemanis Modal */}
-        <div className="modal-handle"></div>
+        <div className="auth-modal-handle"></div>
         
-        {/* Header - Diubah menggunakan Lottie */}
         <header className="auth-header">
           <div style={{ width: '120px', margin: '0 auto', marginBottom: '10px' }}>
             <Lottie animationData={pinCodeAnimation} loop={true} />
           </div>
-          {/* h1 (Welcome Back) dihapus dan diganti Lottie sesuai permintaan */}
           <p>{mode === 'login' ? 'Sign in to continue' : 'Sign up to get started'}</p>
         </header>
 
-        {/* Alerts */}
         <div className="auth-alerts" aria-live="polite">
-          {errorMsg && <div className="alert alert-error">{errorMsg}</div>}
-          {successMsg && <div className="alert alert-success">{successMsg}</div>}
+          {errorMsg && <div className="auth-alert auth-alert-error">{errorMsg}</div>}
+          {successMsg && <div className="auth-alert auth-alert-success">{successMsg}</div>}
         </div>
 
-        {/* OAuth Buttons */}
         <div className="auth-socials">
-          <button type="button" className="btn-social" onClick={() => handleOAuth('google')} disabled={loading !== null}>
+          <button type="button" className="auth-btn-social" onClick={() => handleOAuth('google')} disabled={loading !== null}>
             {loading === 'google' ? <LoaderIcon /> : (
               <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -244,7 +222,7 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <button type="button" className="btn-social" onClick={() => handleOAuth('discord')} disabled={loading !== null}>
+          <button type="button" className="auth-btn-social" onClick={() => handleOAuth('discord')} disabled={loading !== null}>
             {loading === 'discord' ? <LoaderIcon /> : (
               <svg width="20" height="20" viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg">
                 <path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
@@ -253,7 +231,7 @@ export default function LoginPage() {
             Continue with Discord
           </button>
 
-          <button type="button" className="btn-social" onClick={handlePasskey} disabled={loading !== null}>
+          <button type="button" className="auth-btn-social" onClick={handlePasskey} disabled={loading !== null}>
             {loading === 'passkey' ? <LoaderIcon /> : (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -264,17 +242,15 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Divider */}
         <div className="auth-divider">
           <span>OR</span>
         </div>
 
-        {/* 🔥 Tombol Expand Email ATAU Form Utama */}
         {!showEmailForm ? (
           <button 
             type="button" 
-            className="btn-social" 
-            style={{ width: '100%', marginTop: '10px' }}
+            className="auth-btn-social" 
+            style={{ width: '100%' }}
             onClick={() => setShowEmailForm(true)}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -284,9 +260,9 @@ export default function LoginPage() {
             Continue with Email
           </button>
         ) : (
-          <form onSubmit={handleCredentialsAuth} className="auth-form" style={{ animation: 'slideDown 0.3s ease-out' }} noValidate>
+          <form onSubmit={handleCredentialsAuth} className="auth-form auth-slide-down" noValidate>
             {mode === 'signup' && (
-              <div className="form-group slide-down">
+              <div className="auth-form-group auth-slide-down">
                 <label htmlFor="username">Username</label>
                 <input 
                   id="username" type="text" value={username} 
@@ -296,7 +272,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="form-group">
+            <div className="auth-form-group">
               <label htmlFor="email">Email</label>
               <input 
                 id="email" type="email" value={email} 
@@ -305,7 +281,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="form-group">
+            <div className="auth-form-group">
               <label htmlFor="password">Password</label>
               <input 
                 id="password" type="password" value={password} 
@@ -314,19 +290,13 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* 🔥 Link Forgot Password */}
             {mode === 'login' && (
               <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
                 <button 
                   type="button" 
                   onClick={handleForgotPassword} 
                   disabled={loading !== null}
-                  style={{ 
-                    background: 'none', border: 'none', 
-                    color: '#9ca3af', fontSize: '13px', 
-                    cursor: 'pointer', padding: 0,
-                    textDecoration: 'underline'
-                  }}
+                  className="auth-btn-text-only"
                 >
                   {loading === 'reset' ? 'Sending...' : 'Forgot password?'}
                 </button>
@@ -334,7 +304,7 @@ export default function LoginPage() {
             )}
 
             {mode === 'signup' && (
-              <div className="form-group slide-down">
+              <div className="auth-form-group auth-slide-down">
                 <label htmlFor="confirmPassword">Confirm Password</label>
                 <input 
                   id="confirmPassword" type="password" value={confirmPassword} 
@@ -344,12 +314,12 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button type="submit" className="btn-primary mt-2" disabled={loading !== null}>
+            <button type="submit" className="auth-btn-primary" disabled={loading !== null}>
               {loading === 'credentials' ? <LoaderIcon /> : (mode === 'login' ? 'Sign In' : 'Create Account')}
             </button>
 
             {mode === 'login' && (
-              <button type="button" className="btn-magic-link" onClick={handleMagicLink} disabled={loading !== null}>
+              <button type="button" className="auth-btn-magic-link" onClick={handleMagicLink} disabled={loading !== null}>
                 {loading === 'magiclink' ? 'Sending...' : 'Send Magic Link Instead'}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -360,11 +330,10 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* Footer */}
         <footer className="auth-footer">
           <p>
             {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
-            <button type="button" onClick={toggleMode} className="btn-toggle">
+            <button type="button" onClick={toggleMode} className="auth-btn-toggle">
               {mode === 'login' ? 'Sign Up' : 'Sign In'}
             </button>
           </p>

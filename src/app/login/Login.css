@@ -1,72 +1,72 @@
 /* =========================================
-   SLIDE UP / BOTTOM SHEET LAYOUT
+   SCOPED AUTHENTICATION CSS
+   100% Sesuai Global CSS (Dark & Light Mode)
    ========================================= */
 
-/* Backdrop (Latar belakang gelap transparan) */
 .auth-layout {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: flex-end; 
   justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5); 
+  background-color: var(--modal-overlay, rgba(0, 0, 0, 0.5)); 
   backdrop-filter: blur(4px); 
   z-index: 9999;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Poppins', -apple-system, sans-serif;
   box-sizing: border-box;
 }
 
-/* Modal Slide Up */
 .auth-container {
   width: 100%;
   max-width: 480px; 
-  background-color: var(--bg-main, #ffffff);
+  background-color: var(--bg-modal, var(--bg-main));
   padding: 16px 24px 32px 24px; 
   border-radius: 24px 24px 0 0; 
   display: flex;
   flex-direction: column;
+  position: relative;
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15); 
-  animation: slideUpModal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: authSlideUpModal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Indikator "Drag/Tarik" di atas modal */
-.modal-handle {
+/* Close Button (X) */
+.auth-btn-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--icon-fill);
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.auth-btn-close:hover {
+  opacity: 1;
+}
+
+.auth-modal-handle {
   width: 40px;
   height: 4px;
-  background-color: var(--border-color, #e2e8f0);
+  background-color: var(--bg-secondary);
   border-radius: 4px;
   margin: 0 auto 24px auto;
 }
 
-/* =========================================
-   HEADER & LOGO
-   ========================================= */
 .auth-header {
   text-align: center;
   margin-bottom: 32px;
 }
 
-.app-logo {
-  margin-bottom: 16px;
-}
-
-.auth-header h1 {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin: 0 0 8px 0;
-  color: var(--text-main, #0f172a);
-}
-
 .auth-header p {
   font-size: 15px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted);
   margin: 0;
 }
 
-/* =========================================
-   ALERTS
-   ========================================= */
+/* ALERTS */
 .auth-alerts {
   min-height: 48px;
   margin-bottom: 16px;
@@ -75,38 +75,36 @@
   justify-content: center;
 }
 
-.alert {
+.auth-alert {
   width: 100%;
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
   text-align: center;
-  animation: slideDownAlert 0.3s ease;
+  animation: authSlideDownAlert 0.3s ease;
 }
 
-.alert-error {
+.auth-alert-error {
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.alert-success {
+.auth-alert-success {
   background-color: rgba(16, 185, 129, 0.1);
   color: #10b981;
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-/* =========================================
-   SOCIAL BUTTONS
-   ========================================= */
+/* BUTTONS */
 .auth-socials {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.btn-social {
+.auth-btn-social {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,9 +112,9 @@
   width: 100%;
   height: 48px;
   background-color: transparent;
-  border: 1px solid var(--border-color, #333639);
+  border: 1px solid var(--bg-secondary);
   border-radius: 12px;
-  color: var(--text-main, #0f172a);
+  color: var(--text-main);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -124,23 +122,101 @@
   transform: translateZ(0);
 }
 
-.btn-social:hover:not(:disabled) {
-  background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
-  border-color: var(--text-muted, #64748b);
+.auth-btn-social:hover:not(:disabled) {
+  background-color: var(--bg-secondary);
 }
 
-.btn-social:active:not(:disabled) {
+.auth-btn-social:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-.btn-social:disabled {
+.auth-btn-social:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-/* =========================================
-   DIVIDER
-   ========================================= */
+.auth-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  background-color: var(--text-main);
+  color: var(--bg-main);
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: all 0.2s ease;
+  transform: translateZ(0);
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.auth-btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.auth-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* TEXT BUTTONS */
+.auth-btn-text-only {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.auth-btn-text-only:hover {
+  color: var(--text-main);
+}
+
+.auth-btn-magic-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 12px 0;
+  transition: color 0.2s ease;
+}
+
+.auth-btn-magic-link:hover:not(:disabled) {
+  color: var(--text-main);
+}
+
+.auth-btn-toggle {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+  padding: 0;
+  font-size: 14px;
+  transition: opacity 0.2s ease;
+}
+
+.auth-btn-toggle:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+/* DIVIDER */
 .auth-divider {
   position: relative;
   text-align: center;
@@ -154,134 +230,74 @@
   left: 0;
   width: 100%;
   height: 1px;
-  background-color: var(--border-color, #333639);
+  background-color: var(--bg-secondary);
 }
 
 .auth-divider span {
   position: relative;
-  background-color: var(--bg-main, #ffffff);
+  background-color: var(--bg-modal, var(--bg-main));
   padding: 0 16px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* =========================================
-   FORM & INPUTS
-   ========================================= */
+/* FORM GROUPS */
 .auth-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.form-group {
+.auth-form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.form-group label {
+.auth-form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-main, #0f172a);
+  color: var(--text-main);
 }
 
-.form-group input {
+.auth-form-group input {
   width: 100%;
   height: 48px;
   padding: 0 16px;
-  background-color: transparent;
-  border: 1px solid var(--border-color, #333639);
+  background-color: var(--bg-input);
+  border: 1px solid transparent;
   border-radius: 12px;
-  color: var(--text-main, #0f172a);
+  color: var(--text-main);
   font-size: 15px;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
-.form-group input::placeholder {
-  color: var(--text-muted, #64748b);
-  opacity: 0.6;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--text-main, #0f172a);
-  box-shadow: 0 0 0 1px var(--text-main, #0f172a);
-}
-
-.form-group input:disabled {
-  opacity: 0.6;
-}
-
-/* Fix Autofill transparan mengikuti Global CSS */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px var(--bg-main, #ffffff) inset !important;
-  -webkit-text-fill-color: var(--text-main, #0f172a) !important;
-  transition: background-color 5000s ease-in-out 0s;
-}
-
-/* =========================================
-   PRIMARY BUTTON (Sign In)
-   ========================================= */
-.mt-2 {
-  margin-top: 12px;
-}
-
-.btn-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 48px;
-  background-color: var(--text-main, #0f172a);
-  color: var(--bg-main, #ffffff);
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  transform: translateZ(0);
-}
-
-.btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn-primary:disabled {
+.auth-form-group input::placeholder {
+  color: var(--text-muted);
   opacity: 0.7;
-  cursor: not-allowed;
 }
 
-/* =========================================
-   MAGIC LINK & FOOTER
-   ========================================= */
-.btn-magic-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--text-muted, #64748b);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 12px 0;
-  transition: color 0.2s ease;
+.auth-form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
-.btn-magic-link:hover:not(:disabled) {
-  color: var(--text-main, #0f172a);
+.auth-form-group input:disabled {
+  opacity: 0.6;
+}
+
+/* Autofill Fix for Dark/Light Mode */
+.auth-form-group input:-webkit-autofill,
+.auth-form-group input:-webkit-autofill:hover, 
+.auth-form-group input:-webkit-autofill:focus, 
+.auth-form-group input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--bg-input) inset !important;
+  -webkit-text-fill-color: var(--text-main) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .auth-footer {
@@ -291,56 +307,30 @@ input:-webkit-autofill:active {
 
 .auth-footer p {
   font-size: 14px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted);
 }
 
-.btn-toggle {
-  background: none;
-  border: none;
-  color: var(--text-main, #0f172a);
-  font-weight: 600;
-  cursor: pointer;
-  margin-left: 6px;
-  padding: 0;
-  font-size: 14px;
-  transition: opacity 0.2s ease;
+/* ANIMATIONS */
+@keyframes authSlideUpModal {
+  0% { opacity: 0; transform: translateY(100%); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-.btn-toggle:hover {
-  text-decoration: underline;
-  opacity: 0.8;
-}
-
-/* =========================================
-   ANIMATIONS & UTILS
-   ========================================= */
-@keyframes slideUpModal {
-  0% { 
-    opacity: 0;
-    transform: translateY(100%); 
-  }
-  100% { 
-    opacity: 1;
-    transform: translateY(0); 
-  }
-}
-
-@keyframes slideDownAlert {
+@keyframes authSlideDownAlert {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.slide-down {
-  animation: slideDownAlert 0.3s ease-out forwards;
+.auth-slide-down {
+  animation: authSlideDownAlert 0.3s ease-out forwards;
 }
 
-/* Spinner 60fps */
-.spinner {
+.auth-spinner {
   width: 20px;
   height: 20px;
-  animation: spin 1s linear infinite;
+  animation: authSpin 1s linear infinite;
 }
 
-@keyframes spin {
+@keyframes authSpin {
   100% { transform: rotate(360deg); }
 }

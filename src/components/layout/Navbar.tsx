@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Home, Bell, MessageCircle, User, Mic } from 'lucide-react';
@@ -51,19 +51,18 @@ function NavbarContent() {
     };
   }, []);
 
-  // Safe fallback untuk searchParams karena bisa null saat build _not-found
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
-  // Hapus /hypetalk/room dan voice room dari pengecekan agar navbar tetap muncul
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/saldo', '/story', 
     '/pending', '/historycoin', '/withdraw',
     '/hypetalk/room', 
-    '/voice' // Ini akan menangkap /voice, /voice/, /voice-room, /voice/123
+    '/voice' 
   ].some(path => pathname?.startsWith(path));
 
-  const fetchBadgesAndUser = async () => {
+  // Menggunakan useCallback agar fungsi ini stabil dan bisa dipanggil di berbagai useEffect
+  const fetchBadgesAndUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const userId = session.user.id;
@@ -89,7 +88,6 @@ function NavbarContent() {
       setAvatarUrl(url);
     }
     
-    // Log error jika query gagal, dan set default ke 0
     if (chatRes.error) {
       console.error("Error mengambil unread chat:", chatRes.error.message);
     } else if (chatRes.count !== null) {
@@ -165,38 +163,76 @@ function NavbarContent() {
     unreadNotifs += countGrouped(savesRes.data || [], 'save');
 
     setUnreadNotifCount(unreadNotifs);
-  };
+  }, []);
 
+  // [FIX] Listener untuk menangani WebView Android (APK)
   useEffect(() => {
     if (isLoggedIn) {
       fetchBadgesAndUser();
     }
+    
     const handleRefresh = () => {
       if (isLoggedIn) fetchBadgesAndUser();
     };
-    window.addEventListener('notif-count-changed', handleRefresh);
-    return () => window.removeEventListener('notif-count-changed', handleRefresh);
-  }, [pathname, isLoggedIn]);
 
-  // Realtime Listener agar badge bertambah otomatis saat pesan baru masuk
+    // Deteksi ketika aplikasi di HP dibuka kembali dari background
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isLoggedIn) {
+        fetchBadgesAndUser();
+      }
+    };
+
+    window.addEventListener('notif-count-changed', handleRefresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    // [FIX] Fallback Polling untuk Android jika WebSocket terputus
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible' && isLoggedIn) {
+        fetchBadgesAndUser();
+      }
+    }, 15000); // Sinkronisasi paksa tiap 15 detik
+
+    return () => {
+      window.removeEventListener('notif-count-changed', handleRefresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [pathname, isLoggedIn, fetchBadgesAndUser]);
+
+  // [FIX] Penambahan Realtime untuk Tabel Notifications
   useEffect(() => {
-    let channel: any;
+    let msgChannel: any;
+    let notifChannel: any;
 
     const setupRealtime = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const userId = session.user.id;
 
-      channel = supabase.channel('navbar-messages-realtime')
+      // Realtime Chat
+      msgChannel = supabase.channel('navbar-messages-realtime')
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages' },
           (payload) => {
             const newMsg = payload.new;
-            // Jika pesan masuk berada di room kita dan BUKAN pesan yang kita kirim sendiri
             if (newMsg.room_id && newMsg.room_id.includes(userId) && newMsg.user_id !== userId) {
               setUnreadChatCount((prev) => prev + 1);
             }
+          }
+        )
+        .subscribe();
+
+      // [FIX] Realtime Notifikasi (Listen ke Insert dan Update)
+      notifChannel = supabase.channel('navbar-notifs-realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          () => {
+            // Panggil ulang semua badge saat ada notif baru atau saat notif ditandai dibaca
+            fetchBadgesAndUser();
           }
         )
         .subscribe();
@@ -207,9 +243,10 @@ function NavbarContent() {
     }
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      if (msgChannel) supabase.removeChannel(msgChannel);
+      if (notifChannel) supabase.removeChannel(notifChannel);
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, fetchBadgesAndUser]);
 
   if (isHiddenPage) return null;
 
@@ -222,7 +259,6 @@ function NavbarContent() {
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, item: (typeof navItems)[0], isActive: boolean) => {
-    // 2. Cek apakah tab yang diklik membutuhkan login
     const requiresLogin = ['Chat', 'Voice', 'Notif'].includes(item.name);
 
     if (requiresLogin && !isLoggedIn) {
@@ -251,13 +287,12 @@ function NavbarContent() {
         justifyContent: 'center',
       }}
     >
-      {/* 🔥 INJEKSI CSS INLINE KHUSUS UNTUK WARNA ICON NAVBAR 🔥 */}
       <style>{`
         :root {
-          --nav-icon-color: #000000; /* Hitam bersih untuk mode terang */
+          --nav-icon-color: #000000; 
         }
         html.dark, [data-theme='dark'] {
-          --nav-icon-color: #ffffff; /* Putih bersih untuk mode gelap */
+          --nav-icon-color: #ffffff; 
         }
       `}</style>
       
@@ -332,17 +367,16 @@ function NavbarContent() {
                     <div key="icon" style={{ display: 'flex' }}>
                       <Icon
                         size={24}
-                        /* [UPDATED] Menggunakan variabel --nav-icon-color agar putih/hitam pekat */
                         color={isActive ? '#1f3cff' : 'var(--nav-icon-color)'}
                         fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
                         strokeWidth={isActive ? 2.5 : 2}
-                        /* [FIX] Menghapus opacity: 0.6 agar warna tidak kusam/abu-abu */
                         style={{ transition: 'color 0.3s ease' }} 
                       />
                     </div>
                   )}
                 </AnimatePresence>
 
+                {/* Logika badge dinamis */}
                 {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                   <motion.div
                     initial={{ scale: 0 }}
