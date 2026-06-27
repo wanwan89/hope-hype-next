@@ -53,6 +53,13 @@ export default function PostPage() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
+  // [FIX 1]: Matikan Scroll Restoration Bawaan Browser Saat Refresh
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
+
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
   useEffect(() => { myRepostedPostsRef.current = myRepostedPosts; }, [myRepostedPosts]);
@@ -65,6 +72,7 @@ export default function PostPage() {
     } else {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postIdFromUrl, source]);
 
   const initializePage = async () => {
@@ -194,15 +202,19 @@ export default function PostPage() {
     }
   };
 
+  // [FIX 2]: Perbaikan Logika Auto-Scroll ke Postingan Terpilih
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
-      setTimeout(() => {
-        const container = document.getElementById('mainGallery');
-        const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
-        if (container && targetPost) {
-          container.scrollTo({ top: targetPost.offsetTop, behavior: 'auto' });
-        }
-      }, 300);
+      // Tunggu hingga React selesai me-render DOM elements sepenuhnya
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
+          if (targetPost) {
+            // scrollIntoView lebih tahan banting terhadap perubahan tinggi (height) dinamis
+            targetPost.scrollIntoView({ behavior: 'auto', block: 'start' });
+          }
+        }, 150);
+      });
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
@@ -262,7 +274,6 @@ export default function PostPage() {
     } catch (err) {}
   }, []);
 
-  // DI SINI LETAK FIX ANIMASI DOUBLE TAP JANTUNG
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -271,7 +282,7 @@ export default function PostPage() {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-      setPoppingHeart(`${postId}-${now}`); // Pastikan valuenya selalu unik setiap kali di-tap
+      setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
     } else {
@@ -336,7 +347,6 @@ export default function PostPage() {
     setIsGloballyMuted(prev => {
       const next = !prev;
       isMutedRef.current = next;
-      // Sinkronkan secara paksa
       document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
       return next;
     });
@@ -403,11 +413,13 @@ export default function PostPage() {
                   id={`post-wrapper-${p.id}`} 
                   style={{ 
                     scrollSnapAlign: 'start', 
-                    height: 'auto', // Berubah dari 100% jadi auto untuk mencegah melar
+                    // [FIX 3]: Menggunakan minHeight agar tidak runtuh / rusak saat refresh
+                    minHeight: 'calc(100vh - 60px)', 
+                    height: 'max-content', 
                     position: 'relative',
                     width: '100%',
-                    padding: isTextOrAudio ? '0 12px' : '0', // FIX BOX TEXT SECARA ABSOLUT
-                    marginBottom: isTextOrAudio ? '14px' : '12px'
+                    padding: isTextOrAudio ? '0 12px' : '0', 
+                    marginBottom: isTextOrAudio ? '14px' : '0' // Disesuaikan agar scroll snap rapi
                   }}
                 >
                   <PostCard
@@ -464,17 +476,11 @@ export default function PostPage() {
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* GARANSI MUTLAK AVATAR DAN FLOATING BUBBLE BULAT SEMPURNA */
-        img, .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
+        /* [FIX 4]: Hapus selector tag 'img' murni agar tidak merusak gambar cover / carousel saat direfresh */
+        .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
           border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
-        }
-        
-        /* Kecualikan gambar di carousel dan watermark */
-        .carousel-item img, .post-video-element, .image-preview-content img {
-          border-radius: 0 !important;
-          aspect-ratio: auto !important;
         }
 
         .see-more-btn {
