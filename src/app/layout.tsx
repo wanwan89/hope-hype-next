@@ -461,17 +461,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               (function() {
                 try {
                   var theme = localStorage.getItem('theme');
+                  // HANYA MENGATUR CLASS, BUKAN INLINE STYLE
                   if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.documentElement.classList.add('dark');
-                    document.documentElement.style.backgroundColor = '#0a0a0a';
-                    document.body.style.backgroundColor = '#0a0a0a';
                   } else {
-                    document.documentElement.style.backgroundColor = '#ffffff';
-                    document.body.style.backgroundColor = '#ffffff';
+                    document.documentElement.classList.remove('dark');
                   }
                 } catch (e) {
-                  document.documentElement.style.backgroundColor = '#ffffff';
-                  document.body.style.backgroundColor = '#ffffff';
+                   // Fallback diam
                 }
               })();
             `,

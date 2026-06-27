@@ -60,9 +60,8 @@ function NavbarContent() {
     '/create', '/search', '/saldo', '/story', 
     '/pending', '/historycoin', '/withdraw',
     '/hypetalk/room', 
-    // Ganti menjadi pengecekan yang mencakup variasi voice
     '/voice' // Ini akan menangkap /voice, /voice/, /voice-room, /voice/123
-  ].some(path => pathname?.startsWith(path)); // Gunakan startsWith agar lebih presisi
+  ].some(path => pathname?.startsWith(path));
 
   const fetchBadgesAndUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -252,6 +251,16 @@ function NavbarContent() {
         justifyContent: 'center',
       }}
     >
+      {/* 🔥 INJEKSI CSS INLINE KHUSUS UNTUK WARNA ICON NAVBAR 🔥 */}
+      <style>{`
+        :root {
+          --nav-icon-color: #000000; /* Hitam bersih untuk mode terang */
+        }
+        html.dark, [data-theme='dark'] {
+          --nav-icon-color: #ffffff; /* Putih bersih untuk mode gelap */
+        }
+      `}</style>
+      
       <nav
         style={{
           width: '100%',
@@ -323,11 +332,12 @@ function NavbarContent() {
                     <div key="icon" style={{ display: 'flex' }}>
                       <Icon
                         size={24}
-                        /* [UPDATED] Menggunakan var(--icon-fill) atau fallback var(--text-main) agar adaptif terhadap Light/Dark Mode */
-                        color={isActive ? '#1f3cff' : 'var(--icon-fill, var(--text-main))'}
+                        /* [UPDATED] Menggunakan variabel --nav-icon-color agar putih/hitam pekat */
+                        color={isActive ? '#1f3cff' : 'var(--nav-icon-color)'}
                         fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
                         strokeWidth={isActive ? 2.5 : 2}
-                        style={{ opacity: isActive ? 1 : 0.6 }} 
+                        /* [FIX] Menghapus opacity: 0.6 agar warna tidak kusam/abu-abu */
+                        style={{ transition: 'color 0.3s ease' }} 
                       />
                     </div>
                   )}
