@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion'; // Ditambahkan framer-motion
+import { motion, AnimatePresence } from 'framer-motion';
 import './SearchWrapper.css';
 
 export default function SearchWrapperpost() {
@@ -132,7 +132,7 @@ export default function SearchWrapperpost() {
               position: 'absolute',
               top: 0,
               bottom: 0,
-              left: '16px', // Menyesuaikan jarak padding kiri (sesuaikan jika berbeda di CSS)
+              left: '16px',
               display: 'flex',
               alignItems: 'center',
               pointerEvents: 'none',
@@ -147,7 +147,7 @@ export default function SearchWrapperpost() {
                 exit={{ y: -15, opacity: 0 }}
                 transition={{ duration: 0.3 }}
                 style={{
-                  color: 'var(--text-muted, #888)', // Warna teks placeholder
+                  color: 'var(--text-muted, #888)',
                   fontSize: '14px',
                   fontWeight: 500,
                   whiteSpace: 'nowrap'
@@ -165,12 +165,11 @@ export default function SearchWrapperpost() {
             onClick={() => router.push('/search')}
             style={{ 
               cursor: 'pointer',
-              background: 'var(--bg-input)', 
               color: 'var(--text-main)',
               width: '100%',
-              outline: 'none', // Mencegah bingkai biru aktif saat fokus di desktop
-              WebkitTapHighlightColor: 'transparent', // Mencegah blok warna biru saat ditekan di HP
-              caretColor: 'transparent', // Menyembunyikan kursor kedip
+              outline: 'none',
+              WebkitTapHighlightColor: 'transparent',
+              caretColor: 'transparent',
             }}
           />
         </div>
@@ -187,7 +186,7 @@ export default function SearchWrapperpost() {
             color: '#fff',
             border: 'none',
             outline: 'none',
-            WebkitTapHighlightColor: 'transparent', // Mencegah blok warna biru di tombol
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           <span className="material-icons" style={{ fontSize: '24px' }}>add</span>
@@ -224,7 +223,6 @@ export default function SearchWrapperpost() {
               animation: 'slideDown 0.3s ease-out',
             }}
           >
-            {/* Header Toast: Ikon + Teks + Persentase */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {uploadProgress < 100 ? (
@@ -265,7 +263,6 @@ export default function SearchWrapperpost() {
               </span>
             </div>
 
-            {/* Progress Bar Line */}
             <div
               style={{
                 width: '100%',

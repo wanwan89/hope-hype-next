@@ -1,5 +1,4 @@
 /* --- CONTAINER UTAMA --- */
-/* Membuat wrapper membentang penuh 100% dari ujung kiri ke ujung kanan layar */
 .header-sticky-wrapper,
 .header-main-wrapper {
   position: relative;
@@ -27,10 +26,10 @@
   -webkit-backdrop-filter: blur(15px);
   border-bottom: 1px solid var(--border-card, rgba(0,0,0,0.05));
   box-sizing: border-box;
-  border-radius: 0; /* Pastikan tidak ada sudut membulat yang bikin celah */
+  border-radius: 0; 
 }
 
-/* Dark Mode Override untuk Search Bar */
+/* Dark Mode Override untuk Search Bar Wrapper */
 [data-theme='dark'] .search-wrapper,
 html.dark .search-wrapper {
   background: rgba(21, 23, 26, 0.85);
@@ -49,19 +48,22 @@ html.dark .search-wrapper {
   font-size: 14px;
   font-family: 'Inter', 'Poppins', sans-serif;
   color: var(--text-main, #1a1a1a);
-  background: var(--bg-secondary, #f0f2f5);
-  border: 1px solid transparent;
+  
+  /* 🔥 FIX WARNA ABU-ABU ADAPTIF 🔥 */
+  /* Menggunakan warna abu-abu transparan agar terlihat elegan di light & dark mode */
+  background: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.15);
   border-radius: 20px;
   outline: none;
   font-weight: 600;
   transition: all 0.3s ease;
 }
 
-/* --- BAGIAN YANG DIPERBAIKI (TIDAK BIRU LAGI) --- */
+/* Saat form input ditekan/fokus */
 .brutal-input:focus {
-  background: var(--bg-main, #fff);
+  background: rgba(128, 128, 128, 0.18); /* Sedikit lebih pekat saat fokus */
   border-color: var(--text-main, #1a1a1a);
-  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1); /* Bayangan netral, bukan biru */
+  box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.2); 
 }
 
 /* --- TOMBOL TAMBAH (+) --- */
