@@ -22,7 +22,9 @@ export default function SearchWrapperpost() {
 
   // State untuk animasi teks placeholder
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const placeholders = ['Cari kreator...', 'Cari postingan...', 'Cari trending...'];
+  
+  // 🔥 UPDATE: Hanya kata yang berganti-ganti saja
+  const placeholders = ['kreator...', 'postingan...', 'trending...'];
 
   const isHidden =
     pathname?.includes('hypetalk') ||
@@ -33,12 +35,15 @@ export default function SearchWrapperpost() {
     setMounted(true);
   }, []);
 
-  // Effect untuk mengganti teks placeholder setiap 2.5 detik
+  // Effect untuk mengganti teks placeholder
   useEffect(() => {
     if (!mounted || isHidden) return;
+    
+    // 🔥 UPDATE: Mengubah interval menjadi 20000 ms (20 detik)
     const interval = setInterval(() => {
       setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
-    }, 2500);
+    }, 20000); 
+    
     return () => clearInterval(interval);
   }, [mounted, isHidden, placeholders.length]);
 
@@ -137,8 +142,17 @@ export default function SearchWrapperpost() {
               alignItems: 'center',
               pointerEvents: 'none',
               overflow: 'hidden',
+              gap: '4px', // Memberi sedikit jarak antara "Cari" dan kata yang berubah
+              color: 'var(--text-muted, #888)',
+              fontSize: '14px',
+              fontWeight: 500,
+              whiteSpace: 'nowrap'
             }}
           >
+            {/* 🔥 Teks statis */}
+            <span>Cari</span>
+
+            {/* 🔥 Teks animasi yang berubah */}
             <AnimatePresence mode="wait">
               <motion.span
                 key={placeholderIndex}
@@ -146,12 +160,7 @@ export default function SearchWrapperpost() {
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: -15, opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                style={{
-                  color: 'var(--text-muted, #888)',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap'
-                }}
+                style={{ display: 'inline-block' }}
               >
                 {placeholders[placeholderIndex]}
               </motion.span>
