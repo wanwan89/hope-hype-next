@@ -3,6 +3,8 @@
 import React, { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase'; // Sesuaikan path ini
+import Lottie from 'lottie-react';
+import pinCodeAnimation from '@/assets/lottie/pincode.json'; // Import Lottie JSON
 import './Login.css';
 
 type Mode = 'login' | 'signup';
@@ -185,12 +187,6 @@ export default function LoginPage() {
     </svg>
   );
 
-  const LogoSVG = () => (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="app-logo">
-      <rect width="48" height="48" rx="14" fill="var(--text-main, #0f172a)" />
-    </svg>
-  );
-
   return (
     <div className="auth-layout">
       <div className="auth-container" role="main" style={{ position: 'relative' }}>
@@ -219,10 +215,12 @@ export default function LoginPage() {
         {/* Indikator Pemanis Modal */}
         <div className="modal-handle"></div>
         
-        {/* Header */}
+        {/* Header - Diubah menggunakan Lottie */}
         <header className="auth-header">
-          <LogoSVG />
-          <h1>{mode === 'login' ? 'Welcome Back' : 'Create an Account'}</h1>
+          <div style={{ width: '120px', margin: '0 auto', marginBottom: '10px' }}>
+            <Lottie animationData={pinCodeAnimation} loop={true} />
+          </div>
+          {/* h1 (Welcome Back) dihapus dan diganti Lottie sesuai permintaan */}
           <p>{mode === 'login' ? 'Sign in to continue' : 'Sign up to get started'}</p>
         </header>
 

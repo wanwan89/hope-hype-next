@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
+import Lottie from 'lottie-react';
+import playAnimation from '@/assets/lottie/play.json'; // 🔥 Import Lottie JSON
 
 // Import komponen anak (pastikan path sesuai)
 import ProfileHeader from './ProfileHeader';
@@ -453,21 +455,10 @@ function ProfileContent() {
     return (
       <div className="profile-page-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '20px', background: 'var(--bg-main)' }}>
         
-        {/* SVG Profile Icon */}
-        <svg 
-          width="72" 
-          height="72" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="#1f3cff" 
-          strokeWidth="1.5" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          style={{ marginBottom: '24px' }}
-        >
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
+        {/* 🔥 Diubah menjadi Lottie Animation */}
+        <div style={{ width: '100px', marginBottom: '24px' }}>
+          <Lottie animationData={playAnimation} loop={true} />
+        </div>
 
         <button
           onClick={() => router.push('/login')}
