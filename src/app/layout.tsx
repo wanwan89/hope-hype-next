@@ -453,7 +453,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 
   return (
-    {/* suppressHydrationWarning TETAP DIPERTAHANKAN (wajib untuk next-themes) */}
     <html lang="id" suppressHydrationWarning>
       <head>
         <title>HypeTalk - Creative Community</title>
