@@ -110,20 +110,53 @@ const SwipeableChatRow = ({
       >
         {/* CHECKBOX SELEKSI */}
         {isSelectionMode && !isGlobalOrActiveGroup && (
-          <div className="chat-checkbox" style={{ padding: '0 0 0 16px', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleOpenChat(chat)}>
-            <div style={{
-              width: '24px', height: '24px', borderRadius: '50%',
-              border: isSelected ? 'none' : '2px solid #555', 
-              backgroundColor: isSelected ? '#2b93ff' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s ease-in-out'
-            }}>
+          <div 
+            className="chat-checkbox" 
+            style={{ 
+              padding: '0 8px 0 16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              cursor: 'pointer' 
+            }} 
+            onClick={() => handleOpenChat(chat)}
+          >
+            <motion.div 
+              initial={false}
+              animate={{
+                backgroundColor: isSelected ? '#2b93ff' : 'transparent',
+                borderColor: isSelected ? '#2b93ff' : '#d1d5db',
+                scale: isSelected ? 1.05 : 1
+              }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              style={{
+                width: '22px', 
+                height: '22px', 
+                borderRadius: '50%',
+                border: '1.5px solid', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                boxShadow: isSelected ? '0 2px 6px rgba(43, 147, 255, 0.3)' : 'none'
+              }}
+            >
               {isSelected && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <motion.svg 
+                  initial={{ opacity: 0, scale: 0.3 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.15 }}
+                  width="12" 
+                  height="12" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="white" 
+                  strokeWidth="3.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
                   <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+                </motion.svg>
               )}
-            </div>
+            </motion.div>
           </div>
         )}
         
