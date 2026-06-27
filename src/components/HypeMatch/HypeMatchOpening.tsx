@@ -1,52 +1,73 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import Lottie from 'lottie-react';
+// Sesuaikan import path ini dengan lokasi file JSON kamu
+import loveAnimation from '@/assets/lottie/love.json';
 
 type HypeMatchOpeningProps = {
   onComplete?: () => void;
 };
 
 export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) {
-  // State untuk mengontrol visibilitas komponen ini sendiri
   const [isVisible, setIsVisible] = useState(true);
   const [showButton, setShowButton] = useState(false);
+
+  // 🎬 Controller untuk masing-masing grup animasi
+  const topTextControls = useAnimation();
+  const bottomTextControls = useAnimation();
+  const lottieControls = useAnimation();
 
   const bgColor = '#0000cc'; 
   const textColor = '#f8ebd4'; 
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.3,
-      },
-    },
-  };
-
+  // Variasi animasi masuk untuk setiap kata (menggunakan parameter custom 'i' untuk stagger)
   const wordVariants = {
     hidden: { opacity: 0, y: 40, scale: 0.95 },
-    visible: {
+    visible: (i: number) => ({
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { type: 'spring', damping: 14, stiffness: 120 },
-    },
+      transition: { 
+        delay: 0.3 + i * 0.2, // Efek stagger manual
+        type: 'spring', 
+        damping: 14, 
+        stiffness: 120 
+      },
+    }),
   };
 
-  const buttonVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-  };
+  useEffect(() => {
+    // Fungsi async untuk mengatur skenario / urutan animasi
+    const runAnimationSequence = async () => {
+      // 1. Teks berkumpul (Animasi Masuk)
+      topTextControls.start("visible");
+      bottomTextControls.start("visible");
 
-  const handleAnimationComplete = (definition: string) => {
-    if (definition === 'visible') {
+      // Tunggu animasi masuk selesai (kira-kira 1.5 detik)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // 2. Teks membelah (Hype Match ke atas, Make a friend ke bawah) memberi ruang
+      // Menggunakan await agar langkah selanjutnya menunggu pergeseran ini selesai
+      topTextControls.start({ y: -60, transition: { duration: 0.6, ease: 'easeInOut' } });
+      await bottomTextControls.start({ y: 60, transition: { duration: 0.6, ease: 'easeInOut' } });
+
+      // 3. Lottie muncul (Pop up)
+      await lottieControls.start({
+        opacity: 1,
+        scale: 1,
+        x: '-50%', // Menjaga agar tetap berada tepat di tengah (centring)
+        y: '-50%',
+        transition: { type: 'spring', damping: 12, stiffness: 100 }
+      });
+
+      // 4. Memunculkan tombol GO!
       setShowButton(true);
-    }
-  };
+    };
+
+    runAnimationSequence();
+  }, [topTextControls, bottomTextControls, lottieControls]);
 
   return (
-    // onExitComplete akan memanggil onComplete ke parent (HypeMatch) SETELAH animasi fade-out selesai
     <AnimatePresence onExitComplete={() => { if (onComplete) onComplete(); }}>
       {isVisible && (
         <motion.div
@@ -91,7 +112,7 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
             }
 
             .hm-btn-go {
-              margin-top: 50px;
+              margin-top: 80px; /* Margin diperbesar sedikit karena ada ruang lottie */
               padding: 12px 40px;
               font-family: 'Titan One', 'Arial Black', sans-serif;
               font-size: 1.8rem;
@@ -110,36 +131,53 @@ export default function HypeMatchOpening({ onComplete }: HypeMatchOpeningProps) 
             @media (max-width: 768px) {
               .hm-chunky-text { font-size: 3.5rem; }
               .hm-dot { width: 14px; height: 14px; }
-              .hm-btn-go { margin-top: 40px; font-size: 1.4rem; padding: 10px 30px; }
+              .hm-btn-go { margin-top: 60px; font-size: 1.4rem; padding: 10px 30px; }
             }
           `}</style>
 
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            onAnimationComplete={handleAnimationComplete}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
-          >
-            <motion.div variants={wordVariants} className="hm-chunky-text" style={{ marginLeft: '0px' }}>
+          {/* Wrapper Relative untuk menampung Teks dan Lottie di tengah */}
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            
+            {/* 🔥 Lottie Love Animation (Absolute Center) */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0, x: '-50%', y: '-50%' }}
+              animate={lottieControls}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: '140px',
+                height: '140px',
+                zIndex: 5, 
+                pointerEvents: 'none' // Agar tidak menghalangi klik ke elemen lain
+              }}
+            >
+              <Lottie animationData={loveAnimation} loop={true} />
+            </motion.div>
+
+            {/* Grup Atas: "hype match" */}
+            <motion.div custom={0} variants={wordVariants} initial="hidden" animate={topTextControls} className="hm-chunky-text" style={{ marginLeft: '0px' }}>
               <span className="hm-dot" style={{ backgroundColor: '#fcd34d', top: '-5px', left: '-15px' }}></span>hype
             </motion.div>
-            <motion.div variants={wordVariants} className="hm-chunky-text" style={{ marginLeft: '40px' }}>
+            <motion.div custom={1} variants={wordVariants} initial="hidden" animate={topTextControls} className="hm-chunky-text" style={{ marginLeft: '40px' }}>
               <span className="hm-dot" style={{ backgroundColor: '#fb923c', top: '15px', right: '-25px' }}></span>match
             </motion.div>
-            <motion.div variants={wordVariants} className="hm-chunky-text" style={{ marginLeft: '-15px', marginTop: '10px' }}>
+            
+            {/* Grup Bawah: "make a friend" */}
+            <motion.div custom={2} variants={wordVariants} initial="hidden" animate={bottomTextControls} className="hm-chunky-text" style={{ marginLeft: '-15px', marginTop: '10px' }}>
               <span className="hm-dot" style={{ backgroundColor: '#4ade80', top: '25px', left: '-25px' }}></span>make a
             </motion.div>
-            <motion.div variants={wordVariants} className="hm-chunky-text" style={{ marginLeft: '60px' }}>
+            <motion.div custom={3} variants={wordVariants} initial="hidden" animate={bottomTextControls} className="hm-chunky-text" style={{ marginLeft: '60px' }}>
               <span className="hm-dot" style={{ backgroundColor: '#f472b6', top: '-10px', left: '35%' }}></span>friend
             </motion.div>
-          </motion.div>
+
+          </div>
 
           {showButton && (
             <motion.button
-              variants={buttonVariants}
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
               className="hm-btn-go"
               onClick={() => setIsVisible(false)} // Memicu animasi exit
             >
