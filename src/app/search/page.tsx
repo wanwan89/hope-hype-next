@@ -16,7 +16,7 @@ function SearchContent() {
   const [posts, setPosts] = useState<any[]>([]);
   
   const [localQuery, setLocalQuery] = useState(query);
-  const [isFocused, setIsFocused] = useState(false); // State untuk mengatur efek glow pada input
+  const [isFocused, setIsFocused] = useState(false); 
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
@@ -124,7 +124,7 @@ function SearchContent() {
         setTrendingKeywords(['jagung bakar', 'hope hype', 'musik viral', 'tutorial ui']);
       }
 
-      // 2. Ambil Rekomendasi Kategori langsung dari relasi Database
+      // 2. Ambil Rekomendasi Kategori
       const { data: recPosts } = await supabase.from('posts')
         .select(`
           id, image_url, video_url, bio, 
@@ -246,7 +246,6 @@ function SearchContent() {
               if (localQuery.length > 1) setShowSuggestions(true); 
             }}
             onBlur={() => {
-              // Timeout kecil agar onMouseDown di dropdown sempat tertrigger sebelum blur
               setTimeout(() => setIsFocused(false), 150); 
             }}
             placeholder="Cari kreator, postingan, #hashtag..."
@@ -271,7 +270,7 @@ function SearchContent() {
               {searchSuggestions.map((sugg, idx) => (
                 <div 
                   key={idx}
-                  onMouseDown={() => executeSearch(sugg)} // Gunakan onMouseDown agar trigger sebelum onBlur input
+                  onMouseDown={() => executeSearch(sugg)} 
                   style={{
                     padding: '12px 16px', color: 'var(--text-main)', fontSize: '14px',
                     display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer',
@@ -299,13 +298,10 @@ function SearchContent() {
           </div>
         )}
 
-        {/* =========================================
-            TAMPILAN AWAL (SAAT BELUM ADA PENCARIAN)
-        ========================================== */}
+        {/* TAMPILAN AWAL (SAAT BELUM ADA PENCARIAN) */}
         {!query && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             
-            {/* 1. RIWAYAT PENCARIAN (Max 3, dengan tombol hapus dan lihat semua) */}
             {recentSearches.length > 0 && (
               <div>
                 <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -333,7 +329,7 @@ function SearchContent() {
               </div>
             )}
 
-            {/* 2. REKOMENDASI PENCARIAN / KATEGORI */}
+            {/* Kategori -> FIX ROUTING QUERY PARAMS DI SINI */}
             {categoryRecommendations.length > 0 && (
               <div>
                 <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -342,7 +338,7 @@ function SearchContent() {
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {categoryRecommendations.map((post) => (
-                    <div key={post.id} onClick={() => router.push(`/#post-${post.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border-card)', borderRadius: '12px', cursor: 'pointer' }}>
+                    <div key={post.id} onClick={() => router.push(`/post?id=${post.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border-card)', borderRadius: '12px', cursor: 'pointer' }}>
                       <div style={{ flex: 1, paddingRight: '15px' }}>
                         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>{post.categoryName}</div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -359,7 +355,6 @@ function SearchContent() {
               </div>
             )}
 
-            {/* 3. SEDANG TREN / VIRAL */}
             <div>
               <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span className="material-icons" style={{ color: '#ff2e63', fontSize: '18px' }}>trending_up</span>
@@ -394,9 +389,7 @@ function SearchContent() {
           </div>
         )}
 
-        {/* =========================================
-            HASIL PENCARIAN (SAAT ADA QUERY)
-        ========================================== */}
+        {/* HASIL PENCARIAN (SAAT ADA QUERY) */}
         {query && (
           isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>Mencari...</div>
@@ -440,9 +433,10 @@ function SearchContent() {
                             </div>
                           ) : (
                             user.recentPosts?.length > 0 && (
+                              // Postingan Terakhir Kreator -> FIX ROUTING QUERY PARAMS DI SINI
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
                                 {user.recentPosts.map((rp: any) => (
-                                  <div key={rp.id} onClick={(e) => { e.stopPropagation(); router.push(`/#post-${rp.id}`); }} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-secondary)' }}>
+                                  <div key={rp.id} onClick={(e) => { e.stopPropagation(); router.push(`/post?id=${rp.id}`); }} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-secondary)' }}>
                                     <img src={getThumbnail(rp)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post" />
                                     {rp.video_url && <span className="material-icons" style={{ position: 'absolute', top: '4px', right: '4px', color: '#fff', fontSize: '16px', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', padding: '2px' }}>play_arrow</span>}
                                   </div>
@@ -457,12 +451,13 @@ function SearchContent() {
                 </div>
               )}
 
+              {/* Hasil Postingan Terkait -> FIX ROUTING QUERY PARAMS DI SINI */}
               {posts.length > 0 && (
                 <div>
                   <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>POSTINGAN TERKAIT</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                     {posts.map(post => (
-                      <div key={post.id} onClick={() => router.push(`/#post-${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
+                      <div key={post.id} onClick={() => router.push(`/post?id=${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
                         <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         {post.video_url && <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '4px', display: 'flex' }}><span className="material-icons" style={{ color: '#fff', fontSize: '14px' }}>play_arrow</span></div>}
                       </div>
@@ -471,7 +466,7 @@ function SearchContent() {
                 </div>
               )}
 
-              {/* STATE KOSONG: MENGGUNAKAN LOTTIE */}
+              {/* STATE KOSONG -> FIX ROUTING QUERY PARAMS DI SINI */}
               {posts.length === 0 && recommendedPosts.length > 0 && (
                 <div style={{ marginTop: '20px' }}>
                   <div style={{ textAlign: 'center', padding: '20px 0 40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -485,7 +480,7 @@ function SearchContent() {
                   
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                     {recommendedPosts.map(post => (
-                      <div key={post.id} onClick={() => router.push(`/#post-${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
+                      <div key={post.id} onClick={() => router.push(`/post?id=${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-secondary)', cursor: 'pointer' }}>
                         <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         {post.video_url && <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '4px', display: 'flex' }}><span className="material-icons" style={{ color: '#fff', fontSize: '14px' }}>play_arrow</span></div>}
                       </div>

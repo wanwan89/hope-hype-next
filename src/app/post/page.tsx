@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,7 @@ import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
 
-export default function PostPage() {
+function PostContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -205,12 +205,10 @@ export default function PostPage() {
   // [FIX 2]: Perbaikan Logika Auto-Scroll ke Postingan Terpilih
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
-      // Tunggu hingga React selesai me-render DOM elements sepenuhnya
       requestAnimationFrame(() => {
         setTimeout(() => {
           const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
           if (targetPost) {
-            // scrollIntoView lebih tahan banting terhadap perubahan tinggi (height) dinamis
             targetPost.scrollIntoView({ behavior: 'auto', block: 'start' });
           }
         }, 150);
@@ -498,5 +496,17 @@ export default function PostPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function PostPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
+        <div className="pure-spinner" style={{ margin: '0 auto', width: '30px', height: '30px', border: '3px solid var(--border-card)', borderTopColor: '#1f3cff', borderRadius: '50%', animation: 'pureSpin 1s linear infinite' }}></div>
+      </div>
+    }>
+      <PostContent />
+    </Suspense>
   );
 }
