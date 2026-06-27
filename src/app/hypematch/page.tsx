@@ -226,15 +226,16 @@ export default function HypeMatch() {
       `}</style>
 
       <div className="hm-header">
-        {/* Mengubah font menjadi Titan One dan warnanya menjadi biru */}
+        {/* Mengubah font menjadi Titan One, warnanya menjadi pink, dan menghilangkan bayangan */}
         <h1 
           className="hm-logo-text" 
           style={{ 
             fontFamily: "'Titan One', 'Arial Black', sans-serif", 
-            color: "#0000cc", 
+            color: "#FF1493", 
             letterSpacing: "-1px",
             textTransform: "lowercase",
-            margin: 0
+            margin: 0,
+            textShadow: "none" // Menambahkan ini agar teks tidak berbayang
           }}
         >
           hypematch
