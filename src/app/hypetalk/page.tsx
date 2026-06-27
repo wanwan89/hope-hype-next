@@ -255,7 +255,7 @@ export default function HypetalkPage() {
   // --- IMPLEMENTASI GLOBAL REFRESH HOOK ---
   const refetch = async () => {
     if (currentUser?.id) {
-      await loadAllChats(currentUser.id, true); // Refresh data chat di background
+      await loadAllChats(currentUser.id, true);
     }
   };
   useGlobalRefresh(refetch);
@@ -534,21 +534,43 @@ export default function HypetalkPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '12px 16px',
-                background: '#0f1115',
-                borderBottom: '1px solid #1f232b',
+                padding: '14px 16px', // Diperbesar sedikit agar lebih proporsional
+                background: '#2b93ff', // Diubah menjadi Biru Clean
+                boxShadow: '0 4px 12px rgba(43, 147, 255, 0.25)', // Tambahan bayangan lembut
                 zIndex: 20,
                 overflow: 'hidden'
               }}
             >
-               <button onClick={cancelSelection} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '15px', fontWeight: '500', cursor: 'pointer', padding: 0 }}>Batal</button>
-               <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '16px' }}>{selectedChats.size} Terpilih</span>
+               <button 
+                 onClick={cancelSelection} 
+                 style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '15px', fontWeight: '500', cursor: 'pointer', padding: 0, opacity: 0.9 }}
+               >
+                 Batal
+               </button>
+               
+               <span style={{ fontWeight: '600', color: '#ffffff', fontSize: '16px' }}>
+                 {selectedChats.size} Terpilih
+               </span>
+               
                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <button onClick={selectAllChats} style={{ background: 'none', border: 'none', color: '#2b93ff', fontSize: '14px', cursor: 'pointer', padding: 0 }}>Tandai Semua</button>
+                  <button 
+                    onClick={selectAllChats} 
+                    style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '14px', fontWeight: '500', cursor: 'pointer', padding: 0, opacity: 0.9 }}
+                  >
+                    Tandai Semua
+                  </button>
                   <button 
                     onClick={() => executeDeleteRooms(Array.from(selectedChats))} 
                     disabled={selectedChats.size === 0} 
-                    style={{ background: 'none', border: 'none', color: selectedChats.size === 0 ? 'var(--text-muted)' : '#667799', fontWeight: 'bold', fontSize: '14px', cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer', padding: 0 }}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      color: selectedChats.size === 0 ? 'rgba(255, 255, 255, 0.5)' : '#ffffff', 
+                      fontWeight: '700', 
+                      fontSize: '14px', 
+                      cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer', 
+                      padding: 0 
+                    }}
                   >
                     Hapus
                   </button>
