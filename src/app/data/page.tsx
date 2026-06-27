@@ -7,7 +7,6 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import Lottie from 'lottie-react';
 import playAnimation from '@/assets/lottie/play.json'; 
-import refreshAnimation from '@/assets/lottie/refresh.json'; // 🔥 Import Lottie Refresh JSON
 import { motion, AnimatePresence } from 'framer-motion'; 
 import { useGlobalRefresh } from '@/hooks/useGlobalRefresh'; // 🔥 Import Hook Global Refresh
 
@@ -55,7 +54,6 @@ function ProfileContent() {
   const [activeTab, setActiveTab] = useState<'post' | 'private' | 'like' | 'repost' | 'simpan'>('post');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false); // 🔥 State untuk animasi refresh
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -72,7 +70,6 @@ function ProfileContent() {
   // 🔥 GLOBAL REFRESH LOGIC 🔥
   // ==========================================
   const refetch = async () => {
-    setIsRefreshing(true);
     try {
       // Ambil data profil terbaru dan postingan pada tab aktif secara paralel
       await Promise.all([
@@ -81,11 +78,6 @@ function ProfileContent() {
       ]);
     } catch (error) {
       console.error("Gagal melakukan refresh data:", error);
-    } finally {
-      // Beri sedikit delay manis (500ms) agar animasi Lottie tidak tertutup terlalu kaku
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 500);
     }
   };
 
@@ -597,31 +589,6 @@ function ProfileContent() {
         onBack={() => router.back()}
         onMenuClick={() => setIsSidebarOpen(true)}
       />
-
-      {/* 🔥 ANIMASI REFRESH BERGERAK DARI BAWAH HEADER 🔥 */}
-      <AnimatePresence>
-        {isRefreshing && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: '64px', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              overflow: 'hidden',
-              background: 'var(--bg-main)',
-              width: '100%',
-              borderBottom: '1px solid var(--border-card, rgba(255,255,255,0.05))'
-            }}
-          >
-            <div style={{ width: '45px', height: '45px' }}>
-              <Lottie animationData={refreshAnimation} loop={true} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="profile-top-section">
         <ProfileInfo

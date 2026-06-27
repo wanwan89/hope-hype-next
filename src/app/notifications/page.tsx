@@ -13,12 +13,6 @@ import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
 import NotificationListView from '@/components/notifications/NotificationListView';
 
-// --- IMPORT UNTUK ANIMASI REFRESH ---
-import { motion, useMotionValue, animate, useTransform } from 'framer-motion';
-import Lottie from 'lottie-react';
-// Pastikan path refres.json ini sesuai dengan struktur folder kamu
-import refreshAnimationData from '@/assets/lottie/refres.json'; 
-
 const getReadNotifs = (): string[] => {
   if (typeof window === 'undefined') return [];
   try {
@@ -557,6 +551,7 @@ export default function NotificationsPage() {
     }
   };
 
+  // --- HOOK REFRESH GLOBAL ---
   const refetch = async () => {
     if (currentUser?.id) {
       await Promise.all([
@@ -567,66 +562,6 @@ export default function NotificationsPage() {
     }
   };
   useGlobalRefresh(refetch);
-
-
-  // --- LOGIKA PULL TO REFRESH ---
-  const pullY = useMotionValue(0);
-  const startY = useRef(0);
-  const startX = useRef(0);
-  const isPullingRef = useRef(false);
-  const isRefreshing = useRef(false);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const isAtTop = e.currentTarget.scrollTop === 0;
-    if (isAtTop && !isRefreshing.current) {
-      startY.current = e.touches[0].clientY;
-      startX.current = e.touches[0].clientX;
-      isPullingRef.current = true;
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isPullingRef.current) return;
-
-    const currentY = e.touches[0].clientY;
-    const currentX = e.touches[0].clientX;
-    const diffY = currentY - startY.current;
-    const diffX = Math.abs(currentX - startX.current);
-
-    if (diffX > Math.abs(diffY) && pullY.get() === 0) {
-      isPullingRef.current = false;
-      return;
-    }
-
-    if (diffY > 0) {
-      // Menarik maksimum 75px
-      const resistance = Math.min(diffY * 0.4, 75);
-      pullY.set(resistance);
-      if (e.cancelable) e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = async () => {
-    if (!isPullingRef.current) return;
-    isPullingRef.current = false;
-
-    // Jika tarikan melewati batas batas 55px, picu refresh
-    if (pullY.get() >= 55) {
-      isRefreshing.current = true;
-      // Tahan Lottie di posisi 60px saat loading
-      animate(pullY, 60, { type: 'spring', bounce: 0, duration: 0.3 });
-      
-      await refetch();
-      
-      // Kembalikan ke atas setelah selesai refresh
-      isRefreshing.current = false;
-      animate(pullY, 0, { type: 'spring', bounce: 0, duration: 0.3 });
-    } else {
-      // Jika tidak cukup ditarik, langsung kembalikan
-      animate(pullY, 0, { type: 'spring', bounce: 0, duration: 0.3 });
-    }
-  };
-
 
   const getIconAndColor = (type: string) => {
     switch (type) {
@@ -706,42 +641,14 @@ export default function NotificationsPage() {
     }
   };
 
-  const lottieOpacity = useTransform(pullY, [0, 20, 60], [0, 0.5, 1]);
-
   return (
-    <div 
-      className="notif-page-container"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{ overflowY: 'auto' }}
-    >
+    <div className="notif-page-container" style={{ overflowY: 'auto' }}>
       {activeView === 'main' ? (
         <div className="notif-main-view">
           
-          {/* HEADER (TETAP DI ATAS) */}
           <header className="notif-header" style={{ position: 'relative', zIndex: 10 }}>
             <h2>{t('notifications', 'Notifikasi')}</h2>
           </header>
-
-          {/* KONTEM LOTTIE ANIMASI REFRESH */}
-          <motion.div
-            style={{
-              height: pullY, // Tinggi terbuka seiring ditarik
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              overflow: 'hidden',
-              opacity: lottieOpacity,
-            }}
-          >
-            <div style={{ width: '40px', height: '40px' }}>
-              <Lottie 
-                animationData={refreshAnimationData} 
-                loop={true} 
-              />
-            </div>
-          </motion.div>
 
           <FriendStoriesTray
             friends={friendStories}
