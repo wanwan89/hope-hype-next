@@ -1,5 +1,5 @@
 'use client';
-
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,6 @@ import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
 import { useFeed } from '@/hooks/useFeed';
- import RefreshableWrapper from '@/components/RefreshableWrapper'; 
 import './Gallery.css';
 
 function shuffleArray(array: any[]) {
@@ -137,8 +136,8 @@ export default function Gallerypost() {
     isError,
     refetch,
   } = useFeed(currentCategory, currentUser, mutualUsers);
+     useGlobalRefresh(refetch);
 
-  // Global Event Listener untuk Background Upload
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const handleUploadSuccess = () => {
@@ -151,42 +150,33 @@ export default function Gallerypost() {
     }
   }, [refetch]);
 
-  // ==========================================
-  // FITUR BARU: AUTO UNMUTE SAAT VOLUME NAIK
-  // ==========================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Fungsi untuk mengubah status mute secara global
     const forceUnmuteGlobal = () => {
       if (isGloballyMuted) {
         setIsGloballyMuted(false);
         document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
           el.muted = false;
-          // Coba play media kalau posisinya tertunda/paused
           if (el.paused) el.play().catch(() => {});
         });
       }
     };
 
-    // 1. Deteksi hardware keydown (Berguna jika web dijadikan PWA / WebView)
     const handleVolumeKey = (e: KeyboardEvent) => {
       if (
         e.key === 'AudioVolumeUp' || 
         e.code === 'AudioVolumeUp' || 
-        e.keyCode === 24 || // Keycode Android Volume Up
-        e.keyCode === 175   // Keycode standar multimedia web
+        e.keyCode === 24 || 
+        e.keyCode === 175   
       ) {
         forceUnmuteGlobal();
       }
     };
 
-    // 2. Deteksi perubahan volume dari control media bawaan
     const handleVolumeChange = (e: Event) => {
       const target = e.target as HTMLMediaElement;
-      // Pastikan yang men-trigger adalah elemen Video atau Audio
       if (target && (target.tagName === 'VIDEO' || target.tagName === 'AUDIO')) {
-        // Jika user melakukan unmute atau menaikkan volume di atas 0
         if (!target.muted && target.volume > 0) {
           forceUnmuteGlobal();
         }
@@ -194,7 +184,6 @@ export default function Gallerypost() {
     };
 
     window.addEventListener('keydown', handleVolumeKey);
-    // Kita gunakan capture phase (true) karena event media tidak bubble ke document
     document.addEventListener('volumechange', handleVolumeChange, true);
 
     return () => {
@@ -202,7 +191,6 @@ export default function Gallerypost() {
       document.removeEventListener('volumechange', handleVolumeChange, true);
     };
   }, [isGloballyMuted]);
-  // ==========================================
 
   useEffect(() => {
     const init = async () => {
@@ -567,38 +555,35 @@ export default function Gallerypost() {
   }
 
   return (
-    // 🔥 BUNGKUS DENGAN WRAPPER DAN MASUKKAN FUNGSI REFETCH
-    <RefreshableWrapper onRefresh={async () => { await refetch(); }}>
-      <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative' }}>
-        
-        <RepostModal
-          isOpen={!!repostModal}
-          postId={repostModal?.postId || ''}
-          creatorId={repostModal?.creatorId || ''}
-          note={repostNote}
-          setNote={setRepostNote}
-          onClose={() => setRepostModal(null)}
-          onConfirm={handleConfirmRepost}
-          isUnrepost={repostModal?.isUnrepost || false}
-        />
-        <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative' }}>
+      
+      <RepostModal
+        isOpen={!!repostModal}
+        postId={repostModal?.postId || ''}
+        creatorId={repostModal?.creatorId || ''}
+        note={repostNote}
+        setNote={setRepostNote}
+        onClose={() => setRepostModal(null)}
+        onConfirm={handleConfirmRepost}
+        isUnrepost={repostModal?.isUnrepost || false}
+      />
+      <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-        <Virtuoso
-          useWindowScroll
-          data={allPosts}
-          endReached={loadMore}
-          overscan={{ main: 600, reverse: 600 }}
-          increaseViewportBy={{ top: 400, bottom: 400 }}
-          itemContent={renderItem}
-          components={{
-            Footer: () => isFetchingNextPage ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-                <div className="pure-spinner"></div>
-              </div>
-            ) : null
-          }}
-        />
-      </section>
-    </RefreshableWrapper>
+      <Virtuoso
+        useWindowScroll
+        data={allPosts}
+        endReached={loadMore}
+        overscan={{ main: 600, reverse: 600 }}
+        increaseViewportBy={{ top: 400, bottom: 400 }}
+        itemContent={renderItem}
+        components={{
+          Footer: () => isFetchingNextPage ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+              <div className="pure-spinner"></div>
+            </div>
+          ) : null
+        }}
+      />
+    </section>
   );
 }

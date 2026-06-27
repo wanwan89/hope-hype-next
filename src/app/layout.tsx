@@ -35,6 +35,9 @@ import { ConfirmProvider } from '@/components/ConfirmProvider';
 import Lottie from 'lottie-react';
 import lostConnectionData from '@/assets/lottie/lost-conection.json'; 
 
+// 🔥 TAMBAHAN: Import Wrapper Refresh Global
+import RefreshableWrapper from '@/components/RefreshableWrapper';
+
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -360,12 +363,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
+  // 🔥 FUNGSI GLOBAL REFRESH HANDLER 🔥
+  const handleGlobalRefresh = async () => {
+    // Mengecek apakah halaman saat ini sudah mendaftarkan fungsi refetch-nya
+    if (typeof window !== 'undefined' && (window as any).pageRefreshHandler) {
+      await (window as any).pageRefreshHandler();
+    } else {
+      // Jika tidak ada fungsi yang didaftarkan (misal di halaman statis), tunggu 1 detik saja
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  };
+
   // --- RENDER CONTENT HELPER ---
   const renderUI = () => (
     <>
       <GlobalShareModal />
       
-      {/* 🔥 BAGIAN YANG DIMODIFIKASI: Tampilan Saat Offline Transparan */}
       {!isOnline && (
         <div
           className="offline-global-overlay"
@@ -375,7 +388,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            background: 'rgba(0,0,0,0.6)', // Tetap ada sedikit shadow agar Lottie/Teks terlihat jelas di atas background web
+            background: 'rgba(0,0,0,0.6)', 
             backdropFilter: 'blur(4px)',
             zIndex: 9999999,
           }}
@@ -384,23 +397,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             textAlign: 'center', 
             padding: '2rem', 
             borderRadius: '1.5rem', 
-            background: 'transparent', /* 🔴 DIUBAH KE TRANSPARAN */
-            border: 'none', /* 🔴 BORDER DIHILANGKAN */
+            background: 'transparent',
+            border: 'none',
             maxWidth: '320px', 
             width: '90%',
             display: 'flex',
             flexDirection: 'column', 
             alignItems: 'center' 
           }}>
-            {/* Lottie Animation */}
             <div style={{ width: '150px', height: '150px', marginBottom: '10px' }}>
-              <Lottie
-                animationData={lostConnectionData}
-                loop={true} 
-                autoplay={true} 
-              />
+              <Lottie animationData={lostConnectionData} loop={true} autoplay={true} />
             </div>
-            
             <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800', margin: '0.5rem 0 0.25rem' }}>
               Koneksi Terputus
             </h3>
@@ -444,10 +451,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       )}
 
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
+        
+        {/* Kolom Search Tidak Dibungkus agar Diam di Atas */}
         {isHomePage && <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}><SearchWrapper /></div>}
-        <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
-          {children}
-        </main>
+        
+        {/* 🔥 BUNGKUS KONTEN HALAMAN (MAIN) DENGAN WRAPPER LOTTIE 🔥 */}
+        <RefreshableWrapper onRefresh={handleGlobalRefresh}>
+          <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
+            {children}
+          </main>
+        </RefreshableWrapper>
+        
       </div>
 
       {!hideNavbar && <Navbar />}
@@ -456,6 +470,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="id" suppressHydrationWarning>
+      {/* Head dan scripts lainnya tetap persis sama */}
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -482,17 +497,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
-        
-        {/* 🔥 META THEME COLOR DINAMIS BERDASARKAN MODE SYSTEM 🔥 */}
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
-        
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
         <link rel="apple-touch-startup-image" href="/hope_splash.png" />
-
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
@@ -519,7 +529,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
         <CustomSplash />
         <NextTopLoader color="#1f3cff" showSpinner={false} shadow="0 0 10px #1f3cff,0 0 5px #1f3cff" zIndex={99999999} />
-
         <Script
           src="https://cdn.jsdelivr.net/npm/eruda"
           strategy="lazyOnload"
@@ -529,7 +538,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
           }}
         />
-
         <Providers>
           <I18nextProvider i18n={i18n}>
             <ThemeProvider>
