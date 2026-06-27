@@ -11,7 +11,7 @@ import './Settings.css';
 export default function SettingsPage() {
   const router = useRouter();
   const { t } = useTranslation(); 
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -41,9 +41,9 @@ export default function SettingsPage() {
   };
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    showNotif(newTheme === 'dark' ? "Mode gelap aktif" : "Mode terang aktif", "info");
+    const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    showNotif(nextTheme === 'dark' ? "Mode gelap aktif" : "Mode terang aktif", "info");
   };
 
   // 🔥 FUNGSI TOGGLE PRIVATE AKUN 🔥
@@ -68,7 +68,7 @@ export default function SettingsPage() {
   // Cegah Hydration Mismatch
   if (!mounted || loading) return <div className="st-page-wrapper"></div>;
 
-  const isDarkMode = theme === 'dark';
+  const isDarkMode = resolvedTheme === 'dark';
 
   return (
     <div className="st-page-wrapper">
@@ -90,7 +90,7 @@ export default function SettingsPage() {
             <div className="st-item" style={{ cursor: 'default' }}>
               <div className="st-item-left">
                 <div className="st-icon-box">
-                   <span className="material-icons">{isDarkMode ? 'dark_mode' : 'light_mode'}</span>
+                   <span className="material-icons">{resolvedTheme === 'dark' ? 'dark_mode' : 'light_mode'}</span>
                 </div>
                 <div className="st-info">
                   <span className="st-label">{t('dark_mode', 'Mode Gelap')}</span>
@@ -98,7 +98,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <label className="st-switch" style={{ cursor: 'pointer' }}>
-                <input type="checkbox" checked={isDarkMode} onChange={toggleTheme} />
+                <input type="checkbox" checked={resolvedTheme === 'dark'} onChange={toggleTheme} />
                 <span className="st-slider"></span>
               </label>
             </div>

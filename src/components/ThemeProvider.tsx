@@ -6,9 +6,9 @@ import { ReactNode } from 'react';
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <NextThemesProvider 
-      attribute="data-theme" 
+      attribute="class" // 🔥 UBAH INI DARI "data-theme" JADI "class"
       defaultTheme="dark" 
-      enableSystem={false} // Matiin deteksi sistem biar pure ikut tombol
+      enableSystem={false} 
     >
       {children}
     </NextThemesProvider>

@@ -453,28 +453,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 
   return (
+    {/* suppressHydrationWarning TETAP DIPERTAHANKAN (wajib untuk next-themes) */}
     <html lang="id" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('theme');
-                  // HANYA MENGATUR CLASS, BUKAN INLINE STYLE
-                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                } catch (e) {
-                   // Fallback diam
-                }
-              })();
-            `,
-          }}
-        />
-
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
