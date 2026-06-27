@@ -50,20 +50,21 @@ html.dark .search-wrapper {
   font-family: 'Inter', 'Poppins', sans-serif;
   color: var(--text-main);
   
-  /* 🔥 FIX: Menggunakan variabel global agar otomatis mengikuti Light/Dark Mode */
+  /* 🔥 FIX: Menggunakan variabel global --bg-input */
   background-color: var(--bg-input) !important;
   border: 1px solid var(--border-card) !important;
   border-radius: 24px;
   outline: none;
   font-weight: 600;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease; /* Transisi warna dihapus agar tidak ada kedip/perubahan */
 }
 
 /* Saat form input ditekan/fokus */
 .brutal-input:focus {
-  background-color: var(--bg-secondary) !important; /* Berubah sedikit saat diklik */
-  border-color: var(--text-muted) !important;
-  box-shadow: 0 0 0 3px var(--primary-soft); /* Efek glow biru dari variabel global */
+  /* 🔥 FIX: Warna background dan border dibuat sama dengan state awal agar tidak berubah saat diklik */
+  background-color: var(--bg-input) !important; 
+  border-color: var(--border-card) !important;
+  box-shadow: 0 0 0 3px var(--primary-soft); /* Efek glow biru (hapus baris ini jika tidak ingin ada glow sama sekali) */
 }
 
 /* --- TOMBOL TAMBAH (+) --- */
