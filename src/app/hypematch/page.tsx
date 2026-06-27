@@ -6,6 +6,8 @@ import { getUserBadge, showNotif } from '@/lib/ui-utils';
 import HypeMatchOpening from '@/components/HypeMatch/HypeMatchOpening';
 import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
 import BiodataSlide from '@/components/HypeMatch/BiodataSlide';
+import Lottie from 'lottie-react';
+import fireAnimation from './fire.json';
 
 import './HypeMatchOverlay.css';
 
@@ -220,27 +222,35 @@ export default function HypeMatch() {
 
   return (
     <div className="hm-overlay">
-      {/* UBAH BAGIAN INI: Impor font Poppins khusus untuk halaman ini */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
       `}</style>
 
       <div className="hm-header">
-        {/* UBAH BAGIAN INI: Mengubah font menjadi Poppins */}
-        <h1 
-          className="hm-logo-text" 
-          style={{ 
-            fontFamily: "'Poppins', sans-serif", 
-            fontWeight: 700,
-            color: "#FF1493", 
-            letterSpacing: "-1px",
-            textTransform: "lowercase",
-            margin: 0,
-            textShadow: "none"
-          }}
-        >
-          hypematch
-        </h1>
+        {/* WRAPPER BARU: Mengelompokkan logo text dan animasi Lottie */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <h1 
+            className="hm-logo-text" 
+            style={{ 
+              fontFamily: "'Poppins', sans-serif", 
+              fontWeight: 700,
+              color: "#FF1493", 
+              letterSpacing: "-1px",
+              textTransform: "lowercase",
+              margin: 0,
+              textShadow: "none"
+            }}
+          >
+            hypematch
+          </h1>
+          {/* LOTTIE ANIMATION */}
+          <Lottie 
+            animationData={fireAnimation} 
+            loop={true} 
+            style={{ width: 28, height: 28, marginTop: '-2px' }} 
+          />
+        </div>
+        
         <button className="hm-icon-btn-transparent" onClick={() => router.push('/hypematch/filter')}>
           <SvgIcon name="filter" size={26} />
         </button>
