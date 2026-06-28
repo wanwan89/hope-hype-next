@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React from 'react';
 import MessageBubble from './MessageBubble';
 
 export default function ChatMessageList({
@@ -20,26 +20,9 @@ export default function ChatMessageList({
   toggleSelectMessage,
   setIsSelectionMode,
 }: any) {
-  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleTouchStart = (id: string) => {
-    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
-
-    touchTimerRef.current = setTimeout(() => {
-      setIsSelectionMode(true);
-      if (!selectedMessages.includes(id)) {
-        toggleSelectMessage(id);
-      }
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 600);
-  };
-
-  const handleTouchEnd = () => {
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
-    }
-  };
+  
+  // HAPUS touchTimerRef dan fungsi handleTouchStart/End 
+  // karena logika tekan lama sekarang ditangani sepenuhnya oleh MessageBubble untuk memunculkan slide-up.
 
   return (
     <main className="chat-messages">
@@ -91,22 +74,20 @@ export default function ChatMessageList({
             }
 
             const isMe = msg.user_id === currentUser?.id;
+            const isSelected = selectedMessages.includes(msg.id);
 
             return (
               <div
                 key={msg.id}
                 className={`message-wrapper ${isSelectionMode ? 'selection-mode-active' : ''}`}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}
-                onTouchStart={() => handleTouchStart(msg.id)}
-                onTouchEnd={handleTouchEnd}
-                onTouchMove={handleTouchEnd}
               >
                 {isSelectionMode && (
                   <div className="msg-checkbox-container" onClick={() => toggleSelectMessage(msg.id)} style={{ cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       className="msg-checkbox"
-                      checked={selectedMessages.includes(msg.id)}
+                      checked={isSelected}
                       readOnly
                     />
                   </div>
@@ -129,6 +110,24 @@ export default function ChatMessageList({
                     showDateSeparator={showDateSeparator}
                     router={router}
                     isSelectionMode={isSelectionMode}
+                    isSelected={isSelected}
+                    onSelect={(id: string) => {
+                      // Jika mode seleksi belum aktif, aktifkan dan pilih pesannya
+                      if (!isSelectionMode) {
+                        setIsSelectionMode(true);
+                        if (!selectedMessages.includes(id)) {
+                          toggleSelectMessage(id);
+                        }
+                      } else {
+                        // Jika sudah aktif, cukup toggle pilihan pesannya
+                        toggleSelectMessage(id);
+                      }
+                    }}
+                    onSelectAll={() => {
+                      // Tambahkan logika Select All di parent komponen jika diperlukan,
+                      // sementara ini akan menyalakan mode seleksi terlebih dahulu.
+                      setIsSelectionMode(true);
+                    }}
                   />
                 </div>
               </div>
@@ -177,7 +176,7 @@ export default function ChatMessageList({
                   style={{
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    color: 'var(--primary)', // ✅ fix: pakai variabel global
+                    color: 'var(--primary)',
                     marginBottom: '4px',
                   }}
                 >
@@ -188,31 +187,13 @@ export default function ChatMessageList({
                   style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '14px' }}
                 >
                   <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      background: 'var(--text-muted)',
-                      borderRadius: '50%',
-                      animation: 'typingBounce 1.4s infinite ease-in-out',
-                    }}
+                    style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out' }}
                   ></span>
                   <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      background: 'var(--text-muted)',
-                      borderRadius: '50%',
-                      animation: 'typingBounce 1.4s infinite ease-in-out 0.2s',
-                    }}
+                    style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.2s' }}
                   ></span>
                   <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      background: 'var(--text-muted)',
-                      borderRadius: '50%',
-                      animation: 'typingBounce 1.4s infinite ease-in-out 0.4s',
-                    }}
+                    style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.4s' }}
                   ></span>
                 </div>
               </div>

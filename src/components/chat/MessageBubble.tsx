@@ -176,7 +176,6 @@ export default function MessageBubble({
     isSwiping.current = true;
     if (bubbleRef.current) bubbleRef.current.style.transition = 'none';
 
-    // PERBAIKAN: Menghapus filter !isDeleted agar pesan yang sudah dihapus bisa ditekan lama (hold)
     if (!msg.is_system) {
       holdTimer.current = setTimeout(() => {
         setShowOptions(true);
@@ -356,7 +355,6 @@ export default function MessageBubble({
     }
   };
 
-  // PERBAIKAN CAPTION: Menggabungkan sumber caption dan menghilangkan tulisan default sistem
   let cleanMsg = msg.caption || msg.post_caption || msg.message || "";
   
   if (isStoryReply) {
@@ -364,7 +362,6 @@ export default function MessageBubble({
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
 
-  // Hilangkan label sistem agar caption buatanmu yang tersisa
   if (cleanMsg.includes("📸 Mengirim Foto")) {
     cleanMsg = cleanMsg.replace("📸 Mengirim Foto", "").trim();
   }
@@ -379,7 +376,7 @@ export default function MessageBubble({
   const vnIconColor = isMe ? 'var(--primary-blue, #1f3cff)' : '#ffffff';
   const vnWaveColor = isPlaying ? (isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)') : (isMe ? 'rgba(255,255,255,0.5)' : 'rgba(150,150,150,0.5)');
 
-  // PERBAIKAN PESAN DIHAPUS: Sembunyikan elemen secara total jika pesan dihapus dan pesan itu DARI LAWAN BICARA.
+  // Menyembunyikan elemen secara total jika pesan dihapus dan pesan itu dari lawan bicara
   if (isDeleted && !isMe) {
     return null; 
   }
@@ -415,16 +412,16 @@ export default function MessageBubble({
           {isSelectionMode && (
             <motion.div 
               initial={{ width: 0, opacity: 0 }} 
-              animate={{ width: 36, opacity: 1 }} 
+              animate={{ width: 44, opacity: 1 }} 
               exit={{ width: 0, opacity: 0 }}
-              style={{ overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}
+              style={{ overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <div style={{ 
-                width: '20px', height: '20px', borderRadius: '50%', 
+                width: '22px', height: '22px', borderRadius: '50%', 
                 border: `2px solid ${isSelected ? 'var(--primary-blue, #1f3cff)' : 'var(--text-muted, #94a3b8)'}`,
                 background: isSelected ? 'var(--primary-blue, #1f3cff)' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s', marginLeft: '6px'
+                transition: 'all 0.2s', flexShrink: 0, boxSizing: 'border-box'
               }}>
                 {isSelected && <span className="material-icons" style={{ fontSize: '14px', color: '#fff' }}>check</span>}
               </div>
@@ -485,12 +482,10 @@ export default function MessageBubble({
                     </button>
                   )}
 
-                  {/* Tombol Hapus untuk Saya selalu muncul walau isDeleted true */}
                   <button className="option-btn" onClick={(e) => handleDeleteAction(e, 'for_me')}>
                     <span className="material-icons">delete_outline</span> {isDeleted ? 'Hapus Permanen' : 'Hapus untuk Saya'}
                   </button>
 
-                  {/* Tombol Hapus untuk Semua disembunyikan jika pesan sudah terhapus */}
                   {isMe && !isDeleted && (
                     <button className="option-btn danger" onClick={(e) => handleDeleteAction(e, 'for_everyone')}>
                       <span className="material-icons">delete_forever</span> Hapus untuk Semua Orang
