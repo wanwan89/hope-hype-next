@@ -21,9 +21,6 @@ export default function ChatMessageList({
   setIsSelectionMode,
 }: any) {
   
-  // HAPUS touchTimerRef dan fungsi handleTouchStart/End 
-  // karena logika tekan lama sekarang ditangani sepenuhnya oleh MessageBubble untuk memunculkan slide-up.
-
   return (
     <main className="chat-messages">
       {isLoading ? (
@@ -80,18 +77,22 @@ export default function ChatMessageList({
               <div
                 key={msg.id}
                 className={`message-wrapper ${isSelectionMode ? 'selection-mode-active' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  width: '100%',
+                  cursor: isSelectionMode ? 'pointer' : 'default' // Tambahkan kursor pointer agar UX lebih baik
+                }}
+                onClick={() => {
+                  // Membuat seluruh baris pesan bisa diklik untuk memilih/membatalkan pilihan
+                  if (isSelectionMode) {
+                    toggleSelectMessage(msg.id);
+                  }
+                }}
               >
-                {isSelectionMode && (
-                  <div className="msg-checkbox-container" onClick={() => toggleSelectMessage(msg.id)} style={{ cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      className="msg-checkbox"
-                      checked={isSelected}
-                      readOnly
-                    />
-                  </div>
-                )}
+                {/* Checkbox kotak bawaan HTML telah dihapus dari sini. 
+                  Sekarang kita hanya menggunakan checkbox lingkaran yang berada di dalam komponen MessageBubble.
+                */}
 
                 <div style={{ flex: 1, pointerEvents: isSelectionMode ? 'none' : 'auto' }}>
                   <MessageBubble
@@ -112,20 +113,16 @@ export default function ChatMessageList({
                     isSelectionMode={isSelectionMode}
                     isSelected={isSelected}
                     onSelect={(id: string) => {
-                      // Jika mode seleksi belum aktif, aktifkan dan pilih pesannya
                       if (!isSelectionMode) {
                         setIsSelectionMode(true);
                         if (!selectedMessages.includes(id)) {
                           toggleSelectMessage(id);
                         }
                       } else {
-                        // Jika sudah aktif, cukup toggle pilihan pesannya
                         toggleSelectMessage(id);
                       }
                     }}
                     onSelectAll={() => {
-                      // Tambahkan logika Select All di parent komponen jika diperlukan,
-                      // sementara ini akan menyalakan mode seleksi terlebih dahulu.
                       setIsSelectionMode(true);
                     }}
                   />
