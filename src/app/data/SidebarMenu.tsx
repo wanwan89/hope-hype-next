@@ -1,7 +1,6 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 
 type Props = {
   isOpen: boolean;
@@ -17,24 +16,15 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
     router.push(path);
   };
 
-  const handleShareProfile = () => {
-    onClose();
-    // share logic akan diambil dari parent, tapi di sini kita panggil window.openGlobalShare
-    if (window.openGlobalShare) {
-      window.openGlobalShare(window.location.href, `Profil`, undefined, '');
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
-
   return (
     <>
-      <div className={`p-sidebar-overlay ${isOpen ? 'active' : ''}`} onClick={onClose} />
+      {/* Efek blur dimatikan melalui inline style backdropFilter */}
+      <div 
+        className={`p-sidebar-overlay ${isOpen ? 'active' : ''}`} 
+        onClick={onClose} 
+        style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none' }}
+      />
+      
       <aside className={`p-sidebar-panel ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-search-container">
           <div className="sidebar-search">
@@ -51,6 +41,7 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
             />
           </div>
         </div>
+        
         <div className="menu-category-label">{t('wallet_assets', 'Aset Dompet')}</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/saldo')}>
           <div className="icon-wrapper"><span className="material-icons">toll</span></div>
@@ -67,13 +58,16 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
           <div className="menu-text">{t('vip_subscription', 'Langganan VIP')}</div>
           <div className="arrow-right">›</div>
         </div>
+        
         <div className="menu-category-label">{t('mission_rewards', 'Misi & Hadiah')}</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/dailycek')}>
           <div className="icon-wrapper" style={{color: '#f59e0b'}}><span className="material-icons">emoji_events</span></div>
           <div className="menu-text">{t('mission_center', 'Pusat Misi')}</div>
           <div className="arrow-right">›</div>
         </div>
+        
         <hr className="menu-divider" />
+        
         <div className="menu-category-label">{t('personal_tools', 'Alat Pribadi')}</div>
         <div className="menu-item-tiktok" onClick={() => navTo('/settings')}>
           <div className="icon-wrapper"><span className="material-icons">settings</span></div>
@@ -84,15 +78,6 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
           <div className="icon-wrapper"><span className="material-icons">support_agent</span></div>
           <div className="menu-text">{t('contact_us', 'Hubungi Kami')}</div>
           <div className="arrow-right">›</div>
-        </div>
-        <div className="menu-item-tiktok" onClick={handleShareProfile}>
-          <div className="icon-wrapper"><span className="material-icons">ios_share</span></div>
-          <div className="menu-text">{t('share_profile', 'Bagikan Profil')}</div>
-          <div className="arrow-right">›</div>
-        </div>
-        <div className="menu-item-tiktok logout" onClick={handleLogout}>
-          <div className="icon-wrapper"><span className="material-icons">power_settings_new</span></div>
-          <div className="menu-text">{t('logout', 'Keluar')}</div>
         </div>
       </aside>
     </>

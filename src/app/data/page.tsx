@@ -593,53 +593,16 @@ function ProfileContent() {
       {/* 🔥 AREA STATIS (Header, Profil Info, Tabs): Dibungkus div dengan flexShrink: 0 agar tidak ikut ter-scroll */}
       <div style={{ flexShrink: 0, zIndex: 10, background: 'var(--bg-main)' }}>
         
-        {/* 🔥 CUSTOM HEADER KHUSUS PEMILIK PROFIL 🔥 */}
-        {isMe ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'var(--bg-main)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <button onClick={() => router.back()} className="icon-btn-header" aria-label="Back">
-                <span className="material-icons">arrow_back</span>
-              </button>
-              
-              {/* Tombol Edit Profil Pindah Ke Sini */}
-              <button onClick={() => setIsEditModalOpen(true)} className="icon-btn-header" aria-label="Edit Profil">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-              </button>
-
-              {/* Tombol Bagikan Profil Pindah Ke Sini */}
-              <button onClick={handleShareProfile} className="icon-btn-header" aria-label="Bagikan Profil">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-              </button>
-            </div>
-            
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text-main)' }}>
-              {profile.username}
-            </h3>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <button onClick={() => setIsSidebarOpen(true)} className="icon-btn-header" aria-label="Menu">
-                <span className="material-icons">menu</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <ProfileHeader
-            isMe={isMe}
-            username={profile.username}
-            isPrivate={profile.is_private}
-            onBack={() => router.back()}
-            onMenuClick={() => setIsSidebarOpen(true)}
-          />
-        )}
+        {/* 🔥 PENGGUNAAN PROFILE HEADER FULL FIX 🔥 */}
+        <ProfileHeader
+          isMe={isMe}
+          username={profile.username}
+          isPrivate={profile.is_private}
+          onBack={() => router.back()}
+          onMenuClick={() => isMe ? setIsSidebarOpen(true) : setIsActionSheetOpen(true)}
+          onEditClick={() => setIsEditModalOpen(true)}
+          onShareClick={handleShareProfile}
+        />
 
         <div className="profile-top-section">
           <ProfileInfo
@@ -653,7 +616,6 @@ function ProfileContent() {
             onAvatarClick={handleAvatarClick}
             onChat={handleGoToChat}
             onToggleFollow={toggleFollow}
-            // 🔥 Karena tombol sudah dipindahkan ke Header khusus isMe, hilangkan properti ini agar tidak dirender ganda
             onEdit={isMe ? undefined : () => setIsEditModalOpen(true)}
             onShare={isMe ? undefined : handleShareProfile}
             onOpenActionSheet={() => setIsActionSheetOpen(true)}
@@ -693,7 +655,7 @@ function ProfileContent() {
         </RefreshableWrapper>
       </div>
 
-      {/* Komponen Modal dan Sidebar (Tetap tidak berubah) */}
+      {/* Komponen Modal dan Sidebar */}
       {isMe && (
         <SidebarMenu
           isOpen={isSidebarOpen}
