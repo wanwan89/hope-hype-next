@@ -86,17 +86,12 @@ function VoiceRoomContent() {
   const selectedTargetId = useRef<string | null>(null);
   const selectedTargetName = useRef("");
 
-  // Paksa class dark agar variabel global ikut dark (sebagai fallback)
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-    return () => {
-      // Tidak dihapus karena saat unmount kita keluar dari halaman ini
-    };
-  }, []);
-
   useEffect(() => {
     setMounted(true);
     window.__VOICE_ROOM_INIT__ = true;
+
+    // Paksa body global menggunakan background hitam panggung saat berada di halaman ini
+    document.body.style.backgroundColor = '#000000';
 
     const rawId = searchParams?.get('id');
     const rawName = searchParams?.get('name');
@@ -206,7 +201,7 @@ function VoiceRoomContent() {
       container.style.display = 'flex';
       container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:4px;">🏆</span>`;
       topData.slice(0, 3).forEach((u, i) => {
-        container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid #121212; margin-left:-8px; z-index:${3-i}; background:#1a1a1a; object-fit:cover;">`;
+        container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid #0a0a0a; margin-left:-8px; z-index:${3-i}; background:#151515; object-fit:cover;">`;
       });
       container.onclick = () => window.openTopGiftersModal?.();
     }
@@ -415,23 +410,23 @@ function VoiceRoomContent() {
           item.innerHTML = `
             <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
               <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
-              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.7); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid #121212; z-index: 10;">
+              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.8); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid #0a0a0a; z-index: 10;">
                 <span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span>
               </div>
             </div>
-            <span class="name-label" style="color: #ffffff; font-weight: 600; text-shadow: none;">
+            <span class="name-label" style="color: #f8fafc; font-weight: 600; text-shadow: none;">
               <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
                 ${user.username} ${getLevelBadgeHTML(userLvl)}
               </div>
             </span>`;
         } else {
-          item.innerHTML = `<div class="avatar" style="border: 1px dashed rgba(255,255,255,0.5); opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:rgba(255,255,255,0.5); font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:rgba(255,255,255,0.5);">${t('empty_slot')}</span>`;
+          item.innerHTML = `<div class="avatar" style="border: 1px dashed #94a3b8; opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:#94a3b8; font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:#94a3b8;">${t('empty_slot')}</span>`;
         }
         grid.appendChild(item);
       });
     }
 
-    window.kirimKomentar = async () => { /* ... sama seperti sebelumnya ... */
+    window.kirimKomentar = async () => {
       const inputEl = document.getElementById('chat-input') as HTMLInputElement;
       const text = inputEl?.value.trim();
       if (!text || !CURRENT_ROOM_ID || !MY_USER_ID.current) return;
@@ -475,7 +470,7 @@ function VoiceRoomContent() {
       else showNotif("Panggung penuh! Tunggu giliran", "warning");
     };
 
-    window.keluarRoom = async () => { /* ... sama seperti sebelumnya ... */
+    window.keluarRoom = async () => {
       if (IS_OWNER.current && confirm("Tutup panggung dan bersihkan riwayat? (Leaderboard akan direset)")) {
         await sb.from('room_slots').update({ profile_id: null }).eq('room_id', CURRENT_ROOM_ID);
         await sb.from('rooms').update({ is_active: false }).eq('id', CURRENT_ROOM_ID);
@@ -487,7 +482,7 @@ function VoiceRoomContent() {
       window.location.href = '/lobby';
     };
 
-    window.toggleMicSidebar = async (e: any) => { /* ... sama seperti sebelumnya ... */
+    window.toggleMicSidebar = async (e: any) => {
       e?.preventDefault();
       if (!roomRef.current) return showNotif('Koneksi suara belum siap', "warning");
       const { data: onStage } = await sb.from('room_slots').select('*').eq('room_id', CURRENT_ROOM_ID).eq('profile_id', MY_USER_ID.current).single();
@@ -507,7 +502,7 @@ function VoiceRoomContent() {
       }
     };
 
-    window.naikKeStage = async (idx) => { /* ... sama seperti sebelumnya ... */
+    window.naikKeStage = async (idx) => {
       if (!MY_USER_ID.current) return showNotif("Login dulu!", "warning");
       if (idx >= roomSlotCount) return showNotif("Slot ini ditutup Owner", "warning");
 
@@ -527,7 +522,7 @@ function VoiceRoomContent() {
       fetchStage();
     };
 
-    window.prosesTurunMic = async () => { /* ... sama seperti sebelumnya ... */
+    window.prosesTurunMic = async () => {
       if (roomRef.current?.localParticipant) await roomRef.current.localParticipant.setMicrophoneEnabled(false);
       await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', MY_USER_ID.current);
       await sb.from('profiles').update({ mic_off: true }).eq('id', MY_USER_ID.current);
@@ -549,7 +544,7 @@ function VoiceRoomContent() {
 
     window.closeRoomSetting = () => { document.getElementById('setting-modal')?.classList.remove('show'); };
 
-    window.saveRoomSetting = async () => { /* ... sama seperti sebelumnya ... */
+    window.saveRoomSetting = async () => {
       const newName = (document.getElementById('edit-room-name') as HTMLInputElement).value;
       const sysMsg = (document.getElementById('system-message') as HTMLInputElement).value;
       let newSlotCount = roomSlotCount;
@@ -592,11 +587,17 @@ function VoiceRoomContent() {
 
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
 
+    // CLEANUP LIFECYCLE: Berfungsi membersihkan modifikasi elemen global saat keluar dari room
     return () => {
       clearInterval(sdkInterval);
       roomRef.current?.disconnect();
       window.removeEventListener('resize', fixMobileHeight);
       window.removeEventListener('orientationchange', fixMobileHeight);
+      
+      // Mengembalikan background body bawaan global css web utama
+      document.body.style.backgroundColor = '';
+      document.body.classList.remove('radar-rgb');
+      document.documentElement.style.removeProperty('--radar-color');
     };
   }, [t, searchParams, router]);
 
@@ -610,8 +611,6 @@ function VoiceRoomContent() {
       <Modals />
 
       <div className="app-container">
-        
-        {/* ✅ KOMPONEN HEADER BARU MENGGANTIKAN DIV LAMA */}
         <HeaderRoom
           roomInfo={roomInfo}
           onlineUsers={onlineUsers}
@@ -663,11 +662,7 @@ function VoiceRoomContent() {
 
 export default function Page() {
   return (
-    <Suspense fallback={
-      <div className="voice-room-fallback">
-        Memuat panggung...
-      </div>
-    }>
+    <Suspense fallback={<div className="voice-room-fallback">Memuat panggung...</div>}>
       <VoiceRoomContent />
     </Suspense>
   );
