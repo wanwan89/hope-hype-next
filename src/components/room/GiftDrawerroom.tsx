@@ -91,7 +91,6 @@ export default function GiftDrawerroom() {
     setRoomMembers(membersArr);
   };
 
-  // 🔥 Mengatur delay Lottie agar bottom sheet mulus duluan
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isActive) {
@@ -229,7 +228,6 @@ export default function GiftDrawerroom() {
   const currentLevel = calculateLevel(coinsGiven); 
   let prevTarget = (currentLevel - 1) * 500;
   let targetKoin = currentLevel * 500;
-  let needed = targetKoin - coinsGiven;
   let progressPercent = ((coinsGiven - prevTarget) / (targetKoin - prevTarget)) * 100;
   if (progressPercent > 100) progressPercent = 100;
 
@@ -257,7 +255,8 @@ export default function GiftDrawerroom() {
         
         .drawer-top-level { display: flex; align-items: center; gap: 12px; background: transparent; padding: 12px 0px; margin: 0 20px 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; z-index: 10; }
-        .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; }
+        /* 🔥 FIX: Hilangkan border profile 🔥 */
+        .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: none; }
         .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
         .level-text-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--text-main, #fff); }
         .progress-track { width: 100%; height: 8px; background: rgba(150,150,150,0.2); border-radius: 10px; overflow: hidden; }
@@ -269,24 +268,28 @@ export default function GiftDrawerroom() {
           scrollbar-width: none; -webkit-overflow-scrolling: touch;
         }
         .target-scroll-area::-webkit-scrollbar { display: none; }
+        
+        /* 🔥 FIX: Box kreator disamakan dengan gaya box koin (pill) 🔥 */
         .target-avatar-item {
-          display: flex; flex-direction: column; align-items: center; gap: 6px;
-          cursor: pointer; opacity: 0.6; transition: all 0.2s; min-width: 50px;
+          display: inline-flex; align-items: center; gap: 8px; flex-direction: row;
+          cursor: pointer; opacity: 0.6; transition: all 0.2s; 
+          padding: 6px 12px; border-radius: 20px; background: transparent;
         }
-        .target-avatar-item.active { opacity: 1; transform: scale(1.1); }
+        .target-avatar-item.active { 
+          opacity: 1; transform: scale(1.05); 
+          background: var(--bg-secondary, #1e1e1e); 
+        }
         .target-avatar-item img {
-          width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
-          border: 2px solid transparent; transition: 0.2s;
+          width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
+          border: none;
         }
-        .target-avatar-item.active img { border-color: #1f3cff; box-shadow: 0 0 10px rgba(31,60,255,0.5); }
-        .target-avatar-name { font-size: 10px; font-weight: 700; color: var(--text-main, #fff); white-space: nowrap; }
+        .target-avatar-name { font-size: 11px; font-weight: 800; color: var(--text-main, #fff); white-space: nowrap; }
 
-        /* 🔥 FIX: GRID UNTUK HORIZONTAL SCROLL 2 BARIS 🔥 */
         .gift-grid-room-wrapper {
           display: grid;
-          grid-template-rows: auto auto; /* Fix 2 baris (atas-bawah) */
-          grid-auto-flow: column; /* Terus ke samping */
-          grid-auto-columns: minmax(105px, 1fr); /* Lebar per kado */
+          grid-template-rows: auto auto; 
+          grid-auto-flow: column; 
+          grid-auto-columns: minmax(105px, 1fr); 
           gap: 25px 15px; 
           overflow-x: auto; 
           padding: 10px 20px 40px 20px;
@@ -319,10 +322,11 @@ export default function GiftDrawerroom() {
         
         .gift-active-bg-box {
           position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
-          border: 1.5px solid #1f3cff; border-radius: 12px; background: rgba(0,0,0,0.5);
+          border: 1.5px solid #1f3cff; border-radius: 12px; background: rgba(0,0,0,0.8);
           display: flex; flex-direction: column; justify-content: flex-end; 
           align-items: center; padding-bottom: 6px; z-index: 1; 
         }
+        /* 🔥 FIX: Warna tombol mini solid biru 🔥 */
         .gift-send-btn-mini {
           background: #1f3cff; color: white; border: none; border-radius: 8px; 
           padding: 6px 22px; font-weight: 800; font-size: 11px; 
@@ -348,7 +352,8 @@ export default function GiftDrawerroom() {
               transition={{ duration: 0.2 }}
               className="gift-sheet-overlay" 
               onClick={closeSheet} 
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100000 }}
+              /* 🔥 FIX: Hilangkan blur dari modal background 🔥 */
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100000 }}
             />
 
             <motion.div 
@@ -369,17 +374,17 @@ export default function GiftDrawerroom() {
               <div className="drawer-top-level">
                 <div className="level-avatar-box">
                   <img src={myProfile?.avatar_url || fallbackAvatar} className="level-avatar" alt="Avatar" />
-                  <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
+                  {/* 🔥 FIX: Jauhkan badge dari profil 🔥 */}
+                  <div style={{ position: 'absolute', bottom: '-14px', left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
                      <span dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
                   </div>
                 </div>
                 <div className="level-progress-info">
                   <div className="level-text-row">
                     <span style={{ marginLeft: '6px' }}>{myProfile?.username || 'User'}</span>
-                    {currentLevel >= 50 ? (
+                    {/* 🔥 FIX: Sembunyikan text "butuh" jika tidak max 🔥 */}
+                    {currentLevel >= 50 && (
                       <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
-                    ) : (
-                      <span style={{ color: '#1f3cff' }}>Butuh {needed} koin</span>
                     )}
                   </div>
                   <div className="progress-track" style={{ marginLeft: '6px' }}>
@@ -389,7 +394,9 @@ export default function GiftDrawerroom() {
               </div>
 
               <div className="target-selector-container">
-                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #a1a1aa)' }}>PILIH PENERIMA:</span>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #a1a1aa)', display: 'block', marginBottom: '4px' }}>
+                  PILIH PENERIMA:
+                </span>
                 <div className="target-scroll-area">
                   {roomMembers.map(member => (
                     <div 
@@ -398,7 +405,7 @@ export default function GiftDrawerroom() {
                       onClick={() => setTargetPost({ id: targetPost.id, creatorId: member.id, creatorName: member.name })}
                     >
                       <img src={member.avatar || '/asets/png/profile.webp'} alt="Target" />
-                      <span className="target-avatar-name">{member.name.substring(0, 8)}</span>
+                      <span className="target-avatar-name">{member.name.substring(0, 10)}</span>
                     </div>
                   ))}
                   {roomMembers.length === 0 && (
@@ -407,7 +414,6 @@ export default function GiftDrawerroom() {
                 </div>
               </div>
 
-              {/* 🔥 MENGGUNAKAN CSS GRID NATIVE PENGGANTI ARRAY MAPPING MANUAL 🔥 */}
               <div className="gift-grid-room-wrapper">
                 {GIFT_DATA.map((gift) => {
                   const isActiveGift = selectedGift?.id === gift.id;
@@ -466,7 +472,7 @@ export default function GiftDrawerroom() {
               </div>
               
               <div className="drawer-footer">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '12px', color: 'var(--text-main, #fff)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'var(--bg-secondary, #1e1e1e)', padding: '8px 14px', borderRadius: '12px', color: 'var(--text-main, #fff)' }}>
                   <CoinIcon size={20} />
                   <span>{userCoins.toLocaleString('id-ID')}</span>
                 </div>
@@ -475,12 +481,14 @@ export default function GiftDrawerroom() {
                   onClick={(e) => handleSendGift(selectedGift, e)}
                   disabled={!selectedGift || isSending}
                   style={{
-                    background: 'linear-gradient(135deg, #1f3cff, #bc13fe)', color: 'white', border: 'none',
+                    /* 🔥 FIX: Warna tombol utama solid biru 🔥 */
+                    background: '#1f3cff', color: 'white', border: 'none',
                     padding: '10px 24px', borderRadius: '20px', fontWeight: 800, fontSize: '14px',
                     opacity: (!selectedGift || isSending) ? 0.5 : 1, cursor: (!selectedGift || isSending) ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? t('btn_send_amount', `KIRIM (${selectedGift.amount})`) : t('btn_send', 'KIRIM')}
+                  {/* 🔥 FIX: Render variabel koin pakai template literal biasa 🔥 */}
+                  {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? `Kirim ${selectedGift.amount} Koin` : t('btn_send', 'KIRIM')}
                 </motion.button>
               </div>
 

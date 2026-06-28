@@ -8,6 +8,17 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import './CommentModal.css';
 
+// 🔥 IMPORT LOTTIE DAN JSON KADO 🔥
+import Lottie from 'lottie-react';
+import tigerJson from '@/assets/gifts/tiger.json';
+import dogJson from '@/assets/gifts/dog.json';
+
+// 🔥 DATA KADO UNTUK MENCOCOKKAN NAMA KADO DENGAN ANIMASINYA 🔥
+const GIFT_DATA = [
+  { id: 1, name: 'Tiger', amount: 1, animation: tigerJson },
+  { id: 2, name: 'Dog', amount: 5, animation: dogJson },
+];
+
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -188,14 +199,15 @@ function CommentModalContent() {
 
   useEffect(() => {
     const handleInsertGift = async (e: any) => {
-      const { postId, giftName, giftImg, creatorId } = e.detail;
+      // 🔥 Tidak butuh giftImg lagi, kita simpan string GIFT||NamaKado 🔥
+      const { postId, giftName, creatorId } = e.detail;
       if (!postId) return;
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        const content = `GIFT||${giftName}||${giftImg}`;
+        const content = `GIFT||${giftName}`;
 
         await supabase.from("comments").insert({
           post_id: parseInt(postId),
@@ -358,7 +370,6 @@ function CommentModalContent() {
     inputRef.current.focus();
   };
 
-  // --- FIX 2: handleSendSticker sekarang menangkap inputValue untuk caption teks ---
   const handleSendSticker = async (stickerUrl: string) => {
     if (!currentPostId || isCommentsDisabled || isSubmitting) return;
     
@@ -385,7 +396,6 @@ function CommentModalContent() {
         finalCaption = finalCaption.replace(`@${targetUser}`, '').trim();
       }
 
-      // Menggabungkan URL sticker dengan teks (jika ada)
       const content = `STICKER||${stickerUrl}||${finalCaption}`;
 
       const { data: newComment, error } = await supabase.from("comments").insert({
@@ -424,7 +434,7 @@ function CommentModalContent() {
       setReplyToUserId(null);
       setShowStickers(false);
       setStickerQuery("");
-      setInputValue(""); // Mereset input teks setelah sticker berhasil dikirim
+      setInputValue(""); 
       
     } catch (err) {
       showNotif(t('comment_error'), "error"); 
@@ -628,20 +638,25 @@ function CommentModalContent() {
     let isGift = false;
     let isSticker = false;
     let giftName = "";
-    let giftImg = "";
+    let giftAnimationData: any = null;
     let stickerUrl = "";
     let stickerCaption = "";
     
+    // 🔥 PENGELOLAAN RENDER KADO DENGAN LOTTIE 🔥
     if (comment.content?.startsWith("GIFT||")) {
       isGift = true;
       const parts = comment.content.split("||");
       giftName = parts[1] || "Gift";
-      giftImg = parts[2] || "";
+      
+      const giftObj = GIFT_DATA.find(g => g.name.toLowerCase() === giftName.toLowerCase());
+      if (giftObj) {
+        giftAnimationData = giftObj.animation;
+      }
     } else if (comment.content?.startsWith("STICKER||")) {
       isSticker = true;
       const parts = comment.content.split("||");
       stickerUrl = parts[1] || "";
-      stickerCaption = parts[2] || ""; // Menambahkan pengambilan caption text (Fix 2)
+      stickerCaption = parts[2] || ""; 
     }
 
     const isCommentLiked = likedComments.has(String(comment.id));
@@ -695,7 +710,6 @@ function CommentModalContent() {
           <div className="comment-text">
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
-            {/* FIX 3: Styling abu-abu glass + tulisan keterangan untuk Gift */}
             {isGift ? (
               <div 
                 className="gift-comment-bubble" 
@@ -714,11 +728,17 @@ function CommentModalContent() {
                 }}
               >
                  <span style={{ fontSize: '13px', fontWeight: 600 }}>Memberi {giftName}</span>
-                 {giftImg && <img src={getOptimizedImage(giftImg)} loading="lazy" alt={giftName} style={{ maxWidth: '80px', objectFit: 'contain' }} />}
+                 {/* 🔥 Render Animasi Lottie di Sini 🔥 */}
+                 {giftAnimationData ? (
+                   <div style={{ width: '80px', height: '80px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                     <Lottie animationData={giftAnimationData} loop={true} style={{ width: '100%', height: '100%' }} />
+                   </div>
+                 ) : (
+                   <div style={{ width: '80px', height: '80px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }} />
+                 )}
               </div>
             ) : isSticker ? (
               <div className="sticker-comment-bubble" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                 {/* Render Text di Atas Sticker */}
                  {stickerCaption && <div className="sticker-caption">{highlightMentions(stickerCaption)}</div>}
                  <img src={stickerUrl} loading="lazy" alt="Sticker" style={{ maxWidth: '120px', borderRadius: '8px', background: 'transparent' }} />
               </div>
@@ -729,7 +749,6 @@ function CommentModalContent() {
 
           <div className="comment-actions">
             <span className="comment-time">{formatTimeAgo(comment.created_at)}</span>
-            {/* FIX 1: Hapus pengecualian !isGift dan !isSticker agar tombol "Balas" muncul */}
             {!isCommentsDisabled && (
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
@@ -973,7 +992,6 @@ function CommentModalContent() {
                     autoComplete="off"
                     value={inputValue}
                     onChange={handleInputChange}
-                    /* Hapus fungsi onFocus penutup popup stiker agar tidak tertutup saat mengetik caption */
                     onKeyDown={(e) => {
                       if (showMentions && e.key === "Enter") {
                         e.preventDefault();
