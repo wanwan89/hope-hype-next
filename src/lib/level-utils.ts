@@ -14,7 +14,6 @@ export function calculateLevel(giftSent: number) {
 }
 
 // 2. Fungsi Ambil Ikon & Warna Berdasarkan Tingkat (Tier) Level
-// Note: Warna dikalibrasi ulang agar lebih cerah dan tidak ada hitam/putih murni
 export function getTierInfo(level: number) {
   if (level >= 40) {
     return {
@@ -46,53 +45,56 @@ export function getTierInfo(level: number) {
   };
 }
 
-// 3. FUNGSI BADGE LEVEL LENGKAP (KOTAK KECIL + IKON SETENGAH KELUAR)
+// 3. FUNGSI BADGE LEVEL LENGKAP (SVG DI KIRI SETENGAH KELUAR, HANYA ANGKA, WARNA BOX TETAP)
 export function getLevelBadgeHTML(levelVal: string | number) {
   const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
   
-  // Tentukan warna berdasarkan level
+  // Tentukan warna HANYA untuk SVG berdasarkan level
   let fillColor: string;
-  let textColor: string;
-  
-  if (lvl >= 40) { fillColor = '#ff0055'; textColor = '#ff80aa'; } 
-  else if (lvl >= 30) { fillColor = '#9d00ff'; textColor = '#d480ff'; }
-  else if (lvl >= 20) { fillColor = '#ffaa00'; textColor = '#ffd580'; }
-  else if (lvl >= 10) { fillColor = '#00e676'; textColor = '#80ffb2'; }
-  else { fillColor = '#00bfff'; textColor = '#80dfff'; }
+  if (lvl >= 40) fillColor = '#ff0055'; 
+  else if (lvl >= 30) fillColor = '#9d00ff'; 
+  else if (lvl >= 20) fillColor = '#ffaa00'; 
+  else if (lvl >= 10) fillColor = '#00e676'; 
+  else fillColor = '#00bfff'; 
 
   return `
     <span style="
       position: relative;
       display: inline-flex;
       align-items: center;
-      background: rgba(40, 42, 54, 0.85); /* Warna dasar kotak gelap (bukan hitam murni) */
-      border: 1px solid ${fillColor}50; /* Border transparan mengikuti warna level */
-      border-radius: 12px; /* Kotak lebih membulat (pill shape) */
-      padding: 2px 8px; /* Padding dikecilkan agar kotak lebih ramping */
-      margin-top: 8px; /* Jarak atas agar ikon tidak menabrak elemen di atasnya */
+      background: rgba(40, 42, 54, 0.85); /* Warna dasar kotak tetap */
+      border: 1px solid rgba(255, 255, 255, 0.15); /* Warna border tetap */
+      border-radius: 12px;
+      /* Padding kiri dilebarkan (14px) agar angka tidak menabrak SVG */
+      padding: 2px 8px 2px 14px; 
+      margin-left: 10px; /* Margin luar di kiri agar SVG yang keluar tidak terpotong tepi layar/elemen lain */
       box-shadow: 0 1px 4px rgba(0,0,0,0.2);
       font-family: sans-serif;
+      min-width: 24px;
+      justify-content: center;
     ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 48 48"
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48"
         style="
           position: absolute;
-          top: -7px; /* Geser ke atas persis setengah dari tinggi (14px/2 = 7px) */
-          left: 50%; /* Posisikan di tengah secara horizontal */
-          transform: translateX(-50%);
-          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+          left: -10px; /* Geser ke kiri persis setengah dari lebarnya (20px / 2 = 10px) */
+          top: 50%; /* Taruh di tengah secara vertikal */
+          transform: translateY(-50%);
+          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
+          z-index: 2;
         "
       >
-        <path fill="${fillColor}" stroke="${fillColor}" stroke-linejoin="round" stroke-width="2" d="M24 44C32.2347 44 38.9998 37.4742 38.9998 29.0981C38.9998 27.0418 38.8953 24.8375 37.7555 21.4116C36.6157 17.9858 36.3861 17.5436 35.1809 15.4279C34.666 19.7454 31.911 21.5448 31.2111 22.0826C31.2111 21.5231 29.5445 15.3359 27.0176 11.6339C24.537 8 21.1634 5.61592 19.1853 4C19.1853 7.06977 18.3219 11.6339 17.0854 13.9594C15.8489 16.2849 15.6167 16.3696 14.0722 18.1002C12.5278 19.8308 11.8189 20.3653 10.5274 22.4651C9.23596 24.565 9 27.3618 9 29.4181C9 37.7942 15.7653 44 24 44Z"/>
+        <path fill="${fillColor}" stroke="#ffffff" stroke-linejoin="round" stroke-width="2" d="M24 44C32.2347 44 38.9998 37.4742 38.9998 29.0981C38.9998 27.0418 38.8953 24.8375 37.7555 21.4116C36.6157 17.9858 36.3861 17.5436 35.1809 15.4279C34.666 19.7454 31.911 21.5448 31.2111 22.0826C31.2111 21.5231 29.5445 15.3359 27.0176 11.6339C24.537 8 21.1634 5.61592 19.1853 4C19.1853 7.06977 18.3219 11.6339 17.0854 13.9594C15.8489 16.2849 15.6167 16.3696 14.0722 18.1002C12.5278 19.8308 11.8189 20.3653 10.5274 22.4651C9.23596 24.565 9 27.3618 9 29.4181C9 37.7942 15.7653 44 24 44Z"/>
       </svg>
       
       <span style="
-        font-size: 11px; /* Ukuran font lebih kecil */
+        font-size: 11px;
         font-weight: 700;
-        color: ${textColor}; /* Warna teks sedikit lebih terang dari ikon */
-        letter-spacing: 0.3px;
+        color: #ffffff; /* Warna angka selalu putih / tidak ikut berubah */
+        letter-spacing: 0.5px;
         line-height: 1;
+        z-index: 1;
       ">
-        Level ${lvl}
+        ${lvl}
       </span>
     </span>
   `;
