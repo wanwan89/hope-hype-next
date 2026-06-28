@@ -456,7 +456,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" suppressHydrationWarning>
       <head>
         <title>HypeTalk - Creative Community</title>
-        <link rel="manifest" href="/manifest.json" />
+        {/* 🔥 MANIFEST DIHAPUS AGAR TIDAK BENTROK DENGAN SPLASH CUSTOM 🔥 */}
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
