@@ -118,7 +118,7 @@ export default function VoiceLobbyPage() {
   return (
     <div className="voice-lobby-container" style={{ position: 'relative' }}>
       
-      {/* Header Baru: Teks Hyperoom di kiri, koin di kanan */}
+      {/* Header Baru: Teks Hyperoom dengan font Poppins tebal di kiri, koin di kanan */}
       <header 
         className="lobby-header" 
         style={{ 
@@ -127,7 +127,7 @@ export default function VoiceLobbyPage() {
           padding: '16px 20px', borderBottom: '1px solid var(--border-card)'
         }}
       >
-        <div style={{ fontWeight: 'bold', fontSize: '20px', letterSpacing: '0.5px' }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 800, fontSize: '22px', letterSpacing: '0.5px' }}>
           Hyperoom
         </div>
         <div className="coin-badge" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setIsCoinSheetOpen(true)}>
@@ -142,8 +142,12 @@ export default function VoiceLobbyPage() {
           <section className="hero-banner">
             <h2>Ruang Suara Interaktif</h2>
             <p>Bergabunglah dengan komunitas atau mulai percakapan suara Anda sendiri.</p>
-            <button className="btn-start-singing" onClick={handleStartSinging}>
-              <span className="material-icons">mic</span>
+            <button className="btn-start-singing" onClick={handleStartSinging} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Mengganti icon mic dengan SVG Plus (+) */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
               Buat Ruang Suara
             </button>
           </section>
@@ -178,7 +182,15 @@ export default function VoiceLobbyPage() {
             ) : (
               rooms.map(room => (
                 <div key={room.id} className="room-card" onClick={() => router.push(`/voice?id=${room.id}&name=${encodeURIComponent(room.name)}`)}>
-                  <div className="room-thumb"><span className="material-icons">graphic_eq</span></div>
+                  <div className="room-thumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {/* Mengganti icon graphic_eq dengan SVG Suara Global yang disediakan */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+                      <g fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M2.5 12c0-4.478 0-6.718 1.391-8.109S7.521 2.5 12 2.5c4.478 0 6.718 0 8.109 1.391S21.5 7.521 21.5 12c0 4.478 0 6.718-1.391 8.109S16.479 21.5 12 21.5c-4.478 0-6.718 0-8.109-1.391S2.5 16.479 2.5 12Z"/>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m-3-6v4m-3-3v2m9-3v4m3-3v2"/>
+                      </g>
+                    </svg>
+                  </div>
                   <div className="room-info">
                     <h4>{room.name.toUpperCase()}</h4>
                     <p>{room.description}</p>
