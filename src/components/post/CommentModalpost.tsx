@@ -358,6 +358,7 @@ function CommentModalContent() {
     inputRef.current.focus();
   };
 
+  // --- FIX 2: handleSendSticker sekarang menangkap inputValue untuk caption teks ---
   const handleSendSticker = async (stickerUrl: string) => {
     if (!currentPostId || isCommentsDisabled || isSubmitting) return;
     
@@ -372,7 +373,20 @@ function CommentModalContent() {
       const targetUser = replyToUsername;
       const targetUserId = replyToUserId;
       
-      const content = `STICKER||${stickerUrl}`;
+      let finalCaption = inputValue.trim();
+
+      if (containsBadWords(finalCaption)) {
+        showNotif("Komentar ditolak! Mengandung bahasa yang tidak pantas.", "error");
+        setIsSubmitting(false);
+        return; 
+      }
+
+      if (targetUser && finalCaption.startsWith(`@${targetUser}`)) {
+        finalCaption = finalCaption.replace(`@${targetUser}`, '').trim();
+      }
+
+      // Menggabungkan URL sticker dengan teks (jika ada)
+      const content = `STICKER||${stickerUrl}||${finalCaption}`;
 
       const { data: newComment, error } = await supabase.from("comments").insert({
         post_id: pid,
@@ -410,6 +424,7 @@ function CommentModalContent() {
       setReplyToUserId(null);
       setShowStickers(false);
       setStickerQuery("");
+      setInputValue(""); // Mereset input teks setelah sticker berhasil dikirim
       
     } catch (err) {
       showNotif(t('comment_error'), "error"); 
@@ -615,6 +630,7 @@ function CommentModalContent() {
     let giftName = "";
     let giftImg = "";
     let stickerUrl = "";
+    let stickerCaption = "";
     
     if (comment.content?.startsWith("GIFT||")) {
       isGift = true;
@@ -625,6 +641,7 @@ function CommentModalContent() {
       isSticker = true;
       const parts = comment.content.split("||");
       stickerUrl = parts[1] || "";
+      stickerCaption = parts[2] || ""; // Menambahkan pengambilan caption text (Fix 2)
     }
 
     const isCommentLiked = likedComments.has(String(comment.id));
@@ -678,13 +695,31 @@ function CommentModalContent() {
           <div className="comment-text">
             {comment.reply_to_username && <span className="reply-tag">@{comment.reply_to_username}</span>}
             {' '} 
+            {/* FIX 3: Styling abu-abu glass + tulisan keterangan untuk Gift */}
             {isGift ? (
-              <div className="gift-comment-bubble">
-                 <span>{t('gave_gift', { giftName })}</span>
-                 {giftImg && <img src={getOptimizedImage(giftImg)} loading="lazy" alt={giftName} />}
+              <div 
+                className="gift-comment-bubble" 
+                style={{ 
+                  background: 'rgba(150, 150, 150, 0.15)', 
+                  backdropFilter: 'blur(10px)', 
+                  WebkitBackdropFilter: 'blur(10px)', 
+                  padding: '12px 16px', 
+                  borderRadius: '12px', 
+                  display: 'inline-flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  gap: '6px',
+                  marginTop: '4px'
+                }}
+              >
+                 <span style={{ fontSize: '13px', fontWeight: 600 }}>Memberi {giftName}</span>
+                 {giftImg && <img src={getOptimizedImage(giftImg)} loading="lazy" alt={giftName} style={{ maxWidth: '80px', objectFit: 'contain' }} />}
               </div>
             ) : isSticker ? (
-              <div className="sticker-comment-bubble">
+              <div className="sticker-comment-bubble" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                 {/* Render Text di Atas Sticker */}
+                 {stickerCaption && <div className="sticker-caption">{highlightMentions(stickerCaption)}</div>}
                  <img src={stickerUrl} loading="lazy" alt="Sticker" style={{ maxWidth: '120px', borderRadius: '8px', background: 'transparent' }} />
               </div>
             ) : (
@@ -694,7 +729,8 @@ function CommentModalContent() {
 
           <div className="comment-actions">
             <span className="comment-time">{formatTimeAgo(comment.created_at)}</span>
-            {!isGift && !isSticker && !isCommentsDisabled && (
+            {/* FIX 1: Hapus pengecualian !isGift dan !isSticker agar tombol "Balas" muncul */}
+            {!isCommentsDisabled && (
               <span className="reply-btn" onClick={() => {
                   setReplyToId(isReply ? String(comment.parent_id) : String(comment.id));
                   setReplyToUsername(p?.username);
@@ -937,7 +973,7 @@ function CommentModalContent() {
                     autoComplete="off"
                     value={inputValue}
                     onChange={handleInputChange}
-                    onFocus={() => setShowStickers(false)} 
+                    /* Hapus fungsi onFocus penutup popup stiker agar tidak tertutup saat mengetik caption */
                     onKeyDown={(e) => {
                       if (showMentions && e.key === "Enter") {
                         e.preventDefault();

@@ -19,10 +19,18 @@ const GIFT_DATA = [
   { id: 2, name: 'Dog', amount: 5, animation: dogJson },
 ];
 
+// 1. KOMPONEN SVG KOIN
+const CoinIcon = ({ size = 16, className = '' }: { size?: number, className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" className={className}>
+    <path fill="#eab308" d="M207.58 63.84C186.85 53.48 159.33 48 128 48s-58.85 5.48-79.58 15.84S16 88.78 16 104v48c0 15.22 11.82 29.85 32.42 40.16S96.67 208 128 208s58.85-5.48 79.58-15.84S240 167.22 240 152v-48c0-15.22-11.82-29.85-32.42-40.16m-87.58 96v32c-19-.62-35-3.42-48-7.49v-31.3a203.4 203.4 0 0 0 48 6.81Zm16 0a203.4 203.4 0 0 0 48-6.81v31.31c-13 4.07-29 6.87-48 7.49ZM32 152v-18.47a83 83 0 0 0 16.42 10.63c2.43 1.21 5 2.35 7.58 3.43V178c-15.83-7.84-24-17.71-24-26m168 26v-30.41c2.61-1.08 5.15-2.22 7.58-3.43A83 83 0 0 0 224 133.53V152c0 8.29-8.17 18.16-24 26"/>
+  </svg>
+);
+
 export default function GiftSheetpost() {
   const { t } = useTranslation();
 
   const [isActive, setIsActive] = useState(false);
+  const [isLottieReady, setIsLottieReady] = useState(false); // 🔥 Trik Anti-Lag
   const [userCoins, setUserCoins] = useState(0);
   const [selectedGift, setSelectedGift] = useState<any>(null);
   const [isSending, setIsSending] = useState(false);
@@ -42,6 +50,17 @@ export default function GiftSheetpost() {
       }
     }
   };
+
+  // 🔥 Mengatur penundaan render Lottie agar Framer Motion mulus
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isActive) {
+      timer = setTimeout(() => setIsLottieReady(true), 200); 
+    } else {
+      setIsLottieReady(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isActive]);
 
   useEffect(() => {
     const handleGiftOpen = async (e: MouseEvent) => {
@@ -63,10 +82,9 @@ export default function GiftSheetpost() {
           creatorName: btn.dataset.name || t('creator_label')
         });
 
-        // 🔥 FIX 1: Tampilkan Sheet INSTAN tanpa nunggu fetch internet 🔥
         setIsActive(true);
         document.body.style.overflow = "hidden";
-        fetchUser(); // Jalan di background
+        fetchUser(); 
       }
     };
 
@@ -92,7 +110,6 @@ export default function GiftSheetpost() {
         creatorName: creatorName || t('creator_label')
       });
 
-      // 🔥 FIX 1: Buka instan 🔥
       setIsActive(true);
       document.body.style.overflow = "hidden";
       fetchUser(); 
@@ -105,7 +122,7 @@ export default function GiftSheetpost() {
   const closeSheet = () => {
     setIsActive(false);
     document.body.style.overflow = "";
-    setTimeout(() => setSelectedGift(null), 300); // Hapus pilihan kado setelah tertutup
+    setTimeout(() => setSelectedGift(null), 300); 
   };
 
   const handleSendGift = async (gift?: any, e?: any) => {
@@ -121,7 +138,6 @@ export default function GiftSheetpost() {
 
     setIsSending(true);
 
-    // 🔥 FIX: Buat variabel ID yang aman dari ParseInt (Support Integer & UUID)
     const rawPostId = targetPost.id;
     const safePostId = (rawPostId && rawPostId !== 'undefined' && rawPostId !== 'null') 
       ? (isNaN(Number(rawPostId)) ? rawPostId : Number(rawPostId)) 
@@ -172,7 +188,7 @@ export default function GiftSheetpost() {
         detail: {
           postId: targetPost.id,
           giftName: giftToSend.name,
-          giftAnimation: giftToSend.animation, // Diganti dari giftImg menjadi giftAnimation
+          giftAnimation: giftToSend.animation, 
           creatorId: targetPost.creatorId
         }
       }));
@@ -182,8 +198,6 @@ export default function GiftSheetpost() {
       
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
       
-      // Menonaktifkan showBigImage karena Lottie tidak bisa ditampilkan dengan tag <img src="..." />
-      // if ((window as any).showBigImage) (window as any).showBigImage(giftToSend.img);
       if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
 
       setTimeout(() => {
@@ -210,7 +224,7 @@ export default function GiftSheetpost() {
     <>
       <style>{`
         .gift-sheet-content-framer {
-          background: var(--bg-card, #ffffff);
+          background: var(--bg-card, #121212);
           border-top-left-radius: 24px;
           border-top-right-radius: 24px;
           padding-top: 15px;
@@ -220,59 +234,99 @@ export default function GiftSheetpost() {
           bottom: 0;
           left: 0;
           right: 0;
-          max-height: 95vh;
+          max-height: 90vh;
           z-index: 100000;
-          box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
-          overflow: visible; 
-          will-change: transform; 
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
         
         .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; margin-bottom: 15px; }
         
-        .drawer-top-level { display: flex; align-items: center; gap: 12px; background: transparent; padding: 12px 0px; margin: 0 20px 15px 20px; border-bottom: 1px solid var(--border-card); }
-        .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; z-index: 10; }
+        .drawer-top-level { 
+          display: flex; align-items: center; gap: 12px; 
+          padding: 12px 0px; margin: 0 20px 15px 20px; 
+          border-bottom: 1px solid var(--border-card, #2a2a2a); 
+        }
+        .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
         .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; }
         .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-        .level-text-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--text-main); }
-        .progress-track { width: 100%; height: 8px; background: var(--bg-secondary); border-radius: 10px; overflow: hidden; }
+        .level-text-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--text-main, #fff); }
+        .progress-track { width: 100%; height: 8px; background: var(--bg-secondary, #2a2a2a); border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; background: #1f3cff; transition: width 0.5s ease; }
 
-        .target-selection-container { padding: 0 20px; margin-bottom: 10px; }
-        .target-box { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(31, 60, 255, 0.3); }
+        .target-selection-container { padding: 0 20px; margin-bottom: 15px; }
+        .target-box { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-secondary, #1e1e1e); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(31, 60, 255, 0.3); }
 
-        .gift-list-3d-wrapper {
-          padding: 80px 15px 40px 15px; 
-          display: flex; gap: 15px; 
-          overflow-x: auto; 
-          overflow-y: hidden; 
-          scrollbar-width: none;
+        /* 🔥 GRID RAPIH UNTUK GIFT 🔥 */
+        .gift-grid-container {
+          padding: 10px 20px 30px;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+          gap: 16px;
+          overflow-y: auto;
           -webkit-overflow-scrolling: touch;
         }
-        .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
-        .gift-column { display: flex; flex-direction: column; gap: 40px; flex-shrink: 0; width: calc(50% - 10px); /* Disesuaikan jadi 50% karena kado cuma 2 */ } 
+
+        .gift-item-card {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 12px;
+          border-radius: 16px;
+          border: 1.5px solid transparent;
+          background: transparent;
+          cursor: pointer;
+          transition: all 0.2s ease-in-out;
+        }
+        
+        .gift-item-card.selected {
+          background: rgba(31, 60, 255, 0.1);
+          border-color: #1f3cff;
+        }
+
+        .gift-lottie-wrapper {
+          width: 80px;
+          height: 80px;
+          margin-bottom: 8px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          transition: transform 0.3s ease;
+        }
+        
+        .gift-item-card.selected .gift-lottie-wrapper {
+          transform: translateY(-5px) scale(1.1);
+        }
+
+        .gift-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .gift-name {
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--text-main, #fff);
+          text-transform: uppercase;
+        }
+
+        .gift-price {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-muted, #a1a1aa);
+        }
         
         .drawer-footer { 
           display: flex; justify-content: space-between; align-items: center; 
           padding: 15px 20px; padding-bottom: calc(15px + env(safe-area-inset-bottom)); 
-          background: var(--bg-card, #ffffff); border-top: 1px solid var(--border-card); 
+          background: var(--bg-card, #121212); border-top: 1px solid var(--border-card, #2a2a2a); 
           position: sticky; bottom: 0; z-index: 50; 
-        }
-
-        /* 🔥 ANIMASI CSS MURNI PENGGANTI FRAMER MOTION 🔥 */
-        @keyframes floatingGiftCSS {
-          0%, 100% { transform: translateY(-5px); }
-          50% { transform: translateY(5px); }
-        }
-        
-        .gift-item-img {
-          width: 90px; height: 90px;
-          will-change: transform;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-        .gift-item-img.active {
-          animation: floatingGiftCSS 2s ease-in-out infinite;
         }
       `}</style>
 
@@ -297,11 +351,11 @@ export default function GiftSheetpost() {
               className="gift-sheet-content-framer"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sheet-handle" style={{ width: '40px', height: '4px', background: 'var(--border-card)', borderRadius: '4px', margin: '0 auto 15px auto' }} />
+              <div className="sheet-handle" style={{ width: '40px', height: '4px', background: 'var(--border-card, #333)', borderRadius: '4px', margin: '0 auto 15px auto' }} />
 
               <div className="drawer-header">
-                <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-main)' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
-                <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
+                <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-main, #fff)' }}>{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
+                <span className="material-icons" onClick={closeSheet} style={{ color: 'var(--text-muted, #a1a1aa)', fontSize: '24px', cursor: 'pointer' }}>cancel</span>
               </div>
 
               <div className="drawer-top-level">
@@ -313,7 +367,7 @@ export default function GiftSheetpost() {
                 </div>
                 <div className="level-progress-info">
                   <div className="level-text-row">
-                    <span style={{ marginLeft: '6px', color: 'var(--text-main)' }}>{myProfile?.username || 'User'}</span>
+                    <span style={{ marginLeft: '6px', color: 'var(--text-main, #fff)' }}>{myProfile?.username || 'User'}</span>
                     {currentLevel >= 50 ? (
                       <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
                     ) : (
@@ -327,100 +381,53 @@ export default function GiftSheetpost() {
               </div>
 
               <div className="target-selection-container">
-                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #a1a1aa)', display: 'block', marginBottom: '8px' }}>
                   {t('send_to_label', 'KIRIM KE:')}
                 </span>
                 <div className="target-box">
                   <span className="material-icons" style={{ fontSize: '16px', color: '#1f3cff' }}>account_circle</span>
-                  <span style={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-main)' }}>{targetPost.creatorName}</span>
+                  <span style={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-main, #fff)' }}>{targetPost.creatorName}</span>
                 </div>
               </div>
 
-              <div className="gift-list-3d-wrapper">
-                {Array.from({ length: Math.ceil(GIFT_DATA.length / 2) }).map((_, colIndex) => (
-                  <div key={colIndex} className="gift-column">
-                    {GIFT_DATA.slice(colIndex * 2, colIndex * 2 + 2).map((gift) => {
-                      const isActiveGift = selectedGift?.id === gift.id;
+              <div className="gift-grid-container">
+                {GIFT_DATA.map((gift) => {
+                  const isActiveGift = selectedGift?.id === gift.id;
 
-                      return (
-                        <div 
-                          key={gift.id}
-                          onClick={() => setSelectedGift(gift)}
-                          style={{ 
-                            position: 'relative', height: '120px', width: '100%', 
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', 
-                            justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
-                          }}
-                        >
-                          <div
-                            style={{ 
-                              position: 'absolute', zIndex: 2, bottom: '30px', pointerEvents: 'none',
-                              transform: isActiveGift ? 'translateY(-40px) scale(1.3)' : 'translateY(0px) scale(1)',
-                              transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                            }}
-                          >
-                            {/* 🔥 RENDER LOTTIE PENGGANTI IMAGE PNG 🔥 */}
-                            <div className={`gift-item-img ${isActiveGift ? 'active' : ''}`}>
-                              <Lottie 
-                                animationData={gift.animation} 
-                                loop={true} 
-                                style={{ width: '100%', height: '100%' }}
-                              />
-                            </div>
-                          </div>
+                  return (
+                    <div 
+                      key={gift.id}
+                      className={`gift-item-card ${isActiveGift ? 'selected' : ''}`}
+                      onClick={() => setSelectedGift(gift)}
+                    >
+                      <div className="gift-lottie-wrapper">
+                        {/* Render Lottie hanya setelah bottom sheet muncul sepenuhnya */}
+                        {isLottieReady ? (
+                           <Lottie 
+                             animationData={gift.animation} 
+                             loop={true} 
+                             style={{ width: '100%', height: '100%' }}
+                           />
+                        ) : (
+                           <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} /> // Placeholder ringan
+                        )}
+                      </div>
 
-                          <AnimatePresence>
-                            {isActiveGift && (
-                              <motion.div 
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                style={{
-                                  position: 'absolute', bottom: 0, left: 0, right: 0, height: '60px',
-                                  border: '1.5px solid #1f3cff', borderRadius: '12px', background: 'rgba(0,0,0,0.3)',
-                                  display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', 
-                                  alignItems: 'center', paddingBottom: '6px'
-                                }}
-                              >
-                                <span style={{ fontSize: '11px', color: '#1f3cff', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '2px', marginBottom: '4px' }}>
-                                  <span className="material-icons" style={{ fontSize: '11px' }}>toll</span>
-                                  {gift.amount.toLocaleString('id-ID')}
-                                </span>
-                                <button 
-                                  onClick={(e) => handleSendGift(gift, e)}
-                                  style={{ background: '#1f3cff', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 22px', fontWeight: 800, fontSize: '11px', cursor: 'pointer', transition: 'transform 0.1s' }}
-                                  onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
-                                  onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                                >
-                                  {isSending ? '...' : 'KIRIM'}
-                                </button>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-
-                          <div 
-                            style={{ 
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px',
-                              opacity: isActiveGift ? 0 : 1, transform: isActiveGift ? 'translateY(10px)' : 'translateY(0px)',
-                              transition: 'all 0.2s ease-in-out'
-                            }}
-                          >
-                            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase' }}>{gift.name}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                              <span className="material-icons" style={{ fontSize: '10px' }}>toll</span>{gift.amount}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                      <div className="gift-info">
+                        <span className="gift-name">{gift.name}</span>
+                        <span className="gift-price">
+                          <CoinIcon size={12} />
+                          {gift.amount}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               
               <div className="drawer-footer">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'var(--bg-secondary)', padding: '8px 14px', borderRadius: '12px', color: 'var(--text-main)' }}>
-                  <span className="material-icons" style={{ color: '#f59e0b', fontSize: '20px' }}>toll</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', background: 'var(--bg-secondary, #1e1e1e)', padding: '8px 14px', borderRadius: '12px', color: 'var(--text-main, #fff)' }}>
+                  <CoinIcon size={20} />
                   <span>{userCoins.toLocaleString('id-ID')}</span>
                 </div>
                 <button 
