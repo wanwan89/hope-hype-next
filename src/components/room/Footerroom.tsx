@@ -100,7 +100,7 @@ export default function Footerroom() {
             width: '42px',
             height: '42px',
             borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan */
+            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan (Glass) */
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -117,7 +117,7 @@ export default function Footerroom() {
             width="20"
             height="20"
             viewBox="0 0 24 24"
-            fill="white"
+            fill="#facc15" /* Warna Kuning untuk Gift */
           >
             <path d="M9.06 1.93C7.17 1.92 5.33 3.74 6.17 6H3a2 2 0 0 0-2 2v2a1 1 0 0 0 1 1h9V8h2v3h9a1 1 0 0 0 1-1V8a2 2 0 0 0-2-2h-3.17C19 2.73 14.6.42 12.57 3.24L12 4l-.57-.78c-.63-.89-1.5-1.28-2.37-1.29M9 4c.89 0 1.34 1.08.71 1.71S8 5.89 8 5a1 1 0 0 1 1-1m6 0c.89 0 1.34 1.08.71 1.71S14 5.89 14 5a1 1 0 0 1 1-1M2 12v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8h-9v8h-2v-8z" />
           </svg>
@@ -137,7 +137,7 @@ export default function Footerroom() {
             width: '42px',
             height: '42px',
             borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan */
+            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan (Glass) */
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -189,7 +189,7 @@ export default function Footerroom() {
             width: '42px',
             height: '42px',
             borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan */
+            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan (Glass) */
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
