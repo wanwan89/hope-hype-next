@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,6 @@ import dogJson from '@/assets/gifts/dog.json';
 const GIFT_DATA = [
   { id: 1, name: 'Tiger', amount: 1, animation: tigerJson },
   { id: 2, name: 'Dog', amount: 5, animation: dogJson },
-  // Tambahkan kado lain di sini, otomatis akan menggeser ke kanan
 ];
 
 // 🔥 KOMPONEN SVG KOIN OPTIMASI 🔥
@@ -34,7 +33,7 @@ export default function GiftDrawerroom() {
   const { t } = useTranslation();
 
   const [isActive, setIsActive] = useState(false);
-  const [isLottieReady, setIsLottieReady] = useState(false); // 🔥 Trik Anti-Lag
+  const [isLottieReady, setIsLottieReady] = useState(false); 
   const [userCoins, setUserCoins] = useState(0);
   const [selectedGift, setSelectedGift] = useState<any>(null);
   const [isSending, setIsSending] = useState(false);
@@ -44,19 +43,70 @@ export default function GiftDrawerroom() {
   const [targetPost, setTargetPost] = useState({ id: '', creatorId: '', creatorName: '' });
   const [roomMembers, setRoomMembers] = useState<any[]>([]);
 
-  // Membagi array kado menjadi kolom (tiap kolom isi 2 kado)
   const chunkedGifts = [];
   for (let i = 0; i < GIFT_DATA.length; i += 2) {
     chunkedGifts.push(GIFT_DATA.slice(i, i + 2));
   }
 
-  // Simulasi fetch data sementara (Sesuaikan useEffect-mu di sini jika dibutuhkan)
-  // ... (Gunakan fetchRoomDataAndUser dan handleOpenFromFooter seperti kodemu sebelumnya) ...
+  // 🔥 1. FUNGSI FETCH USER (Wajib Ada) 🔥
+  const fetchUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: prof } = await supabase.from("profiles")
+        .select("id, username, avatar_url, coins, total_gift_sent, level")
+        .eq("id", session.user.id)
+        .single();
+        
+      if (prof) {
+        setMyProfile(prof);
+        setUserCoins(prof.coins || 0);
+        setCoinsGiven(prof.total_gift_sent || 0);
+      }
+    }
+  };
+
+  // 🔥 2. LISTENER TRIGGER UNTUK MEMBUKA SHEET (Wajib Ada) 🔥
+  useEffect(() => {
+    const handleOpenRoomGift = async (e: any) => {
+      // Mengambil data member room yang dikirim dari tombol
+      const members = e.detail?.roomMembers || [];
+      const defaultTarget = e.detail?.targetId || null;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        if ((window as any).dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('openLogin'));
+        }
+        return;
+      }
+
+      setRoomMembers(members);
+
+      // Auto-select jika ada defaultTarget, atau auto-select member pertama
+      if (defaultTarget) {
+        const target = members.find((m: any) => m.id === defaultTarget);
+        if (target) {
+          setTargetPost({ id: '', creatorId: target.id, creatorName: target.name });
+        }
+      } else if (members.length > 0) {
+        setTargetPost({ id: '', creatorId: members[0].id, creatorName: members[0].name });
+      }
+
+      setIsActive(true);
+      document.body.style.overflow = "hidden";
+      fetchUser(); 
+    };
+
+    // Dengarkan event 'openRoomGift'
+    window.addEventListener("openRoomGift", handleOpenRoomGift);
+    return () => window.removeEventListener("openRoomGift", handleOpenRoomGift);
+  }, [t]);
 
   const closeSheet = () => {
     setIsActive(false);
     document.body.style.overflow = "";
-    setIsLottieReady(false); // Reset Lottie
+    setIsLottieReady(false); 
     setTimeout(() => setSelectedGift(null), 300);
   };
 
@@ -74,6 +124,11 @@ export default function GiftDrawerroom() {
       return;
     }
 
+    if (targetPost.creatorId === myProfile?.id) {
+       if ((window as any).showNotif) (window as any).showNotif("Tidak bisa mengirim kado ke diri sendiri!", "warning");
+       return;
+    }
+
     if (giftToSend.amount > userCoins) {
       if ((window as any).showNotif) (window as any).showNotif("Koin tidak cukup! Silakan Top Up", "error");
       return;
@@ -82,10 +137,31 @@ export default function GiftDrawerroom() {
     setIsSending(true);
 
     try {
-      // LOGIKA PENGIRIMAN API KAMU DI SINI
-      // ...
+      // 🔥 3. LOGIKA PENGIRIMAN API DIKEMBALIKAN SUPAYA TIDAK ERROR 🔥
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Silakan login kembali.");
+
+      const { error: rpcErr } = await supabase.rpc("transfer_coins", { 
+        sender_id: session.user.id, 
+        receiver_id: targetPost.creatorId, 
+        amount: giftToSend.amount 
+      });
       
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100005 });
+      if (rpcErr) throw rpcErr;
+
+      const newTotalGiftSent = coinsGiven + giftToSend.amount;
+      const newLevel = calculateLevel(newTotalGiftSent);
+      
+      await supabase.from("profiles").update({ 
+          total_gift_sent: newTotalGiftSent,
+          level: newLevel
+      }).eq('id', session.user.id);
+      
+      // Update State Lokal
+      setUserCoins(prev => prev - giftToSend.amount);
+      setCoinsGiven(newTotalGiftSent);
+
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 1000000 });
       if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
 
       setTimeout(() => { closeSheet(); }, 300);
@@ -109,7 +185,6 @@ export default function GiftDrawerroom() {
       <AnimatePresence>
         {isActive && (
           <>
-            {/* Overlay Hitam Transparan Tanpa Blur */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -127,7 +202,9 @@ export default function GiftDrawerroom() {
               transition={{ type: "spring", damping: 25, stiffness: 200 }} 
               className="gift-sheet-content-framer"
               onClick={(e) => e.stopPropagation()}
-              onAnimationComplete={() => setIsLottieReady(true)} // Lottie dirender saat animasi naik selesai (Anti-Lag)
+              onAnimationComplete={() => {
+                if (isActive) setIsLottieReady(true);
+              }}
             >
               <div className="sheet-handle" />
 
@@ -163,19 +240,18 @@ export default function GiftDrawerroom() {
                     <div 
                       key={member.id} 
                       className={`target-user ${targetPost.creatorId === member.id ? 'selected' : ''}`}
-                      onClick={() => setTargetPost({ id: targetPost.id, creatorId: member.id, creatorName: member.name })}
+                      onClick={() => setTargetPost({ id: '', creatorId: member.id, creatorName: member.name })}
                     >
                       <img className="target-avatar" src={member.avatar || '/asets/png/profile.webp'} alt="Target" />
                       <span className="target-name">{member.name.substring(0, 10)}</span>
                     </div>
                   ))}
                   {roomMembers.length === 0 && (
-                     <div style={{ fontSize: '12px', color: 'var(--text-muted, #a1a1aa)', fontStyle: 'italic', padding: '10px 0' }}>Memuat pengguna room...</div>
+                     <div style={{ fontSize: '12px', color: 'var(--text-muted, #a1a1aa)', fontStyle: 'italic', padding: '10px 0' }}>Tidak ada member di room...</div>
                   )}
                 </div>
               </div>
 
-              {/* 🔥 BUNGKUSAN HORIZONTAL SCROLL 3 KOLOM / 2 BARIS 🔥 */}
               <div className="gift-list-scroll-wrapper">
                 {chunkedGifts.map((column, colIdx) => (
                   <div className="gift-column" key={colIdx}>
