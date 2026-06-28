@@ -1,37 +1,50 @@
-/* src/components/room/Modalsroom.css */
+/* =========================================
+   MODALS ROOM - SCOPED DARK MODE (VOICE ROOM)
+   ========================================= */
 
-.modal-overlay {
+/* Overlay */
+.in-voice-room .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.7);               /* sedikit lebih gelap */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  display: none; 
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 10000;
   animation: fadeInOverlay 0.3s ease forwards;
 }
 
-.modal-overlay.show { display: flex; }
+.in-voice-room .modal-overlay.show {
+  display: flex;
+}
 
-@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
-/* 🔥 MODAL POP UP (TENGAH) 🔥 */
-.modal-box {
-  background: #1A2228; 
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Pop up tengah */
+.in-voice-room .modal-box {
+  background: var(--bg-modal);                   /* #111111 */
+  border: 1px solid var(--border-editor);        /* rgba(255,255,255,0.1) */
   border-radius: 24px;
-  width: 90%; max-width: 400px;
+  width: 90%;
+  max-width: 400px;
   padding: 24px;
-  color: #ffffff;
+  color: var(--text-main);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
   animation: popUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
-@keyframes popUpModal { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-/* 🔥 MODAL SLIDE UP (BAWAH) 🔥 */
-.modal-slideup {
+@keyframes popUpModal {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Slide up dari bawah */
+.in-voice-room .modal-slideup {
   position: absolute;
   bottom: 0;
   width: 100%;
@@ -41,44 +54,175 @@
   padding: 20px 20px 40px;
   animation: slideUpAction 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
-@keyframes slideUpAction { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-/* ELEMENT MODAL */
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.modal-header h3 { margin: 0; font-size: 18px; font-weight: 800; color: #ffffff; }
-
-.close-modal {
-  background: rgba(255, 255, 255, 0.1); border: none; width: 32px; height: 32px; border-radius: 50%;
-  color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
+@keyframes slideUpAction {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
-.close-modal:active { transform: scale(0.85); background: rgba(31, 60, 255, 0.8); }
 
-.modal-body label { display: block; font-size: 13px; font-weight: 700; color: #9ca3af; margin-bottom: 8px; margin-top: 16px; }
-.modal-body input, .modal-body textarea {
-  width: 100%; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff; padding: 14px; border-radius: 14px; outline: none; font-size: 14px; transition: 0.3s;
+/* Header */
+.in-voice-room .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
-.modal-body input:focus, .modal-body textarea:focus { border-color: #1f3cff; background: rgba(31, 60, 255, 0.05); }
-.modal-body textarea { height: 80px; resize: none; }
 
-.btn-save-setting {
-  width: 100%; margin-top: 24px; padding: 14px; border: none; border-radius: 14px;
-  background: linear-gradient(135deg, #1f3cff, #bc13fe); color: #fff; font-weight: 800; font-size: 14px;
-  cursor: pointer; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3); transition: 0.2s;
+.in-voice-room .modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
 }
-.btn-save-setting:active { transform: scale(0.96); }
 
-/* KONFIRMASI */
-.modal-confirm { text-align: center; padding: 30px 24px; }
-.confirm-icon-wrapper { width: 60px; height: 60px; background: rgba(255, 71, 87, 0.15); color: #ff4757; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
-.modal-confirm p { color: #9ca3af; font-size: 14px; line-height: 1.5; margin: 8px 0 24px; }
-.modal-actions { display: flex; gap: 12px; }
-.modal-actions button { flex: 1; padding: 14px; border-radius: 14px; font-weight: 800; cursor: pointer; border: none; transition: 0.2s; }
-.btn-cancel { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
-.btn-danger { background: #1f3cff; color: #ffffff; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3); }
+/* Tombol close */
+.in-voice-room .close-modal {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
 
-/* LEADERBOARD */
-.sheet-handle { width: 40px; height: 5px; background: rgba(255, 255, 255, 0.2); border-radius: 10px; margin: 0 auto 20px; }
-.gold-title { color: #FFD700 !important; text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); }
-.leaderboard-list { max-height: 60vh; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 8px; }
-.leaderboard-list::-webkit-scrollbar { display: none; }
+.in-voice-room .close-modal:active {
+  transform: scale(0.85);
+  background: var(--primary);                     /* biru saat ditekan */
+}
+
+/* Body */
+.in-voice-room .modal-body label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);                       /* #94a3b8 */
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+.in-voice-room .modal-body input,
+.in-voice-room .modal-body textarea {
+  width: 100%;
+  background: var(--bg-input);                    /* #1e1e1e */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  padding: 14px;
+  border-radius: 14px;
+  outline: none;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+.in-voice-room .modal-body input:focus,
+.in-voice-room .modal-body textarea:focus {
+  border-color: var(--primary);
+  background: rgba(31, 60, 255, 0.05);
+}
+
+.in-voice-room .modal-body textarea {
+  height: 80px;
+  resize: none;
+}
+
+/* Tombol simpan setting */
+.in-voice-room .btn-save-setting {
+  width: 100%;
+  margin-top: 24px;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary), #bc13fe);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3);
+  transition: 0.2s;
+}
+
+.in-voice-room .btn-save-setting:active {
+  transform: scale(0.96);
+}
+
+/* Modal konfirmasi */
+.in-voice-room .modal-confirm {
+  text-align: center;
+  padding: 30px 24px;
+}
+
+.in-voice-room .confirm-icon-wrapper {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--danger);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.in-voice-room .modal-confirm p {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0 24px;
+}
+
+.in-voice-room .modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.in-voice-room .modal-actions button {
+  flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  transition: 0.2s;
+}
+
+.in-voice-room .btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.in-voice-room .btn-danger {
+  background: var(--primary);                      /* bisa juga diganti var(--danger) jika ingin merah */
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3);
+}
+
+/* Leaderboard */
+.in-voice-room .sheet-handle {
+  width: 40px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  margin: 0 auto 20px;
+}
+
+.in-voice-room .gold-title {
+  color: #FFD700 !important;
+  text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+}
+
+.in-voice-room .leaderboard-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.in-voice-room .leaderboard-list::-webkit-scrollbar {
+  display: none;
+}

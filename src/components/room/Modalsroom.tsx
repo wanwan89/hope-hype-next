@@ -21,8 +21,8 @@ export default function Modalsroom() {
   return (
     <>
       {/* 1. MODAL SETTING ROOM (SLIDE UP) */}
-      <div 
-        id="setting-modal" 
+      <div
+        id="setting-modal"
         className="modal-overlay"
         onClick={(e) => {
           if (e.target === e.currentTarget && window.closeRoomSetting) {
@@ -41,10 +41,10 @@ export default function Modalsroom() {
           <div className="modal-body">
             <label>{t('new_room_name', 'Nama Room Baru')}</label>
             <input type="text" id="edit-room-name" placeholder={t('room_name_placeholder', 'Contoh: Klasikan Galau...')} />
-            
+
             <label>{t('system_message_label', 'Pesan Pengumuman')}</label>
             <textarea id="system-message" placeholder={t('system_message_placeholder', 'Tulis pesan pengumuman untuk chat...')}></textarea>
-            
+
             <div className="radar-settings">
               <label style={{ marginTop: '8px', display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>
                 Warna Radar Mic
@@ -84,9 +84,9 @@ export default function Modalsroom() {
       </div>
 
       {/* 3. MODAL LEADERBOARD (SULTAN) */}
-      <div 
-        id="top-gifters-modal" 
-        className="modal-overlay" 
+      <div
+        id="top-gifters-modal"
+        className="modal-overlay"
         style={{ zIndex: 10006 }}
         onClick={(e) => {
           if (e.target === e.currentTarget && window.closeTopGiftersModal) {

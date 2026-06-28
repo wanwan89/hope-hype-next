@@ -21,7 +21,6 @@ export default function Stageroom() {
             className="avatar empty-avatar"
             onClick={() => window.naikKeStage && window.naikKeStage(index)}
           >
-            {/* Ikon "+" tetap menggunakan Material Icons, warnanya diatur melalui CSS */}
             <span className="material-icons">add</span>
           </div>
           <span className="name-label">{t('empty_slot', 'KOSONG')}</span>

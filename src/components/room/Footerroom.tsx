@@ -20,12 +20,10 @@ declare global {
 export default function Footerroom() {
   const { t } = useTranslation();
 
-  // 🔥 FUNGSI SAKTI BUAT BUKA KADO (ANTI GAGAL) 🔥
   const handleGiftClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     window.dispatchEvent(new CustomEvent('openRoomGift'));
-    console.log("🔥 Sinyal Buka Kado Ditembak dari Footer!");
   };
 
   return (
@@ -48,24 +46,21 @@ export default function Footerroom() {
           gap: '8px',
           padding: '8px',
           alignItems: 'center',
-          background: 'rgba(15, 20, 25, 0.65)',
-          backdropFilter: 'blur(16px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '32px',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none',
         }}
       >
-        {/* 1. INPUT KOMENTAR */}
+        {/* INPUT CHAT */}
         <div
           style={{
             flex: 1,
-            background: 'rgba(255,255,255,0.08)',
+            background: 'transparent',
             borderRadius: '24px',
             display: 'flex',
             alignItems: 'center',
             padding: '0 14px',
-            border: '1px solid rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.2)',
           }}
         >
           <input
@@ -91,27 +86,24 @@ export default function Footerroom() {
           />
         </div>
 
-        {/* 2. TOMBOL GIFT (SVG kado) */}
+        {/* TOMBOL GIFT */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.85 }}
           onClick={handleGiftClick}
+          className="footer-action-btn"
           style={{
             width: '40px',
             height: '40px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #f6d365, #fda085)',
-            color: '#000',
+            background: 'transparent',
             border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             flexShrink: 0,
-            boxShadow: '0 4px 10px rgba(246, 211, 101, 0.4)',
-            position: 'relative',
-            zIndex: 90001,
           }}
         >
           <svg
@@ -125,7 +117,7 @@ export default function Footerroom() {
           </svg>
         </motion.button>
 
-        {/* 3. TOMBOL TANGAN (angkat tangan) */}
+        {/* TOMBOL TANGAN */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
@@ -134,13 +126,13 @@ export default function Footerroom() {
             e.stopPropagation();
             window.toggleActionMenu?.();
           }}
+          className="footer-action-btn"
           style={{
             width: '40px',
             height: '40px',
             borderRadius: '50%',
-            background: 'rgba(255,255,255,0.15)',
-            color: '#fff',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'transparent',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -163,7 +155,7 @@ export default function Footerroom() {
           </svg>
         </motion.button>
 
-        {/* 4. TOMBOL SHARE */}
+        {/* TOMBOL SHARE */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
@@ -183,13 +175,13 @@ export default function Footerroom() {
               else alert('Link disalin!');
             }
           }}
+          className="footer-action-btn"
           style={{
             width: '40px',
             height: '40px',
             borderRadius: '50%',
-            background: 'rgba(255,255,255,0.15)',
-            color: '#fff',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'transparent',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

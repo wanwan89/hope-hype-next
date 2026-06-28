@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { supabase as sb } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
@@ -27,13 +27,19 @@ export default function HeaderRoom({
 }: HeaderRoomProps) {
   
   const handleFollow = async () => {
-    if (myUserId && roomInfo.ownerId) {
-      setIsFollowingHost(true);
-      await sb.from('followers').insert({ 
-        follower_id: myUserId, 
-        following_id: roomInfo.ownerId 
-      });
+    if (!myUserId || !roomInfo.ownerId) return;
+    
+    setIsFollowingHost(true);
+    const { error } = await sb.from('followers').insert({ 
+      follower_id: myUserId, 
+      following_id: roomInfo.ownerId 
+    });
+    
+    if (!error) {
       showNotif(`Mengikuti ${roomInfo.ownerName}`, 'success');
+    } else {
+      setIsFollowingHost(false);
+      showNotif('Gagal mengikuti, coba lagi', 'error');
     }
   };
 
