@@ -1,4 +1,6 @@
-/* --- OVERLAY --- */
+/* ==========================================
+   OVERLAY & DRAWER UTAMA
+   ========================================== */
 .in-voice-room .drawer-overlay {
   position: fixed;
   inset: 0;
@@ -6,7 +8,6 @@
   z-index: 100000;
 }
 
-/* --- DRAWER UTAMA --- */
 .in-voice-room .gift-drawer {
   position: fixed;
   bottom: 0;
@@ -19,14 +20,17 @@
   padding-top: 32px;
   padding-bottom: 0;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
-  border-top: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.1));
   display: flex;
   flex-direction: column;
   max-height: 90vh;
-  /* slide-up sederhana dengan transisi CSS */
+
+  /* Animasi slide up sederhana */
   transform: translateY(100%);
   transition: transform 0.25s ease;
 }
+
+/* Saat drawer aktif, tampilkan */
 .in-voice-room .gift-drawer.show {
   transform: translateY(0);
 }
@@ -35,7 +39,7 @@
 .in-voice-room .handle {
   width: 48px;
   height: 5px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 10px;
   position: absolute;
   top: 12px;
@@ -43,7 +47,9 @@
   transform: translateX(-50%);
 }
 
-/* Header */
+/* ==========================================
+   HEADER
+   ========================================== */
 .in-voice-room .drawer-header {
   display: flex;
   justify-content: space-between;
@@ -51,40 +57,47 @@
   margin-bottom: 15px;
   padding: 0 20px;
 }
+
 .in-voice-room .drawer-title {
   font-weight: 800;
   font-size: 16px;
   color: white;
 }
+
 .in-voice-room .close-btn {
   color: var(--text-muted, #a1a1aa);
   font-size: 24px;
   cursor: pointer;
 }
 
-/* Level Bar */
+/* ==========================================
+   LEVEL BAR
+   ========================================== */
 .in-voice-room .drawer-top-level {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   margin: 0 20px 15px 20px;
 }
+
 .in-voice-room .level-avatar-box {
   position: relative;
   width: 42px;
   height: 42px;
   flex-shrink: 0;
 }
+
 .in-voice-room .level-avatar {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #1f3cff;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
+
 .in-voice-room .level-badge-wrapper {
   position: absolute;
   bottom: -14px;
@@ -92,12 +105,14 @@
   transform: translateX(-50%);
   z-index: 20;
 }
+
 .in-voice-room .level-progress-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+
 .in-voice-room .level-text-row {
   display: flex;
   justify-content: space-between;
@@ -106,16 +121,19 @@
   font-weight: 800;
   color: white;
 }
+
 .in-voice-room .max-level {
   color: #ff0844;
 }
+
 .in-voice-room .progress-track {
   width: 100%;
   height: 8px;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   overflow: hidden;
 }
+
 .in-voice-room .progress-fill {
   height: 100%;
   border-radius: 10px;
@@ -123,11 +141,14 @@
   transition: width 0.5s ease;
 }
 
-/* Target Selection */
+/* ==========================================
+   TARGET SELECTION
+   ========================================== */
 .in-voice-room .target-selection-container {
   margin-bottom: 0;
   padding: 0 20px;
 }
+
 .in-voice-room .target-label {
   font-size: 12px;
   color: #a1a1aa;
@@ -135,6 +156,7 @@
   margin-bottom: 8px;
   display: block;
 }
+
 .in-voice-room .target-list {
   display: flex;
   gap: 14px;
@@ -143,6 +165,11 @@
   padding-bottom: 8px;
   scrollbar-width: none;
 }
+
+.in-voice-room .target-list::-webkit-scrollbar {
+  display: none;
+}
+
 .in-voice-room .target-user {
   display: flex;
   flex-direction: column;
@@ -152,9 +179,11 @@
   cursor: pointer;
   transition: opacity 0.2s;
 }
+
 .in-voice-room .target-user.selected {
   opacity: 1;
 }
+
 .in-voice-room .target-avatar {
   width: 44px;
   height: 44px;
@@ -162,14 +191,17 @@
   object-fit: cover;
   border: 2px solid transparent;
 }
+
 .in-voice-room .target-user.selected .target-avatar {
   border-color: #1f3cff;
 }
+
 .in-voice-room .target-name {
   font-size: 11px;
   font-weight: 600;
   color: white;
 }
+
 .in-voice-room .no-member-text {
   font-size: 12px;
   color: var(--text-muted, #a1a1aa);
@@ -177,7 +209,9 @@
   padding: 10px 0;
 }
 
-/* --- GRID KADO (RAPIH 2 KOLOM) --- */
+/* ==========================================
+   GRID KADO (2 KOLOM)
+   ========================================== */
 .in-voice-room .gift-grid-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -185,11 +219,11 @@
   padding: 15px 20px;
   overflow-y: auto;
   flex: 1;
-  max-height: 40vh; /* atau menyesuaikan */
+  max-height: 45vh; /* Sesuaikan kebutuhan */
 }
 
 .in-voice-room .gift-card {
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
   padding: 12px;
   display: flex;
@@ -199,12 +233,13 @@
   cursor: pointer;
   border: 1px solid transparent;
   transition: border-color 0.2s, background 0.2s;
-  position: relative;
 }
+
 .in-voice-room .gift-card.selected {
   border-color: #1f3cff;
   background: rgba(31, 60, 255, 0.08);
 }
+
 .in-voice-room .gift-lottie {
   width: 60px;
   height: 60px;
@@ -212,12 +247,14 @@
   justify-content: center;
   align-items: center;
 }
+
 .in-voice-room .gift-name {
   font-size: 11px;
   font-weight: 800;
   color: white;
   text-transform: uppercase;
 }
+
 .in-voice-room .gift-price {
   font-size: 11px;
   color: #a1a1aa;
@@ -226,6 +263,7 @@
   align-items: center;
   gap: 2px;
 }
+
 .in-voice-room .gift-send-btn {
   background: #1f3cff;
   color: white;
@@ -237,12 +275,15 @@
   cursor: pointer;
   margin-top: 4px;
 }
+
 .in-voice-room .gift-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* --- FOOTER --- */
+/* ==========================================
+   FOOTER
+   ========================================== */
 .in-voice-room .drawer-footer {
   display: flex;
   justify-content: space-between;
@@ -250,8 +291,9 @@
   padding: 15px 20px;
   padding-bottom: calc(15px + env(safe-area-inset-bottom));
   background: var(--bg-base, #1b1b1f);
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 .in-voice-room .footer-coin-box {
   display: flex;
   align-items: center;
@@ -259,10 +301,11 @@
   font-weight: 800;
   font-size: 14px;
   color: white;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   padding: 8px 14px;
   border-radius: 12px;
 }
+
 .in-voice-room .main-send-btn {
   background: #1f3cff;
   color: white;
@@ -274,9 +317,11 @@
   cursor: pointer;
   transition: 0.2s;
 }
+
 .in-voice-room .main-send-btn:active {
   transform: scale(0.95);
 }
+
 .in-voice-room .main-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

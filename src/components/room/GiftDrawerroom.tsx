@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
 import Lottie from 'lottie-react';
 
-// 🔥 IMPORT RUMUS SAKTI 🔥
+// 🔥 IMPORT RUMUS LEVEL & BADGE 🔥
 import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
 
 // 🔥 IMPORT CSS 🔥
@@ -21,10 +21,19 @@ const GIFT_DATA = [
   { id: 2, name: 'Dog', amount: 5, animation: dogJson },
 ];
 
-// 🔥 KOMPONEN SVG KOIN OPTIMASI 🔥
+// 🔥 KOMPONEN SVG KOIN 🔥
 const CoinIcon = ({ size = 16, className = '' }: { size?: number; className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" className={className}>
-    <path fill="#eab308" d="M207.58 63.84C186.85 53.48 159.33 48 128 48s-58.85 5.48-79.58 15.84S16 88.78 16 104v48c0 15.22 11.82 29.85 32.42 40.16S96.67 208 128 208s58.85-5.48 79.58-15.84S240 167.22 240 152v-48c0-15.22-11.82-29.85-32.42-40.16m-87.58 96v32c-19-.62-35-3.42-48-7.49v-31.3a203.4 203.4 0 0 0 48 6.81Zm16 0a203.4 203.4 0 0 0 48-6.81v31.31c-13 4.07-29 6.87-48 7.49ZM32 152v-18.47a83 83 0 0 0 16.42 10.63c2.43 1.21 5 2.35 7.58 3.43V178c-15.83-7.84-24-17.71-24-26m168 26v-30.41c2.61-1.08 5.15-2.22 7.58-3.43A83 83 0 0 0 224 133.53V152c0 8.29-8.17 18.16-24 26"/>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 256 256"
+    className={className}
+  >
+    <path
+      fill="#eab308"
+      d="M207.58 63.84C186.85 53.48 159.33 48 128 48s-58.85 5.48-79.58 15.84S16 88.78 16 104v48c0 15.22 11.82 29.85 32.42 40.16S96.67 208 128 208s58.85-5.48 79.58-15.84S240 167.22 240 152v-48c0-15.22-11.82-29.85-32.42-40.16m-87.58 96v32c-19-.62-35-3.42-48-7.49v-31.3a203.4 203.4 0 0 0 48 6.81Zm16 0a203.4 203.4 0 0 0 48-6.81v31.31c-13 4.07-29 6.87-48 7.49ZM32 152v-18.47a83 83 0 0 0 16.42 10.63c2.43 1.21 5 2.35 7.58 3.43V178c-15.83-7.84-24-17.71-24-26m168 26v-30.41c2.61-1.08 5.15-2.22 7.58-3.43A83 83 0 0 0 224 133.53V152c0 8.29-8.17 18.16-24 26"
+    />
   </svg>
 );
 
@@ -38,15 +47,22 @@ export default function GiftDrawerroom() {
   const [myProfile, setMyProfile] = useState<any>(null);
   const [coinsGiven, setCoinsGiven] = useState(0);
 
-  const [targetPost, setTargetPost] = useState({ id: '', creatorId: '', creatorName: '' });
+  const [targetPost, setTargetPost] = useState({
+    id: '',
+    creatorId: '',
+    creatorName: '',
+  });
   const [roomMembers, setRoomMembers] = useState<any[]>([]);
 
   const fetchUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session) {
-      const { data: prof } = await supabase.from("profiles")
-        .select("id, username, avatar_url, coins, total_gift_sent, level")
-        .eq("id", session.user.id)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, coins, total_gift_sent, level')
+        .eq('id', session.user.id)
         .single();
 
       if (prof) {
@@ -61,7 +77,9 @@ export default function GiftDrawerroom() {
     const handleOpenRoomGift = async (e: any) => {
       const members = e.detail?.roomMembers || [];
       const defaultTarget = e.detail?.targetId || null;
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (!session) {
         if ((window as any).dispatchEvent) {
@@ -74,23 +92,28 @@ export default function GiftDrawerroom() {
 
       if (defaultTarget) {
         const target = members.find((m: any) => m.id === defaultTarget);
-        if (target) setTargetPost({ id: '', creatorId: target.id, creatorName: target.name });
+        if (target)
+          setTargetPost({ id: '', creatorId: target.id, creatorName: target.name });
       } else if (members.length > 0) {
-        setTargetPost({ id: '', creatorId: members[0].id, creatorName: members[0].name });
+        setTargetPost({
+          id: '',
+          creatorId: members[0].id,
+          creatorName: members[0].name,
+        });
       }
 
       setIsActive(true);
-      document.body.style.overflow = "hidden";
+      document.body.style.overflow = 'hidden';
       fetchUser();
     };
 
-    window.addEventListener("openRoomGift", handleOpenRoomGift);
-    return () => window.removeEventListener("openRoomGift", handleOpenRoomGift);
+    window.addEventListener('openRoomGift', handleOpenRoomGift);
+    return () => window.removeEventListener('openRoomGift', handleOpenRoomGift);
   }, []);
 
   const closeSheet = () => {
     setIsActive(false);
-    document.body.style.overflow = "";
+    document.body.style.overflow = '';
     setSelectedGift(null);
   };
 
@@ -104,30 +127,35 @@ export default function GiftDrawerroom() {
     if (!giftToSend || isSending) return;
 
     if (!targetPost.creatorId) {
-      if ((window as any).showNotif) (window as any).showNotif("Pilih penerima dulu!", "warning");
+      if ((window as any).showNotif)
+        (window as any).showNotif('Pilih penerima dulu!', 'warning');
       return;
     }
 
     if (targetPost.creatorId === myProfile?.id) {
-      if ((window as any).showNotif) (window as any).showNotif("Tidak bisa mengirim kado ke diri sendiri!", "warning");
+      if ((window as any).showNotif)
+        (window as any).showNotif('Tidak bisa mengirim kado ke diri sendiri!', 'warning');
       return;
     }
 
     if (giftToSend.amount > userCoins) {
-      if ((window as any).showNotif) (window as any).showNotif("Koin tidak cukup! Silakan Top Up", "error");
+      if ((window as any).showNotif)
+        (window as any).showNotif('Koin tidak cukup! Silakan Top Up', 'error');
       return;
     }
 
     setIsSending(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Silakan login kembali.");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error('Silakan login kembali.');
 
-      const { error: rpcErr } = await supabase.rpc("transfer_coins", {
+      const { error: rpcErr } = await supabase.rpc('transfer_coins', {
         sender_id: session.user.id,
         receiver_id: targetPost.creatorId,
-        amount: giftToSend.amount
+        amount: giftToSend.amount,
       });
 
       if (rpcErr) throw rpcErr;
@@ -135,29 +163,38 @@ export default function GiftDrawerroom() {
       const newTotalGiftSent = coinsGiven + giftToSend.amount;
       const newLevel = calculateLevel(newTotalGiftSent);
 
-      await supabase.from("profiles").update({
-        total_gift_sent: newTotalGiftSent,
-        level: newLevel
-      }).eq('id', session.user.id);
+      await supabase
+        .from('profiles')
+        .update({ total_gift_sent: newTotalGiftSent, level: newLevel })
+        .eq('id', session.user.id);
 
-      setUserCoins(prev => prev - giftToSend.amount);
+      setUserCoins((prev) => prev - giftToSend.amount);
       setCoinsGiven(newTotalGiftSent);
 
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 1000000 });
-      if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        zIndex: 1000000,
+      });
+      if ((window as any).showNotif)
+        (window as any).showNotif('Kado berhasil dikirim!', 'success');
 
       closeSheet();
     } catch (err: any) {
-      if ((window as any).showNotif) (window as any).showNotif(err.message, "error");
+      if ((window as any).showNotif)
+        (window as any).showNotif(err.message, 'error');
     } finally {
       setIsSending(false);
     }
   };
 
+  // perhitungan level
   const currentLevel = calculateLevel(coinsGiven);
-  let prevTarget = (currentLevel - 1) * 500;
-  let targetKoin = currentLevel * 500;
-  let progressPercent = ((coinsGiven - prevTarget) / (targetKoin - prevTarget)) * 100;
+  const prevTarget = (currentLevel - 1) * 500;
+  const targetKoin = currentLevel * 500;
+  let progressPercent =
+    ((coinsGiven - prevTarget) / (targetKoin - prevTarget)) * 100;
   if (progressPercent > 100) progressPercent = 100;
 
   const fallbackAvatar = myProfile?.username
@@ -168,68 +205,112 @@ export default function GiftDrawerroom() {
     <div className="in-voice-room">
       {isActive && (
         <>
+          {/* Overlay */}
           <div className="drawer-overlay" onClick={closeSheet} />
 
-          <div className="gift-drawer">
+          {/* Drawer utama – tambahkan kelas 'show' */}
+          <div className={`gift-drawer ${isActive ? 'show' : ''}`}>
             <div className="handle" />
 
+            {/* Header */}
             <div className="drawer-header">
-              <span className="drawer-title">{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
-              <span className="material-icons close-btn" onClick={closeSheet}>cancel</span>
+              <span className="drawer-title">
+                {t('gift_sheet_header', 'KIRIM HADIAH')}
+              </span>
+              <span className="material-icons close-btn" onClick={closeSheet}>
+                cancel
+              </span>
             </div>
 
+            {/* Level bar */}
             <div className="drawer-top-level">
               <div className="level-avatar-box">
-                <img src={myProfile?.avatar_url || fallbackAvatar} className="level-avatar" alt="Avatar" />
-                <div className="level-badge-wrapper" dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
+                <img
+                  src={myProfile?.avatar_url || fallbackAvatar}
+                  className="level-avatar"
+                  alt="Avatar"
+                />
+                <div
+                  className="level-badge-wrapper"
+                  dangerouslySetInnerHTML={{
+                    __html: getLevelBadgeHTML(currentLevel),
+                  }}
+                />
               </div>
               <div className="level-progress-info">
                 <div className="level-text-row">
                   <span>{myProfile?.username || 'User'}</span>
-                  {currentLevel >= 50 && <span className="max-level">LEVEL MAX 👑</span>}
+                  {currentLevel >= 50 && (
+                    <span className="max-level">LEVEL MAX 👑</span>
+                  )}
                 </div>
                 <div className="progress-track">
-                  <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${progressPercent}%` }}
+                  />
                 </div>
               </div>
             </div>
 
+            {/* Pilih penerima */}
             <div className="target-selection-container">
               <span className="target-label">PILIH PENERIMA:</span>
               <div className="target-list">
-                {roomMembers.map(member => (
+                {roomMembers.map((member) => (
                   <div
                     key={member.id}
-                    className={`target-user ${targetPost.creatorId === member.id ? 'selected' : ''}`}
-                    onClick={() => setTargetPost({ id: '', creatorId: member.id, creatorName: member.name })}
+                    className={`target-user ${
+                      targetPost.creatorId === member.id ? 'selected' : ''
+                    }`}
+                    onClick={() =>
+                      setTargetPost({
+                        id: '',
+                        creatorId: member.id,
+                        creatorName: member.name,
+                      })
+                    }
                   >
-                    <img className="target-avatar" src={member.avatar || '/asets/png/profile.webp'} alt="Target" />
-                    <span className="target-name">{member.name.substring(0, 10)}</span>
+                    <img
+                      className="target-avatar"
+                      src={member.avatar || '/asets/png/profile.webp'}
+                      alt="Target"
+                    />
+                    <span className="target-name">
+                      {member.name.substring(0, 10)}
+                    </span>
                   </div>
                 ))}
                 {roomMembers.length === 0 && (
-                  <div className="no-member-text">Tidak ada member di room...</div>
+                  <div className="no-member-text">
+                    Tidak ada member di room...
+                  </div>
                 )}
               </div>
             </div>
 
+            {/* Grid kado */}
             <div className="gift-grid-container">
-              {GIFT_DATA.map(gift => {
-                const isActiveGift = selectedGift?.id === gift.id;
+              {GIFT_DATA.map((gift) => {
+                const isSelected = selectedGift?.id === gift.id;
                 return (
                   <div
                     key={gift.id}
-                    className={`gift-card ${isActiveGift ? 'selected' : ''}`}
+                    className={`gift-card ${isSelected ? 'selected' : ''}`}
                     onClick={() => setSelectedGift(gift)}
                   >
                     <div className="gift-lottie">
-                      <Lottie animationData={gift.animation} loop={true} style={{ width: '60px', height: '60px' }} />
+                      <Lottie
+                        animationData={gift.animation}
+                        loop={true}
+                        style={{ width: '60px', height: '60px' }}
+                      />
                     </div>
                     <div className="gift-name">{gift.name}</div>
                     <div className="gift-price">
                       <CoinIcon size={12} /> {gift.amount.toLocaleString('id-ID')}
                     </div>
-                    {isActiveGift && (
+                    {isSelected && (
                       <button
                         className="gift-send-btn"
                         onClick={(e) => handleSendGift(gift, e)}
@@ -243,6 +324,7 @@ export default function GiftDrawerroom() {
               })}
             </div>
 
+            {/* Footer */}
             <div className="drawer-footer">
               <div className="footer-coin-box">
                 <CoinIcon size={20} />
@@ -253,7 +335,11 @@ export default function GiftDrawerroom() {
                 disabled={!selectedGift || isSending}
                 className="main-send-btn"
               >
-                {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? `Kirim ${selectedGift.amount} Koin` : t('btn_send', 'KIRIM')}
+                {isSending
+                  ? t('sending', 'MENGIRIM...')
+                  : selectedGift
+                  ? `Kirim ${selectedGift.amount} Koin`
+                  : t('btn_send', 'KIRIM')}
               </button>
             </div>
           </div>
