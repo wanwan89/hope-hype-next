@@ -124,6 +124,12 @@ export default function GiftSheetpost() {
 
     setIsSending(true);
 
+    // 🔥 FIX: Buat variabel ID yang aman dari ParseInt (Support Integer & UUID)
+    const rawPostId = targetPost.id;
+    const safePostId = (rawPostId && rawPostId !== 'undefined' && rawPostId !== 'null') 
+      ? (isNaN(Number(rawPostId)) ? rawPostId : Number(rawPostId)) 
+      : null;
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Silakan login kembali.");
@@ -147,7 +153,7 @@ export default function GiftSheetpost() {
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
           receiver_id: targetPost.creatorId, 
-          post_id: parseInt(targetPost.id) || null, 
+          post_id: safePostId, // 🔥 Pake variabel yang udah aman
           amount: giftToSend.amount 
         }).then(({error}) => { if (error) console.warn("RLS Gift Transaction diabaikan"); }),
   
@@ -157,7 +163,10 @@ export default function GiftSheetpost() {
         ]),
   
         supabase.from("notifications").insert({ 
-          user_id: targetPost.creatorId, actor_id: session.user.id, post_id: parseInt(targetPost.id) || null, type: "gift", 
+          user_id: targetPost.creatorId, 
+          actor_id: session.user.id, 
+          post_id: safePostId, // 🔥 Pake variabel yang udah aman
+          type: "gift", 
           message: `mengirimkan hadiah senilai ${giftToSend.amount} koin` 
         })
       ]);

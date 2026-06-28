@@ -171,7 +171,7 @@ export default function GiftDrawerroom() {
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
           receiver_id: targetPost.creatorId, 
-          post_id: parseInt(targetPost.id) || null,
+          post_id: null, // 🔥 FIX UTAMA: Karena ini di Room, set post_id jadi null!
           amount: giftToSend.amount 
         }).then(({error}) => { if(error) console.warn("Gift Transaction RLS warning"); }),
         
