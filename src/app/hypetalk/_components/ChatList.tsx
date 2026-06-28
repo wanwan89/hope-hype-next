@@ -3,11 +3,11 @@ import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useMotionValue, animate } from 'framer-motion';
 import ChatItem from './ChatItem';
-import RefreshableWrapper from '@/components/RefreshableWrapper'; // Sesuaikan path ini jika berbeda
+import RefreshableWrapper from '@/components/RefreshableWrapper';
 
-// Import Lottie dan file JSON animasinya
+// Lottie & trash animation
 import Lottie, { LottieRefCurrentProps } from 'lottie-react';
-import trashAnimationData = require('@/assets/lottie/tempat-sampah.json'); 
+import trashAnimationData from '@/assets/lottie/tempat-sampah.json';
 
 type Props = {
   isLoading: boolean;
@@ -29,59 +29,68 @@ type Props = {
 };
 
 const SwipeableChatRow = ({
-  chat, isSelectionMode, isSelected, onPressStart, onPressEnd, onDeleteChat, handleOpenChat,
-  typingStatus, mutedChats, onlineUsers, currentUser, handleAvatarClick, renderReadReceipt
+  chat,
+  isSelectionMode,
+  isSelected,
+  onPressStart,
+  onPressEnd,
+  onDeleteChat,
+  handleOpenChat,
+  typingStatus,
+  mutedChats,
+  onlineUsers,
+  currentUser,
+  handleAvatarClick,
+  renderReadReceipt,
 }: any) => {
   const x = useMotionValue(0);
   const [isDeleted, setIsDeleted] = useState(false);
-  
-  // Referensi untuk mengontrol play/stop Lottie
   const lottieRef = useRef<LottieRefCurrentProps>(null);
 
-  const isGlobalOrActiveGroup = chat.type === 'global' || (chat.type === 'group' && chat.isMember);
+  const isGlobalOrActiveGroup =
+    chat.type === 'global' || (chat.type === 'group' && chat.isMember);
   const canSwipe = !isSelectionMode && !isGlobalOrActiveGroup;
 
-  // Fungsi untuk memutar animasi saat ditarik
-  const handleDrag = (e: any, info: any) => {
+  const handleDrag = (_e: any, info: any) => {
     if (info.offset.x > 50 && lottieRef.current) {
       lottieRef.current.play();
     }
   };
 
-  const handleDragEnd = (e: any, info: any) => {
+  const handleDragEnd = (_e: any, info: any) => {
     const screenMiddle = typeof window !== 'undefined' ? window.innerWidth * 0.4 : 150;
-    
+
     if (info.offset.x > screenMiddle) {
       setIsDeleted(true);
       animate(x, window.innerWidth, { duration: 0.2 }).then(() => {
-        if (onDeleteChat) onDeleteChat([chat.id]);
+        onDeleteChat?.([chat.id]);
       });
     } else {
-      animate(x, 0, { type: "spring", bounce: 0, duration: 0.4 });
-      
-      // Reset animasi jika swipe dibatalkan
-      if (lottieRef.current) {
-        lottieRef.current.stop();
-      }
+      animate(x, 0, { type: 'spring', bounce: 0, duration: 0.4 });
+      lottieRef.current?.stop();
     }
   };
 
-  if (isDeleted) return null; 
+  if (isDeleted) return null;
 
   return (
     <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
-      
-      {/* Background Kotak Merah dengan Animasi Tong Sampah Lottie */}
+      {/* Background merah + animasi tong sampah */}
       {canSwipe && (
-        <div style={{
-          position: 'absolute', inset: 0, backgroundColor: '#ef4444', 
-          display: 'flex', alignItems: 'center', paddingLeft: '24px'
-        }}>
-          {/* Komponen Lottie */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: '#ef4444',
+            display: 'flex',
+            alignItems: 'center',
+            paddingLeft: '24px',
+          }}
+        >
           <div style={{ width: '40px', height: '40px' }}>
-            <Lottie 
+            <Lottie
               lottieRef={lottieRef}
-              animationData={trashAnimationData} 
+              animationData={trashAnimationData}
               loop={false}
               autoplay={false}
             />
@@ -89,15 +98,22 @@ const SwipeableChatRow = ({
         </div>
       )}
 
-      {/* Konten Utama Chat List */}
+      {/* Baris chat utama */}
       <motion.div
-        style={{ 
-          x, display: 'flex', alignItems: 'center', 
-          backgroundColor: isSelected ? 'rgba(43, 147, 255, 0.15)' : 'var(--bg-main, transparent)', 
-          position: 'relative' 
+        style={{
+          x,
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: isSelected
+            ? 'rgba(31, 60, 255, 0.08)' // ✅ subtle highlight pakai primary dengan opacity
+            : 'var(--bg-main, transparent)',
+          position: 'relative',
         }}
-        drag={canSwipe ? "x" : false}
-        dragConstraints={{ left: 0, right: typeof window !== 'undefined' ? window.innerWidth : 400 }}
+        drag={canSwipe ? 'x' : false}
+        dragConstraints={{
+          left: 0,
+          right: typeof window !== 'undefined' ? window.innerWidth : 400,
+        }}
         dragElastic={0.1}
         onDrag={canSwipe ? handleDrag : undefined}
         onDragEnd={canSwipe ? handleDragEnd : undefined}
@@ -108,58 +124,60 @@ const SwipeableChatRow = ({
         onMouseUp={() => onPressEnd?.()}
         onMouseLeave={() => onPressEnd?.()}
       >
-        {/* CHECKBOX SELEKSI */}
+        {/* Checkbox seleksi */}
         {isSelectionMode && !isGlobalOrActiveGroup && (
-          <div 
-            className="chat-checkbox" 
-            style={{ 
-              padding: '0 8px 0 16px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              cursor: 'pointer' 
-            }} 
+          <div
+            className="chat-checkbox"
+            style={{
+              padding: '0 8px 0 16px',
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+            }}
             onClick={() => handleOpenChat(chat)}
           >
-            <motion.div 
+            <motion.div
               initial={false}
               animate={{
-                backgroundColor: isSelected ? '#2b93ff' : 'transparent',
-                borderColor: isSelected ? '#2b93ff' : '#d1d5db',
-                scale: isSelected ? 1.05 : 1
+                backgroundColor: isSelected ? 'var(--primary)' : 'transparent', // ✅
+                borderColor: isSelected ? 'var(--primary)' : '#d1d5db',         // ✅
+                scale: isSelected ? 1.05 : 1,
               }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               style={{
-                width: '22px', 
-                height: '22px', 
+                width: '22px',
+                height: '22px',
                 borderRadius: '50%',
-                border: '1.5px solid', 
-                display: 'flex', 
-                alignItems: 'center', 
+                border: '1.5px solid',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: isSelected ? '0 2px 6px rgba(43, 147, 255, 0.3)' : 'none'
+                boxShadow: isSelected
+                  ? '0 2px 6px rgba(31, 60, 255, 0.3)' // ✅ sesuai primary #1f3cff
+                  : 'none',
               }}
             >
               {isSelected && (
-                <motion.svg 
+                <motion.svg
                   initial={{ opacity: 0, scale: 0.3 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.15 }}
-                  width="12" 
-                  height="12" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="white" 
-                  strokeWidth="3.5" 
-                  strokeLinecap="round" 
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <polyline points="20 6 9 17 4 12"></polyline>
+                  <polyline points="20 6 9 17 4 12" />
                 </motion.svg>
               )}
             </motion.div>
           </div>
         )}
-        
+
         <div style={{ flex: 1, minWidth: 0, pointerEvents: isSelectionMode ? 'none' : 'auto' }}>
           <ChatItem
             chat={chat}
@@ -178,31 +196,43 @@ const SwipeableChatRow = ({
 };
 
 const ChatList: React.FC<Props> = ({
-  isLoading, filteredChats, requestChats, searchQuery,
-  typingStatus, mutedChats, onlineUsers, currentUser,
-  handleOpenChat, handleAvatarClick, renderReadReceipt,
-  isSelectionMode, selectedChats, onPressStart, onPressEnd, onDeleteChat
+  isLoading,
+  filteredChats,
+  requestChats,
+  searchQuery,
+  typingStatus,
+  mutedChats,
+  onlineUsers,
+  currentUser,
+  handleOpenChat,
+  handleAvatarClick,
+  renderReadReceipt,
+  isSelectionMode,
+  selectedChats,
+  onPressStart,
+  onPressEnd,
+  onDeleteChat,
 }) => {
   const router = useRouter();
 
-  // Fungsi untuk dipanggil saat pull-to-refresh selesai dilakukan
   const handleRefresh = async () => {
     window.dispatchEvent(new Event('global-refresh'));
-    // Kita tambahkan sedikit jeda buatan agar animasi refresh Lottie 
-    // memiliki waktu untuk terlihat berputar dengan mulus
     await new Promise((resolve) => setTimeout(resolve, 800));
   };
 
   return (
     <RefreshableWrapper onRefresh={handleRefresh}>
-      <main 
-        className="tg-chat-list" 
+      <main
+        className="tg-chat-list"
         style={{ overflowX: 'hidden', position: 'relative', minHeight: '100dvh' }}
       >
-        {/* KONTEN UTAMA */}
         <div>
+          {/* Banner Permintaan Pesan – hanya muncul jika ada dan tidak sedang search */}
           {!isLoading && requestChats.length > 0 && !searchQuery && (
-            <div className="message-request-banner" onClick={() => router.push('/hypetalk/requests')}>
+            <div
+              className="message-request-banner"
+              onClick={() => router.push('/hypetalk/requests')}
+            >
               <div className="req-left">
                 <span className="material-icons">mark_email_unread</span>
                 <div className="req-text">
@@ -215,22 +245,32 @@ const ChatList: React.FC<Props> = ({
           )}
 
           {isLoading ? (
-            <>
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
-                  <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }}></div>
-                  <div className="tg-chat-info" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div className="skeleton-box" style={{ width: '40%', height: '16px' }}></div>
-                      <div className="skeleton-box" style={{ width: '30px', height: '12px' }}></div>
-                    </div>
-                    <div className="skeleton-box" style={{ width: '70%', height: '14px' }}></div>
+            // Skeleton loading
+            [...Array(4)].map((_, index) => (
+              <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
+                <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }} />
+                <div
+                  className="tg-chat-info"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="skeleton-box" style={{ width: '40%', height: '16px' }} />
+                    <div className="skeleton-box" style={{ width: '30px', height: '12px' }} />
                   </div>
+                  <div className="skeleton-box" style={{ width: '70%', height: '14px' }} />
                 </div>
-              ))}
-            </>
+              </div>
+            ))
           ) : (
-            filteredChats.map(chat => (
+            // Daftar chat utama (hanya chat teman/grup, bukan request)
+            filteredChats.map((chat) => (
               <SwipeableChatRow
                 key={chat.id}
                 chat={chat}

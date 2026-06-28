@@ -63,45 +63,6 @@ export default function ChatMessageList({
           </div>
 
           {messages.map((msg: any, idx: number) => {
-            // ✅ Deteksi pesan permintaan (asumsi: field is_request atau chat_type)
-            const isMessageRequest = msg.is_request === true || msg.chat_type === 'request';
-
-            // Jika ini adalah permintaan pesan, jangan render sebagai chat biasa
-            if (isMessageRequest) {
-              return (
-                <div
-                  key={msg.id}
-                  className="message-request-entry"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '12px',
-                    marginBottom: '8px',
-                    border: '1px solid var(--bg-input)',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => router.push('/messages/requests')}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span className="material-icons" style={{ color: 'var(--primary)' }}>mark_chat_unread</span>
-                    <div>
-                      <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>
-                        Permintaan Pesan
-                      </p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-                        {msg.sender_name || 'Seseorang'} mengirim pesan baru
-                      </p>
-                    </div>
-                  </div>
-                  <span className="material-icons" style={{ color: 'var(--text-muted)' }}>chevron_right</span>
-                </div>
-              );
-            }
-
-            // --- Logika chat biasa ---
             const isUnread = msg.user_id !== currentUser?.id && msg.status !== 'read';
             let isFirstUnread = false;
 
@@ -216,7 +177,7 @@ export default function ChatMessageList({
                   style={{
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    color: 'var(--primary)',
+                    color: 'var(--primary)', // ✅ fix: pakai variabel global
                     marginBottom: '4px',
                   }}
                 >
