@@ -654,8 +654,8 @@ function VoiceRoomContent() {
 }
 
 export default function Page() {
+  // ✅ FIX FALLBACK SUSPENSE WARNA HITAM PEKAT (#000000)
   return (
-    {/* ✅ FIX FALLBACK SUSPENSE WARNA HITAM PEKAT (#000000) */}
     <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000', color: '#fff', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
       <VoiceRoomContent />
     </Suspense>
