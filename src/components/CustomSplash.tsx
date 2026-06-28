@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function SplashContent() {
+  const [drawComplete, setDrawComplete] = useState(false);
+
   return (
     <motion.div
       key="splash"
@@ -14,7 +16,7 @@ function SplashContent() {
         position: 'fixed',
         inset: 0,
         zIndex: 9999999,
-        background: '#FFFFFF',
+        background: 'var(--bg-main)', // mengikuti light/dark theme
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -22,20 +24,43 @@ function SplashContent() {
         gap: '20px',
       }}
     >
-      {/* Logo */}
-      <motion.img
-        src="/hope_splash.png"
-        alt="HopeHype Logo"
+      {/* Logo SVG dengan animasi drawing */}
+      <motion.svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 512 512"
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.8, type: 'spring', bounce: 0.5 }}
         style={{
           width: '120px',
           height: '120px',
-          objectFit: 'contain',
+          color: 'var(--text-main)', // ikut mode
         }}
-        onError={() => console.warn('Logo splash gagal dimuat')}
-      />
+      >
+        {/* Path stroke yang dianimasikan (menggambar) */}
+        <motion.path
+          d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.4, delay: 0.2, ease: 'easeInOut' }}
+          onAnimationComplete={() => setDrawComplete(true)}
+        />
+        {/* Setelah drawing selesai, munculkan fill */}
+        {drawComplete && (
+          <motion.path
+            d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
+            fill="currentColor"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
+          />
+        )}
+      </motion.svg>
 
       {/* Spinner */}
       <motion.div
@@ -96,39 +121,28 @@ function SplashContent() {
 export default function CustomSplash() {
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
 
-  // Efek pertama: tentukan apakah splash perlu ditampilkan (berdasarkan sessionStorage)
   useEffect(() => {
     try {
       const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
       if (!hasSeenSplash) {
-        // Baru pertama kali di sesi ini → tampilkan
         setIsVisible(true);
-        // Tandai segera agar refresh tidak ulangi
         sessionStorage.setItem('hasSeenSplash', 'true');
       } else {
-        // Sudah pernah lihat → jangan tampilkan
         setIsVisible(false);
       }
     } catch (error) {
-      // Jika sessionStorage tidak tersedia (misal SSR atau browser tertentu)
       setIsVisible(false);
     }
   }, []);
 
-  // Efek kedua: timer untuk menyembunyikan splash setelah 2,5 detik
   useEffect(() => {
-    // Hanya jalankan timer jika splash sedang terlihat
     if (isVisible !== true) return;
-
     const timer = setTimeout(() => {
       setIsVisible(false);
     }, 2500);
-
-    // Bersihkan timer jika komponen unmount atau isVisible berubah
     return () => clearTimeout(timer);
   }, [isVisible]);
 
-  // Selama state masih null atau false, jangan render apa-apa
   if (isVisible === null || isVisible === false) return null;
 
   return (
