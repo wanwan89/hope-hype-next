@@ -8,9 +8,9 @@ import './ChatBoxroom.css';
 const ChatItem = memo(({ msgData }: { msgData: any }) => {
   const isSystem = msgData.type === 'system' || msgData.username?.startsWith("SISTEM");
   const isJoin = msgData.type === 'join';
-  const isGift = msgData.type === 'gift'; // Tambahan untuk deteksi pesan gift
+  const isGift = msgData.type === 'gift';
 
-  // 1. Render Pesan Ketika User Bergabung (Join) - Persegi panjang kecil transparan
+  // 1. Render Pesan Ketika User Bergabung (Join)
   if (isJoin) {
     return (
       <div className="chat-msg-join" style={{ 
@@ -20,7 +20,7 @@ const ChatItem = memo(({ msgData }: { msgData: any }) => {
         background: 'rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(8px)',
         padding: '4px 8px',
-        borderRadius: '4px', // Persegi panjang
+        borderRadius: '4px',
         width: 'fit-content'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -35,7 +35,7 @@ const ChatItem = memo(({ msgData }: { msgData: any }) => {
     );
   }
 
-  // 2. Render Pesan Gift - Kotak persegi ukuran teks komentar
+  // 2. Render Pesan Gift
   if (isGift) {
     return (
       <div className="chat-msg-gift" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -43,7 +43,7 @@ const ChatItem = memo(({ msgData }: { msgData: any }) => {
           background: 'linear-gradient(135deg, #1f3cff, #f59e0b)',
           color: '#ffffff',
           padding: '2px 6px',
-          borderRadius: '4px', // Persegi tegas
+          borderRadius: '4px',
           fontSize: '12px',
           fontWeight: 'bold',
           lineHeight: '1.4'
@@ -54,7 +54,7 @@ const ChatItem = memo(({ msgData }: { msgData: any }) => {
     );
   }
 
-  // 3. Render Pesan Sistem (jika ada trigger sistem lain dari server)
+  // 3. Render Pesan Sistem
   if (isSystem) {
     return (
       <div className="chat-msg-system" style={{ display: 'flex', gap: '10px' }}>
@@ -70,7 +70,7 @@ const ChatItem = memo(({ msgData }: { msgData: any }) => {
             justifyContent: 'center',
             alignItems: 'center',
             flexShrink: 0,
-            color: '#fbbf24' /* Warna SVG disesuaikan agar stand-out */
+            color: '#fbbf24'
           }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512">
@@ -127,21 +127,68 @@ export default memo(function ChatBox({ messages = [] }: { messages?: any[] }) {
   const endRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // --- LOGIKA POSISI RULES ---
+  // Ref untuk melacak pesan lama terakhir (saat komponen pertama dimuat)
+  const initialLastMsg = useRef<any>(null);
+  const hasSetInitial = useRef(false);
+
+  useEffect(() => {
+    // Jika pesan sudah ada dan kita belum set pesan terakhir
+    if (!hasSetInitial.current && messages.length > 0) {
+      initialLastMsg.current = messages[messages.length - 1];
+      hasSetInitial.current = true;
+    }
+  }, [messages]);
+  // ---------------------------
+
   const displayMessages = useMemo(() => {
     return messages.slice(-50);
   }, [messages]);
 
   useEffect(() => {
-    // Auto-scroll kebawah
     setTimeout(() => {
       endRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   }, [displayMessages]);
 
+  // Komponen Sistem Rules agar rapi
+  const RuleMessage = () => (
+    <div className="chat-rule-msg-wrapper" style={{ display: 'flex', gap: '10px', width: '100%', margin: '4px 0' }}>
+      <div 
+        className="chat-system-avatar-glass" 
+        style={{
+          background: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(8px)',
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexShrink: 0,
+          color: '#a1a1aa' // [Fix] Warna Icon jadi abu-abu
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512">
+          <path fill="currentColor" d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"/>
+        </svg>
+      </div>
+      <div className="chat-user-content" style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="chat-text" style={{ 
+          color: '#a1a1aa', // [Fix] Warna Teks jadi abu-abu
+          fontSize: '12px', 
+          fontWeight: '600',
+          lineHeight: '1.4'
+        }}>
+          {t('system_rule_msg', 'Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu jawab dengan sopan, santai, dan tetap menghargai orang lain ya!')}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <style>{`
-        /* Ukuran Badge Diperkecil */
         .chat-badge-wrapper img, 
         .chat-badge-wrapper svg, 
         .chat-badge-wrapper span {
@@ -163,7 +210,6 @@ export default memo(function ChatBox({ messages = [] }: { messages?: any[] }) {
           display: none;
         }
 
-        /* Animasi pop mulus dari area input (bawah) */
         @keyframes chatSlideUp {
           from { opacity: 0; transform: translateY(20px) scale(0.95); }
           to { opacity: 1; transform: translateY(0) scale(1); }
@@ -188,44 +234,26 @@ export default memo(function ChatBox({ messages = [] }: { messages?: any[] }) {
       >
         <div style={{ flex: '1 1 auto', minHeight: '20px' }}></div>
 
-        {/* Pemberitahuan Sistem Rules (Gaya Foto Profil) */}
-        <div className="chat-rule-msg-wrapper" style={{ display: 'flex', gap: '10px', width: '100%', margin: '0 0 4px 0' }}>
-          <div 
-            className="chat-system-avatar-glass" 
-            style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(8px)',
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              flexShrink: 0,
-              color: '#fbbf24' // Warna kuning emas untuk SVG peringatan
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512">
-              <path fill="currentColor" d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"/>
-            </svg>
-          </div>
-          <div className="chat-user-content" style={{ display: 'flex', alignItems: 'center' }}>
-            <div className="chat-text" style={{ 
-              color: '#fbbf24', // Warna teks serasi dengan icon
-              fontSize: '12px', 
-              fontWeight: '600',
-              lineHeight: '1.4'
-              /* Padding background abu-abu dihilangkan sesuai permintaan */
-            }}>
-              {t('system_rule_msg', 'Jangan gunakan kata kasar, hinaan, atau bullying dalam bentuk apa pun. Selalu jawab dengan sopan, santai, dan tetap menghargai orang lain ya!')}
-            </div>
-          </div>
-        </div>
+        {/* Jika belum ada pesan sama sekali, letakkan di paling atas */}
+        {displayMessages.length === 0 && <RuleMessage />}
 
         {/* List Komentar */}
-        {displayMessages.map((msgData, idx) => (
-          <ChatItem key={msgData.id || idx} msgData={msgData} />
-        ))}
+        {displayMessages.map((msgData, idx) => {
+          // Cek apakah ini adalah komentar terlama terakhir 
+          // Jika iya, sisipkan RuleMessage tepat di bawahnya
+          const isLastOldMessage = hasSetInitial.current
+            ? (msgData === initialLastMsg.current || (msgData.id && msgData.id === initialLastMsg.current?.id))
+            : idx === displayMessages.length - 1;
+
+          return (
+            <React.Fragment key={msgData.id || idx}>
+              <ChatItem msgData={msgData} />
+              
+              {/* [Fix] Muncul dinamis di bawah riwayat komentar lama */}
+              {isLastOldMessage && <RuleMessage />}
+            </React.Fragment>
+          );
+        })}
 
         <div ref={endRef} style={{ height: '2px', flexShrink: 0 }} />
       </div>
