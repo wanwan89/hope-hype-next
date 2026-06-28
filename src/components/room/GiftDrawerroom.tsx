@@ -5,24 +5,21 @@ import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion'; 
+import Lottie from 'lottie-react';
 
 // 🔥 IMPORT RUMUS SAKTI DARI FILE BARU 🔥
 import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
 
 import './GiftDrawerroom.css';
 
-// 🔥 DAFTAR 10 GIFT 🔥
+// 🔥 IMPORT FILE LOTTIE (JSON) 🔥
+import tigerJson from '@/assets/gifts/tiger.json';
+import dogJson from '@/assets/gifts/dog.json';
+
+// 🔥 DAFTAR 2 GIFT BARU LOTTIE 🔥
 const GIFT_DATA = [
-  { id: 1, name: 'Love', amount: 1, img: '/asets/png/gift1.png' },
-  { id: 2, name: 'Daebak', amount: 10, img: '/asets/png/gift2.png' },
-  { id: 3, name: 'Omoomo', amount: 50, img: '/asets/png/gift3.png' },
-  { id: 4, name: 'Oppa', amount: 100, img: '/asets/png/gift4.png' },
-  { id: 5, name: 'Fighting', amount: 2000, img: '/asets/png/gift5.png' },
-  { id: 6, name: 'Saranghae', amount: 5000, img: '/asets/png/gift6.png' },
-  { id: 7, name: 'Kiyowo', amount: 10000, img: '/asets/png/gift7.png' },
-  { id: 8, name: 'Gomawo', amount: 25000, img: '/asets/png/gift8.png' },
-  { id: 9, name: 'Daesang', amount: 50000, img: '/asets/png/gift9.png' },
-  { id: 10, name: 'Sultan', amount: 100000, img: '/asets/png/gift10.png' },
+  { id: 1, name: 'Tiger', amount: 1, animation: tigerJson },
+  { id: 2, name: 'Dog', amount: 5, animation: dogJson },
 ];
 
 export default function GiftDrawerroom() {
@@ -290,7 +287,7 @@ export default function GiftDrawerroom() {
           scrollbar-width: none; -webkit-overflow-scrolling: touch;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
-        .gift-column { display: flex; flex-direction: column; gap: 30px; flex-shrink: 0; width: calc(33.333% - 10px); }
+        .gift-column { display: flex; flex-direction: column; gap: 30px; flex-shrink: 0; width: calc(50% - 10px); /* Disesuaikan jadi 50% untuk 2 kado */ }
         
         .drawer-footer { 
           display: flex; justify-content: space-between; align-items: center; 
@@ -304,10 +301,12 @@ export default function GiftDrawerroom() {
           0%, 100% { transform: translateY(-50px) scale(1.3); }
           50% { transform: translateY(-60px) scale(1.3); }
         }
+        
         .gift-item-img {
-          width: 85px; height: 85px; object-fit: contain; position: absolute; z-index: 2; bottom: 10px;
+          width: 85px; height: 85px; position: absolute; z-index: 2; bottom: 10px;
           transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           will-change: transform; pointer-events: none;
+          display: flex; justify-content: center; align-items: center;
         }
         .gift-item-img.active {
           z-index: 20; animation: floatingGiftCSS 2s ease-in-out infinite;
@@ -413,12 +412,14 @@ export default function GiftDrawerroom() {
                             justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
                           }}
                         >
-                          <img 
-                            src={gift.img} 
-                            alt={gift.name} 
-                            loading="lazy"
-                            className={`gift-item-img ${isActiveGift ? 'active' : ''}`} 
-                          />
+                          {/* 🔥 RENDER LOTTIE PENGGANTI IMAGE PNG 🔥 */}
+                          <div className={`gift-item-img ${isActiveGift ? 'active' : ''}`}>
+                            <Lottie 
+                              animationData={gift.animation} 
+                              loop={true} 
+                              style={{ width: '100%', height: '100%' }}
+                            />
+                          </div>
 
                           <div style={{ 
                               display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px',

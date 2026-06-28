@@ -20,6 +20,17 @@ import HeaderRoom from '@/components/room/Headerroom';
 
 import './Voice.css';
 
+// 🔥 IMPORT LOTTIE FILES DI SINI 🔥
+import tigerJson from '@/assets/gifts/tiger.json';
+import dogJson from '@/assets/gifts/dog.json';
+
+// 🔥 PETA LOTTIE ANIMATION (Map ID kado ke file JSON) 🔥
+const LOTTIE_GIFTS: Record<number, any> = {
+  1: tigerJson,
+  2: dogJson,
+  // Tambahkan import lottie lain sesuai ID di sini jika kado bertambah
+};
+
 declare global {
   interface Window {
     __VOICE_ROOM_INIT__?: boolean;
@@ -148,30 +159,38 @@ function VoiceRoomContent() {
       } catch (err) { console.error(err); }
     };
 
+    // 🔥 FIX UTAMA PADA FUNGSI ANIMASI KADO 🔥
     window.playGiftAnimation = (giftId: number | string, forcedCombo: number | null = null) => {
       const id = typeof giftId === 'string' ? parseInt(giftId) : (giftId || 1);
-      const gifPath = `asets/gif/giftvid${id}.gif`;
-      if (forcedCombo !== null) { giftComboCount.current = forcedCombo; lastGiftId.current = id; }
-      else { if (lastGiftId.current === id) giftComboCount.current++; else { giftComboCount.current = 1; lastGiftId.current = id; } }
-
-      let overlay = document.getElementById('gift-anim-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div'); overlay.id = 'gift-anim-overlay';
-        overlay.style.cssText = "position:fixed; inset:0; pointer-events:none; z-index:9999999; display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); opacity:0; transition:opacity 0.3s;";
-        document.body.appendChild(overlay);
+      
+      // 1. Kalkulasi Kombo Kado
+      if (forcedCombo !== null) { 
+        giftComboCount.current = forcedCombo; 
+        lastGiftId.current = id; 
       }
-      const iconPngPath = `asets/png/gift${id}.png`;
-      overlay.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; position:relative;"><img id="gift-anim-img" src="${gifPath}?t=${Date.now()}" style="width:280px; max-width:85%; object-fit:contain; filter:drop-shadow(0 0 20px gold);"><div id="gift-combo-text" style="font-family:'Inter',sans-serif; font-size:80px; font-weight:900; color:#ffeb3b; text-shadow:4px 4px 0px #f44336, 0 0 20px rgba(255,255,0,0.8); transform:rotate(-15deg) scale(0); transition:transform 0.1s; margin-top:-60px; z-index:100;"><img src="${iconPngPath}" style="width: 150px; height: 150px; object-fit: contain;"> ${giftComboCount.current > 1 ? 'x'+giftComboCount.current : ''}</div></div>`;
-      overlay.style.display = 'flex';
-      setTimeout(() => { if(overlay) overlay.style.opacity = '1'; }, 10);
-      const comboEl = overlay.querySelector('#gift-combo-text') as HTMLElement;
-      setTimeout(() => { if(comboEl) comboEl.style.transform = "rotate(-15deg) scale(1.2)"; }, 50);
+      else { 
+        if (lastGiftId.current === id) giftComboCount.current++; 
+        else { giftComboCount.current = 1; lastGiftId.current = id; } 
+      }
 
+      // 2. Ambil data animasi berdasarkan ID
+      const animationData = LOTTIE_GIFTS[id] || LOTTIE_GIFTS[1]; // Default ke Tiger kalau ID ga ada
+      const comboText = giftComboCount.current > 1 ? `x${giftComboCount.current}` : null;
+
+      // 3. Tembak CustomEvent ke Komponen GiftAnimOverlay
+      window.dispatchEvent(new CustomEvent('showGiftAnimOverlay', {
+        detail: {
+          animation: animationData,
+          comboText: comboText
+        }
+      }));
+
+      // 4. Timer Reset Kombo (Jika tidak ada kado beruntun dalam 3.5 detik, reset ke 0)
       if (giftAnimTimer.current) clearTimeout(giftAnimTimer.current);
       giftAnimTimer.current = setTimeout(() => {
-        if(overlay) overlay.style.opacity = '0';
-        setTimeout(() => { if(overlay) overlay.style.display = 'none'; giftComboCount.current = 0; lastGiftId.current = null; }, 300);
-      }, 3000);
+        giftComboCount.current = 0; 
+        lastGiftId.current = null;
+      }, 3500);
     };
 
     async function getRoomLeaderboard() {
@@ -248,7 +267,10 @@ function VoiceRoomContent() {
             const match = newMsg.text.match(/^(.+) mengirim .+ x(\d+) ke/);
             if (match) { isDariSaya = (match[1] === myUsername.current); comboValue = parseInt(match[2]); }
             else { isDariSaya = newMsg.text.startsWith(`${myUsername.current} `); }
+            
+            // Panggil fungsi playGiftAnimation ketika terima dari sistem
             if (!isDariSaya && window.playGiftAnimation) window.playGiftAnimation(parseInt(newMsg.role), comboValue);
+            
             fetchTopGifters();
           }
         })

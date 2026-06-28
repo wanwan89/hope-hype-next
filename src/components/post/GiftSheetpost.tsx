@@ -5,21 +5,18 @@ import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
+import Lottie from 'lottie-react';
 
 // 🔥 IMPORT RUMUS SAKTI 🔥
 import { calculateLevel, getLevelBadgeHTML } from '@/lib/level-utils';
 
+// 🔥 IMPORT FILE LOTTIE (JSON) 🔥
+import tigerJson from '@/assets/gifts/tiger.json';
+import dogJson from '@/assets/gifts/dog.json';
+
 const GIFT_DATA = [
-  { id: 1, name: 'Love', amount: 1, img: '/asets/png/gift1.png' },
-  { id: 2, name: 'Daebak', amount: 10, img: '/asets/png/gift2.png' },
-  { id: 3, name: 'Omoomo', amount: 50, img: '/asets/png/gift3.png' },
-  { id: 4, name: 'Oppa', amount: 100, img: '/asets/png/gift4.png' },
-  { id: 5, name: 'Fighting', amount: 2000, img: '/asets/png/gift5.png' },
-  { id: 6, name: 'Saranghae', amount: 5000, img: '/asets/png/gift6.png' },
-  { id: 7, name: 'Kiyowo', amount: 10000, img: '/asets/png/gift7.png' },
-  { id: 8, name: 'Gomawo', amount: 25000, img: '/asets/png/gift8.png' },
-  { id: 9, name: 'Daesang', amount: 50000, img: '/asets/png/gift9.png' },
-  { id: 10, name: 'Sultan', amount: 100000, img: '/asets/png/gift10.png' },
+  { id: 1, name: 'Tiger', amount: 1, animation: tigerJson },
+  { id: 2, name: 'Dog', amount: 5, animation: dogJson },
 ];
 
 export default function GiftSheetpost() {
@@ -153,7 +150,7 @@ export default function GiftSheetpost() {
         supabase.from("gift_transactions").insert({ 
           sender_id: session.user.id, 
           receiver_id: targetPost.creatorId, 
-          post_id: safePostId, // 🔥 Pake variabel yang udah aman
+          post_id: safePostId, 
           amount: giftToSend.amount 
         }).then(({error}) => { if (error) console.warn("RLS Gift Transaction diabaikan"); }),
   
@@ -165,7 +162,7 @@ export default function GiftSheetpost() {
         supabase.from("notifications").insert({ 
           user_id: targetPost.creatorId, 
           actor_id: session.user.id, 
-          post_id: safePostId, // 🔥 Pake variabel yang udah aman
+          post_id: safePostId, 
           type: "gift", 
           message: `mengirimkan hadiah senilai ${giftToSend.amount} koin` 
         })
@@ -175,7 +172,7 @@ export default function GiftSheetpost() {
         detail: {
           postId: targetPost.id,
           giftName: giftToSend.name,
-          giftImg: giftToSend.img,
+          giftAnimation: giftToSend.animation, // Diganti dari giftImg menjadi giftAnimation
           creatorId: targetPost.creatorId
         }
       }));
@@ -185,7 +182,8 @@ export default function GiftSheetpost() {
       
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
       
-      if ((window as any).showBigImage) (window as any).showBigImage(giftToSend.img);
+      // Menonaktifkan showBigImage karena Lottie tidak bisa ditampilkan dengan tag <img src="..." />
+      // if ((window as any).showBigImage) (window as any).showBigImage(giftToSend.img);
       if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
 
       setTimeout(() => {
@@ -226,7 +224,7 @@ export default function GiftSheetpost() {
           z-index: 100000;
           box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
           overflow: visible; 
-          will-change: transform; /* Hardware Acceleration */
+          will-change: transform; 
         }
         
         .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px; margin-bottom: 15px; }
@@ -251,7 +249,7 @@ export default function GiftSheetpost() {
           -webkit-overflow-scrolling: touch;
         }
         .gift-list-3d-wrapper::-webkit-scrollbar { display: none; }
-        .gift-column { display: flex; flex-direction: column; gap: 40px; flex-shrink: 0; width: calc(33.333% - 10px); } 
+        .gift-column { display: flex; flex-direction: column; gap: 40px; flex-shrink: 0; width: calc(50% - 10px); /* Disesuaikan jadi 50% karena kado cuma 2 */ } 
         
         .drawer-footer { 
           display: flex; justify-content: space-between; align-items: center; 
@@ -260,14 +258,18 @@ export default function GiftSheetpost() {
           position: sticky; bottom: 0; z-index: 50; 
         }
 
-        /* 🔥 FIX 2: ANIMASI CSS MURNI PENGGANTI FRAMER MOTION 🔥 */
+        /* 🔥 ANIMASI CSS MURNI PENGGANTI FRAMER MOTION 🔥 */
         @keyframes floatingGiftCSS {
           0%, 100% { transform: translateY(-5px); }
           50% { transform: translateY(5px); }
         }
+        
         .gift-item-img {
-          width: 90px; height: 90px; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(0,0,0,0.4));
+          width: 90px; height: 90px;
           will-change: transform;
+          display: flex;
+          justify-content: center;
+          align-items: center;
         }
         .gift-item-img.active {
           animation: floatingGiftCSS 2s ease-in-out infinite;
@@ -350,7 +352,6 @@ export default function GiftSheetpost() {
                             justifyContent: 'flex-end', cursor: 'pointer', zIndex: isActiveGift ? 50 : 1 
                           }}
                         >
-                          {/* 🔥 FIX 2: GANTI FRAMER MOTION JADI CSS TRANSITION BIASA 🔥 */}
                           <div
                             style={{ 
                               position: 'absolute', zIndex: 2, bottom: '30px', pointerEvents: 'none',
@@ -358,12 +359,14 @@ export default function GiftSheetpost() {
                               transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                             }}
                           >
-                            <img 
-                              src={gift.img} 
-                              alt={gift.name} 
-                              loading="lazy"
-                              className={`gift-item-img ${isActiveGift ? 'active' : ''}`} 
-                            />
+                            {/* 🔥 RENDER LOTTIE PENGGANTI IMAGE PNG 🔥 */}
+                            <div className={`gift-item-img ${isActiveGift ? 'active' : ''}`}>
+                              <Lottie 
+                                animationData={gift.animation} 
+                                loop={true} 
+                                style={{ width: '100%', height: '100%' }}
+                              />
+                            </div>
                           </div>
 
                           <AnimatePresence>
