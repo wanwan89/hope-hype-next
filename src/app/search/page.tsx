@@ -558,7 +558,7 @@ function SearchContent() {
                   setShowSupportPopup(false);
                   
                   // 🔥 GANTI "ID_AKUN_SUPPORT_KAMU" DENGAN UUID AKUN ADMIN KAMU DI SUPABASE 🔥
-                  router.push('/chat?id=b648ab89-32b7-494a-b858-ee186f918f90'); 
+                  router.push('/hypetalk/room?id=b648ab89-32b7-494a-b858-ee186f918f90');
                 }}
                 style={{
                   background: 'var(--primary)',
@@ -576,7 +576,7 @@ function SearchContent() {
                 }}
               >
                 <span className="material-icons">chat</span>
-                Cerita Sama Aku
+                Cerita dengan kami
               </button>
 
               <button 

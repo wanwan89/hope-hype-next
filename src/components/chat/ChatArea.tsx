@@ -250,7 +250,7 @@ export default function ChatArea() {
     setIsUpdatingGroup(false);
   };
 
-  // 🔥 REFAKTOR 1: kickMember
+  // 🔥 Fungsi kickMember menggunakan confirm hook
   const kickMember = async (targetUserId: string, targetName: string) => {
     if (!groupId || !isOwner) return;
     
@@ -661,7 +661,7 @@ export default function ChatArea() {
     setMsgOptions(null); 
   };
 
-  // 🔥 REFAKTOR 2: handleDeleteMessage
+  // 🔥 Fungsi handleDeleteMessage menggunakan confirm hook
   const handleDeleteMessage = async (msgOrId: any, type: 'for_me' | 'for_everyone' = 'for_me') => {
     const targetMsg = typeof msgOrId === 'object' ? msgOrId : messages.find(m => m.id === msgOrId);
     if (!targetMsg) return;
@@ -670,12 +670,10 @@ export default function ChatArea() {
     if (!confirmDelete) return;
 
     if (type === 'for_everyone') {
-      // Perbarui state lokal secara instan untuk soft-delete
       setMessages(prev => prev.map(m => m.id === targetMsg.id ? { ...m, message: 'Pesan ini telah dihapus', is_deleted: true } : m));
       await supabase.from('messages').update({ message: 'Pesan ini telah dihapus', is_deleted: true }).eq('id', targetMsg.id);
       showNotif("Pesan berhasil dihapus untuk semua orang", "success");
     } else {
-      // Hapus hanya dari visual state lokal atau db personal (jika dihandle kolom terpisah)
       setMessages(prev => prev.filter(m => m.id !== targetMsg.id));
       showNotif("Pesan dihapus untuk Anda", "success");
     }
@@ -690,7 +688,7 @@ export default function ChatArea() {
     setSelectedMessages(messages.map(m => m.id));
   };
 
-  // 🔥 REFAKTOR 3: handleBulkDelete
+  // 🔥 Fungsi handleBulkDelete menggunakan confirm hook
   const handleBulkDelete = async () => {
     if (selectedMessages.length === 0) return;
     
