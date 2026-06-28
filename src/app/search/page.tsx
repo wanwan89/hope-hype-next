@@ -4,7 +4,10 @@ import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Lottie from 'lottie-react';
+
+// Pastikan file lottie ini ada di folder yang sesuai
 import emptyLottie from '@/assets/lottie/empty.json'; 
+import babyLottie from '@/assets/lottie/baby.json';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -32,7 +35,16 @@ function SearchContent() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showAllHistory, setShowAllHistory] = useState(false);
   
+  // STATE POP-UP SUPPORT
+  const [showSupportPopup, setShowSupportPopup] = useState(false);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // KATA KUNCI SENSITIF
+  const sensitiveKeywords = [
+    'bunuh diri', 'membunuh', 'trauma', 'depresi', 'mati', 
+    'akhiri hidup', 'kesepian', 'putus asa', 'menyakiti diri', 'suicide'
+  ];
 
   useEffect(() => {
     setLocalQuery(query);
@@ -109,11 +121,15 @@ function SearchContent() {
     }
   }, [query]);
 
-  // 🔥 MENGAMBIL DATA DISCOVER DARI DATABASE 🔥
+  // FUNGSI DETEKSI KATA SENSITIF
+  const checkSensitiveContent = (text: string) => {
+    const lowerText = text.toLowerCase();
+    return sensitiveKeywords.some(keyword => lowerText.includes(keyword));
+  };
+
   const fetchInitialDiscoverData = async () => {
     setIsLoading(true);
     try {
-      // 1. Ambil Tren
       const { data: trendData } = await supabase.from('search_history').select('query').order('created_at', { ascending: false }).limit(200);
       const counts: Record<string, number> = {};
       if (trendData && trendData.length > 0) {
@@ -121,10 +137,9 @@ function SearchContent() {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(entry => entry[0]).slice(0, 8);
         setTrendingKeywords(sorted);
       } else {
-        setTrendingKeywords(['jagung bakar', 'hope hype', 'musik viral', 'tutorial ui']);
+        setTrendingKeywords(['hope hype', 'musik viral', 'tutorial ui']);
       }
 
-      // 2. Ambil Rekomendasi Kategori
       const { data: recPosts } = await supabase.from('posts')
         .select(`
           id, image_url, video_url, bio, 
@@ -188,6 +203,13 @@ function SearchContent() {
   const handleSearchEnter = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && localQuery.trim() !== '') {
       setShowSuggestions(false);
+      
+      // CEK INTERCEPT POPUP SUPPORT
+      if (checkSensitiveContent(localQuery)) {
+        setShowSupportPopup(true);
+        return; 
+      }
+
       await saveSearchToHistory(localQuery);
       router.push(`/search?q=${encodeURIComponent(localQuery.trim())}`);
     }
@@ -196,6 +218,13 @@ function SearchContent() {
   const executeSearch = async (keyword: string) => {
     setLocalQuery(keyword);
     setShowSuggestions(false);
+
+    // CEK INTERCEPT POPUP SUPPORT
+    if (checkSensitiveContent(keyword)) {
+      setShowSupportPopup(true);
+      return; 
+    }
+
     await saveSearchToHistory(keyword);
     router.push(`/search?q=${encodeURIComponent(keyword)}`);
   };
@@ -226,7 +255,7 @@ function SearchContent() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
       
       {/* HEADER SEARCH BAR */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', padding: '12px 20px', borderBottom: '1px solid var(--border-card)', display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -329,7 +358,6 @@ function SearchContent() {
               </div>
             )}
 
-            {/* Kategori -> FIX ROUTING QUERY PARAMS DI SINI */}
             {categoryRecommendations.length > 0 && (
               <div>
                 <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -385,11 +413,10 @@ function SearchContent() {
                 </div>
               )}
             </div>
-
           </div>
         )}
 
-        {/* HASIL PENCARIAN (SAAT ADA QUERY) */}
+        {/* HASIL PENCARIAN */}
         {query && (
           isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>Mencari...</div>
@@ -433,7 +460,6 @@ function SearchContent() {
                             </div>
                           ) : (
                             user.recentPosts?.length > 0 && (
-                              // Postingan Terakhir Kreator -> FIX ROUTING QUERY PARAMS DI SINI
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
                                 {user.recentPosts.map((rp: any) => (
                                   <div key={rp.id} onClick={(e) => { e.stopPropagation(); router.push(`/post?id=${rp.id}`); }} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: 'var(--bg-secondary)' }}>
@@ -451,7 +477,6 @@ function SearchContent() {
                 </div>
               )}
 
-              {/* Hasil Postingan Terkait -> FIX ROUTING QUERY PARAMS DI SINI */}
               {posts.length > 0 && (
                 <div>
                   <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>POSTINGAN TERKAIT</h3>
@@ -466,7 +491,6 @@ function SearchContent() {
                 </div>
               )}
 
-              {/* STATE KOSONG -> FIX ROUTING QUERY PARAMS DI SINI */}
               {posts.length === 0 && recommendedPosts.length > 0 && (
                 <div style={{ marginTop: '20px' }}>
                   <div style={{ textAlign: 'center', padding: '20px 0 40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -492,6 +516,89 @@ function SearchContent() {
           )
         )}
       </div>
+
+      {/* OVERLAY POP-UP SUPPORT SYSTEM */}
+      {showSupportPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          backdropFilter: 'blur(5px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            padding: '30px 20px',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '400px',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            border: '1px solid var(--border-card)',
+            animation: 'fadeInUp 0.3s ease-out'
+          }}>
+            <div style={{ width: '150px', height: '150px', margin: '0 auto' }}>
+              <Lottie animationData={babyLottie} loop={true} />
+            </div>
+            
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '12px' }}>
+              Kamu Tidak Sendirian
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: '1.6' }}>
+              Apapun yang sedang kamu hadapi saat ini, ada orang yang peduli dan siap mendengarkan. Jangan ragu untuk berbagi bebanmu.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                onClick={() => {
+                  setShowSupportPopup(false);
+                  
+                  // 🔥 GANTI "ID_AKUN_SUPPORT_KAMU" DENGAN UUID AKUN ADMIN KAMU DI SUPABASE 🔥
+                  router.push('/chat?id=b648ab89-32b7-494a-b858-ee186f918f90'); 
+                }}
+                style={{
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span className="material-icons">chat</span>
+                Cerita Sama Aku
+              </button>
+
+              <button 
+                onClick={() => setShowSupportPopup(false)}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  border: 'none',
+                  padding: '12px',
+                  borderRadius: '16px',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
