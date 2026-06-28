@@ -389,6 +389,10 @@ function VoiceRoomContent() {
       listenRealtime(); fetchTopGifters();
     }
 
+    /* ==========================================================
+       FIXED METHOD: Mengubah Generator Slot Panggung Vanilla JS
+       Agar sinkron dengan style abu-abu glass dan clean tanpa border
+       ========================================================== */
     async function fetchStage(overrideCount?: number) {
       if (!CURRENT_ROOM_ID) return;
       const targetCount = overrideCount || roomSlotCount;
@@ -404,8 +408,13 @@ function VoiceRoomContent() {
 
       data.slice(0, targetCount).forEach((slot: any) => {
         const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
-        const item = document.createElement('div'); item.className = 'speaker-item';
+        const item = document.createElement('div'); 
+        
+        // Atur flex center agar letak lingkaran tepat di tengah secara konsisten
+        item.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center;";
+
         if (user) {
+          item.className = 'speaker-item';
           const userLvl = user.level || 1;
           item.innerHTML = `
             <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
@@ -420,7 +429,15 @@ function VoiceRoomContent() {
               </div>
             </span>`;
         } else {
-          item.innerHTML = `<div class="avatar" style="border: 1px dashed #94a3b8; opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:#94a3b8; font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:#94a3b8;">${t('empty_slot')}</span>`;
+          item.className = 'speaker-item empty';
+          // DI SINI KITA PAKSA STYLE SLOT KOSONG MENJADI ABU GLASS DAN TANPA BORDER / TEXT KOSONG
+          item.innerHTML = `
+            <div class="avatar empty-avatar" 
+                 style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); width: 60px; height: 60px;" 
+                 onclick="window.naikKeStage?.(${slot.slot_index})">
+              <span class="material-icons" style="color: rgba(255, 255, 255, 0.6); font-size: 24px;">add</span>
+            </div>
+          `;
         }
         grid.appendChild(item);
       });
@@ -587,14 +604,12 @@ function VoiceRoomContent() {
 
     const sdkInterval = setInterval(() => { if (typeof window.LivekitClient !== 'undefined') { clearInterval(sdkInterval); initApp(); } }, 500);
 
-    // CLEANUP LIFECYCLE: Berfungsi membersihkan modifikasi elemen global saat keluar dari room
     return () => {
       clearInterval(sdkInterval);
       roomRef.current?.disconnect();
       window.removeEventListener('resize', fixMobileHeight);
       window.removeEventListener('orientationchange', fixMobileHeight);
       
-      // Mengembalikan background body bawaan global css web utama
       document.body.style.backgroundColor = '';
       document.body.classList.remove('radar-rgb');
       document.documentElement.style.removeProperty('--radar-color');
