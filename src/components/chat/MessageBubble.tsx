@@ -17,16 +17,9 @@ export const getStatusIcon = (status: string) => {
   return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
+// Menggunakan emoji biasa tanpa SVG untuk reaction
 const renderReactionIcon = (emoji: string, size = 18) => {
-  switch (emoji) {
-    case '👍': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FBBF24" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>;
-    case '❤️': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#EF4444" stroke="#EF4444" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>;
-    case '😂': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 9.05v-.1"></path><path d="M16 9.05v-.1"></path><path d="M10 14c.5 1.5 1.79 2 2 2s1.5-.5 2-2"></path><path d="M4 8l2 2"></path><path d="M20 8l-2 2"></path></svg>;
-    case '😮': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 9.05v-.1"></path><path d="M16 9.05v-.1"></path><circle cx="12" cy="15" r="2"></circle></svg>;
-    case '😢': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 9.05v-.1"></path><path d="M16 9.05v-.1"></path><path d="M16 16c-1.5-1.5-3.5-1.5-5.5 0"></path><path d="M9 12v3"></path></svg>;
-    case '🙏': return <svg width={size} height={size} viewBox="0 0 24 24" fill="#FCD34D" stroke="#D97706" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-7l-2-2"></path><path d="M12 22v-7l2-2"></path><path d="M10 13V8a2 2 0 0 1 4 0v5"></path><path d="M10 8a2 2 0 0 0-4 0v3.5"></path><path d="M14 8a2 2 0 0 1 4 0v3.5"></path></svg>;
-    default: return <span style={{ fontSize: `${size}px`, lineHeight: 1 }}>{emoji}</span>;
-  }
+  return <span style={{ fontSize: `${size}px`, lineHeight: 1 }}>{emoji}</span>;
 };
 
 const getOptimizedImage = (url: string) => {
@@ -38,8 +31,27 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-const renderTextWithLinks = (text: string) => {
+// Fungsi baru untuk merender teks dengan link & mengganti label Foto/VN dengan ikon SVG
+const renderFormattedText = (text: string) => {
   if (!text) return null;
+  
+  if (text.trim().match(/^(📸\s*)?Mengirim Foto$/i)) {
+     return (
+       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> 
+         Foto
+       </span>
+     );
+  }
+  if (text.trim().match(/^(🎤\s*)?Voice Note$/i)) {
+     return (
+       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> 
+         Voice Note
+       </span>
+     );
+  }
+
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
 
@@ -362,21 +374,18 @@ export default function MessageBubble({
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
 
-  if (cleanMsg.includes("📸 Mengirim Foto")) {
-    cleanMsg = cleanMsg.replace("📸 Mengirim Foto", "").trim();
-  }
-  if (cleanMsg.includes(" Mengirim Foto")) {
-    cleanMsg = cleanMsg.replace(" Mengirim Foto", "").trim();
+  // Membersihkan caption default agar tidak ganda di render main bubble
+  if (cleanMsg.match(/^(📸\s*)?Mengirim Foto$/i)) {
+    cleanMsg = "";
   }
 
-  const isMediaOnly = ["Stiker", "Voice Note", " Voice Note", "Pesan ini telah dihapus"].includes(cleanMsg.trim());
+  const isMediaOnly = ["Stiker", "Voice Note", " Voice Note", "Pesan ini telah dihapus", "📸 Mengirim Foto", " Mengirim Foto"].includes(cleanMsg.trim());
   const shouldShowText = cleanMsg.length > 0 && !isMediaOnly && !isDeleted;
 
   const vnBgColor = isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)';
   const vnIconColor = isMe ? 'var(--primary-blue, #1f3cff)' : '#ffffff';
   const vnWaveColor = isPlaying ? (isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)') : (isMe ? 'rgba(255,255,255,0.5)' : 'rgba(150,150,150,0.5)');
 
-  // Menyembunyikan elemen secara total jika pesan dihapus dan pesan itu dari lawan bicara
   if (isDeleted && !isMe) {
     return null; 
   }
@@ -539,7 +548,7 @@ export default function MessageBubble({
                           key={emoji} 
                           className="reaction-btn" 
                           onClick={(e) => handleReactionSelect(emoji, e)}
-                          style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', cursor: 'pointer' }}
+                          style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', cursor: 'pointer', padding: '6px' }}
                         >
                           {renderReactionIcon(emoji, 26)}
                         </div>
@@ -561,7 +570,7 @@ export default function MessageBubble({
                         marginRight: (msg.image_url || msg.sticker_url || msg.shared_post || msg.post_id) && !isStoryReply ? '4px' : '0',
                         textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', display: 'block'
                       }}>
-                      <b>{liveReply.username}</b>: {liveReply.message || t('media_label')}
+                      <b>{liveReply.username}</b>: {renderFormattedText(liveReply.message || t('media_label'))}
                     </div>
                   )}
 
@@ -577,7 +586,7 @@ export default function MessageBubble({
                               {msg.post_title && <div className="ig-card-title">{msg.post_title}</div>}
                               {(msg.post_caption || msg.message) && (
                                  <div className="ig-caption">
-                                   {msg.post_caption || (msg.message !== "📸 Mengirim Foto" && msg.message)}
+                                   {msg.post_caption ? renderFormattedText(msg.post_caption) : (!msg.message.match(/Mengirim Foto/i) && renderFormattedText(msg.message))}
                                  </div>
                               )}
                             </div>
@@ -678,7 +687,7 @@ export default function MessageBubble({
 
                       {shouldShowText && (
                         <div className="text" style={{ opacity: msg.status === 'sending' ? 0.7 : 1, whiteSpace: 'pre-wrap', padding: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post || msg.post_id) ? '0 6px' : '0', wordBreak: 'break-word', marginTop: (msg.image_url || (msg.sticker_url && !isStoryReply) || msg.shared_post || msg.post_id) ? '4px' : '0' }}>
-                          {renderTextWithLinks(cleanMsg)}
+                          {renderFormattedText(cleanMsg)}
                         </div>
                       )}
 

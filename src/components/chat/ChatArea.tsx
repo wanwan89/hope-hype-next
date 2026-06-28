@@ -415,7 +415,7 @@ export default function ChatArea() {
       id: tempId,
       room_id: roomId, 
       user_id: currentUser.id, 
-      message: image && !content ? " Mengirim Foto" : audio ? " Voice Note" : (sticker ? " Stiker" : content),
+      message: image && !content ? " Mengirim Foto" : audio ? "" : (sticker ? " Stiker" : content),
       sticker_url: sticker || null, 
       audio_url: audio || null, 
       image_url: image || null, 
@@ -529,7 +529,7 @@ export default function ChatArea() {
         const localUrl = URL.createObjectURL(blob);
         const tempId = `temp-${Date.now()}`;
         setMessages(prev => [...prev, {
-          id: tempId, room_id: roomId, user_id: currentUser.id, message: "🎤 Voice Note", audio_url: localUrl, status: 'sending', created_at: new Date().toISOString()
+          id: tempId, room_id: roomId, user_id: currentUser.id, message: "", audio_url: localUrl, status: 'sending', created_at: new Date().toISOString()
         }]);
         scrollToBottom();
 
@@ -537,7 +537,7 @@ export default function ChatArea() {
         const d = await res.json();
         if (d.secure_url) {
            const { data, error } = await supabase.from('messages').insert([{
-              room_id: roomId, user_id: currentUser.id, message: "🎤 Voice Note", audio_url: d.secure_url, status: 'sent'
+              room_id: roomId, user_id: currentUser.id, message: "", audio_url: d.secure_url, status: 'sent'
            }]).select().single(); 
            
            if(data && !error) {
