@@ -2,7 +2,6 @@
    CHAT BOX AREA - SCOPED DARK MODE (VOICE ROOM)
    ========================================= */
 
-/* Semua aturan HANYA berlaku di dalam .in-voice-room */
 .in-voice-room .chat-display {
   flex: 1;
   overflow-y: auto;
@@ -21,65 +20,31 @@
   display: none;
 }
 
-/* Animasi masuk pesan baru (Slide up) */
+/* Animasi masuk dari bawah (muncul dari input komentar) */
 .in-voice-room .chat-display > div {
-  animation: chatSlideUp 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-  transform-origin: bottom left;
+  animation: chatSlideUp 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  transform-origin: bottom center;
 }
 
 @keyframes chatSlideUp {
-  0% { opacity: 0; transform: translateY(15px) scale(0.95); }
+  0% { opacity: 0; transform: translateY(20px) scale(0.95); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* =========================================
-   PESAN SISTEM (ABU-ABU GLASSMORPHISM)
+   PESAN USER BENTUK UMUM
    ========================================= */
-.in-voice-room .chat-msg-system-static,
+.in-voice-room .chat-msg-user, 
 .in-voice-room .chat-msg-system {
-  background: rgba(255, 255, 255, 0.12); /* Efek abu-abu transparan */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-  color: #ffffff;
-  padding: 8px 14px;
-  border-radius: 16px;
-  font-size: 11px;
-  text-align: center;
-  margin: 4px auto;
-  width: fit-content;
-  font-weight: 500;
-}
-
-/* =========================================
-   PESAN GIFT
-   ========================================= */
-.in-voice-room .chat-msg-gift {
-  background: linear-gradient(135deg, var(--primary, #1f3cff), var(--color-warning, #f59e0b));
-  color: white;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 11px;
-  text-align: center;
-  margin: 0 auto;
-  width: fit-content;
-  font-weight: bold;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-/* =========================================
-   PESAN USER
-   ========================================= */
-.in-voice-room .chat-msg-user {
   display: flex;
   gap: 10px;
-  align-items: flex-start; /* Avatar & konten sejajar di atas */
+  align-items: flex-start;
   width: 100%;
 }
 
-/* Kiri: Avatar user */
-.in-voice-room .chat-user-avatar {
+/* Avatar Profil / Avatar Sistem Glass */
+.in-voice-room .chat-user-avatar,
+.in-voice-room .chat-system-avatar-glass {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -87,7 +52,6 @@
   flex-shrink: 0;
   margin-top: 2px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  cursor: pointer;
   transition: border-color 0.2s, transform 0.2s;
 }
 
@@ -105,15 +69,14 @@
   flex: 1;
 }
 
-/* Kanan-Atas: Header (Badge Level + Username + Badge Role) */
+/* Header (Badge Level + Username) */
 .in-voice-room .chat-user-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap; /* Mencegah kepanjangan jika layar kecil */
+  flex-wrap: wrap;
 }
 
-/* Memastikan elemen badge level & role tidak berantakan (vertikal center) */
 .in-voice-room .chat-badge-wrapper {
   display: flex;
   align-items: center;
@@ -121,7 +84,7 @@
 
 /* Username */
 .in-voice-room .chat-username {
-  color: rgba(255, 255, 255, 0.7); /* Warna abu-abu pudar untuk username */
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
@@ -132,7 +95,7 @@
   color: #ffffff;
 }
 
-/* Kanan-Bawah: Teks chat */
+/* Teks chat */
 .in-voice-room .chat-text {
   color: #ffffff;
   font-size: 13px;
