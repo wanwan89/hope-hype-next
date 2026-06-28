@@ -17,10 +17,8 @@
   100% { transform: translate(-50%, 0); opacity: 1; }
 }
 
-/* Semua tombol aksi transparan, tanpa shadow */
+/* Mengizinkan inline-style glassmorphism bekerja tanpa tertimpa transparan */
 .footer-action-btn {
-  background: transparent !important;
-  box-shadow: none !important;
   transition: transform 0.2s;
 }
 

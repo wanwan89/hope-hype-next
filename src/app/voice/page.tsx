@@ -391,7 +391,7 @@ function VoiceRoomContent() {
 
     /* ==========================================================
        FIXED METHOD: Mengubah Generator Slot Panggung Vanilla JS
-       Agar sinkron dengan style abu-abu glass dan clean tanpa border
+       Agar ukuran sama rata (60x60) dan hanya tampil username
        ========================================================== */
     async function fetchStage(overrideCount?: number) {
       if (!CURRENT_ROOM_ID) return;
@@ -410,27 +410,25 @@ function VoiceRoomContent() {
         const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
         const item = document.createElement('div'); 
         
-        // Atur flex center agar letak lingkaran tepat di tengah secara konsisten
-        item.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center;";
+        // Atur flex center dan gap agar foto dan nama presisi
+        item.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;";
 
         if (user) {
           item.className = 'speaker-item';
-          const userLvl = user.level || 1;
+          // DI SINI KITA PAKSA STYLE 60x60 PADA FOTO PROFIL AGAR SAMA DENGAN SLOT KOSONG DAN HANYA MENAMPILKAN USERNAME
           item.innerHTML = `
-            <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
-              <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
-              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.8); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid #0a0a0a; z-index: 10;">
-                <span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span>
+            <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')"
+                 style="width: 60px; height: 60px; position: relative; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+              <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: -2px; right: -2px; background: rgba(0,0,0,0.8); border-radius: 50%; width: 20px; height: 20px; align-items: center; justify-content: center; border: 2px solid #0a0a0a; z-index: 10;">
+                <span class="material-icons" style="color: #e74c3c; font-size: 12px;">mic_off</span>
               </div>
             </div>
-            <span class="name-label" style="color: #f8fafc; font-weight: 600; text-shadow: none;">
-              <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
-                ${user.username} ${getLevelBadgeHTML(userLvl)}
-              </div>
+            <span class="name-label" style="color: #f8fafc; font-weight: 600; text-shadow: none; font-size: 13px; text-align: center;">
+              ${user.username}
             </span>`;
         } else {
           item.className = 'speaker-item empty';
-          // DI SINI KITA PAKSA STYLE SLOT KOSONG MENJADI ABU GLASS DAN TANPA BORDER / TEXT KOSONG
           item.innerHTML = `
             <div class="avatar empty-avatar" 
                  style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); width: 60px; height: 60px;" 
