@@ -260,7 +260,6 @@ export default function HypetalkPage() {
   };
   useGlobalRefresh(refetch);
 
-
   const roomIdsStr = chats.map(c => c.id).sort().join(',');
   useEffect(() => {
     if (!currentUser || chats.length === 0) return;
@@ -290,9 +289,7 @@ export default function HypetalkPage() {
     return () => { channels.forEach(c => c && supabase.removeChannel(c)); };
   }, [roomIdsStr, currentUser]);
 
-
   // ========== LONG PRESS & SELEKSI HANDLERS ==========
-  
   const handlePressStart = (chat: any) => {
     if (chat.type === 'global') return;
     if (chat.type === 'group' && chat.isMember) return;
@@ -497,7 +494,7 @@ export default function HypetalkPage() {
     return (
       <span style={{ marginRight: '4px', display: 'flex', alignItems: 'center' }}>
         {isRead ? (
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#00a2ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M7 12l3 3 7-7" /><path d="M2 12l3 3 7-7" />
           </svg>
         ) : (
@@ -516,14 +513,14 @@ export default function HypetalkPage() {
     <ConfirmProvider>
       <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         
-        {/* HEADER DEFAULT TETAP MUNCUL AGAR SEARCH BAR ADA DI ATAS */}
+        {/* HEADER */}
         <HypetalkHeader
           onMenuClick={() => setIsSidebarOpen(true)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
 
-        {/* ACTION BAR SELEKSI DI BAWAH SEARCH BAR */}
+        {/* ACTION BAR SELEKSI */}
         <AnimatePresence>
           {isSelectionMode && (
             <motion.div 
@@ -534,9 +531,9 @@ export default function HypetalkPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '14px 16px', // Diperbesar sedikit agar lebih proporsional
-                background: '#2b93ff', // Diubah menjadi Biru Clean
-                boxShadow: '0 4px 12px rgba(43, 147, 255, 0.25)', // Tambahan bayangan lembut
+                padding: '14px 16px',
+                background: 'var(--primary)', // ✅ FIX: pakai variabel global
+                boxShadow: '0 4px 12px rgba(31, 60, 255, 0.25)', // ✅ sesuai primary #1f3cff
                 zIndex: 20,
                 overflow: 'hidden'
               }}
