@@ -2,7 +2,7 @@
    VOICE ROOM SCOPED THEME & LAYOUT
    ================================================== */
 .in-voice-room {
-  /* Override variabel global untuk komponen di dalamnya */
+  /* Override variabel global untuk dark mode khusus voice room */
   --bg-main: #0B141A;
   --text-main: #ffffff;
   --text-muted: #888888;
@@ -23,6 +23,7 @@
   min-height: calc(var(--vh, 1vh) * 100);
 }
 
+/* Reset */
 .in-voice-room * {
   -webkit-tap-highlight-color: transparent !important;
   outline: none !important;
@@ -37,7 +38,7 @@
   user-select: text;
 }
 
-/* App container fixed fullscreen */
+/* App container fullscreen */
 .in-voice-room .app-container {
   display: flex;
   flex-direction: column;
@@ -170,7 +171,7 @@
   100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); }
 }
 
-/* Spacer di bawah header */
+/* Spacer header */
 .in-voice-room .header-spacer {
   height: 70px; width: 100%; flex-shrink: 0;
 }
