@@ -1,6 +1,6 @@
 /* src/components/room/Footerroom.css */
 
-/* Animasi melayang dari bawah */
+/* Animasi melayang dari bawah dengan penegasan transparan */
 .footer-floating-wrapper {
   position: fixed; 
   bottom: 15px;
@@ -9,6 +9,7 @@
   width: 95%;
   max-width: 480px;
   z-index: 1000;
+  background-color: transparent !important; /* Mencegah bentrok dengan global css */
   animation: slideUpDock 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
@@ -27,6 +28,10 @@
 }
 
 /* Input chat transparan */
+#chat-input {
+  background-color: transparent !important;
+}
+
 #chat-input::placeholder {
   color: rgba(255, 255, 255, 0.5);
 }

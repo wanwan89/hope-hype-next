@@ -36,6 +36,7 @@ export default function Footerroom() {
         maxWidth: '480px',
         zIndex: 90000,
         pointerEvents: 'auto',
+        backgroundColor: 'transparent', /* FIX: Memastikan wrapper transparan mutlak */
       }}
     >
       <footer
@@ -44,7 +45,7 @@ export default function Footerroom() {
           gap: '10px',
           padding: '8px',
           alignItems: 'center',
-          background: 'transparent',
+          backgroundColor: 'transparent', /* FIX: Menimpa background hitam bawaan jika ada */
           border: 'none',
           boxShadow: 'none',
         }}
@@ -53,7 +54,7 @@ export default function Footerroom() {
         <div
           style={{
             flex: 1,
-            background: 'rgba(255, 255, 255, 0.12)',
+            background: 'rgba(255, 255, 255, 0.12)', /* Efek kaca transparan */
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             borderRadius: '24px',
@@ -77,7 +78,7 @@ export default function Footerroom() {
             }}
             style={{
               width: '100%',
-              background: 'transparent',
+              backgroundColor: 'transparent', /* FIX: Memastikan input 100% transparan */
               border: 'none',
               color: '#fff',
               padding: '12px 0',
@@ -121,7 +122,7 @@ export default function Footerroom() {
           </svg>
         </motion.button>
 
-        {/* TOMBOL TANGAN - Bulat Glass */}
+        {/* TOMBOL MENU USER - Bulat Glass */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
@@ -147,17 +148,15 @@ export default function Footerroom() {
             flexShrink: 0,
           }}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 17 16"
-            fill="white"
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24"
           >
-            <path
-              fillRule="evenodd"
-              d="M14.5 6.792c-.39-.193-.847-.089-1.023.231c0 0-1.096 2.399-1.734 2.297c-.344-.056-.619-.38-.742-1.005V1.771c0-.426-.439-.771-.98-.771s-1.02.346-1.02.771v5.167h-1V.771c0-.426-.439-.771-.98-.771s-1.02.346-1.02.771v6.167h-1V2.771c0-.426-.44-.771-.981-.771s-1.019.346-1.019.771v8.415c0 2.584 1.729 4.721 5.678 4.721c4.883 0 6.205-8.188 6.205-8.188c.174-.32.003-.736-.384-.927"
-              clipRule="evenodd"
+            <path 
+              fill="white" 
+              d="M13.07 10.41a5 5 0 0 0 0-5.82A3.4 3.4 0 0 1 15 4a3.5 3.5 0 0 1 0 7a3.4 3.4 0 0 1-1.93-.59M5.5 7.5A3.5 3.5 0 1 1 9 11a3.5 3.5 0 0 1-3.5-3.5m2 0A1.5 1.5 0 1 0 9 6a1.5 1.5 0 0 0-1.5 1.5M16 17v2H2v-2s0-4 7-4s7 4 7 4m-2 0c-.14-.78-1.33-2-5-2s-4.93 1.31-5 2m11.95-4A5.32 5.32 0 0 1 18 17v2h4v-2s0-3.63-6.06-4Z"
             />
           </svg>
         </motion.button>

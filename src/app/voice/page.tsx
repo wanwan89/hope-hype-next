@@ -148,7 +148,7 @@ function VoiceRoomContent() {
       } catch (err) { console.error(err); }
     };
 
-    function playGiftAnimation(giftId: number | string, forcedCombo: number | null = null) {
+    window.playGiftAnimation = (giftId: number | string, forcedCombo: number | null = null) => {
       const id = typeof giftId === 'string' ? parseInt(giftId) : (giftId || 1);
       const gifPath = `asets/gif/giftvid${id}.gif`;
       if (forcedCombo !== null) { giftComboCount.current = forcedCombo; lastGiftId.current = id; }
@@ -172,7 +172,7 @@ function VoiceRoomContent() {
         if(overlay) overlay.style.opacity = '0';
         setTimeout(() => { if(overlay) overlay.style.display = 'none'; giftComboCount.current = 0; lastGiftId.current = null; }, 300);
       }, 3000);
-    }
+    };
 
     async function getRoomLeaderboard() {
       try {
@@ -242,7 +242,7 @@ function VoiceRoomContent() {
             const match = newMsg.text.match(/^(.+) mengirim .+ x(\d+) ke/);
             if (match) { isDariSaya = (match[1] === myUsername.current); comboValue = parseInt(match[2]); }
             else { isDariSaya = newMsg.text.startsWith(`${myUsername.current} `); }
-            if (!isDariSaya) playGiftAnimation(parseInt(newMsg.role), comboValue);
+            if (!isDariSaya && window.playGiftAnimation) window.playGiftAnimation(parseInt(newMsg.role), comboValue);
             fetchTopGifters();
           }
         })
@@ -291,7 +291,7 @@ function VoiceRoomContent() {
       });
     }
 
-    async function sendGift(giftName: string, harga: number | string, giftId: number | string, jumlah = 1) {
+    window.sendGift = async (giftName: string, harga: number | string, giftId: number | string, jumlah = 1) => {
       if (!selectedTargetId.current) return showNotif(t('select_target'), "warning");
       if (selectedTargetId.current === MY_USER_ID.current) return showNotif(t('gift_self_alert'), "warning");
 
@@ -303,7 +303,7 @@ function VoiceRoomContent() {
       currentCoins -= totalHarga;
       if (coinDisplay) coinDisplay.innerText = currentCoins.toLocaleString();
 
-      playGiftAnimation(giftId);
+      if (window.playGiftAnimation) window.playGiftAnimation(giftId);
 
       const comboKey = `${giftName}_${selectedTargetId.current}`;
       if (!activeCombos.current[comboKey]) activeCombos.current[comboKey] = { targetId: selectedTargetId.current, targetName: selectedTargetName.current, count: 0, pendingCoins: 0, msgId: null, syncTimer: null };
@@ -333,7 +333,7 @@ function VoiceRoomContent() {
           }
         } catch (e) { showNotif(t('gift_fail'), "error"); }
       }, 600);
-    }
+    };
 
     async function initApp() {
       const { data: { session } } = await sb.auth.getSession();
@@ -389,10 +389,6 @@ function VoiceRoomContent() {
       listenRealtime(); fetchTopGifters();
     }
 
-    /* ==========================================================
-       FIXED METHOD: Mengubah Generator Slot Panggung Vanilla JS
-       Agar ukuran sama rata (60x60) dan hanya tampil username
-       ========================================================== */
     async function fetchStage(overrideCount?: number) {
       if (!CURRENT_ROOM_ID) return;
       const targetCount = overrideCount || roomSlotCount;
@@ -410,12 +406,10 @@ function VoiceRoomContent() {
         const user = slot.profiles; const isMe = user?.id === MY_USER_ID.current;
         const item = document.createElement('div'); 
         
-        // Atur flex center dan gap agar foto dan nama presisi
         item.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;";
 
         if (user) {
           item.className = 'speaker-item';
-          // DI SINI KITA PAKSA STYLE 60x60 PADA FOTO PROFIL AGAR SAMA DENGAN SLOT KOSONG DAN HANYA MENAMPILKAN USERNAME
           item.innerHTML = `
             <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')"
                  style="width: 60px; height: 60px; position: relative; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
@@ -546,6 +540,24 @@ function VoiceRoomContent() {
       fetchStage();
     };
 
+    window.turunMic = window.prosesTurunMic;
+
+    window.kickUser = async (targetId: string, targetName: string) => {
+      if (!IS_OWNER.current) return showNotif("Hanya owner yang bisa kick", "error");
+      const confirmKick = confirm(`Kick ${targetName} dari panggung?`);
+      if (confirmKick) {
+        try {
+          await sb.from('room_slots').update({ profile_id: null }).eq('profile_id', targetId).eq('room_id', CURRENT_ROOM_ID);
+          await sb.from('room_messages').insert([{ room_id: CURRENT_ROOM_ID, username: "SISTEM", text: `${targetName} telah dikeluarkan dari panggung.`, role: "admin" }]);
+          showNotif(`${targetName} berhasil dikeluarkan`, "success");
+          fetchStage();
+        } catch (err) {
+          console.error(err);
+          showNotif("Gagal mengeluarkan user", "error");
+        }
+      }
+    };
+
     window.toggleRoomGiftDrawer = () => {
       window.dispatchEvent(new CustomEvent('openRoomGift'));
     };
@@ -611,6 +623,33 @@ function VoiceRoomContent() {
       document.body.style.backgroundColor = '';
       document.body.classList.remove('radar-rgb');
       document.documentElement.style.removeProperty('--radar-color');
+
+      // Cleanup window bindings untuk mencegah memory leak saat unmount
+      delete window.__VOICE_ROOM_INIT__;
+      delete window.naikKeStage;
+      delete window.turunMic;
+      delete window.prosesTurunMic;
+      delete window.toggleActionMenu;
+      delete window.toggleMicSidebar;
+      delete window.toggleRoomGiftDrawer;
+      delete window.toggleKickBtn;
+      delete window.sendGift;
+      delete window.kickUser;
+      delete window.kirimKomentar;
+      delete window.mintaNaik;
+      delete window.keluarRoom;
+      delete window.openRoomSetting;
+      delete window.closeRoomSetting;
+      delete window.saveRoomSetting;
+      delete window.openConfirmModal;
+      delete window.closeConfirmModal;
+      delete window.openTopGiftersModal;
+      delete window.closeTopGiftersModal;
+      delete window.playGiftAnimation;
+      delete window.accNaikPanggung;
+      delete window.updateRadarColor;
+      delete window.handleGlobalClick;
+      delete window.openUserProfile;
     };
   }, [t, searchParams, router]);
 
@@ -665,7 +704,7 @@ function VoiceRoomContent() {
         selectedUser={selectedUser}
         myUserId={MY_USER_ID.current}
         isOwner={IS_OWNER.current}
-        onTurunSlot={() => window.prosesTurunMic?.()}
+        onTurunSlot={() => window.turunMic?.()}
         onKickUser={(id, name) => window.kickUser?.(id, name)}
       />
 
