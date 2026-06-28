@@ -208,6 +208,12 @@ function VoiceRoomContent() {
 
     function listenRealtime() {
       if (!CURRENT_ROOM_ID || !MY_USER_ID.current) return;
+
+      // FIX: Hapus channel jika sebelumnya sudah exist untuk menghindari error double subscription
+      if (channelRef.current) {
+        sb.removeChannel(channelRef.current);
+      }
+
       channelRef.current = sb.channel(`room_active_${CURRENT_ROOM_ID}`, { config: { presence: { key: MY_USER_ID.current } } });
 
       channelRef.current
@@ -623,6 +629,11 @@ function VoiceRoomContent() {
       document.body.style.backgroundColor = '';
       document.body.classList.remove('radar-rgb');
       document.documentElement.style.removeProperty('--radar-color');
+
+      // FIX: Pastikan channel dibersihkan / unsubscribe saat komponen di-unmount
+      if (channelRef.current) {
+        sb.removeChannel(channelRef.current);
+      }
 
       // Cleanup window bindings untuk mencegah memory leak saat unmount
       delete window.__VOICE_ROOM_INIT__;
