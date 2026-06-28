@@ -13,8 +13,8 @@ type Props = {
   onAvatarClick: () => void;
   onChat: () => void;
   onToggleFollow: () => void;
-  onEdit: () => void;
-  onShare: () => void;
+  onEdit?: () => void; // Menjadikan optional
+  onShare?: () => void; // Menjadikan optional
   onOpenActionSheet: () => void;
   onOpenFollowers: () => void;
   onOpenFollowing: () => void;
@@ -40,26 +40,22 @@ const ProfileInfo: React.FC<Props> = ({
         <div className="stat-box" onClick={onOpenFollowing}><span className="stat-num">{stats.following}</span><span className="stat-label">{t('following', 'Mengikuti')}</span></div>
         <div className="stat-box"><span className="stat-num">{stats.likes}</span><span className="stat-label">{t('likes', 'Suka')}</span></div>
       </div>
-      <div className="profile-actions">
-        {isMe ? (
-          <>
-            <button className="btn-action btn-secondary" onClick={onEdit}>{t('edit_profile', 'Edit Profil')}</button>
-            <button className="btn-action btn-secondary" onClick={onShare}>{t('share', 'Bagikan')}</button>
-          </>
-        ) : (
-          <>
-            <button className="btn-action btn-secondary" onClick={onChat}>
-              <span className="material-icons" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '4px' }}>chat</span> Chat
-            </button>
-            <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={onToggleFollow}>
-              {isFollowing ? (isMutual ? 'Berteman' : 'Mengikuti') : t('follow', 'Ikuti')}
-            </button>
-            <button className="btn-action btn-secondary" onClick={onOpenActionSheet} style={{ padding: '8px 12px' }}>
-              <span className="material-icons" style={{ fontSize: '18px' }}>more_horiz</span>
-            </button>
-          </>
-        )}
-      </div>
+      
+      {/* Jika isMe, bagian profile-actions tidak menampilkan tombol apa pun atau bisa disembunyikan */}
+      {!isMe && (
+        <div className="profile-actions">
+          <button className="btn-action btn-secondary" onClick={onChat}>
+            <span className="material-icons" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '4px' }}>chat</span> Chat
+          </button>
+          <button className={`btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={onToggleFollow}>
+            {isFollowing ? (isMutual ? 'Berteman' : 'Mengikuti') : t('follow', 'Ikuti')}
+          </button>
+          <button className="btn-action btn-secondary" onClick={onOpenActionSheet} style={{ padding: '8px 12px' }}>
+            <span className="material-icons" style={{ fontSize: '18px' }}>more_horiz</span>
+          </button>
+        </div>
+      )}
+
       <p className="profile-bio">{profile.bio || t('no_bio', 'Belum ada bio')}</p>
       {profile.website && (
         <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '10px', color: '#8e8e8e', fontWeight: '500', marginTop: '4px', textDecoration: 'none' }}>
