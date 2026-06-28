@@ -24,7 +24,7 @@ export default function UserProfileSheetroom({
 
   if (!selectedUser) return null;
 
-  // 🔥 Hitung level pakai fungsi sakti yang sama dengan sistem Gift
+  // 🔥 Hitung level
   const currentLevel = calculateLevel(selectedUser.total_gift_sent || 0);
 
   return (
@@ -32,13 +32,18 @@ export default function UserProfileSheetroom({
       <div
         className="user-profile-sheet"
         onClick={e => e.stopPropagation()}
-        style={{ overflow: 'visible' }} // biar SVG bisa keluar dari box tanpa kepotong
+        style={{ overflow: 'visible' }}
       >
         <div className="sheet-handle"></div>
         <div className="profile-sheet-content">
-          {/* Bagian atas: foto + username */}
+          
+          {/* AVATAR + USERNAME (TANPA BADGE LEVEL) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
-            <div style={{ position: 'relative', display: 'inline-block' }}>
+            {/* Foto Profil – bisa diklik untuk buka profil lengkap */}
+            <div 
+              style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}
+              onClick={() => router.push(`/data?id=${selectedUser.id}`)}
+            >
               <img
                 src={selectedUser.avatar_url || '/asets/png/profile.webp'}
                 alt="Avatar"
@@ -46,21 +51,11 @@ export default function UserProfileSheetroom({
                   width: '80px',
                   height: '80px',
                   borderRadius: '50%',
-                  border: 'none', // tanpa border
+                  border: 'none',
                   objectFit: 'cover',
                 }}
               />
-              {/* 🔥 Level badge tetap nempel di avatar */}
-              <span
-                style={{
-                  position: 'absolute',
-                  bottom: '-8px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  zIndex: 20,
-                }}
-                dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }}
-              />
+              {/* TIDAK ADA BADGE LEVEL DI SINI */}
             </div>
             <div>
               <h3 className="profile-sheet-name" style={{ margin: 0 }}>
@@ -70,15 +65,13 @@ export default function UserProfileSheetroom({
             </div>
           </div>
 
-          {/* Pengikut & Mengikuti – di bawah foto */}
+          {/* FOLLOWERS & FOLLOWING – TANPA GARIS */}
           <div
             style={{
               display: 'flex',
               justifyContent: 'space-around',
               margin: '0 0 15px',
               padding: '10px 0',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
             }}
           >
             <div style={{ textAlign: 'center' }}>
@@ -91,7 +84,7 @@ export default function UserProfileSheetroom({
             </div>
           </div>
 
-          {/* Bio */}
+          {/* BIO */}
           <p
             style={{
               color: '#aaa',
@@ -105,48 +98,67 @@ export default function UserProfileSheetroom({
             {selectedUser.bio || 'Belum ada bio'}
           </p>
 
-          {/* Kotak putih dengan SVG setengah di dalam, setengah di luar */}
+          {/* KOTAK KECIL ABU-ABU GLASS DENGAN SVG HATI & ANGKA LEVEL */}
           <div
             style={{
               position: 'relative',
-              backgroundColor: '#ffffff',
-              borderRadius: '16px',
-              margin: '40px 0 20px', // atas 40px biar SVG yang keluar gak nabrak bio
-              padding: '20px 20px 20px',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '12px',
+              margin: '25px 0 20px',
+              padding: '12px 20px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              minHeight: '50px',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+              gap: '10px',
               overflow: 'visible',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
             }}
           >
-            {/* SVG hati biru – setengah di atas kotak */}
+            {/* SVG hati – posisi setengah di luar kotak */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="72"
-              height="72"
+              width="36"
+              height="36"
               viewBox="0 0 48 48"
               style={{
                 position: 'absolute',
-                top: '-36px', // setengah tinggi SVG
+                top: '-18px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
               }}
             >
               <path
-                fill="#2F88FF"
+                fill={
+                  currentLevel >= 40 ? '#ff0844' :
+                  currentLevel >= 30 ? '#00f2fe' :
+                  currentLevel >= 20 ? '#f59e0b' :
+                  currentLevel >= 10 ? '#e2e8f0' :
+                  '#93c5fd'
+                }
                 stroke="#000"
                 strokeLinejoin="round"
                 strokeWidth="4"
                 d="M24 44C32.2347 44 38.9998 37.4742 38.9998 29.0981C38.9998 27.0418 38.8953 24.8375 37.7555 21.4116C36.6157 17.9858 36.3861 17.5436 35.1809 15.4279C34.666 19.7454 31.911 21.5448 31.2111 22.0826C31.2111 21.5231 29.5445 15.3359 27.0176 11.6339C24.537 8 21.1634 5.61592 19.1853 4C19.1853 7.06977 18.3219 11.6339 17.0854 13.9594C15.8489 16.2849 15.6167 16.3696 14.0722 18.1002C12.5278 19.8308 11.8189 20.3653 10.5274 22.4651C9.23596 24.565 9 27.3618 9 29.4181C9 37.7942 15.7653 44 24 44Z"
               />
             </svg>
-            {/* Di dalam kotak bisa dikosongkan atau diberi teks sesuai kebutuhan */}
+            {/* Angka level */}
+            <span style={{
+              color: '#fff',
+              fontSize: '20px',
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+              textShadow: '0 1px 4px rgba(0,0,0,0.3)',
+              marginTop: '6px', // beri jarak dari SVG yang setengah keluar
+            }}>
+              Level {currentLevel}
+            </span>
           </div>
 
-          {/* Tombol aksi */}
+          {/* TOMBOL AKSI – HAPUS "LIHAT PROFIL LENGKAP" */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {selectedUser.id === myUserId && (
               <button
@@ -176,12 +188,7 @@ export default function UserProfileSheetroom({
                 Turunkan dari Slot
               </button>
             )}
-            <button
-              className="btn-action-sheet btn-gradient"
-              onClick={() => router.push(`/data?id=${selectedUser.id}`)}
-            >
-              Lihat Profil Lengkap
-            </button>
+            {/* Tombol "Lihat Profil Lengkap" dihapus, karena user bisa klik foto profil */}
           </div>
         </div>
       </div>
