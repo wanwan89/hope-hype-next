@@ -16,7 +16,7 @@ import GiftDrawer from '@/components/room/GiftDrawerroom';
 import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
 import ActionSheetroom from '@/components/room/ActionSheetroom';
 import UserProfileSheetroom from '@/components/room/UserProfileSheetroom';
-import HeaderRoom from '@/components/room/Headerroom'; // ✅ IMPORT KOMPONEN HEADER BARU
+import HeaderRoom from '@/components/room/Headerroom';
 
 import './Voice.css';
 
@@ -198,7 +198,7 @@ function VoiceRoomContent() {
       container.style.display = 'flex';
       container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:4px;">🏆</span>`;
       topData.slice(0, 3).forEach((u, i) => {
-        container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid #0B141A; margin-left:-8px; z-index:${3-i}; background:#222; object-fit:cover;">`;
+        container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid var(--bg-main); margin-left:-8px; z-index:${3-i}; background:var(--bg-secondary); object-fit:cover;">`;
       });
       container.onclick = () => window.openTopGiftersModal?.();
     }
@@ -407,17 +407,17 @@ function VoiceRoomContent() {
           item.innerHTML = `
             <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
               <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
-              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.7); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid white; z-index: 10;">
+              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.7); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid var(--bg-main); z-index: 10;">
                 <span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span>
               </div>
             </div>
-            <span class="name-label" style="color: #ffffff; font-weight: 600; text-shadow: none;">
+            <span class="name-label" style="color: var(--text-main); font-weight: 600; text-shadow: none;">
               <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
                 ${user.username} ${getLevelBadgeHTML(userLvl)}
               </div>
             </span>`;
         } else {
-          item.innerHTML = `<div class="avatar" style="border: 1px dashed rgba(255,255,255,0.2); opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:#aaa; font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:#fff;">${t('empty_slot')}</span>`;
+          item.innerHTML = `<div class="avatar" style="border: 1px dashed var(--text-muted); opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:var(--text-muted); font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:var(--text-muted);">${t('empty_slot')}</span>`;
         }
         grid.appendChild(item);
       });
@@ -654,9 +654,9 @@ function VoiceRoomContent() {
 }
 
 export default function Page() {
-  // ✅ FIX FALLBACK SUSPENSE WARNA HITAM PEKAT (#000000)
+  // ✅ FIX FALLBACK SUSPENSE: Menggunakan var(--bg-main) & var(--text-main) agar mengikuti Light/Dark Mode
   return (
-    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000', color: '#fff', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
+    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
       <VoiceRoomContent />
     </Suspense>
   );

@@ -1,18 +1,9 @@
 /* ==================================================
-   VOICE ROOM SCOPED THEME & LAYOUT
+   VOICE ROOM SCOPED THEME & LAYOUT (SYNCED GLOBALS)
    ================================================== */
 .in-voice-room {
-  /* Override variabel global untuk dark mode khusus voice room */
-  --bg-main: #0B141A;
-  --text-main: #ffffff;
-  --text-muted: #888888;
-  --bg-card: #1A2228;
-  --border-card: rgba(255, 255, 255, 0.05);
-  --primary: #1f3cff;
-  --primary-soft: rgba(31, 60, 255, 0.2);
-  --color-warning: #f59e0b;
-  --bg-secondary: #1A2228;
-  --radar-color: #1f3cff;
+  /* HAPUS SEMUA OVERRIDE VARIABEL LOKAL DI SINI */
+  /* Agar mengikuti Light/Dark Mode sepenuhnya dari globals.css */
 
   background-color: var(--bg-main) !important;
   color: var(--text-main) !important;
@@ -21,6 +12,7 @@
   width: 100%;
   min-height: 100vh;
   min-height: calc(var(--vh, 1vh) * 100);
+  position: relative;
 }
 
 /* Reset */
@@ -48,7 +40,7 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 500px;
-  background-color: var(--bg-main) !important;
+  background: transparent !important; /* HARUS TRANSPARAN agar warna .in-voice-room muncul */
   height: 100vh;
   height: calc(var(--vh, 1vh) * 100);
   padding-top: env(safe-area-inset-top);
@@ -68,7 +60,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: rgba(11, 20, 26, 0.85);
+  background: rgba(0, 0, 0, 0.4); /* Dibuat sedikit netral untuk mode terang/gelap */
   backdrop-filter: blur(12px);
   position: fixed;
   top: 0;
@@ -95,7 +87,7 @@
   color: #1da1f2; font-weight: 600;
 }
 .in-voice-room .vr-btn-follow {
-  background: linear-gradient(135deg, #1f3cff, #bc13fe);
+  background: linear-gradient(135deg, var(--primary), #bc13fe);
   border: none; color: #fff; padding: 6px 14px; border-radius: 20px;
   font-size: 11px; font-weight: 800; cursor: pointer;
 }
@@ -151,22 +143,22 @@
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .in-voice-room .btn-action-sheet.danger {
-  background: rgba(255, 71, 87, 0.1); color: #ff4757;
+  background: rgba(255, 71, 87, 0.1); color: var(--danger);
   border: 1px solid rgba(255,71,87,0.2);
 }
 .in-voice-room .btn-action-sheet.btn-gradient {
-  background: linear-gradient(135deg, #1f3cff, #bc13fe); color: #fff;
+  background: linear-gradient(135deg, var(--primary), #bc13fe); color: #fff;
   box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3);
 }
 .in-voice-room .btn-action-sheet:active { transform: scale(0.96); opacity: 0.9; }
 
 /* Radar speaking */
 .in-voice-room .avatar.speaking {
-  box-shadow: 0 0 0 3px var(--radar-color);
+  box-shadow: 0 0 0 3px var(--radar-color, #1f3cff);
   animation: pulseRadar 1.5s infinite;
 }
 @keyframes pulseRadar {
-  0% { box-shadow: 0 0 0 0px var(--radar-color); }
+  0% { box-shadow: 0 0 0 0px var(--radar-color, #1f3cff); }
   70% { box-shadow: 0 0 0 10px rgba(31, 60, 255, 0); }
   100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); }
 }
