@@ -198,7 +198,8 @@ function VoiceRoomContent() {
       container.style.display = 'flex';
       container.innerHTML = `<span style="font-size: 11px; color: #FFD700; font-weight:800; margin-right:4px;">🏆</span>`;
       topData.slice(0, 3).forEach((u, i) => {
-        container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid var(--bg-main); margin-left:-8px; z-index:${3-i}; background:var(--bg-secondary); object-fit:cover;">`;
+        // PERUBAHAN: Gunakan warna hex #121212 dan #1a1a1a permanen untuk border & background
+        container.innerHTML += `<img src="${u.avatar_url || '/asets/png/profile.webp'}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid #121212; margin-left:-8px; z-index:${3-i}; background:#1a1a1a; object-fit:cover;">`;
       });
       container.onclick = () => window.openTopGiftersModal?.();
     }
@@ -404,20 +405,22 @@ function VoiceRoomContent() {
         const item = document.createElement('div'); item.className = 'speaker-item';
         if (user) {
           const userLvl = user.level || 1;
+          // PERUBAHAN: Ubah warna mute-badge border & name-label agar permanen terang/gelap
           item.innerHTML = `
             <div class="avatar ${isMe ? 'active' : ''}" data-user-id="${user.id}" onclick="window.openUserProfile('${user.id}')">
               <img src="${user.avatar_url || '/asets/png/profile.webp'}" style="object-fit:cover;">
-              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.7); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid var(--bg-main); z-index: 10;">
+              <div class="mute-badge" style="display: ${user.mic_off ? 'flex' : 'none'}; position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.7); border-radius: 50%; width: 22px; height: 22px; align-items: center; justify-content: center; border: 2px solid #121212; z-index: 10;">
                 <span class="material-icons" style="color: #e74c3c; font-size: 14px;">mic_off</span>
               </div>
             </div>
-            <span class="name-label" style="color: var(--text-main); font-weight: 600; text-shadow: none;">
+            <span class="name-label" style="color: #ffffff; font-weight: 600; text-shadow: none;">
               <div style="display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; text-align:center;">
                 ${user.username} ${getLevelBadgeHTML(userLvl)}
               </div>
             </span>`;
         } else {
-          item.innerHTML = `<div class="avatar" style="border: 1px dashed var(--text-muted); opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:var(--text-muted); font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:var(--text-muted);">${t('empty_slot')}</span>`;
+          // PERUBAHAN: Warna garis putus-putus slot kosong jadi statis #888888
+          item.innerHTML = `<div class="avatar" style="border: 1px dashed rgba(255,255,255,0.5); opacity: 0.5;" onclick="window.naikKeStage?.(${slot.slot_index})"><span class="material-icons" style="color:rgba(255,255,255,0.5); font-size:24px;">add</span></div><span class="name-label" style="opacity:0.5; color:rgba(255,255,255,0.5);">${t('empty_slot')}</span>`;
         }
         grid.appendChild(item);
       });
@@ -654,9 +657,9 @@ function VoiceRoomContent() {
 }
 
 export default function Page() {
-  // ✅ FIX FALLBACK SUSPENSE: Menggunakan var(--bg-main) & var(--text-main) agar mengikuti Light/Dark Mode
+  // PERUBAHAN: Memaksa fallback background selalu mode gelap
   return (
-    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
+    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#121212', color: '#ffffff', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
       <VoiceRoomContent />
     </Suspense>
   );

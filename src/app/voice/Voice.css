@@ -1,12 +1,10 @@
 /* ==================================================
-   VOICE ROOM SCOPED THEME & LAYOUT (SYNCED GLOBALS)
+   VOICE ROOM SCOPED THEME & LAYOUT (FIXED DARK MODE)
    ================================================== */
 .in-voice-room {
-  /* HAPUS SEMUA OVERRIDE VARIABEL LOKAL DI SINI */
-  /* Agar mengikuti Light/Dark Mode sepenuhnya dari globals.css */
-
-  background-color: var(--bg-main) !important;
-  color: var(--text-main) !important;
+  /* PERUBAHAN: Menghapus var(--bg-main) dan diganti #121212 & #ffffff secara permanen */
+  background-color: #121212 !important;
+  color: #ffffff !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   width: 100%;
@@ -60,7 +58,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: rgba(0, 0, 0, 0.4); /* Dibuat sedikit netral untuk mode terang/gelap */
+  background: rgba(0, 0, 0, 0.4); 
   backdrop-filter: blur(12px);
   position: fixed;
   top: 0;
@@ -69,7 +67,7 @@
   width: 100%;
   max-width: 500px;
   z-index: 1000;
-  border-bottom: 1px solid var(--border-card);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* PERUBAHAN: border statis */
   box-sizing: border-box;
 }
 
@@ -79,7 +77,7 @@
   border: 2px solid var(--primary); cursor: pointer;
 }
 .in-voice-room .vr-room-name {
-  font-size: 15px; font-weight: 800; color: var(--text-main);
+  font-size: 15px; font-weight: 800; color: #ffffff; /* PERUBAHAN: Statis putih */
   margin: 0 0 2px 0; text-transform: uppercase;
 }
 .in-voice-room .vr-room-stats {
@@ -110,18 +108,18 @@
 .in-voice-room .user-profile-sheet-overlay.active { opacity: 1; visibility: visible; }
 .in-voice-room .user-profile-sheet {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: var(--bg-card) !important;
+  background: #1a1a1a !important; /* PERUBAHAN: Diganti jadi mode gelap statis */
   border-top-left-radius: 24px; border-top-right-radius: 24px;
   padding: 20px 20px 40px;
   transform: translateY(100%);
   transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   text-align: center;
-  border-top: 1px solid var(--border-card);
+  border-top: 1px solid rgba(255, 255, 255, 0.1); /* PERUBAHAN: Mengganti var(--border-card) */
   box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
 }
 .in-voice-room .user-profile-sheet-overlay.active .user-profile-sheet { transform: translateY(0); }
 .in-voice-room .sheet-handle {
-  width: 40px; height: 5px; background: var(--text-muted); border-radius: 10px;
+  width: 40px; height: 5px; background: #888888; border-radius: 10px; /* PERUBAHAN statis */
   margin: 0 auto 20px; opacity: 0.5;
 }
 .in-voice-room .profile-sheet-avatar {
@@ -129,11 +127,11 @@
   border: 3px solid transparent;
   background-clip: padding-box, border-box;
   background-origin: padding-box, border-box;
-  background-image: linear-gradient(var(--bg-card), var(--bg-card)), linear-gradient(135deg, var(--primary), #bc13fe);
+  background-image: linear-gradient(#1a1a1a, #1a1a1a), linear-gradient(135deg, var(--primary), #bc13fe); /* PERUBAHAN bg warna gelap */
   object-fit: cover;
 }
 .in-voice-room .profile-sheet-name {
-  font-size: 18px; font-weight: 800; color: var(--text-main);
+  font-size: 18px; font-weight: 800; color: #ffffff; /* PERUBAHAN warna putih */
   margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px;
 }
 .in-voice-room .btn-action-sheet {
