@@ -43,7 +43,7 @@ export default function Footerroom() {
       <footer
         style={{
           display: 'flex',
-          gap: '8px',
+          gap: '10px', /* Jarak pemisah antar elemen */
           padding: '8px',
           alignItems: 'center',
           background: 'transparent',
@@ -51,16 +51,19 @@ export default function Footerroom() {
           boxShadow: 'none',
         }}
       >
-        {/* INPUT CHAT */}
+        {/* INPUT CHAT - Bentuk Kapsul Glass */}
         <div
           style={{
             flex: 1,
-            background: 'transparent',
-            borderRadius: '24px',
+            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan */
+            backdropFilter: 'blur(12px)', /* Efek glass blur */
+            WebkitBackdropFilter: 'blur(12px)',
+            borderRadius: '24px', /* Bentuk Kapsul */
             display: 'flex',
             alignItems: 'center',
-            padding: '0 14px',
-            border: '1px solid rgba(255,255,255,0.2)',
+            padding: '0 16px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
           }}
         >
           <input
@@ -81,12 +84,12 @@ export default function Footerroom() {
               color: '#fff',
               padding: '12px 0',
               outline: 'none',
-              fontSize: '13px',
+              fontSize: '13.5px',
             }}
           />
         </div>
 
-        {/* TOMBOL GIFT */}
+        {/* TOMBOL GIFT - Bulat Glass */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
@@ -94,11 +97,14 @@ export default function Footerroom() {
           onClick={handleGiftClick}
           className="footer-action-btn"
           style={{
-            width: '40px',
-            height: '40px',
+            width: '42px',
+            height: '42px',
             borderRadius: '50%',
-            background: 'transparent',
-            border: 'none',
+            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan */
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -117,7 +123,7 @@ export default function Footerroom() {
           </svg>
         </motion.button>
 
-        {/* TOMBOL TANGAN */}
+        {/* TOMBOL TANGAN - Bulat Glass */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
@@ -128,11 +134,14 @@ export default function Footerroom() {
           }}
           className="footer-action-btn"
           style={{
-            width: '40px',
-            height: '40px',
+            width: '42px',
+            height: '42px',
             borderRadius: '50%',
-            background: 'transparent',
-            border: 'none',
+            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan */
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -155,7 +164,7 @@ export default function Footerroom() {
           </svg>
         </motion.button>
 
-        {/* TOMBOL SHARE */}
+        {/* TOMBOL SHARE - Bulat Glass */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.05 }}
@@ -177,11 +186,14 @@ export default function Footerroom() {
           }}
           className="footer-action-btn"
           style={{
-            width: '40px',
-            height: '40px',
+            width: '42px',
+            height: '42px',
             borderRadius: '50%',
-            background: 'transparent',
-            border: 'none',
+            background: 'rgba(255, 255, 255, 0.12)', /* Background abu-abu transparan */
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
