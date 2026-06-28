@@ -4,8 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
-import { useTranslation } from 'react-i18next';
 import RefreshableWrapper from '@/components/RefreshableWrapper';
+
+// Import komponen Lottie dan animasi JSON
+import Lottie from 'lottie-react';
+import emptyAnimation from '@/assets/lottie/empty.json';
 
 // Import komponen modular yang sudah dipisah
 import CreateRoomModal from '@/components/VoiceLobby/CreateRoomModal';
@@ -13,16 +16,16 @@ import CoinSheet from '@/components/VoiceLobby/CoinSheet';
 
 import './VoiceLobby.css';
 
+// Kategori diubah ke bahasa baku untuk tampilan, ID tetap sama untuk query DB
 const KATEGORI_MAP = [
-  { id: 'Populer', label: 'category_popular' },
-  { id: 'Nyanyi', label: 'category_singing' },
-  { id: 'Ngobrol', label: 'category_chatting' },
-  { id: 'Mabar', label: 'category_gaming' }
+  { id: 'Populer', label: 'Populer' },
+  { id: 'Nyanyi', label: 'Bernyanyi' },
+  { id: 'Ngobrol', label: 'Mengobrol' },
+  { id: 'Mabar', label: 'Bermain Gim' }
 ];
 
 export default function VoiceLobbyPage() {
   const router = useRouter();
-  const { t } = useTranslation();
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeCategory, setActiveCategory] = useState('Populer');
@@ -101,7 +104,7 @@ export default function VoiceLobbyPage() {
   };
 
   const handleStartSinging = async () => {
-    if (!currentUser) return showNotif(t('login_warning'), "warning");
+    if (!currentUser) return showNotif('Harap masuk terlebih dahulu.', "warning");
     try {
       const { data: existingRoom } = await supabase.from('rooms').select('id, name').eq('owner_id', currentUser.id).eq('is_active', true).maybeSingle();
       if (existingRoom) {
@@ -115,16 +118,19 @@ export default function VoiceLobbyPage() {
   return (
     <div className="voice-lobby-container" style={{ position: 'relative' }}>
       
-      {/* Header Baru: Hanya berisi tombol top up koin */}
+      {/* Header Baru: Teks Hyperoom di kiri, koin di kanan */}
       <header 
         className="lobby-header" 
         style={{ 
-          display: 'flex', justifyContent: 'flex-start', alignItems: 'center',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           position: 'sticky', top: 0, zIndex: 100, background: 'var(--bg-main)',
           padding: '16px 20px', borderBottom: '1px solid var(--border-card)'
         }}
       >
-        <div className="coin-badge" style={{ cursor: 'pointer' }} onClick={() => setIsCoinSheetOpen(true)}>
+        <div style={{ fontWeight: 'bold', fontSize: '20px', letterSpacing: '0.5px' }}>
+          Hyperoom
+        </div>
+        <div className="coin-badge" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setIsCoinSheetOpen(true)}>
           {currentUser ? (currentUser.coins || 0).toLocaleString() : 0}
           <span className="material-icons" style={{fontSize: '14px', marginLeft: '4px'}}>add_circle</span>
         </div>
@@ -134,11 +140,11 @@ export default function VoiceLobbyPage() {
         <div style={{ paddingBottom: '80px' }}>
           
           <section className="hero-banner">
-            <h2>{t('hero_title')}</h2>
-            <p>{t('hero_desc')}</p>
+            <h2>Ruang Suara Interaktif</h2>
+            <p>Bergabunglah dengan komunitas atau mulai percakapan suara Anda sendiri.</p>
             <button className="btn-start-singing" onClick={handleStartSinging}>
               <span className="material-icons">mic</span>
-              {t('hero_btn')}
+              Buat Ruang Suara
             </button>
           </section>
 
@@ -149,7 +155,7 @@ export default function VoiceLobbyPage() {
                 className={`voice-tab-item ${activeCategory === kat.id ? 'active' : ''}`}
                 onClick={() => setActiveCategory(kat.id)}
               >
-                {t(kat.label)}
+                {kat.label}
               </span>
             ))}
           </div>
@@ -158,8 +164,16 @@ export default function VoiceLobbyPage() {
             {isLoadingRooms ? (
               [1,2,3].map(i => <div key={i} className="skeleton-card" style={{height:'60px', borderRadius:'18px', background:'var(--bg-card)', marginBottom:'10px'}} />)
             ) : rooms.length === 0 ? (
-              <div className="no-rooms-info" style={{textAlign:'center', color:'var(--text-muted)', marginTop:'40px'}}>
-                {t('no_rooms')}
+              <div className="no-rooms-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '40px' }}>
+                {/* Animasi Lottie saat ruangan kosong */}
+                <Lottie 
+                  animationData={emptyAnimation} 
+                  loop={true} 
+                  style={{ width: 250, height: 250 }} 
+                />
+                <p style={{ color: 'var(--text-muted)', marginTop: '15px', fontWeight: '500' }}>
+                  Belum ada ruang suara di kategori ini.
+                </p>
               </div>
             ) : (
               rooms.map(room => (
@@ -172,7 +186,7 @@ export default function VoiceLobbyPage() {
                   <div className="room-status">
                     <div className="online-pill">
                       <div className="dot-green" style={{width:'6px', height:'6px', borderRadius:'50%', background:'currentColor'}}></div>
-                      {room.onlineCount} Online
+                      {room.onlineCount} Daring
                     </div>
                   </div>
                 </div>
