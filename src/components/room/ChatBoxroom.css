@@ -1,13 +1,15 @@
 /* =========================================
-   🔥 CHAT BOX AREA 🔥
+   CHAT BOX AREA - TEMA GLOBAL SUPPORT
    ========================================= */
+
+/* Area tampilan chat */
 .chat-display {
   flex: 1;
   overflow-y: auto;
   padding: 10px 15px;
   display: flex;
   flex-direction: column;
-  gap: 12px; /* Jarak antar pesan */
+  gap: 12px;
   padding-bottom: 20px;
   scrollbar-width: none;
   scroll-behavior: smooth;
@@ -19,13 +21,124 @@
   display: none;
 }
 
-/* Animasi Muncul Pesan Baru */
+/* Animasi masuk pesan baru */
 .chat-display > div {
   animation: chatSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
   transform-origin: bottom left;
 }
 
-@keyframes chatSlideUp { 
-    0% { opacity: 0; transform: translateY(12px) scale(0.95); } 
-    100% { opacity: 1; transform: translateY(0) scale(1); } 
+@keyframes chatSlideUp {
+  0% { opacity: 0; transform: translateY(12px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* =========================================
+   PESAN SISTEM (INFO ROOM STATIS)
+   ========================================= */
+.chat-msg-system-static {
+  background: var(--primary-soft);
+  color: var(--text-main);
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-size: 11px;
+  text-align: center;
+  margin: 8px auto;
+  width: fit-content;
+  border: 1px solid var(--border-card);
+  font-weight: 500;
+}
+
+/* =========================================
+   PESAN GIFT
+   ========================================= */
+.chat-msg-gift {
+  background: linear-gradient(135deg, var(--primary), var(--color-warning, #f59e0b));
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  text-align: center;
+  margin: 0 auto;
+  width: fit-content;
+  font-weight: bold;
+}
+
+/* =========================================
+   PESAN SISTEM BIASA
+   ========================================= */
+.chat-msg-system {
+  background: var(--bg-secondary);
+  color: var(--text-main);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  text-align: center;
+  margin: 0 auto;
+  width: fit-content;
+  border: 1px solid var(--border-card);
+}
+
+/* =========================================
+   PESAN USER
+   ========================================= */
+.chat-msg-user {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* Avatar user */
+.chat-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  margin-top: 2px;
+  border: 1px solid var(--border-card);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.chat-user-avatar:hover {
+  border-color: var(--primary);
+}
+
+/* Kontainer konten chat (teks, username, badge) */
+.chat-user-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Header (username + badge) */
+.chat-user-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+/* Username */
+.chat-username {
+  color: var(--text-main);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.chat-username:hover {
+  color: var(--primary);
+}
+
+/* Teks chat */
+.chat-text {
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
 }

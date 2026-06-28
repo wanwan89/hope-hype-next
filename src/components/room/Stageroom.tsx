@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import './Stageroom.css'; 
+import './Stageroom.css';
 
 declare global {
   interface Window {
@@ -14,15 +14,14 @@ export default function Stageroom() {
   const { t } = useTranslation();
 
   return (
-    // Wadah id="stage-grid" ini bakal diisi dinamis oleh fetchStage() di page.tsx.
-    // Skeleton ini sekarang didesain lebih premium buat loading state awal (Dark Mode).
     <section id="stage-grid" className="stage-container">
       {Array.from({ length: 6 }).map((_, index) => (
         <div key={index} className="speaker-item empty">
-          <div 
-            className="avatar empty-avatar-glass" 
+          <div
+            className="avatar empty-avatar"
             onClick={() => window.naikKeStage && window.naikKeStage(index)}
           >
+            {/* Ikon "+" tetap menggunakan Material Icons, warnanya diatur melalui CSS */}
             <span className="material-icons">add</span>
           </div>
           <span className="name-label">{t('empty_slot', 'KOSONG')}</span>
