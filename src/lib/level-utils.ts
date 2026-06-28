@@ -45,7 +45,7 @@ export function getTierInfo(level: number) {
   };
 }
 
-// 3. FUNGSI BADGE LEVEL LENGKAP (SVG DI KIRI SETENGAH KELUAR, HANYA ANGKA, WARNA BOX TETAP)
+// 3. FUNGSI BADGE LEVEL LENGKAP (BOX BIRU PERSEGI, SVG DI DALAM TAPI KELUAR)
 export function getLevelBadgeHTML(levelVal: string | number) {
   const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
   
@@ -62,23 +62,22 @@ export function getLevelBadgeHTML(levelVal: string | number) {
       position: relative;
       display: inline-flex;
       align-items: center;
-      background: rgba(40, 42, 54, 0.85); /* Warna dasar kotak tetap */
-      border: 1px solid rgba(255, 255, 255, 0.15); /* Warna border tetap */
-      border-radius: 12px;
-      /* Padding kiri dilebarkan (14px) agar angka tidak menabrak SVG */
-      padding: 2px 8px 2px 14px; 
-      margin-left: 10px; /* Margin luar di kiri agar SVG yang keluar tidak terpotong tepi layar/elemen lain */
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      background: #1d4ed8; /* Box warna biru */
+      border: 1px solid rgba(255, 255, 255, 0.2); 
+      border-radius: 2px; /* Bentuk persegi (sudut hampir lancip) */
+      padding: 0 6px 0 2px; 
+      height: 14px; /* Tinggi box dibuat kecil agar SVG bisa tumpah keluar */
+      margin-top: 4px; /* Memberi ruang di atas agar efek SVG tidak terpotong */
+      margin-bottom: 4px; /* Memberi ruang di bawah */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
       font-family: sans-serif;
-      min-width: 24px;
-      justify-content: center;
     ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48"
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 48 48"
         style="
-          position: absolute;
-          left: -10px; /* Geser ke kiri persis setengah dari lebarnya (20px / 2 = 10px) */
-          top: 50%; /* Taruh di tengah secara vertikal */
-          transform: translateY(-50%);
+          margin-top: -8px; /* Menarik SVG tumpah ke atas */
+          margin-bottom: -8px; /* Menarik SVG tumpah ke bawah */
+          margin-left: -2px; /* Sedikit keluar di area kiri */
+          margin-right: 4px; /* Jarak antara ikon dan angka */
           filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
           z-index: 2;
         "
@@ -87,9 +86,9 @@ export function getLevelBadgeHTML(levelVal: string | number) {
       </svg>
       
       <span style="
-        font-size: 11px;
+        font-size: 10px; /* Angka lebih kecil */
         font-weight: 700;
-        color: #ffffff; /* Warna angka selalu putih / tidak ikut berubah */
+        color: #ffffff;
         letter-spacing: 0.5px;
         line-height: 1;
         z-index: 1;
