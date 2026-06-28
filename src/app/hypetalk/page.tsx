@@ -198,6 +198,7 @@ export default function HypetalkPage() {
             const roomMsgs = allMsgs.filter(m => m.room_id === roomIdStr);
             const iHaveReplied = roomMsgs.some(m => m.user_id === userId);
             const isFollower = followerIds.has(p.id);
+            // INILAH KUNCI: chat masuk request jika bukan follower & belum pernah dibalas
             if (!isFollower && !iHaveReplied) {
               reqChats.push(chatItem);
             } else {
@@ -532,8 +533,8 @@ export default function HypetalkPage() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '14px 16px',
-                background: 'var(--primary)', // ✅ FIX: pakai variabel global
-                boxShadow: '0 4px 12px rgba(31, 60, 255, 0.25)', // ✅ sesuai primary #1f3cff
+                background: 'var(--primary)',
+                boxShadow: '0 4px 12px rgba(31, 60, 255, 0.25)',
                 zIndex: 20,
                 overflow: 'hidden'
               }}

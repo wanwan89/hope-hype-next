@@ -75,7 +75,6 @@ const SwipeableChatRow = ({
 
   return (
     <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
-      {/* Background merah + animasi tong sampah */}
       {canSwipe && (
         <div
           style={{
@@ -98,14 +97,13 @@ const SwipeableChatRow = ({
         </div>
       )}
 
-      {/* Baris chat utama */}
       <motion.div
         style={{
           x,
           display: 'flex',
           alignItems: 'center',
           backgroundColor: isSelected
-            ? 'rgba(31, 60, 255, 0.08)' // ✅ subtle highlight pakai primary dengan opacity
+            ? 'rgba(31, 60, 255, 0.08)'
             : 'var(--bg-main, transparent)',
           position: 'relative',
         }}
@@ -124,7 +122,6 @@ const SwipeableChatRow = ({
         onMouseUp={() => onPressEnd?.()}
         onMouseLeave={() => onPressEnd?.()}
       >
-        {/* Checkbox seleksi */}
         {isSelectionMode && !isGlobalOrActiveGroup && (
           <div
             className="chat-checkbox"
@@ -139,8 +136,8 @@ const SwipeableChatRow = ({
             <motion.div
               initial={false}
               animate={{
-                backgroundColor: isSelected ? 'var(--primary)' : 'transparent', // ✅
-                borderColor: isSelected ? 'var(--primary)' : '#d1d5db',         // ✅
+                backgroundColor: isSelected ? 'var(--primary)' : 'transparent',
+                borderColor: isSelected ? 'var(--primary)' : '#d1d5db',
                 scale: isSelected ? 1.05 : 1,
               }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -153,7 +150,7 @@ const SwipeableChatRow = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: isSelected
-                  ? '0 2px 6px rgba(31, 60, 255, 0.3)' // ✅ sesuai primary #1f3cff
+                  ? '0 2px 6px rgba(31, 60, 255, 0.3)'
                   : 'none',
               }}
             >
@@ -227,7 +224,7 @@ const ChatList: React.FC<Props> = ({
         style={{ overflowX: 'hidden', position: 'relative', minHeight: '100dvh' }}
       >
         <div>
-          {/* Banner Permintaan Pesan – hanya muncul jika ada dan tidak sedang search */}
+          {/* ✅ BANNER PERMINTAAN PESAN – tampil jika ada dan tidak sedang mencari */}
           {!isLoading && requestChats.length > 0 && !searchQuery && (
             <div
               className="message-request-banner"
@@ -245,7 +242,6 @@ const ChatList: React.FC<Props> = ({
           )}
 
           {isLoading ? (
-            // Skeleton loading
             [...Array(4)].map((_, index) => (
               <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
                 <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }} />
@@ -269,7 +265,6 @@ const ChatList: React.FC<Props> = ({
               </div>
             ))
           ) : (
-            // Daftar chat utama (hanya chat teman/grup, bukan request)
             filteredChats.map((chat) => (
               <SwipeableChatRow
                 key={chat.id}
