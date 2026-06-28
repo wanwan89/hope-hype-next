@@ -7,7 +7,7 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
   const [drawComplete, setDrawComplete] = useState(false);
   const [phase, setPhase] = useState<'intro' | 'shift'>('intro');
 
-  // Trigger pergeseran setelah drawing selesai
+  // Setelah drawing selesai, mulai fase shift (logo geser + teks muncul)
   useEffect(() => {
     if (drawComplete) {
       const t = setTimeout(() => setPhase('shift'), 400);
@@ -15,19 +15,23 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
     }
   }, [drawComplete]);
 
-  // Setelah fase shift + animasi teks selesai (estimasi 1.5 detik), panggil onFinish
+  // Setelah animasi shift & teks selesai (estimasi 1.5 detik), panggil onFinish
   useEffect(() => {
     if (phase === 'shift') {
       const t = setTimeout(() => {
         onFinish();
-      }, 1500); // waktu cukup untuk animasi teks
+      }, 1500);
       return () => clearTimeout(t);
     }
   }, [phase, onFinish]);
 
   const logoVariants = {
     intro: { x: 0, scale: 1, opacity: 1 },
-    shift: { x: -60, scale: 0.9, transition: { duration: 0.8, ease: [0.23, 1, 0.32, 1] } },
+    shift: {
+      x: -60,
+      scale: 0.9,
+      transition: { duration: 0.8, ease: [0.23, 1, 0.32, 1] },
+    },
   };
 
   const textContainerVariants = {
@@ -70,7 +74,7 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
         padding: '0 30px',
       }}
     >
-      {/* Logo SVG dengan drawing + pergeseran */}
+      {/* Logo SVG di tengah, lalu bergeser ke kiri */}
       <motion.svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 512 512"
@@ -86,6 +90,7 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
         animate={{ scale: phase === 'intro' ? 1 : 0.9, opacity: 1 }}
         transition={{ duration: 0.8, type: 'spring', bounce: 0.5 }}
       >
+        {/* Stroke drawing */}
         <motion.path
           d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
           fill="none"
@@ -98,6 +103,7 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
           transition={{ duration: 1.4, delay: 0.2, ease: 'easeInOut' }}
           onAnimationComplete={() => setDrawComplete(true)}
         />
+        {/* Fill */}
         {drawComplete && (
           <motion.path
             d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
@@ -109,19 +115,13 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
         )}
       </motion.svg>
 
-      {/* Teks HYPECO */}
+      {/* Teks HYPECO tanpa "from", warna mengikuti tema */}
       <motion.div
         variants={textContainerVariants}
         initial="hidden"
         animate={phase === 'shift' ? 'visible' : 'hidden'}
-        style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'nowrap' }}
+        style={{ display: 'flex', alignItems: 'baseline' }}
       >
-        <span style={{ fontSize: '12px', color: '#888888', fontWeight: 600, letterSpacing: '1px', marginRight: '6px' }}>
-          <motion.span variants={letterVariants} style={{ display: 'inline-block' }}>f</motion.span>
-          <motion.span variants={letterVariants} style={{ display: 'inline-block' }}>r</motion.span>
-          <motion.span variants={letterVariants} style={{ display: 'inline-block' }}>o</motion.span>
-          <motion.span variants={letterVariants} style={{ display: 'inline-block' }}>m</motion.span>
-        </span>
         <span style={{ display: 'inline-flex' }}>
           {'HYPECO'.split('').map((char, i) => (
             <motion.span
@@ -130,8 +130,9 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
               style={{
                 display: 'inline-block',
                 fontSize: '28px',
-                color: '#1f3cff',
+                fontFamily: 'Poppins, sans-serif',
                 fontWeight: 900,
+                color: 'var(--text-main)', // hitam di light, putih di dark
                 letterSpacing: '1px',
               }}
             >
@@ -165,7 +166,6 @@ export default function CustomSplash() {
     setIsVisible(false);
   }, []);
 
-  // Tidak perlu timer lagi, onFinish dari dalam yang menutup
   return (
     <AnimatePresence>
       {isVisible && <SplashContent onFinish={handleFinish} />}
