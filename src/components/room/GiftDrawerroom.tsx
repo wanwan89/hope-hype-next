@@ -48,7 +48,6 @@ export default function GiftDrawerroom() {
     chunkedGifts.push(GIFT_DATA.slice(i, i + 2));
   }
 
-  // 🔥 1. FUNGSI FETCH USER (Wajib Ada) 🔥
   const fetchUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
@@ -65,13 +64,10 @@ export default function GiftDrawerroom() {
     }
   };
 
-  // 🔥 2. LISTENER TRIGGER UNTUK MEMBUKA SHEET (Wajib Ada) 🔥
   useEffect(() => {
     const handleOpenRoomGift = async (e: any) => {
-      // Mengambil data member room yang dikirim dari tombol
       const members = e.detail?.roomMembers || [];
       const defaultTarget = e.detail?.targetId || null;
-
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -83,12 +79,9 @@ export default function GiftDrawerroom() {
 
       setRoomMembers(members);
 
-      // Auto-select jika ada defaultTarget, atau auto-select member pertama
       if (defaultTarget) {
         const target = members.find((m: any) => m.id === defaultTarget);
-        if (target) {
-          setTargetPost({ id: '', creatorId: target.id, creatorName: target.name });
-        }
+        if (target) setTargetPost({ id: '', creatorId: target.id, creatorName: target.name });
       } else if (members.length > 0) {
         setTargetPost({ id: '', creatorId: members[0].id, creatorName: members[0].name });
       }
@@ -98,7 +91,6 @@ export default function GiftDrawerroom() {
       fetchUser(); 
     };
 
-    // Dengarkan event 'openRoomGift'
     window.addEventListener("openRoomGift", handleOpenRoomGift);
     return () => window.removeEventListener("openRoomGift", handleOpenRoomGift);
   }, [t]);
@@ -137,7 +129,6 @@ export default function GiftDrawerroom() {
     setIsSending(true);
 
     try {
-      // 🔥 3. LOGIKA PENGIRIMAN API DIKEMBALIKAN SUPAYA TIDAK ERROR 🔥
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Silakan login kembali.");
 
@@ -157,7 +148,6 @@ export default function GiftDrawerroom() {
           level: newLevel
       }).eq('id', session.user.id);
       
-      // Update State Lokal
       setUserCoins(prev => prev - giftToSend.amount);
       setCoinsGiven(newTotalGiftSent);
 
@@ -190,9 +180,8 @@ export default function GiftDrawerroom() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="gift-sheet-overlay" 
+              className="drawer-overlay" 
               onClick={closeSheet} 
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100000 }}
             />
 
             <motion.div 
@@ -200,13 +189,13 @@ export default function GiftDrawerroom() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }} 
-              className="gift-sheet-content-framer"
+              className="gift-drawer"
               onClick={(e) => e.stopPropagation()}
               onAnimationComplete={() => {
                 if (isActive) setIsLottieReady(true);
               }}
             >
-              <div className="sheet-handle" />
+              <div className="handle" />
 
               <div className="drawer-header">
                 <span className="drawer-title">{t('gift_sheet_header', 'KIRIM HADIAH')}</span>
@@ -264,6 +253,7 @@ export default function GiftDrawerroom() {
                           className={`gift-item-3d ${isActiveGift ? 'active' : ''}`}
                           onClick={() => setSelectedGift(gift)}
                         >
+                          {/* 🔥 WADAH LOTTIE YANG SUDAH DIBENAHI 🔥 */}
                           <div className="gift-lottie-wrapper">
                             {isLottieReady ? (
                               <Lottie animationData={gift.animation} loop={true} style={{ width: '100%', height: '100%' }} />
@@ -294,7 +284,7 @@ export default function GiftDrawerroom() {
                                     {gift.amount.toLocaleString('id-ID')}
                                   </span>
                                   <button 
-                                    className="gift-send-btn-mini"
+                                    className="gift-send-btn"
                                     onClick={(e) => handleSendGift(gift, e)}
                                   >
                                     {isSending ? '...' : 'KIRIM'}

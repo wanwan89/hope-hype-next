@@ -1,41 +1,29 @@
 /* --- OVERLAY LACI --- */
 .in-voice-room .drawer-overlay { 
   position: fixed; inset: 0; 
-  background: rgba(0, 0, 0, 0.6); 
-  backdrop-filter: blur(4px);
-  z-index: 10000; display: none; opacity: 0; 
-  transition: opacity 0.3s ease; will-change: opacity; 
-  pointer-events: none !important; overscroll-behavior: none; 
-}
-.in-voice-room .drawer-overlay.show { 
-  display: block; opacity: 1; pointer-events: auto !important; 
-  animation: fadeInOverlay 0.3s ease forwards; 
+  background: rgba(0, 0, 0, 0.85); 
+  z-index: 100000; 
+  /* Framer Motion yang atur opacity-nya, tidak perlu animasi CSS lagi */
 }
 
 /* --- KOTAK LACI KADO UTAMA --- */
 .in-voice-room .gift-drawer { 
   position: fixed; bottom: 0; left: 0; right: 0; 
-  background: var(--bg-base); 
+  background: var(--bg-base, #1b1b1f); 
   border-top-left-radius: 32px; border-top-right-radius: 32px; 
-  z-index: 10001; 
+  z-index: 100001; 
   padding-top: 32px; 
   padding-bottom: 0 !important; 
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.08); 
-  border-top: 1px solid var(--border); 
-  transform: translateY(100%); 
-  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); 
-  will-change: transform; touch-action: pan-y; 
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3); 
+  border-top: 1px solid var(--border, rgba(255,255,255,0.1)); 
   display: flex; flex-direction: column;
   max-height: 90vh; 
+  /* Dihapus transform-nya agar Framer Motion bisa bekerja sempurna */
 }
-[data-theme='dark'] .in-voice-room .gift-drawer, html.dark .in-voice-room .gift-drawer { 
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5); 
-}
-.in-voice-room .gift-drawer.open { transform: translateY(0); }
 
 /* --- HANDLE (GARIS TARIK DI ATAS) --- */
 .in-voice-room .handle { 
-  width: 48px; height: 5px; background: var(--border); 
+  width: 48px; height: 5px; background: rgba(255,255,255,0.2); 
   border-radius: 10px; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); 
 }
 
@@ -44,13 +32,7 @@
   display: flex; justify-content: space-between; align-items: center; 
   margin-bottom: 15px; padding: 0 20px;
 }
-.in-voice-room .drawer-title { font-weight: 800; font-size: 16px; color: var(--text-main); letter-spacing: -0.3px; }
-.in-voice-room .coin-panel { 
-  background: var(--bg-input, rgba(0,0,0,0.05)); padding: 6px 14px; 
-  border-radius: 20px; display: flex; align-items: center; gap: 6px; 
-  border: none;
-}
-.in-voice-room #user-coins { color: var(--text-main); font-weight: 800; font-size: 14px; }
+.in-voice-room .drawer-title { font-weight: 800; font-size: 16px; color: white; letter-spacing: -0.3px; }
 
 /* =========================================
    🔥 HEADER LEVEL BAR (CLEAN FLAT) 🔥
@@ -59,41 +41,31 @@
   display: flex; align-items: center; gap: 12px;
   background: transparent;
   padding: 12px 0px; 
-  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
+  border-bottom: 1px solid rgba(255,255,255,0.05);
   margin: 0 20px 15px 20px;
 }
-.in-voice-room .level-avatar-box {
-  position: relative; width: 42px; height: 42px; flex-shrink: 0;
-}
+.in-voice-room .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
 .in-voice-room .level-avatar {
   width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-  border: 2px solid #1f3cff; background: var(--bg-secondary);
+  border: 2px solid #1f3cff; background: rgba(255,255,255,0.1);
 }
-.in-voice-room .level-badge-mini {
-  position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
-  background: #1f3cff; color: white; font-size: 9px; font-weight: 800;
-  padding: 2px 6px; border-radius: 8px; border: 1.5px solid var(--bg-base);
-}
-.in-voice-room .level-progress-info {
-  flex: 1; display: flex; flex-direction: column; gap: 6px;
-}
+.in-voice-room .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .in-voice-room .level-text-row {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 11px; font-weight: 800; color: var(--text-main);
+  font-size: 11px; font-weight: 800; color: white;
 }
 .in-voice-room .progress-track {
-  width: 100%; height: 8px; background: rgba(150,150,150,0.2);
+  width: 100%; height: 8px; background: rgba(255,255,255,0.1);
   border-radius: 10px; overflow: hidden;
 }
 .in-voice-room .progress-fill {
-  height: 100%; border-radius: 10px;
-  background: #1f3cff; 
+  height: 100%; border-radius: 10px; background: #1f3cff; 
   transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* --- TARGET SELECTION --- */
 .in-voice-room .target-selection-container { margin-bottom: 0px; padding: 0 20px; }
-.in-voice-room .target-label { font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; display: block; }
+.in-voice-room .target-label { font-size: 12px; color: #a1a1aa; font-weight: 700; margin-bottom: 8px; display: block; }
 .in-voice-room .target-list { 
   display: flex; gap: 14px; overflow-x: auto; 
   padding-top: 8px; padding-bottom: 8px; 
@@ -108,10 +80,8 @@
   width: 44px; height: 44px; border-radius: 50%; object-fit: cover; 
   border: 2px solid transparent; transition: border-color 0.3s ease, box-shadow 0.3s ease; 
 }
-.in-voice-room .target-user.selected .target-avatar { 
-  border-color: #1f3cff; box-shadow: none; 
-}
-.in-voice-room .target-name { font-size: 11px; font-weight: 600; color: var(--text-main); }
+.in-voice-room .target-user.selected .target-avatar { border-color: #1f3cff; box-shadow: none; }
+.in-voice-room .target-name { font-size: 11px; font-weight: 600; color: white; }
 
 
 /* =========================================
@@ -122,8 +92,8 @@
 .in-voice-room .gift-list-scroll-wrapper {
   display: flex;
   overflow-x: auto;
-  overflow-y: visible; /* Penting! Biar gambar jumbo gak kepotong pas nge-zoom ke atas */
-  padding: 15px 15px 25px 15px;
+  overflow-y: visible; 
+  padding: 15px 15px 35px 15px; /* Tambah padding bawah supaya Lottie yang besar gak kepotong */
   gap: 15px;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
@@ -132,63 +102,33 @@
 
 /* KOLOM (Nampung 2 kado atas-bawah) */
 .in-voice-room .gift-column {
-  display: flex;
-  flex-direction: column;
-  gap: 25px; 
-  flex-shrink: 0;
-  width: calc(33.333% - 10px); 
+  display: flex; flex-direction: column; gap: 25px; 
+  flex-shrink: 0; width: calc(33.333% - 10px); 
   scroll-snap-align: start;
 }
 
 /* ITEM CONTAINER UTAMA */
 .in-voice-room .gift-item-3d {
-  position: relative;
-  height: 100px; 
-  width: 100%;
+  position: relative; height: 100px; width: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   z-index: 1; 
 }
 .in-voice-room .gift-item-3d.active { z-index: 10; } 
 
-/* GAMBAR KADO DEFAULT (FLAT NO SHADOW) */
-.in-voice-room .gift-img-3d {
-  width: 85px; height: 85px; object-fit: contain; filter: none;
+/* 🔥 WADAH LOTTIE 3D (PEMBATAS UKURAN) 🔥 */
+.in-voice-room .gift-lottie-wrapper {
+  width: 85px; height: 85px; 
   position: absolute; top: -10px;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 2;
+  display: flex; justify-content: center; align-items: center;
 }
 
-/* TEKS KADO (SEBELUM DIPILIH) */
-.in-voice-room .gift-default-info {
-  display: flex; flex-direction: column; align-items: center;
-  margin-bottom: 5px; opacity: 1; transition: opacity 0.2s;
-}
-.in-voice-room .gift-label { font-size: 11px; font-weight: 800; color: var(--text-main); text-transform: uppercase; }
-.in-voice-room .gift-price-mini { font-size: 11px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 2px; }
-
-/* 🔥 BOX AKTIF (KECIL, SOLID, PENDEK BGT) 🔥 */
-.in-voice-room .gift-active-bg {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: 55px; 
-  background: transparent; 
-  border: 1.5px solid #1f3cff; 
-  border-radius: 12px; z-index: 0;
-  box-shadow: none; 
-  animation: popBox 0.2s ease forwards;
-  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-  padding-bottom: 6px;
-}
-@keyframes popBox {
-  from { transform: scale(0.8) translateY(10px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-/* 🔥 GAMBAR POP OUT EKSTRIM (145px) 🔥 */
-.in-voice-room .gift-item-3d.active .gift-img-3d {
-  width: 145px; height: 145px; 
+/* 🔥 GAMBAR POP OUT SAAT AKTIF (135px) 🔥 */
+.in-voice-room .gift-item-3d.active .gift-lottie-wrapper {
+  width: 135px; height: 135px; 
   top: -90px; 
-  filter: none; 
   animation: floatActive 2s ease-in-out infinite;
 }
 @keyframes floatActive {
@@ -196,10 +136,28 @@
   50% { transform: translateY(-4px); }
 }
 
+/* TEKS KADO (SEBELUM DIPILIH) */
+.in-voice-room .gift-default-info {
+  display: flex; flex-direction: column; align-items: center;
+  margin-bottom: 5px; opacity: 1; transition: opacity 0.2s;
+}
+.in-voice-room .gift-label { font-size: 11px; font-weight: 800; color: white; text-transform: uppercase; }
+.in-voice-room .gift-price-mini { font-size: 11px; color: #a1a1aa; font-weight: 700; display: flex; align-items: center; gap: 2px; }
+
 /* HILANGKAN TEKS LAMA SAAT DIPILIH */
 .in-voice-room .gift-item-3d.active .gift-default-info { opacity: 0; pointer-events: none; }
 
-/* KONTEN DALAM BOX (HARGA & TOMBOL KIRIM SOLID) */
+/* 🔥 BOX AKTIF (SOLID PENDEK) 🔥 */
+.in-voice-room .gift-active-bg {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 55px; 
+  background: transparent; 
+  border: 1.5px solid #1f3cff; 
+  border-radius: 12px; z-index: 0;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  padding-bottom: 6px;
+}
+
 .in-voice-room .gift-active-details {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   z-index: 2; animation: fadeInDetails 0.3s ease forwards;
@@ -209,27 +167,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.in-voice-room .gift-price-active {
-  font-size: 11px; color: #1f3cff; font-weight: 800;
-  display: flex; align-items: center; gap: 2px;
-}
+.in-voice-room .gift-price-active { font-size: 11px; color: #1f3cff; font-weight: 800; display: flex; align-items: center; gap: 2px; }
 
 .in-voice-room .gift-send-btn {
-  background: #1f3cff; 
-  color: white; border: none; border-radius: 8px;
-  padding: 6px 22px; font-weight: 800; font-size: 11px;
-  box-shadow: none; 
-  cursor: pointer; pointer-events: auto;
-}
-
-/* 🔥 EFEK SPAM 🔥 */
-.in-voice-room .gift-item-3d.spam-anim .gift-active-bg {
-  transform: scale(0.95); background: rgba(31,60,255,0.1); 
-  transition: 0.1s;
-}
-.in-voice-room .gift-item-3d.spam-anim .gift-img-3d {
-  transform: scale(0.9) translateY(5px); 
-  transition: 0.1s;
+  background: #1f3cff; color: white; border: none; border-radius: 8px;
+  padding: 6px 22px; font-weight: 800; font-size: 11px; cursor: pointer; pointer-events: auto;
 }
 
 /* =========================================
@@ -239,34 +181,18 @@
   display: flex; justify-content: space-between; align-items: center;
   padding: 15px 20px;
   padding-bottom: calc(15px + env(safe-area-inset-bottom));
-  background: var(--bg-base);
-  border-top: 1px solid var(--border-color, rgba(255,255,255,0.05));
+  background: var(--bg-base, #1b1b1f);
+  border-top: 1px solid rgba(255,255,255,0.05);
 }
 .in-voice-room .footer-coin-box {
-  display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; color: var(--text-main);
-  background: var(--bg-secondary, rgba(0,0,0,0.05)); padding: 8px 14px; border-radius: 12px;
+  display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; color: white;
+  background: rgba(255,255,255,0.05); padding: 8px 14px; border-radius: 12px;
 }
-.in-voice-room .topup-btn {
-  display: flex; align-items: center; gap: 4px;
+.in-voice-room .main-send-btn {
   background: #1f3cff; color: white; 
   border: none; border-radius: 20px;
-  padding: 10px 18px; font-weight: 800; font-size: 12px;
-  box-shadow: none; 
+  padding: 10px 24px; font-weight: 800; font-size: 12px;
   cursor: pointer; transition: 0.2s;
 }
-.in-voice-room .topup-btn:active { transform: scale(0.9); }
-
-/* SLIDE UP TOP UP */
-.in-voice-room .react-topup-sheet {
-  position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; z-index: 100005;
-  pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
-}
-.in-voice-room .react-topup-sheet.active { pointer-events: auto; opacity: 1; }
-.in-voice-room .react-topup-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
-.in-voice-room .react-topup-content {
-  position: relative; background: #1b1b1f; padding: 20px; border-top-left-radius: 24px; border-top-right-radius: 24px;
-  transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-}
-.in-voice-room .react-topup-sheet.active .react-topup-content { transform: translateY(0); }
-
-@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+.in-voice-room .main-send-btn:active { transform: scale(0.95); }
+.in-voice-room .main-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
