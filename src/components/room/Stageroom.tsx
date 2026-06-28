@@ -12,27 +12,6 @@ declare global {
 export default function Stageroom() {
   return (
     <>
-      {/* CSS Langsung untuk Animasi Berbicara Warna Abu-abu */}
-      <style>{`
-        @keyframes pulseGray {
-          0% { box-shadow: 0 0 0 0 rgba(150, 150, 150, 0.6); }
-          70% { box-shadow: 0 0 0 12px rgba(150, 150, 150, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(150, 150, 150, 0); }
-        }
-        .avatar.speaking {
-          animation: pulseGray 1.5s infinite;
-          border: none !important; /* Hilangkan border saat naik/berbicara */
-        }
-        .stage-container {
-          /* Turunkan stage agak ke bawah */
-          margin-top: 40px; 
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-          padding: 0 20px;
-        }
-      `}</style>
-
       <section id="stage-grid" className="stage-container">
         {Array.from({ length: 6 }).map((_, index) => (
           <div 
@@ -62,6 +41,7 @@ export default function Stageroom() {
                 cursor: 'pointer',
                 width: '60px',
                 height: '60px',
+                boxShadow: 'inset 0 0 0 1px rgba(128, 128, 128, 0.15)'
               }}
             >
               <span className="material-icons" style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '24px' }}>
