@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
-import { useTranslation } from 'react-i18next';
 
 interface CreateRoomModalProps {
   isOpen: boolean;
@@ -12,23 +11,29 @@ interface CreateRoomModalProps {
   currentUser: any;
 }
 
+// Map Kategori dengan ID yang cocok dengan Database, tapi label bahasa baku
+const CATEGORIES = [
+  { id: 'Nyanyi', label: 'Bernyanyi' },
+  { id: 'Ngobrol', label: 'Mengobrol' },
+  { id: 'Mabar', label: 'Bermain Gim' }
+];
+
 export default function CreateRoomModal({ isOpen, onClose, currentUser }: CreateRoomModalProps) {
   const router = useRouter();
-  const { t } = useTranslation();
 
   const [isCreating, setIsCreating] = useState(false);
   const [newRoomForm, setNewRoomForm] = useState({
     name: '',
     desc: '',
-    category: 'Nyanyi'
+    category: 'Nyanyi' // Default id
   });
 
   if (!isOpen) return null;
 
   const confirmCreateRoom = async () => {
     const { name, desc, category } = newRoomForm;
-    if (!name.trim()) return showNotif(t('modal_room_placeholder'), "warning");
-    if (!currentUser) return showNotif(t('session_expired'), "error");
+    if (!name.trim()) return showNotif('Nama ruangan tidak boleh kosong.', "warning");
+    if (!currentUser) return showNotif('Sesi telah berakhir. Harap masuk kembali.', "error");
     
     setIsCreating(true);
     try {
@@ -42,7 +47,7 @@ export default function CreateRoomModal({ isOpen, onClose, currentUser }: Create
       
       const { data: newRoom, error: roomError } = await supabase.from('rooms').insert([{
         name: name.trim(),
-        description: desc.trim() || 'Ayo nyanyi bareng!',
+        description: desc.trim() || 'Mari berinteraksi dan bersenang-senang!',
         category: category,
         owner_id: currentUser.id,
         is_active: true
@@ -53,54 +58,81 @@ export default function CreateRoomModal({ isOpen, onClose, currentUser }: Create
       const slots = Array.from({ length: 6 }, (_, i) => ({ room_id: newRoom.id, slot_index: i, profile_id: null }));
       await supabase.from('room_slots').insert(slots);
       
-      showNotif(t('profile_updated'), "success");
+      showNotif('Ruang suara berhasil dibuat.', "success");
       onClose();
       router.push(`/voice?id=${newRoom.id}&name=${encodeURIComponent(newRoom.name)}`);
     } catch (e) { 
-      showNotif(t('create_room_error'), "error"); 
+      showNotif('Terjadi kesalahan saat membuat ruangan.', "error"); 
     } finally { 
       setIsCreating(false); 
     }
   };
 
   return (
-    <div className="voice-modal-overlay active" onClick={onClose}>
+    <div 
+      className="voice-modal-overlay active" 
+      onClick={onClose}
+      // Mematikan efek blur bawaan dari CSS class dan menggantinya dengan warna hitam transparan solid
+      style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none', backgroundColor: 'rgba(0, 0, 0, 0.65)' }}
+    >
       <div className="voice-modal-content" onClick={e => e.stopPropagation()}>
         <div className="voice-modal-header">
-           <h3>{t('modal_room_title')}</h3>
+           <h3 style={{ fontSize: '18px', fontWeight: 700 }}>Buat Ruang Suara</h3>
            <button className="voice-close-modal-btn" onClick={onClose}>
              <span className="material-icons">close</span>
            </button>
         </div>
         <div className="voice-modal-body">
-          <label>{t('modal_room_name_label')}</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>Nama Ruangan</label>
           <input
             type="text" 
-            placeholder={t('modal_room_placeholder')}
+            placeholder="Masukkan nama ruangan..."
             maxLength={25} 
             value={newRoomForm.name}
             onChange={e => setNewRoomForm({...newRoomForm, name: e.target.value})}
-          />
-          <label>{t('modal_room_cat_label')}</label>
-          <select
-            className="voice-select-custom"
-            value={newRoomForm.category}
-            onChange={e => setNewRoomForm({...newRoomForm, category: e.target.value})}
-            style={{
+            style={{ 
               width: '100%', padding: '14px', borderRadius: '12px', 
-              background: 'var(--bg-main)', color: 'var(--text-main)', 
-              border: '1px solid var(--border-card)', marginBottom: '20px'
+              border: '1px solid var(--border-card)', background: 'var(--bg-main)', 
+              color: 'var(--text-main)', marginBottom: '20px' 
             }}
-          >
-            <option value="Nyanyi">{t('category_singing')}</option>
-            <option value="Ngobrol">{t('category_chatting')}</option>
-            <option value="Mabar">{t('category_gaming')}</option>
-          </select>
+          />
+          
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>Kategori</label>
+          
+          {/* Opsi Kustom tanpa tag <select> agar tidak memunculkan dialog sistem bawaan HP */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            {CATEGORIES.map(cat => {
+              const isActive = newRoomForm.category === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setNewRoomForm({...newRoomForm, category: cat.id})}
+                  style={{
+                    flex: 1,
+                    padding: '12px 4px',
+                    borderRadius: '12px',
+                    border: isActive ? '2px solid #ef4444' : '1px solid var(--border-card)',
+                    background: isActive ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-main)',
+                    color: isActive ? '#ef4444' : 'var(--text-muted)',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: 'none'
+                  }}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
         <div className="voice-modal-actions">
-          <button className="voice-btn-cancel" onClick={onClose}>{t('btn_cancel')}</button>
+          <button className="voice-btn-cancel" onClick={onClose}>Batal</button>
           <button className="voice-btn-confirm" onClick={confirmCreateRoom} disabled={isCreating}>
-            {isCreating ? t('btn_building') : t('btn_create')}
+            {isCreating ? 'Membangun...' : 'Buat Sekarang'}
           </button>
         </div>
       </div>
