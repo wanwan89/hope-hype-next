@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { Home, Bell, MessageCircle, User } from 'lucide-react'; // Mic dihapus dari sini
+import { Home, Bell, MessageCircle, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,7 +17,7 @@ const CustomVoiceIcon = ({ size = 24, color = '#000000', style }: any) => (
     style={style}
   >
     <path
-      fill={color} // Menggunakan properti color agar bisa berubah sesuai state aktif/tidak
+      fill={color}
       d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
     />
   </svg>
@@ -69,13 +69,14 @@ function NavbarContent() {
 
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
+  // [PERBAIKAN] Logika untuk pengecekan rute agar voice-room tidak ikut tersembunyi
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/saldo', '/story', 
     '/pending', '/historycoin', '/withdraw',
-    '/hypetalk/room', 
-    '/voice' 
-  ].some(path => pathname?.startsWith(path));
+    '/hypetalk/room' 
+  ].some(path => pathname?.startsWith(path)) || 
+  (pathname?.startsWith('/voice') && !pathname?.startsWith('/voice-room'));
 
   // Menggunakan useCallback agar fungsi ini stabil dan bisa dipanggil di berbagai useEffect
   const fetchBadgesAndUser = useCallback(async () => {
@@ -181,7 +182,7 @@ function NavbarContent() {
     setUnreadNotifCount(unreadNotifs);
   }, []);
 
-  // [FIX] Listener untuk menangani WebView Android (APK)
+  // Listener untuk menangani WebView Android (APK)
   useEffect(() => {
     if (isLoggedIn) {
       fetchBadgesAndUser();
@@ -202,7 +203,7 @@ function NavbarContent() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
 
-    // [FIX] Fallback Polling untuk Android jika WebSocket terputus
+    // Fallback Polling untuk Android jika WebSocket terputus
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible' && isLoggedIn) {
         fetchBadgesAndUser();
@@ -217,7 +218,7 @@ function NavbarContent() {
     };
   }, [pathname, isLoggedIn, fetchBadgesAndUser]);
 
-  // [FIX] Penambahan Realtime untuk Tabel Notifications
+  // Penambahan Realtime untuk Tabel Notifications
   useEffect(() => {
     let msgChannel: any;
     let notifChannel: any;
@@ -241,7 +242,7 @@ function NavbarContent() {
         )
         .subscribe();
 
-      // [FIX] Realtime Notifikasi (Listen ke Insert dan Update)
+      // Realtime Notifikasi (Listen ke Insert dan Update)
       notifChannel = supabase.channel('navbar-notifs-realtime')
         .on(
           'postgres_changes',
@@ -269,7 +270,7 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: CustomVoiceIcon }, // Menggunakan custom icon di sini
+    { name: 'Voice', path: '/voice-room', icon: CustomVoiceIcon }, 
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
     { name: 'Profil', path: '/data', icon: User },
   ];
