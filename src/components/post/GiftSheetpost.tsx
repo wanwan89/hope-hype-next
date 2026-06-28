@@ -52,16 +52,6 @@ export default function GiftSheetpost() {
   };
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isActive) {
-      timer = setTimeout(() => setIsLottieReady(true), 200); 
-    } else {
-      setIsLottieReady(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isActive]);
-
-  useEffect(() => {
     const handleGiftOpen = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const btn = target.closest(".gift-btn") as HTMLElement;
@@ -120,6 +110,7 @@ export default function GiftSheetpost() {
 
   const closeSheet = () => {
     setIsActive(false);
+    setIsLottieReady(false); // 🔥 Matikan lottie langsung saat menutup
     document.body.style.overflow = "";
     setTimeout(() => setSelectedGift(null), 300); 
   };
@@ -195,7 +186,7 @@ export default function GiftSheetpost() {
       setUserCoins(prev => prev - giftToSend.amount);
       setCoinsGiven(newTotalGiftSent);
       
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100002 });
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 1000000 }); // Z-index tertinggi untuk confetti
       
       if ((window as any).showNotif) (window as any).showNotif("Kado berhasil dikirim!", "success");
 
@@ -233,7 +224,7 @@ export default function GiftSheetpost() {
           left: 0;
           right: 0;
           max-height: 90vh;
-          z-index: 100000;
+          z-index: 999999; /* 🔥 Pastikan Z-Index lebih tinggi dari CommentModal */
           box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
         
@@ -245,7 +236,6 @@ export default function GiftSheetpost() {
           border-bottom: 1px solid var(--border-card, #2a2a2a); 
         }
         .level-avatar-box { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
-        /* 🔥 Border profile dihilangkan 🔥 */
         .level-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: none; }
         .level-progress-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
         .level-text-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--text-main, #fff); }
@@ -253,7 +243,6 @@ export default function GiftSheetpost() {
         .progress-fill { height: 100%; background: #1f3cff; transition: width 0.5s ease; }
 
         .target-selection-container { padding: 0 20px; margin-bottom: 15px; }
-        /* 🔥 Box kreator dirapikan (tanpa border biru, disamakan dengan koin) 🔥 */
         .target-box { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-secondary, #1e1e1e); padding: 8px 16px; border-radius: 12px; border: none; }
 
         .gift-grid-container {
@@ -339,8 +328,7 @@ export default function GiftSheetpost() {
               transition={{ duration: 0.2 }}
               className="gift-sheet-overlay" 
               onClick={closeSheet} 
-              /* 🔥 Efek blur dihilangkan (hanya solid hitam transparan) 🔥 */
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 99999 }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 999998 }} // 🔥 Z-Index overlay disesuaikan
             />
 
             <motion.div 
@@ -348,6 +336,10 @@ export default function GiftSheetpost() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }} 
+              onAnimationComplete={() => {
+                // 🔥 Lottie baru di-trigger ketika animasi framer selesai buka
+                if (isActive) setIsLottieReady(true);
+              }}
               className="gift-sheet-content-framer"
               onClick={(e) => e.stopPropagation()}
             >
@@ -361,7 +353,6 @@ export default function GiftSheetpost() {
               <div className="drawer-top-level">
                 <div className="level-avatar-box">
                   <img src={myProfile?.avatar_url || fallbackAvatar} className="level-avatar" alt="Avatar" />
-                  {/* 🔥 Jarak badge ke profile dijauhkan (bottom jadi -14px) 🔥 */}
                   <div style={{ position: 'absolute', bottom: '-14px', left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
                      <span dangerouslySetInnerHTML={{ __html: getLevelBadgeHTML(currentLevel) }} />
                   </div>
@@ -369,7 +360,6 @@ export default function GiftSheetpost() {
                 <div className="level-progress-info">
                   <div className="level-text-row">
                     <span style={{ marginLeft: '6px', color: 'var(--text-main, #fff)' }}>{myProfile?.username || 'User'}</span>
-                    {/* 🔥 Teks butuh koin dihapus (hanya tampil jika max) 🔥 */}
                     {currentLevel >= 50 && (
                       <span style={{ color: '#ff0844' }}>LEVEL MAX 👑</span>
                     )}
@@ -384,7 +374,6 @@ export default function GiftSheetpost() {
                 <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted, #a1a1aa)', display: 'block', marginBottom: '8px' }}>
                   {t('send_to_label', 'KIRIM KE:')}
                 </span>
-                {/* 🔥 SVG profile dihapus dari box kreator 🔥 */}
                 <div className="target-box">
                   <span style={{ fontWeight: 800, fontSize: '12px', color: 'var(--text-main, #fff)' }}>{targetPost.creatorName}</span>
                 </div>
@@ -433,7 +422,6 @@ export default function GiftSheetpost() {
                   onClick={() => handleSendGift()}
                   disabled={!selectedGift || isSending}
                   style={{
-                    /* 🔥 Warna dirubah ke solid biru 🔥 */
                     background: '#1f3cff', color: 'white', border: 'none',
                     padding: '10px 24px', borderRadius: '20px', fontWeight: 800, fontSize: '14px',
                     opacity: (!selectedGift || isSending) ? 0.5 : 1, cursor: (!selectedGift || isSending) ? 'not-allowed' : 'pointer',
@@ -442,7 +430,6 @@ export default function GiftSheetpost() {
                   onMouseDown={(e) => { if (selectedGift && !isSending) e.currentTarget.style.transform = 'scale(0.95)'; }}
                   onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 >
-                  {/* 🔥 Template literal langsung untuk menghindari bug terjemahan {{amount}} 🔥 */}
                   {isSending ? t('sending', 'MENGIRIM...') : selectedGift ? `Kirim ${selectedGift.amount} Koin` : t('btn_send', 'KIRIM')}
                 </button>
               </div>
