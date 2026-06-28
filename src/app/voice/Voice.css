@@ -1,183 +1,176 @@
 /* ==================================================
-   1. THEME VARIABLES & GLOBAL BODY LOCK
-================================================== */
-:root {
-    --radar-color: #1f3cff; /* Biru HypeTalk */
-    --vh: 1vh; /* Fallback buat JS pengukur tinggi layar */
-}
-
-/* 🔥 FIX: Kunci warna body HANYA saat class ini aktif (dikontrol dari useEffect di React) */
-body.voice-room-active { 
-    background-color: #0B141A !important; 
-}
-
-/* ==================================================
-   2. SCOPED VOICE ROOM CONTAINER
-================================================== */
+   VOICE ROOM SCOPED THEME & LAYOUT
+   ================================================== */
 .in-voice-room {
-    --primary: #1f3cff;         
-    --primary-soft: rgba(31, 60, 255, 0.2);
-    --bg-base: #0B141A; /* Warna Background Chat */        
-    --panel-bg: #1A2228;        
-    --border: rgba(255, 255, 255, 0.05); 
-    --empty-slot: rgba(255, 255, 255, 0.03);      
-    --accent: #ff4757;          
-    --success: #00ff88;         
-    --text-main: #ffffff;       
-    --text-muted: #888888;      
-    --danger: #ff4757;
-    
-    --msg-bg: transparent; /* Chat transparan */
-    --sys-bg: rgba(255, 255, 255, 0.1);
-    --sys-border: rgba(255, 255, 255, 0.05);
-    --sys-gift-bg: linear-gradient(135deg, #ff4757, #1f3cff);
-    
-    background-color: var(--bg-base) !important; 
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: var(--text-main) !important;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    
-    /* Kunci Container Utama agar 100% responsif */
-    width: 100%;
-    min-height: 100vh;
-    min-height: calc(var(--vh, 1vh) * 100);
+  /* Override variabel global untuk komponen di dalamnya */
+  --bg-main: #0B141A;
+  --text-main: #ffffff;
+  --text-muted: #888888;
+  --bg-card: #1A2228;
+  --border-card: rgba(255, 255, 255, 0.05);
+  --primary: #1f3cff;
+  --primary-soft: rgba(31, 60, 255, 0.2);
+  --color-warning: #f59e0b;
+  --bg-secondary: #1A2228;
+  --radar-color: #1f3cff;
+
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  width: 100%;
+  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
 }
 
-/* ==================================================
-   3. RESET DI DALAM VOICE ROOM & APP CONTAINER
-================================================== */
 .in-voice-room * {
-    -webkit-tap-highlight-color: transparent !important;
-    outline: none !important; 
-    user-select: none; 
-    box-sizing: border-box; /* Mencegah elemen meluber */
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+  user-select: none;
+  box-sizing: border-box;
 }
 
-.in-voice-room input, 
-.in-voice-room textarea, 
+.in-voice-room input,
+.in-voice-room textarea,
 .in-voice-room .msg span,
-.in-voice-room p { 
-    user-select: text; /* Biar user masih bisa copy teks */
+.in-voice-room p {
+  user-select: text;
 }
 
+/* App container fixed fullscreen */
 .in-voice-room .app-container {
-    display: flex;
-    flex-direction: column;
-    position: fixed; 
-    
-    /* Bikin posisi di tengah (Desktop/Tablet support) */
-    top: 0; 
-    left: 50%; 
-    transform: translateX(-50%);
-    
-    width: 100%;
-    max-width: 500px; 
-    background-color: var(--bg-base) !important;
-    
-    /* Pake dynamic viewport height */
-    height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
-    
-    /* SAFE AREA: Lindungin poni HP (Notch) & Home Indicator */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    
-    overflow: hidden; 
-    overscroll-behavior: none; 
-    z-index: 10;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 500px;
+  background-color: var(--bg-main) !important;
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+  overscroll-behavior: none;
+  z-index: 10;
 }
 
-.in-voice-room h1, 
-.in-voice-room h2, 
-.in-voice-room h3, 
-.in-voice-room .room-title { 
-    letter-spacing: -0.02em; 
-    margin: 0;
+.in-voice-room ::-webkit-scrollbar {
+  display: none;
 }
 
-/* Sembunyikan scrollbar tapi tetep bisa di-scroll */
-.in-voice-room ::-webkit-scrollbar { 
-    width: 0px; 
-    background: transparent; 
-    display: none;
-}
-
-/* ==================================================
-   4. HEADER & CUSTOM COMPONENTS
-================================================== */
+/* Header */
 .in-voice-room .vr-custom-header {
-   display: flex; align-items: center; justify-content: space-between;
-   padding: 10px 16px; background: rgba(11, 20, 26, 0.85); backdrop-filter: blur(12px);
-   position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 500px;
-   z-index: 1000; border-bottom: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(11, 20, 26, 0.85);
+  backdrop-filter: blur(12px);
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 500px;
+  z-index: 1000;
+  border-bottom: 1px solid var(--border-card);
+  box-sizing: border-box;
 }
 
 .in-voice-room .vr-header-left { display: flex; align-items: center; gap: 12px; }
-.in-voice-room .vr-owner-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #1f3cff; cursor: pointer; }
-.in-voice-room .vr-room-name { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 2px 0; text-transform: uppercase; }
-.in-voice-room .vr-room-stats { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #1da1f2; font-weight: 600; }
-.in-voice-room .vr-btn-follow { background: linear-gradient(135deg, #1f3cff, #bc13fe); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; cursor: pointer; }
-
-/* ==================================================
-   5. ANIMASI (EMOJI TERBANG & RADAR SPEAKER)
-================================================== */
-.in-voice-room .tap-emoji-fly { 
-    position: fixed; pointer-events: none; z-index: 999999; font-size: 28px; user-select: none; 
-    animation: flyUpAnim 1s ease-out forwards; 
+.in-voice-room .vr-owner-avatar {
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--primary); cursor: pointer;
 }
-@keyframes flyUpAnim { 
-    0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; } 
-    100% { transform: translateY(-200px) translateX(calc(var(--random-x, 0) * 1px)) scale(1.5) rotate(20deg); opacity: 0; } 
+.in-voice-room .vr-room-name {
+  font-size: 15px; font-weight: 800; color: var(--text-main);
+  margin: 0 0 2px 0; text-transform: uppercase;
 }
-
-.in-voice-room .avatar.speaking { 
-    box-shadow: 0 0 0 3px var(--radar-color); 
-    animation: pulseRadar 1.5s infinite; 
+.in-voice-room .vr-room-stats {
+  display: flex; align-items: center; gap: 6px; font-size: 11px;
+  color: #1da1f2; font-weight: 600;
 }
-@keyframes pulseRadar { 
-    0% { box-shadow: 0 0 0 0px var(--radar-color); } 
-    70% { box-shadow: 0 0 0 10px rgba(31, 60, 255, 0); } 
-    100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); } 
+.in-voice-room .vr-btn-follow {
+  background: linear-gradient(135deg, #1f3cff, #bc13fe);
+  border: none; color: #fff; padding: 6px 14px; border-radius: 20px;
+  font-size: 11px; font-weight: 800; cursor: pointer;
 }
 
-/* ==================================================
-   6. USER PROFILE SHEET MODAL
-================================================== */
-.in-voice-room .user-profile-sheet-overlay { 
-    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); 
-    z-index: 10005; opacity: 0; visibility: hidden; transition: 0.3s; 
+/* Tap emoji fly */
+.in-voice-room .tap-emoji-fly {
+  position: fixed; pointer-events: none; z-index: 999999; font-size: 28px;
+  user-select: none; animation: flyUpAnim 1s ease-out forwards;
+}
+@keyframes flyUpAnim {
+  0% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+  100% { transform: translateY(-200px) translateX(calc(var(--random-x, 0) * 1px)) scale(1.5) rotate(20deg); opacity: 0; }
+}
+
+/* User profile sheet */
+.in-voice-room .user-profile-sheet-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  z-index: 10005; opacity: 0; visibility: hidden; transition: 0.3s;
 }
 .in-voice-room .user-profile-sheet-overlay.active { opacity: 1; visibility: visible; }
-
 .in-voice-room .user-profile-sheet {
-  position: absolute; bottom: 0; left: 0; right: 0; 
-  background: #1A2228 !important; 
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--bg-card) !important;
   border-top-left-radius: 24px; border-top-right-radius: 24px;
-  padding: 20px 20px 40px; 
-  transform: translateY(100%); 
-  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); 
-  text-align: center; 
-  border-top: 1px solid rgba(255,255,255,0.05); 
+  padding: 20px 20px 40px;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  text-align: center;
+  border-top: 1px solid var(--border-card);
   box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
 }
 .in-voice-room .user-profile-sheet-overlay.active .user-profile-sheet { transform: translateY(0); }
-
-.in-voice-room .sheet-handle { width: 40px; height: 5px; background: #444; border-radius: 10px; margin: 0 auto 20px; }
-.in-voice-room .profile-sheet-avatar { 
-    width: 95px; height: 95px; border-radius: 50%; border: 3px solid transparent; 
-    background-clip: padding-box, border-box; background-origin: padding-box, border-box; 
-    background-image: linear-gradient(#1A2228, #1A2228), linear-gradient(135deg, #1f3cff, #bc13fe); 
-    object-fit: cover; 
+.in-voice-room .sheet-handle {
+  width: 40px; height: 5px; background: var(--text-muted); border-radius: 10px;
+  margin: 0 auto 20px; opacity: 0.5;
 }
-.in-voice-room .profile-sheet-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
-
-/* Buttons inside sheet */
-.in-voice-room .btn-action-sheet { 
-    width: 100%; padding: 14px; border: none; border-radius: 14px; 
-    font-weight: 800; font-size: 14px; cursor: pointer; transition: transform 0.2s, opacity 0.2s; 
-    display: flex; align-items: center; justify-content: center; gap: 8px; 
+.in-voice-room .profile-sheet-avatar {
+  width: 95px; height: 95px; border-radius: 50%;
+  border: 3px solid transparent;
+  background-clip: padding-box, border-box;
+  background-origin: padding-box, border-box;
+  background-image: linear-gradient(var(--bg-card), var(--bg-card)), linear-gradient(135deg, var(--primary), #bc13fe);
+  object-fit: cover;
 }
-.in-voice-room .btn-action-sheet.danger { background: rgba(255, 71, 87, 0.1); color: #ff4757; border: 1px solid rgba(255,71,87,0.2); }
-.in-voice-room .btn-action-sheet.btn-gradient { background: linear-gradient(135deg, #1f3cff, #bc13fe); color: #fff; box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3); }
+.in-voice-room .profile-sheet-name {
+  font-size: 18px; font-weight: 800; color: var(--text-main);
+  margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.in-voice-room .btn-action-sheet {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  font-weight: 800; font-size: 14px; cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.in-voice-room .btn-action-sheet.danger {
+  background: rgba(255, 71, 87, 0.1); color: #ff4757;
+  border: 1px solid rgba(255,71,87,0.2);
+}
+.in-voice-room .btn-action-sheet.btn-gradient {
+  background: linear-gradient(135deg, #1f3cff, #bc13fe); color: #fff;
+  box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3);
+}
 .in-voice-room .btn-action-sheet:active { transform: scale(0.96); opacity: 0.9; }
+
+/* Radar speaking */
+.in-voice-room .avatar.speaking {
+  box-shadow: 0 0 0 3px var(--radar-color);
+  animation: pulseRadar 1.5s infinite;
+}
+@keyframes pulseRadar {
+  0% { box-shadow: 0 0 0 0px var(--radar-color); }
+  70% { box-shadow: 0 0 0 10px rgba(31, 60, 255, 0); }
+  100% { box-shadow: 0 0 0 0px rgba(0,0,0,0); }
+}
+
+/* Spacer di bawah header */
+.in-voice-room .header-spacer {
+  height: 70px; width: 100%; flex-shrink: 0;
+}
