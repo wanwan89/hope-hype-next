@@ -16,6 +16,7 @@ import GiftDrawer from '@/components/room/GiftDrawerroom';
 import GiftAnimOverlay from '@/components/room/GiftAnimOverlayroom';
 import ActionSheetroom from '@/components/room/ActionSheetroom';
 import UserProfileSheetroom from '@/components/room/UserProfileSheetroom';
+import HeaderRoom from '@/components/room/Headerroom'; // ✅ IMPORT KOMPONEN HEADER BARU
 
 import './Voice.css';
 
@@ -88,9 +89,6 @@ function VoiceRoomContent() {
   useEffect(() => {
     setMounted(true);
     window.__VOICE_ROOM_INIT__ = true;
-
-    // TIDAK LAGI menambahkan class ke body
-    // document.body.classList.add('voice-room-active'); // ❌ DIHAPUS
 
     const rawId = searchParams?.get('id');
     const rawName = searchParams?.get('name');
@@ -591,8 +589,6 @@ function VoiceRoomContent() {
       roomRef.current?.disconnect();
       window.removeEventListener('resize', fixMobileHeight);
       window.removeEventListener('orientationchange', fixMobileHeight);
-      // TIDAK LAGI menghapus class dari body
-      // document.body.classList.remove('voice-room-active'); // ❌ DIHAPUS
     };
   }, [t, searchParams, router]);
 
@@ -606,40 +602,16 @@ function VoiceRoomContent() {
       <Modals />
 
       <div className="app-container">
-        <div className="vr-custom-header">
-          <div className="vr-header-left">
-            <img
-              src={roomInfo.ownerAvatar || '/asets/png/profile.webp'}
-              className="vr-owner-avatar"
-              onClick={() => window.openUserProfile?.(roomInfo.ownerId)}
-              alt="Owner"
-            />
-            <div className="vr-header-info">
-              <h2 className="vr-room-name">{roomInfo.name}</h2>
-              <div className="vr-room-stats">
-                <span id="online-count">{onlineUsers}</span> online
-                <span style={{ color: 'rgba(255,255,255,0.3)', margin: '0 4px' }}>•</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#ff4757' }}>
-                  <span className="material-icons" style={{ fontSize: '11px' }}>favorite</span> {totalTaps.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="vr-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div id="top-gifters-container" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: '6px' }} onClick={() => window.openTopGiftersModal?.()}></div>
-
-            {roomInfo.ownerId && roomInfo.ownerId !== MY_USER_ID.current && !isFollowingHost && (
-              <button className="vr-btn-follow" onClick={() => {
-                if (MY_USER_ID.current && roomInfo.ownerId) {
-                  setIsFollowingHost(true);
-                  sb.from('followers').insert({ follower_id: MY_USER_ID.current, following_id: roomInfo.ownerId }).then();
-                  showNotif(`Mengikuti ${roomInfo.ownerName}`, 'success');
-                }
-              }}>+ Follow</button>
-            )}
-          </div>
-        </div>
+        
+        {/* ✅ KOMPONEN HEADER BARU MENGGANTIKAN DIV LAMA */}
+        <HeaderRoom
+          roomInfo={roomInfo}
+          onlineUsers={onlineUsers}
+          totalTaps={totalTaps}
+          myUserId={MY_USER_ID.current}
+          isFollowingHost={isFollowingHost}
+          setIsFollowingHost={setIsFollowingHost}
+        />
 
         <div className="header-spacer" />
 
@@ -677,14 +649,14 @@ function VoiceRoomContent() {
         onKickUser={(id, name) => window.kickUser?.(id, name)}
       />
 
-      {/* TIDAK ADA <style jsx global> */}
     </div>
   );
 }
 
 export default function Page() {
   return (
-    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B141A', color: '#fff', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
+    {/* ✅ FIX FALLBACK SUSPENSE WARNA HITAM PEKAT (#000000) */}
+    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000', color: '#fff', fontFamily: 'sans-serif' }}>Memuat panggung...</div>}>
       <VoiceRoomContent />
     </Suspense>
   );
