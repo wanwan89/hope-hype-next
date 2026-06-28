@@ -143,7 +143,7 @@ export default function VoiceLobbyPage() {
             <h2>Ruang Suara Interaktif</h2>
             <p>Bergabunglah dengan komunitas atau mulai percakapan suara Anda sendiri.</p>
             <button className="btn-start-singing" onClick={handleStartSinging} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* Mengganti icon mic dengan SVG Plus (+) */}
+              {/* SVG Plus (+) sebagai icon */}
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -183,7 +183,7 @@ export default function VoiceLobbyPage() {
               rooms.map(room => (
                 <div key={room.id} className="room-card" onClick={() => router.push(`/voice?id=${room.id}&name=${encodeURIComponent(room.name)}`)}>
                   <div className="room-thumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {/* Mengganti icon graphic_eq dengan SVG Suara Global yang disediakan */}
+                    {/* SVG Suara Global */}
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
                       <g fill="none" stroke="currentColor" strokeWidth="1.5">
                         <path d="M2.5 12c0-4.478 0-6.718 1.391-8.109S7.521 2.5 12 2.5c4.478 0 6.718 0 8.109 1.391S21.5 7.521 21.5 12c0 4.478 0 6.718-1.391 8.109S16.479 21.5 12 21.5c-4.478 0-6.718 0-8.109-1.391S2.5 16.479 2.5 12Z"/>
