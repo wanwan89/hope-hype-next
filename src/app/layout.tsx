@@ -142,11 +142,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       const htmlEl = document.documentElement;
       const isDark = htmlEl.classList.contains('dark') || htmlEl.getAttribute('data-theme') === 'dark';
 
-      // Beri sedikit jeda agar CSS variable sempat ter-render
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // 🔥 1. UPDATE META TAG COLOR-SCHEME (FIX ICON HITAM DI PWA)
-      // Ini yang memaksa OS Android untuk mengganti warna icon status bar jadi putih di PWA
+      // 🔥 Tidak perlu delay 50ms, langsung update meta tag
+      // Update meta color-scheme
       let metaColorScheme = document.querySelector('meta[name="color-scheme"]');
       if (!metaColorScheme) {
         metaColorScheme = document.createElement('meta');
@@ -155,8 +152,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
       metaColorScheme.setAttribute('content', isDark ? 'dark' : 'light');
 
-      // 🔥 2. UPDATE META TAG THEME-COLOR (BACKGROUND PWA)
-      // Gunakan solid pure black (#000000) di mode gelap agar OS lebih sensitif membaca kontras
+      // Update theme-color
       let metaTheme = document.querySelector('meta[name="theme-color"]');
       if (!metaTheme) {
         metaTheme = document.createElement('meta');
@@ -165,12 +161,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
       metaTheme.setAttribute('content', isDark ? '#000000' : '#ffffff');
 
-      // 🔥 3. SINKRONISASI CAPACITOR STATUS BAR (HANYA UNTUK NATIVE APK/IOS)
+      // Capacitor StatusBar (hanya untuk native)
       if (platform === 'android' || platform === 'ios') {
         if (isDark) {
-          await StatusBar.setStyle({ style: Style.Dark }); // Mode Gelap: Ikon PUTIH
+          await StatusBar.setStyle({ style: Style.Dark });
         } else {
-          await StatusBar.setStyle({ style: Style.Light }); // Mode Terang: Ikon HITAM
+          await StatusBar.setStyle({ style: Style.Light });
         }
 
         if (platform === 'android') {
@@ -200,6 +196,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       observer.disconnect();
     };
   }, [syncStatusBar]);
+
+  // 🔥 PENTING: Tambahkan class "theme-ready" setelah tema terpasang agar transisi aktif
+  useEffect(() => {
+    // Beri sedikit delay agar CSS variable siap, lalu aktifkan transisi
+    const timeout = setTimeout(() => {
+      document.documentElement.classList.add('theme-ready');
+    }, 50);
+    return () => clearTimeout(timeout);
+  }, []);
 
   // --- SETUP PUSH NOTIFICATION & NATIVE FEATURES (HANYA NATIVE) ---
   useEffect(() => {
@@ -268,7 +273,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
     };
   }, [router, myProfile]);
-  // ==========================================================
 
   // --- LOGIKA HALAMAN & RINGTONE ---
   useEffect(() => {
@@ -452,7 +456,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       {/* 🔥 KONTEN UTAMA DENGAN CLASS YANG SINKRON DENGAN CSS 🔥 */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} 
-           style={{ paddingTop: 'env(safe-area-inset-top)' }}> {/* <--- FIX GLOBAL */}
+           style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         
         {isHomePage && (
           <div className="search-container" style={{ 
@@ -460,7 +464,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             maxWidth: '600px', 
             margin: '0 auto', 
             zIndex: 10,
-            /* Memastikan search bar tidak tertutup */
             paddingTop: '10px' 
           }}>
             <SearchWrapper />
@@ -502,7 +505,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
         <style>{`
-          /* 🔥 FIX CSS: Memaksa padding top pada body agar aplikasi tidak mepet ke atas */
           :root {
             --safe-area-top: env(safe-area-inset-top, 25px);
           }
@@ -514,7 +516,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             min-height: calc(100vh - var(--safe-area-top));
           }
 
-          /* Tweak style inline agar fokus pada elemen yang tidak masuk CSS global */
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
           .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
           @keyframes pulseCallGlobal { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); } 70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
