@@ -2,8 +2,8 @@
   "name": "Hypeco",
   "short_name": "Hypeco",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "start_url": "/",
   "scope": "/",
   "icons": [
