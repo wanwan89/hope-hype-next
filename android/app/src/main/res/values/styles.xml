@@ -11,13 +11,14 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        
+        <!-- 🔥 TAMBAHKAN BARIS INI! Agar React bisa mengontrol warna & ikon Status Bar -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#FFFFFF</item>
-        
         <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
-        
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
     

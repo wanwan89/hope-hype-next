@@ -132,7 +132,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   // ==========================================================
-  // 🔥 🔥 🔥 FULL FIX: Sync Status Bar dengan Tema Light/Dark 🔥 🔥 🔥
+  // 🔥 🔥 🔥 FINAL FIX: Sync Status Bar + Meta Theme Color 🔥 🔥 🔥
   // ==========================================================
   const syncStatusBar = useCallback(async () => {
     if (typeof window === 'undefined') return;
@@ -141,25 +141,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     try {
       const htmlEl = document.documentElement;
-      // Deteksi mode gelap berdasarkan class dark atau data-theme (sesuai globals.css)
       const isDark = htmlEl.classList.contains('dark') || htmlEl.getAttribute('data-theme') === 'dark';
 
-      // Ambil warna background dari CSS yang sudah terupdate secara dinamis
+      // Beri sedikit jeda agar CSS variable sempat ter-render
+      await new Promise(resolve => setTimeout(resolve, 50));
+
       const computedStyle = getComputedStyle(htmlEl);
       let bgColor = computedStyle.getPropertyValue('--bg-main').trim();
-      if (!bgColor) bgColor = isDark ? '#0a0a0a' : '#ffffff'; // Fallback warna
+      if (!bgColor) bgColor = isDark ? '#0a0a0a' : '#ffffff';
 
+      // 🔥 1. Atur warna ikon Status Bar
       if (isDark) {
-        // Mode Gelap: Background hitam, Ikon PUTIH
-        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setStyle({ style: Style.Dark }); // Mode Gelap: Ikon PUTIH
       } else {
-        // Mode Terang: Background putih, Ikon HITAM
-        await StatusBar.setStyle({ style: Style.Light });
+        await StatusBar.setStyle({ style: Style.Light }); // Mode Terang: Ikon HITAM
       }
 
-      // Set background status bar agar menyatu dengan aplikasi
+      // 🔥 2. Atur warna background Status Bar
       if (platform === 'android') {
         await StatusBar.setBackgroundColor({ color: bgColor });
+      }
+
+      // 🔥 3. UPDATE META TAG THEME-COLOR agar OS Android patuh (SANGAT PENTING!)
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) {
+        metaTheme.setAttribute('content', bgColor);
       }
     } catch (e) {
       console.warn("⚠️ StatusBar sync error:", e);
@@ -185,7 +191,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           const observer = new MutationObserver(() => {
             syncStatusBar();
           });
-          // Pantau jika atribut 'class' atau 'data-theme' berubah pada tag html
           observer.observe(htmlEl, { attributes: true, attributeFilter: ['class', 'data-theme'] });
 
           // Simpan observer untuk cleanup
@@ -244,7 +249,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
         PushNotifications.removeAllListeners();
-        // Cleanup observer saat komponen unmount
         if ((window as any).__themeObserver) {
           (window as any).__themeObserver.disconnect();
           delete (window as any).__themeObserver;
@@ -458,8 +462,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#000000" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+        
+        {/* 🛑 PERBAIKAN KRUSIAL: Hapus 2 baris hardcode di bawah ini! */}
+        {/* <meta name="theme-color" media="(prefers-color-scheme: light)" content="#000000" /> */}
+        {/* <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" /> */}
+        
+        {/* 🟢 Ganti dengan ini agar bisa dikontrol oleh Javascript */}
+        <meta name="theme-color" content="#ffffff" />
+
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
@@ -482,7 +492,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</style>
       </head>
 
-      {/* Class dinamis pada body dan fixed-layout untuk memastikan wrapper mencakup layar penuh */}
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'} ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         <CustomSplash />
         <NextTopLoader color="#1f3cff" showSpinner={false} shadow="0 0 10px #1f3cff,0 0 5px #1f3cff" zIndex={99999999} />
