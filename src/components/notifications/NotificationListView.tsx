@@ -31,9 +31,9 @@ interface Props {
   getIconAndColor: (type: string) => { icon: string; color: string };
 }
 
-// --- SVG Khusus HypeSystem ---
-const hypeSystemSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 512 512">
-  <path fill="#ffffff" d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"/>
+// --- SVG Khusus HypeSystem (Sesuai Permintaan) ---
+const hypeSystemSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 512 512">
+  <path fill="currentColor" d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"/>
 </svg>`;
 const hypeSystemDataUri = `data:image/svg+xml,${encodeURIComponent(hypeSystemSvg)}`;
 // ---
@@ -418,7 +418,7 @@ export default function NotificationListView({
                   </span>
                 </div>
 
-                {/* --- LOGIKA ACTION AREA & THUMBNAIL --- */}
+                {/* --- LOGIKA ACTION AREA & THUMBNAIL POSTINGAN --- */}
                 <div 
                   className="notif-action-area" 
                   style={{ 
@@ -462,7 +462,7 @@ export default function NotificationListView({
                     </button>
                   )}
                   
-                  {/* Perbaikan: Tampilkan kotak thumbnail (dengan atau tanpa gambar) untuk like, save, repost, comment */}
+                  {/* Tampilkan kotak thumbnail (gambar postingan) untuk Like, Save, Repost, Comment */}
                   {isPostAction && (
                     <div 
                       style={{ 
