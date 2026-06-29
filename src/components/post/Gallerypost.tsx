@@ -1,6 +1,7 @@
 'use client';
-import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
@@ -14,6 +15,7 @@ import { useFeed } from '@/hooks/useFeed';
 import RefreshableWrapper from '@/components/RefreshableWrapper';
 import './Gallery.css';
 
+// --- Utilities ---
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -32,8 +34,12 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: any }) => {
+// --- Sub Components ---
+const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
+  const router = useRouter(); // Dipanggil di dalam agar tidak menjadi prop yang merusak memoization
+  
   if (!posts.length) return null;
+  
   return (
     <div style={{ margin: '15px 0 35px 0', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>
@@ -48,8 +54,8 @@ const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: an
         scrollSnapType: 'x mandatory', 
         paddingBottom: '5px', 
         willChange: 'transform',
-        WebkitOverflowScrolling: 'touch', // WAJIB untuk iOS agar scroll horizontal tidak macet
-        overscrollBehaviorX: 'contain' // Cegah back-gesture browser saat geser horizontal
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorX: 'contain' 
       }}>
         {posts.map(sp => {
           const img = sp.image_url ? sp.image_url.split(',')[0] : '';
@@ -86,14 +92,18 @@ const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: an
 });
 MemoizedSlider.displayName = 'MemoizedSlider';
 
-const MemoizedSuggested = React.memo(SuggestedUsers, (prev, next) =>
-  prev.myId === next.myId && prev.followedUsers === next.followedUsers
+// Perbaikan Pengecekan Memo (Set tidak bisa dicek menggunakan operator === )
+const MemoizedSuggested = React.memo(SuggestedUsers, (prev: any, next: any) =>
+  prev.myId === next.myId && prev.followedUsers.size === next.followedUsers.size
 );
+MemoizedSuggested.displayName = 'MemoizedSuggested';
 
+// --- Main Component ---
 export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
 
+  // State Profile & Relasi
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
@@ -103,19 +113,27 @@ export default function Gallerypost() {
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
 
+  // State Interaksi UI
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
-  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; reposts: number; saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
-  const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
-  const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
-
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
 
+  // Data Interaksi Post
+  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; reposts: number; saves: number }>>({});
+  const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
+  const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
+  
+  // Ref untuk melacak post mana yang sudah di-fetch interaksinya
+  const fetchedPostsRef = useRef<Set<string>>(new Set());
+
+  // Pengaturan Feed
   const [currentCategory, setCurrentCategory] = useState("fyp");
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
-
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
+  
   const [repostModal, setRepostModal] = useState<{
     isOpen: boolean;
     postId: string;
@@ -124,13 +142,7 @@ export default function Gallerypost() {
   } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
-  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
-  const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
-
-  // BINDING SCROLLER: Mengambil kontrol dari .main-content
-  const [scrollParent, setScrollParent] = useState<HTMLElement | undefined>(undefined);
-  const [isMounted, setIsMounted] = useState(false);
-
+  // Refs terbaru untuk menghindari stale state pada callback
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -142,6 +154,7 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
+  // Infinite Scroll & Fetch API Data
   const {
     allPosts,
     fetchNextPage,
@@ -154,28 +167,34 @@ export default function Gallerypost() {
   
   useGlobalRefresh(refetch);
 
+  // Binding Scroller Virtuoso
+  const [scrollParent, setScrollParent] = useState<HTMLElement | undefined>(undefined);
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
-    setIsMounted(true);
-    // Mencari elemen .main-content dari layout global
     const mainScroller = document.querySelector('.main-content') as HTMLElement;
     if (mainScroller) {
       setScrollParent(mainScroller);
     }
+    setIsMounted(true);
   }, []);
 
   const handleRefresh = async () => {
+    // Reset tracker saat direfresh paksa agar memuat data interaksi yang paling update
+    fetchedPostsRef.current.clear();
     await refetch();
     await new Promise(resolve => setTimeout(resolve, 800));
   };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const handleUploadSuccess = () => refetch();
+      const handleUploadSuccess = () => handleRefresh();
       window.addEventListener('postUploadSuccess', handleUploadSuccess);
       return () => window.removeEventListener('postUploadSuccess', handleUploadSuccess);
     }
   }, [refetch]);
 
+  // Handle Global Volume
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -190,12 +209,7 @@ export default function Gallerypost() {
     };
 
     const handleVolumeKey = (e: KeyboardEvent) => {
-      if (
-        e.key === 'AudioVolumeUp' || 
-        e.code === 'AudioVolumeUp' || 
-        e.keyCode === 24 || 
-        e.keyCode === 175   
-      ) {
+      if (['AudioVolumeUp', 'VolumeUp'].includes(e.key) || e.keyCode === 175) {
         forceUnmuteGlobal();
       }
     };
@@ -218,6 +232,7 @@ export default function Gallerypost() {
     };
   }, [isGloballyMuted]);
 
+  // Initial Data & Profil
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -229,9 +244,11 @@ export default function Gallerypost() {
           supabase.from('followers').select('following_id').eq('follower_id', session.user.id),
           supabase.from('followers').select('follower_id').eq('following_id', session.user.id),
         ]);
+        
         if (followsRes.data) {
           const followingSet = new Set(followsRes.data.map(f => String(f.following_id)));
           setFollowedUsers(followingSet);
+          
           if (followersRes.data) {
             const followerSet = new Set(followersRes.data.map(f => String(f.follower_id)));
             setMutualUsers(new Set([...followingSet].filter(x => followerSet.has(x))));
@@ -242,6 +259,7 @@ export default function Gallerypost() {
     init();
   }, []);
 
+  // Fetch Recommended / Suggested Posts
   useEffect(() => {
     const fetchSuggestedPosts = async () => {
       try {
@@ -252,66 +270,102 @@ export default function Gallerypost() {
           .eq('is_private', false)
           .neq('image_url', null)
           .limit(20);
-        if (data) {
+          
+        if (data && data.length > 0) {
           setSuggestedPosts(shuffleArray(data).slice(0, 6));
         }
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching suggested posts:", err);
       }
     };
     fetchSuggestedPosts();
   }, []);
 
+  // Fetch Post Interactions (DIPERBAIKI: Mencegah N+1 Fetching saat scroll)
   useEffect(() => {
     if (!currentUser || allPosts.length === 0) return;
 
-    const postIds = allPosts.map(p => p.id);
-    const fetchInteractions = async () => {
-      const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
-        supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
-        supabase.from("comments").select("post_id").in("post_id", postIds),
-        supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", postIds),
-        supabase.rpc('get_bookmark_counts', { post_ids: postIds }),
-      ]);
+    // Filter post yang BELUM di fetch interaksinya saja
+    const newPostIdsToFetch = allPosts
+      .map(p => p.id)
+      .filter(id => !fetchedPostsRef.current.has(id));
 
-      const newCounts: any = {};
-      const newLikersMap: any = {};
-      const newRepostersMap: any = {};
-      postIds.forEach(id => {
-        if (!newCounts[id]) {
+    if (newPostIdsToFetch.length === 0) return;
+
+    // Tambahkan ID ke dalam ref agar tidak kefetch dua kali
+    newPostIdsToFetch.forEach(id => fetchedPostsRef.current.add(id));
+
+    const fetchInteractions = async () => {
+      try {
+        const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
+          supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", newPostIdsToFetch),
+          supabase.from("comments").select("post_id").in("post_id", newPostIdsToFetch),
+          supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", newPostIdsToFetch),
+          supabase.rpc('get_bookmark_counts', { post_ids: newPostIdsToFetch }),
+        ]);
+
+        const newCounts: any = {};
+        const newLikersMap: any = {};
+        const newRepostersMap: any = {};
+        
+        newPostIdsToFetch.forEach(id => {
           newCounts[id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
           newLikersMap[id] = [];
           newRepostersMap[id] = [];
-        }
-      });
+        });
 
-      likesRes.data?.forEach(l => {
-        if (newCounts[l.post_id]) { newCounts[l.post_id].likes++; newLikersMap[l.post_id].push(l.profiles); }
-      });
-      commentsRes.data?.forEach(c => { if (newCounts[c.post_id]) newCounts[c.post_id].comments++; });
-      repostsRes.data?.forEach(r => {
-        if (newCounts[r.post_id]) { newCounts[r.post_id].reposts++; newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note }); }
-      });
-      (savesRes.data || []).forEach((s: any) => { if (newCounts[s.post_id]) newCounts[s.post_id].saves = Number(s.count); });
+        likesRes.data?.forEach(l => {
+          if (newCounts[l.post_id]) { newCounts[l.post_id].likes++; newLikersMap[l.post_id].push(l.profiles); }
+        });
+        
+        commentsRes.data?.forEach(c => { 
+          if (newCounts[c.post_id]) newCounts[c.post_id].comments++; 
+        });
+        
+        repostsRes.data?.forEach(r => {
+          if (newCounts[r.post_id]) { newCounts[r.post_id].reposts++; newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note }); }
+        });
+        
+        (savesRes.data || []).forEach((s: any) => { 
+          if (newCounts[s.post_id]) newCounts[s.post_id].saves = Number(s.count); 
+        });
 
-      setCounts(prev => ({ ...prev, ...newCounts }));
-      setLikersMap(prev => ({ ...prev, ...newLikersMap }));
-      setRepostersMap(prev => ({ ...prev, ...newRepostersMap }));
+        setCounts(prev => ({ ...prev, ...newCounts }));
+        setLikersMap(prev => ({ ...prev, ...newLikersMap }));
+        setRepostersMap(prev => ({ ...prev, ...newRepostersMap }));
 
-      const [myLikes, myReposts, mySaves] = await Promise.all([
-        supabase.from("likes").select("post_id").eq("user_id", currentUser.id).in("post_id", postIds),
-        supabase.from("reposts").select("post_id").eq("user_id", currentUser.id).in("post_id", postIds),
-        supabase.from("bookmarks").select("post_id").eq("user_id", currentUser.id).in("post_id", postIds),
-      ]);
-      
-      setMyLikedPosts(prev => { const n = new Set(prev); myLikes.data?.forEach(l => n.add(String(l.post_id))); return n; });
-      setMyRepostedPosts(prev => { const n = new Set(prev); myReposts.data?.forEach(r => n.add(String(r.post_id))); return n; });
-      setMySavedPosts(prev => { const n = new Set(prev); mySaves.data?.forEach(s => n.add(String(s.post_id))); return n; });
+        // Cek interaksi spesifik untuk currentUser 
+        const [myLikes, myReposts, mySaves] = await Promise.all([
+          supabase.from("likes").select("post_id").eq("user_id", currentUser.id).in("post_id", newPostIdsToFetch),
+          supabase.from("reposts").select("post_id").eq("user_id", currentUser.id).in("post_id", newPostIdsToFetch),
+          supabase.from("bookmarks").select("post_id").eq("user_id", currentUser.id).in("post_id", newPostIdsToFetch),
+        ]);
+        
+        setMyLikedPosts(prev => { 
+          const n = new Set(prev); 
+          myLikes.data?.forEach(l => n.add(String(l.post_id))); 
+          return n; 
+        });
+        setMyRepostedPosts(prev => { 
+          const n = new Set(prev); 
+          myReposts.data?.forEach(r => n.add(String(r.post_id))); 
+          return n; 
+        });
+        setMySavedPosts(prev => { 
+          const n = new Set(prev); 
+          mySaves.data?.forEach(s => n.add(String(s.post_id))); 
+          return n; 
+        });
+        
+      } catch (err) {
+        console.error("Failed to load interactions", err);
+      }
     };
 
     fetchInteractions();
   }, [allPosts, currentUser]);
 
+  // --- Handlers Interaksi UI ---
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return router.push('/login');
     const numericPostId = parseInt(postId);
@@ -329,7 +383,7 @@ export default function Gallerypost() {
           await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
         }
       }
-    } catch (err) { }
+    } catch (err) { console.error(err) }
   }, [router]);
 
   const handleSave = useCallback(async (postId: string) => {
@@ -343,7 +397,7 @@ export default function Gallerypost() {
     try {
       if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-    } catch (err) { }
+    } catch (err) { console.error(err) }
   }, [router]);
 
   const openRepostModal = useCallback((postId: string, creatorId: string) => {
@@ -355,10 +409,12 @@ export default function Gallerypost() {
 
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
+    
     const { postId, creatorId, isUnrepost } = repostModal;
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
+    
     setAnimatingReposts(prev => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts(prev => { const n = new Set(prev); n.delete(postId); return n; }), 500);
     
@@ -372,11 +428,12 @@ export default function Gallerypost() {
       } else {
         const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
         if (error) {
+          // Revert optimis state on error
           setMyRepostedPosts(prev => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
           setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
         }
       }
-    } catch (err) { }
+    } catch (err) { console.error(err) }
   }, [repostModal, repostNote]);
 
   const handleFollowToggle = useCallback(async (e: any, creatorId: string) => {
@@ -387,6 +444,7 @@ export default function Gallerypost() {
     const isFollowing = followedUsersRef.current.has(creatorId);
     setAnimatingFollows(prev => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows(prev => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
+    
     setFollowedUsers(prev => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
     
     try {
@@ -396,15 +454,17 @@ export default function Gallerypost() {
         await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
         await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
       }
-    } catch (err) { }
+    } catch (err) { console.error(err) }
   }, [router]);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
+    
     if (now - lastTapTime < 350) {
       lastTapRef.current[postId] = 0;
       if (!currentUserRef.current) return router.push('/login');
+      
       setPoppingHeart(`${postId}-${now}`);
       setTimeout(() => setPoppingHeart(null), 1000);
       handleLike(postId, creatorId);
@@ -455,14 +515,22 @@ export default function Gallerypost() {
     });
   }, []);
 
+  const loadMore = useCallback(() => {
+    if (!isFetchingNextPage && hasNextPage) {
+      fetchNextPage();
+    }
+  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
+
+  // Renderer list Virtuoso
   const renderItem = useCallback((index: number, post: any) => {
     const isExpanded = expandedPosts.has(post.id);
     const isTextOrAudio = !post.image_url && !post.video_url;
 
     return (
       <div key={post.id} style={{ display: 'flex', flexDirection: 'column' }}>
-        {index === 3 && <MemoizedSlider posts={suggestedPosts} router={router} />}
+        {index === 3 && suggestedPosts.length > 0 && <MemoizedSlider posts={suggestedPosts} />}
         {index === 7 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
+        
         <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
           <PostCard
             post={post}
@@ -504,12 +572,6 @@ export default function Gallerypost() {
     handleMediaClick, toggleMute, openShareOptions, handleFollowToggle, handleToggleExpand,
     router, t, suggestedPosts
   ]);
-
-  const loadMore = useCallback(() => {
-    if (!isFetchingNextPage && hasNextPage) {
-      fetchNextPage();
-    }
-  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
   if (isLoading) {
     return (
