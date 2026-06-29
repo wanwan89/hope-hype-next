@@ -6,7 +6,7 @@
 :root {
   --bg-main: #ffffff;
   --text-main: #1c1e21;
-  --bg-card: #ffffff;
+  --bg-card: #ffffff;                /* sudah sama dengan bg-main */
   --border-card: transparent;
   --text-muted: #64748b;
   --bg-modal: #ffffff;
@@ -32,7 +32,7 @@
 html.dark {
   --bg-main: #0a0a0a;
   --text-main: #f8fafc;
-  --bg-card: #151515;
+  --bg-card: #0a0a0a;                /* disamakan dengan bg-main */
   --border-card: transparent;
   --text-muted: #94a3b8;
   --bg-modal: #111111;
@@ -98,7 +98,7 @@ body {
    ============================================================= */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Poppins', sans-serif;
-  font-weight: 700; /* opsional, sesuaikan */
+  font-weight: 700;
   line-height: 1.2;
 }
 
