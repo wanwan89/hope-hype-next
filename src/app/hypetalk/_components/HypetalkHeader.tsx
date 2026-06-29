@@ -15,7 +15,7 @@ const HypetalkHeader: React.FC<Props> = ({ onMenuClick, searchQuery, onSearchCha
       .hypetalk-logo {
         font-family: 'Dancing Script', cursive;
         font-weight: 700;
-        font-size: 1.8rem;
+        font-size: 2.4rem;   /* lebih besar */
         margin: 0;
         line-height: 1;
       }

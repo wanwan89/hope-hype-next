@@ -118,7 +118,7 @@ export default function VoiceLobbyPage() {
   return (
     <div className="voice-lobby-container" style={{ position: 'relative' }}>
       
-      {/* Header Baru: Teks Hyperoom dengan font Poppins tebal di kiri, koin di kanan */}
+      {/* Header: Teks Hyperoom diperkecil menjadi 20px */}
       <header 
         className="lobby-header" 
         style={{ 
@@ -127,7 +127,7 @@ export default function VoiceLobbyPage() {
           padding: '16px 20px', borderBottom: '1px solid var(--border-card)'
         }}
       >
-        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 800, fontSize: '22px', letterSpacing: '0.5px' }}>
+        <div style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 800, fontSize: '20px', letterSpacing: '0.5px' }}>
           Hyperoom
         </div>
         <div className="coin-badge" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setIsCoinSheetOpen(true)}>

@@ -8,7 +8,7 @@ import MatchSuccessOverlay from '@/components/HypeMatch/MatchSuccessOverlay';
 import BiodataSlide from '@/components/HypeMatch/BiodataSlide';
 import Lottie from 'lottie-react';
 import fireAnimation from '@/assets/lottie/fire.json';
-import emptyAnimation from '@/assets/lottie/empty.json'; // Import Lottie empty animation
+import emptyAnimation from '@/assets/lottie/empty.json';
 
 import './HypeMatchOverlay.css';
 
@@ -223,28 +223,30 @@ export default function HypeMatch() {
 
   return (
     <div className="hm-overlay">
+      {/* Font Display (Bebas Neue) untuk Hypematch */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
       `}</style>
 
       <div className="hm-header">
-        {/* WRAPPER BARU: Mengelompokkan logo text dan animasi Lottie */}
+        {/* Logo Text + Lottie */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <h1 
             className="hm-logo-text" 
             style={{ 
-              fontFamily: "'Poppins', sans-serif", 
-              fontWeight: 700,
+              fontFamily: "'Bebas Neue', cursive", 
+              fontWeight: 400,
+              fontSize: "2.8rem",          /* ukuran display */
               color: "#FF1493", 
-              letterSpacing: "-1px",
-              textTransform: "lowercase",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
               margin: 0,
+              lineHeight: 1,
               textShadow: "none"
             }}
           >
             hypematch
           </h1>
-          {/* LOTTIE ANIMATION */}
           <Lottie 
             animationData={fireAnimation} 
             loop={true} 
@@ -256,6 +258,8 @@ export default function HypeMatch() {
           <SvgIcon name="filter" size={26} />
         </button>
       </div>
+
+      {/* ... sisa kode sama persis seperti sebelumnya ... */}
 
       <div className="hm-stack-container">
         {stackedUsers.length > 0 ? (
@@ -308,7 +312,6 @@ export default function HypeMatch() {
           })
         ) : (
           <div className="hm-empty-state">
-            {/* Lottie Animation menggantikan SvgIcon "x" */}
             <Lottie 
               animationData={emptyAnimation} 
               loop={true} 
@@ -320,15 +323,12 @@ export default function HypeMatch() {
 
         {activeUser && (
           <div className="hm-fixed-action-bar">
-            {/* Tombol X (Pass) tetap 28 */}
             <button className="hm-action-btn btn-pass" onClick={(e) => { e.stopPropagation(); handleAction('pass'); }} style={{ transform: `scale(${passBtnScale})` }}>
               <SvgIcon name="x" className="hm-no-margin" size={28} />
             </button>
-            {/* Tombol Panah Atas (Detail) dibesarkan menjadi 40 */}
             <button className="hm-action-btn btn-fire" onClick={(e) => { e.stopPropagation(); setShowBiodata(true); }}>
               <SvgIcon name="arrowUp" className="hm-no-margin" size={40} />
             </button>
-            {/* Tombol Hati (Like) tetap 28 */}
             <button className="hm-action-btn btn-like" onClick={(e) => { e.stopPropagation(); handleAction('like'); }} style={{ transform: `scale(${likeBtnScale})` }}>
               <SvgIcon name="heart" className="hm-no-margin" size={28} />
             </button>
