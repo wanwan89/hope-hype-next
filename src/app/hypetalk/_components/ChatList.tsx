@@ -28,7 +28,7 @@ type Props = {
 };
 
 // ══════════════════════════════════════════
-// SwipeableChatRow – FULL FIX (Pan-Based)
+// SwipeableChatRow – FULL FIX (Pan-Based + Anti Long-press Scroll)
 // ══════════════════════════════════════════
 const SwipeableChatRow = ({
   chat,
@@ -49,6 +49,9 @@ const SwipeableChatRow = ({
   const [offsetX, setOffsetX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const lottieRef = useRef<LottieRefCurrentProps>(null);
+  
+  // Deteksi pergerakan jari untuk membatalkan long-press
+  const touchStartPos = useRef({ x: 0, y: 0 });
 
   const isGlobalOrActiveGroup =
     chat.type === 'global' || (chat.type === 'group' && chat.isMember);
@@ -56,21 +59,35 @@ const SwipeableChatRow = ({
 
   const threshold = 80; // px
 
-  // --- Pan handlers ---
+  // --- Handlers Sentuh untuk Membatalkan Long-Press ---
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    onPressStart?.(chat);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    // Jika bergeser lebih dari 10px (horizontal atau vertikal), batalkan tekan-lama
+    if (dx > 10 || dy > 10) {
+      onPressEnd?.(); 
+    }
+  };
+
+  // --- Pan handlers (Swipe Kiri/Kanan) ---
   const handlePanStart = () => {
     if (!canSwipe) return;
-    window.dispatchEvent(new Event('swipe-start'));  // matikan pull‑to‑refresh
+    onPressEnd?.(); // Ekstra proteksi membatalkan long press jika swipe terdeteksi framer motion
+    window.dispatchEvent(new Event('swipe-start')); 
   };
 
   const handlePan = (_e: any, info: any) => {
     if (!canSwipe) return;
     const dx = info.offset.x;
-    // Hanya proses jika gerakan horizontal dominan (minimal 1.5x lipat dari vertikal)
     const dy = Math.abs(info.offset.y);
     if (dx > 10 && dx > dy * 1.5) {
       setIsSwiping(true);
-      setOffsetX(Math.min(dx, 150)); // batasi ke 150px
-      // Mainkan Lottie jika sudah melewati 40px
+      setOffsetX(Math.min(dx, 150));
       if (dx > 40 && lottieRef.current) {
         lottieRef.current.play();
       }
@@ -142,12 +159,13 @@ const SwipeableChatRow = ({
         onPanStart={handlePanStart}
         onPan={handlePan}
         onPanEnd={handlePanEnd}
-        onTouchStart={() => onPressStart?.(chat)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={() => {
           onPressEnd?.();
           if (!isSwiping) window.dispatchEvent(new Event('swipe-end'));
         }}
-        onMouseDown={() => onPressStart?.(chat)}
+        onMouseDown={(e) => { if (e.button === 0) onPressStart?.(chat); }}
         onMouseUp={() => onPressEnd?.()}
         onMouseLeave={() => onPressEnd?.()}
       >
@@ -222,7 +240,7 @@ const SwipeableChatRow = ({
 };
 
 // ══════════════════════════════════════════
-// ChatList (dengan RefreshableWrapper)
+// ChatList
 // ══════════════════════════════════════════
 const ChatList: React.FC<Props> = ({
   isLoading,

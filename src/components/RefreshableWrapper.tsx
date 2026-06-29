@@ -17,8 +17,24 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
   const lottieRef = useRef<LottieRefCurrentProps>(null);
   const startY = useRef(0);
   const startX = useRef(0);
-  const isAtTop = useRef(true);
+  const isAtTop = useRef(true); 
   const isPulling = useRef(false);
+
+  // ═════════════════════════════════════
+  // Deteksi Posisi Scroll
+  // ═════════════════════════════════════
+  useEffect(() => {
+    const handleScroll = () => {
+      // Pastikan animasi pull-to-refresh HANYA bisa ditarik jika scroll benar-benar di atas
+      isAtTop.current = window.scrollY <= 0;
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    // Panggil sekali untuk inisialisasi awal
+    handleScroll();
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // ═════════════════════════════════════
   // Tangkap event dari SwipeableChatRow
@@ -50,21 +66,21 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
   // Touch handlers
   // ═════════════════════════════════════
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Abaikan jika tidak di atas
+    if (!isAtTop.current) return;
+    
     startY.current = e.touches[0].clientY;
     startX.current = e.touches[0].clientX;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    // Jika ada swipe horizontal aktif → jangan pull
-    if (isSwipeActive) return;
-    if (!isAtTop.current || isRefreshing) return;
+    if (isSwipeActive || !isAtTop.current || isRefreshing) return;
 
     const currentY = e.touches[0].clientY;
     const currentX = e.touches[0].clientX;
     const deltaY = currentY - startY.current;
     const deltaX = Math.abs(currentX - startX.current);
 
-    // Hanya pull jika tarikan vertikal jauh lebih besar dari horizontal
     if (deltaY > 0 && deltaY > deltaX * 1.5) {
       if (!isPulling.current) {
         isPulling.current = true;
@@ -73,7 +89,6 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
       setPullDistance(dampenedDistance);
       updateLottieFrame(dampenedDistance);
     } else if (deltaX > deltaY * 1.5) {
-      // Gerakan dominan horizontal → batalkan pull
       setPullDistance(0);
       isPulling.current = false;
     }
@@ -92,6 +107,8 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
       await onRefresh();
       setIsRefreshing(false);
     }
+    
+    // Kembalikan ke posisi awal dengan mulus
     setPullDistance(0);
   };
 
@@ -102,7 +119,15 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
       onTouchEnd={handleTouchEnd}
       style={{ position: 'relative', width: '100%' }}
     >
-      <div style={{ height: pullDistance, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+      <div 
+        style={{ 
+          height: pullDistance, 
+          overflow: 'hidden', 
+          display: 'flex', 
+          justifyContent: 'center',
+          transition: isPulling.current ? 'none' : 'height 0.3s ease-out' // Transisi mulus saat dilepas
+        }}
+      >
         <div style={{ width: 60, height: 60 }}>
           <Lottie
             lottieRef={lottieRef}

@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif } from '@/lib/ui-utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmProvider } from '@/components/ConfirmProvider';
 import './Hypetalk.css';
 
@@ -198,7 +197,6 @@ export default function HypetalkPage() {
             const roomMsgs = allMsgs.filter(m => m.room_id === roomIdStr);
             const iHaveReplied = roomMsgs.some(m => m.user_id === userId);
             const isFollower = followerIds.has(p.id);
-            // INILAH KUNCI: chat masuk request jika bukan follower & belum pernah dibalas
             if (!isFollower && !iHaveReplied) {
               reqChats.push(chatItem);
             } else {
@@ -514,68 +512,17 @@ export default function HypetalkPage() {
     <ConfirmProvider>
       <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         
-        {/* HEADER */}
+        {/* HEADER DENGAN PROPS SELEKSI TERBARU */}
         <HypetalkHeader
           onMenuClick={() => setIsSidebarOpen(true)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          isSelectionMode={isSelectionMode}
+          selectedCount={selectedChats.size}
+          onCancelSelection={cancelSelection}
+          onSelectAll={selectAllChats}
+          onDeleteSelected={() => executeDeleteRooms(Array.from(selectedChats))}
         />
-
-        {/* ACTION BAR SELEKSI */}
-        <AnimatePresence>
-          {isSelectionMode && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 16px',
-                background: 'var(--primary-bg)', // ✅ latar biru tetap
-                boxShadow: '0 4px 12px rgba(31, 60, 255, 0.25)',
-                zIndex: 20,
-                overflow: 'hidden'
-              }}
-            >
-               <button 
-                 onClick={cancelSelection} 
-                 style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '15px', fontWeight: '500', cursor: 'pointer', padding: 0, opacity: 0.9 }}
-               >
-                 Batal
-               </button>
-               
-               <span style={{ fontWeight: '600', color: '#ffffff', fontSize: '16px' }}>
-                 {selectedChats.size} Terpilih
-               </span>
-               
-               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <button 
-                    onClick={selectAllChats} 
-                    style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '14px', fontWeight: '500', cursor: 'pointer', padding: 0, opacity: 0.9 }}
-                  >
-                    Tandai Semua
-                  </button>
-                  <button 
-                    onClick={() => executeDeleteRooms(Array.from(selectedChats))} 
-                    disabled={selectedChats.size === 0} 
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: selectedChats.size === 0 ? 'rgba(255, 255, 255, 0.5)' : '#ffffff', 
-                      fontWeight: '700', 
-                      fontSize: '14px', 
-                      cursor: selectedChats.size === 0 ? 'not-allowed' : 'pointer', 
-                      padding: 0 
-                    }}
-                  >
-                    Hapus
-                  </button>
-               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <ChatList
           isLoading={isLoading}
