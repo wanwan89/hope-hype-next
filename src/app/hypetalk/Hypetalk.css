@@ -21,7 +21,7 @@
   bottom: 0;
   margin: 0 auto;
   width: 100%;
-  max-width: 600px; /* 🔥 FIX: Disamakan dengan max-width global .main-content (dari 480px jadi 600px) */
+  max-width: 600px;
   height: 100dvh; 
   display: flex;
   flex-direction: column;
@@ -32,6 +32,8 @@
   border-left: 1px solid var(--border-card);
   border-right: 1px solid var(--border-card);
   z-index: 10;
+  /* 🔥 Supaya tidak ada celah tambahan */
+  padding-top: 0 !important;
 }
 
 .telegram-wrapper * {
@@ -39,21 +41,51 @@
 }
 
 /* =============================================================
-   HEADER
+   HEADER (🔥 FULL FIX: HEADER LEBIH KE ATAS)
    ============================================================= */
 .telegram-wrapper .tg-header {
   background-color: var(--bg-main);
   z-index: 20;
-  /* 🔥 FIX FULL GLOBAL: Mengambil safe-area-top dari layout.tsx + 12px ruang napas */
-  padding-top: calc(var(--safe-area-top, env(safe-area-inset-top, 0px)) + 12px);
+  /* Padding atas minimal, hanya untuk safe area */
+  padding-top: max(env(safe-area-inset-top), 4px);
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-card);
 }
-.telegram-wrapper .tg-header-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
-.telegram-wrapper .tg-header-left { display: flex; align-items: center; gap: 16px; }
-.telegram-wrapper .tg-header-left h2 { font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0; }
-.telegram-wrapper .icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: transform 0.2s ease, background-color 0.3s ease, color 0.3s ease; -webkit-tap-highlight-color: transparent; }
-.telegram-wrapper .icon-btn:active { background: transparent; transform: scale(0.95); }
+.telegram-wrapper .tg-header-top { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 8px 16px;  /* lebih rapat */
+}
+.telegram-wrapper .tg-header-left { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+}
+.telegram-wrapper .tg-header-left h2 { 
+  font-size: 20px; 
+  font-weight: 700; 
+  color: var(--text-main); 
+  margin: 0; 
+}
+.telegram-wrapper .icon-btn { 
+  background: none; 
+  border: none; 
+  color: var(--text-muted); 
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  width: 40px; 
+  height: 40px; 
+  border-radius: 50%; 
+  transition: transform 0.2s ease, background-color 0.3s ease, color 0.3s ease; 
+  -webkit-tap-highlight-color: transparent; 
+}
+.telegram-wrapper .icon-btn:active { 
+  background: transparent; 
+  transform: scale(0.95); 
+}
 
 /* =============================================================
    SEARCH
@@ -86,7 +118,6 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  /* 🔥 FIX FULL GLOBAL: Bottom padding sinkron dengan safe-area-inset-bottom */
   padding-bottom: calc(110px + max(env(safe-area-inset-bottom), 16px));
   -webkit-overflow-scrolling: touch;
   background-color: var(--bg-main);
@@ -244,7 +275,6 @@
 
 .telegram-wrapper .tg-fab {
   position: absolute;
-  /* 🔥 FIX: Jarak FAB diatur mengikuti environment HP */
   bottom: calc(95px + max(env(safe-area-inset-bottom), 16px));
   right: 20px;
   width: 56px; height: 56px; border-radius: 50%; background-color: var(--primary); border: none; color: white;

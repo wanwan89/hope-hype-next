@@ -94,6 +94,15 @@ body {
 }
 
 /* =============================================================
+   TYPOGRAPHY – HEADING DENGAN POPPINS
+   ============================================================= */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700; /* opsional, sesuaikan */
+  line-height: 1.2;
+}
+
+/* =============================================================
    WRAPPER FRAMEWORK (PERBAIKAN 1 – Pisahkan main)
    ============================================================= */
 #__next,
@@ -104,10 +113,9 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;  /* hanya wrapper app */
+  overflow: hidden;
 }
 
-/* main TIDAK boleh overflow:hidden agar .main-content bisa scroll */
 main {
   background-color: var(--bg-main) !important;
   height: 100dvh;
@@ -134,10 +142,9 @@ main {
   position: relative;
 }
 
-/* KUNCI SCROLL */
 .main-content {
   flex: 1;
-  min-height: 0;                 /* WAJIB agar flex child bisa menyusut */
+  min-height: 0;
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
@@ -146,10 +153,9 @@ main {
   
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: auto;   /* biarkan bounce natural */
+  overscroll-behavior-y: auto;
 }
 
-/* Pastikan semua child di dalamnya bisa menerima gesture scroll */
 .main-content * {
   touch-action: auto !important;
 }
