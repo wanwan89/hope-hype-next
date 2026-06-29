@@ -1,42 +1,23 @@
-/* src/app/dailycek/dailycek.css */
+/* dailycek.css */
 
 .mission-wrapper { 
-  --bg-main: #f8fafc; 
-  --bg-card: #ffffff; 
-  --text-main: #0f172a; 
-  --text-muted: #64748b; 
-  --border-color: #f1f5f9; 
-  --primary: #f59e0b; 
-  --primary-hover: #d97706; 
-  
+  /* 🔥 HAPUS DEFINISI WARNA LOKAL! sekarang pakai langsung dari globals.css */
   background: var(--bg-main); 
   color: var(--text-main); 
   font-family: 'Poppins', sans-serif; 
 
-  /* 🔥 FIX TOTAL LAYOUT HP 🔥 */
-  position: fixed; /* Mengunci agar tidak ada tarikan scroll liar di browser */
+  /* 🔥 LAYOUT FULL SCREEN HP 🔥 */
+  position: fixed; 
   inset: 0;
   width: 100%;
-  height: 100vh;
-  height: 100dvh; /* Mengikuti tinggi layar HP secara dinamis */
+  height: 100dvh; 
   overflow: hidden; 
   display: flex;
   flex-direction: column;
   transition: background-color 0.3s ease, color 0.3s ease;
-  overscroll-behavior: none; /* 🔥 FIX: Anti layar mantul 🔥 */
+  overscroll-behavior: none; /* 🔥 Anti layar mantul */
 }
 
-/* --- 🔥 FIX: SINKRONISASI DARK MODE NEXT-THEMES 🔥 --- */
-[data-theme='dark'] .mission-wrapper,
-html.dark .mission-wrapper { 
-  --bg-main: #0a0a0a; 
-  --bg-card: #141414; 
-  --text-main: #f8fafc; 
-  --text-muted: #94a3b8; 
-  --border-color: #262626; 
-}
-
-/* --- CONTAINER --- */
 .mission-container { 
   width: 100%; 
   max-width: 600px; 
@@ -47,17 +28,24 @@ html.dark .mission-wrapper {
   background: var(--bg-main); 
 }
 
-/* --- HEADER (STAY DI ATAS) --- */
+/* 🔥 HEADER + EXCHANGE TETAP DI ATAS */
+.sticky-top-wrapper {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-main);
+  z-index: 10;
+}
+
 .mission-header { 
-  flex-shrink: 0; /* Mencegah header gepeng */
+  flex-shrink: 0;
   background: var(--bg-card); 
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
   padding: 10px 16px; 
   padding-top: calc(10px + env(safe-area-inset-top));
-  border-bottom: 1px solid var(--border-color);
-  z-index: 10;
+  border-bottom: 1px solid var(--border-card);
 }
 
 .back-btn {
@@ -69,12 +57,12 @@ html.dark .mission-wrapper {
   justify-content: center;
   cursor: pointer;
   padding: 8px;
-  margin-left: -8px; /* Kompensasi padding biar posisinya pas */
+  margin-left: -8px;
   border-radius: 50%;
   transition: transform 0.2s;
   -webkit-tap-highlight-color: transparent;
 }
-.back-btn:active { transform: scale(0.9); background: var(--border-color); }
+.back-btn:active { transform: scale(0.9); background: var(--bg-secondary); }
 
 .header-title { 
   font-size: 1.05rem; 
@@ -88,16 +76,14 @@ html.dark .mission-wrapper {
   display: flex; align-items: center; gap: 4px; font-weight: 800; 
   font-size: 0.85rem; background: rgba(245, 158, 11, 0.12); 
   padding: 5px 12px; border-radius: 99px; 
-  color: var(--primary);
+  color: #f59e0b; 
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-/* --- KARTU TUKAR KOIN (STAY DI ATAS) --- */
 .exchange-card-wrapper {
   flex-shrink: 0; 
   background: var(--bg-main);
   padding: 1rem 0.8rem 0;
-  z-index: 10;
   position: relative;
 }
 
@@ -122,16 +108,16 @@ html.dark .mission-wrapper {
   color: white;
 }
 
-/* --- 🔥 AREA SCROLL MISI (BISA BERGERAK) 🔥 --- */
+/* 🔥 AREA SCROLL UTAMA */
 .mission-scroll-area {
   flex: 1; 
   overflow-y: auto; 
-  -webkit-overflow-scrolling: touch; /* Biar scroll smooth di iPhone */
+  -webkit-overflow-scrolling: touch; /* Smooth iOS scroll */
   padding-bottom: 20px;
-  overscroll-behavior: contain; /* 🔥 FIX: Cegah bocor narik background 🔥 */
+  overscroll-behavior: contain; /* 🔥 Cegah bocor narik background */
 }
 
-/* 🔥 JURUS ANTI-KEPOTONG: Kasih ruang kosong di paling bawah area scroll 🔥 */
+/* Ruang kosong biar konten terakhir ga ketutup */
 .mission-scroll-area::after {
   content: '';
   display: block;
@@ -139,20 +125,19 @@ html.dark .mission-wrapper {
   width: 100%;
 }
 
-/* Hilangin scrollbar biar rapi */
 .mission-scroll-area::-webkit-scrollbar { display: none; }
 
-/* --- KARTU MISI BIASA --- */
+/* --- KARTU MISI --- */
 .mission-card { 
   background: var(--bg-card); 
   margin: 1rem 0.8rem; 
   border-radius: 16px; 
   padding: 1.1rem; 
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); 
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-card);
 }
 
-/* --- STREAK DAYS (Check-in) --- */
+/* --- STREAK DAYS --- */
 .streak-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 2px; color: var(--text-main); }
 .streak-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; }
 
@@ -166,7 +151,7 @@ html.dark .mission-wrapper {
 .day-card { 
   flex: 0 0 62px; 
   background: var(--bg-main); 
-  border: 1.5px solid var(--border-color); 
+  border: 1.5px solid var(--border-card); 
   border-radius: 12px; 
   display: flex; flex-direction: column; 
   align-items: center; padding: 10px 4px; 
@@ -176,7 +161,7 @@ html.dark .mission-wrapper {
 }
 
 .day-card.active { 
-  border-color: var(--primary); 
+  border-color: #f59e0b; 
   background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.02)); 
   transform: translateY(-2px); 
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
@@ -201,25 +186,21 @@ html.dark .mission-wrapper {
 .day-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
 .day-reward { font-size: 0.85rem; font-weight: 800; color: var(--text-main); }
 
-/* --- TOMBOL UTAMA --- */
 .claim-main-btn { 
   width: 100%; margin-top: 0.5rem; 
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover)); 
+  background: linear-gradient(135deg, #f59e0b, #d97706); 
   color: #fff; border: none; padding: 14px; 
   border-radius: 12px; font-size: 0.95rem; 
   font-weight: 800; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
   -webkit-tap-highlight-color: transparent;
 }
-.claim-main-btn:active {
-  transform: scale(0.97);
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
-}
+.claim-main-btn:active { transform: scale(0.97); box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2); }
 .claim-main-btn:disabled { 
-  background: var(--bg-main); 
+  background: var(--bg-secondary); 
   color: var(--text-muted); 
   box-shadow: none;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-card);
   cursor: not-allowed; 
   transform: none;
 }
@@ -235,7 +216,7 @@ html.dark .mission-wrapper {
   background: var(--bg-card); 
   margin: 0 0.8rem 1rem; 
   border-radius: 16px; 
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-card);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02); 
   overflow: hidden; 
 }
@@ -243,7 +224,7 @@ html.dark .mission-wrapper {
 .mission-item { 
   display: flex; align-items: center; 
   padding: 1rem; 
-  border-bottom: 1px solid var(--border-color); 
+  border-bottom: 1px solid var(--border-card); 
 }
 .mission-item:last-child { border-bottom: none; }
 
@@ -257,27 +238,23 @@ html.dark .mission-wrapper {
 .m-info { flex: 1; margin: 0 12px; min-width: 0; }
 .m-title { font-size: 0.9rem; font-weight: 800; margin-bottom: 2px; color: var(--text-main); }
 .m-reward { 
-  font-size: 0.75rem; color: var(--primary); 
+  font-size: 0.75rem; color: #f59e0b; 
   font-weight: 800; display: flex; align-items: center; 
   gap: 4px; margin-bottom: 6px; 
 }
 
-.coin-dot { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; }
-
-/* --- PROGRESS BAR --- */
 .progress-bar { 
   width: 100%; height: 6px; 
-  background: var(--bg-main); 
+  background: var(--bg-secondary); 
   border-radius: 10px; overflow: hidden; 
   margin-bottom: 4px;
 }
 .progress-fill { height: 100%; background: #10b981; transition: width 0.5s ease-out; }
 .progress-text { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; }
 
-/* --- TOMBOL MISI KECIL --- */
 .m-btn { 
-  background: var(--bg-main); 
-  border: 1px solid var(--border-color); 
+  background: var(--bg-secondary); 
+  border: 1px solid var(--border-card); 
   color: var(--text-main); 
   padding: 8px 16px; 
   border-radius: 10px; 
@@ -285,18 +262,14 @@ html.dark .mission-wrapper {
   cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   -webkit-tap-highlight-color: transparent;
 }
-/* 🔥 FIX: Ganti Hover jadi Active untuk Mobile 🔥 */
-.m-btn:active { background: var(--border-color); transform: scale(0.95); }
+.m-btn:active { background: var(--bg-input); transform: scale(0.95); }
 
 .m-btn.btn-klaim { 
-  background: var(--primary); 
+  background: #f59e0b; 
   color: white; border: none; 
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
 }
-.m-btn.btn-klaim:active { 
-  transform: scale(0.92); 
-  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2); 
-}
+.m-btn.btn-klaim:active { transform: scale(0.92); box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2); }
 
 .m-btn.btn-done { 
   color: #10b981; 

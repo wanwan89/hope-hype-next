@@ -11,7 +11,7 @@ import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
 import { Virtuoso } from 'react-virtuoso';
 import { useFeed } from '@/hooks/useFeed';
-import RefreshableWrapper from '@/components/RefreshableWrapper'; // Ditambahkan import RefreshableWrapper
+import RefreshableWrapper from '@/components/RefreshableWrapper';
 import './Gallery.css';
 
 function shuffleArray(array: any[]) {
@@ -140,10 +140,8 @@ export default function Gallerypost() {
   
   useGlobalRefresh(refetch);
 
-  // Fungsi baru untuk handle tarik refresh (Pull to Refresh)
   const handleRefresh = async () => {
     await refetch();
-    // Jeda sedikit agar animasinya lebih natural sebelum loading iconnya hilang
     await new Promise(resolve => setTimeout(resolve, 800));
   };
 
@@ -564,7 +562,7 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative' }}>
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative', height: '100%', overflow: 'hidden' }}>
       
       <RepostModal
         isOpen={!!repostModal}
@@ -578,10 +576,10 @@ export default function Gallerypost() {
       />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* Komponen Virtuoso Dibungkus Oleh RefreshableWrapper agar bisa mendeteksi gestur tarik */}
-      <RefreshableWrapper onRefresh={handleRefresh}>
+      {/* 🔥 FIX UTAMA: Hilangkan useWindowScroll, biarkan Virtuoso scroll di dalam RefreshableWrapper */}
+      {/* Tambahkan style height & overflow ke RefreshableWrapper */}
+      <RefreshableWrapper onRefresh={handleRefresh} style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <Virtuoso
-          useWindowScroll
           data={allPosts}
           endReached={loadMore}
           overscan={{ main: 600, reverse: 600 }}

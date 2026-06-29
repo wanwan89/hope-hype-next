@@ -8,14 +8,12 @@ import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import confetti from 'canvas-confetti';
 import './dailycek.css';
 
-// 🔥 FIX 1: Deklarasi harus identik se-aplikasi (4 parameter) biar ga error build 🔥
 declare global {
   interface Window {
     openGlobalShare?: (url?: string, title?: string, text?: string, name?: string) => void;
   }
 }
 
-// Komponen Utama
 function MisiContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,11 +23,9 @@ function MisiContent() {
   const [visitorId, setVisitorId] = useState('');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
-  // Progress Misi
   const [dailyProgress, setDailyProgress] = useState({ like: 0, comment: 0, upload: 0 });
   const [claimedTypes, setClaimedTypes] = useState<string[]>([]);
   
-  // State Referral
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
 
@@ -61,7 +57,6 @@ function MisiContent() {
       const { data: prof, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (error) throw error;
 
-      // Anti Cheat Check
       const { data: dupe } = await supabase.from('profiles').select('id').eq('device_id', vid).neq('id', session.user.id).limit(1);
       if (dupe && dupe.length > 0) {
         setShowSecurity(true);
@@ -192,13 +187,11 @@ function MisiContent() {
     }
   };
 
-  // 🔥 FIX 2: Hubungkan dengan Global Share Modal Premium 🔥
   const handleShareLink = () => {
     const link = `${window.location.origin}/dailycek?ref=${profile?.invite_code}`;
     const textDesc = `Yuk gabung HypeTalk dan klaim hadiah koin misi! Masukkan kode undanganku: ${profile?.invite_code}`;
     
     if (window.openGlobalShare) {
-      // Sekarang aman dipanggil dan bakal munculin nama lu di modal
       window.openGlobalShare(link, 'Undang Teman HypeTalk', textDesc, profile?.username);
     } else {
       navigator.clipboard.writeText(link);
@@ -219,8 +212,8 @@ function MisiContent() {
   return (
     <div className="mission-wrapper">
       <div className="mission-container">
-        
-        {/* HEADER & EXCHANGE */}
+
+        {/* 🔥 STRUKTUR BARU: BUNGKUS HEADER & EXCHANGE AGAR TETAP DI ATAS */}
         <div className="sticky-top-wrapper">
           <header className="mission-header">
             <button className="back-btn" onClick={() => router.back()}>
@@ -232,20 +225,22 @@ function MisiContent() {
             </div>
           </header>
 
-          <div className="mission-card" style={{background:'linear-gradient(135deg, #1e293b, #0f172a)', border:'none', color:'white', margin: '1rem 0.8rem 0'}}>
-             <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                <div className="m-icon-box" style={{background:'#38bdf8'}}><span className="material-icons">swap_horiz</span></div>
-                <div style={{flex:1}}>
-                   <h4 style={{fontSize:'0.9rem'}}>Tukar Koin Misi</h4>
-                   <p style={{fontSize:'0.75rem', opacity:0.7}}>1000 Misi → 10 Hope</p>
-                   <p style={{fontSize:'0.7rem', marginTop:4}}>Saldo Hope: <b style={{color:'#38bdf8'}}>{profile?.coins || 0}</b></p>
-                </div>
-                <button className="m-btn" onClick={handleExchange} style={{background:'#38bdf8', color:'white', border:'none'}}>Tukar</button>
-             </div>
+          <div className="exchange-card-wrapper">
+            <div className="mission-card exchange">
+               <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                  <div className="m-icon-box" style={{background:'#38bdf8'}}><span className="material-icons">swap_horiz</span></div>
+                  <div style={{flex:1}}>
+                     <h4 style={{fontSize:'0.9rem'}}>Tukar Koin Misi</h4>
+                     <p style={{fontSize:'0.75rem', opacity:0.7}}>1000 Misi → 10 Hope</p>
+                     <p style={{fontSize:'0.7rem', marginTop:4}}>Saldo Hope: <b style={{color:'#38bdf8'}}>{profile?.coins || 0}</b></p>
+                  </div>
+                  <button className="m-btn btn-klaim" onClick={handleExchange} style={{background:'#38bdf8', color:'white', border:'none'}}>Tukar</button>
+               </div>
+            </div>
           </div>
         </div>
 
-        {/* AREA SCROLL */}
+        {/* 🔥 AREA SCROLL BAGIAN BAWAH (BIAR BISA DIGULIR) */}
         <div className="mission-scroll-area">
           
           <div className="mission-card">
@@ -298,7 +293,7 @@ function MisiContent() {
                     placeholder="Kode teman..." 
                     style={{
                       width: '100%', padding: '8px 12px', fontSize: '13px', 
-                      borderRadius: '8px', border: '1px solid var(--border-color)', 
+                      borderRadius: '8px', border: '1px solid var(--border-card)', 
                       background: 'var(--bg-main)', color: 'var(--text-main)', 
                       outline: 'none', marginTop: '6px'
                     }} 
@@ -363,7 +358,7 @@ function MisiContent() {
     </div>
   );
 }
-// 🔥 FIX 3: Wajib dibungkus Suspense karena pake useSearchParams 🔥
+
 export default function PusatMisiPage() {
   return (
     <Suspense fallback={null}>
