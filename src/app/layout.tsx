@@ -145,21 +145,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       // Beri sedikit jeda agar CSS variable sempat ter-render
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      const computedStyle = getComputedStyle(htmlEl);
-      let bgColor = computedStyle.getPropertyValue('--bg-main').trim();
-      if (!bgColor) bgColor = isDark ? '#0a0a0a' : '#ffffff';
+      // 🔥 1. UPDATE META TAG COLOR-SCHEME (FIX ICON HITAM DI PWA)
+      // Ini yang memaksa OS Android untuk mengganti warna icon status bar jadi putih di PWA
+      let metaColorScheme = document.querySelector('meta[name="color-scheme"]');
+      if (!metaColorScheme) {
+        metaColorScheme = document.createElement('meta');
+        metaColorScheme.setAttribute('name', 'color-scheme');
+        document.head.appendChild(metaColorScheme);
+      }
+      metaColorScheme.setAttribute('content', isDark ? 'dark' : 'light');
 
-      // 🔥 1. UPDATE META TAG THEME-COLOR (BERLAKU UNTUK PWA & WEB)
-      // Ini akan membuat status bar PWA Android menjadi hitam di mode gelap
+      // 🔥 2. UPDATE META TAG THEME-COLOR (BACKGROUND PWA)
+      // Gunakan solid pure black (#000000) di mode gelap agar OS lebih sensitif membaca kontras
       let metaTheme = document.querySelector('meta[name="theme-color"]');
       if (!metaTheme) {
         metaTheme = document.createElement('meta');
         metaTheme.setAttribute('name', 'theme-color');
         document.head.appendChild(metaTheme);
       }
-      metaTheme.setAttribute('content', bgColor);
+      metaTheme.setAttribute('content', isDark ? '#000000' : '#ffffff');
 
-      // 🔥 2. SINKRONISASI CAPACITOR STATUS BAR (HANYA UNTUK NATIVE APK/IOS)
+      // 🔥 3. SINKRONISASI CAPACITOR STATUS BAR (HANYA UNTUK NATIVE APK/IOS)
       if (platform === 'android' || platform === 'ios') {
         if (isDark) {
           await StatusBar.setStyle({ style: Style.Dark }); // Mode Gelap: Ikon PUTIH
@@ -168,7 +174,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }
 
         if (platform === 'android') {
-          await StatusBar.setBackgroundColor({ color: bgColor });
+          await StatusBar.setBackgroundColor({ color: isDark ? '#000000' : '#ffffff' });
         }
       }
     } catch (e) {
@@ -477,6 +483,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         
+        {/* 🔥 FIX ICON: Inject Default color-scheme agar dideteksi OS */}
+        <meta name="color-scheme" content="light dark" />
+
         {/* 🟢 Initial Theme Color, akan dioverride oleh Javascript saat komponen mount */}
         <meta name="theme-color" content="#ffffff" />
 
@@ -487,7 +496,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/logohypeco.png" />
         
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        {/* Ubah status bar iOS PWA agar transparan ke tema background */}
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
