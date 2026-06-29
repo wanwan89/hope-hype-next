@@ -8,6 +8,26 @@ import Lottie from 'lottie-react';
 import emptyLottie from '@/assets/lottie/empty.json'; 
 import babyLottie from '@/assets/lottie/baby.json';
 
+// Loading spinner bulat
+const LoadingSpinner = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '60px 20px',
+    minHeight: '50vh', // agar halaman tidak menciut
+  }}>
+    <div style={{
+      width: 40,
+      height: 40,
+      border: '3px solid var(--bg-secondary)',
+      borderTopColor: 'var(--primary-bg)',
+      borderRadius: '50%',
+      animation: 'spin 0.8s linear infinite',
+    }} />
+  </div>
+);
+
 function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -245,28 +265,6 @@ function SearchContent() {
     return 'https://placehold.co/300x400/1a1a1a/ffffff.png?text=No+Media';
   };
 
-  // Skeleton untuk menghindari perubahan tinggi saat loading hasil pencarian
-  const SearchSkeleton = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-      {/* Skeleton untuk bagian kreator */}
-      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '15px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--bg-secondary)', animation: 'pulse 1.5s infinite' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ width: '40%', height: '14px', background: 'var(--bg-secondary)', borderRadius: '4px', marginBottom: '6px', animation: 'pulse 1.5s infinite' }} />
-            <div style={{ width: '60%', height: '12px', background: 'var(--bg-secondary)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
-          </div>
-        </div>
-      </div>
-      {/* Skeleton grid untuk postingan */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-        {Array(6).fill(0).map((_, i) => (
-          <div key={i} style={{ aspectRatio: '3/4', borderRadius: '12px', background: 'var(--bg-secondary)', animation: 'pulse 1.5s infinite' }} />
-        ))}
-      </div>
-    </div>
-  );
-
   return (
     <div style={{ minHeight: '100%', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
       
@@ -410,7 +408,7 @@ function SearchContent() {
               </h3>
               
               {isLoading ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Memuat tren...</div>
+                <LoadingSpinner />
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                   {trendingKeywords.map((kw, i) => (
@@ -439,8 +437,7 @@ function SearchContent() {
         {/* HASIL PENCARIAN */}
         {query && (
           isLoading ? (
-            /* Ganti teks "Mencari..." dengan skeleton yang menjaga tinggi layout */
-            <SearchSkeleton />
+            <LoadingSpinner />
           ) : (
             <>
               {users.length > 0 && (
@@ -623,8 +620,8 @@ function SearchContent() {
         </div>
       )}
 
-      {/* keyframes untuk animasi pulse skeleton */}
       <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
       `}</style>
     </div>
@@ -633,7 +630,18 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>Memuat halaman pencarian...</div>}>
+    <Suspense fallback={
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          border: '3px solid var(--bg-secondary)',
+          borderTopColor: 'var(--primary-bg)',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+      </div>
+    }>
       <SearchContent />
     </Suspense>
   );
