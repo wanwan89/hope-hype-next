@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, useMotionValue, animate } from 'framer-motion';
+import { motion, animate } from 'framer-motion';
 import ChatItem from './ChatItem';
 import RefreshableWrapper from '@/components/RefreshableWrapper';
 
@@ -78,25 +78,35 @@ const SwipeableChatRow = ({
   const handlePanStart = () => {
     if (!canSwipe) return;
     onPressEnd?.(); // Ekstra proteksi membatalkan long press jika swipe terdeteksi framer motion
-    window.dispatchEvent(new Event('swipe-start')); 
   };
 
   const handlePan = (_e: any, info: any) => {
     if (!canSwipe) return;
+    
     const dx = info.offset.x;
     const dy = Math.abs(info.offset.y);
-    if (dx > 10 && dx > dy * 1.5) {
+
+    // 1. Kunci mode swipe HANYA jika gesekan horizontal lebih dominan
+    if (!isSwiping && dx > 10 && dx > dy * 1.5) {
       setIsSwiping(true);
-      setOffsetX(Math.min(dx, 150));
-      if (dx > 40 && lottieRef.current) {
+      window.dispatchEvent(new Event('swipe-start')); // Beritahu RefreshableWrapper untuk diam
+    }
+
+    // 2. Update posisi jika sudah masuk mode swiping
+    if (isSwiping) {
+      // Math.max(0) mencegah geser ke kiri, Math.min(..., 150) membatasi maksimal geser 150px
+      const currentX = Math.max(0, Math.min(dx, 150));
+      setOffsetX(currentX);
+      
+      if (currentX > 40 && lottieRef.current) {
         lottieRef.current.play();
       }
     }
   };
 
   const handlePanEnd = (_e: any, info: any) => {
+    // Jika tidak pernah swiping, abaikan
     if (!canSwipe || !isSwiping) {
-      window.dispatchEvent(new Event('swipe-end'));
       return;
     }
 
@@ -108,7 +118,7 @@ const SwipeableChatRow = ({
         onDeleteChat?.([chat.id]);
       });
     } else {
-      // Kembali
+      // Batal dan Kembali
       setOffsetX(0);
       lottieRef.current?.stop();
     }
@@ -152,7 +162,7 @@ const SwipeableChatRow = ({
           alignItems: 'center',
           backgroundColor: isSelected ? 'rgba(31, 60, 255, 0.08)' : 'var(--bg-main)',
           position: 'relative',
-          touchAction: canSwipe && isSwiping ? 'pan-x' : 'pan-y',
+          touchAction: 'pan-y', // Fix paling penting agar browser bisa scroll vertikal & swipe lancar
         }}
         animate={{ x: offsetX }}
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
