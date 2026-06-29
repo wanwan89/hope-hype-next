@@ -518,10 +518,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             box-shadow: none !important;
           }
 
-          /* 🔥 FIX EXTRA ANTI LINE TOP: Paksa hilangkan border atas bawaan webview di area puncak layout */
+          /* 🔥 FIX EXTRA ANTI LINE TOP & PULL-TO-REFRESH: Paksa hilangkan border atas bawaan webview & matikan refresh bar */
           html, body, .layout-wrapper, .main-content {
             border-top: none !important;
             box-sizing: border-box;
+            overscroll-behavior-y: none !important; /* <--- MEMATIKAN INDICATOR REFRESH */
+            -webkit-overflow-scrolling: touch;
           }
 
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
