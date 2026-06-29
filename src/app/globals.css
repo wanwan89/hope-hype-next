@@ -162,7 +162,9 @@ main {
   
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: auto;
+  
+  /* 🔥 FIX: Ubah dari auto ke none untuk mematikan pull-to-refresh bawaan browser di area scroll */
+  overscroll-behavior-y: none;
 }
 
 .main-content * {
