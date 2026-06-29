@@ -456,13 +456,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" suppressHydrationWarning>
       <head>
         <title>HypeTalk - Creative Community</title>
-        {/* 🔥 MANIFEST DAN APPLE SPLASH DIHAPUS AGAR HANYA CUSTOM SPLASH YANG MUNCUL 🔥 */}
+        {/* 🔥 TIDAK ADA LINK MANIFEST & TIDAK ADA APPLE SPLASH */}
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
-        {/* 🔥 HAPUS apple-touch-startup-image */}
+        {/* TIDAK ADA apple-touch-startup-image */}
+        {/* Mencegah iOS menampilkan splash saat diinstal */}
+        <meta name="apple-mobile-web-app-capable" content="no" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
@@ -481,7 +484,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
           @keyframes pulseCallGlobal { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); } 70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
           .global-call-btn { border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
-          .global-msg-popup { position: fixed; top: max(env(safe-area-inset-top, 20px), 20px); left: 50%; transform: translateX(-50%); background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(31, 60, 255, 0.3); border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; z-index: 9999998; width: 90%; max-width: 380px; animation: slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+          .global-msg-popup { position: fixed; top: max(env(safe-area-inset-top, 20px), 20px); left: 50%; transform: translateX(-50%); background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(31, 60, 255, 0.3); border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; zIndex: 9999998; width: 90%; max-width: 380px; animation: slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
           .global-msg-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
         `}</style>
       </head>
