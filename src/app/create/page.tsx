@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import './Create.css';
 
-// Import komponen
+// Import sub-komponen modular
 import CreateHeader from '@/components/create/CreateHeader';
 import DestinationSelector from '@/components/create/DestinationSelector';
 import PostTypeSelector from '@/components/create/PostTypeSelector';
@@ -23,34 +23,13 @@ import MusicSheet from '@/components/create/MusicSheet';
 const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
 const CLOUDINARY_UPLOAD_PRESET = "post_hope";
 
-// Toggle Switch dengan warna CSS variabel
+// Global Theme Switch (Sekarang dikontrol 100% via Create.css)
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
   <div
     onClick={() => onChange(!checked)}
-    style={{
-      width: '42px',
-      height: '24px',
-      background: checked ? 'var(--primary)' : 'var(--bg-main)',
-      border: checked ? '1px solid var(--primary)' : '1px solid var(--text-muted)',
-      borderRadius: '20px',
-      position: 'relative',
-      cursor: 'pointer',
-      transition: 'all 0.3s',
-    }}
+    className={`custom-toggle-switch ${checked ? 'is-checked' : ''}`}
   >
-    <div
-      style={{
-        width: '18px',
-        height: '18px',
-        background: '#fff',
-        borderRadius: '50%',
-        position: 'absolute',
-        top: '2px',
-        left: checked ? '20px' : '2px',
-        transition: 'left 0.3s',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-      }}
-    />
+    <div className="toggle-dot" />
   </div>
 );
 
@@ -231,7 +210,7 @@ function CreatePostContent() {
     captionInputRef.current.focus();
   };
 
-  // ---------- GAMBAR ----------
+  // ---------- MEDIA: IMAGE TRIMMING ----------
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -294,7 +273,7 @@ function CreatePostContent() {
     setPreviewUrls(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // ---------- VIDEO ----------
+  // ---------- MEDIA: VIDEO PROCESSOR ----------
   const generateVideoThumbnails = async (url: string, dur: number) => {
     const video = document.createElement('video');
     video.src = url; video.muted = true; video.playsInline = true;
@@ -391,7 +370,7 @@ function CreatePostContent() {
     }
   };
 
-  // ---------- UPLOAD & SUBMIT ----------
+  // ---------- UPLOAD & SUBMIT SUBMISSION ----------
   const updateGlobalProgress = (progress: number) => {
     window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: progress }));
     localStorage.setItem('uploadProgress', String(progress));
@@ -566,71 +545,149 @@ function CreatePostContent() {
     })();
   };
 
-  // ---------- EDITOR SCREEN ----------
+  // ---------- EDITOR INTERACTIVE MODAL COMPONENT ----------
   const renderEditorScreen = () => {
     if (step !== 'edit') return null;
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--bg-editor)', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', background: 'var(--modal-overlay)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-editor)' }}>
-          <button onClick={() => { if (postType === 'image') handleCancelCrop(); else { handleRemoveVideo(); setStep('post'); } }} style={{ background: 'transparent', border: 'none', color: 'var(--text-editor)', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+      <div className="editor-screen-overlay">
+        {/* Header Editor */}
+        <div className="editor-screen-header">
+          <button 
+            onClick={() => { if (postType === 'image') handleCancelCrop(); else { handleRemoveVideo(); setStep('post'); } }} 
+            className="editor-back-btn"
+          >
             <span className="material-icons">arrow_back</span>
           </button>
-          <p style={{ color: 'var(--text-editor)', fontSize: '16px', fontWeight: 600, margin: 0 }}>
+          <p className="editor-header-title">
             {postType === 'image' ? `Atur Foto (${croppedImages.length + 1}/${croppedImages.length + rawImagesQueue.length})` : 'Edit Video'}
           </p>
-          <button disabled={isProcessingEdit} onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} style={{ background: isProcessingEdit ? '#555' : 'var(--primary)', border: 'none', color: 'var(--text-editor)', padding: '8px 16px', borderRadius: '20px', fontWeight: 800, cursor: isProcessingEdit ? 'not-allowed' : 'pointer', fontSize: '13px' }}>
+          <button 
+            disabled={isProcessingEdit} 
+            onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
+            className="editor-save-btn"
+          >
             {isProcessingEdit ? 'Memproses...' : 'Selesai'}
           </button>
         </div>
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#000', padding: '10px' }}>
+
+        {/* Ruang Kerja Kreatif */}
+        <div className="editor-workspace">
           {postType === 'image' && imageForCrop ? (
-            <div style={{ width: '100%', height: '100%', position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
-              <Cropper image={imageForCrop} crop={crop} zoom={zoom} aspect={3 / 4} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
+            <div className="editor-cropper-container">
+              <Cropper 
+                image={imageForCrop} 
+                crop={crop} 
+                zoom={zoom} 
+                aspect={3 / 4} 
+                onCropChange={setCrop} 
+                onCropComplete={onCropComplete} 
+                onZoomChange={setZoom} 
+              />
             </div>
           ) : postType === 'video' && rawVideoUrl ? (
-            <div style={{ width: 'auto', height: '100%', maxWidth: '100%', position: 'relative', overflow: 'hidden', aspectRatio: '2/3', borderRadius: '16px', border: '1px solid var(--border-editor)' }}>
-              <video ref={videoRef} src={rawVideoUrl} playsInline muted={!isVideoPlaying} loop style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} onLoadedMetadata={handleVideoLoadedMetadata} />
+            <div className="editor-video-preview-frame">
+              <video 
+                ref={videoRef} 
+                src={rawVideoUrl} 
+                playsInline 
+                muted={!isVideoPlaying} 
+                loop 
+                className="editor-video-element"
+                onLoadedMetadata={handleVideoLoadedMetadata} 
+              />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
-              <div onClick={togglePlayVideo} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isVideoPlaying ? 'transparent' : 'var(--modal-overlay)', cursor: 'pointer', transition: '0.2s' }}>
-                {!isVideoPlaying && <div style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', padding: '15px', borderRadius: '50%' }}><span className="material-icons" style={{ fontSize: '40px', color: '#fff' }}>play_arrow</span></div>}
+              <div 
+                onClick={togglePlayVideo} 
+                className={`editor-video-play-overlay ${isVideoPlaying ? 'is-playing' : ''}`}
+              >
+                {!isVideoPlaying && (
+                  <div className="editor-video-play-btn">
+                    <span className="material-icons">play_arrow</span>
+                  </div>
+                )}
               </div>
             </div>
           ) : null}
         </div>
-        <div style={{ flexShrink: 0, padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', background: 'var(--bg-editor)', borderTop: '1px solid var(--border-editor)' }}>
+
+        {/* Footer Panel Kontrol Sesuai Jenis Konten */}
+        <div className="editor-screen-footer">
           {postType === 'image' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: 'var(--text-editor)' }}>
-              <span className="material-icons" style={{ fontSize: '20px' }}>remove</span>
-              <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={e => setZoom(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--primary)' }} />
-              <span className="material-icons" style={{ fontSize: '20px' }}>add</span>
+            <div className="editor-image-zoom-controls">
+              <span className="material-icons">remove</span>
+              <input 
+                type="range" 
+                value={zoom} 
+                min={1} 
+                max={3} 
+                step={0.1} 
+                onChange={e => setZoom(Number(e.target.value))} 
+              />
+              <span className="material-icons">add</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="editor-control-wrapper">
+              {/* Pemotong Timeline Video */}
               <div className="editor-control-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-editor)', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="material-icons" style={{ fontSize: '16px', color: 'var(--primary)' }}>content_cut</span> Potong Video (Max {MAX_VIDEO_CLIP}s)
+                <div className="editor-control-card-header">
+                  <span className="editor-control-card-title">
+                    <span className="material-icons">content_cut</span> Potong Video (Max {MAX_VIDEO_CLIP}s)
                   </span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 600 }}>
+                  <span className="editor-control-card-value blue">
                     {videoStart.toFixed(1)}s - {Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP).toFixed(1)}s
                   </span>
                 </div>
                 <div className="filmstrip-box">
                   <div className="filmstrip-images">
-                    {videoThumbnails.map((thumb, idx) => <img key={idx} src={thumb} alt="thumb" />)}
+                    {videoThumbnails.map((thumb, idx) => <img key={idx} src={thumb} alt="thumbnail-strip" />)}
                   </div>
-                  <input type="range" className="custom-range-timeline blue-slider" min={0} max={Math.max(0, videoDuration - MAX_VIDEO_CLIP)} step={0.1} value={videoStart} onChange={e => { const val = Number(e.target.value); setVideoStart(val); if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.play(); setIsVideoPlaying(true); } if (coverTime < val || coverTime > val + MAX_VIDEO_CLIP) setCoverTime(val); }} />
+                  <input 
+                    type="range" 
+                    className="custom-range-timeline blue-slider" 
+                    min={0} 
+                    max={Math.max(0, videoDuration - MAX_VIDEO_CLIP)} 
+                    step={0.1} 
+                    value={videoStart} 
+                    onChange={e => { 
+                      const val = Number(e.target.value); 
+                      setVideoStart(val); 
+                      if (videoRef.current) { 
+                        videoRef.current.currentTime = val; 
+                        videoRef.current.play(); 
+                        setIsVideoPlaying(true); 
+                      } 
+                      if (coverTime < val || coverTime > val + MAX_VIDEO_CLIP) setCoverTime(val); 
+                    }} 
+                  />
                 </div>
               </div>
+
+              {/* Pemilih Thumbnail / Cover */}
               <div className="editor-control-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-editor)', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="material-icons" style={{ fontSize: '16px', color: 'var(--color-warning)' }}>image</span> Pilih Sampul Depan
+                <div className="editor-control-card-header">
+                  <span className="editor-control-card-title">
+                    <span className="material-icons">image</span> Pilih Sampul Depan
                   </span>
-                  <span style={{ color: 'var(--color-warning)', fontSize: '12px', fontWeight: 600 }}>Tampil di: {coverTime.toFixed(1)}s</span>
+                  <span className="editor-control-card-value orange">Tampil di: {coverTime.toFixed(1)}s</span>
                 </div>
                 <div className="filmstrip-box" style={{ height: '30px' }}>
-                  <input type="range" className="custom-range-timeline orange-slider" min={videoStart} max={Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP)} step={0.1} value={coverTime} onChange={e => { const val = Number(e.target.value); setCoverTime(val); if (videoRef.current) { videoRef.current.currentTime = val; videoRef.current.pause(); setIsVideoPlaying(false); } }} />
+                  <input 
+                    type="range" 
+                    className="custom-range-timeline orange-slider" 
+                    min={videoStart} 
+                    max={Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP)} 
+                    step={0.1} 
+                    value={coverTime} 
+                    onChange={e => { 
+                      const val = Number(e.target.value); 
+                      setCoverTime(val); 
+                      if (videoRef.current) { 
+                        videoRef.current.currentTime = val; 
+                        videoRef.current.pause(); 
+                        setIsVideoPlaying(false); 
+                      } 
+                    }} 
+                  />
                 </div>
               </div>
             </div>
@@ -641,7 +698,7 @@ function CreatePostContent() {
   };
 
   return (
-    <div className="create-page-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
+    <div className="create-page-wrapper">
       {step === 'edit' && renderEditorScreen()}
 
       <MusicSheet
@@ -660,7 +717,7 @@ function CreatePostContent() {
       {step === 'post' && (
         <>
           <CreateHeader draftId={draftId} onClose={handleClose} />
-          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 20px' }}>
             <div className="post-form">
               <DestinationSelector destination={destination} setDestination={setDestination} visibility={visibility} setVisibility={setVisibility} t={t} />
               <PostTypeSelector postType={postType} setPostType={setPostType} onReset={() => { setCroppedImages([]); setPreviewUrls([]); handleRemoveVideo(); setExistingImageUrl(null); setExistingVideoUrl(null); }} />
@@ -713,26 +770,28 @@ function CreatePostContent() {
               {isBusinessUser && <AdToggle isAd={isAd} setIsAd={setIsAd} />}
 
               {destination === 'feed' && (
-                <div style={{ marginTop: '16px', background: 'var(--bg-secondary)', borderRadius: '16px', padding: '14px 16px', border: '1px solid var(--bg-input)' }}>
-                  <div onClick={() => setShowMoreOptions(!showMoreOptions)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="more-options-box">
+                  <div onClick={() => setShowMoreOptions(!showMoreOptions)} className="more-options-trigger">
+                    <span className="more-options-title">
                       <span className="material-icons" style={{ fontSize: '18px' }}>settings</span> Opsi Lainnya
                     </span>
-                    <span className="material-icons" style={{ color: 'var(--text-muted)', transform: showMoreOptions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>expand_more</span>
+                    <span className={`material-icons more-options-icon-chevron ${showMoreOptions ? 'is-expanded' : ''}`}>
+                      expand_more
+                    </span>
                   </div>
                   {showMoreOptions && (
-                    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--bg-input)', paddingTop: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="more-options-content">
+                      <div className="more-options-item">
                         <div>
-                          <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>Izinkan Komentar</p>
-                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Orang lain bisa mengomentari ini</p>
+                          <p className="more-options-label">Izinkan Komentar</p>
+                          <p className="more-options-subtext">Orang lain bisa mengomentari ini</p>
                         </div>
                         <ToggleSwitch checked={allowComments} onChange={setAllowComments} />
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="more-options-item">
                         <div>
-                          <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>Simpan ke Perangkat</p>
-                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Otomatis simpan media yang diedit</p>
+                          <p className="more-options-label">Simpan ke Perangkat</p>
+                          <p className="more-options-subtext">Otomatis simpan media yang diedit</p>
                         </div>
                         <ToggleSwitch checked={saveToDevice} onChange={setSaveToDevice} />
                       </div>
