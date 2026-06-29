@@ -162,7 +162,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         await StatusBar.setBackgroundColor({ color: bgColor });
       }
 
-      // 🔥 3. UPDATE META TAG THEME-COLOR agar OS Android patuh (SANGAT PENTING!)
+      // 🔥 3. UPDATE META TAG THEME-COLOR agar OS Android patuh
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) {
         metaTheme.setAttribute('content', bgColor);
@@ -193,7 +193,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           });
           observer.observe(htmlEl, { attributes: true, attributeFilter: ['class', 'data-theme'] });
 
-          // Simpan observer untuk cleanup
           (window as any).__themeObserver = observer;
 
           let permPush = await PushNotifications.checkPermissions();
@@ -256,7 +255,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
     };
   }, [router, myProfile, syncStatusBar]);
-  // ==========================================================
 
   // --- LOGIKA HALAMAN & RINGTONE ---
   useEffect(() => {
@@ -439,7 +437,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       )}
 
       {/* 🔥 KONTEN UTAMA DENGAN CLASS YANG SINKRON DENGAN CSS 🔥 */}
-      <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
+      <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} 
+           style={{ paddingTop: 'env(safe-area-inset-top)' }}> {/* <--- FIX GLOBAL */}
         
         {isHomePage && (
           <div className="search-container" style={{ 
@@ -447,18 +446,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             maxWidth: '600px', 
             margin: '0 auto', 
             zIndex: 10,
-            /* 🔥 FIX UTAMA: Memberikan jarak aman agar Search Header tidak menabrak Status Bar Android/iOS */
-            paddingTop: 'max(env(safe-area-inset-top, 35px), 35px)' 
+            /* Memastikan search bar tidak tertutup */
+            paddingTop: '10px' 
           }}>
             <SearchWrapper />
           </div>
         )}
         
-        <main 
-          className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}
-          /* 🔥 FIX UTAMA: Beri jarak aman juga untuk halaman lain yang bukan Fullscreen */
-          style={!isHomePage && !isFullscreenPage ? { paddingTop: 'max(env(safe-area-inset-top, 35px), 35px)' } : {}}
-        >
+        <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
           {children}
         </main>
         
@@ -474,13 +469,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         
-        {/* 🛑 PERBAIKAN KRUSIAL: Hapus 2 baris hardcode di bawah ini! */}
-        {/* <meta name="theme-color" media="(prefers-color-scheme: light)" content="#000000" /> */}
-        {/* <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" /> */}
-        
         {/* 🟢 Ganti dengan ini agar bisa dikontrol oleh Javascript */}
         <meta name="theme-color" content="#ffffff" />
 
+        {/* 🔥 FIX VIEWPORT PENTING: Tambahkan viewport-fit=cover untuk memastikan Safe Area bekerja 🔥 */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
@@ -493,6 +485,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
         <style>{`
+          /* 🔥 FIX CSS: Memaksa padding top pada body agar aplikasi tidak mepet ke atas */
+          :root {
+            --safe-area-top: env(safe-area-inset-top, 25px);
+          }
+          body {
+            padding-top: var(--safe-area-top);
+            margin: 0;
+          }
+          .layout-wrapper {
+            min-height: calc(100vh - var(--safe-area-top));
+          }
+
           /* Tweak style inline agar fokus pada elemen yang tidak masuk CSS global */
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
           .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
