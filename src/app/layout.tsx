@@ -149,8 +149,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => { observer.disconnect(); };
   }, [syncStatusBar]);
 
-  // --- TIDAK ADA LAGI JAVASCRIPT INJECTION 'OVERSCOLL' DI SINI ---
-
   useEffect(() => {
     const timeout = setTimeout(() => {
       document.documentElement.classList.add('theme-ready');
@@ -358,13 +356,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       )}
+
+      {/* WRAPPER UTAMA */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} style={{ paddingTop: 'var(--safe-area-top)' }}>
-        {isHomePage && (
-          <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10, paddingTop: '10px' }}>
-            <SearchWrapper />
-          </div>
-        )}
+        {/* MAIN SCROLL AREA */}
         <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
+          {/* SearchWrapper SEKARANG DI DALAM main-content → ikut scroll */}
+          {isHomePage && (
+            <div
+              className="search-container"
+              style={{
+                width: '100%',
+                maxWidth: '600px',
+                margin: '0 auto',
+                zIndex: 10,
+                paddingTop: '10px',
+                // OPSIONAL: jika ingin search tetap di atas saat scroll, aktifkan baris berikut:
+                // position: 'sticky',
+                // top: 0,
+                // background: 'var(--bg-main)',
+              }}
+            >
+              <SearchWrapper />
+            </div>
+          )}
           {children}
         </main>
       </div>

@@ -7,14 +7,12 @@
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  height: 100dvh;
+  min-height: 100%;                /* ganti dari 100dvh */
   display: flex;
   flex-direction: column;
   background: var(--bg-main, #ffffff);
   color: var(--text-main);
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;               /* biarkan .main-content yang scroll */
 }
 
 .notif-main-view .notif-header {
@@ -34,10 +32,6 @@
   font-weight: 800;
   text-align: left;
   color: var(--text-main);
-}
-
-.friend-stories-tray {
-  /* Dipindah ke inline style agar mudah diatur overflownya */
 }
 
 .friend-stories-tray::-webkit-scrollbar { display: none; }

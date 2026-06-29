@@ -12,7 +12,7 @@ import FriendStoriesTray from '@/components/notifications/FriendStoriesTray';
 import CategoryMenu from '@/components/notifications/CategoryMenu';
 import RecommendedFriends from '@/components/notifications/RecommendedFriends';
 import NotificationListView from '@/components/notifications/NotificationListView';
-import RefreshableWrapper from '@/components/RefreshableWrapper'; // Pastikan path ini sesuai
+import RefreshableWrapper from '@/components/RefreshableWrapper';
 
 const getReadNotifs = (): string[] => {
   if (typeof window === 'undefined') return [];
@@ -80,14 +80,12 @@ export default function NotificationsPage() {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (activeView !== 'main') {
       markCategoryAsRead(activeView);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView]);
 
   const initUserAndData = async () => {
@@ -210,7 +208,6 @@ export default function NotificationsPage() {
         .eq('status', 'pending');
       setPendingCount(pendingPosts || 0);
 
-      // 4. followers
       const { data: activeFollowersData } = await supabase
         .from('followers')
         .select('follower_id, created_at')
@@ -264,13 +261,9 @@ export default function NotificationsPage() {
 
       if (postIds.length > 0) {
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
-          // 5. likes
           supabase.from('likes').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
-          // 3. comments
           supabase.from('comments').select('id, post_id, content, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
-          // 7. reposts
           supabase.from('reposts').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
-          // 1. bookmarks
           supabase.from('bookmarks').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
         ]);
         likesData = likesRes.data || [];
@@ -280,24 +273,13 @@ export default function NotificationsPage() {
       }
 
       const promisesExtra = [];
-      // 11. coin_transactions
       promisesExtra.push(supabase.from('coin_transactions').select('*').eq('user_id', userId).gt('amount', 0).order('created_at', { ascending: false }).limit(20));
-      
-      // 2. comment_likes
       if (commentIds.length > 0) promisesExtra.push(supabase.from('comment_likes').select('id, comment_id, created_at, user_id').in('comment_id', commentIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(20));
       else promisesExtra.push(Promise.resolve({ data: [] }));
-
-      // 6. payments
       promisesExtra.push(supabase.from('payments').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
-
-      // 8. story_likes
       if (storyIds.length > 0) promisesExtra.push(supabase.from('story_likes').select('id, story_id, created_at, user_id').in('story_id', storyIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30));
       else promisesExtra.push(Promise.resolve({ data: [] }));
-
-      // 9. withdraw_requests
       promisesExtra.push(supabase.from('withdraw_requests').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
-
-      // 10. coin_history
       promisesExtra.push(supabase.from('coin_history').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
 
       const [coinRes, commentLikesRes, paymentsRes, storyLikesRes, withdrawRes, coinHistRes] = await Promise.all(promisesExtra);
@@ -309,11 +291,8 @@ export default function NotificationsPage() {
       coinHistoryData = coinHistRes.data || [];
 
       const allActorIds = new Set<string>();
-      filteredDbNotifs.forEach((n) => { 
-        if (n.actor_id) allActorIds.add(n.actor_id); 
-        if (n.sender_id) allActorIds.add(n.sender_id);
-      });
-      (activeFollowersData || []).forEach((f) => allActorIds.add(f.follower_id)); 
+      filteredDbNotifs.forEach((n) => { if (n.actor_id) allActorIds.add(n.actor_id); if (n.sender_id) allActorIds.add(n.sender_id); });
+      (activeFollowersData || []).forEach((f) => allActorIds.add(f.follower_id));
       likesData.forEach((l) => allActorIds.add(l.user_id));
       commentsData.forEach((c) => allActorIds.add(c.user_id));
       repostsData.forEach((r) => allActorIds.add(r.user_id));
@@ -343,7 +322,7 @@ export default function NotificationsPage() {
           is_read: readList.has(nId),
           actor: getActor(f.follower_id),
           totalCount: 1,
-          is_db: false 
+          is_db: false
         };
       });
 
@@ -374,7 +353,7 @@ export default function NotificationsPage() {
               is_read: readList.has(nId),
               actor: getActor(item.user_id),
               postData: myPosts.find((p) => p.id === postId),
-              totalCount: 1, 
+              totalCount: 1,
             });
           } else {
             const firstTwoIds = uniqueUsers.slice(0, 2).map((u) => u.user_id);
@@ -386,7 +365,7 @@ export default function NotificationsPage() {
               post_id: postId,
               actor_ids: firstTwoIds,
               otherCount,
-              totalCount: uniqueUsers.length, 
+              totalCount: uniqueUsers.length,
               created_at: uniqueUsers[0].created_at,
               is_read: readList.has(nId),
               actors: firstTwoIds.map((id) => getActor(id)),
@@ -497,9 +476,9 @@ export default function NotificationsPage() {
             message: msg,
             type: n.type || 'other',
             actor: (n.actor_id || n.sender_id) ? getActor(n.actor_id || n.sender_id) : null,
-            story_id: n.reference_id || n.story_id, 
+            story_id: n.reference_id || n.story_id,
             is_db: true,
-            totalCount: 1, 
+            totalCount: 1,
           }
         })
         .filter(Boolean);
@@ -512,7 +491,7 @@ export default function NotificationsPage() {
         ...formattedComments,
         ...formattedCommentLikes,
         ...formattedStoryLikes,
-        ...formattedFollowers, 
+        ...formattedFollowers,
         ...formattedCoins,
         ...formattedPayments,
         ...formattedWithdraws,
@@ -726,18 +705,39 @@ export default function NotificationsPage() {
     }
   };
 
+  // ---------- FULL FIX RETURN ----------
   return (
-    <div className="notif-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
-      
+    <div 
+      className="notif-page-container" 
+      style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: '100%',          // ganti dari 100dvh
+        overflow: 'visible',        // biarkan .main-content yang scroll
+        background: 'var(--bg-main)' 
+      }}
+    >
       {activeView === 'main' ? (
         <>
-          <header className="notif-header" style={{ position: 'relative', zIndex: 10, flexShrink: 0, background: 'var(--bg-main, #fff)' }}>
+          {/* Header sticky */}
+          <header 
+            className="notif-header" 
+            style={{ 
+              position: 'sticky', 
+              top: 0, 
+              zIndex: 10, 
+              flexShrink: 0, 
+              background: 'var(--bg-main, #fff)',
+              borderBottom: '1px solid var(--border-card)'
+            }}
+          >
             <h2 style={{ margin: 0, padding: '16px 20px', fontSize: '20px', fontWeight: 'bold' }}>
               {t('notifications', 'Notifikasi')}
             </h2>
           </header>
 
-          <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none', position: 'relative' }}>
+          {/* Konten tanpa overflow wrapper tambahan */}
+          <div style={{ flex: 1 }}>
             <RefreshableWrapper onRefresh={handleRefresh}>
               <div className="notif-main-view" style={{ minHeight: '100%', paddingBottom: '20px' }}>
                 
@@ -785,13 +785,18 @@ export default function NotificationsPage() {
                 )}
 
                 <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
-                <RecommendedFriends recommended={recommendedFriends} onFollow={handleFollowAction} myFollowings={myFollowings} />
+                <RecommendedFriends 
+                  recommended={recommendedFriends} 
+                  onFollow={handleFollowAction} 
+                  myFollowings={myFollowings} 
+                />
               </div>
             </RefreshableWrapper>
           </div>
         </>
       ) : (
-        <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none' }}>
+        /* Detail view (like, comment, dll) */
+        <div style={{ flex: 1 }}>
           <RefreshableWrapper onRefresh={handleRefresh}>
             <NotificationListView
               title={getTitleByView()}
