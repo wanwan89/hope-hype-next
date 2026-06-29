@@ -15,8 +15,7 @@ import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
-// 🔥 IMPORT TOP LOADER 🔥
-import NextTopLoader from 'nextjs-toploader';
+// ❌ (NextTopLoader dihapus sesuai permintaan)
 
 import "./globals.css";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
@@ -417,7 +416,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {/* 🔥 FIX: Menggunakan var(--safe-area-top) untuk margin popup agar tidak nabrak status bar */}
       {globalMessageNotif && !globalIncomingCall && (
         <div className="global-msg-popup" onClick={handleMessageClick} style={{ top: 'calc(var(--safe-area-top) + 12px)' }}>
           <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
@@ -454,7 +452,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {/* 🔥 FIX: Inject Safe Area ke wrapper utama, body margin direset */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} 
            style={{ paddingTop: 'var(--safe-area-top)' }}>
         
@@ -503,8 +500,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* 🔥 CSS INJECTIONS - FIX OVERLAP ANDROID 🔥 */}
         <style>{`
           :root {
-            /* PENTING: Gunakan fungsi max() agar saat Android me-return 0px, app tetap memakai batas fallback (32px) */
-            --safe-area-top: max(env(safe-area-inset-top), 32px);
+            /* FIX: Hapus fallback 32px agar tidak ada ruang kosong di PWA */
+            --safe-area-top: env(safe-area-inset-top, 0px);
           }
           body {
             /* Reset margin/padding body agar tidak tabrakan dengan layout-wrapper */
@@ -526,7 +523,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'} ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         <CustomSplash />
-        <NextTopLoader color="#1f3cff" showSpinner={false} shadow="0 0 10px #1f3cff,0 0 5px #1f3cff" zIndex={99999999} />
+        
+        {/* ❌ (Komponen NextTopLoader dihapus sesuai permintaan) */}
+
         <Script
           src="https://cdn.jsdelivr.net/npm/eruda"
           strategy="lazyOnload"
