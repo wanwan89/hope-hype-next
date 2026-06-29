@@ -1,22 +1,15 @@
 /* =========================================
-   CREATE PAGE CSS
+   CREATE PAGE CSS – FULL FIX (Sinkron Global CSS)
    100% Selaras dengan Global CSS (Dark & Light Mode)
    ========================================= */
 
 .create-page-wrapper {
   animation: fadeInPage 0.3s ease-in-out;
-  min-height: 100vh;
+  min-height: 100%;                 /* ikuti tinggi konten, scroll di .main-content */
   background: var(--bg-main);
-  padding-bottom: 80px;
-  padding-top: env(safe-area-inset-top, 20px);
+  padding-bottom: 40px;
   box-sizing: border-box;
-
-  /* 🔥 KUNCI UTAMA BIAR BISA DI-SCROLL KE BAWAH 🔥 */
-  height: 100dvh;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important; /* Biar scroll halus di iOS */
-  overscroll-behavior-y: none !important; /* Cegah garis refresh */
-  touch-action: pan-y; /* Prioritaskan scroll vertikal */
+  overflow: visible;                /* jangan batasi scroll di sini */
 }
 
 @keyframes fadeInPage {
@@ -32,12 +25,11 @@
   width: 100%;
   max-height: 220px;
   background: var(--bg-card);
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   overflow-y: auto;
   z-index: 99999;
-  backdrop-filter: blur(10px);
 }
 
 .mention-item, .popup-item {
@@ -46,13 +38,13 @@
   padding: 12px 16px;
   gap: 12px;
   cursor: pointer;
-  border-bottom: 1px solid var(--bg-input);
+  border-bottom: 1px solid var(--border-card);
   transition: background 0.2s;
 }
 
 .mention-item:hover, .mention-item:active,
 .popup-item:hover, .popup-item:active {
-  background: var(--bg-input);
+  background: var(--bg-secondary);
 }
 
 .mention-item img, .popup-item img {
@@ -60,7 +52,7 @@
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
 }
 
 .mention-name, .popup-name {
@@ -72,7 +64,7 @@
 .popup-tag {
   font-size: 14px;
   font-weight: 700;
-  color: var(--primary, #1f3cff);
+  color: var(--primary);
 }
 
 .mention-empty, .popup-empty {
@@ -83,7 +75,7 @@
   font-weight: 500;
 }
 
-/* SCROLLBARS */
+/* SCROLLBARS dalam popup */
 .mention-popup::-webkit-scrollbar,
 .popup-suggestion-box::-webkit-scrollbar,
 .music-list-scroll::-webkit-scrollbar {
@@ -97,7 +89,7 @@
 .mention-popup::-webkit-scrollbar-thumb,
 .popup-suggestion-box::-webkit-scrollbar-thumb,
 .music-list-scroll::-webkit-scrollbar-thumb {
-  background: var(--bg-input);
+  background: var(--bg-secondary);
   border-radius: 4px;
 }
 
@@ -134,10 +126,9 @@
   align-items: center;
   padding: 14px 16px;
   background: var(--bg-card);
-  border: 1.5px solid var(--bg-input);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
   transition: all 0.25s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .dest-content:active {
@@ -154,7 +145,7 @@
   justify-content: center;
   margin-right: 12px;
   color: var(--text-main);
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
 }
 
 .dest-icon-box svg {
@@ -183,24 +174,24 @@
 .dest-check {
   width: 18px;
   height: 18px;
-  border: 2px solid var(--bg-input);
+  border: 2px solid var(--border-card);
   border-radius: 50%;
   transition: 0.3s;
 }
 
 .dest-option input:checked + .dest-content {
-  border-color: var(--primary, #1f3cff);
-  background: var(--primary-soft, rgba(31, 60, 255, 0.05));
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .dest-option input:checked + .dest-content .dest-icon-box {
-  background: var(--primary, #1f3cff);
-  color: var(--bg-main);
+  background: var(--primary);
+  color: white;
 }
 
 .dest-option input:checked + .dest-content .dest-check {
-  background: var(--primary, #1f3cff);
-  border-color: var(--primary, #1f3cff);
+  background: var(--primary);
+  border-color: var(--primary);
   border-width: 4px;
 }
 
@@ -215,7 +206,7 @@
 
 .visibility-toggle {
   margin-top: 14px;
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
 }
 
 .type-btn {
@@ -233,8 +224,8 @@
 
 .type-btn.active {
   background: var(--bg-card);
-  color: var(--primary, #1f3cff);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  color: var(--primary);
+  box-shadow: none;
 }
 
 .type-btn:not(.active) {
@@ -245,11 +236,9 @@
 /* --- UPLOAD AREA --- */
 .post-upload-area {
   min-height: 200px;
-  border: 2px dashed var(--bg-input);
+  border: 2px dashed var(--border-card);
   border-radius: 16px;
-  background: var(--bg-card) !important;
-  border: 2px dashed var(--bg-input) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  background: var(--bg-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -260,7 +249,7 @@
 }
 
 .post-upload-area:hover {
-  border-color: var(--primary, #1f3cff);
+  border-color: var(--primary);
 }
 
 .post-upload-placeholder {
@@ -282,9 +271,9 @@
   width: 100%;
   min-height: 120px;
   padding: 15px;
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
-  background: var(--bg-secondary);
+  background: var(--bg-input);
   color: var(--text-main);
   font-family: inherit;
   font-size: 15px;
@@ -294,15 +283,16 @@
 }
 
 .post-textarea:focus {
-  border-color: var(--primary, #1f3cff);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .post-select-custom {
   appearance: none;
   -webkit-appearance: none;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-input);
   color: var(--text-main);
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   padding: 15px;
   width: 100%;
@@ -314,7 +304,8 @@
 }
 
 .post-select-custom:focus {
-  border-color: var(--primary, #1f3cff);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 /* --- MUSIC SECTION --- */
@@ -322,7 +313,7 @@
   width: 100%;
   padding: 12px 15px 12px 40px;
   border-radius: 10px;
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
   background: var(--bg-input);
   color: var(--text-main);
   font-size: 14px;
@@ -331,7 +322,8 @@
 }
 
 .music-search-input:focus {
-  border-color: var(--primary, #1f3cff);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .music-list-scroll {
@@ -348,8 +340,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: var(--bg-input);
-  border: 1px solid var(--bg-input);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
 }
 
@@ -392,8 +384,8 @@
 .custom-toggle-switch {
   width: 42px;
   height: 24px;
-  background: var(--bg-main);
-  border: 1px solid var(--text-muted);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
   border-radius: 20px;
   position: relative;
   cursor: pointer;
@@ -401,8 +393,8 @@
 }
 
 .custom-toggle-switch.is-checked {
-  background: var(--primary, #1f3cff);
-  border-color: var(--primary, #1f3cff);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .custom-toggle-switch .toggle-dot {
@@ -427,7 +419,7 @@
   background: var(--bg-secondary);
   border-radius: 16px;
   padding: 14px 16px;
-  border: 1px solid var(--bg-input);
+  border: 1px solid var(--border-card);
 }
 
 .more-options-trigger {
@@ -460,7 +452,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  border-top: 1px solid var(--bg-input);
+  border-top: 1px solid var(--border-card);
   padding-top: 16px;
 }
 
@@ -483,12 +475,12 @@
   color: var(--text-muted);
 }
 
-/* --- 🔥 FULL IMMERSIVE EDITOR MODAL SCREEN 🔥 --- */
+/* --- 🔥 FULL IMMERSIVE EDITOR MODAL SCREEN 🔥 */
 .editor-screen-overlay {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: var(--bg-editor, #0c0c0c);
+  background: var(--bg-editor);
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -500,15 +492,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 15px 20px;
-  background: var(--modal-overlay, rgba(0, 0, 0, 0.4));
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-editor, #222222);
+  background: var(--bg-editor);
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--border-editor);
 }
 
 .editor-back-btn {
   background: transparent;
   border: none;
-  color: var(--text-editor, #ffffff);
+  color: var(--text-editor);
   font-size: 24px;
   cursor: pointer;
   display: flex;
@@ -516,16 +508,16 @@
 }
 
 .editor-header-title {
-  color: var(--text-editor, #ffffff);
+  color: var(--text-editor);
   font-size: 16px;
   font-weight: 600;
   margin: 0;
 }
 
 .editor-save-btn {
-  background: var(--primary, #1f3cff);
+  background: var(--primary);
   border: none;
-  color: var(--text-editor, #ffffff);
+  color: white;
   padding: 8px 16px;
   border-radius: 20px;
   font-weight: 800;
@@ -535,7 +527,7 @@
 }
 
 .editor-save-btn:disabled {
-  background: var(--bg-input, #333333);
+  background: var(--bg-secondary);
   color: var(--text-muted);
   cursor: not-allowed;
 }
@@ -562,12 +554,12 @@
 .editor-video-preview-frame {
   width: auto;
   height: 100%;
-  maxWidth: 100%;
+  max-width: 100%;
   position: relative;
   overflow: hidden;
   aspect-ratio: 2 / 3;
   border-radius: 16px;
-  border: 1px solid var(--border-editor, #222222);
+  border: 1px solid var(--border-editor);
 }
 
 .editor-video-element {
@@ -611,20 +603,20 @@
   flex-shrink: 0;
   padding: 20px;
   padding-bottom: calc(20px + env(safe-area-inset-bottom));
-  background: var(--bg-editor, #0c0c0c);
-  border-top: 1px solid var(--border-editor, #222222);
+  background: var(--bg-editor);
+  border-top: 1px solid var(--border-editor);
 }
 
 .editor-image-zoom-controls {
   display: flex;
   align-items: center;
   gap: 15px;
-  color: var(--text-editor, #ffffff);
+  color: var(--text-editor);
 }
 
 .editor-image-zoom-controls input[type="range"] {
   flex: 1;
-  accent-color: var(--primary, #1f3cff);
+  accent-color: var(--primary);
 }
 
 .editor-control-wrapper {
@@ -634,10 +626,10 @@
 }
 
 .editor-control-card {
-  background: var(--modal-overlay, rgba(255, 255, 255, 0.03));
+  background: var(--bg-editor);
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid var(--border-editor, #222222);
+  border: 1px solid var(--border-editor);
 }
 
 .editor-control-card-header {
@@ -647,7 +639,7 @@
 }
 
 .editor-control-card-title {
-  color: var(--text-editor, #ffffff);
+  color: var(--text-editor);
   font-size: 13px;
   font-weight: 700;
   display: flex;
@@ -665,14 +657,14 @@
 }
 
 .editor-control-card-value.orange {
-  color: #ff9500;
+  color: var(--color-warning, #ff9500);
 }
 
-/* Custom Track Slider Color Overrides */
+/* Custom Track Slider (tidak diubah, hanya border) */
 .filmstrip-box input[type="range"].blue-slider::-webkit-slider-thumb {
-  border-color: var(--border-editor, #222222);
+  border-color: var(--border-editor);
 }
 
 .filmstrip-box input[type="range"].orange-slider::-webkit-slider-thumb {
-  border-color: var(--border-editor, #222222);
+  border-color: var(--border-editor);
 }
