@@ -456,16 +456,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" suppressHydrationWarning>
       <head>
         <title>HypeTalk - Creative Community</title>
-        {/* 🔥 TIDAK ADA LINK MANIFEST & TIDAK ADA APPLE SPLASH */}
+        
+        {/* 🔥 FIX: MANIFEST DIKEMBALIKAN AGAR TETAP PWA 🔥 */}
+        <link rel="manifest" href="/manifest.json" />
+
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
-        {/* TIDAK ADA apple-touch-startup-image */}
-        {/* Mencegah iOS menampilkan splash saat diinstal */}
-        <meta name="apple-mobile-web-app-capable" content="no" />
+        
+        {/* 🔥 FIX: KEMBALIKAN CAPABLE AGAR BISA DIINSTAL 🔥 */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
