@@ -376,7 +376,6 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // 🔥 FIX UTAMA: Ubah width jadi 100% dan hapus marginLeft/marginRight negatif
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
@@ -388,8 +387,8 @@ const PostCard: React.FC<PostCardProps> = ({
       borderTop: '1px solid var(--border-card)',
       borderBottom: '1px solid var(--border-card)',
       position: 'relative' as const,
-      width: '100%',             // FIX: Menghindari overflow pada Virtual List
-      marginBottom: '12px',      // FIX: Menghapus marginLeft dan marginRight yang bikin nge-bug
+      width: '100%',
+      marginBottom: '12px',
       boxSizing: 'border-box' as const,
       boxShadow: 'none',
       textAlign: 'left' as const,
@@ -537,10 +536,18 @@ const PostCard: React.FC<PostCardProps> = ({
               reposters={!isOwner ? mutualReposters : []}
             />
 
-            {/* Carousel media */}
+            {/* Carousel media - 🔥 FIX INLINE UNTUK HORIZONTAL SCROLL YANG SMOOTH */}
             <div
               className="photo-carousel"
               onScroll={handleCarouselScroll}
+              style={{
+                display: 'flex',
+                overflowX: 'auto',
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'none',
+                width: '100%',
+              }}
             >
               {isVideoPost ? (
                 <div
@@ -548,6 +555,8 @@ const PostCard: React.FC<PostCardProps> = ({
                   style={{
                     aspectRatio: '2 / 3',
                     width: '100%',
+                    flexShrink: 0,
+                    scrollSnapAlign: 'start',
                     overflow: 'hidden',
                     position: 'relative',
                     background: 'var(--bg-secondary)',
@@ -691,6 +700,8 @@ const PostCard: React.FC<PostCardProps> = ({
                       style={{
                         aspectRatio: '3 / 4',
                         width: '100%',
+                        flexShrink: 0,
+                        scrollSnapAlign: 'start',
                         overflow: 'hidden',
                         position: 'relative',
                         background: 'var(--bg-secondary)',
@@ -807,6 +818,7 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
+            {/* 🔥 FIX UTAMA: Menghilangkan onWheel & onTouchMove stopPropagation agar page tetap bisa di-scroll secara vertikal */}
             <div
               style={{
                 maxHeight: actuallyExpanded ? 'none' : 'auto',
@@ -824,8 +836,6 @@ const PostCard: React.FC<PostCardProps> = ({
                 textAlign: 'left',
                 position: 'relative'
               }}
-              onWheel={(e) => actuallyExpanded && e.stopPropagation()}
-              onTouchMove={(e) => actuallyExpanded && e.stopPropagation()}
             >
               <p
                 ref={captionRef as React.RefObject<HTMLParagraphElement>}
