@@ -70,8 +70,6 @@ html.dark {
   scrollbar-width: none !important;
 }
 
-/* JANGAN GUNAKAN overscroll-behavior DI SINI, AGAR TIDAK MACET */
-
 input,
 textarea,
 [contenteditable="true"],
@@ -81,48 +79,88 @@ textarea,
 }
 
 /* =============================================================
-   HTML & BODY - ANTI REFRESH TAPI SCROLL TETAP JALAN
+   HTML & BODY - LOCK LAYAR LUAR AGAR ALUR SCROLL JELAS
    ============================================================= */
-html {
-  background-color: var(--bg-main) !important;
-  height: 100%;
-  scroll-behavior: smooth;
-  overscroll-behavior: none !important; /* MATIKAN GARIS PUTIH DI SINI */
-  -webkit-overflow-scrolling: touch;
-}
-
+html, 
 body {
   background-color: var(--bg-main) !important;
-  color: var(--text-main);
   width: 100%;
-  overflow-x: hidden;
+  height: 100dvh; /* Kunci tinggi layar pas dengan viewport perangkat */
+  overflow: hidden; /* Mencegah seluruh halaman luar ikut memantul */
+  overscroll-behavior-y: none; /* Matikan efek ditarik putih khas browser */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-  touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%;
-  -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  -webkit-user-zoom: fixed;
-  user-zoom: fixed;
-  overscroll-behavior: none !important; /* MATIKAN GARIS PUTIH DI SINI */
 }
 
-/* WRAPPER NEXT.JS (#__next) + MAIN WRAPPER */
+/* WRAPPER FRAMEWORK - HARUS MENGIKUTI TINGGI ROOT */
 #__next,
 #__nuxt,
 #app,
-main, 
-.layout-wrapper, 
-.main-content {
+main {
   background-color: var(--bg-main) !important;
-  min-height: 100vh;
-  overscroll-behavior: none !important; /* TARGETKAN WRAPPER UTAMA SAJA */
-  -webkit-overflow-scrolling: touch !important;
-  /* Biarkan overflow bawaan agar scroll bisa jalan */
+  height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* =============================================================
-   TRANSISI TEMA
+   LAYOUT UTILITIES & SCROLL AREA UTAMA
+   ============================================================= */
+.layout-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.fixed-layout {
+  height: 100dvh !important;
+  overflow: hidden !important;
+  position: relative;
+}
+
+/* 🔥 DISINI KUNCI PERBAIKANNYA */
+.main-content {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  position: relative;
+  padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  
+  /* Aktifkan scroll murni hanya di container ini */
+  overflow-y: scroll; 
+  -webkit-overflow-scrolling: touch !important; /* Solusi wajib iOS Safari agar scroll mulus */
+  
+  /* HAPUS overscroll-behavior disini agar touch gesture perangkat bekerja natural */
+}
+
+@media (min-width: 640px) {
+  .main-content {
+    max-width: 600px;
+  }
+}
+@media (min-width: 1024px) {
+  .main-content {
+    max-width: 680px;
+  }
+}
+
+.with-bottom-nav {
+  padding-bottom: calc(85px + max(env(safe-area-inset-bottom), 16px)) !important;
+}
+
+.navbar-bottom {
+  z-index: 100;
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+/* =============================================================
+   TRANSISI TEMA & ANIMASI
    ============================================================= */
 html.theme-ready * {
   transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
@@ -152,56 +190,6 @@ select,
   -webkit-tap-highlight-color: transparent !important;
   outline: none !important;
   cursor: pointer;
-}
-
-/* =============================================================
-   LAYOUT UTILITIES
-   ============================================================= */
-.layout-wrapper {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-  overscroll-behavior: none !important;
-}
-
-.fixed-layout {
-  height: 100dvh !important;
-  overflow: hidden !important;
-  position: relative;
-  overscroll-behavior: none !important;
-}
-
-.main-content {
-  flex: 1;
-  width: 100%;
-  max-width: 100%;
-  margin: 0 auto;
-  position: relative;
-  padding-bottom: max(env(safe-area-inset-bottom), 20px);
-  /* Tambahkan overflow-y auto agar SCROLL TETAP JALAN di dalam konten */
-  overflow-y: auto;
-  overscroll-behavior: none !important;
-}
-
-@media (min-width: 640px) {
-  .main-content {
-    max-width: 600px;
-  }
-}
-@media (min-width: 1024px) {
-  .main-content {
-    max-width: 680px;
-  }
-}
-
-.with-bottom-nav {
-  padding-bottom: calc(85px + max(env(safe-area-inset-bottom), 16px)) !important;
-}
-
-.navbar-bottom {
-  z-index: 100;
-  padding-bottom: max(env(safe-area-inset-bottom), 16px);
 }
 
 .page-fade {
