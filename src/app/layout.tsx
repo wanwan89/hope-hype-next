@@ -442,12 +442,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         
         {isHomePage && (
-          <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}>
+          <div className="search-container" style={{ 
+            width: '100%', 
+            maxWidth: '600px', 
+            margin: '0 auto', 
+            zIndex: 10,
+            /* 🔥 FIX UTAMA: Memberikan jarak aman agar Search Header tidak menabrak Status Bar Android/iOS */
+            paddingTop: 'max(env(safe-area-inset-top, 35px), 35px)' 
+          }}>
             <SearchWrapper />
           </div>
         )}
         
-        <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
+        <main 
+          className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}
+          /* 🔥 FIX UTAMA: Beri jarak aman juga untuk halaman lain yang bukan Fullscreen */
+          style={!isHomePage && !isFullscreenPage ? { paddingTop: 'max(env(safe-area-inset-top, 35px), 35px)' } : {}}
+        >
           {children}
         </main>
         
