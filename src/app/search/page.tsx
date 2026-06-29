@@ -8,14 +8,14 @@ import Lottie from 'lottie-react';
 import emptyLottie from '@/assets/lottie/empty.json'; 
 import babyLottie from '@/assets/lottie/baby.json';
 
-// Loading spinner bulat
-const LoadingSpinner = () => (
+// Loading spinner bulat yang sudah diperbaiki
+const LoadingSpinner = ({ isFull = false }: { isFull?: boolean }) => (
   <div style={{
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '60px 20px',
-    minHeight: '50vh', // agar halaman tidak menciut
+    padding: isFull ? '60px 20px' : '30px 20px',
+    minHeight: isFull ? '50vh' : 'auto', // Fleksibel: auto untuk tren, 50vh untuk pencarian utama
   }}>
     <div style={{
       width: 40,
@@ -268,7 +268,7 @@ function SearchContent() {
   return (
     <div style={{ minHeight: '100%', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
       
-      {/* HEADER SEARCH BAR – solid, tidak transparan */}
+      {/* HEADER SEARCH BAR */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 50,
         background: 'var(--bg-main)',
@@ -408,7 +408,7 @@ function SearchContent() {
               </h3>
               
               {isLoading ? (
-                <LoadingSpinner />
+                <LoadingSpinner /> // Tidak memanggil isFull di sini
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                   {trendingKeywords.map((kw, i) => (
@@ -437,7 +437,7 @@ function SearchContent() {
         {/* HASIL PENCARIAN */}
         {query && (
           isLoading ? (
-            <LoadingSpinner />
+            <LoadingSpinner isFull={true} /> // Menggunakan tinggi penuh untuk hasil pencarian utama
           ) : (
             <>
               {users.length > 0 && (
