@@ -7,7 +7,6 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
   const [drawComplete, setDrawComplete] = useState(false);
   const [phase, setPhase] = useState<'intro' | 'shift'>('intro');
 
-  // Setelah drawing selesai, mulai fase shift (logo geser + teks muncul)
   useEffect(() => {
     if (drawComplete) {
       const t = setTimeout(() => setPhase('shift'), 400);
@@ -15,7 +14,6 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
     }
   }, [drawComplete]);
 
-  // Setelah animasi shift & teks selesai (estimasi 1.5 detik), panggil onFinish
   useEffect(() => {
     if (phase === 'shift') {
       const t = setTimeout(() => {
@@ -36,9 +34,9 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
 
   return (
     <>
-      {/* Import font & keyframes */}
+      {/* Perbaikan: Import font Poppins Black (900) agar sesuai dengan gaya LottieFiles */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap');
 
         @keyframes bounceIn {
           0% {
@@ -124,7 +122,7 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
           )}
         </motion.svg>
 
-        {/* Teks HYPECO — animasi CSS + font Quicksand */}
+        {/* Teks HYPECO — Font Poppins Black & letter spacing diperbaiki */}
         {phase === 'shift' && (
           <div style={{ display: 'flex', alignItems: 'baseline' }}>
             <span style={{ display: 'inline-flex' }}>
@@ -135,10 +133,10 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
                   style={{
                     animationDelay: `${i * 0.08}s`,
                     fontSize: '28px',
-                    fontFamily: 'Quicksand, sans-serif',
-                    fontWeight: 700,
+                    fontFamily: "'Poppins', sans-serif",
+                    fontWeight: 900, // Gunakan Black weight
                     color: 'var(--text-main)',
-                    letterSpacing: '1px',
+                    letterSpacing: '-0.5px', // Disesuaikan agar lebih rapat dan tebal
                   }}
                 >
                   {char}

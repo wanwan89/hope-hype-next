@@ -13,7 +13,7 @@ import Script from 'next/script';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { StatusBar, Style } from '@capacitor/status-bar'; // 🔥 FIX: Import Status Bar Plugin
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 // 🔥 IMPORT TOP LOADER 🔥
 import NextTopLoader from 'nextjs-toploader';
@@ -28,8 +28,6 @@ import GlobalShareModal from '@/components/GlobalShareModal';
 
 import CustomSplash from '@/components/CustomSplash';
 import Providers from '@/components/Providers';
-
-// 🔥 TAMBAHAN: Import ConfirmProvider
 import { ConfirmProvider } from '@/components/ConfirmProvider'; 
 
 // 🔥 BARU: Import Lottie dan file JSON animasi offline
@@ -41,9 +39,8 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const prevPathnameRef = useRef(pathname);
 
-  // --- STATE LAMA ---
+  // --- STATE ---
   const [globalIncomingCall, setGlobalIncomingCall] = useState<any>(null);
   const [globalMessageNotif, setGlobalMessageNotif] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -69,7 +66,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         // Abaikan error
       }
     };
-
     hideNativeSplash();
   }, []);
 
@@ -98,7 +94,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         .from('profiles')
         .update({ push_token: token })
         .eq('id', userId);
-
       if (error) throw error;
       console.log("✅ FCM Token berhasil disimpen ke Database!");
     } catch (err: any) {
@@ -146,20 +141,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         if (platform === 'android' || platform === 'ios') {
           console.log("📱 Native Detected: Menghubungkan Firebase FCM & Setup StatusBar...");
-
-          // 🔥 FIX: PENGATURAN STATUS BAR DIMULAI DI SINI 🔥
           try {
-            // Style.Light berarti konten/ikon gelap (hitam) agar kontras dengan background terang
             await StatusBar.setStyle({ style: Style.Light });
-            
-            // Set background status bar jadi putih (khusus Android)
             if (platform === 'android') {
               await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
             }
           } catch (statusErr) {
             console.warn("⚠️ StatusBar plugin error:", statusErr);
           }
-          // 🔥 FIX: PENGATURAN STATUS BAR SELESAI 🔥
 
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
@@ -174,7 +163,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               sound: 'suara_panggilan',
               vibration: true,
             });
-            console.log("✅ Channel Android hype_high_channel dibuat/diperbarui.");
           }
 
           if (permPush.receive === 'granted') {
@@ -182,25 +170,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
 
           PushNotifications.addListener('registration', (token) => {
-            console.log("🔥 FCM Token didapat:", token.value);
             fcmTokenRef.current = token.value;
-            if (myProfile?.id) {
-              updatePushToken(myProfile.id, token.value);
-            }
-          });
-
-          PushNotifications.addListener('pushNotificationReceived', (notification) => {
-            console.log('Notifikasi masuk saat app kebuka:', notification);
+            if (myProfile?.id) updatePushToken(myProfile.id, token.value);
           });
 
           PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-            console.log('Notifikasi native diklik:', action);
-
             const data = action.notification.data;
-
             if (data && data.roomId) {
               const targetUserId = data.senderId;
-
               if (data.type === 'call') {
                 router.push(`/hypetalk/room?from=${targetUserId}&incomingCall=true`);
               } else {
@@ -216,13 +193,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               App.exitApp();
             }
           });
-
         }
       } catch (error) {
         console.warn("⚠️ Firebase/Native API error:", error);
       }
     };
-
     initNativeFeatures();
 
     return () => {
@@ -326,41 +301,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     router.push(`/hypetalk/room?from=${cid}`);
   };
 
+  // --- PREVENT SAVE & ANTI ZOOM ---
   useEffect(() => {
     const preventSave = (e: any) => { if (e.target.tagName === 'IMG') e.preventDefault(); };
     document.addEventListener('contextmenu', preventSave);
     document.addEventListener('dragstart', preventSave);
-    return () => {
-      document.removeEventListener('contextmenu', preventSave);
-      document.removeEventListener('dragstart', preventSave);
-    };
-  }, []);
-
-  useIsomorphicLayoutEffect(() => {
-    const root = document.documentElement;
-    const body = document.body;
-    if (isStandaloneApp) {
-      root.style.height = body.style.height = '100dvh';
-      root.style.overflow = body.style.overflow = 'hidden';
-      body.style.position = 'fixed'; body.style.width = '100%';
-    } else {
-      root.style.height = body.style.height = 'auto';
-      root.style.overflow = body.style.overflow = 'visible';
-      body.style.position = 'static';
-    }
-  }, [pathname, isStandaloneApp]);
-
-  // --- 🔥 ANTI ZOOM DENGAN EVENT LISTENER (iOS & Android) ---
-  useEffect(() => {
-    const handleGestureStart = (e: Event) => {
-      e.preventDefault();
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    };
+    
+    const handleGestureStart = (e: Event) => e.preventDefault();
+    const handleTouchMove = (e: TouchEvent) => { if (e.touches.length > 1) e.preventDefault(); };
 
     document.addEventListener('gesturestart', handleGestureStart);
     document.addEventListener('gesturechange', handleGestureStart);
@@ -368,6 +316,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
+      document.removeEventListener('contextmenu', preventSave);
+      document.removeEventListener('dragstart', preventSave);
       document.removeEventListener('gesturestart', handleGestureStart);
       document.removeEventListener('gesturechange', handleGestureStart);
       document.removeEventListener('gestureend', handleGestureStart);
@@ -375,46 +325,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
+  // --- DOM MANIPULATION UNTUK FIXED LAYOUT (iOS/PWA Tweak) ---
+  useIsomorphicLayoutEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    if (isStandaloneApp) {
+      root.classList.add('fixed-layout');
+      body.classList.add('fixed-layout');
+    } else {
+      root.classList.remove('fixed-layout');
+      body.classList.remove('fixed-layout');
+    }
+  }, [isStandaloneApp]);
+
   // --- RENDER CONTENT HELPER ---
   const renderUI = () => (
     <>
       <GlobalShareModal />
       
       {!isOnline && (
-        <div
-          className="offline-global-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'rgba(0,0,0,0.6)', 
-            backdropFilter: 'blur(4px)',
-            zIndex: 9999999,
-          }}
-        >
-          <div className="offline-card" style={{ 
-            textAlign: 'center', 
-            padding: '2rem', 
-            borderRadius: '1.5rem', 
-            background: 'transparent',
-            border: 'none',
-            maxWidth: '320px', 
-            width: '90%',
-            display: 'flex',
-            flexDirection: 'column', 
-            alignItems: 'center' 
-          }}>
+        <div className="offline-global-overlay" style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 9999999 }}>
+          <div className="offline-card" style={{ textAlign: 'center', padding: '2rem', borderRadius: '1.5rem', background: 'transparent', border: 'none', maxWidth: '320px', width: '90%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ width: '150px', height: '150px', marginBottom: '10px' }}>
               <Lottie animationData={lostConnectionData} loop={true} autoplay={true} />
             </div>
-            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800', margin: '0.5rem 0 0.25rem' }}>
-              Koneksi Terputus
-            </h3>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>
-              Kamu sedang offline, aktifkan internet.
-            </p>
+            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: '800', margin: '0.5rem 0 0.25rem' }}>Koneksi Terputus</h3>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Kamu sedang offline, aktifkan internet.</p>
           </div>
         </div>
       )}
@@ -451,13 +387,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
+      {/* 🔥 KONTEN UTAMA DENGAN CLASS YANG SINKRON DENGAN CSS 🔥 */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         
-        {/* Kolom Search Tidak Dibungkus agar Diam di Atas */}
-        {isHomePage && <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}><SearchWrapper /></div>}
+        {isHomePage && (
+          <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10 }}>
+            <SearchWrapper />
+          </div>
+        )}
         
-        {/* 🔥 KONTEN UTAMA (Tanpa RefreshableWrapper) 🔥 */}
-        <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`} style={{ display: isStandaloneApp ? 'flex' : 'block', minHeight: isStandaloneApp ? '100%' : '100dvh' }}>
+        <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
           {children}
         </main>
         
@@ -471,36 +410,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" suppressHydrationWarning>
       <head>
         <title>HypeTalk - Creative Community</title>
-        
-        {/* 🔥 MANIFEST DIKEMBALIKAN AGAR TETAP PWA 🔥 */}
         <link rel="manifest" href="/manifest.json" />
-
-        {/* 🔥 FIX META THEME COLOR: Paksa putih agar status bar konsisten walau dark mode nyala 🔥 */}
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#ffffff" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
         
-        {/* 🔥 KEMBALIKAN CAPABLE AGAR BISA DIINSTAL 🔥 */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+        
         <style>{`
-          body {
-            background-color: var(--bg-main);
-            touch-action: manipulation;
-            -ms-touch-action: manipulation;
-            -webkit-text-size-adjust: 100%;
-            -ms-text-size-adjust: 100%;
-            -moz-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-            -webkit-user-zoom: fixed;
-            user-zoom: fixed;
-          }
+          /* Tweak style inline agar fokus pada elemen yang tidak masuk CSS global */
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
           .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
           @keyframes pulseCallGlobal { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); } 70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
@@ -510,7 +435,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</style>
       </head>
 
-      <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'}`}>
+      {/* Class dinamis pada body dan fixed-layout untuk memastikan wrapper mencakup layar penuh */}
+      <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'} ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         <CustomSplash />
         <NextTopLoader color="#1f3cff" showSpinner={false} shadow="0 0 10px #1f3cff,0 0 5px #1f3cff" zIndex={99999999} />
         <Script
