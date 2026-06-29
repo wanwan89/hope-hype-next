@@ -9,6 +9,14 @@
   background: var(--bg-main);
   padding-bottom: 80px;
   padding-top: env(safe-area-inset-top, 20px);
+  box-sizing: border-box;
+
+  /* 🔥 KUNCI UTAMA BIAR BISA DI-SCROLL KE BAWAH 🔥 */
+  height: 100dvh;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important; /* Biar scroll halus di iOS */
+  overscroll-behavior-y: none !important; /* Cegah garis refresh */
+  touch-action: pan-y; /* Prioritaskan scroll vertikal */
 }
 
 @keyframes fadeInPage {
@@ -430,7 +438,7 @@
 }
 
 .more-options-title {
-  激font-size: 14px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-main);
   display: flex;
@@ -595,7 +603,7 @@
 }
 
 .editor-video-play-btn .material-icons {
-  激font-size: 40px;
+  font-size: 40px;
   color: #ffffff;
 }
 
