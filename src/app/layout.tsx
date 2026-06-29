@@ -149,6 +149,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => { observer.disconnect(); };
   }, [syncStatusBar]);
 
+  // Pastikan transisi tema smooth setelah halaman siap
   useEffect(() => {
     const timeout = setTimeout(() => {
       document.documentElement.classList.add('theme-ready');
@@ -361,7 +362,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} style={{ paddingTop: 'var(--safe-area-top)' }}>
         {/* MAIN SCROLL AREA */}
         <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
-          {/* SearchWrapper SEKARANG DI DALAM main-content → ikut scroll */}
           {isHomePage && (
             <div
               className="search-container"
@@ -371,10 +371,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 margin: '0 auto',
                 zIndex: 10,
                 paddingTop: '10px',
-                // OPSIONAL: jika ingin search tetap di atas saat scroll, aktifkan baris berikut:
-                // position: 'sticky',
-                // top: 0,
-                // background: 'var(--bg-main)',
               }}
             >
               <SearchWrapper />
@@ -419,7 +415,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'} ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         <CustomSplash />
-        <Script src="https://cdn.jsdelivr.net/npm/eruda" strategy="lazyOnload" onLoad={() => { if (typeof window !== 'undefined' && (window as any).eruda) { (window as any).eruda.init(); } }} />
         <Providers>
           <I18nextProvider i18n={i18n}>
             <ThemeProvider>
