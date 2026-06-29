@@ -183,6 +183,7 @@ export default function SearchWrapperpost() {
           />
         </div>
 
+        {/* ✅ Tombol "+" latar biru tetap */}
         <button
           type="button"
           className="add-post-btn"
@@ -191,7 +192,7 @@ export default function SearchWrapperpost() {
             router.push('/create');
           }}
           style={{
-            background: 'var(--primary)',
+            background: 'var(--primary-bg)',
             color: '#fff',
             border: 'none',
             outline: 'none',
@@ -240,7 +241,7 @@ export default function SearchWrapperpost() {
                       height: '16px',
                       borderRadius: '50%',
                       border: '2.5px solid var(--bg-input)',
-                      borderTopColor: 'var(--primary)',
+                      borderTopColor: 'var(--primary-bg)',  // ✅ biru tetap
                       animation: 'spin 1s linear infinite',
                     }}
                   />
@@ -286,7 +287,7 @@ export default function SearchWrapperpost() {
                 style={{
                   width: `${uploadProgress}%`,
                   height: '100%',
-                  background: uploadProgress < 100 ? 'var(--primary)' : '#00c853',
+                  background: uploadProgress < 100 ? 'var(--primary-bg)' : '#00c853',  // ✅ biru tetap
                   borderRadius: '4px',
                   transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease',
                 }}
@@ -334,7 +335,6 @@ export default function SearchWrapperpost() {
                   }}
                 />
               </div>
-              {/* ✅ Username story sekarang lebih tebal */}
               <span className="story-name" style={{ color: 'var(--text-main)', fontWeight: 700 }}>
                 {story.profiles?.username}
               </span>

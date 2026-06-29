@@ -21,19 +21,19 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  /* Menggunakan var(--bg-main) dengan transparansi untuk efek glass */
+  /* background semi-transparan sinkron dengan --bg-main */
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   border-bottom: 1px solid var(--border-card);
   box-sizing: border-box;
-  border-radius: 0; 
+  border-radius: 0;
 }
 
 /* Dark Mode Override untuk Search Bar Wrapper */
 [data-theme='dark'] .search-wrapper,
 html.dark .search-wrapper {
-  background: rgba(10, 10, 10, 0.85); /* Disesuaikan dengan var(--bg-main) dark mode */
+  background: rgba(10, 10, 10, 0.85); /* sesuai --bg-main dark */
 }
 
 /* --- INPUT PENCARIAN --- */
@@ -49,22 +49,19 @@ html.dark .search-wrapper {
   font-size: 14px;
   font-family: 'Inter', 'Poppins', sans-serif;
   color: var(--text-main);
-  
-  /* 🔥 FIX: Menggunakan variabel global --bg-input */
+
   background-color: var(--bg-input) !important;
   border: 1px solid var(--border-card) !important;
   border-radius: 24px;
   outline: none;
   font-weight: 600;
-  transition: box-shadow 0.3s ease; /* Transisi warna dihapus agar tidak ada kedip/perubahan */
+  transition: box-shadow 0.3s ease;
 }
 
-/* Saat form input ditekan/fokus */
 .brutal-input:focus {
-  /* 🔥 FIX: Warna background dan border dibuat sama dengan state awal agar tidak berubah saat diklik */
-  background-color: var(--bg-input) !important; 
+  background-color: var(--bg-input) !important;
   border-color: var(--border-card) !important;
-  box-shadow: 0 0 0 3px var(--primary-soft); /* Efek glow biru (hapus baris ini jika tidak ingin ada glow sama sekali) */
+  box-shadow: 0 0 0 3px var(--primary-soft); /* glow biru halus */
 }
 
 /* --- TOMBOL TAMBAH (+) --- */
@@ -76,7 +73,7 @@ html.dark .search-wrapper {
   height: 40px;
   border-radius: 50%;
   border: none;
-  /* Disesuaikan agar kontras: background mengikuti warna teks utama, icon mengikuti warna background */
+  /* background hitam/putih, ikon kontras */
   background-color: var(--text-main);
   color: var(--bg-main);
   cursor: pointer;
@@ -93,7 +90,7 @@ html.dark .search-wrapper {
   transform: scale(0.85);
 }
 
-/* --- STORY SECTION (NORMAL, IKUT TER-SCROLL) --- */
+/* --- STORY SECTION (IKUT TER-SCROLL) --- */
 .stories-container {
   display: flex;
   gap: 16px;
@@ -122,7 +119,7 @@ html.dark .search-wrapper {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* --- 🔥 ANIMASI CINCIN IG STORY 🔥 --- */
+/* --- CINCIN STORY --- */
 .story-circle {
   position: relative;
   width: 68px;
@@ -133,17 +130,15 @@ html.dark .search-wrapper {
   justify-content: center;
 }
 
-/* Pseudo-element gradient IG */
 .story-circle.unseen::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--accent-story); /* Menggunakan gradient story dari Global CSS kamu */
+  background: var(--accent-story); /* gradient story global */
   border-radius: 50%;
   z-index: 0;
 }
 
-/* Pas diklik muter */
 .story-circle.animating::before {
   animation: spinIG 1s linear infinite;
 }
@@ -161,11 +156,10 @@ html.dark .search-wrapper {
   border-radius: 50%;
   object-fit: cover;
   background-color: var(--bg-secondary);
-  border: 3px solid var(--bg-main); /* Border disesuaikan agar match dengan background */
+  border: 3px solid var(--bg-main);
   transition: border-color 0.3s ease;
 }
 
-/* Nama Story Teks */
 .story-name {
   font-size: 11px;
   color: var(--text-main);

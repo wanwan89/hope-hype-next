@@ -1,7 +1,6 @@
 /* src/app/data/DataProfile.css */
 
 .profile-page-container {
-    /* Variabel khusus profil yang tidak ada di global dipertahankan di sini */
     --border-color: #e4e6eb; 
     --accent-gold: #f59e0b;
 
@@ -12,7 +11,6 @@
     display: flex;
     flex-direction: column;
     
-    /* Menggunakan variabel global CSS */
     background: var(--bg-main);
     color: var(--text-main);
     
@@ -22,12 +20,10 @@
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Transisi Global */
 .profile-page-container * {
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Dark Mode Support untuk border lokal */
 [data-theme='dark'] .profile-page-container,
 html.dark .profile-page-container {
     --border-color: rgba(255, 255, 255, 0.08); 
@@ -52,7 +48,6 @@ html.dark .profile-page-container {
 .profile-top-section { flex-shrink: 0; background: var(--bg-main); }
 .profile-info { padding: 15px 20px 10px; text-align: center; }
 
-/* 🔥 FIX: LOGIKA AVATAR RING (STORY BORDER DITIPISIN) 🔥 */
 .avatar-container {
     display: flex; 
     justify-content: center; 
@@ -74,7 +69,7 @@ html.dark .profile-page-container {
     animation: pulseStory 2s infinite alternate;
 }
 .avatar-ring.no-story {
-    background: var(--primary); 
+    background: var(--primary-bg);                /* ✅ tetap biru */
 }
 @keyframes pulseStory {
     0% { filter: brightness(1); }
@@ -101,7 +96,7 @@ html.dark .profile-page-container {
 
 .profile-actions { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; }
 .btn-action { padding: 8px 22px; border-radius: 10px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.btn-primary { background: var(--primary); color: white; }
+.btn-primary { background: var(--primary-bg); color: white; }   /* ✅ latar biru */
 .btn-secondary { background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); }
 .btn-action:active { transform: scale(0.95); }
 
@@ -170,7 +165,6 @@ html.dark .profile-page-container {
 
 /* SIDEBAR STYLES */
 .sidebar-search-container { padding: 25px 16px 10px; }
-/* 🔥 [UPDATED] Menggunakan var(--bg-input) untuk background search box */
 .sidebar-search { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
 .sidebar-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; color: var(--text-main); font-family: inherit; }
 .sidebar-search input::placeholder { color: var(--text-muted); }
@@ -178,7 +172,6 @@ html.dark .profile-page-container {
 .menu-category-label { padding: 20px 16px 8px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 .menu-item-tiktok { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; color: var(--text-main); -webkit-tap-highlight-color: transparent;}
 .menu-item-tiktok:active { background: var(--bg-secondary); }
-/* 🔥 [UPDATED] Menggunakan var(--icon-fill) untuk warna icon */
 .menu-item-tiktok .icon-wrapper { width: 32px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--icon-fill, var(--text-main)); }
 .menu-item-tiktok .menu-text { flex: 1; font-size: 15px; font-weight: 600; margin-left: 10px; }
 .menu-item-tiktok .arrow-right { color: var(--text-muted); font-size: 18px; }
@@ -186,7 +179,7 @@ html.dark .profile-page-container {
 .menu-item-tiktok.logout { color: #ff4757; margin-top: auto; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
 .menu-item-tiktok.logout .icon-wrapper, .menu-item-tiktok.logout .menu-text { color: #ff4757 !important; }
 
-/* --- 🔥 MODAL EDIT PROFIL (DITIPISIN JUGA) 🔥 --- */
+/* --- 🔥 MODAL EDIT PROFIL 🔥 --- */
 .edit-avatar-section { 
     display: flex; 
     flex-direction: column; 
@@ -206,13 +199,13 @@ html.dark .profile-page-container {
     height: 100%; 
     border-radius: 50%; 
     object-fit: cover; 
-    border: 2px solid var(--primary); 
+    border: 2px solid var(--primary-bg);       /* ✅ biru */
     background: var(--bg-secondary); 
 }
 .upload-badge { 
     position: absolute; 
     bottom: 0; right: 0; 
-    background: var(--primary); color: white; 
+    background: var(--primary-bg); color: white;   /* ✅ biru */
     border-radius: 50%; width: 28px; height: 28px; 
     display: flex; align-items: center; justify-content: center; 
     border: 2px solid var(--bg-main); 
@@ -222,12 +215,11 @@ html.dark .profile-page-container {
 
 .avatar-presets { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
 .preset-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid transparent; cursor: pointer; -webkit-tap-highlight-color: transparent;}
-.preset-img.selected { border-color: var(--primary); transform: scale(1.1); box-shadow: 0 4px 10px var(--primary-soft); }
+.preset-img.selected { border-color: var(--primary-bg); transform: scale(1.1); box-shadow: 0 4px 10px var(--primary-soft); }  /* ✅ biru */
 
 .edit-form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
 .edit-form-group label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* 🔥 [UPDATED] Input/textarea edit profile menggunakan var(--bg-input) */
 .edit-form-group input, .edit-form-group textarea { 
     background: var(--bg-input); 
     border: 1.5px solid var(--border-color); 
@@ -235,11 +227,12 @@ html.dark .profile-page-container {
     font-size: 14px; color: var(--text-main); 
     outline: none; font-family: inherit; 
 }
-.edit-form-group input:focus, .edit-form-group textarea:focus { border-color: var(--primary); background: var(--bg-main); box-shadow: 0 0 0 3px var(--primary-soft); }
+.edit-form-group input:focus, .edit-form-group textarea:focus { border-color: var(--primary-bg); background: var(--bg-main); box-shadow: 0 0 0 3px var(--primary-soft); }  /* ✅ biru */
 .edit-form-group textarea { resize: none; min-height: 80px; }
 
 .btn-save-profile { 
-    background: var(--primary); color: white; width: 100%; border: none; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 10px; -webkit-tap-highlight-color: transparent; 
+    background: var(--primary-bg); color: white;   /* ✅ biru */
+    width: 100%; border: none; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 10px; -webkit-tap-highlight-color: transparent; 
 }
 .btn-save-profile:active { transform: scale(0.97); opacity: 0.9; }
 .btn-save-profile:disabled { opacity: 0.7; cursor: not-allowed; }

@@ -62,25 +62,21 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 65 ? text.substring(0, 65) + '...' : text;
 
-  // Fungsi untuk mendapatkan style ring (border) berdasarkan status story & note
   const getRingStyle = (hasStory: boolean, hasNote: boolean) => {
     let background = 'transparent';
     let padding = '0px';
     let innerBorder = 'none';
-    const thinnerWidth = '1px'; // Border sangat tipis (sebelumnya 1.5px, kini 1px)
+    const thinnerWidth = '1px';
 
     if (hasStory && hasNote) {
-      // Punya story dan punya note -> Gradasi Ungu & Biru
       background = 'linear-gradient(45deg, #a855f7, #1f3cff)';
       padding = thinnerWidth;
       innerBorder = `${thinnerWidth} solid var(--bg-main)`;
     } else if (!hasStory && hasNote) {
-      // Cuma punya note -> Gradasi Merah & Biru
       background = 'linear-gradient(45deg, #ef4444, #1f3cff)';
       padding = thinnerWidth;
       innerBorder = `${thinnerWidth} solid var(--bg-main)`;
     } else if (hasStory && !hasNote) {
-      // Cuma punya story -> Warna default story
       background = 'var(--accent-story)';
       padding = thinnerWidth;
       innerBorder = `${thinnerWidth} solid var(--bg-main)`;
@@ -89,7 +85,6 @@ export default function FriendStoriesTray({
     return { background, padding, innerBorder, hasRing: padding !== '0px' };
   };
 
-  // Status visual user saat ini (asumsi user saat ini hanya menampilkan Note di komponen ini)
   const myRingStyle = getRingStyle(false, !!myStatusText);
 
   return (
@@ -99,7 +94,7 @@ export default function FriendStoriesTray({
         position: 'relative',
         background: 'var(--bg-main)',
         borderBottom: '1px solid var(--border-card)',
-        padding: '0 15px', 
+        padding: '0 15px',
         overflow: 'visible',
       }}
     >
@@ -108,8 +103,8 @@ export default function FriendStoriesTray({
           display: 'flex',
           gap: '16px',
           overflowX: 'auto',
-          overflowY: 'visible', 
-          paddingTop: '30px', 
+          overflowY: 'visible',
+          paddingTop: '30px',
           paddingBottom: '15px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -120,7 +115,7 @@ export default function FriendStoriesTray({
         {currentUser && (
           <div style={{ position: 'relative', flexShrink: 0, width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
-              <div 
+              <div
                 className={`story-ring ${myRingStyle.hasRing ? 'active-story' : 'no-story'}`}
                 style={{
                   padding: myRingStyle.padding,
@@ -132,16 +127,16 @@ export default function FriendStoriesTray({
                 }}
               >
                 {currentUser.avatar_url ? (
-                  <img 
-                    src={currentUser.avatar_url} 
-                    alt="Catatan" 
-                    style={{ 
-                      borderRadius: '50%', 
+                  <img
+                    src={currentUser.avatar_url}
+                    alt="Catatan"
+                    style={{
+                      borderRadius: '50%',
                       border: myRingStyle.innerBorder,
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'cover' 
-                    }} 
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
                   />
                 ) : (
                   <div className="default-avatar" style={{ borderRadius: '50%', border: myRingStyle.innerBorder }}>
@@ -151,7 +146,7 @@ export default function FriendStoriesTray({
               </div>
 
               {!myStatusText && (
-                <button 
+                <button
                   onClick={onAddStatus}
                   style={{
                     position: 'absolute',
@@ -166,10 +161,10 @@ export default function FriendStoriesTray({
                     justifyContent: 'center',
                     cursor: 'pointer',
                     boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                    zIndex: 12
+                    zIndex: 12,
                   }}
                 >
-                  <div style={{ background: 'var(--primary)', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ background: 'var(--primary-bg)', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span className="material-icons" style={{ fontSize: 14, color: 'white', fontWeight: 'bold' }}>add</span>
                   </div>
                 </button>
@@ -179,19 +174,19 @@ export default function FriendStoriesTray({
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    onAddStatus?.(); 
+                    onAddStatus?.();
                   }}
                   style={{
                     position: 'absolute',
-                    top: '-15px', 
+                    top: '-15px',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border-card)',
-                    borderRadius: '20px', 
+                    borderRadius: '20px',
                     padding: '6px 12px',
                     minWidth: '55px',
-                    maxWidth: '85px', 
+                    maxWidth: '85px',
                     zIndex: 10,
                     cursor: 'pointer',
                     boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
@@ -203,7 +198,7 @@ export default function FriendStoriesTray({
                     color: 'var(--text-main)',
                     textAlign: 'center',
                     display: '-webkit-box',
-                    WebkitLineClamp: 3, 
+                    WebkitLineClamp: 3,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                     lineHeight: 1.2,
@@ -251,7 +246,7 @@ export default function FriendStoriesTray({
                 }
               >
                 <div style={{ position: 'relative' }}>
-                  <div 
+                  <div
                     className={`story-ring ${ringStyle.hasRing ? 'active-story' : 'no-story'}`}
                     style={{
                       padding: ringStyle.padding,
@@ -263,16 +258,16 @@ export default function FriendStoriesTray({
                     }}
                   >
                     {friend.avatar_url ? (
-                      <img 
-                        src={friend.avatar_url} 
-                        alt={friend.username} 
-                        style={{ 
-                          borderRadius: '50%', 
+                      <img
+                        src={friend.avatar_url}
+                        alt={friend.username}
+                        style={{
+                          borderRadius: '50%',
                           border: ringStyle.innerBorder,
-                          width: '100%', 
-                          height: '100%', 
-                          objectFit: 'cover' 
-                        }} 
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
                       />
                     ) : (
                       <div className="default-avatar" style={{ borderRadius: '50%', border: ringStyle.innerBorder }}>
@@ -286,12 +281,12 @@ export default function FriendStoriesTray({
                       onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
                       style={{
                         position: 'absolute',
-                        top: '-15px', 
+                        top: '-15px',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         background: 'var(--bg-card)',
                         border: '1px solid var(--border-card)',
-                        borderRadius: '20px', 
+                        borderRadius: '20px',
                         padding: '6px 12px',
                         minWidth: '55px',
                         maxWidth: '85px',
@@ -370,7 +365,7 @@ export default function FriendStoriesTray({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 15 }}>
-              <span className="material-icons" style={{ fontSize: 24, color: 'var(--primary)' }}>sticky_note_2</span>
+              <span className="material-icons" style={{ fontSize: 24, color: 'var(--primary-bg)' }}>sticky_note_2</span>
               <strong style={{ fontSize: 16 }}>{popupNote.username}</strong>
             </div>
 
@@ -394,7 +389,7 @@ export default function FriendStoriesTray({
               <button
                 style={{
                   flex: 1,
-                  background: 'var(--primary)',
+                  background: 'var(--primary-bg)',
                   color: 'white',
                   border: 'none',
                   borderRadius: 12,

@@ -64,7 +64,7 @@
 .popup-tag {
   font-size: 14px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary);            /* teks hitam/putih */
 }
 
 .mention-empty, .popup-empty {
@@ -180,18 +180,18 @@
 }
 
 .dest-option input:checked + .dest-content {
-  border-color: var(--primary);
+  border-color: var(--primary-bg);
   background: var(--primary-soft);
 }
 
 .dest-option input:checked + .dest-content .dest-icon-box {
-  background: var(--primary);
+  background: var(--primary-bg);      /* ✅ latar biru */
   color: white;
 }
 
 .dest-option input:checked + .dest-content .dest-check {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: var(--primary-bg);      /* ✅ latar biru */
+  border-color: var(--primary-bg);
   border-width: 4px;
 }
 
@@ -224,7 +224,7 @@
 
 .type-btn.active {
   background: var(--bg-card);
-  color: var(--primary);
+  color: var(--primary-bg);           /* ✅ teks biru */
   box-shadow: none;
 }
 
@@ -249,7 +249,7 @@
 }
 
 .post-upload-area:hover {
-  border-color: var(--primary);
+  border-color: var(--primary-bg);    /* aksen biru */
 }
 
 .post-upload-placeholder {
@@ -283,7 +283,7 @@
 }
 
 .post-textarea:focus {
-  border-color: var(--primary);
+  border-color: var(--primary-bg);
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
@@ -304,7 +304,7 @@
 }
 
 .post-select-custom:focus {
-  border-color: var(--primary);
+  border-color: var(--primary-bg);
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
@@ -322,7 +322,7 @@
 }
 
 .music-search-input:focus {
-  border-color: var(--primary);
+  border-color: var(--primary-bg);
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
@@ -393,8 +393,8 @@
 }
 
 .custom-toggle-switch.is-checked {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: var(--primary-bg);      /* ✅ latar biru */
+  border-color: var(--primary-bg);
 }
 
 .custom-toggle-switch .toggle-dot {
@@ -515,7 +515,7 @@
 }
 
 .editor-save-btn {
-  background: var(--primary);
+  background: var(--primary-bg);        /* ✅ latar biru */
   border: none;
   color: white;
   padding: 8px 16px;
@@ -616,7 +616,7 @@
 
 .editor-image-zoom-controls input[type="range"] {
   flex: 1;
-  accent-color: var(--primary);
+  accent-color: var(--primary-bg);     /* aksen biru */
 }
 
 .editor-control-wrapper {
@@ -660,7 +660,7 @@
   color: var(--color-warning, #ff9500);
 }
 
-/* Custom Track Slider (tidak diubah, hanya border) */
+/* Custom Track Slider */
 .filmstrip-box input[type="range"].blue-slider::-webkit-slider-thumb {
   border-color: var(--border-editor);
 }
