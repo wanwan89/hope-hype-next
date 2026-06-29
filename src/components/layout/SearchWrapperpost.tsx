@@ -19,11 +19,9 @@ export default function SearchWrapperpost() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadType, setUploadType] = useState('post'); // Penanda apakah yang di-upload "post" atau "story"
 
-  // State untuk animasi teks placeholder
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  
-  // 🔥 Hanya kata yang berganti-ganti saja
   const placeholders = ['kreator...', 'postingan...', 'trending...'];
 
   const isHidden =
@@ -35,15 +33,11 @@ export default function SearchWrapperpost() {
     setMounted(true);
   }, []);
 
-  // Effect untuk mengganti teks placeholder
   useEffect(() => {
     if (!mounted || isHidden) return;
-    
-    // Interval 20000 ms (20 detik)
     const interval = setInterval(() => {
       setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
     }, 20000); 
-    
     return () => clearInterval(interval);
   }, [mounted, isHidden, placeholders.length]);
 
@@ -52,23 +46,31 @@ export default function SearchWrapperpost() {
     if (localStorage.getItem('isUploading') === 'true') {
       setIsUploading(true);
       setUploadProgress(Number(localStorage.getItem('uploadProgress')) || 0);
+      setUploadType(localStorage.getItem('uploadType') || 'post');
     }
 
-    const handleUploadStart = () => {
+    const handleUploadStart = (e: any) => {
       setIsUploading(true);
       setUploadProgress(0);
+      setUploadType(e.detail?.type || 'post'); // Ambil info jenis upload dari event jika ada
     };
+    
     const handleUploadProgress = (e: any) => {
       setIsUploading(true);
-      setUploadProgress(e.detail);
+      const progressValue = e.detail?.progress !== undefined ? e.detail.progress : e.detail;
+      setUploadProgress(progressValue);
+      if (e.detail?.type) setUploadType(e.detail.type);
     };
-    const handleUploadSuccess = () => {
+    
+    const handleUploadSuccess = (e: any) => {
       setUploadProgress(100);
+      if (e.detail?.type) setUploadType(e.detail.type);
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
       }, 2000);
     };
+    
     const handleUploadError = () => {
       setIsUploading(false);
       setUploadProgress(0);
@@ -123,15 +125,16 @@ export default function SearchWrapperpost() {
 
   if (!mounted || isHidden) return null;
 
+  // Variabel untuk warna gradien seragam di kedua file
+  const activeGradient = 'linear-gradient(45deg, #1f3cff, #00d2ff)';
+
   return (
     <div className="header-main-wrapper" style={{ background: 'var(--bg-main)' }}>
-      {/* Kotak pencarian + tombol */}
       <div className="search-wrapper glass-effect" style={{ background: 'var(--bg-main)' }}>
         <div 
           className="brutal-input-container" 
           style={{ position: 'relative', flex: 1, display: 'flex' }}
         >
-          {/* Custom Animated Placeholder */}
           <div
             style={{
               position: 'absolute',
@@ -150,10 +153,8 @@ export default function SearchWrapperpost() {
               zIndex: 2
             }}
           >
-            {/* Teks statis */}
             <span>Cari</span>
 
-            {/* Teks animasi yang berubah */}
             <AnimatePresence mode="wait">
               <motion.span
                 key={placeholderIndex}
@@ -168,22 +169,22 @@ export default function SearchWrapperpost() {
             </AnimatePresence>
           </div>
 
-<input
-  type="text"
-  className="brutal-input"
-  readOnly
-  onClick={() => router.push('/search')}
-  style={{ 
-    cursor: 'pointer',
-    color: 'var(--text-main)',
-    width: '100%',
-    outline: 'none',
-    WebkitTapHighlightColor: 'transparent',
-    caretColor: 'transparent',
-    position: 'relative',
-    zIndex: 1
-  }}
-/>
+          <input
+            type="text"
+            className="brutal-input"
+            readOnly
+            onClick={() => router.push('/search')}
+            style={{ 
+              cursor: 'pointer',
+              color: 'var(--text-main)',
+              width: '100%',
+              outline: 'none',
+              WebkitTapHighlightColor: 'transparent',
+              caretColor: 'transparent',
+              position: 'relative',
+              zIndex: 1
+            }}
+          />
 
         </div>
 
@@ -206,7 +207,7 @@ export default function SearchWrapperpost() {
         </button>
       </div>
 
-      {/* 🔥 Loading Progress Bar 🔥 */}
+      {/* Progress Bar Dinamis (Berubah sesuai post atau story) */}
       {isUploading && (
         <div
           style={{
@@ -261,7 +262,9 @@ export default function SearchWrapperpost() {
                   </span>
                 )}
                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
-                  {uploadProgress < 100 ? 'Mengunggah postingan...' : 'Postingan berhasil diunggah'}
+                  {uploadProgress < 100 
+                    ? `Mengunggah ${uploadType === 'story' ? 'cerita' : 'postingan'}...` 
+                    : `${uploadType === 'story' ? 'Cerita' : 'Postingan'} berhasil diunggah`}
                 </span>
               </div>
               <span 
@@ -315,7 +318,12 @@ export default function SearchWrapperpost() {
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  background: 'var(--bg-main)', 
+                  padding: '2px', // Samakan ketebalannya dengan file 1
+                  background: activeGradient, // Samakan gradien warnanya
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
                 <img
@@ -325,7 +333,11 @@ export default function SearchWrapperpost() {
                   }
                   alt="avatar"
                   style={{
-                    border: '2px solid var(--bg-main)', 
+                    border: '2px solid var(--bg-main)', // Celah putih/hitam agar terlihat ramping
+                    borderRadius: '50%',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
                   }}
                 />
               </div>

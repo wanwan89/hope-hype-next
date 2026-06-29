@@ -59,9 +59,11 @@ export default function FriendStoriesTray({
 
   const closePopup = () => setPopupNote(null);
 
-  // FIX: Truncate limit diperbesar (Maks ~65 Karakter atau sekitar 10 kata)
   const truncateBubble = (text: string) =>
     text && text.length > 65 ? text.substring(0, 65) + '...' : text;
+
+  // Variabel untuk warna gradien seragam di kedua file
+  const activeGradient = 'linear-gradient(45deg, #1f3cff, #00d2ff)';
 
   return (
     <div
@@ -80,7 +82,7 @@ export default function FriendStoriesTray({
           gap: '16px',
           overflowX: 'auto',
           overflowY: 'visible', 
-          paddingTop: '30px', // Ruang atas agar awan note tidak terpotong
+          paddingTop: '30px', 
           paddingBottom: '15px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -91,17 +93,36 @@ export default function FriendStoriesTray({
         {currentUser && (
           <div style={{ position: 'relative', flexShrink: 0, width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
-              <div className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}>
+              <div 
+                className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}
+                style={{
+                  padding: myStatusText ? '2px' : '0px', // Ketebalan border dibuat tipis
+                  background: myStatusText ? activeGradient : 'transparent',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 {currentUser.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt="Catatan" />
+                  <img 
+                    src={currentUser.avatar_url} 
+                    alt="Catatan" 
+                    style={{ 
+                      borderRadius: '50%', 
+                      border: myStatusText ? '2px solid var(--bg-main, #ffffff)' : 'none',
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover' 
+                    }} 
+                  />
                 ) : (
-                  <div className="default-avatar">
+                  <div className="default-avatar" style={{ borderRadius: '50%', border: myStatusText ? '2px solid var(--bg-main, #ffffff)' : 'none' }}>
                     <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                   </div>
                 )}
               </div>
 
-              {/* FIX: Ikon Tambah dipindah ke kiri/kanan atas dan dibalut background putih agar terpisah rapi dari teks */}
               {!myStatusText && (
                 <button 
                   onClick={onAddStatus}
@@ -127,12 +148,11 @@ export default function FriendStoriesTray({
                 </button>
               )}
 
-              {/* FIX: Bubble Awan menutupi profil atas tanpa melebar terlalu jauh */}
               {myStatusText && (
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    onAddStatus?.(); // Kalau diklik milik sendiri, langsung buka input edit
+                    onAddStatus?.(); 
                   }}
                   style={{
                     position: 'absolute',
@@ -141,10 +161,10 @@ export default function FriendStoriesTray({
                     transform: 'translateX(-50%)',
                     background: 'var(--bg-card, #ffffff)',
                     border: '1px solid var(--border-card, #e0e0e0)',
-                    borderRadius: '20px', // Membentuk ellipse/oval
+                    borderRadius: '20px', 
                     padding: '6px 12px',
                     minWidth: '55px',
-                    maxWidth: '85px', // Mencegah nabrak ke bubble tetangga
+                    maxWidth: '85px', 
                     zIndex: 10,
                     cursor: 'pointer',
                     boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
@@ -156,7 +176,7 @@ export default function FriendStoriesTray({
                     color: 'var(--text-main, #1c1e21)',
                     textAlign: 'center',
                     display: '-webkit-box',
-                    WebkitLineClamp: 3, // Maksimal 3 baris
+                    WebkitLineClamp: 3, 
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                     lineHeight: 1.2,
@@ -164,7 +184,6 @@ export default function FriendStoriesTray({
                   }}>
                     {truncateBubble(myStatusText)}
                   </div>
-                  {/* Ekor awan mengarah ke bawah */}
                   <div style={{
                     content: '""',
                     position: 'absolute',
@@ -202,17 +221,36 @@ export default function FriendStoriesTray({
               }
             >
               <div style={{ position: 'relative' }}>
-                <div className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}>
+                <div 
+                  className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}
+                  style={{
+                    padding: friend.hasStory ? '2px' : '0px', // Ketebalan border tipis (2px)
+                    background: friend.hasStory ? activeGradient : 'transparent',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   {friend.avatar_url ? (
-                    <img src={friend.avatar_url} alt={friend.username} />
+                    <img 
+                      src={friend.avatar_url} 
+                      alt={friend.username} 
+                      style={{ 
+                        borderRadius: '50%', 
+                        border: friend.hasStory ? '2px solid var(--bg-main, #ffffff)' : 'none',
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover' 
+                      }} 
+                    />
                   ) : (
-                    <div className="default-avatar">
+                    <div className="default-avatar" style={{ borderRadius: '50%', border: friend.hasStory ? '2px solid var(--bg-main, #ffffff)' : 'none' }}>
                       <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                     </div>
                   )}
                 </div>
 
-                {/* FIX: Bubble Awan menutupi profil atas tanpa melebar terlalu jauh */}
                 {friend.status_text && (
                   <div
                     onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
@@ -246,7 +284,6 @@ export default function FriendStoriesTray({
                     }}>
                       {truncateBubble(friend.status_text)}
                     </div>
-                    {/* Ekor awan */}
                     <div style={{
                       content: '""',
                       position: 'absolute',
@@ -269,7 +306,7 @@ export default function FriendStoriesTray({
         )}
       </div>
 
-      {/* Popup full note (Bawah) */}
+      {/* Popup full note */}
       {popupNote && (
         <>
           <div
