@@ -533,7 +533,7 @@ export default function HypetalkPage() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '14px 16px',
-                background: 'var(--primary)',
+                background: 'var(--primary-bg)', // ✅ latar biru tetap
                 boxShadow: '0 4px 12px rgba(31, 60, 255, 0.25)',
                 zIndex: 20,
                 overflow: 'hidden'

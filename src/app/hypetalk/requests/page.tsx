@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserBadge } from '@/lib/ui-utils';
-import '../Hypetalk.css'; // Tetap diimpor karena struktur class "telegram-wrapper" dll. ada di sini
+import '../Hypetalk.css';
 
 export default function MessageRequestsPage() {
   const router = useRouter();
@@ -13,12 +13,10 @@ export default function MessageRequestsPage() {
   const [requestChats, setRequestChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ========== INITIAL LOAD ==========
   useEffect(() => {
     initRequests();
   }, []);
 
-  // ========== REALTIME SUBSCRIPTION ==========
   useEffect(() => {
     if (!currentUser) return;
     const channelName = `realtime-requests-user-${currentUser.id}`;
@@ -43,11 +41,9 @@ export default function MessageRequestsPage() {
       setCurrentUser(session.user);
       const userId = session.user.id;
 
-      // 1. Ambil data Followers
       const { data: followerData } = await supabase.from('followers').select('follower_id').eq('following_id', userId);
       const followerIds = new Set(followerData?.map((f: any) => f.follower_id) || []);
 
-      // 2. Ambil Pesan Private
       const { data: allMsgs } = await supabase.from("messages")
         .select("*")
         .like('room_id', 'pv_%')
@@ -60,7 +56,6 @@ export default function MessageRequestsPage() {
         return;
       }
 
-      // 3. Kelompokkan pesan per room
       const roomMap = new Map();
       allMsgs.forEach(msg => {
         if (!roomMap.has(msg.room_id)) {
@@ -72,7 +67,6 @@ export default function MessageRequestsPage() {
       const pendingPartners: any[] = [];
       const unreadMap = new Map();
 
-      // 4. Saring yang masuk kriteria "Request"
       for (const [roomId, msgs] of roomMap.entries()) {
         const partnerId = roomId.replace("pv_", "").split("_").find((id: string) => id !== userId);
         if (!partnerId) continue;
@@ -88,7 +82,6 @@ export default function MessageRequestsPage() {
         }
       }
 
-      // 5. Ambil data profil pengirim
       if (pendingPartners.length > 0) {
         const partnerIds = pendingPartners.map(p => p.id);
         const { data: profiles } = await supabase.from("profiles").select("id, username, avatar_url, role").in("id", partnerIds);
@@ -191,7 +184,21 @@ export default function MessageRequestsPage() {
                     </p>
                   </div>
                   {chat.unread > 0 && (
-                    <div style={{ background: 'var(--primary)', color: 'white', borderRadius: '10px', padding: '0 6px', fontSize: '11px', fontWeight: 'bold', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px', flexShrink: 0 }}>
+                    <div style={{
+                      background: 'var(--primary-bg)',  // ✅ latar biru
+                      color: 'white',
+                      borderRadius: '10px',
+                      padding: '0 6px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      minWidth: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: '8px',
+                      flexShrink: 0,
+                    }}>
                       {chat.unread}
                     </div>
                   )}

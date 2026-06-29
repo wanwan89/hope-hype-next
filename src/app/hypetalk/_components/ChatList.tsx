@@ -28,6 +28,9 @@ type Props = {
   onDeleteChat?: (chatIds: string[]) => void;
 };
 
+// ══════════════════════════════════════════
+// SwipeableChatRow – FULL FIX
+// ══════════════════════════════════════════
 const SwipeableChatRow = ({
   chat,
   isSelectionMode,
@@ -51,30 +54,48 @@ const SwipeableChatRow = ({
     chat.type === 'global' || (chat.type === 'group' && chat.isMember);
   const canSwipe = !isSelectionMode && !isGlobalOrActiveGroup;
 
+  // Saat drag bergerak, mainkan Lottie jika sudah melewati threshold tertentu
   const handleDrag = (_e: any, info: any) => {
-    if (info.offset.x > 50 && lottieRef.current) {
+    if (info.offset.x > 40 && lottieRef.current) {
       lottieRef.current.play();
+    } else {
+      lottieRef.current?.stop();
     }
   };
 
   const handleDragEnd = (_e: any, info: any) => {
-    const screenMiddle = typeof window !== 'undefined' ? window.innerWidth * 0.4 : 150;
+    const threshold = 80; // px – lebih kecil agar mudah dihapus
 
-    if (info.offset.x > screenMiddle) {
+    if (info.offset.x > threshold) {
+      // Hapus item
       setIsDeleted(true);
-      animate(x, window.innerWidth, { duration: 0.2 }).then(() => {
+      animate(x, typeof window !== 'undefined' ? window.innerWidth : 400, {
+        duration: 0.2,
+      }).then(() => {
         onDeleteChat?.([chat.id]);
       });
     } else {
-      animate(x, 0, { type: 'spring', bounce: 0, duration: 0.4 });
+      // Kembali ke posisi semula
+      animate(x, 0, { type: 'spring', stiffness: 300, damping: 30 });
       lottieRef.current?.stop();
     }
+  };
+
+  // Matikan pull‑to‑refresh sementara saat drag dimulai
+  const handlePanStart = () => {
+    // Kirim event agar RefreshableWrapper tahu tidak boleh refresh
+    window.dispatchEvent(new Event('swipe-start'));
+  };
+
+  const handlePanEnd = () => {
+    window.dispatchEvent(new Event('swipe-end'));
   };
 
   if (isDeleted) return null;
 
   return (
     <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
+      {/* Background merah di belakang item */}
       {canSwipe && (
         <div
           style={{
@@ -83,10 +104,10 @@ const SwipeableChatRow = ({
             backgroundColor: '#ef4444',
             display: 'flex',
             alignItems: 'center',
-            paddingLeft: '24px',
+            paddingLeft: 24,
           }}
         >
-          <div style={{ width: '40px', height: '40px' }}>
+          <div style={{ width: 40, height: 40 }}>
             <Lottie
               lottieRef={lottieRef}
               animationData={trashAnimationData}
@@ -97,24 +118,23 @@ const SwipeableChatRow = ({
         </div>
       )}
 
+      {/* Item yang bisa diseret */}
       <motion.div
         style={{
           x,
           display: 'flex',
           alignItems: 'center',
-          backgroundColor: isSelected
-            ? 'rgba(31, 60, 255, 0.08)'
-            : 'var(--bg-main, transparent)',
+          backgroundColor: isSelected ? 'rgba(31, 60, 255, 0.08)' : 'var(--bg-main)',
           position: 'relative',
+          touchAction: canSwipe ? 'pan-x' : 'auto', // ⬅️ penting
         }}
         drag={canSwipe ? 'x' : false}
-        dragConstraints={{
-          left: 0,
-          right: typeof window !== 'undefined' ? window.innerWidth : 400,
-        }}
-        dragElastic={0.1}
+        dragConstraints={{ left: 0, right: 150 }}   // ⬅️ batasi ke kanan 150px
+        dragElastic={0.2}
         onDrag={canSwipe ? handleDrag : undefined}
         onDragEnd={canSwipe ? handleDragEnd : undefined}
+        onPanStart={canSwipe ? handlePanStart : undefined}
+        onPanEnd={canSwipe ? handlePanEnd : undefined}
         onTouchStart={() => onPressStart?.(chat)}
         onTouchEnd={() => onPressEnd?.()}
         onTouchMove={() => onPressEnd?.()}
@@ -122,6 +142,7 @@ const SwipeableChatRow = ({
         onMouseUp={() => onPressEnd?.()}
         onMouseLeave={() => onPressEnd?.()}
       >
+        {/* Checkbox seleksi (jika mode seleksi) */}
         {isSelectionMode && !isGlobalOrActiveGroup && (
           <div
             className="chat-checkbox"
@@ -136,22 +157,20 @@ const SwipeableChatRow = ({
             <motion.div
               initial={false}
               animate={{
-                backgroundColor: isSelected ? 'var(--primary)' : 'transparent',
-                borderColor: isSelected ? 'var(--primary)' : '#d1d5db',
+                backgroundColor: isSelected ? 'var(--primary-bg)' : 'transparent',
+                borderColor: isSelected ? 'var(--primary-bg)' : '#d1d5db',
                 scale: isSelected ? 1.05 : 1,
               }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               style={{
-                width: '22px',
-                height: '22px',
+                width: 22,
+                height: 22,
                 borderRadius: '50%',
                 border: '1.5px solid',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: isSelected
-                  ? '0 2px 6px rgba(31, 60, 255, 0.3)'
-                  : 'none',
+                boxShadow: isSelected ? '0 2px 6px rgba(31, 60, 255, 0.3)' : 'none',
               }}
             >
               {isSelected && (
@@ -159,12 +178,12 @@ const SwipeableChatRow = ({
                   initial={{ opacity: 0, scale: 0.3 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.15 }}
-                  width="12"
-                  height="12"
+                  width={12}
+                  height={12}
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="white"
-                  strokeWidth="3.5"
+                  strokeWidth={3.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
@@ -175,6 +194,7 @@ const SwipeableChatRow = ({
           </div>
         )}
 
+        {/* ChatItem */}
         <div style={{ flex: 1, minWidth: 0, pointerEvents: isSelectionMode ? 'none' : 'auto' }}>
           <ChatItem
             chat={chat}
@@ -192,6 +212,9 @@ const SwipeableChatRow = ({
   );
 };
 
+// ══════════════════════════════════════════
+// ChatList (dengan RefreshableWrapper)
+// ══════════════════════════════════════════
 const ChatList: React.FC<Props> = ({
   isLoading,
   filteredChats,
@@ -224,7 +247,7 @@ const ChatList: React.FC<Props> = ({
         style={{ overflowX: 'hidden', position: 'relative', minHeight: '100dvh' }}
       >
         <div>
-          {/* ✅ BANNER PERMINTAAN PESAN – tampil jika ada dan tidak sedang mencari */}
+          {/* Banner permintaan pesan */}
           {!isLoading && requestChats.length > 0 && !searchQuery && (
             <div
               className="message-request-banner"
@@ -242,6 +265,7 @@ const ChatList: React.FC<Props> = ({
           )}
 
           {isLoading ? (
+            // Skeleton loading
             [...Array(4)].map((_, index) => (
               <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
                 <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }} />
@@ -253,14 +277,14 @@ const ChatList: React.FC<Props> = ({
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',
-                    gap: '8px',
+                    gap: 8,
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div className="skeleton-box" style={{ width: '40%', height: '16px' }} />
-                    <div className="skeleton-box" style={{ width: '30px', height: '12px' }} />
+                    <div className="skeleton-box" style={{ width: '40%', height: 16 }} />
+                    <div className="skeleton-box" style={{ width: 30, height: 12 }} />
                   </div>
-                  <div className="skeleton-box" style={{ width: '70%', height: '14px' }} />
+                  <div className="skeleton-box" style={{ width: '70%', height: 14 }} />
                 </div>
               </div>
             ))
