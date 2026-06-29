@@ -1,8 +1,12 @@
+/* ==================================================
+   COMMENT MODAL – FULL FIX (Sinkron Global CSS)
+   ================================================== */
+
 /* --- OVERLAY MODAL --- */
 #commentModal {
   position: fixed;
   inset: 0;
-  background: var(--modal-overlay);
+  background: var(--modal-overlay);          /* dari global */
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -24,14 +28,14 @@
   width: 100%;
   max-width: 600px;
   height: 80vh;
-  background: var(--bg-modal);
+  background: var(--bg-modal);               /* dari global */
   border-radius: 20px 20px 0 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
-  box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.15); /* ringan, tidak mengganggu tema */
+  box-shadow: none;                           /* tanpa shadow */
   pointer-events: auto;
 }
 
@@ -43,7 +47,7 @@
 .modal-drag-indicator {
   width: 40px;
   height: 4px;
-  background: var(--border-card);
+  background: var(--border-card);            /* dari global */
   opacity: 0.5;
   border-radius: 10px;
   margin: 12px auto 4px;
@@ -51,7 +55,7 @@
 
 /* --- HEADER --- */
 .comment-header {
-  color: var(--text-main);
+  color: var(--text-main);                    /* dari global */
   text-align: center;
   font-weight: 800;
   font-size: 16px;
@@ -182,7 +186,7 @@
 }
 
 .gift-comment-bubble span {
-  color: #f59e0b;
+  color: #f59e0b;               /* tetap warna emas */
   font-size: 13px;
   font-weight: 700;
 }
@@ -241,7 +245,7 @@
 }
 
 .heart-icon.active {
-  color: var(--danger); /* merah sesuai global */
+  color: var(--danger);               /* merah sesuai global */
 }
 
 .dislike-icon.active {
@@ -373,7 +377,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: 12px;
-  box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+  box-shadow: none;
   overflow-y: auto;
   z-index: 10;
   margin-bottom: 8px;
@@ -446,6 +450,7 @@
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   z-index: 100003;
   border-top: 1px solid var(--border-card);
+  box-shadow: none;
 }
 
 .c-action-sheet.open {
@@ -456,6 +461,7 @@
   width: 40px;
   height: 5px;
   background: var(--border-card);
+  opacity: 0.5;
   border-radius: 10px;
   margin: 0 auto 20px;
 }
@@ -476,7 +482,6 @@
   margin-bottom: 10px;
 }
 
-/* Tombol bahaya & peringatan hanya teks, tanpa background khusus */
 .c-action-btn.danger {
   color: var(--text-main);
   background: transparent;
@@ -596,7 +601,7 @@
   right: 15px;
   background: var(--bg-main);
   border-radius: 12px;
-  box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+  box-shadow: none;
   border: 1px solid var(--border-card);
   z-index: 10;
   display: flex;
