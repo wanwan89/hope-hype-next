@@ -132,12 +132,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   // ==========================================================
-  // 🔥 🔥 🔥 FINAL FIX: Sync Status Bar + Meta Theme Color 🔥 🔥 🔥
+  // 🔥 🔥 🔥 FINAL FIX: PWA & NATIVE THEME SYNC 🔥 🔥 🔥
   // ==========================================================
   const syncStatusBar = useCallback(async () => {
     if (typeof window === 'undefined') return;
     const platform = Capacitor.getPlatform();
-    if (platform !== 'android' && platform !== 'ios') return;
 
     try {
       const htmlEl = document.documentElement;
@@ -150,29 +149,53 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       let bgColor = computedStyle.getPropertyValue('--bg-main').trim();
       if (!bgColor) bgColor = isDark ? '#0a0a0a' : '#ffffff';
 
-      // 🔥 1. Atur warna ikon Status Bar
-      if (isDark) {
-        await StatusBar.setStyle({ style: Style.Dark }); // Mode Gelap: Ikon PUTIH
-      } else {
-        await StatusBar.setStyle({ style: Style.Light }); // Mode Terang: Ikon HITAM
+      // 🔥 1. UPDATE META TAG THEME-COLOR (BERLAKU UNTUK PWA & WEB)
+      // Ini akan membuat status bar PWA Android menjadi hitam di mode gelap
+      let metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (!metaTheme) {
+        metaTheme = document.createElement('meta');
+        metaTheme.setAttribute('name', 'theme-color');
+        document.head.appendChild(metaTheme);
       }
+      metaTheme.setAttribute('content', bgColor);
 
-      // 🔥 2. Atur warna background Status Bar
-      if (platform === 'android') {
-        await StatusBar.setBackgroundColor({ color: bgColor });
-      }
+      // 🔥 2. SINKRONISASI CAPACITOR STATUS BAR (HANYA UNTUK NATIVE APK/IOS)
+      if (platform === 'android' || platform === 'ios') {
+        if (isDark) {
+          await StatusBar.setStyle({ style: Style.Dark }); // Mode Gelap: Ikon PUTIH
+        } else {
+          await StatusBar.setStyle({ style: Style.Light }); // Mode Terang: Ikon HITAM
+        }
 
-      // 🔥 3. UPDATE META TAG THEME-COLOR agar OS Android patuh
-      const metaTheme = document.querySelector('meta[name="theme-color"]');
-      if (metaTheme) {
-        metaTheme.setAttribute('content', bgColor);
+        if (platform === 'android') {
+          await StatusBar.setBackgroundColor({ color: bgColor });
+        }
       }
     } catch (e) {
       console.warn("⚠️ StatusBar sync error:", e);
     }
   }, []);
 
-  // --- SETUP PUSH NOTIFICATION & NATIVE FEATURES ---
+  // --- OBSERVER PERUBAHAN TEMA (AKTIF DI PWA & NATIVE) ---
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Jalankan pertama kali
+    syncStatusBar();
+
+    // Pantau perubahan mode Light/Dark di tag HTML
+    const htmlEl = document.documentElement;
+    const observer = new MutationObserver(() => {
+      syncStatusBar();
+    });
+    observer.observe(htmlEl, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [syncStatusBar]);
+
+  // --- SETUP PUSH NOTIFICATION & NATIVE FEATURES (HANYA NATIVE) ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -181,19 +204,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android' || platform === 'ios') {
-          console.log("📱 Native Detected: Menghubungkan Firebase FCM & Setup StatusBar...");
-
-          // 🔥 Jalankan sinkronisasi status bar pertama kali
-          await syncStatusBar();
-
-          // 🔥 Monitor DOM untuk mendeteksi perubahan tema (Light/Dark)
-          const htmlEl = document.documentElement;
-          const observer = new MutationObserver(() => {
-            syncStatusBar();
-          });
-          observer.observe(htmlEl, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-
-          (window as any).__themeObserver = observer;
+          console.log("📱 Native Detected: Menghubungkan Firebase FCM...");
 
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
@@ -248,13 +259,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
         PushNotifications.removeAllListeners();
-        if ((window as any).__themeObserver) {
-          (window as any).__themeObserver.disconnect();
-          delete (window as any).__themeObserver;
-        }
       }
     };
-  }, [router, myProfile, syncStatusBar]);
+  }, [router, myProfile]);
+  // ==========================================================
 
   // --- LOGIKA HALAMAN & RINGTONE ---
   useEffect(() => {
@@ -469,7 +477,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         
-        {/* 🟢 Ganti dengan ini agar bisa dikontrol oleh Javascript */}
+        {/* 🟢 Initial Theme Color, akan dioverride oleh Javascript saat komponen mount */}
         <meta name="theme-color" content="#ffffff" />
 
         {/* 🔥 FIX VIEWPORT PENTING: Tambahkan viewport-fit=cover untuk memastikan Safe Area bekerja 🔥 */}
@@ -479,7 +487,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/logohypeco.png" />
         
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        {/* Ubah status bar iOS PWA agar transparan ke tema background */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
