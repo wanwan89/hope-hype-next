@@ -15,8 +15,6 @@ import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
-// ❌ (NextTopLoader dihapus sesuai permintaan)
-
 import "./globals.css";
 import SearchWrapper from "@/components/layout/SearchWrapperpost";
 import Overlays from "@/components/ui/Overlayspost";
@@ -150,14 +148,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
       metaColorScheme.setAttribute('content', isDark ? 'dark' : 'light');
 
-      // Update theme-color
+      // 🔥 FIX 1: Update theme-color browser/PWA agar sesuai dengan CSS (--bg-main: #0a0a0a)
       let metaTheme = document.querySelector('meta[name="theme-color"]');
       if (!metaTheme) {
         metaTheme = document.createElement('meta');
         metaTheme.setAttribute('name', 'theme-color');
         document.head.appendChild(metaTheme);
       }
-      metaTheme.setAttribute('content', isDark ? '#000000' : '#ffffff');
+      metaTheme.setAttribute('content', isDark ? '#0a0a0a' : '#ffffff');
 
       // Capacitor StatusBar (hanya untuk native)
       if (platform === 'android' || platform === 'ios') {
@@ -168,7 +166,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }
 
         if (platform === 'android') {
-          await StatusBar.setBackgroundColor({ color: isDark ? '#000000' : '#ffffff' });
+          // 🔥 FIX 2: Set status bar Android agar warnanya #0a0a0a (tidak hitam pekat)
+          await StatusBar.setBackgroundColor({ color: isDark ? '#0a0a0a' : '#ffffff' });
         }
       }
     } catch (e) {
@@ -209,8 +208,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android' || platform === 'ios') {
-          console.log("📱 Native Detected: Menghubungkan Firebase FCM...");
-
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
 
@@ -483,7 +480,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         
-        {/* Inject Default color-scheme agar dideteksi OS */}
         <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -497,19 +493,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
-        {/* 🔥 CSS INJECTIONS - FIX OVERLAP ANDROID 🔥 */}
         <style>{`
           :root {
-            /* FIX: Hapus fallback 32px agar tidak ada ruang kosong di PWA */
             --safe-area-top: env(safe-area-inset-top, 0px);
           }
           body {
-            /* Reset margin/padding body agar tidak tabrakan dengan layout-wrapper */
             margin: 0;
             padding: 0;
           }
           .layout-wrapper {
             min-height: 100dvh;
+          }
+
+          /* 🔥 FIX 3: Hapus garis pembatas / border bawah pada semua elemen header secara global */
+          header, .tg-header, .top-header, .navbar-top {
+            border-bottom: none !important;
+            box-shadow: none !important;
           }
 
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
@@ -524,8 +523,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'} ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         <CustomSplash />
         
-        {/* ❌ (Komponen NextTopLoader dihapus sesuai permintaan) */}
-
         <Script
           src="https://cdn.jsdelivr.net/npm/eruda"
           strategy="lazyOnload"
