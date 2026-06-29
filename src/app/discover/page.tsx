@@ -168,9 +168,8 @@ export default function DiscoverFriendsPage() {
             borderRadius: '20px',
             fontWeight: 700,
             fontSize: '13px',
-            border: 'none',
             cursor: 'pointer',
-            background: isFollowing ? 'var(--bg-secondary)' : 'var(--primary)',
+            background: isFollowing ? 'var(--bg-secondary)' : 'var(--primary-bg)',   // ✅ latar biru
             color: isFollowing ? 'var(--text-main)' : '#fff',
             border: isFollowing ? '1px solid var(--border-card)' : 'none',
             transition: 'all 0.2s ease',
@@ -185,14 +184,13 @@ export default function DiscoverFriendsPage() {
   return (
     <div
       style={{
-        minHeight: '100%', // ikuti tinggi konten, scroll di .main-content
+        minHeight: '100%',
         background: 'var(--bg-main)',
         color: 'var(--text-main)',
         paddingBottom: 'calc(40px + env(safe-area-inset-bottom))',
-        // paddingTop tidak diperlukan karena sudah diatur oleh layout-wrapper
       }}
     >
-      {/* HEADER (sticky, tema otomatis) */}
+      {/* HEADER */}
       <div
         style={{
           position: 'sticky',
@@ -294,7 +292,7 @@ export default function DiscoverFriendsPage() {
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    background: 'var(--primary)',
+                    background: 'var(--primary-bg)',               // ✅ latar biru
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -315,7 +313,7 @@ export default function DiscoverFriendsPage() {
               <button
                 onClick={handleSyncContacts}
                 style={{
-                  background: 'var(--primary)',
+                  background: 'var(--primary-bg)',               // ✅ latar biru
                   color: '#fff',
                   border: 'none',
                   padding: '6px 14px',

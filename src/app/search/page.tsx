@@ -245,13 +245,35 @@ function SearchContent() {
     return 'https://placehold.co/300x400/1a1a1a/ffffff.png?text=No+Media';
   };
 
+  // Skeleton untuk menghindari perubahan tinggi saat loading hasil pencarian
+  const SearchSkeleton = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      {/* Skeleton untuk bagian kreator */}
+      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--bg-secondary)', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ width: '40%', height: '14px', background: 'var(--bg-secondary)', borderRadius: '4px', marginBottom: '6px', animation: 'pulse 1.5s infinite' }} />
+            <div style={{ width: '60%', height: '12px', background: 'var(--bg-secondary)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+          </div>
+        </div>
+      </div>
+      {/* Skeleton grid untuk postingan */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+        {Array(6).fill(0).map((_, i) => (
+          <div key={i} style={{ aspectRatio: '3/4', borderRadius: '12px', background: 'var(--bg-secondary)', animation: 'pulse 1.5s infinite' }} />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ minHeight: '100%', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
       
       {/* HEADER SEARCH BAR – solid, tidak transparan */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 50,
-        background: 'var(--bg-main)',    // solid, bukan glass
+        background: 'var(--bg-main)',
         padding: '12px 20px',
         borderBottom: '1px solid var(--border-card)',
         display: 'flex', alignItems: 'center', gap: '15px'
@@ -417,7 +439,8 @@ function SearchContent() {
         {/* HASIL PENCARIAN */}
         {query && (
           isLoading ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>Mencari...</div>
+            /* Ganti teks "Mencari..." dengan skeleton yang menjaga tinggi layout */
+            <SearchSkeleton />
           ) : (
             <>
               {users.length > 0 && (
@@ -600,6 +623,10 @@ function SearchContent() {
         </div>
       )}
 
+      {/* keyframes untuk animasi pulse skeleton */}
+      <style>{`
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+      `}</style>
     </div>
   );
 }
