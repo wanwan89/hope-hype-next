@@ -181,7 +181,6 @@ export default function FriendStoriesTray({
                 </div>
               )}
             </div>
-            {/* FIX: Teks diubah jadi Catatan */}
             <span className="story-username" style={{ color: 'var(--text-main)', marginTop: '6px' }}>Catatan</span>
           </div>
         )}

@@ -186,3 +186,55 @@ a, button, select, .menu-item-tiktok, .card-btn {
 html, body {
   overscroll-behavior-y: none;
 }
+ /* === STORY RING (Friend Stories Tray) === */
+.story-ring {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  background: var(--bg-main);
+  position: relative;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+}
+
+.story-ring:active {
+  transform: scale(0.92);
+}
+
+/* Gambar avatar / placeholder di dalam ring */
+.story-ring img, 
+.story-ring .default-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tampilan untuk user TANPA Story (Border tipis transparan) */
+.story-ring.no-story {
+  border: 2px solid var(--border-card);
+}
+
+/* Tampilan untuk user DENGAN Story (Border gradien menggunakan teknik background-clip) */
+.story-ring.active-story {
+  border: 3px solid transparent;
+  background-image: linear-gradient(var(--bg-main), var(--bg-main)), var(--accent-story);
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* Style icon default avatar */
+.story-ring .default-avatar .material-icons {
+  font-size: 32px !important;
+  color: var(--text-muted) !important;
+}

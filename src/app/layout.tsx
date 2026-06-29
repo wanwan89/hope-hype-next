@@ -131,7 +131,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP PUSH NOTIFICATION & NATIVE FEATURES 🔥 ---
+  // --- 🔥 FULL FIX: SETUP PUSH NOTIFICATION, STATUSBAR & NATIVE FEATURES 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -141,11 +141,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         if (platform === 'android' || platform === 'ios') {
           console.log("📱 Native Detected: Menghubungkan Firebase FCM & Setup StatusBar...");
+
+          // --- 🔥 FIX: AMBIL BACKGROUND DARI CSS GLOBAL 🔥 ---
+          let bgColor = '#000000'; // Fallback jika CSS var gagal dibaca
+          const computedStyle = getComputedStyle(document.documentElement);
+          const cssBg = computedStyle.getPropertyValue('--bg-main').trim();
+          if (cssBg) bgColor = cssBg;
+
           try {
-            // 🔥 FIX: Ikon Putih & Background Hitam 🔥
-            await StatusBar.setStyle({ style: Style.Light }); // Ikon warna putih
+            // 🔥 FIX: Ganti Style.Light menjadi Style.Dark agar Ikon & Tulisan menjadi PUTIH 🔥
+            await StatusBar.setStyle({ style: Style.Dark });
+            
+            // 🔥 Set background memakai warna CSS Variable (agar tidak hitam pekat menyatu) 🔥
             if (platform === 'android') {
-              await StatusBar.setBackgroundColor({ color: '#000000' }); // Background hitam
+              await StatusBar.setBackgroundColor({ color: bgColor });
             }
           } catch (statusErr) {
             console.warn("⚠️ StatusBar plugin error:", statusErr);
