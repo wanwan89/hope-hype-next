@@ -149,7 +149,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => { observer.disconnect(); };
   }, [syncStatusBar]);
 
-  // Pastikan transisi tema smooth setelah halaman siap
   useEffect(() => {
     const timeout = setTimeout(() => {
       document.documentElement.classList.add('theme-ready');

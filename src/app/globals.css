@@ -1,3 +1,7 @@
+/* =============================================================
+   START GLOBAL CSS (Tanpa tag style karena ini diproses Tailwind)
+   ============================================================= */
+
 @tailwind base;
 @tailwind utilities;
 @tailwind components;
@@ -16,8 +20,8 @@
   --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
   --bg-story-seen: #dddfe2;
   --modal-overlay: rgba(0, 0, 0, 0.5);
-  --primary: #1c1e21;                /* 🔥 teks hitam */
-  --primary-bg: #1f3cff;             /* 🔥 latar biru (tombol/badge) */
+  --primary: #1c1e21;                
+  --primary-bg: #1f3cff;             
   --primary-soft: rgba(31, 60, 255, 0.1);
 
   --bg-editor: #0a0a0a;
@@ -49,8 +53,8 @@ html.dark {
   --danger: #ff4757;
   --color-warning: #f59e0b;
 
-  --primary: #f8fafc;                /* 🔥 teks putih */
-  --primary-bg: #1f3cff;             /* 🔥 latar biru tetap */
+  --primary: #f8fafc;                
+  --primary-bg: #1f3cff;             
   --primary-soft: rgba(31, 60, 255, 0.15);
 
   color-scheme: dark;
@@ -163,13 +167,13 @@ main {
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch !important;
   
-  /* 🔥 FIX: Ubah dari auto ke none untuk mematikan pull-to-refresh bawaan browser di area scroll */
   overscroll-behavior-y: none;
 }
 
-.main-content * {
-  touch-action: auto !important;
-}
+/* 🔥 FIX UTAMA: 
+  Menghapus class `.main-content * { touch-action: auto !important; }` dari sini.
+  Dengan menghapusnya, `touchAction: 'pan-y'` milik Framer Motion bisa jalan dengan sempurna!
+*/
 
 @media (min-width: 640px) {
   .main-content {
@@ -262,4 +266,4 @@ select,
   background-image: linear-gradient(var(--bg-main), var(--bg-main)), var(--accent-story);
   background-origin: padding-box, border-box; background-clip: padding-box, border-box;
 }
-.story-ring .default-avatar .material-icons { font-size: 32px !important; color: var(--text-muted) !important; }
+.story-ring .default-avatar .material-icons { font-size: 32px !important; color: var(--text-muted) !important; }  
