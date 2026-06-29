@@ -34,7 +34,6 @@ export default function PendingPostsPage() {
 
   const getThumbnail = (post: any) => {
     if (post.video_url) {
-      // Ambil frame pertama video cloudinary sebagai cover fallback
       return post.video_url.replace('.mp4', '.jpg');
     }
     if (post.image_url) {
@@ -76,10 +75,16 @@ export default function PendingPostsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', maxWidth: '480px', margin: '0 auto', position: 'relative' }}>
+    <div style={{ minHeight: '100%', background: 'var(--bg-main)', color: 'var(--text-main)', maxWidth: '480px', margin: '0 auto', position: 'relative' }}>
       
-      {/* HEADER */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid var(--border-card)' }}>
+      {/* HEADER — solid, tanpa efek kaca */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--bg-main)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '15px 20px',
+        borderBottom: '1px solid var(--border-card)'
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             <span className="material-icons">arrow_back</span>

@@ -62,7 +62,7 @@
 }
 
 .saldo-card {
-  background: linear-gradient(135deg, var(--primary) 0%, #00a2ff 100%);
+  background: linear-gradient(135deg, var(--primary-bg) 0%, #00a2ff 100%);
   border-radius: 24px;
   padding: 28px 24px;
   color: white;

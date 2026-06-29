@@ -71,11 +71,11 @@ export default function DraftsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', paddingBottom: '40px', paddingTop: 'env(safe-area-inset-top, 20px)' }}>
+    <div style={{ minHeight: '100%', background: 'var(--bg-main)', color: 'var(--text-main)', paddingBottom: '40px' }}>
       
-      {/* HEADER (Sudah Adaptif Terang/Gelap) */}
+      {/* HEADER (sticky, solid, tanpa glass) */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', display: 'flex', alignItems: 'center', gap: '15px', padding: '15px 20px', borderBottom: '1px solid var(--border-card)' }}>
-        <button onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+        <button onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
         </button>
         <div>
@@ -141,7 +141,7 @@ export default function DraftsPage() {
                     ) : (
                       /* Text-only preview */
                       <div style={{ width: '100%', height: '100%', padding: '10px', fontSize: '11px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: 'var(--text-main)', background: 'var(--bg-secondary)' }}>
-                        <div style={{ display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHighlight: '1.4', wordBreak: 'break-word', fontWeight: 600 }}>
+                        <div style={{ display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: '1.4', wordBreak: 'break-word', fontWeight: 600 }}>
                           {draft.bio || "Teks Kosong"}
                         </div>
                         <span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: '16px' }}>article</span>
