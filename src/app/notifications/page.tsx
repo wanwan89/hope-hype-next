@@ -113,7 +113,7 @@ export default function NotificationsPage() {
       .update({ is_read: true })
       .eq('user_id', session.user.id)
       .eq('is_read', false)
-      .in('type', ['like', 'comment', 'repost', 'save', 'comment_likes']);
+      .in('type', ['like', 'comment', 'repost', 'save', 'comment_likes', 'story_likes']);
 
     const { data: fData } = await supabase
       .from('followers')
@@ -210,13 +210,14 @@ export default function NotificationsPage() {
         .eq('status', 'pending');
       setPendingCount(pendingPosts || 0);
 
+      // 4. followers
       const { data: activeFollowersData } = await supabase
         .from('followers')
         .select('follower_id, created_at')
         .eq('following_id', userId)
         .order('created_at', { ascending: false });
 
-      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_likes', 'follow'];
+      const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_likes', 'follow', 'story_likes'];
       const { data: dbNotifs } = await supabase
         .from('notifications')
         .select('*')
@@ -242,19 +243,34 @@ export default function NotificationsPage() {
       const myComments = myCommentsRes.data || [];
       const commentIds = myComments.map((c) => c.id);
 
+      const myStoriesRes = await supabase
+        .from('stories')
+        .select('id')
+        .eq('creator_id', userId);
+      const myStories = myStoriesRes.data || [];
+      const storyIds = myStories.map((s) => s.id);
+
       let likesData: any[] = [],
         commentsData: any[] = [],
         repostsData: any[] = [],
         savesData: any[] = [];
+
       let coinTransData: any[] = [],
         commentLikesData: any[] = [],
-        paymentsData: any[] = [];
+        paymentsData: any[] = [],
+        storyLikesData: any[] = [],
+        withdrawData: any[] = [],
+        coinHistoryData: any[] = [];
 
       if (postIds.length > 0) {
         const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
+          // 5. likes
           supabase.from('likes').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+          // 3. comments
           supabase.from('comments').select('id, post_id, content, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+          // 7. reposts
           supabase.from('reposts').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
+          // 1. bookmarks
           supabase.from('bookmarks').select('id, post_id, created_at, user_id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
         ]);
         likesData = likesRes.data || [];
@@ -264,15 +280,33 @@ export default function NotificationsPage() {
       }
 
       const promisesExtra = [];
+      // 11. coin_transactions
       promisesExtra.push(supabase.from('coin_transactions').select('*').eq('user_id', userId).gt('amount', 0).order('created_at', { ascending: false }).limit(20));
+      
+      // 2. comment_likes
       if (commentIds.length > 0) promisesExtra.push(supabase.from('comment_likes').select('id, comment_id, created_at, user_id').in('comment_id', commentIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(20));
       else promisesExtra.push(Promise.resolve({ data: [] }));
+
+      // 6. payments
       promisesExtra.push(supabase.from('payments').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
 
-      const [coinRes, commentLikesRes, paymentsRes] = await Promise.all(promisesExtra);
+      // 8. story_likes
+      if (storyIds.length > 0) promisesExtra.push(supabase.from('story_likes').select('id, story_id, created_at, user_id').in('story_id', storyIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30));
+      else promisesExtra.push(Promise.resolve({ data: [] }));
+
+      // 9. withdraw_requests
+      promisesExtra.push(supabase.from('withdraw_requests').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
+
+      // 10. coin_history
+      promisesExtra.push(supabase.from('coin_history').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20));
+
+      const [coinRes, commentLikesRes, paymentsRes, storyLikesRes, withdrawRes, coinHistRes] = await Promise.all(promisesExtra);
       coinTransData = coinRes.data || [];
       commentLikesData = commentLikesRes.data || [];
       paymentsData = paymentsRes.data || [];
+      storyLikesData = storyLikesRes.data || [];
+      withdrawData = withdrawRes.data || [];
+      coinHistoryData = coinHistRes.data || [];
 
       const allActorIds = new Set<string>();
       filteredDbNotifs.forEach((n) => { 
@@ -285,6 +319,7 @@ export default function NotificationsPage() {
       repostsData.forEach((r) => allActorIds.add(r.user_id));
       savesData.forEach((s) => allActorIds.add(s.user_id));
       commentLikesData.forEach((cl) => allActorIds.add(cl.user_id));
+      storyLikesData.forEach((sl) => allActorIds.add(sl.user_id));
 
       let profilesMap: Record<string, any> = {};
       if (allActorIds.size > 0) {
@@ -395,6 +430,21 @@ export default function NotificationsPage() {
         };
       });
 
+      const formattedStoryLikes = storyLikesData.map((sl: any) => {
+        const nId = `story_likes-${sl.id}`;
+        return {
+          id: nId,
+          type: 'story_likes',
+          story_id: sl.story_id,
+          actor_id: sl.user_id,
+          created_at: sl.created_at,
+          is_read: readList.has(nId),
+          actor: getActor(sl.user_id),
+          message: 'menyukai cerita Anda',
+          totalCount: 1,
+        };
+      });
+
       const formattedCoins = coinTransData.map((ct: any) => ({
         id: `coin-${ct.id}`,
         type: 'coin_receive',
@@ -417,12 +467,31 @@ export default function NotificationsPage() {
         totalCount: 1,
       }));
 
+      const formattedWithdraws = withdrawData.map((wr: any) => ({
+        id: `withdraw-${wr.id}`,
+        type: 'withdraw_request',
+        status: wr.status,
+        amount: wr.amount,
+        created_at: wr.created_at,
+        is_read: readList.has(`withdraw-${wr.id}`),
+        actor: { username: 'HypeFinance', avatar_url: '/asets/png/logo.png' },
+        totalCount: 1,
+      }));
+
+      const formattedCoinHistory = coinHistoryData.map((ch: any) => ({
+        id: `coin_hist-${ch.id}`,
+        type: 'coin_history',
+        amount: ch.amount,
+        description: ch.description,
+        created_at: ch.created_at,
+        is_read: readList.has(`coin_hist-${ch.id}`),
+        actor: { username: 'HypeSystem', avatar_url: '/asets/png/logo.png' },
+        totalCount: 1,
+      }));
+
       const normalizedDbNotifs = filteredDbNotifs
         .map((n) => {
           let msg = formatMessage(n.message);
-          if (n.type === 'story_likes' && !msg) {
-            msg = 'menyukai cerita Anda ';
-          }
           return {
             ...n,
             message: msg,
@@ -442,9 +511,12 @@ export default function NotificationsPage() {
         ...finalSavesNotifs,
         ...formattedComments,
         ...formattedCommentLikes,
+        ...formattedStoryLikes,
         ...formattedFollowers, 
         ...formattedCoins,
         ...formattedPayments,
+        ...formattedWithdraws,
+        ...formattedCoinHistory,
       ].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
@@ -526,7 +598,7 @@ export default function NotificationsPage() {
     else if (notif.type === 'story_likes' && notif.story_id) {
       router.push(`/story?id=${notif.story_id}`); 
     } 
-    else if (notif.type === 'payment_status' || notif.type === 'coin_receive') {
+    else if (['payment_status', 'coin_receive', 'withdraw_request', 'coin_history'].includes(notif.type)) {
       router.push(`/settings/wallet`);
     } 
     else if (notif.post_id) {
@@ -586,8 +658,9 @@ export default function NotificationsPage() {
       case 'save':
       case 'save_group':
         return { icon: 'bookmark', color: '#f59e0b' };
-      case 'gift':
       case 'coin_receive':
+      case 'coin_history':
+      case 'gift':
         return { icon: 'monetization_on', color: '#f59e0b' };
       case 'follow':
         return { icon: 'person_add', color: '#8b5cf6' };
@@ -596,6 +669,7 @@ export default function NotificationsPage() {
       case 'post_approved':
         return { icon: 'verified', color: '#10b981' };
       case 'payment_status':
+      case 'withdraw_request':
         return { icon: 'account_balance_wallet', color: '#8b5cf6' };
       default:
         return { icon: 'notifications', color: '#3b82f6' };
@@ -610,7 +684,6 @@ export default function NotificationsPage() {
       : dateObj.toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }, [t]);
 
-  // OPTIMASI: Menggunakan useMemo agar perhitungan batch notifikasi tidak membebani render
   const unreadCounts = useMemo(() => {
     const calculateBadges = (types: string[]) => {
       return rawNotifs
@@ -628,7 +701,6 @@ export default function NotificationsPage() {
     };
   }, [rawNotifs]);
 
-  // OPTIMASI: Membungkus filteredNotifs dengan useMemo
   const filteredNotifs = useMemo(() => {
     return rawNotifs.filter((n) => {
       if (activeView === 'like') return LIKE_TYPES.includes(n.type);
@@ -659,14 +731,12 @@ export default function NotificationsPage() {
       
       {activeView === 'main' ? (
         <>
-          {/* HEADER STATIS: borderBottom telah dihapus di sini */}
           <header className="notif-header" style={{ position: 'relative', zIndex: 10, flexShrink: 0, background: 'var(--bg-main, #fff)' }}>
             <h2 style={{ margin: 0, padding: '16px 20px', fontSize: '20px', fontWeight: 'bold' }}>
               {t('notifications', 'Notifikasi')}
             </h2>
           </header>
 
-          {/* AREA SCROLL DENGAN PULL-TO-REFRESH DI BAWAH HEADER */}
           <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none', position: 'relative' }}>
             <RefreshableWrapper onRefresh={handleRefresh}>
               <div className="notif-main-view" style={{ minHeight: '100%', paddingBottom: '20px' }}>

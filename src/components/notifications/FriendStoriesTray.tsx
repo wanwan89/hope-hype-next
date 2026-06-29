@@ -62,6 +62,36 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 65 ? text.substring(0, 65) + '...' : text;
 
+  // Fungsi untuk mendapatkan style ring (border) berdasarkan status story & note
+  const getRingStyle = (hasStory: boolean, hasNote: boolean) => {
+    let background = 'transparent';
+    let padding = '0px';
+    let innerBorder = 'none';
+    const thinnerWidth = '1.5px'; // Ketebalan border dipertipis (sebelumnya 2px)
+
+    if (hasStory && hasNote) {
+      // Punya story dan punya note -> Gradasi Ungu & Biru
+      background = 'linear-gradient(45deg, #a855f7, #1f3cff)';
+      padding = thinnerWidth;
+      innerBorder = `${thinnerWidth} solid var(--bg-main)`;
+    } else if (!hasStory && hasNote) {
+      // Cuma punya note -> Gradasi Merah & Biru
+      background = 'linear-gradient(45deg, #ef4444, #1f3cff)';
+      padding = thinnerWidth;
+      innerBorder = `${thinnerWidth} solid var(--bg-main)`;
+    } else if (hasStory && !hasNote) {
+      // Cuma punya story -> Warna default story
+      background = 'var(--accent-story)';
+      padding = thinnerWidth;
+      innerBorder = `${thinnerWidth} solid var(--bg-main)`;
+    }
+
+    return { background, padding, innerBorder, hasRing: padding !== '0px' };
+  };
+
+  // Status visual user saat ini (asumsi user saat ini hanya menampilkan Note di komponen ini)
+  const myRingStyle = getRingStyle(false, !!myStatusText);
+
   return (
     <div
       className="friend-stories-tray"
@@ -91,10 +121,10 @@ export default function FriendStoriesTray({
           <div style={{ position: 'relative', flexShrink: 0, width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
               <div 
-                className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}
+                className={`story-ring ${myRingStyle.hasRing ? 'active-story' : 'no-story'}`}
                 style={{
-                  padding: myStatusText ? '2px' : '0px',
-                  background: myStatusText ? 'var(--accent-story)' : 'transparent',
+                  padding: myRingStyle.padding,
+                  background: myRingStyle.background,
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -107,14 +137,14 @@ export default function FriendStoriesTray({
                     alt="Catatan" 
                     style={{ 
                       borderRadius: '50%', 
-                      border: myStatusText ? '2px solid var(--bg-main)' : 'none',
+                      border: myRingStyle.innerBorder,
                       width: '100%', 
                       height: '100%', 
                       objectFit: 'cover' 
                     }} 
                   />
                 ) : (
-                  <div className="default-avatar" style={{ borderRadius: '50%', border: myStatusText ? '2px solid var(--bg-main)' : 'none' }}>
+                  <div className="default-avatar" style={{ borderRadius: '50%', border: myRingStyle.innerBorder }}>
                     <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                   </div>
                 )}
@@ -207,99 +237,103 @@ export default function FriendStoriesTray({
             Belum mengikuti siapa pun.
           </div>
         ) : (
-          sortedFriends.map((friend) => (
-            <div
-              key={friend.id}
-              style={{ position: 'relative', flexShrink: 0, width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-              onClick={() =>
-                friend.hasStory
-                  ? router.push(`/story/view?id=${friend.storyId}`)
-                  : router.push(`/data?id=${friend.id}`)
-              }
-            >
-              <div style={{ position: 'relative' }}>
-                <div 
-                  className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}
-                  style={{
-                    padding: friend.hasStory ? '2px' : '0px',
-                    background: friend.hasStory ? 'var(--accent-story)' : 'transparent',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {friend.avatar_url ? (
-                    <img 
-                      src={friend.avatar_url} 
-                      alt={friend.username} 
-                      style={{ 
-                        borderRadius: '50%', 
-                        border: friend.hasStory ? '2px solid var(--bg-main)' : 'none',
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'cover' 
-                      }} 
-                    />
-                  ) : (
-                    <div className="default-avatar" style={{ borderRadius: '50%', border: friend.hasStory ? '2px solid var(--bg-main)' : 'none' }}>
-                      <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+          sortedFriends.map((friend) => {
+            const ringStyle = getRingStyle(friend.hasStory, !!friend.status_text);
+
+            return (
+              <div
+                key={friend.id}
+                style={{ position: 'relative', flexShrink: 0, width: '72px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                onClick={() =>
+                  friend.hasStory
+                    ? router.push(`/story/view?id=${friend.storyId}`)
+                    : router.push(`/data?id=${friend.id}`)
+                }
+              >
+                <div style={{ position: 'relative' }}>
+                  <div 
+                    className={`story-ring ${ringStyle.hasRing ? 'active-story' : 'no-story'}`}
+                    style={{
+                      padding: ringStyle.padding,
+                      background: ringStyle.background,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {friend.avatar_url ? (
+                      <img 
+                        src={friend.avatar_url} 
+                        alt={friend.username} 
+                        style={{ 
+                          borderRadius: '50%', 
+                          border: ringStyle.innerBorder,
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'cover' 
+                        }} 
+                      />
+                    ) : (
+                      <div className="default-avatar" style={{ borderRadius: '50%', border: ringStyle.innerBorder }}>
+                        <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {friend.status_text && (
+                    <div
+                      onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
+                      style={{
+                        position: 'absolute',
+                        top: '-15px', 
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-card)',
+                        borderRadius: '20px', 
+                        padding: '6px 12px',
+                        minWidth: '55px',
+                        maxWidth: '85px',
+                        zIndex: 10,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+                      }}
+                    >
+                      <div style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: 'var(--text-main)',
+                        textAlign: 'center',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        lineHeight: 1.2,
+                        wordBreak: 'break-word',
+                      }}>
+                        {truncateBubble(friend.status_text)}
+                      </div>
+                      <div style={{
+                        content: '""',
+                        position: 'absolute',
+                        bottom: '-4px',
+                        left: '50%',
+                        transform: 'translateX(-50%) rotate(45deg)',
+                        width: '8px',
+                        height: '8px',
+                        background: 'var(--bg-card)',
+                        borderRight: '1px solid var(--border-card)',
+                        borderBottom: '1px solid var(--border-card)',
+                        zIndex: -1,
+                      }} />
                     </div>
                   )}
                 </div>
-
-                {friend.status_text && (
-                  <div
-                    onClick={(e) => handleBubbleClick(e, friend.status_text!, friend.username, friend.id)}
-                    style={{
-                      position: 'absolute',
-                      top: '-15px', 
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-card)',
-                      borderRadius: '20px', 
-                      padding: '6px 12px',
-                      minWidth: '55px',
-                      maxWidth: '85px',
-                      zIndex: 10,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
-                    }}
-                  >
-                    <div style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: 'var(--text-main)',
-                      textAlign: 'center',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      lineHeight: 1.2,
-                      wordBreak: 'break-word',
-                    }}>
-                      {truncateBubble(friend.status_text)}
-                    </div>
-                    <div style={{
-                      content: '""',
-                      position: 'absolute',
-                      bottom: '-4px',
-                      left: '50%',
-                      transform: 'translateX(-50%) rotate(45deg)',
-                      width: '8px',
-                      height: '8px',
-                      background: 'var(--bg-card)',
-                      borderRight: '1px solid var(--border-card)',
-                      borderBottom: '1px solid var(--border-card)',
-                      zIndex: -1,
-                    }} />
-                  </div>
-                )}
+                <span className="story-username" style={{ color: 'var(--text-main)', marginTop: '6px' }}>{friend.username}</span>
               </div>
-              <span className="story-username" style={{ color: 'var(--text-main)', marginTop: '6px' }}>{friend.username}</span>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

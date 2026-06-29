@@ -109,32 +109,38 @@ export default function NotificationListView({
                 thumbUrl = notif.postData.video_url;
             }
 
+            const getGroupMessageHtml = (actionText: string) => {
+              const actor1 = notif.actors?.[0]?.username;
+              const actor2 = notif.actors?.[1]?.username;
+              const otherCount = notif.otherCount || 0;
+              if (actor1 && actor2) {
+                return otherCount > 0
+                  ? `<strong>${actor1}</strong>, <strong>${actor2}</strong> dan <strong>${otherCount} lainnya</strong> ${actionText}`
+                  : `<strong>${actor1}</strong> dan <strong>${actor2}</strong> ${actionText}`;
+              } else if (actor1) {
+                return otherCount > 0
+                  ? `<strong>${actor1}</strong> dan <strong>${otherCount} lainnya</strong> ${actionText}`
+                  : `<strong>${actor1}</strong> ${actionText}`;
+              }
+              return actionText;
+            };
+
             let messageHtml = '';
             switch (notif.type) {
               case 'like':
                 messageHtml = 'menyukai postinganmu.';
                 break;
-              case 'like_group': {
-                const actor1 = notif.actors?.[0]?.username;
-                const actor2 = notif.actors?.[1]?.username;
-                const otherCount = notif.otherCount || 0;
-                if (actor1 && actor2) {
-                  messageHtml =
-                    otherCount > 0
-                      ? `<strong>${actor1}</strong>, <strong>${actor2}</strong> dan <strong>${otherCount} lainnya</strong> menyukai postingan Anda.`
-                      : `<strong>${actor1}</strong> dan <strong>${actor2}</strong> menyukai postingan Anda.`;
-                } else if (actor1) {
-                  messageHtml =
-                    otherCount > 0
-                      ? `<strong>${actor1}</strong> dan <strong>${otherCount} lainnya</strong> menyukai postingan Anda.`
-                      : `<strong>${actor1}</strong> menyukai postingan Anda.`;
-                }
+              case 'like_group':
+                messageHtml = getGroupMessageHtml('menyukai postingan Anda.');
                 break;
-              }
-              case 'comment_like':
+              case 'comment_likes':
                 messageHtml = 'menyukai komentarmu.';
                 break;
+              case 'story_likes':
+                messageHtml = 'menyukai cerita Anda.';
+                break;
               case 'comment':
+              case 'reply':
                 messageHtml = `berkomentar: <span style="color:var(--text-muted)">"${
                   notif.message || ''
                 }"</span>`;
@@ -142,17 +148,24 @@ export default function NotificationListView({
               case 'repost':
                 messageHtml = 'membagikan ulang karyamu.';
                 break;
+              case 'repost_group':
+                messageHtml = getGroupMessageHtml('membagikan ulang karyamu.');
+                break;
               case 'save':
                 messageHtml = 'menyimpan karyamu.';
+                break;
+              case 'save_group':
+                messageHtml = getGroupMessageHtml('menyimpan karyamu.');
                 break;
               case 'follow':
                 messageHtml = 'mulai mengikuti Anda.';
                 break;
               case 'coin_receive':
+              case 'coin_history':
                 messageHtml = `Anda menerima koin: <strong style="color:#f59e0b">+${
                   notif.amount || 0
                 }</strong><br/><span style="font-size: 12px; color:var(--text-muted)">${
-                  notif.description || 'Top up / Reward'
+                  notif.description || 'Top up / Reward / History'
                 }</span>`;
                 break;
               case 'payment_status':
@@ -162,6 +175,13 @@ export default function NotificationListView({
                   notif.status || ''
                 }</strong>.`;
                 break;
+              case 'withdraw_request':
+                messageHtml = `Permintaan penarikan koin sejumlah Rp ${
+                  notif.amount?.toLocaleString('id-ID') || 0
+                } saat ini: <strong style="text-transform: capitalize">${
+                  notif.status || 'pending'
+                }</strong>.`;
+                break;
               default:
                 messageHtml =
                   notif.message?.replace(/<b>(.*?)<\/b>/g, '') ||
@@ -169,120 +189,122 @@ export default function NotificationListView({
                 break;
             }
 
-            const avatarElement =
-              notif.type === 'like_group' ? (
+            const isGroupAction = notif.type.endsWith('_group');
+            const avatarElement = isGroupAction ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  position: 'relative',
+                }}
+              >
+                {(notif.actors || []).slice(0, 2).map((actor, idx) => (
+                  <img
+                    key={idx}
+                    src={actor?.avatar_url || '/asets/png/profile.webp'}
+                    alt={actor?.username}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: `2px solid ${
+                        isDark ? 'var(--bg-card)' : '#ffffff'
+                      }`,
+                      marginLeft: idx === 0 ? 0 : -20,
+                      zIndex: 2 - idx,
+                      position: 'relative',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notif.actor_ids?.[idx])
+                        router.push(`/data?id=${notif.actor_ids[idx]}`);
+                    }}
+                  />
+                ))}
                 <div
+                  className="notif-icon-badge"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    position: 'relative',
+                    background: color,
+                    position: 'absolute',
+                    bottom: -4,
+                    right: -4,
+                    zIndex: 3,
                   }}
                 >
-                  {(notif.actors || []).slice(0, 2).map((actor, idx) => (
-                    <img
-                      key={idx}
-                      src={actor?.avatar_url || '/asets/png/profile.webp'}
-                      alt={actor?.username}
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: `2px solid ${
-                          isDark ? 'var(--bg-card)' : '#ffffff'
-                        }`,
-                        marginLeft: idx === 0 ? 0 : -20,
-                        zIndex: 2 - idx,
-                        position: 'relative',
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (notif.actor_ids?.[idx])
-                          router.push(`/data?id=${notif.actor_ids[idx]}`);
-                      }}
-                    />
-                  ))}
-                  <div
-                    className="notif-icon-badge"
+                  <span
+                    className="material-icons"
+                    style={{ fontSize: 12, color: 'white' }}
+                  >
+                    {typeIcon}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="notif-avatar-wrapper">
+                {actorAvatar ? (
+                  <img
+                    src={actorAvatar}
+                    alt={actorName}
+                    className="notif-avatar"
                     style={{
-                      background: color,
-                      position: 'absolute',
-                      bottom: -4,
-                      right: -4,
-                      zIndex: 3,
+                      border: `1px solid ${
+                        isDark ? 'var(--border-card)' : '#e0e0e0'
+                      }`,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notif.actor_id)
+                        router.push(`/data?id=${notif.actor_id}`);
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="notif-avatar default-avatar"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notif.actor_id)
+                        router.push(`/data?id=${notif.actor_id}`);
+                    }}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: isDark
+                        ? 'var(--bg-secondary)'
+                        : '#f0f0f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: `1px solid ${
+                        isDark ? 'var(--border-card)' : '#e0e0e0'
+                      }`,
+                      cursor: 'pointer',
                     }}
                   >
                     <span
                       className="material-icons"
-                      style={{ fontSize: 12, color: 'white' }}
+                      style={{ fontSize: 28, color: 'var(--text-muted)' }}
                     >
-                      {typeIcon}
+                      {['payment_status', 'withdraw_request', 'coin_history', 'coin_receive'].includes(notif.type)
+                        ? 'account_balance_wallet'
+                        : 'person'}
                     </span>
                   </div>
-                </div>
-              ) : (
-                <div className="notif-avatar-wrapper">
-                  {actorAvatar ? (
-                    <img
-                      src={actorAvatar}
-                      alt={actorName}
-                      className="notif-avatar"
-                      style={{
-                        border: `1px solid ${
-                          isDark ? 'var(--border-card)' : '#e0e0e0'
-                        }`,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (notif.actor_id)
-                          router.push(`/data?id=${notif.actor_id}`);
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="notif-avatar default-avatar"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (notif.actor_id)
-                          router.push(`/data?id=${notif.actor_id}`);
-                      }}
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: '50%',
-                        background: isDark
-                          ? 'var(--bg-secondary)'
-                          : '#f0f0f0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: `1px solid ${
-                          isDark ? 'var(--border-card)' : '#e0e0e0'
-                        }`,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <span
-                        className="material-icons"
-                        style={{ fontSize: 28, color: 'var(--text-muted)' }}
-                      >
-                        person
-                      </span>
-                    </div>
-                  )}
-                  <div
-                    className="notif-icon-badge"
-                    style={{ background: color }}
+                )}
+                <div
+                  className="notif-icon-badge"
+                  style={{ background: color }}
+                >
+                  <span
+                    className="material-icons"
+                    style={{ color: 'white', fontSize: 12 }}
                   >
-                    <span
-                      className="material-icons"
-                      style={{ color: 'white', fontSize: 12 }}
-                    >
-                      {typeIcon}
-                    </span>
-                  </div>
+                    {typeIcon}
+                  </span>
                 </div>
-              );
+              </div>
+            );
 
             return (
               <div
@@ -292,14 +314,13 @@ export default function NotificationListView({
                   borderBottom: `1px solid ${
                     isDark ? 'var(--border-card)' : '#e0e0e0'
                   }`,
-                  // FIX: Background jelas untuk membedakan notif belum dibaca
                   background: !notif.is_read
                     ? isDark
                       ? 'rgba(31, 60, 255, 0.1)'
                       : 'rgba(31, 60, 255, 0.05)'
                     : 'transparent',
                   position: 'relative',
-                  paddingRight: !notif.is_read ? '35px' : '15px' // Ruang untuk dot
+                  paddingRight: !notif.is_read ? '35px' : '15px', // Ruang untuk dot
                 }}
                 onClick={() => handleNotifClick(notif)}
               >
@@ -309,7 +330,7 @@ export default function NotificationListView({
                     className="notif-text"
                     style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a' }}
                   >
-                    {notif.type !== 'like_group' && (
+                    {!isGroupAction && actorName && (
                       <strong
                         onClick={(e) => {
                           e.stopPropagation();
@@ -367,11 +388,10 @@ export default function NotificationListView({
                     />
                   )}
                 </div>
-                {/* FIX: Titik Biru yang ditaruh di tengah kanan layaknya sosmed populer */}
                 {!notif.is_read && (
                   <div
                     className="notif-unread-dot"
-                    style={{ 
+                    style={{
                       position: 'absolute',
                       top: '50%',
                       transform: 'translateY(-50%)',
@@ -380,7 +400,9 @@ export default function NotificationListView({
                       height: '10px',
                       background: '#1f3cff',
                       borderRadius: '50%',
-                      boxShadow: `0 0 0 2px ${isDark ? 'var(--bg-main)' : '#ffffff'}`
+                      boxShadow: `0 0 0 2px ${
+                        isDark ? 'var(--bg-main)' : '#ffffff'
+                      }`,
                     }}
                   />
                 )}
