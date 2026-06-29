@@ -306,10 +306,10 @@ function NavbarContent() {
     >
       <style>{`
         :root {
-          --nav-icon-color: #000000; 
+          --nav-icon-color: #ffffff; /* Ikon default putih karena background biru */
         }
         html.dark, [data-theme='dark'] {
-          --nav-icon-color: #ffffff; 
+          --nav-icon-color: #ffffff; /* Tetap putih di dark mode */
         }
       `}</style>
       
@@ -318,16 +318,16 @@ function NavbarContent() {
           width: '100%',
           height: `calc(60px + env(safe-area-inset-bottom))`,
           paddingBottom: 'env(safe-area-inset-bottom)',
-          backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.75))',
-          backdropFilter: 'blur(24px)', 
+          backgroundColor: '#1f3cff', /* 🟦 LATAR BIRU SOLID */
+          backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          borderTop: 'none', 
+          borderTop: 'none',
           boxShadow: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
           boxSizing: 'border-box',
-          color: 'inherit' 
+          color: '#ffffff', /* Teks/ikon default putih */
         }}
       >
         {navItems.map((item) => {
@@ -349,7 +349,7 @@ function NavbarContent() {
                 position: 'relative', padding: '6px',
                 touchAction: 'manipulation', width: '55px',
                 WebkitTapHighlightColor: 'transparent',
-                color: 'inherit',
+                color: '#ffffff', /* Pastikan teks/link putih */
               }}
             >
               <div
@@ -374,7 +374,7 @@ function NavbarContent() {
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: '26px', height: '26px', borderRadius: '50%', padding: '2px',
-                        border: isActive ? `2px solid #1f3cff` : '2px solid transparent',
+                        border: isActive ? `2px solid #ffffff` : '2px solid transparent', /* border putih saat aktif */
                         transition: 'all 0.3s ease',
                       }}
                     >
@@ -384,8 +384,8 @@ function NavbarContent() {
                     <div key="icon" style={{ display: 'flex' }}>
                       <Icon
                         size={24}
-                        color={isActive ? '#1f3cff' : 'var(--nav-icon-color)'}
-                        fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
+                        color={isActive ? '#ffffff' : 'var(--nav-icon-color)'} 
+                        fill={isActive && item.name !== 'Profil' ? '#ffffff' : 'none'} /* Isi putih saat aktif */
                         strokeWidth={isActive ? 2.5 : 2}
                         style={{ transition: 'color 0.3s ease' }} 
                       />
@@ -403,7 +403,7 @@ function NavbarContent() {
                       backgroundColor: '#FF3B30', color: 'white', fontSize: '10px',
                       fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '2px 5px', minWidth: '16px', height: '16px', borderRadius: '12px',
-                      border: '2px solid var(--bg-main, #ffffff)', 
+                      border: '2px solid #1f3cff', /* Border badge menyatu dengan latar biru */
                       zIndex: 10,
                     }}
                   >
