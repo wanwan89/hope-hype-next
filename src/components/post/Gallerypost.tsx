@@ -471,7 +471,9 @@ export default function Gallerypost() {
     const isTextOrAudio = !post.image_url && !post.video_url;
 
     return (
-      <React.Fragment key={post.id}>
+      // FIX UTAMA: MENGGANTI <React.Fragment> MENJADI <div>
+      // Virtuoso membutuhkan root element DOM tunggal untuk mengukur dimensi item dengan benar.
+      <div key={post.id} style={{ display: 'flex', flexDirection: 'column' }}>
         {index === 3 && <MemoizedSlider posts={suggestedPosts} router={router} />}
         {index === 7 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
         <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
@@ -505,7 +507,7 @@ export default function Gallerypost() {
             onToggleExpand={handleToggleExpand}
           />
         </div>
-      </React.Fragment>
+      </div>
     );
   }, [
     expandedPosts, currentUser, followedUsers, mutualUsers, counts,
@@ -562,7 +564,8 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
+    // Memastikan kontainer memiliki flex dan tinggi absolut agar Virtuoso tidak collapse menjadi 0px
+    <section style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       
       <RepostModal
         isOpen={!!repostModal}
@@ -576,25 +579,26 @@ export default function Gallerypost() {
       />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* Wrapper pembungkus utama tetap fleksibel */}
-      <RefreshableWrapper onRefresh={handleRefresh} style={{ height: '100%', width: '100%' }}>
-        {/* 🔥 FIX UTAMA DI SINI: Memberikan style={{ height: '100%' }} pada Virtuoso agar tingginya tidak 0px */}
-        <Virtuoso
-          style={{ height: '100%' }}
-          data={allPosts}
-          endReached={loadMore}
-          overscan={{ main: 600, reverse: 600 }}
-          increaseViewportBy={{ top: 400, bottom: 400 }}
-          itemContent={renderItem}
-          components={{
-            Footer: () => isFetchingNextPage ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-                <div className="pure-spinner"></div>
-              </div>
-            ) : null
-          }}
-        />
-      </RefreshableWrapper>
+      {/* Wrapper flexibel untuk menyangga ukuran RefreshableWrapper dan Virtuoso */}
+      <div style={{ flex: 1, height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <RefreshableWrapper onRefresh={handleRefresh} style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', width: '100%' }}>
+          <Virtuoso
+            style={{ flex: 1, height: '100%' }}
+            data={allPosts}
+            endReached={loadMore}
+            overscan={{ main: 600, reverse: 600 }}
+            increaseViewportBy={{ top: 400, bottom: 400 }}
+            itemContent={renderItem}
+            components={{
+              Footer: () => isFetchingNextPage ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                  <div className="pure-spinner"></div>
+                </div>
+              ) : null
+            }}
+          />
+        </RefreshableWrapper>
+      </div>
     </section>
   );
 }

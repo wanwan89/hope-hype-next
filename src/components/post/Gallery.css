@@ -7,9 +7,6 @@ body section[style*="max-width"],
   background: var(--bg-main) !important;
 }
 
-/* =============================================================
-   FIX SCROLL VERTIKAL GALERI (SUPAYA GA MACET)
-   ============================================================= */
 .gallery {
   width: 100%;
   max-width: 100%;
@@ -17,22 +14,6 @@ body section[style*="max-width"],
   padding: 0 0 calc(100px + env(safe-area-inset-bottom)) 0;
   box-sizing: border-box;
   background: var(--bg-main);
-
-  /* 🔥 KUNCI UTAMA SUPAYA BISA DI-SCROLL KE BAWAH 🔥 */
-  height: auto;
-  min-height: 100dvh; /* Minimal setinggi layar, tapi bisa lebih panjang */
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important; /* Biar scroll halus di iOS */
-  overscroll-behavior-y: none !important; /* Tetap cegah garis refresh */
-  touch-action: pan-y; /* Prioritaskan gesture scroll vertikal */
-}
-
-/* 🔥 KHUSUS UNTUK VIRTUOSO (Virtual Scroll Library) 🔥 */
-.virtuoso-wrapper {
-  height: 100%;
-  min-height: 100vh;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
 }
 
 .card {
@@ -121,7 +102,7 @@ body section[style*="max-width"],
 .slider {
   position: relative;
   width: 100%;
-  background: var(--bg-secondary);
+  background: var(--bg-secondary); /* ← sudah mengikuti tema */
   overflow: hidden;
   display: flex;
   align-items: center;
