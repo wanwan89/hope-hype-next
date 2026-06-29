@@ -110,7 +110,7 @@
   position: absolute;
   bottom: 2px;
   right: 2px;
-  background: var(--primary);
+  background: var(--primary-bg);        /* ✅ tetap biru */
   border: none;
   border-radius: 50%;
   width: 20px;
@@ -247,7 +247,7 @@
 .rec-user { font-size: 12px; color: var(--text-muted); }
 
 .rec-follow-btn {
-  background: var(--primary);
+  background: var(--primary-bg);        /* ✅ tetap biru */
   color: white;
   border: none;
   padding: 6px 16px;
@@ -368,7 +368,7 @@
 }
 
 .notif-follow-btn {
-  background: var(--primary);
+  background: var(--primary-bg);        /* ✅ tetap biru */
   color: white;
   border: none;
   padding: 6px 12px;
