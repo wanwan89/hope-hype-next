@@ -7,7 +7,7 @@
   --bg-main: #ffffff;
   --text-main: #1c1e21;
   --bg-card: #ffffff;
-  --border-card: transparent;
+  --border-card: transparent; 
   --text-muted: #64748b;
   --bg-modal: #ffffff;
   --bg-input: #e2e8f0;
@@ -18,13 +18,14 @@
   --modal-overlay: rgba(0, 0, 0, 0.5);
   --primary: #1f3cff;
   --primary-soft: rgba(31, 60, 255, 0.1);
-
-  --bg-editor: #0a0a0a;
-  --text-editor: #f8fafc;
+  
+  /* 🆕 Editor & Warna Tambahan */
+  --bg-editor: #0a0a0a;          /* Selalu gelap */
+  --text-editor: #f8fafc;        /* Selalu putih/terang */
   --border-editor: rgba(255, 255, 255, 0.1);
   --danger: #ff4757;
   --color-warning: #f59e0b;
-
+  
   color-scheme: light;
 }
 
@@ -40,103 +41,82 @@
   --bg-secondary: #1e293b;
   --bg-story-seen: #2c2c2c;
   --modal-overlay: rgba(0, 0, 0, 0.7);
-
-  --bg-editor: #0a0a0a;
+  
+  --bg-editor: #0a0a0a;          /* Sama, agar editor tetap gelap */
   --text-editor: #f8fafc;
   --border-editor: rgba(255, 255, 255, 0.1);
   --danger: #ff4757;
   --color-warning: #f59e0b;
-
+  
   color-scheme: dark;
 }
 
-/* ============================================================
-   HILANGKAN SCROLLBAR + OVERSCOLLOW GLOW (AMAN UNTUK SCROLL)
-   ============================================================ */
-
-/* 1. HTML & BODY: scroll tetap jalan, tapi scrollbar tidak terlihat */
-html {
-  overflow-y: auto;            /* Pastikan scroll vertikal tetap aktif */
-  overflow-x: hidden;
-  overscroll-behavior: none;   /* Matikan efek glow di Android */
-  -webkit-overflow-scrolling: touch; /* Scroll halus di iOS, tidak pengaruh di Android */
-  scrollbar-width: none;       /* Firefox: sembunyikan scrollbar */
-  -ms-overflow-style: none;    /* IE/Edge lama */
-}
-
-html::-webkit-scrollbar {
-  display: none;               /* Chrome/Safari/Android: scrollbar hilang */
+/* === RESET GLOBAL & ANTI-BLUE HIGHLIGHT + ANTI ZOOM === */
+::-webkit-scrollbar {
+  display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-body {
-  overscroll-behavior: none;   /* Pastikan body juga tidak ada glow */
-  overflow-x: hidden;          /* Hindari scroll horizontal tak diinginkan */
-}
-
-/* 2. Container utama yang biasa di-scroll (misal main-content, layout) */
-.main-content,
-.layout-wrapper,
-#__next,
-#__nuxt,
-#app {
-  overscroll-behavior: none;   /* Hilangkan efek overscroll di container */
-}
-
-/* 3. Komponen horizontal scroll (Friend Stories Tray) */
-.friend-stories-tray {
-  overscroll-behavior-x: contain; /* Mencegah overscroll horizontal */
-}
-
-.friend-stories-tray > div::-webkit-scrollbar {
-  display: none;                  /* Sembunyikan scrollbar horizontal */
-}
-.friend-stories-tray > div {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-/* 4. Notif list container (jika ada scroll di dalamnya) */
-.notif-list-container {
-  overscroll-behavior-y: contain;
-}
-.notif-list-container::-webkit-scrollbar {
-  display: none;
-}
-.notif-list-container {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-/* 5. Reset semua elemen lain agar tidak memunculkan scrollbar */
-*::-webkit-scrollbar {
-  display: none !important;
-}
-* {
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-}
-
-/* ============================================================
-   RESET GLOBAL & ANTI-BLUE HIGHLIGHT + ANTI ZOOM
-   ============================================================ */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent !important;
+  -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
   outline: none !important;
   user-select: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
 input, textarea, [contenteditable="true"], .selectable {
   user-select: text !important;
   -webkit-touch-callout: default;
+  outline: none !important;
 }
 
-/* === TRANSISI HANYA SETELAH TEMA SIAP === */
+html {
+  background-color: var(--bg-main) !important;
+  transition: none !important;
+  height: 100%;
+  min-height: 100%;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: auto;
+  overscroll-behavior-x: contain;
+}
+
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main);
+  transition: none !important;
+  width: 100%;
+  overflow-x: hidden;
+  font-family: 'Poppins', sans-serif;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-user-zoom: fixed;
+  user-zoom: fixed;
+}
+
+#__next, #__nuxt, #app {
+  background-color: var(--bg-main) !important;
+  transition: none !important;
+  min-height: 100vh;
+}
+
+* {
+  transition: none !important;
+}
+
 html.theme-ready * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
@@ -146,6 +126,8 @@ input, textarea, [contenteditable="true"], .selectable {
 }
 
 a, button, select, .menu-item-tiktok, .card-btn {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
   cursor: pointer;
 }
 
@@ -161,6 +143,7 @@ a, button, select, .menu-item-tiktok, .card-btn {
   height: 100dvh !important;
   overflow: hidden !important;
   position: relative;
+  overscroll-behavior-y: none;
 }
 
 .main-content {
@@ -183,6 +166,9 @@ a, button, select, .menu-item-tiktok, .card-btn {
   padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
 }
 
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 .navbar-bottom {
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
@@ -197,7 +183,10 @@ a, button, select, .menu-item-tiktok, .card-btn {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* === STORY RING (Friend Stories Tray) === */
+html, body {
+  overscroll-behavior-y: none;
+}
+ /* === STORY RING (Friend Stories Tray) === */
 .story-ring {
   width: 66px;
   height: 66px;
@@ -218,7 +207,8 @@ a, button, select, .menu-item-tiktok, .card-btn {
   transform: scale(0.92);
 }
 
-.story-ring img,
+/* Gambar avatar / placeholder di dalam ring */
+.story-ring img, 
 .story-ring .default-avatar {
   width: 100%;
   height: 100%;
@@ -230,10 +220,12 @@ a, button, select, .menu-item-tiktok, .card-btn {
   justify-content: center;
 }
 
+/* Tampilan untuk user TANPA Story (Border tipis transparan) */
 .story-ring.no-story {
   border: 2px solid var(--border-card);
 }
 
+/* Tampilan untuk user DENGAN Story (Border gradien menggunakan teknik background-clip) */
 .story-ring.active-story {
   border: 3px solid transparent;
   background-image: linear-gradient(var(--bg-main), var(--bg-main)), var(--accent-story);
@@ -241,6 +233,7 @@ a, button, select, .menu-item-tiktok, .card-btn {
   background-clip: padding-box, border-box;
 }
 
+/* Style icon default avatar */
 .story-ring .default-avatar .material-icons {
   font-size: 32px !important;
   color: var(--text-muted) !important;
