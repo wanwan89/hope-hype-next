@@ -3,6 +3,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Kurva kustom untuk animasi yang sangat smooth (Premium Ease-Out)
+const smoothEase = [0.16, 1, 0.3, 1];
+
 function SplashContent({ onFinish }: { onFinish: () => void }) {
   const [drawComplete, setDrawComplete] = useState(false);
   const [showText, setShowText] = useState(false);
@@ -10,42 +13,42 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
   // Setelah outline logo selesai digambar
   useEffect(() => {
     if (drawComplete) {
-      // Tunggu sebentar untuk menampilkan fill, lalu mulai pergeseran & munculkan teks
-      const t = setTimeout(() => setShowText(true), 400);
+      // Waktu jeda sebelum logo bergeser dan teks muncul
+      const t = setTimeout(() => setShowText(true), 350);
       return () => clearTimeout(t);
     }
   }, [drawComplete]);
 
-  // Setelah teks muncul, beri waktu untuk dibaca sebelum splash screen hilang
+  // Waktu baca sebelum splash screen menghilang
   useEffect(() => {
     if (showText) {
       const t = setTimeout(() => {
         onFinish();
-      }, 1800); // Waktu agar animasinya terasa pas dan tidak buru-buru
+      }, 2200); // Sedikit diperlama agar animasi smooth-nya bisa dinikmati
       return () => clearTimeout(t);
     }
   }, [showText, onFinish]);
 
-  // Variasi untuk container teks (Staggering effect)
+  // Variasi untuk container teks
   const textContainerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05, // Jarak waktu muncul tiap huruf
-        delayChildren: 0.1,    // Sedikit delay agar pas dengan mulainya logo bergeser
+        staggerChildren: 0.04, // Stagger sangat rapat agar mengalir
+        delayChildren: 0.05,   // Muncul hampir bersamaan saat logo mulai geser
       },
     },
   };
 
-  // Variasi untuk tiap huruf (Lebih clean, mirip LottieFiles)
+  // Variasi per huruf dengan pergerakan sumbu X yang sangat halus
   const letterVariants = {
-    // Teks muncul dengan sedikit geser dari kiri dan efek fade in yang smooth
-    hidden: { opacity: 0, x: -15 },
+    hidden: { opacity: 0, x: -25, filter: 'blur(2px)' }, // Tambahan efek blur tipis agar lebih sinematik
     visible: {
       opacity: 1,
       x: 0,
-      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }, // Curve easeOutCubic untuk rasa premium
+      filter: 'blur(0px)',
+      transition: { duration: 0.8, ease: smoothEase },
     },
   };
 
@@ -53,8 +56,8 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
     <motion.div
       key="splash"
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.05 }}
-      transition={{ duration: 0.5, ease: 'easeInOut' }}
+      exit={{ opacity: 0, y: -20 }} // Pas hilang, agak naik sedikit agar manis
+      transition={{ duration: 0.6, ease: smoothEase }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -65,34 +68,32 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
         justifyContent: 'center',
       }}
     >
-      {/* Container utama menggunakan prop 'layout'. 
-        Ini adalah kunci agar saat teks muncul, logo otomatis terdorong ke kiri dengan mulus! 
-      */}
       <motion.div
         layout
+        transition={{
+          // KUNCI UTAMA: Membuang spring, menggunakan kurva tween yang sangat halus
+          layout: { type: 'tween', ease: smoothEase, duration: 1 },
+        }}
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
-        }}
-        transition={{
-          layout: { type: 'spring', bounce: 0.1, duration: 0.8 }, // Membuat geserannya terasa empuk
+          gap: '18px',
         }}
       >
         {/* LOGO */}
         <motion.svg
-          layout // Penting ditambahkan agar logo merespons layout container
+          layout
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 512 512"
           style={{
-            width: '85px', // Dikecilkan sedikit dari 100px agar proporsional sejajar dengan teks
-            height: '85px',
+            width: '80px',
+            height: '80px',
             color: 'var(--text-main, #fff)',
             flexShrink: 0,
           }}
-          initial={{ scale: 0.5, opacity: 0 }}
+          initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, type: 'spring', bounce: 0.4 }}
+          transition={{ duration: 0.8, ease: smoothEase }}
         >
           {/* Stroke drawing */}
           <motion.path
@@ -104,7 +105,7 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
             strokeLinejoin="round"
             initial={{ pathLength: 0 }}
             animate={{ pathLength: 1 }}
-            transition={{ duration: 1.2, ease: 'easeInOut' }}
+            transition={{ duration: 1, ease: 'easeInOut' }}
             onAnimationComplete={() => setDrawComplete(true)}
           />
           {/* Fill */}
@@ -114,7 +115,7 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
               fill="currentColor"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.5, ease: smoothEase }}
             />
           )}
         </motion.svg>
@@ -129,14 +130,14 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
               exit="hidden"
               style={{ display: 'flex', alignItems: 'center' }}
             >
-              <span style={{ display: 'inline-flex' }}>
+              <span style={{ display: 'inline-flex', overflow: 'hidden' }}>
                 {'HYPECO'.split('').map((char, i) => (
                   <motion.span
                     key={i}
                     variants={letterVariants}
                     style={{
                       display: 'inline-block',
-                      fontSize: '32px', // Ukuran font disesuaikan biar pas dengan logo 85px
+                      fontSize: '34px',
                       fontFamily: 'Poppins, sans-serif',
                       fontWeight: 900,
                       color: 'var(--text-main, #fff)',
