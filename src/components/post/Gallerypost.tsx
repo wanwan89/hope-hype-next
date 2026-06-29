@@ -562,7 +562,7 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', position: 'relative', height: '100%', overflow: 'hidden' }}>
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       
       <RepostModal
         isOpen={!!repostModal}
@@ -576,10 +576,11 @@ export default function Gallerypost() {
       />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* 🔥 FIX UTAMA: Hilangkan useWindowScroll, biarkan Virtuoso scroll di dalam RefreshableWrapper */}
-      {/* Tambahkan style height & overflow ke RefreshableWrapper */}
-      <RefreshableWrapper onRefresh={handleRefresh} style={{ height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      {/* Wrapper pembungkus utama tetap fleksibel */}
+      <RefreshableWrapper onRefresh={handleRefresh} style={{ height: '100%', width: '100%' }}>
+        {/* 🔥 FIX UTAMA DI SINI: Memberikan style={{ height: '100%' }} pada Virtuoso agar tingginya tidak 0px */}
         <Virtuoso
+          style={{ height: '100%' }}
           data={allPosts}
           endReached={loadMore}
           overscan={{ main: 600, reverse: 600 }}
