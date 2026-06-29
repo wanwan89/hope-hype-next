@@ -142,7 +142,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       const htmlEl = document.documentElement;
       const isDark = htmlEl.classList.contains('dark') || htmlEl.getAttribute('data-theme') === 'dark';
 
-      // 🔥 Tidak perlu delay 50ms, langsung update meta tag
       // Update meta color-scheme
       let metaColorScheme = document.querySelector('meta[name="color-scheme"]');
       if (!metaColorScheme) {
@@ -178,14 +177,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
-  // --- OBSERVER PERUBAHAN TEMA (AKTIF DI PWA & NATIVE) ---
+  // --- OBSERVER PERUBAHAN TEMA ---
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Jalankan pertama kali
     syncStatusBar();
 
-    // Pantau perubahan mode Light/Dark di tag HTML
     const htmlEl = document.documentElement;
     const observer = new MutationObserver(() => {
       syncStatusBar();
@@ -197,16 +194,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [syncStatusBar]);
 
-  // 🔥 PENTING: Tambahkan class "theme-ready" setelah tema terpasang agar transisi aktif
   useEffect(() => {
-    // Beri sedikit delay agar CSS variable siap, lalu aktifkan transisi
     const timeout = setTimeout(() => {
       document.documentElement.classList.add('theme-ready');
     }, 50);
     return () => clearTimeout(timeout);
   }, []);
 
-  // --- SETUP PUSH NOTIFICATION & NATIVE FEATURES (HANYA NATIVE) ---
+  // --- SETUP PUSH NOTIFICATION & NATIVE FEATURES ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -392,7 +387,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- DOM MANIPULATION UNTUK FIXED LAYOUT (iOS/PWA Tweak) ---
+  // --- DOM MANIPULATION ---
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     const body = document.body;
@@ -422,8 +417,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
+      {/* 🔥 FIX: Menggunakan var(--safe-area-top) untuk margin popup agar tidak nabrak status bar */}
       {globalMessageNotif && !globalIncomingCall && (
-        <div className="global-msg-popup" onClick={handleMessageClick}>
+        <div className="global-msg-popup" onClick={handleMessageClick} style={{ top: 'calc(var(--safe-area-top) + 12px)' }}>
           <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
           <div className="global-msg-content">
             <div className="global-msg-header">
@@ -439,7 +435,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       )}
 
       {globalIncomingCall && (
-        <div className="global-call-ui" style={{ position: 'fixed', top: 'max(env(safe-area-inset-top, 20px), 20px)', left: '50%', transform: 'translateX(-50%)', background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999, width: '90%', maxWidth: '360px', animation: 'slideDownGlobal 0.4s' }}>
+        <div className="global-call-ui" style={{ 
+          position: 'fixed', 
+          top: 'calc(var(--safe-area-top) + 12px)', 
+          left: '50%', transform: 'translateX(-50%)', background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999, width: '90%', maxWidth: '360px', animation: 'slideDownGlobal 0.4s' 
+        }}>
           <img src={globalIncomingCall.callerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="caller" />
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <div style={{ color: 'white', fontWeight: 'bold' }}>{globalIncomingCall.callerName}</div>
@@ -454,9 +454,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {/* 🔥 KONTEN UTAMA DENGAN CLASS YANG SINKRON DENGAN CSS 🔥 */}
+      {/* 🔥 FIX: Inject Safe Area ke wrapper utama, body margin direset */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} 
-           style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+           style={{ paddingTop: 'var(--safe-area-top)' }}>
         
         {isHomePage && (
           <div className="search-container" style={{ 
@@ -486,13 +486,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
         
-        {/* 🔥 FIX ICON: Inject Default color-scheme agar dideteksi OS */}
+        {/* Inject Default color-scheme agar dideteksi OS */}
         <meta name="color-scheme" content="light dark" />
-
-        {/* 🟢 Initial Theme Color, akan dioverride oleh Javascript saat komponen mount */}
         <meta name="theme-color" content="#ffffff" />
-
-        {/* 🔥 FIX VIEWPORT PENTING: Tambahkan viewport-fit=cover untuk memastikan Safe Area bekerja 🔥 */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
@@ -504,23 +500,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
+        {/* 🔥 CSS INJECTIONS - FIX OVERLAP ANDROID 🔥 */}
         <style>{`
           :root {
-            --safe-area-top: env(safe-area-inset-top, 25px);
+            /* PENTING: Gunakan fungsi max() agar saat Android me-return 0px, app tetap memakai batas fallback (32px) */
+            --safe-area-top: max(env(safe-area-inset-top), 32px);
           }
           body {
-            padding-top: var(--safe-area-top);
+            /* Reset margin/padding body agar tidak tabrakan dengan layout-wrapper */
             margin: 0;
+            padding: 0;
           }
           .layout-wrapper {
-            min-height: calc(100vh - var(--safe-area-top));
+            min-height: 100dvh;
           }
 
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
           .global-call-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2ecc71; animation: pulseCallGlobal 1.5s infinite; }
           @keyframes pulseCallGlobal { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); } 70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
           .global-call-btn { border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
-          .global-msg-popup { position: fixed; top: max(env(safe-area-inset-top, 20px), 20px); left: 50%; transform: translateX(-50%); background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(31, 60, 255, 0.3); border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; zIndex: 9999998; width: 90%; max-width: 380px; animation: slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+          .global-msg-popup { position: fixed; left: 50%; transform: translateX(-50%); background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(31, 60, 255, 0.3); border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; zIndex: 9999998; width: 90%; max-width: 380px; animation: slideDownGlobal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
           .global-msg-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
         `}</style>
       </head>
