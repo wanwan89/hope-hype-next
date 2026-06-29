@@ -16,8 +16,8 @@
   --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
   --bg-story-seen: #dddfe2;
   --modal-overlay: rgba(0, 0, 0, 0.5);
-  --primary: #1f3cff;                /* ✅ dikembalikan ke biru */
-  --primary-soft: rgba(31, 60, 255, 0.1);
+  --primary: #1c1e21;                /* 🔥 dari biru ke hitam */
+  --primary-soft: rgba(28, 30, 33, 0.1);
 
   --bg-editor: #0a0a0a;
   --text-editor: #f8fafc;
@@ -48,8 +48,8 @@ html.dark {
   --danger: #ff4757;
   --color-warning: #f59e0b;
 
-  --primary: #1f3cff;                /* ✅ tetap biru di dark mode */
-  --primary-soft: rgba(31, 60, 255, 0.15);
+  --primary: #f8fafc;                /* 🔥 dari biru ke putih */
+  --primary-soft: rgba(248, 250, 252, 0.1);
 
   color-scheme: dark;
 }
