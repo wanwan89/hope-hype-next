@@ -42,7 +42,7 @@
   --bg-story-seen: #2c2c2c;
   --modal-overlay: rgba(0, 0, 0, 0.7);
   
-  --bg-editor: #0a0a0a;          /* Sama, agar editor tetap gelap */
+  --bg-editor: #0a0a0a;
   --text-editor: #f8fafc;
   --border-editor: rgba(255, 255, 255, 0.1);
   --danger: #ff4757;
@@ -51,13 +51,43 @@
   color-scheme: dark;
 }
 
-/* === RESET GLOBAL & ANTI-BLUE HIGHLIGHT + ANTI ZOOM === */
-::-webkit-scrollbar {
+/* ==========================================================================
+   HILANGKAN SCROLLBAR & EFEK OVERSCROLL DI SEMUA PLATFORM (TERUTAMA ANDROID)
+   ========================================================================== */
+
+/* 1. Sembunyikan scrollbar sepenuhnya */
+::-webkit-scrollbar,
+*::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+  background: transparent !important;
 }
 
+/* 2. Untuk Firefox */
+* {
+  scrollbar-width: none !important;
+}
+
+/* 3. Untuk IE/Edge lama */
+* {
+  -ms-overflow-style: none !important;
+}
+
+/* 4. Matikan efek overscroll (glow / warna abu‑abu di Android) */
+html, body, #__next, #__nuxt, #app, .layout-wrapper, .main-content, 
+.friend-stories-tray, .notif-list-container, .notif-detail-view,
+* {
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto; /* Hindari momentum scroll berlebih */
+}
+
+/* Khusus untuk container yang mungkin bisa di-scroll */
+div, section, article, main, aside, nav {
+  overscroll-behavior: none !important;
+}
+
+/* === RESET GLOBAL & ANTI-BLUE HIGHLIGHT + ANTI ZOOM === */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -66,8 +96,6 @@
   -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
   outline: none !important;
   user-select: none;
-  -ms-overflow-style: none !important;
-  scrollbar-width: none !important;
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
 
@@ -83,8 +111,6 @@ html {
   height: 100%;
   min-height: 100%;
   scroll-behavior: smooth;
-  overscroll-behavior-y: auto;
-  overscroll-behavior-x: contain;
 }
 
 body {
@@ -113,10 +139,7 @@ body {
   min-height: 100vh;
 }
 
-* {
-  transition: none !important;
-}
-
+/* === TRANSISI HANYA SETELAH TEMA SIAP === */
 html.theme-ready * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease;
 }
@@ -143,7 +166,6 @@ a, button, select, .menu-item-tiktok, .card-btn {
   height: 100dvh !important;
   overflow: hidden !important;
   position: relative;
-  overscroll-behavior-y: none;
 }
 
 .main-content {
@@ -166,14 +188,13 @@ a, button, select, .menu-item-tiktok, .card-btn {
   padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
 }
 
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
+/* === NAVBAR BOTTOM === */
 .navbar-bottom {
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* === ANIMASI HALAMAN === */
 .page-fade {
   animation: smoothFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -183,10 +204,7 @@ a, button, select, .menu-item-tiktok, .card-btn {
   to { opacity: 1; transform: translateY(0); }
 }
 
-html, body {
-  overscroll-behavior-y: none;
-}
- /* === STORY RING (Friend Stories Tray) === */
+/* === STORY RING (Friend Stories Tray) === */
 .story-ring {
   width: 66px;
   height: 66px;
@@ -207,7 +225,6 @@ html, body {
   transform: scale(0.92);
 }
 
-/* Gambar avatar / placeholder di dalam ring */
 .story-ring img, 
 .story-ring .default-avatar {
   width: 100%;
@@ -220,12 +237,10 @@ html, body {
   justify-content: center;
 }
 
-/* Tampilan untuk user TANPA Story (Border tipis transparan) */
 .story-ring.no-story {
   border: 2px solid var(--border-card);
 }
 
-/* Tampilan untuk user DENGAN Story (Border gradien menggunakan teknik background-clip) */
 .story-ring.active-story {
   border: 3px solid transparent;
   background-image: linear-gradient(var(--bg-main), var(--bg-main)), var(--accent-story);
@@ -233,7 +248,6 @@ html, body {
   background-clip: padding-box, border-box;
 }
 
-/* Style icon default avatar */
 .story-ring .default-avatar .material-icons {
   font-size: 32px !important;
   color: var(--text-muted) !important;

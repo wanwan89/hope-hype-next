@@ -67,7 +67,7 @@ export default function FriendStoriesTray({
     let background = 'transparent';
     let padding = '0px';
     let innerBorder = 'none';
-    const thinnerWidth = '1.5px'; // Ketebalan border dipertipis (sebelumnya 2px)
+    const thinnerWidth = '1px'; // Border sangat tipis (sebelumnya 1.5px, kini 1px)
 
     if (hasStory && hasNote) {
       // Punya story dan punya note -> Gradasi Ungu & Biru
