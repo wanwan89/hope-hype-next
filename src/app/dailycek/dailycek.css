@@ -1,12 +1,10 @@
 /* dailycek.css */
 
 .mission-wrapper { 
-  /* 🔥 HAPUS DEFINISI WARNA LOKAL! sekarang pakai langsung dari globals.css */
   background: var(--bg-main); 
   color: var(--text-main); 
   font-family: 'Poppins', sans-serif; 
 
-  /* 🔥 LAYOUT FULL SCREEN HP 🔥 */
   position: fixed; 
   inset: 0;
   width: 100%;
@@ -15,7 +13,7 @@
   display: flex;
   flex-direction: column;
   transition: background-color 0.3s ease, color 0.3s ease;
-  overscroll-behavior: none; /* 🔥 Anti layar mantul */
+  overscroll-behavior: none;
 }
 
 .mission-container { 
@@ -37,15 +35,17 @@
   z-index: 10;
 }
 
+/* --- HEADER (GELAP DI DARK MODE) --- */
 .mission-header { 
   flex-shrink: 0;
-  background: var(--bg-card); 
+  background: var(--bg-main);   /* 🔥 ganti dari --bg-card agar di dark benar-benar gelap */
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
   padding: 10px 16px; 
   padding-top: calc(10px + env(safe-area-inset-top));
   border-bottom: 1px solid var(--border-card);
+  /* TIDAK ADA BOX-SHADOW */
 }
 
 .back-btn {
@@ -98,26 +98,26 @@
   pointer-events: none;
 }
 
+/* 🔥 Kartu exchange tanpa shadow */
 .mission-card.exchange {
   background: linear-gradient(135deg, #1e293b, #0f172a);
   margin: 0; 
   border-radius: 16px; 
   padding: 1.1rem; 
-  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.15);
   border: none;
   color: white;
+  /* TIDAK ADA BOX-SHADOW */
 }
 
 /* 🔥 AREA SCROLL UTAMA */
 .mission-scroll-area {
   flex: 1; 
   overflow-y: auto; 
-  -webkit-overflow-scrolling: touch; /* Smooth iOS scroll */
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 20px;
-  overscroll-behavior: contain; /* 🔥 Cegah bocor narik background */
+  overscroll-behavior: contain;
 }
 
-/* Ruang kosong biar konten terakhir ga ketutup */
 .mission-scroll-area::after {
   content: '';
   display: block;
@@ -127,14 +127,14 @@
 
 .mission-scroll-area::-webkit-scrollbar { display: none; }
 
-/* --- KARTU MISI --- */
+/* --- KARTU MISI (TANPA SHADOW) --- */
 .mission-card { 
   background: var(--bg-card); 
   margin: 1rem 0.8rem; 
   border-radius: 16px; 
   padding: 1.1rem; 
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); 
   border: 1px solid var(--border-card);
+  /* box-shadow dihapus */
 }
 
 /* --- STREAK DAYS --- */
@@ -160,11 +160,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Hari aktif – tanpa shadow */
 .day-card.active { 
   border-color: #f59e0b; 
   background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.02)); 
   transform: translateY(-2px); 
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+  /* box-shadow dihapus */
 }
 
 .day-card.done { 
@@ -180,32 +181,32 @@
   border-radius: 50%; width: 18px; height: 18px; 
   font-size: 10px; font-weight: 800;
   display: flex; align-items: center; justify-content: center; 
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  /* box-shadow dihapus */
 }
 
 .day-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
 .day-reward { font-size: 0.85rem; font-weight: 800; color: var(--text-main); }
 
+/* Tombol klaim streak – tanpa shadow */
 .claim-main-btn { 
   width: 100%; margin-top: 0.5rem; 
   background: linear-gradient(135deg, #f59e0b, #d97706); 
   color: #fff; border: none; padding: 14px; 
   border-radius: 12px; font-size: 0.95rem; 
   font-weight: 800; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+  /* box-shadow dihapus */
   -webkit-tap-highlight-color: transparent;
 }
-.claim-main-btn:active { transform: scale(0.97); box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2); }
+.claim-main-btn:active { transform: scale(0.97); }
 .claim-main-btn:disabled { 
   background: var(--bg-secondary); 
   color: var(--text-muted); 
-  box-shadow: none;
   border: 1px solid var(--border-card);
   cursor: not-allowed; 
   transform: none;
 }
 
-/* --- LIST MISI --- */
+/* --- LIST MISI (TANPA SHADOW) --- */
 .section-title { 
   font-size: 0.95rem; font-weight: 800; 
   margin: 1.2rem 1rem 0.5rem; 
@@ -217,7 +218,7 @@
   margin: 0 0.8rem 1rem; 
   border-radius: 16px; 
   border: 1px solid var(--border-card);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02); 
+  /* box-shadow dihapus */
   overflow: hidden; 
 }
 
@@ -264,12 +265,13 @@
 }
 .m-btn:active { background: var(--bg-input); transform: scale(0.95); }
 
+/* Tombol klaim misi – tanpa shadow */
 .m-btn.btn-klaim { 
   background: #f59e0b; 
   color: white; border: none; 
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+  /* box-shadow dihapus */
 }
-.m-btn.btn-klaim:active { transform: scale(0.92); box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2); }
+.m-btn.btn-klaim:active { transform: scale(0.92); }
 
 .m-btn.btn-done { 
   color: #10b981; 

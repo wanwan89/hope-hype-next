@@ -5,8 +5,27 @@ type Props = {
   isOpen: boolean;
   currentUser: any;
   onOpenModal: (name: string) => void;
-  onHypeMatch: () => void; // Diubah dari onCariDoi
+  onHypeMatch: () => void;
 };
+
+// --- SVG Icons ---
+const BuatGrupIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.5 11.95q.725-.8 1.113-1.825T14 8t-.387-2.125T12.5 4.05q1.5.2 2.5 1.325T16 8t-1 2.625t-2.5 1.325M17.45 20q.275-.45.413-.962T18 18v-1q0-.9-.4-1.713t-1.05-1.437q1.275.45 2.363 1.163T20 17v1q0 .825-.587 1.413T18 20zM20 11h-1q-.425 0-.712-.288T18 10t.288-.712T19 9h1V8q0-.425.288-.712T21 7t.713.288T22 8v1h1q.425 0 .713.288T24 10t-.288.713T23 11h-1v1q0 .425-.288.713T21 13t-.712-.288T20 12zm-14.825-.175Q4 9.65 4 8t1.175-2.825T8 4t2.825 1.175T12 8t-1.175 2.825T8 12t-2.825-1.175M0 18v-.8q0-.85.438-1.562T1.6 14.55q1.55-.775 3.15-1.162T8 13t3.25.388t3.15 1.162q.725.375 1.163 1.088T16 17.2v.8q0 .825-.587 1.413T14 20H2q-.825 0-1.412-.587T0 18m8-8q.825 0 1.413-.587T10 8t-.587-1.412T8 6t-1.412.588T6 8t.588 1.413T8 10m-6 8h12v-.8q0-.275-.137-.5t-.363-.35q-1.35-.675-2.725-1.012T8 15t-2.775.338T2.5 16.35q-.225.125-.363.35T2 17.2zm6 0"/>
+  </svg>
+);
+
+const GembokIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 14 14" fill="currentColor">
+    <path fillRule="evenodd" d="M7 2a2 2 0 0 0-2 2v1h4V4a2 2 0 0 0-2-2M3 4v1a1.5 1.5 0 0 0-1.5 1.5v6A1.5 1.5 0 0 0 3 14h8a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 11 5V4a4 4 0 1 0-8 0m4 6.75a1.25 1.25 0 1 0 0-2.5a1.25 1.25 0 0 0 0 2.5" clipRule="evenodd"/>
+  </svg>
+);
+
+const MatchIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 17c1.103 0 2-.897 2-2V5c0-1.103-.897-2-2-2H6c-1.103 0-2 .897-2 2v10c0 1.103.897 2 2 2zM4 19h16v2H4z"/>
+  </svg>
+);
 
 const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, onOpenModal, onHypeMatch }) => (
   <aside className={`tg-sidebar ${isOpen ? 'open' : ''}`}>
@@ -20,24 +39,16 @@ const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, onOpenModal, on
     </div>
     <div className="sidebar-menu">
       <button className="menu-item" onClick={() => onOpenModal('group')}>
-        <span className="material-icons">group_add</span> Buat Grup Baru
+        <BuatGrupIcon />
+        <span style={{ marginLeft: 12 }}>Buat Grup Baru</span>
       </button>
       <button className="menu-item" onClick={() => onOpenModal('privacy-settings')}>
-        <span className="material-icons">lock</span> Privasi & Status
+        <GembokIcon />
+        <span style={{ marginLeft: 12 }}>Privasi & Status</span>
       </button>
-      {/* Bagian Hype Match yang sudah disesuaikan */}
-      <button className="menu-item btn-hype-match" onClick={onHypeMatch} style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path 
-            fill="none" 
-            stroke="currentColor" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth="1.5" 
-            d="m18.942 15.05l.626 2.44a2 2 0 0 1-1.44 2.434L7.433 22.67a2 2 0 0 1-2.435-1.44L1.22 6.51a2 2 0 0 1 1.44-2.434L13.354 1.33a2 2 0 0 1 2.215.912m3.371 9.11V3.543m-3.905 3.904h7.81"
-          />
-        </svg>
-        Hype Match
+      <button className="menu-item btn-hype-match" onClick={onHypeMatch} style={{ marginTop: '10px' }}>
+        <MatchIcon />
+        <span style={{ marginLeft: 12 }}>Hype Match</span>
       </button>
     </div>
   </aside>
