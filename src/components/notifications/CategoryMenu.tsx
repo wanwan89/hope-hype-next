@@ -33,10 +33,10 @@ type Props = {
 
 const CategoryMenu: React.FC<Props> = ({ unreadCounts, onSelectCategory }) => {
   const items = [
-    { key: 'like', label: 'Suka & Simpan', icon: HeartIcon, count: unreadCounts.like },
-    { key: 'comment', label: 'Komentar', icon: CommentIcon, count: unreadCounts.comment },
-    { key: 'follow', label: 'Pengikut Baru', icon: FollowIcon, count: unreadCounts.follow },
-    { key: 'other', label: 'Sistem & Lainnya', icon: SystemIcon, count: unreadCounts.other },
+    { key: 'like', label: 'Suka & Simpan', icon: HeartIcon, count: unreadCounts.like, color: '#ff2e63' },
+    { key: 'comment', label: 'Komentar', icon: CommentIcon, count: unreadCounts.comment, color: '#10b981' },
+    { key: 'follow', label: 'Pengikut Baru', icon: FollowIcon, count: unreadCounts.follow, color: '#8b5cf6' },
+    { key: 'other', label: 'Sistem & Lainnya', icon: SystemIcon, count: unreadCounts.other, color: '#3b82f6' },
   ];
 
   return (
@@ -47,7 +47,13 @@ const CategoryMenu: React.FC<Props> = ({ unreadCounts, onSelectCategory }) => {
           className="category-menu-item"
           onClick={() => onSelectCategory(item.key as any)}
         >
-          <div className="category-icon-box" style={{ background: 'var(--bg-secondary)' }}>
+          <div
+            className="category-icon-box"
+            style={{
+              background: item.color,
+              color: 'white',
+            }}
+          >
             <item.icon />
           </div>
           <div className="category-text">
