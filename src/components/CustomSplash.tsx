@@ -34,120 +34,121 @@ function SplashContent({ onFinish }: { onFinish: () => void }) {
     },
   };
 
-  const textContainerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        when: 'beforeChildren',
-        staggerChildren: 0.08,
-      },
-    },
-  };
-
-  // ✨ Fix: animasi huruf memantul lembut
-  const letterVariants = {
-    hidden: { opacity: 0, y: 40, rotateX: -70 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      rotateX: 0,
-      transition: {
-        type: 'spring',
-        stiffness: 120,
-        damping: 8,
-        mass: 0.8,
-      },
-    },
-  };
-
   return (
-    <motion.div
-      key="splash"
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.05 }}
-      transition={{ duration: 0.5, ease: 'easeInOut' }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999999,
-        background: 'var(--bg-main)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '20px',
-        flexDirection: 'row',
-        padding: '0 30px',
-      }}
-    >
-      {/* Logo SVG di tengah, lalu bergeser ke kiri */}
-      <motion.svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 512 512"
-        variants={logoVariants}
-        animate={phase}
+    <>
+      {/* Import font & keyframes */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@700&display=swap');
+
+        @keyframes bounceIn {
+          0% {
+            opacity: 0;
+            transform: translateY(40px) rotateX(-70deg);
+          }
+          50% {
+            opacity: 1;
+            transform: translateY(-10px) rotateX(10deg);
+          }
+          70% {
+            transform: translateY(4px) rotateX(-4deg);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) rotateX(0);
+          }
+        }
+
+        .bounce-letter {
+          display: inline-block;
+          opacity: 0;
+          animation: bounceIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+      `}</style>
+
+      <motion.div
+        key="splash"
+        initial={{ opacity: 1 }}
+        exit={{ opacity: 0, scale: 1.05 }}
+        transition={{ duration: 0.5, ease: 'easeInOut' }}
         style={{
-          width: '100px',
-          height: '100px',
-          color: 'var(--text-main)',
-          flexShrink: 0,
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999999,
+          background: 'var(--bg-main)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '20px',
+          flexDirection: 'row',
+          padding: '0 30px',
         }}
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: phase === 'intro' ? 1 : 0.9, opacity: 1 }}
-        transition={{ duration: 0.8, type: 'spring', bounce: 0.5 }}
       >
-        {/* Stroke drawing */}
-        <motion.path
-          d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.4, delay: 0.2, ease: 'easeInOut' }}
-          onAnimationComplete={() => setDrawComplete(true)}
-        />
-        {/* Fill */}
-        {drawComplete && (
+        {/* Logo SVG */}
+        <motion.svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 512 512"
+          variants={logoVariants}
+          animate={phase}
+          style={{
+            width: '100px',
+            height: '100px',
+            color: 'var(--text-main)',
+            flexShrink: 0,
+          }}
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: phase === 'intro' ? 1 : 0.9, opacity: 1 }}
+          transition={{ duration: 0.8, type: 'spring', bounce: 0.5 }}
+        >
+          {/* Stroke drawing */}
           <motion.path
             d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
-            fill="currentColor"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 1.4, delay: 0.2, ease: 'easeInOut' }}
+            onAnimationComplete={() => setDrawComplete(true)}
           />
-        )}
-      </motion.svg>
+          {/* Fill */}
+          {drawComplete && (
+            <motion.path
+              d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"
+              fill="currentColor"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+            />
+          )}
+        </motion.svg>
 
-      {/* Teks HYPECO tanpa "from", warna mengikuti tema */}
-      <motion.div
-        variants={textContainerVariants}
-        initial="hidden"
-        animate={phase === 'shift' ? 'visible' : 'hidden'}
-        style={{ display: 'flex', alignItems: 'baseline' }}
-      >
-        <span style={{ display: 'inline-flex' }}>
-          {'HYPECO'.split('').map((char, i) => (
-            <motion.span
-              key={i}
-              variants={letterVariants} // ✅ pakai varian bounce
-              style={{
-                display: 'inline-block',
-                fontSize: '28px',
-                fontFamily: 'Poppins, sans-serif',
-                fontWeight: 900,
-                color: 'var(--text-main)',
-                letterSpacing: '1px',
-              }}
-            >
-              {char}
-            </motion.span>
-          ))}
-        </span>
+        {/* Teks HYPECO — animasi CSS + font Quicksand */}
+        {phase === 'shift' && (
+          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            <span style={{ display: 'inline-flex' }}>
+              {'HYPECO'.split('').map((char, i) => (
+                <span
+                  key={i}
+                  className="bounce-letter"
+                  style={{
+                    animationDelay: `${i * 0.08}s`,
+                    fontSize: '28px',
+                    fontFamily: 'Quicksand, sans-serif',
+                    fontWeight: 700,
+                    color: 'var(--text-main)',
+                    letterSpacing: '1px',
+                  }}
+                >
+                  {char}
+                </span>
+              ))}
+            </span>
+          </div>
+        )}
       </motion.div>
-    </motion.div>
+    </>
   );
 }
 
