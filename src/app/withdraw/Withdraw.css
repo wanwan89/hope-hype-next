@@ -1,38 +1,19 @@
 /* src/app/saldo/withdraw/Withdraw.css */
 
 .wd-page-wrapper {
-  /* Variabel Tema Modern */
-  --wd-primary: #1DA1F2; /* Biru Hype */
-  --wd-bg: #ffffff;
-  --wd-secondary: #f8fafc;
-  --wd-text-main: #0f172a;
-  --wd-text-muted: #64748b;
-  --wd-border: #e2e8f0;
-  --wd-success: #10b981;
-
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100dvh;
-  background: var(--wd-bg);
-  color: var(--wd-text-main);
+  min-height: 100%;                   /* ikuti tinggi konten */
+  background: var(--bg-main);        /* dari global */
+  color: var(--text-main);
   display: flex;
   flex-direction: column;
-  padding: 24px;
-  padding-top: calc(24px + env(safe-area-inset-top));
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top));
   box-sizing: border-box;
   font-family: 'Poppins', sans-serif;
-  transition: background-color 0.3s ease;
-}
-
-/* Dark Mode Support */
-[data-theme='dark'] .wd-page-wrapper,
-html.dark .wd-page-wrapper {
-  --wd-bg: #0a0a0a;
-  --wd-secondary: #151515;
-  --wd-text-main: #f8fafc;
-  --wd-text-muted: #94a3b8;
-  --wd-border: rgba(255, 255, 255, 0.08);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* --- HEADER --- */
@@ -40,20 +21,20 @@ html.dark .wd-page-wrapper {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 36px;
+  margin-bottom: 24px;
 }
 
 .wd-header h2 {
   font-size: 19px;
   font-weight: 800;
   margin: 0;
-  letter-spacing: -0.5px;
+  color: var(--text-main);
 }
 
 .wd-back-btn {
-  background: var(--wd-secondary);
-  border: 1px solid var(--wd-border);
-  color: var(--wd-text-main);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
+  color: var(--text-main);
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -61,102 +42,169 @@ html.dark .wd-page-wrapper {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  transition: transform 0.2s;
 }
-
 .wd-back-btn:active {
   transform: scale(0.9);
-  background: var(--wd-border);
 }
 
 /* --- FORM GROUP --- */
-.wd-form-group { 
-  margin-bottom: 24px; 
+.wd-form-group {
+  margin-bottom: 20px;
 }
 
-.wd-form-group label { 
-  display: block; 
-  font-size: 12px; 
-  color: var(--wd-text-muted); 
-  text-transform: uppercase; 
-  letter-spacing: 1px; 
-  margin-bottom: 10px; 
-  font-weight: 700; 
+.wd-form-group label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  font-weight: 700;
 }
 
-/* Input Modern ala Fintech */
-.wd-form-group input, 
-.wd-form-group select { 
-  width: 100%; 
-  padding: 16px; 
-  border: 1.5px solid var(--wd-border); 
-  font-size: 16px; 
-  font-weight: 700; 
-  background: var(--wd-secondary); 
-  color: var(--wd-text-main); 
-  border-radius: 16px; 
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+/* Input teks */
+.wd-form-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border-card);
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--bg-input);
+  color: var(--text-main);
+  border-radius: 14px;
   outline: none;
   box-sizing: border-box;
   font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .wd-form-group input::placeholder {
-  color: var(--wd-text-muted);
+  color: var(--text-muted);
   opacity: 0.6;
   font-weight: 500;
 }
 
-/* Efek Glow Biru pas Input Diklik */
-.wd-form-group input:focus,
-.wd-form-group select:focus { 
-  border-color: var(--wd-primary); 
-  background: var(--wd-bg);
-  box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.15); 
+.wd-form-group input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  background: var(--bg-card);
 }
 
-/* --- ESTIMASI (GAYA PILL) --- */
-.wd-estimation { 
-  font-size: 13px; 
-  color: var(--wd-success); 
-  background: rgba(16, 185, 129, 0.1); /* Latar hijau transparan */
+/* --- CUSTOM SELECT (menggantikan <select>) --- */
+.wd-custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.wd-select-trigger {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border-card);
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--bg-input);
+  color: var(--text-main);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.wd-select-trigger:active {
+  background: var(--bg-secondary);
+}
+
+.wd-select-trigger .material-icons {
+  font-size: 18px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.wd-custom-select.open .wd-select-trigger .material-icons {
+  transform: rotate(180deg);
+}
+
+.wd-select-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 14px;
+  padding: 6px 0;
+  z-index: 100;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.wd-custom-select.open .wd-select-options {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.wd-select-option {
   padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.wd-select-option:hover {
+  background: var(--bg-secondary);
+}
+
+.wd-select-option.selected {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+/* --- ESTIMASI --- */
+.wd-estimation {
+  font-size: 13px;
+  color: var(--color-warning, #10b981); /* bisa ganti ke hijau */
+  background: rgba(16, 185, 129, 0.1);
+  padding: 10px 14px;
   border-radius: 12px;
-  font-weight: 700; 
-  margin-top: 12px; 
-  letter-spacing: 0.5px; 
+  font-weight: 700;
+  margin-top: 10px;
   display: inline-block;
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 /* --- TOMBOL SUBMIT --- */
-.wd-submit-btn { 
-  width: 100%; 
-  background: var(--wd-primary); 
-  color: #fff; 
-  border: none; 
-  padding: 18px; 
-  border-radius: 16px; 
-  font-weight: 800; 
-  font-size: 15px; 
-  cursor: pointer; 
-  box-shadow: 0 8px 25px rgba(29, 161, 242, 0.3); 
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-  /* Auto Margin biar tombol selalu nempel di bawah layar */
-  margin-top: auto; 
+.wd-submit-btn {
+  width: 100%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 16px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  margin-top: auto;
   margin-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
-.wd-submit-btn:active { 
-  transform: scale(0.96); 
-  box-shadow: 0 4px 12px rgba(29, 161, 242, 0.2);
+.wd-submit-btn:active {
+  transform: scale(0.97);
 }
 
-.wd-submit-btn:disabled { 
-  background: var(--wd-border); 
-  color: var(--wd-text-muted);
-  cursor: not-allowed; 
-  box-shadow: none; 
+.wd-submit-btn:disabled {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: not-allowed;
   transform: none;
 }

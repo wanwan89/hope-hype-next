@@ -1,68 +1,40 @@
 /* src/app/saldo/Saldo.css */
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+/* TIDAK ADA DEFINISI VARIABEL LOKAL.
+   Semua variabel warna diambil dari globals.css (--bg-main, --text-main, dsb.)
+*/
 
-/* === 1. ISOLASI VARIABEL (LIGHT & DARK MODE) === */
 .saldo-wrapper {
-  /* 🔥 LIGHT MODE 🔥 */
-  --bg-main: #ffffff;
-  --text-main: #1c1e21;
-  --text-muted: #64748b;
-  --primary-blue: #0070f3;
-  --primary-gradient: linear-gradient(135deg, #0070f3 0%, #00a2ff 100%);
-  --border-color: #f1f5f9;
-  --success: #10b981;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --icon-bg: #fff6ed;
-  --card-shadow: 0 12px 35px rgba(0, 112, 243, 0.25);
-
   width: 100%;
-  height: 100%;
-  min-height: 100dvh;
+  min-height: 100%;               /* biarkan tinggi mengikuti konten */
   display: flex;
   flex-direction: column;
-  background: var(--bg-main);
-  /* Safe area buat Navbar bawah */
-  padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
+  background: var(--bg-main);     /* dari global */
+  /* Tidak perlu padding-bottom karena sudah ditangani .main-content */
   font-family: 'Poppins', sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
-  overscroll-behavior: none; /* 🔥 FIX: Anti layar mantul di HP 🔥 */
+  overscroll-behavior: none;
 }
 
-/* 🔥 FIX: SINKRONISASI DARK MODE NEXT-THEMES 🔥 */
-[data-theme='dark'] .saldo-wrapper,
-html.dark .saldo-wrapper {
-  --bg-main: #0a0a0a;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --glass-bg: rgba(10, 10, 10, 0.85);
-  --icon-bg: rgba(245, 158, 11, 0.1);
-  --card-shadow: 0 12px 35px rgba(0, 112, 243, 0.15);
-}
-
-/* === 2. HEADER (GLASSMORPHISM) === */
+/* --- HEADER --- */
 .saldo-header {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-main);     /* solid, tanpa blur */
+  border-bottom: 1px solid var(--border-card);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  padding-top: calc(16px + env(safe-area-inset-top));
-  border-bottom: 1px solid var(--border-color);
+  padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
 }
 
 .saldo-header h2 {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text-main);
   margin: 0;
-  letter-spacing: -0.3px;
 }
 
 .saldo-btn-icon {
@@ -70,46 +42,45 @@ html.dark .saldo-wrapper {
   height: 38px;
   border-radius: 50%;
   background: transparent;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-card);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-main);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.2s;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
-.saldo-btn-icon:active { 
-  transform: scale(0.9); 
-  background: var(--border-color);
+.saldo-btn-icon:active {
+  transform: scale(0.9);
+  background: var(--bg-secondary);
 }
 
-/* === 3. BALANCE CARD (PREMIUM FEEL) === */
+/* --- BALANCE CARD --- */
 .saldo-balance-section {
   padding: 24px 20px 20px;
 }
 
 .saldo-card {
-  background: var(--primary-gradient);
+  background: linear-gradient(135deg, var(--primary) 0%, #00a2ff 100%);
   border-radius: 24px;
   padding: 28px 24px;
   color: white;
-  box-shadow: var(--card-shadow);
   position: relative;
   overflow: hidden;
+  /* tanpa shadow besar */
 }
 
 .saldo-card::after {
-  content: "toll";
-  font-family: "Material Icons";
+  content: "";
   position: absolute;
   right: -20px;
   bottom: -30px;
-  font-size: 140px;
-  opacity: 0.1;
-  transform: rotate(-15deg);
+  width: 140px;
+  height: 140px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath fill='white' opacity='0.1' d='M207.58 63.84C186.85 53.48 159.33 48 128 48s-58.85 5.48-79.58 15.84S16 88.78 16 104v48c0 15.22 11.82 29.85 32.42 40.16S96.67 208 128 208s58.85-5.48 79.58-15.84S240 167.22 240 152v-48c0-15.22-11.82-29.85-32.42-40.16m-87.58 96v32c-19-.62-35-3.42-48-7.49v-31.3a203.4 203.4 0 0 0 48 6.81Zm16 0a203.4 203.4 0 0 0 48-6.81v31.31c-13 4.07-29 6.87-48 7.49ZM32 152v-18.47a83 83 0 0 0 16.42 10.63c2.43 1.21 5 2.35 7.58 3.43V178c-15.83-7.84-24-17.71-24-26m168 26v-30.41c2.61-1.08 5.15-2.22 7.58-3.43A83 83 0 0 0 224 133.53V152c0 8.29-8.17 18.16-24 26'/%3E%3C/svg%3E") center/contain no-repeat;
   pointer-events: none;
+  opacity: 0.15;
 }
 
 .saldo-label {
@@ -130,7 +101,6 @@ html.dark .saldo-wrapper {
   margin-bottom: 8px;
   letter-spacing: -1px;
   line-height: 1;
-  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .saldo-amount-idr {
@@ -145,7 +115,7 @@ html.dark .saldo-wrapper {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* === 4. ACTION MENU === */
+/* --- ACTION MENU --- */
 .saldo-menu-row {
   display: flex;
   gap: 12px;
@@ -154,8 +124,8 @@ html.dark .saldo-wrapper {
 
 .saldo-action-btn {
   flex: 1;
-  background: var(--bg-main);
-  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
   padding: 16px 10px;
   border-radius: 20px;
   display: flex;
@@ -163,18 +133,16 @@ html.dark .saldo-wrapper {
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  transition: transform 0.2s;
   -webkit-tap-highlight-color: transparent;
 }
 .saldo-action-btn:active {
-  transform: scale(0.95) translateY(2px);
-  border-color: var(--primary-blue);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  transform: scale(0.95);
+  background: var(--bg-secondary);
 }
 .saldo-action-btn .material-icons {
   font-size: 26px;
-  color: var(--primary-blue);
+  color: var(--primary);
 }
 .saldo-action-btn span {
   font-size: 12px;
@@ -182,13 +150,12 @@ html.dark .saldo-wrapper {
   color: var(--text-main);
 }
 
-/* === 5. ASSETS GRID & SERVICES === */
+/* --- ASSETS LIST --- */
 .saldo-section-title {
   font-size: 16px;
   font-weight: 800;
   color: var(--text-main);
   margin: 10px 20px 16px;
-  letter-spacing: -0.3px;
 }
 
 .saldo-assets-list {
@@ -203,15 +170,14 @@ html.dark .saldo-wrapper {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background: var(--bg-main);
-  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
   border-radius: 20px;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.01);
+  transition: transform 0.2s;
 }
 .saldo-asset-item:active {
   transform: scale(0.98);
-  background: var(--border-color);
+  background: var(--bg-secondary);
 }
 
 .saldo-asset-info {
@@ -227,17 +193,21 @@ html.dark .saldo-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--icon-bg);
+  background: var(--bg-secondary); /* dari global */
 }
-.saldo-asset-icon .material-icons {
-  color: #f59e0b;
-}
+/* Warna ikon koin diatur langsung oleh SVG, jadi tidak perlu CSS terpisah */
 
 .saldo-asset-text h4 {
-  margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main);
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
 }
 .saldo-asset-text p {
-  margin: 0; font-size: 12px; color: var(--text-muted); font-weight: 500;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .saldo-asset-value {
@@ -246,15 +216,14 @@ html.dark .saldo-wrapper {
   color: var(--text-main);
 }
 
-/* === 6. SKELETON (FIXED UNTUK DARK MODE) === */
+/* --- SKELETON --- */
 @keyframes saldo-shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
 .saldo-skeleton {
-  /* 🔥 FIX: Pakai var(--bg-main) biar ngikutin gelap/terang otomatis 🔥 */
-  background: linear-gradient(90deg, var(--border-color) 25%, var(--bg-main) 50%, var(--border-color) 75%);
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
   background-size: 200% 100%;
   animation: saldo-shimmer 1.5s infinite linear;
   border-radius: 8px;

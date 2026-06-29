@@ -1,71 +1,48 @@
 /* src/app/saldo/history/CoinHistory.css */
 
-.coin-hist-wrapper {
-  --ch-bg: #f8fafc;
-  --ch-card-bg: #ffffff;
-  --ch-text-main: #0f172a;
-  --ch-text-muted: #64748b;
-  --ch-border: #e2e8f0;
-  --ch-primary: #3b82f6;
-  --ch-success: #10b981;
-  --ch-danger: #ef4444;
+/* Tidak ada lagi definisi variabel lokal.
+   Semua variabel diambil dari globals.css
+*/
 
+.coin-hist-wrapper {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100dvh;
-  background-color: var(--ch-bg);
-  color: var(--ch-text-main);
-  font-family: 'Inter', 'Poppins', sans-serif;
+  min-height: 100%;               /* ikuti tinggi konten */
+  background: var(--bg-main);     /* dari global */
+  color: var(--text-main);
+  font-family: 'Poppins', sans-serif;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(100px + env(safe-area-inset-bottom));
-  transition: background-color 0.3s ease;
-  overscroll-behavior: none; /* 🔥 FIX: Anti layar mantul di HP 🔥 */
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior: none;
+  /* padding-bottom tidak diperlukan, ditangani .main-content */
 }
 
-/* Dark Mode Support */
-[data-theme='dark'] .coin-hist-wrapper,
-html.dark .coin-hist-wrapper {
-  --ch-bg: #0a0a0a;
-  --ch-card-bg: #151515;
-  --ch-text-main: #f8fafc;
-  --ch-text-muted: #94a3b8;
-  --ch-border: rgba(255, 255, 255, 0.08);
-}
-
-/* --- HEADER (GLASSMORPHISM) --- */
+/* --- HEADER --- */
 .coin-hist-header {
   position: sticky;
   top: 0;
   z-index: 100;
-  background-color: rgba(248, 250, 252, 0.85); /* Agak transparan */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-main);
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 20px;
-  padding-top: calc(16px + env(safe-area-inset-top));
-  border-bottom: 1px solid var(--ch-border);
-}
-
-/* 🔥 FIX: Sinkronisasi Dark Mode Header ke next-themes 🔥 */
-[data-theme='dark'] .coin-hist-header,
-html.dark .coin-hist-header {
-  background-color: rgba(10, 10, 10, 0.85);
+  padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  border-bottom: 1px solid var(--border-card);
 }
 
 .coin-hist-header h1 {
-  font-size: 1.15rem;
+  font-size: 18px;
   font-weight: 800;
   margin: 0;
-  letter-spacing: -0.3px;
+  color: var(--text-main);
 }
 
 .coin-hist-back-btn {
-  background: var(--ch-card-bg);
-  border: 1px solid var(--ch-border);
+  background: transparent;
+  border: 1px solid var(--border-card);
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -73,35 +50,33 @@ html.dark .coin-hist-header {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--ch-text-main);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-  -webkit-tap-highlight-color: transparent; /* 🔥 FIX: Anti blok biru pas diklik 🔥 */
+  color: var(--text-main);
+  transition: transform 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .coin-hist-back-btn:active {
   transform: scale(0.9);
-  background: var(--ch-border);
+  background: var(--bg-secondary);
 }
 
+/* --- CONTAINER --- */
 .coin-hist-container {
-  padding: 24px 20px;
+  padding: 20px;
 }
 
-/* --- KARTU SALDO (PREMIUM FEEL) --- */
+/* --- BALANCE CARD --- */
 .coin-hist-balance-card {
-  background: var(--ch-card-bg);
-  border: 1px solid var(--ch-border);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
   border-radius: 20px;
   padding: 2rem 1.5rem;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-  margin-bottom: 30px;
+  margin-bottom: 24px;
   position: relative;
   overflow: hidden;
 }
 
-/* Aksen Glow Biru di dalam kartu */
 .coin-hist-balance-card::before {
   content: '';
   position: absolute;
@@ -109,13 +84,13 @@ html.dark .coin-hist-header {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05), transparent 60%);
+  background: radial-gradient(circle at 50% 0%, var(--primary-soft), transparent 60%);
   pointer-events: none;
 }
 
 .coin-hist-label {
-  color: var(--ch-text-muted);
-  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1px;
   margin-bottom: 12px;
@@ -125,26 +100,60 @@ html.dark .coin-hist-header {
 .coin-hist-amount-main {
   font-size: 2.75rem;
   font-weight: 800;
-  color: var(--ch-primary);
+  color: var(--primary);
   line-height: 1;
-  text-shadow: 0 4px 15px rgba(59, 130, 246, 0.2); /* Efek glow di angka */
 }
 
-.coin-hist-subtitle {
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: var(--ch-text-main);
+/* --- TOMBOL EKSPOR (class baru, mengikuti tema) --- */
+.coin-hist-export-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.coin-hist-export-btn {
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  color: var(--text-main);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.coin-hist-export-btn:active {
+  transform: scale(0.97);
+  background: var(--bg-secondary);
+}
+
+.coin-hist-export-btn .material-icons {
+  font-size: 18px;
+}
+
+/* Warna ikon khusus jika perlu, tapi biarkan ikuti tema */
+.coin-hist-export-btn.excel .material-icons { color: #10b981; }
+.coin-hist-export-btn.drive .material-icons { color: #3b82f6; }
+
+/* --- SUBTITLE --- */
+.coin-hist-subtitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text-main);
 }
 
 /* --- LIST TRANSAKSI --- */
 .coin-hist-list {
   display: flex;
   flex-direction: column;
-  gap: 12px; 
+  gap: 12px;
 }
 
 .coin-hist-item {
@@ -152,17 +161,16 @@ html.dark .coin-hist-header {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background-color: var(--ch-card-bg);
-  border: 1px solid var(--ch-border);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.01);
-  -webkit-tap-highlight-color: transparent; /* 🔥 FIX: Anti blok biru pas diklik 🔥 */
+  transition: transform 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.coin-hist-item:active { 
-  transform: scale(0.96); 
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+.coin-hist-item:active {
+  transform: scale(0.98);
+  background: var(--bg-secondary);
 }
 
 .coin-hist-info {
@@ -175,49 +183,51 @@ html.dark .coin-hist-header {
 
 .coin-hist-desc {
   font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--ch-text-main);
+  font-size: 14px;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .coin-hist-date {
-  font-size: 0.75rem;
-  color: var(--ch-text-muted);
+  font-size: 12px;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
-/* --- ANGKA TRANSAKSI (GAYA PILL FINTECH) --- */
+/* --- ANGKA TRANSAKSI --- */
 .coin-hist-trx-amount {
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 14px;
   margin-left: 12px;
   padding: 6px 12px;
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.coin-hist-trx-amount.plus { 
-  color: var(--ch-success); 
-  background-color: rgba(16, 185, 129, 0.1); 
+.coin-hist-trx-amount.plus {
+  color: var(--success, #10b981);
+  background: rgba(16, 185, 129, 0.1);
 }
 
-.coin-hist-trx-amount.minus { 
-  color: var(--ch-danger); 
-  background-color: rgba(239, 68, 68, 0.1); 
+.coin-hist-trx-amount.minus {
+  color: var(--danger, #ef4444);
+  background: rgba(239, 68, 68, 0.1);
 }
 
-/* --- SKELETON (LOADING HALUS) --- */
+/* --- SKELETON --- */
 @keyframes ch-shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
 .ch-skeleton {
-  background: linear-gradient(90deg, var(--ch-border) 25%, var(--ch-card-bg) 50%, var(--ch-border) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 25%,
+    var(--bg-card) 50%,
+    var(--bg-secondary) 75%
+  );
   background-size: 200% 100%;
   animation: ch-shimmer 1.5s infinite linear;
   border-radius: 8px;

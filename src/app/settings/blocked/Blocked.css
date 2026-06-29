@@ -1,36 +1,22 @@
 /* src/app/settings/blocked/Blocked.css */
 
+/* Tidak ada variabel lokal.
+   Semua warna diambil dari globals.css: --bg-main, --bg-card, --text-main, --text-muted, --border-card, --primary, dll.
+*/
+
 .bl-wrapper {
-  --bl-bg: #f9fafb;
-  --bl-card: #ffffff;
-  --bl-text-main: #111827;
-  --bl-text-muted: #6b7280;
-  --bl-border: #e5e7eb;
-  --bl-primary: #1DA1F2;
-  
-  height: 100dvh;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  background-color: var(--bl-bg);
-  color: var(--bl-text-main);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 100%;               /* ikuti tinggi konten, scroll di .main-content */
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: 'Poppins', sans-serif;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  transition: background-color 0.3s ease;
-}
-
-/* SINKRONISASI DARK MODE */
-[data-theme='dark'] .bl-wrapper,
-html.dark .bl-wrapper {
-  --bl-bg: #01070A;
-  --bl-card: #0f172a;
-  --bl-text-main: #f8fafc;
-  --bl-text-muted: #94a3b8;
-  --bl-border: #334155;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior: none;
+  /* tidak ada height tetap atau overflow */
 }
 
 /* HEADER */
@@ -41,16 +27,16 @@ html.dark .bl-wrapper {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  padding-top: calc(16px + env(safe-area-inset-top));
-  background: var(--bl-bg);
-  border-bottom: 1px solid var(--bl-border);
+  padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-card);
 }
 
 .bl-back-btn {
   background: none;
   border: none;
-  color: var(--bl-text-main);
+  color: var(--text-main);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -62,13 +48,14 @@ html.dark .bl-wrapper {
 }
 
 .bl-back-btn:active {
-  background: var(--bl-border);
+  background: var(--bg-secondary);
 }
 
 .bl-header h2 {
   font-size: 16px;
   font-weight: 700;
   margin: 0;
+  color: var(--text-main);
 }
 
 /* CONTENT */
@@ -79,9 +66,9 @@ html.dark .bl-wrapper {
 
 .bl-desc {
   font-size: 13px;
-  color: var(--bl-text-muted);
+  color: var(--text-muted);
   line-height: 1.5;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   text-align: center;
 }
 
@@ -96,9 +83,9 @@ html.dark .bl-wrapper {
   display: flex;
   align-items: center;
   padding: 16px;
-  background: var(--bl-card);
+  background: var(--bg-card);
   border-radius: 16px;
-  border: 1px solid var(--bl-border);
+  border: 1px solid var(--border-card);
   gap: 14px;
 }
 
@@ -107,7 +94,7 @@ html.dark .bl-wrapper {
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  background: var(--bl-border);
+  background: var(--bg-secondary);
   flex-shrink: 0;
 }
 
@@ -121,7 +108,7 @@ html.dark .bl-wrapper {
 .bl-name {
   font-size: 15px;
   font-weight: 700;
-  color: var(--bl-text-main);
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -132,25 +119,25 @@ html.dark .bl-wrapper {
 
 .bl-username {
   font-size: 12px;
-  color: var(--bl-text-muted);
+  color: var(--text-muted);
 }
 
 .bl-unblock-btn {
-  background: var(--bl-bg);
-  border: 1px solid var(--bl-border);
-  color: var(--bl-text-main);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
+  color: var(--text-main);
   font-size: 12px;
   font-weight: 700;
   padding: 8px 14px;
   border-radius: 10px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: transform 0.2s, background 0.2s;
 }
 
 .bl-unblock-btn:active {
   transform: scale(0.95);
-  background: var(--bl-border);
+  background: var(--bg-input);
 }
 
 .bl-unblock-btn.loading {
@@ -166,14 +153,14 @@ html.dark .bl-wrapper {
   justify-content: center;
   text-align: center;
   padding: 60px 20px;
-  color: var(--bl-text-muted);
+  color: var(--text-muted);
 }
 
 .bl-empty-icon {
   width: 64px;
   height: 64px;
-  background: var(--bl-card);
-  border: 1px solid var(--bl-border);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -184,18 +171,20 @@ html.dark .bl-wrapper {
 .bl-empty-icon span {
   font-size: 32px;
   opacity: 0.5;
+  color: var(--text-muted);
 }
 
 .bl-empty h3 {
   font-size: 16px;
   font-weight: 700;
-  color: var(--bl-text-main);
+  color: var(--text-main);
   margin-bottom: 8px;
 }
 
 .bl-empty p {
   font-size: 13px;
   max-width: 250px;
+  color: var(--text-muted);
 }
 
 /* SKELETON LOADING */
@@ -209,9 +198,9 @@ html.dark .bl-wrapper {
   display: flex;
   align-items: center;
   padding: 16px;
-  background: var(--bl-card);
+  background: var(--bg-card);
   border-radius: 16px;
-  border: 1px solid var(--bl-border);
+  border: 1px solid var(--border-card);
   gap: 14px;
   animation: bl-pulse 1.5s infinite ease-in-out;
 }
@@ -220,14 +209,14 @@ html.dark .bl-wrapper {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--bl-border);
+  background: var(--bg-secondary);
 }
 
 .bl-skel-text {
   flex: 1;
   height: 16px;
   border-radius: 8px;
-  background: var(--bl-border);
+  background: var(--bg-secondary);
   max-width: 120px;
 }
 
@@ -235,5 +224,5 @@ html.dark .bl-wrapper {
   width: 80px;
   height: 32px;
   border-radius: 10px;
-  background: var(--bl-border);
+  background: var(--bg-secondary);
 }

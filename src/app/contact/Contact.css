@@ -1,205 +1,175 @@
 /* src/app/contact/Contact.css */
 
-.contact-container {
-  /* --- Variables --- */
-  --ct-bg-main: #f9fafb;
-  --ct-bg-card: #ffffff;
-  --ct-text-main: #111827;
-  --ct-text-muted: #6b7280;
-  --ct-border: #e5e7eb;
-  --ct-input-bg: #f9fafb;
-  --ct-input-border: #e5e7eb;
-  --ct-primary: #1f3cff; /* 🔥 FIX: Warna biru HypeTalk */
-  --ct-glass: rgba(255, 255, 255, 0.95);
-  --ct-shadow: 0 8px 30px rgba(0,0,0,0.04);
+/* Tidak ada variabel lokal – semua dari globals.css */
 
-  height: 100dvh; 
+.contact-container {
   width: 100%;
-  background-color: var(--ct-bg-main); 
-  color: var(--ct-text-main); 
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100%;               /* biarkan tinggi mengikuti konten, scroll di .main-content */
+  background: var(--bg-main);
+  color: var(--text-main);
   font-family: 'Poppins', sans-serif;
-  
-  overflow-y: auto; 
-  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  -webkit-overflow-scrolling: touch; 
   transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior: none;
+  /* tidak ada height, overflow-y, atau padding-bottom besar */
 }
 
-/* 🔥 SINKRONISASI DARK MODE 🔥 */
-[data-theme='dark'] .contact-container,
-html.dark .contact-container {
-  --ct-bg-main: #0a0a0a;
-  --ct-bg-card: #151515;
-  --ct-text-main: #f8fafc;
-  --ct-text-muted: #9ca3af;
-  --ct-border: rgba(255, 255, 255, 0.08);
-  --ct-input-bg: #1a1a1a;
-  --ct-input-border: rgba(255, 255, 255, 0.1);
-  --ct-glass: rgba(10, 10, 10, 0.9);
-  --ct-shadow: 0 8px 30px rgba(0,0,0,0.2);
-}
-
-/* --- HEADER --- */
+/* --- HEADER (STICKY, SOLID BACKGROUND) --- */
 .contact-header {
-  position: sticky; 
+  position: sticky;
   top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 1000; 
+  z-index: 100;
+  background: var(--bg-main);
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  padding-top: calc(16px + env(safe-area-inset-top)); 
-  background: var(--ct-glass); 
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border-bottom: 1px solid var(--ct-border);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-.contact-content {
-  flex: 1; 
-  padding: 24px 16px 120px 16px; 
-  max-width: 600px;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box; 
+  gap: 12px;
+  padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  border-bottom: 1px solid var(--border-card);
 }
 
 .back-btn {
   background: none;
   border: none;
-  color: var(--ct-text-main);
+  color: var(--text-main);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
-  margin-left: -8px; 
-  margin-right: 12px;
+  margin-left: -8px;
   cursor: pointer;
   border-radius: 50%;
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.2s ease, transform 0.2s ease, color 0.3s ease;
 }
 
-.back-btn:active { 
-  background: var(--ct-input-border);
-  transform: scale(0.9); 
+.back-btn:active {
+  background: var(--bg-secondary);
+  transform: scale(0.9);
 }
 
 .contact-header h2 {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
-  color: var(--ct-text-main);
-  transition: color 0.3s ease;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+/* --- CONTENT --- */
+.contact-content {
+  flex: 1;
+  padding: 20px 16px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .contact-desc {
-  font-size: 14px; 
-  color: var(--ct-text-muted);
+  font-size: 14px;
+  color: var(--text-muted);
   line-height: 1.6;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   text-align: center;
-  transition: color 0.3s ease;
 }
 
+/* --- CARD --- */
 .contact-card {
-  background: var(--ct-bg-card);
-  border-radius: 24px; 
-  padding: 24px;
-  border: 1px solid var(--ct-border); 
-  margin-bottom: 24px;
-  box-shadow: var(--ct-shadow); 
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid var(--border-card);
+  margin-bottom: 20px;
   width: 100%;
-  box-sizing: border-box; 
-  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
+  /* tanpa shadow */
 }
 
 .card-title {
   font-size: 16px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--ct-text-main);
-  transition: color 0.3s ease;
+  color: var(--text-main);
 }
 
+/* --- FORM --- */
 .form-group {
-  margin-bottom: 20px; 
+  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
 }
 
 .form-group label {
   font-size: 12px;
-  color: var(--ct-text-muted);
-  margin-bottom: 8px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
   font-weight: 600;
-  text-transform: uppercase; 
-  transition: color 0.3s ease;
+  text-transform: uppercase;
 }
 
-.form-group input, 
-.form-group select, 
+.form-group input,
+.form-group select,
 .form-group textarea {
-  background: var(--ct-input-bg);
-  border: 1.5px solid var(--ct-input-border); 
+  background: var(--bg-input);
+  border: 1px solid var(--border-card);
   border-radius: 14px;
-  padding: 14px 16px; 
-  color: var(--ct-text-main);
+  padding: 14px 16px;
+  color: var(--text-main);
   font-size: 14px;
   outline: none;
   font-family: inherit;
   width: 100%;
   box-sizing: border-box;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus, 
+.form-group input:focus,
 .form-group textarea:focus {
-  border-color: var(--ct-primary);
-  background: var(--ct-bg-card);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
+/* --- SUBMIT BUTTON --- */
 .btn-submit {
-  background: var(--ct-primary);
-  color: #ffffff;
+  background: var(--primary);
+  color: #fff;
   border: none;
-  padding: 16px; 
+  padding: 14px;
   border-radius: 16px;
   width: 100%;
   font-size: 15px;
   font-weight: 700;
-  box-shadow: 0 8px 20px rgba(31, 60, 255, 0.25);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition: transform 0.2s;
   -webkit-tap-highlight-color: transparent;
 }
 
-.btn-submit:active { 
-  transform: scale(0.97); 
-  filter: brightness(0.9);
+.btn-submit:active {
+  transform: scale(0.97);
 }
 
-/* =========================================
-   🔥 SOCIAL MEDIA LIST CUSTOM (ELEGAN) 🔥
-   ========================================= */
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
 
+/* --- SOSIAL MEDIA LIST --- */
 .social-list-custom {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 15px;
+  gap: 12px;
+  margin-top: 10px;
 }
 
 .social-card-btn {
@@ -210,27 +180,24 @@ html.dark .contact-container {
   text-decoration: none;
   color: white !important;
   gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s;
   -webkit-tap-highlight-color: transparent;
 }
 
 .social-card-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .social-card-btn.ig {
   background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-  box-shadow: 0 4px 15px rgba(220, 39, 67, 0.2);
 }
 
 .social-card-btn.wa {
   background: #25D366;
-  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.2);
 }
 
 .social-card-btn.email {
   background: #ea4335;
-  box-shadow: 0 4px 15px rgba(234, 67, 53, 0.2);
 }
 
 .social-icon-wrapper {

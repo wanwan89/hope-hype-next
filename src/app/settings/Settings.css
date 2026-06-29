@@ -1,72 +1,50 @@
 /* src/app/settings/Settings.css */
 
-:root {
-  /* 🔥 LIGHT MODE (Default) 🔥 */
-  --st-bg-main: #f3f4f6;
-  --st-bg-card: #ffffff;
-  --st-text-main: #111827;
-  --st-text-sub: #6b7280;
-  --st-border: rgba(0, 0, 0, 0.05);
-  --st-glass: rgba(255, 255, 255, 0.85);
-  --st-primary: #1DA1F2;
-}
+/* --------------------------------------------
+   TIDAK PERLU DEFINISI VARIABEL LOKAL LAGI.
+   Semua diambil dari globals.css (--bg-main, --bg-card, dll.)
+----------------------------------------------- */
 
-/* 🔥 FIX SINKRONISASI DARK MODE 🔥 */
-[data-theme='dark'], html.dark {
-  --st-bg-main: #000000; /* Lebih deep buat premium feel */
-  --st-bg-card: #161618;
-  --st-text-main: #ffffff;
-  --st-text-sub: #a1a1aa;
-  --st-border: rgba(255, 255, 255, 0.08);
-  --st-glass: rgba(0, 0, 0, 0.8);
-}
-
-body {
-  /* 🔥 FIX 1: Kunci warna body mentok ngikutin tema, anti-jurang warna lain 🔥 */
-  background-color: var(--st-bg-main);
-  overscroll-behavior-y: none; /* Matikan efek mental/bounce pas di-scroll ke mentok bawah/atas */
-}
+/* Hapus styling body di sini, karena sudah diatur oleh globals.css */
 
 .st-page-wrapper {
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--st-bg-main);
-  color: var(--st-text-main);
-  transition: background-color 0.3s ease;
+  background-color: var(--bg-main);        /* pakai variabel global */
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
   font-family: 'Poppins', sans-serif;
   overscroll-behavior: none;
-  /* 🔥 FIX 2: Hapus padding-bottom raksasa 100px. Ubah jadi normal aja 🔥 */
-  padding-bottom: env(safe-area-inset-bottom, 20px); 
+  padding-bottom: env(safe-area-inset-bottom, 20px);
 }
 
-/* --- ST-HEADER (ISOLATED) --- */
+/* --- HEADER --- */
 .st-header {
-  padding: 16px 20px;
-  /* Support Notch HP */
-  padding-top: calc(16px + env(safe-area-inset-top)); 
-  background: var(--st-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  padding: 12px 16px; /* lebih ramping */
+  padding-top: calc(12px + env(safe-area-inset-top));
+  background: var(--bg-main);              /* solid agar tetap terbaca, tidak perlu glass */
+  /* backdrop-filter dihapus agar seragam dengan global */
   display: flex;
   align-items: center;
   gap: 16px;
-  border-bottom: 1px solid var(--st-border);
+  border-bottom: 1px solid var(--border-card);
   position: sticky;
   top: 0;
   z-index: 1000;
 }
 
-.st-header h2 { 
-  font-size: 18px; 
-  margin: 0; 
+.st-header h2 {
+  font-size: 18px;
+  margin: 0;
   font-weight: 800;
   letter-spacing: -0.5px;
+  color: var(--text-main);
 }
 
 .st-back-btn {
   background: none;
   border: none;
-  color: var(--st-text-main);
+  color: var(--text-main);
   display: flex;
   align-items: center;
   padding: 0;
@@ -74,9 +52,9 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* --- ST-CONTENT --- */
+/* --- CONTENT --- */
 .st-container {
-  padding: 20px 16px 40px 16px; /* Kasih padding bawah dikit 40px biar agak napas */
+  padding: 20px 16px 40px 16px;
   max-width: 500px;
   margin: 0 auto;
 }
@@ -88,19 +66,19 @@ body {
 .st-section-title {
   font-size: 11px;
   font-weight: 800;
-  color: var(--st-text-sub);
+  color: var(--text-muted);
   text-transform: uppercase;
   margin: 0 0 10px 12px;
   letter-spacing: 1.5px;
 }
 
-/* --- ST-CARD (ISOLATED LIST) --- */
+/* --- CARD / LIST --- */
 .st-card {
-  background: var(--st-bg-card);
+  background: var(--bg-card);
   border-radius: 22px;
   overflow: hidden;
-  border: 1px solid var(--st-border);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+  border: 1px solid var(--border-card);
+  /* box-shadow dihilangkan agar sesuai dengan estetika global (tanpa bayangan) */
 }
 
 .st-item {
@@ -108,7 +86,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--st-border);
+  border-bottom: 1px solid var(--border-card);
   cursor: pointer;
   transition: background 0.2s ease;
   -webkit-tap-highlight-color: transparent;
@@ -116,35 +94,35 @@ body {
 
 .st-item:last-child { border-bottom: none; }
 
-.st-item:active { 
-  background-color: rgba(128, 128, 128, 0.1);
+.st-item:active {
+  background-color: var(--bg-secondary);   /* gunakan variabel global */
 }
 
-.st-item-left { 
-  display: flex; 
-  align-items: center; 
-  gap: 16px; 
+.st-item-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   flex: 1;
 }
 
 .st-icon-box {
   width: 38px;
   height: 38px;
-  background: var(--st-bg-main);
+  background: var(--bg-secondary);        /* lebih terlihat di kedua tema */
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--st-text-sub);
+  color: var(--text-muted);
 }
 
 .st-icon-box .material-icons { font-size: 20px; }
 
 .st-info { display: flex; flex-direction: column; gap: 1px; }
-.st-label { font-size: 14px; font-weight: 600; color: var(--st-text-main); }
-.st-hint { font-size: 11px; color: var(--st-text-sub); line-height: 1.3; max-width: 220px; }
+.st-label { font-size: 14px; font-weight: 600; color: var(--text-main); }
+.st-hint { font-size: 11px; color: var(--text-muted); line-height: 1.3; max-width: 220px; }
 
-/* --- ST-TOGGLE SWITCH --- */
+/* --- TOGGLE SWITCH --- */
 .st-switch {
   position: relative;
   display: inline-block;
@@ -158,17 +136,17 @@ body {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: #d1d5db;
-  transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy effect */
+  background-color: #d1d5db; /* abu-abu netral, tidak tergantung tema */
+  transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 34px;
 }
 
 .st-slider:before {
   position: absolute;
   content: "";
-  height: 18px; 
+  height: 18px;
   width: 18px;
-  left: 3px; 
+  left: 3px;
   bottom: 3px;
   background-color: white;
   transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -176,10 +154,15 @@ body {
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.st-switch input:checked + .st-slider { background-color: var(--st-primary); }
-.st-switch input:checked + .st-slider:before { transform: translateX(22px); }
+.st-switch input:checked + .st-slider {
+  background-color: var(--primary);       /* pakai primary global */
+}
 
-/* --- ST-BADGE --- */
+.st-switch input:checked + .st-slider:before {
+  transform: translateX(22px);
+}
+
+/* --- BADGE --- */
 .st-badge {
   padding: 5px 12px;
   border-radius: 12px;
@@ -188,13 +171,13 @@ body {
   text-transform: uppercase;
 }
 
-.st-badge-success { 
-  background: rgba(16, 185, 129, 0.1); 
-  color: #10b981; 
+.st-badge-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
 }
 
 .st-arrow {
-  color: var(--st-text-sub);
+  color: var(--text-muted);
   font-size: 18px !important;
   opacity: 0.5;
 }
