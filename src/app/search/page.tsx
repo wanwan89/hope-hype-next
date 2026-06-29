@@ -8,18 +8,38 @@ import Lottie from 'lottie-react';
 import emptyLottie from '@/assets/lottie/empty.json'; 
 import babyLottie from '@/assets/lottie/baby.json';
 
-// Loading spinner bulat yang dikunci ukurannya
-const LoadingSpinner = ({ isFull = false }: { isFull?: boolean }) => (
+// 1. SPINNER KECIL: Khusus untuk area "Sedang Tren" (TIDAK akan bikin layar melar)
+const SmallSpinner = () => (
   <div style={{
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    margin: isFull ? '60px 0' : '20px 0', // Jarak luar
-    height: isFull ? '50vh' : '60px', // KUNCI TINGGINYA DI SINI
+    padding: '20px 0',
+    width: '100%'
   }}>
     <div style={{
-      width: isFull ? 40 : 25, // Ukuran spinner lebih kecil jika di bawah "Sedang Tren"
-      height: isFull ? 40 : 25,
+      width: 25,
+      height: 25,
+      border: '3px solid var(--bg-secondary)',
+      borderTopColor: 'var(--primary-bg)',
+      borderRadius: '50%',
+      animation: 'spin 0.8s linear infinite',
+    }} />
+  </div>
+);
+
+// 2. SPINNER BESAR: Khusus untuk loading pencarian utama (Biar hasil gak menciut)
+const FullSpinner = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '50vh',
+    width: '100%'
+  }}>
+    <div style={{
+      width: 40,
+      height: 40,
       border: '3px solid var(--bg-secondary)',
       borderTopColor: 'var(--primary-bg)',
       borderRadius: '50%',
@@ -408,7 +428,7 @@ function SearchContent() {
               </h3>
               
               {isLoading ? (
-                <LoadingSpinner /> // Tidak memanggil isFull di sini
+                <SmallSpinner /> /* HANYA MENGGUNAKAN SPINNER KECIL DI SINI */
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                   {trendingKeywords.map((kw, i) => (
@@ -437,7 +457,7 @@ function SearchContent() {
         {/* HASIL PENCARIAN */}
         {query && (
           isLoading ? (
-            <LoadingSpinner isFull={true} /> // Menggunakan tinggi penuh untuk hasil pencarian utama
+            <FullSpinner /> /* SPINNER BESAR UNTUK HASIL PENCARIAN UTAMA */
           ) : (
             <>
               {users.length > 0 && (
