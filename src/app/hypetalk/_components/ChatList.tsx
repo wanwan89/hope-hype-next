@@ -5,7 +5,6 @@ import { motion, useMotionValue, animate } from 'framer-motion';
 import ChatItem from './ChatItem';
 import RefreshableWrapper from '@/components/RefreshableWrapper';
 
-// Lottie & trash animation
 import Lottie, { LottieRefCurrentProps } from 'lottie-react';
 import trashAnimationData from '@/assets/lottie/tempat-sampah.json';
 
@@ -29,7 +28,7 @@ type Props = {
 };
 
 // ══════════════════════════════════════════
-// SwipeableChatRow – FULL FIX
+// SwipeableChatRow – FULL FIX (Pan-Based)
 // ══════════════════════════════════════════
 const SwipeableChatRow = ({
   chat,
@@ -46,48 +45,58 @@ const SwipeableChatRow = ({
   handleAvatarClick,
   renderReadReceipt,
 }: any) => {
-  const x = useMotionValue(0);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [offsetX, setOffsetX] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
   const lottieRef = useRef<LottieRefCurrentProps>(null);
 
   const isGlobalOrActiveGroup =
     chat.type === 'global' || (chat.type === 'group' && chat.isMember);
   const canSwipe = !isSelectionMode && !isGlobalOrActiveGroup;
 
-  // Saat drag bergerak, mainkan Lottie jika sudah melewati threshold tertentu
-  const handleDrag = (_e: any, info: any) => {
-    if (info.offset.x > 40 && lottieRef.current) {
-      lottieRef.current.play();
-    } else {
-      lottieRef.current?.stop();
+  const threshold = 80; // px
+
+  // --- Pan handlers ---
+  const handlePanStart = () => {
+    if (!canSwipe) return;
+    window.dispatchEvent(new Event('swipe-start'));  // matikan pull‑to‑refresh
+  };
+
+  const handlePan = (_e: any, info: any) => {
+    if (!canSwipe) return;
+    const dx = info.offset.x;
+    // Hanya proses jika gerakan horizontal dominan (minimal 1.5x lipat dari vertikal)
+    const dy = Math.abs(info.offset.y);
+    if (dx > 10 && dx > dy * 1.5) {
+      setIsSwiping(true);
+      setOffsetX(Math.min(dx, 150)); // batasi ke 150px
+      // Mainkan Lottie jika sudah melewati 40px
+      if (dx > 40 && lottieRef.current) {
+        lottieRef.current.play();
+      }
     }
   };
 
-  const handleDragEnd = (_e: any, info: any) => {
-    const threshold = 80; // px – lebih kecil agar mudah dihapus
+  const handlePanEnd = (_e: any, info: any) => {
+    if (!canSwipe || !isSwiping) {
+      window.dispatchEvent(new Event('swipe-end'));
+      return;
+    }
 
-    if (info.offset.x > threshold) {
-      // Hapus item
+    const dx = info.offset.x;
+    if (dx > threshold) {
+      // Hapus
       setIsDeleted(true);
-      animate(x, typeof window !== 'undefined' ? window.innerWidth : 400, {
-        duration: 0.2,
-      }).then(() => {
+      animate(null, { /* dummy */ }, { duration: 0 }).then(() => {
         onDeleteChat?.([chat.id]);
       });
     } else {
-      // Kembali ke posisi semula
-      animate(x, 0, { type: 'spring', stiffness: 300, damping: 30 });
+      // Kembali
+      setOffsetX(0);
       lottieRef.current?.stop();
     }
-  };
 
-  // Matikan pull‑to‑refresh sementara saat drag dimulai
-  const handlePanStart = () => {
-    // Kirim event agar RefreshableWrapper tahu tidak boleh refresh
-    window.dispatchEvent(new Event('swipe-start'));
-  };
-
-  const handlePanEnd = () => {
+    setIsSwiping(false);
     window.dispatchEvent(new Event('swipe-end'));
   };
 
@@ -121,23 +130,23 @@ const SwipeableChatRow = ({
       {/* Item yang bisa diseret */}
       <motion.div
         style={{
-          x,
+          x: offsetX,
           display: 'flex',
           alignItems: 'center',
           backgroundColor: isSelected ? 'rgba(31, 60, 255, 0.08)' : 'var(--bg-main)',
           position: 'relative',
-          touchAction: canSwipe ? 'pan-x' : 'auto', // ⬅️ penting
+          touchAction: canSwipe && isSwiping ? 'pan-x' : 'pan-y',
         }}
-        drag={canSwipe ? 'x' : false}
-        dragConstraints={{ left: 0, right: 150 }}   // ⬅️ batasi ke kanan 150px
-        dragElastic={0.2}
-        onDrag={canSwipe ? handleDrag : undefined}
-        onDragEnd={canSwipe ? handleDragEnd : undefined}
-        onPanStart={canSwipe ? handlePanStart : undefined}
-        onPanEnd={canSwipe ? handlePanEnd : undefined}
+        animate={{ x: offsetX }}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        onPanStart={handlePanStart}
+        onPan={handlePan}
+        onPanEnd={handlePanEnd}
         onTouchStart={() => onPressStart?.(chat)}
-        onTouchEnd={() => onPressEnd?.()}
-        onTouchMove={() => onPressEnd?.()}
+        onTouchEnd={() => {
+          onPressEnd?.();
+          if (!isSwiping) window.dispatchEvent(new Event('swipe-end'));
+        }}
         onMouseDown={() => onPressStart?.(chat)}
         onMouseUp={() => onPressEnd?.()}
         onMouseLeave={() => onPressEnd?.()}
@@ -247,7 +256,6 @@ const ChatList: React.FC<Props> = ({
         style={{ overflowX: 'hidden', position: 'relative', minHeight: '100dvh' }}
       >
         <div>
-          {/* Banner permintaan pesan */}
           {!isLoading && requestChats.length > 0 && !searchQuery && (
             <div
               className="message-request-banner"
@@ -265,7 +273,6 @@ const ChatList: React.FC<Props> = ({
           )}
 
           {isLoading ? (
-            // Skeleton loading
             [...Array(4)].map((_, index) => (
               <div key={index} className="tg-chat-item" style={{ pointerEvents: 'none' }}>
                 <div className="tg-avatar skeleton-box" style={{ borderRadius: '50%' }} />
