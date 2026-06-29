@@ -48,11 +48,14 @@ export default function ChatHeader({
           </button>
         ) : groupId ? (
           <div style={{ display: 'flex', gap: '8px' }}>
-            {/* ✅ INVITE BUTTON – fixed */}
+            {/* ✅ INVITE BUTTON – fully isolated */}
             <button
               type="button"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                console.log('INVITE clicked');
                 setGroupModalTab('invite');
                 setIsGroupSettingsOpen(true);
               }}
@@ -65,19 +68,23 @@ export default function ChatHeader({
                 fontSize: '11px',
                 fontWeight: 800,
                 cursor: 'pointer',
-                zIndex: 5,
+                zIndex: 9999,
                 position: 'relative',
+                isolation: 'isolate',
               }}
             >
               INVITE
             </button>
 
-            {/* ✅ SETTINGS BUTTON – hanya untuk owner, fixed */}
+            {/* ✅ SETTINGS BUTTON – fully isolated */}
             {isOwner && (
               <button
                 type="button"
+                onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
+                  console.log('SETTINGS clicked');
                   setGroupModalTab('settings');
                   setIsGroupSettingsOpen(true);
                 }}
@@ -90,8 +97,9 @@ export default function ChatHeader({
                   fontSize: '11px',
                   fontWeight: 800,
                   cursor: 'pointer',
-                  zIndex: 5,
+                  zIndex: 9999,
                   position: 'relative',
+                  isolation: 'isolate',
                 }}
               >
                 SETTINGS
