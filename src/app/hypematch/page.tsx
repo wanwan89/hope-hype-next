@@ -223,9 +223,9 @@ export default function HypeMatch() {
 
   return (
     <div className="hm-overlay">
-      {/* Font Display (Bebas Neue) untuk Hypematch */}
+      {/* Font Poppins untuk Hypematch */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
       `}</style>
 
       <div className="hm-header">
@@ -234,12 +234,12 @@ export default function HypeMatch() {
           <h1 
             className="hm-logo-text" 
             style={{ 
-              fontFamily: "'Bebas Neue', cursive", 
-              fontWeight: 400,
-              fontSize: "2.8rem",          /* ukuran display */
+              fontFamily: "'Poppins', sans-serif", 
+              fontWeight: 700,
+              fontSize: "1.8rem",          /* sesuaikan dengan header lain */
               color: "#FF1493", 
-              letterSpacing: "1px",
-              textTransform: "uppercase",
+              letterSpacing: "0px",
+              textTransform: "lowercase",  /* tetap lowercase seperti sebelumnya */
               margin: 0,
               lineHeight: 1,
               textShadow: "none"
@@ -258,8 +258,6 @@ export default function HypeMatch() {
           <SvgIcon name="filter" size={26} />
         </button>
       </div>
-
-      {/* ... sisa kode sama persis seperti sebelumnya ... */}
 
       <div className="hm-stack-container">
         {stackedUsers.length > 0 ? (

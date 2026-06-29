@@ -9,13 +9,12 @@ type Props = {
 
 const HypetalkHeader: React.FC<Props> = ({ onMenuClick, searchQuery, onSearchChange }) => (
   <>
-    {/* Tambahkan Google Font Dancing Script (script style) */}
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
       .hypetalk-logo {
-        font-family: 'Dancing Script', cursive;
+        font-family: 'Poppins', sans-serif;
         font-weight: 700;
-        font-size: 2.4rem;   /* lebih besar */
+        font-size: 1.8rem;
         margin: 0;
         line-height: 1;
       }
