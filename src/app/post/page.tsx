@@ -8,6 +8,8 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
+// [IMPORT DITAMBAHKAN]: Pastikan file EngagementButton.tsx ada di folder components/post
+import EngagementButton from '@/components/post/EngagementButton';
 
 function PostContent() {
   const { t } = useTranslation();
@@ -202,17 +204,27 @@ function PostContent() {
     }
   };
 
-  // [FIX 2]: Perbaikan Logika Auto-Scroll ke Postingan Terpilih
+  // [FIX 5]: Perbaikan Logika Auto-Scroll dengan Retry Mechanism untuk Lazy Load
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
-          if (targetPost) {
-            targetPost.scrollIntoView({ behavior: 'auto', block: 'start' });
-          }
-        }, 150);
-      });
+      const scrollToPost = () => {
+        const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
+        if (targetPost) {
+          // Ganti 'start' menjadi 'center' agar posisinya tepat di tengah layar
+          targetPost.scrollIntoView({ behavior: 'auto', block: 'center' });
+        }
+      };
+
+      // Timeout 1: Eksekusi setelah DOM dasar selesai (seperti aslinya)
+      const timer1 = setTimeout(scrollToPost, 150);
+
+      // Timeout 2: Retry setelah layout stabil dan gambar/video selesai di-load
+      const timer2 = setTimeout(scrollToPost, 600);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
@@ -411,13 +423,12 @@ function PostContent() {
                   id={`post-wrapper-${p.id}`} 
                   style={{ 
                     scrollSnapAlign: 'start', 
-                    // [FIX 3]: Menggunakan minHeight agar tidak runtuh / rusak saat refresh
                     minHeight: 'calc(100vh - 60px)', 
                     height: 'max-content', 
                     position: 'relative',
                     width: '100%',
                     padding: isTextOrAudio ? '0 12px' : '0', 
-                    marginBottom: isTextOrAudio ? '14px' : '0' // Disesuaikan agar scroll snap rapi
+                    marginBottom: isTextOrAudio ? '14px' : '0'
                   }}
                 >
                   <PostCard
@@ -474,7 +485,6 @@ function PostContent() {
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* [FIX 4]: Hapus selector tag 'img' murni agar tidak merusak gambar cover / carousel saat direfresh */
         .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
           border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
