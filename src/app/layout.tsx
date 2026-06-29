@@ -142,9 +142,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (platform === 'android' || platform === 'ios') {
           console.log("📱 Native Detected: Menghubungkan Firebase FCM & Setup StatusBar...");
           try {
-            await StatusBar.setStyle({ style: Style.Light });
+            // 🔥 FIX: Ikon Putih & Background Hitam 🔥
+            await StatusBar.setStyle({ style: Style.Light }); // Ikon warna putih
             if (platform === 'android') {
-              await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+              await StatusBar.setBackgroundColor({ color: '#000000' }); // Background hitam
             }
           } catch (statusErr) {
             console.warn("⚠️ StatusBar plugin error:", statusErr);
@@ -411,15 +412,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#000000" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
         
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
