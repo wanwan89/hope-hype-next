@@ -8,18 +8,18 @@ import Lottie from 'lottie-react';
 import emptyLottie from '@/assets/lottie/empty.json'; 
 import babyLottie from '@/assets/lottie/baby.json';
 
-// Loading spinner bulat yang sudah diperbaiki
+// Loading spinner bulat yang dikunci ukurannya
 const LoadingSpinner = ({ isFull = false }: { isFull?: boolean }) => (
   <div style={{
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: isFull ? '60px 20px' : '30px 20px',
-    minHeight: isFull ? '50vh' : 'auto', // Fleksibel: auto untuk tren, 50vh untuk pencarian utama
+    margin: isFull ? '60px 0' : '20px 0', // Jarak luar
+    height: isFull ? '50vh' : '60px', // KUNCI TINGGINYA DI SINI
   }}>
     <div style={{
-      width: 40,
-      height: 40,
+      width: isFull ? 40 : 25, // Ukuran spinner lebih kecil jika di bawah "Sedang Tren"
+      height: isFull ? 40 : 25,
       border: '3px solid var(--bg-secondary)',
       borderTopColor: 'var(--primary-bg)',
       borderRadius: '50%',
