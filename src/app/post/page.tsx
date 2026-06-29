@@ -55,7 +55,7 @@ function PostContent() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
-  // [FIX 1]: Matikan Scroll Restoration Bawaan Browser Saat Refresh
+  // Matikan Scroll Restoration Bawaan Browser Saat Refresh
   useEffect(() => {
     if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
@@ -204,7 +204,7 @@ function PostContent() {
     }
   };
 
-  // [FIX 5]: Perbaikan Logika Auto-Scroll dengan Retry Mechanism untuk Lazy Load
+  // Perbaikan Logika Auto-Scroll dengan Retry Mechanism untuk Lazy Load
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
       const scrollToPost = () => {
@@ -215,7 +215,7 @@ function PostContent() {
         }
       };
 
-      // Timeout 1: Eksekusi setelah DOM dasar selesai (seperti aslinya)
+      // Timeout 1: Eksekusi setelah DOM dasar selesai
       const timer1 = setTimeout(scrollToPost, 150);
 
       // Timeout 2: Retry setelah layout stabil dan gambar/video selesai di-load
@@ -378,7 +378,7 @@ function PostContent() {
   }
 
   return (
-    <div style={{ paddingBottom: '80px', background: 'var(--bg-main)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%' }}>
       {/* HEADER */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -406,11 +406,10 @@ function PostContent() {
             className="gallery" 
             id="mainGallery" 
             style={{ 
-              flex: 1, 
-              overflowY: 'auto', 
-              scrollSnapType: 'y mandatory',
-              height: 'calc(100vh - 60px)', 
-              width: '100%' 
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px' /* Memberi sedikit jarak bernapas antar postingan */
             }}
           >
             {userPosts.map((p) => {
@@ -422,13 +421,9 @@ function PostContent() {
                   key={p.id} 
                   id={`post-wrapper-${p.id}`} 
                   style={{ 
-                    scrollSnapAlign: 'start', 
-                    minHeight: 'calc(100vh - 60px)', 
-                    height: 'max-content', 
                     position: 'relative',
                     width: '100%',
-                    padding: isTextOrAudio ? '0 12px' : '0', 
-                    marginBottom: isTextOrAudio ? '14px' : '0'
+                    padding: isTextOrAudio ? '0 12px' : '0'
                   }}
                 >
                   <PostCard
@@ -471,7 +466,7 @@ function PostContent() {
         )}
       </div>
       
-      {/* SUNTIKAN CSS GLOBAL PALING EKSTRIM UNTUK MEMAKSA TAMPILAN FIX */}
+      {/* SUNTIKAN CSS GLOBAL */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         @keyframes popHeartAnim {
