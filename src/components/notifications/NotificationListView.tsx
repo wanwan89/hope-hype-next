@@ -31,6 +31,13 @@ interface Props {
   getIconAndColor: (type: string) => { icon: string; color: string };
 }
 
+// --- SVG Khusus HypeSystem ---
+const hypeSystemSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 512 512">
+  <path fill="#ffffff" d="M192 32c0 17.7 14.3 32 32 32c123.7 0 224 100.3 224 224c0 17.7 14.3 32 32 32s32-14.3 32-32C512 128.9 383.1 0 224 0c-17.7 0-32 14.3-32 32m0 96c0 17.7 14.3 32 32 32c70.7 0 128 57.3 128 128c0 17.7 14.3 32 32 32s32-14.3 32-32c0-106-86-192-192-192c-17.7 0-32 14.3-32 32m-96 16c0-26.5-21.5-48-48-48S0 117.5 0 144v224c0 79.5 64.5 144 144 144s144-64.5 144-144s-64.5-144-144-144h-16v96h16c26.5 0 48 21.5 48 48s-21.5 48-48 48s-48-21.5-48-48z"/>
+</svg>`;
+const hypeSystemDataUri = `data:image/svg+xml,${encodeURIComponent(hypeSystemSvg)}`;
+// ---
+
 export default function NotificationListView({
   title,
   notifs,
@@ -104,6 +111,10 @@ export default function NotificationListView({
             const isFollowing = notif.actor_id
               ? myFollowings.has(notif.actor_id)
               : false;
+
+            // Cek apakah ini notifikasi dari HypeSystem
+            const isSystemNotif = ['coin_receive', 'coin_history', 'payment_status', 'withdraw_request'].includes(notif.type) 
+                                  || notif.actor?.username === 'HypeSystem';
 
             let thumbUrl: string | null = null;
             if (notif.postData) {
@@ -194,121 +205,162 @@ export default function NotificationListView({
             }
 
             const isGroupAction = notif.type.endsWith('_group');
-            const avatarElement = isGroupAction ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  position: 'relative',
-                }}
-              >
-                {(notif.actors || []).slice(0, 2).map((actor, idx) => (
+            
+            // --- LOGIKA AVATAR ---
+            let avatarElement;
+            
+            // 1. Jika notifikasi dari HypeSystem (Pakai SVG Khusus)
+            if (isSystemNotif) {
+              avatarElement = (
+                <div className="notif-avatar-wrapper">
                   <img
-                    key={idx}
-                    src={actor?.avatar_url || defaultAvatarDataUri}
-                    alt={actor?.username || 'User'}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      border: `2px solid ${
-                        isDark ? 'var(--bg-card)' : '#ffffff'
-                      }`,
-                      marginLeft: idx === 0 ? 0 : -20,
-                      zIndex: 2 - idx,
-                      position: 'relative',
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (notif.actor_ids?.[idx])
-                        router.push(`/data?id=${notif.actor_ids[idx]}`);
-                    }}
-                  />
-                ))}
-                <div
-                  className="notif-icon-badge"
-                  style={{
-                    background: color,
-                    position: 'absolute',
-                    bottom: -4,
-                    right: -4,
-                    zIndex: 3,
-                  }}
-                >
-                  <span
-                    className="material-icons"
-                    style={{ fontSize: 12, color: 'white' }}
-                  >
-                    {typeIcon}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="notif-avatar-wrapper">
-                {actorAvatar ? (
-                  <img
-                    src={actorAvatar}
-                    alt={actorName}
+                    src={hypeSystemDataUri}
+                    alt="HypeSystem"
                     className="notif-avatar"
                     style={{
-                      border: `1px solid ${
-                        isDark ? 'var(--border-card)' : '#e0e0e0'
-                      }`,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (notif.actor_id)
-                        router.push(`/data?id=${notif.actor_id}`);
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="notif-avatar default-avatar"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (notif.actor_id)
-                        router.push(`/data?id=${notif.actor_id}`);
-                    }}
-                    style={{
                       width: 44,
                       height: 44,
                       borderRadius: '50%',
-                      background: isDark
-                        ? 'var(--bg-secondary)'
-                        : '#f0f0f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: `1px solid ${
-                        isDark ? 'var(--border-card)' : '#e0e0e0'
-                      }`,
-                      cursor: 'pointer',
+                      objectFit: 'contain',
+                      background: isDark ? 'var(--bg-secondary)' : '#f0f0f0',
+                      border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`,
+                    }}
+                  />
+                  <div
+                    className="notif-icon-badge"
+                    style={{ background: color }}
+                  >
+                    <span
+                      className="material-icons"
+                      style={{ fontSize: 12, color: 'white' }}
+                    >
+                      {typeIcon}
+                    </span>
+                  </div>
+                </div>
+              );
+            } 
+            // 2. Jika aksi grup (dua avatar ditumpuk)
+            else if (isGroupAction) {
+              avatarElement = (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    position: 'relative',
+                  }}
+                >
+                  {(notif.actors || []).slice(0, 2).map((actor, idx) => (
+                    <img
+                      key={idx}
+                      src={actor?.avatar_url || defaultAvatarDataUri}
+                      alt={actor?.username || 'User'}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: `2px solid ${
+                          isDark ? 'var(--bg-card)' : '#ffffff'
+                        }`,
+                        marginLeft: idx === 0 ? 0 : -20,
+                        zIndex: 2 - idx,
+                        position: 'relative',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (notif.actor_ids?.[idx])
+                          router.push(`/data?id=${notif.actor_ids[idx]}`);
+                      }}
+                    />
+                  ))}
+                  <div
+                    className="notif-icon-badge"
+                    style={{
+                      background: color,
+                      position: 'absolute',
+                      bottom: -4,
+                      right: -4,
+                      zIndex: 3,
                     }}
                   >
                     <span
                       className="material-icons"
-                      style={{ fontSize: 28, color: 'var(--text-muted)' }}
+                      style={{ fontSize: 12, color: 'white' }}
                     >
-                      {['payment_status', 'withdraw_request', 'coin_history', 'coin_receive'].includes(notif.type)
-                        ? 'account_balance_wallet'
-                        : 'person'}
+                      {typeIcon}
                     </span>
                   </div>
-                )}
-                <div
-                  className="notif-icon-badge"
-                  style={{ background: color }}
-                >
-                  <span
-                    className="material-icons"
-                    style={{ color: 'white', fontSize: 12 }}
-                  >
-                    {typeIcon}
-                  </span>
                 </div>
-              </div>
-            );
+              );
+            } 
+            // 3. Jika avatar user biasa
+            else {
+              avatarElement = (
+                <div className="notif-avatar-wrapper">
+                  {actorAvatar ? (
+                    <img
+                      src={actorAvatar}
+                      alt={actorName}
+                      className="notif-avatar"
+                      style={{
+                        border: `1px solid ${
+                          isDark ? 'var(--border-card)' : '#e0e0e0'
+                        }`,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (notif.actor_id)
+                          router.push(`/data?id=${notif.actor_id}`);
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="notif-avatar default-avatar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (notif.actor_id)
+                          router.push(`/data?id=${notif.actor_id}`);
+                      }}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        background: isDark
+                          ? 'var(--bg-secondary)'
+                          : '#f0f0f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: `1px solid ${
+                          isDark ? 'var(--border-card)' : '#e0e0e0'
+                        }`,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span
+                        className="material-icons"
+                        style={{ fontSize: 28, color: 'var(--text-muted)' }}
+                      >
+                        person
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className="notif-icon-badge"
+                    style={{ background: color }}
+                  >
+                    <span
+                      className="material-icons"
+                      style={{ color: 'white', fontSize: 12 }}
+                    >
+                      {typeIcon}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+            // --- END LOGIKA AVATAR ---
 
             return (
               <div
@@ -334,7 +386,7 @@ export default function NotificationListView({
                     className="notif-text"
                     style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a' }}
                   >
-                    {!isGroupAction && actorName && (
+                    {!isGroupAction && actorName && !isSystemNotif && (
                       <strong
                         onClick={(e) => {
                           e.stopPropagation();
@@ -345,6 +397,10 @@ export default function NotificationListView({
                       >
                         {actorName}
                       </strong>
+                    )}
+                    {/* Kalau HypeSystem, nama actor sudah include di SVG, kita lewati saja */}
+                    {(isSystemNotif || !actorName) && isSystemNotif && (
+                      <strong style={{ marginRight: '4px' }}>HypeSystem</strong>
                     )}
                     <span dangerouslySetInnerHTML={{ __html: messageHtml }} />
                   </div>
