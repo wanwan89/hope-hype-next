@@ -23,17 +23,17 @@ export default function RecommendedFriends({ recommended, onFollow, myFollowings
   return (
     <div className="recommended-section">
       {/* Header dengan tombol Lihat Semua */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
         <h3 className="section-title" style={{ margin: 0 }}>Saran Teman</h3>
-        <button 
+        <button
           onClick={() => router.push('/discover')}
-          style={{ 
-            background: 'transparent', 
-            border: 'none', 
-            color: 'var(--primary)', 
-            fontSize: '12px', 
-            fontWeight: '700',
-            cursor: 'pointer' 
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--primary)',   // sekarang hitam di light, putih di dark
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
           }}
         >
           Lihat Semua
@@ -75,28 +75,30 @@ export default function RecommendedFriends({ recommended, onFollow, myFollowings
                       border: '1px solid var(--border-card)',
                     }}
                   >
-                    <span className="material-icons" style={{ fontSize: 28, color: 'var(--text-muted)' }}>person</span>
+                    <span className="material-icons" style={{ fontSize: 28, color: 'var(--text-muted)' }}>
+                      person
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* FIX: Info Nama di atas, Username di bawah */}
+              {/* Info Nama di atas, Username di bawah */}
               <div
                 className="rec-info"
                 onClick={() => router.push(`/data?id=${user.id}`)}
-                style={{ 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '2px',
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
                   justifyContent: 'center',
-                  marginLeft: '12px'
+                  marginLeft: 12,
                 }}
               >
-                <span className="rec-name" style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-main)' }}>
+                <span className="rec-name" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)' }}>
                   {user.full_name || user.username}
                 </span>
-                <span className="rec-user" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                <span className="rec-user" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   @{user.username}
                 </span>
               </div>
@@ -105,10 +107,7 @@ export default function RecommendedFriends({ recommended, onFollow, myFollowings
               <button
                 className={`rec-follow-btn ${isFollowing ? 'followed' : ''}`}
                 onClick={(e) => onFollow(e, user.id)}
-                style={{ 
-                  flexShrink: 0,
-                  marginLeft: 'auto' 
-                }}
+                style={{ flexShrink: 0, marginLeft: 'auto' }}
               >
                 {isFollowing ? 'Mengikuti' : 'Ikuti'}
               </button>
