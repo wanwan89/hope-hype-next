@@ -125,7 +125,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const lastTapVideoRef = useRef<number>(0);
   const wasPlayingRef = useRef(false);
 
-  // --- 3. Observer video/audio (tidak diubah) ---
+  // --- 3. Observer video/audio ---
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
@@ -180,7 +180,7 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // --- Sinkronisasi status video (tidak diubah) ---
+  // --- Sinkronisasi status video ---
   useEffect(() => {
     const video = mediaRef.current as HTMLVideoElement | null;
     if (!video || !isVideoPost) return;
@@ -205,7 +205,7 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-  // Deteksi bio (tidak diubah)
+  // Deteksi bio
   useEffect(() => {
     if (photoList.length > 0 || isVideoPost) {
       const raf = requestAnimationFrame(() => {
@@ -232,7 +232,7 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, []);
 
-  // Render bio (tidak diubah)
+  // Render bio
   const renderBioWithMentions = useCallback(
     (text: string) => {
       if (!text) return null;
@@ -285,7 +285,7 @@ const PostCard: React.FC<PostCardProps> = ({
     [onToggleExpand, postIdStr]
   );
 
-  // Handler video seek (tidak diubah)
+  // Handler video seek
   const handleVideoSeekStart = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
     setIsSeeking(true);
@@ -376,7 +376,7 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, []);
 
-  // Style card dengan bg-main
+  // 🔥 FIX UTAMA: Ubah width jadi 100% dan hapus marginLeft/marginRight negatif
   const cardStyle: React.CSSProperties = useMemo(
     () => ({
       overflow: actuallyExpanded ? 'visible' : 'hidden',
@@ -388,10 +388,8 @@ const PostCard: React.FC<PostCardProps> = ({
       borderTop: '1px solid var(--border-card)',
       borderBottom: '1px solid var(--border-card)',
       position: 'relative' as const,
-      width: '100vw',
-      marginLeft: 'calc(-50vw + 50%)',
-      marginRight: 'calc(-50vw + 50%)',
-      marginBottom: '12px',
+      width: '100%',             // FIX: Menghindari overflow pada Virtual List
+      marginBottom: '12px',      // FIX: Menghapus marginLeft dan marginRight yang bikin nge-bug
       boxSizing: 'border-box' as const,
       boxShadow: 'none',
       textAlign: 'left' as const,
@@ -933,7 +931,6 @@ const PostCard: React.FC<PostCardProps> = ({
               )}
             </div>
 
-            {/* 🔥 Tambahkan stopPropagation di sini */}
             <div
               className="actions"
               style={{ pointerEvents: 'auto' }}
