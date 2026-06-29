@@ -33,20 +33,6 @@ const TugasIcon = () => (
   </svg>
 );
 
-const BantuanIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M21 8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8 8 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0zM7.76 15.785l1.06-1.696A5.97 5.97 0 0 0 12 15a5.97 5.97 0 0 0 3.18-.911l1.06 1.696A7.96 7.96 0 0 1 12 17a7.96 7.96 0 0 1-4.24-1.215"/>
-  </svg>
-);
-
-const RiwayatIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M16.755 2h-9.51c-1.159 0-1.738 0-2.206.163a3.05 3.05 0 0 0-1.881 1.936C3 4.581 3 5.177 3 6.37v14.004c0 .858.985 1.314 1.608.744a.946.946 0 0 1 1.284 0l.483.442a1.657 1.657 0 0 0 2.25 0a1.657 1.657 0 0 1 2.25 0a1.657 1.657 0 0 0 2.25 0a1.657 1.657 0 0 1 2.25 0a1.657 1.657 0 0 0 2.25 0l.483-.442a.946.946 0 0 1 1.284 0c.623.57 1.608.114 1.608-.744V6.37c0-1.193 0-1.79-.158-2.27a3.05 3.05 0 0 0-1.881-1.937C18.493 2 17.914 2 16.755 2Z"/>
-    <path strokeLinecap="round" strokeLinejoin="round" d="m9.5 10.4l1.429 1.6L14.5 8"/>
-    <path strokeLinecap="round" d="M7.5 15.5h9"/>
-  </svg>
-);
-
 const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
   const router = useRouter();
 
@@ -86,11 +72,6 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
           <div className="menu-text">{t('hypecoin_balance', 'Saldo Hypecoin')}</div>
           <div className="arrow-right">›</div>
         </div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/historycoin')}>
-          <div className="icon-wrapper"><RiwayatIcon /></div>
-          <div className="menu-text">{t('transaction_history', 'Riwayat Transaksi')}</div>
-          <div className="arrow-right">›</div>
-        </div>
         <div className="menu-item-tiktok" onClick={() => navTo('/vip')}>
           <div className="icon-wrapper" style={{color: '#f59e0b'}}><VipIcon /></div>
           <div className="menu-text">{t('vip_subscription', 'Langganan VIP')}</div>
@@ -110,11 +91,6 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
         <div className="menu-item-tiktok" onClick={() => navTo('/settings')}>
           <div className="icon-wrapper"><span className="material-icons">settings</span></div>
           <div className="menu-text">{t('settings', 'Pengaturan')}</div>
-          <div className="arrow-right">›</div>
-        </div>
-        <div className="menu-item-tiktok" onClick={() => navTo('/contact')}>
-          <div className="icon-wrapper"><BantuanIcon /></div>
-          <div className="menu-text">{t('contact_us', 'Hubungi Kami')}</div>
           <div className="arrow-right">›</div>
         </div>
       </aside>

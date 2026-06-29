@@ -24,6 +24,34 @@ const CoinIcon = ({ size = 24, color = '#f59e0b', style }: { size?: number; colo
   </svg>
 );
 
+// --- SVG Withdraw (baru) ---
+const WithdrawIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <g>
+      <path strokeLinecap="round" strokeWidth="1.5" d="m18.935 13.945l-.67-3.648c-.29-1.576-.435-2.364-1.008-2.83S15.86 7 14.213 7H9.787c-1.647 0-2.47 0-3.044.467c-.573.466-.718 1.254-1.008 2.83l-.67 3.648c-.6 3.271-.901 4.907.024 5.98C6.014 21 7.724 21 11.142 21h1.716c3.418 0 5.128 0 6.053-1.074s.625-2.71.024-5.98Z"/>
+      <path strokeWidth="1.5" d="M12 14a2 2 0 1 1 0-4a2 2 0 0 1 0 4Z"/>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 17.492v.009"/>
+      <path strokeLinecap="round" strokeWidth="1.5" d="M21 11a1.5 1.5 0 0 0 .414-.305C22 10.089 22 9.11 22 7.152s0-2.936-.586-3.544S19.886 3 18 3H6c-1.886 0-2.828 0-3.414.608S2 5.195 2 7.152s0 2.936.586 3.543q.18.188.414.305"/>
+    </g>
+  </svg>
+);
+
+// --- SVG Riwayat Withdraw (baru) ---
+const WithdrawHistoryIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <path d="M12 22q-3.875 0-6.725-2.575T2.05 13h2.025q.375 3.025 2.638 5.013T12 20q3.35 0 5.675-2.325T20 12t-2.325-5.675T12 4Q9.85 4 8.012 5.062T5.1 8H8v2H2.2q.725-3.5 3.475-5.75T12 2q2.075 0 3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22m2.8-5.8L11 12.4V7h2v4.6l3.2 3.2z"/>
+  </svg>
+);
+
+// --- SVG Riwayat Transaksi (di header) ---
+const RiwayatIcon = ({ size = 24, color = 'currentColor', style }: { size?: number; color?: string; style?: React.CSSProperties }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" style={style}>
+    <path d="M16.755 2h-9.51c-1.159 0-1.738 0-2.206.163a3.05 3.05 0 0 0-1.881 1.936C3 4.581 3 5.177 3 6.37v14.004c0 .858.985 1.314 1.608.744a.946.946 0 0 1 1.284 0l.483.442a1.657 1.657 0 0 0 2.25 0a1.657 1.657 0 0 1 2.25 0a1.657 1.657 0 0 0 2.25 0a1.657 1.657 0 0 1 2.25 0a1.657 1.657 0 0 0 2.25 0l.483-.442a.946.946 0 0 1 1.284 0c.623.57 1.608.114 1.608-.744V6.37c0-1.193 0-1.79-.158-2.27a3.05 3.05 0 0 0-1.881-1.937C18.493 2 17.914 2 16.755 2Z"/>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m9.5 10.4l1.429 1.6L14.5 8"/>
+    <path strokeLinecap="round" d="M7.5 15.5h9"/>
+  </svg>
+);
+
 export default function SaldoPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -82,7 +110,7 @@ export default function SaldoPage() {
         </button>
         <h2>{t('wallet_assets', 'Saldo & Aset')}</h2>
         <button className="saldo-btn-icon" onClick={handleCoinHistory}>
-          <span className="material-icons">receipt_long</span>
+          <RiwayatIcon size={20} color="var(--text-main)" />
         </button>
       </header>
 
@@ -126,11 +154,11 @@ export default function SaldoPage() {
       {/* ACTION MENU */}
       <div className="saldo-menu-row">
         <button className="saldo-action-btn" onClick={handleWithdraw}>
-          <span className="material-icons">account_balance_wallet</span>
+          <WithdrawIcon />
           <span>{t('withdraw_cash', 'Tarik Tunai')}</span>
         </button>
         <button className="saldo-action-btn" onClick={handleWithdrawHistory}>
-          <span className="material-icons">history</span>
+          <WithdrawHistoryIcon />
           <span>{t('withdraw_history', 'Riwayat WD')}</span>
         </button>
       </div>
