@@ -15,34 +15,32 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
   const [isSwipeActive, setIsSwipeActive] = useState(false);
 
   const lottieRef = useRef<LottieRefCurrentProps>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const startX = useRef(0);
-  const isAtTop = useRef(true); 
+  const isAtTop = useRef(true);
   const isPulling = useRef(false);
 
   // ═════════════════════════════════════
-  // Deteksi Posisi Scroll
+  // Deteksi Scroll di dalam .tg-chat-list
   // ═════════════════════════════════════
   useEffect(() => {
+    const chatList = document.querySelector('.tg-chat-list');
+    if (!chatList) return;
+
     const handleScroll = () => {
-      // Pastikan animasi pull-to-refresh HANYA bisa ditarik jika scroll benar-benar di atas
-      isAtTop.current = window.scrollY <= 0;
+      // Deteksi apakah konten chat list sudah di posisi paling atas
+      isAtTop.current = chatList.scrollTop <= 0;
     };
 
-    window.addEventListener('scroll', handleScroll);
-    // Panggil sekali untuk inisialisasi awal
-    handleScroll();
-
-    return () => window.removeEventListener('scroll', handleScroll);
+    chatList.addEventListener('scroll', handleScroll);
+    return () => chatList.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ═════════════════════════════════════
-  // Tangkap event dari SwipeableChatRow
-  // ═════════════════════════════════════
+  // Event listener untuk swipe (tetap sama)
   useEffect(() => {
     const onSwipeStart = () => setIsSwipeActive(true);
     const onSwipeEnd = () => setIsSwipeActive(false);
-
     window.addEventListener('swipe-start', onSwipeStart);
     window.addEventListener('swipe-end', onSwipeEnd);
     return () => {
@@ -51,24 +49,16 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
     };
   }, []);
 
-  // ═════════════════════════════════════
-  // Update frame Lottie sesuai tarikan
-  // ═════════════════════════════════════
   const updateLottieFrame = (distance: number) => {
     if (!lottieRef.current) return;
     const progress = Math.min(distance / 100, 1);
-    const totalFrames = lottieRef.current.getDuration(true);
+    const totalFrames = lottieRef.current.getDuration(true) || 60;
     const frame = progress * totalFrames;
     lottieRef.current.goToAndStop(frame, true);
   };
 
-  // ═════════════════════════════════════
-  // Touch handlers
-  // ═════════════════════════════════════
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Abaikan jika tidak di atas
-    if (!isAtTop.current) return;
-    
+    if (!isAtTop.current || isRefreshing) return;
     startY.current = e.touches[0].clientY;
     startX.current = e.touches[0].clientX;
   };
@@ -76,15 +66,12 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
   const handleTouchMove = (e: React.TouchEvent) => {
     if (isSwipeActive || !isAtTop.current || isRefreshing) return;
 
-    const currentY = e.touches[0].clientY;
-    const currentX = e.touches[0].clientX;
-    const deltaY = currentY - startY.current;
-    const deltaX = Math.abs(currentX - startX.current);
+    const deltaY = e.touches[0].clientY - startY.current;
+    const deltaX = Math.abs(e.touches[0].clientX - startX.current);
 
+    // Pastikan gerakan adalah pull kebawah dan bukan scroll horizontal
     if (deltaY > 0 && deltaY > deltaX * 1.5) {
-      if (!isPulling.current) {
-        isPulling.current = true;
-      }
+      isPulling.current = true;
       const dampenedDistance = Math.min(deltaY * 0.5, 120);
       setPullDistance(dampenedDistance);
       updateLottieFrame(dampenedDistance);
@@ -95,29 +82,23 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
   };
 
   const handleTouchEnd = async () => {
-    startY.current = 0;
-    startX.current = 0;
-    isPulling.current = false;
-
-    if (isSwipeActive) return;
-
-    if (pullDistance > 80 && !isRefreshing) {
+    if (isPulling.current && pullDistance > 80 && !isRefreshing) {
       setIsRefreshing(true);
       lottieRef.current?.play();
       await onRefresh();
       setIsRefreshing(false);
     }
-    
-    // Kembalikan ke posisi awal dengan mulus
     setPullDistance(0);
+    isPulling.current = false;
   };
 
   return (
     <div
+      ref={wrapperRef}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ position: 'relative', width: '100%' }}
+      style={{ position: 'relative', width: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}
     >
       <div 
         style={{ 
@@ -125,7 +106,7 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
           overflow: 'hidden', 
           display: 'flex', 
           justifyContent: 'center',
-          transition: isPulling.current ? 'none' : 'height 0.3s ease-out' // Transisi mulus saat dilepas
+          transition: isPulling.current ? 'none' : 'height 0.3s ease-out'
         }}
       >
         <div style={{ width: 60, height: 60 }}>
@@ -137,7 +118,6 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
           />
         </div>
       </div>
-
       {children}
     </div>
   );

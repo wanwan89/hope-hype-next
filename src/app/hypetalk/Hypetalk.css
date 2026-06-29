@@ -119,8 +119,16 @@
   padding-bottom: calc(110px + max(env(safe-area-inset-bottom), 16px));
   -webkit-overflow-scrolling: touch;
   background-color: var(--bg-main);
+
+  /* 🔥 TAMBAHKAN DUA BARIS INI: */
+  overscroll-behavior-y: none; 
+  touch-action: pan-y;
 }
-.telegram-wrapper .tg-chat-list::-webkit-scrollbar { width: 0; display: none; }
+
+.telegram-wrapper .tg-chat-list::-webkit-scrollbar { 
+  width: 0; 
+  display: none; 
+}
 
 .telegram-wrapper .tg-chat-item { display: flex; align-items: center; gap: 14px; padding: 10px 16px; cursor: pointer; user-select: none; position: relative; animation: fadeIn 0.3s ease forwards; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s ease; }
 .telegram-wrapper .tg-chat-item:active { background-color: var(--bg-secondary); }
