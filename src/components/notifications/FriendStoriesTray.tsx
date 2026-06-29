@@ -62,16 +62,13 @@ export default function FriendStoriesTray({
   const truncateBubble = (text: string) =>
     text && text.length > 65 ? text.substring(0, 65) + '...' : text;
 
-  // Variabel untuk warna gradien seragam di kedua file
-  const activeGradient = 'linear-gradient(45deg, #1f3cff, #00d2ff)';
-
   return (
     <div
       className="friend-stories-tray"
       style={{
         position: 'relative',
-        background: 'var(--bg-main, #ffffff)',
-        borderBottom: '1px solid var(--border-card, #e0e0e0)',
+        background: 'var(--bg-main)',
+        borderBottom: '1px solid var(--border-card)',
         padding: '0 15px', 
         overflow: 'visible',
       }}
@@ -96,8 +93,8 @@ export default function FriendStoriesTray({
               <div 
                 className={`story-ring ${myStatusText ? 'active-story' : 'no-story'}`}
                 style={{
-                  padding: myStatusText ? '2px' : '0px', // Ketebalan border dibuat tipis
-                  background: myStatusText ? activeGradient : 'transparent',
+                  padding: myStatusText ? '2px' : '0px',
+                  background: myStatusText ? 'var(--accent-story)' : 'transparent',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -110,14 +107,14 @@ export default function FriendStoriesTray({
                     alt="Catatan" 
                     style={{ 
                       borderRadius: '50%', 
-                      border: myStatusText ? '2px solid var(--bg-main, #ffffff)' : 'none',
+                      border: myStatusText ? '2px solid var(--bg-main)' : 'none',
                       width: '100%', 
                       height: '100%', 
                       objectFit: 'cover' 
                     }} 
                   />
                 ) : (
-                  <div className="default-avatar" style={{ borderRadius: '50%', border: myStatusText ? '2px solid var(--bg-main, #ffffff)' : 'none' }}>
+                  <div className="default-avatar" style={{ borderRadius: '50%', border: myStatusText ? '2px solid var(--bg-main)' : 'none' }}>
                     <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                   </div>
                 )}
@@ -130,7 +127,7 @@ export default function FriendStoriesTray({
                     position: 'absolute',
                     top: '-6px',
                     left: '-6px',
-                    background: 'var(--bg-main, #ffffff)',
+                    background: 'var(--bg-main)',
                     padding: '2px',
                     borderRadius: '50%',
                     border: 'none',
@@ -142,7 +139,7 @@ export default function FriendStoriesTray({
                     zIndex: 12
                   }}
                 >
-                  <div style={{ background: '#1f3cff', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ background: 'var(--primary)', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span className="material-icons" style={{ fontSize: 14, color: 'white', fontWeight: 'bold' }}>add</span>
                   </div>
                 </button>
@@ -159,8 +156,8 @@ export default function FriendStoriesTray({
                     top: '-15px', 
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    background: 'var(--bg-card, #ffffff)',
-                    border: '1px solid var(--border-card, #e0e0e0)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-card)',
                     borderRadius: '20px', 
                     padding: '6px 12px',
                     minWidth: '55px',
@@ -173,7 +170,7 @@ export default function FriendStoriesTray({
                   <div style={{
                     fontSize: '11px',
                     fontWeight: 600,
-                    color: 'var(--text-main, #1c1e21)',
+                    color: 'var(--text-main)',
                     textAlign: 'center',
                     display: '-webkit-box',
                     WebkitLineClamp: 3, 
@@ -192,9 +189,9 @@ export default function FriendStoriesTray({
                     transform: 'translateX(-50%) rotate(45deg)',
                     width: '8px',
                     height: '8px',
-                    background: 'var(--bg-card, #ffffff)',
-                    borderRight: '1px solid var(--border-card, #e0e0e0)',
-                    borderBottom: '1px solid var(--border-card, #e0e0e0)',
+                    background: 'var(--bg-card)',
+                    borderRight: '1px solid var(--border-card)',
+                    borderBottom: '1px solid var(--border-card)',
                     zIndex: -1,
                   }} />
                 </div>
@@ -224,8 +221,8 @@ export default function FriendStoriesTray({
                 <div 
                   className={`story-ring ${friend.hasStory ? 'active-story' : 'no-story'}`}
                   style={{
-                    padding: friend.hasStory ? '2px' : '0px', // Ketebalan border tipis (2px)
-                    background: friend.hasStory ? activeGradient : 'transparent',
+                    padding: friend.hasStory ? '2px' : '0px',
+                    background: friend.hasStory ? 'var(--accent-story)' : 'transparent',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
@@ -238,14 +235,14 @@ export default function FriendStoriesTray({
                       alt={friend.username} 
                       style={{ 
                         borderRadius: '50%', 
-                        border: friend.hasStory ? '2px solid var(--bg-main, #ffffff)' : 'none',
+                        border: friend.hasStory ? '2px solid var(--bg-main)' : 'none',
                         width: '100%', 
                         height: '100%', 
                         objectFit: 'cover' 
                       }} 
                     />
                   ) : (
-                    <div className="default-avatar" style={{ borderRadius: '50%', border: friend.hasStory ? '2px solid var(--bg-main, #ffffff)' : 'none' }}>
+                    <div className="default-avatar" style={{ borderRadius: '50%', border: friend.hasStory ? '2px solid var(--bg-main)' : 'none' }}>
                       <span className="material-icons" style={{ fontSize: 32, color: 'var(--text-muted)' }}>person</span>
                     </div>
                   )}
@@ -259,8 +256,8 @@ export default function FriendStoriesTray({
                       top: '-15px', 
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      background: 'var(--bg-card, #ffffff)',
-                      border: '1px solid var(--border-card, #e0e0e0)',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-card)',
                       borderRadius: '20px', 
                       padding: '6px 12px',
                       minWidth: '55px',
@@ -273,7 +270,7 @@ export default function FriendStoriesTray({
                     <div style={{
                       fontSize: '11px',
                       fontWeight: 600,
-                      color: 'var(--text-main, #1c1e21)',
+                      color: 'var(--text-main)',
                       textAlign: 'center',
                       display: '-webkit-box',
                       WebkitLineClamp: 3,
@@ -292,9 +289,9 @@ export default function FriendStoriesTray({
                       transform: 'translateX(-50%) rotate(45deg)',
                       width: '8px',
                       height: '8px',
-                      background: 'var(--bg-card, #ffffff)',
-                      borderRight: '1px solid var(--border-card, #e0e0e0)',
-                      borderBottom: '1px solid var(--border-card, #e0e0e0)',
+                      background: 'var(--bg-card)',
+                      borderRight: '1px solid var(--border-card)',
+                      borderBottom: '1px solid var(--border-card)',
                       zIndex: -1,
                     }} />
                   </div>
@@ -313,7 +310,7 @@ export default function FriendStoriesTray({
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0,0,0,0.5)',
+              background: 'var(--modal-overlay)',
               backdropFilter: 'blur(4px)',
               zIndex: 9998,
             }}
@@ -325,8 +322,8 @@ export default function FriendStoriesTray({
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border-card, #e0e0e0)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-card)',
               borderRadius: '20px',
               padding: '20px',
               maxWidth: '320px',
@@ -334,12 +331,12 @@ export default function FriendStoriesTray({
               boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
               zIndex: 9999,
               fontSize: '14px',
-              color: 'var(--text-main, #1a1a1a)',
+              color: 'var(--text-main)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 15 }}>
-              <span className="material-icons" style={{ fontSize: 24, color: '#1f3cff' }}>sticky_note_2</span>
+              <span className="material-icons" style={{ fontSize: 24, color: 'var(--primary)' }}>sticky_note_2</span>
               <strong style={{ fontSize: 16 }}>{popupNote.username}</strong>
             </div>
 
@@ -347,8 +344,8 @@ export default function FriendStoriesTray({
               style={{
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
-                background: 'var(--bg-main, #f5f5f5)',
-                border: '1px solid var(--border-card, #e0e0e0)',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-card)',
                 padding: '16px',
                 borderRadius: '12px',
                 marginBottom: 20,
@@ -363,7 +360,7 @@ export default function FriendStoriesTray({
               <button
                 style={{
                   flex: 1,
-                  background: '#1f3cff',
+                  background: 'var(--primary)',
                   color: 'white',
                   border: 'none',
                   borderRadius: 12,
@@ -383,8 +380,8 @@ export default function FriendStoriesTray({
                 style={{
                   flex: 1,
                   background: 'transparent',
-                  color: 'var(--text-main, #1a1a1a)',
-                  border: '1px solid var(--border-card, #e0e0e0)',
+                  color: 'var(--text-main)',
+                  border: '1px solid var(--border-card)',
                   borderRadius: 12,
                   padding: '12px',
                   fontSize: 14,

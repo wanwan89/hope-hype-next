@@ -19,7 +19,7 @@ export default function SearchWrapperpost() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadType, setUploadType] = useState('post'); // Penanda apakah yang di-upload "post" atau "story"
+  const [uploadType, setUploadType] = useState('post');
 
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const placeholders = ['kreator...', 'postingan...', 'trending...'];
@@ -41,7 +41,6 @@ export default function SearchWrapperpost() {
     return () => clearInterval(interval);
   }, [mounted, isHidden, placeholders.length]);
 
-  // Listener upload
   useEffect(() => {
     if (localStorage.getItem('isUploading') === 'true') {
       setIsUploading(true);
@@ -52,7 +51,7 @@ export default function SearchWrapperpost() {
     const handleUploadStart = (e: any) => {
       setIsUploading(true);
       setUploadProgress(0);
-      setUploadType(e.detail?.type || 'post'); // Ambil info jenis upload dari event jika ada
+      setUploadType(e.detail?.type || 'post'); 
     };
     
     const handleUploadProgress = (e: any) => {
@@ -125,9 +124,6 @@ export default function SearchWrapperpost() {
 
   if (!mounted || isHidden) return null;
 
-  // Variabel untuk warna gradien seragam di kedua file
-  const activeGradient = 'linear-gradient(45deg, #1f3cff, #00d2ff)';
-
   return (
     <div className="header-main-wrapper" style={{ background: 'var(--bg-main)' }}>
       <div className="search-wrapper glass-effect" style={{ background: 'var(--bg-main)' }}>
@@ -146,7 +142,7 @@ export default function SearchWrapperpost() {
               pointerEvents: 'none',
               overflow: 'hidden',
               gap: '4px',
-              color: 'var(--text-muted, #888)',
+              color: 'var(--text-muted)',
               fontSize: '14px',
               fontWeight: 500,
               whiteSpace: 'nowrap',
@@ -207,7 +203,6 @@ export default function SearchWrapperpost() {
         </button>
       </div>
 
-      {/* Progress Bar Dinamis (Berubah sesuai post atau story) */}
       {isUploading && (
         <div
           style={{
@@ -302,7 +297,6 @@ export default function SearchWrapperpost() {
         </div>
       )}
 
-      {/* Story */}
       {stories.length > 0 && (
         <div className="stories-container" style={{ background: 'var(--bg-main)' }}>
           {stories.map((story) => (
@@ -318,8 +312,8 @@ export default function SearchWrapperpost() {
               <div
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
-                  padding: '2px', // Samakan ketebalannya dengan file 1
-                  background: activeGradient, // Samakan gradien warnanya
+                  padding: '2px',
+                  background: 'var(--accent-story)', // Diselaraskan ke CSS global
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -333,7 +327,7 @@ export default function SearchWrapperpost() {
                   }
                   alt="avatar"
                   style={{
-                    border: '2px solid var(--bg-main)', // Celah putih/hitam agar terlihat ramping
+                    border: '2px solid var(--bg-main)', // Menghasilkan border transparan alami (celah putih/hitam)
                     borderRadius: '50%',
                     width: '100%',
                     height: '100%',

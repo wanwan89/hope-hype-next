@@ -13,8 +13,8 @@ type Props = {
   onAvatarClick: () => void;
   onChat: () => void;
   onToggleFollow: () => void;
-  onEdit?: () => void; // Menjadikan optional
-  onShare?: () => void; // Menjadikan optional
+  onEdit?: () => void;
+  onShare?: () => void;
   onOpenActionSheet: () => void;
   onOpenFollowers: () => void;
   onOpenFollowing: () => void;
@@ -28,20 +28,56 @@ const ProfileInfo: React.FC<Props> = ({
 }) => {
   return (
     <section className="profile-info">
-      <div className="avatar-container">
-        <div className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} onClick={onAvatarClick} style={{ cursor: hasStory ? 'pointer' : 'default' }}>
-          <img className="profile-avatar-img" src={profile.avatar_url || '/asets/png/profile.webp'} alt="Avatar" />
+      <div className="avatar-container" style={{ display: 'flex', justifyContent: 'center' }}>
+        <div 
+          className={`avatar-ring ${hasStory ? 'has-story' : 'normal-ring'}`} 
+          onClick={onAvatarClick} 
+          style={{ 
+            cursor: hasStory ? 'pointer' : 'default',
+            padding: hasStory ? '2px' : '0px',
+            background: hasStory ? 'var(--accent-story)' : 'transparent',
+            borderRadius: '50%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <img 
+            className="profile-avatar-img" 
+            src={profile.avatar_url || '/asets/png/profile.webp'} 
+            alt="Avatar" 
+            style={{
+              border: hasStory ? '2px solid var(--bg-main)' : 'none',
+              borderRadius: '50%',
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }}
+          />
         </div>
       </div>
-      <h1 className="profile-name">{profile.full_name || profile.username} <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} /></h1>
+      
+      <h1 className="profile-name">
+        {profile.full_name || profile.username} 
+        <span dangerouslySetInnerHTML={{ __html: getUserBadge(profile.role) }} />
+      </h1>
       <p className="profile-username">@{profile.username}</p>
+      
       <div className="profile-stats">
-        <div className="stat-box" onClick={onOpenFollowers}><span className="stat-num">{stats.followers}</span><span className="stat-label">{t('followers', 'Pengikut')}</span></div>
-        <div className="stat-box" onClick={onOpenFollowing}><span className="stat-num">{stats.following}</span><span className="stat-label">{t('following', 'Mengikuti')}</span></div>
-        <div className="stat-box"><span className="stat-num">{stats.likes}</span><span className="stat-label">{t('likes', 'Suka')}</span></div>
+        <div className="stat-box" onClick={onOpenFollowers}>
+          <span className="stat-num">{stats.followers}</span>
+          <span className="stat-label">{t('followers', 'Pengikut')}</span>
+        </div>
+        <div className="stat-box" onClick={onOpenFollowing}>
+          <span className="stat-num">{stats.following}</span>
+          <span className="stat-label">{t('following', 'Mengikuti')}</span>
+        </div>
+        <div className="stat-box">
+          <span className="stat-num">{stats.likes}</span>
+          <span className="stat-label">{t('likes', 'Suka')}</span>
+        </div>
       </div>
       
-      {/* Jika isMe, bagian profile-actions tidak menampilkan tombol apa pun atau bisa disembunyikan */}
       {!isMe && (
         <div className="profile-actions">
           <button className="btn-action btn-secondary" onClick={onChat}>
@@ -57,6 +93,7 @@ const ProfileInfo: React.FC<Props> = ({
       )}
 
       <p className="profile-bio">{profile.bio || t('no_bio', 'Belum ada bio')}</p>
+      
       {profile.website && (
         <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '10px', color: '#8e8e8e', fontWeight: '500', marginTop: '4px', textDecoration: 'none' }}>
           <span className="material-icons" style={{ fontSize: '12px' }}>link</span>
