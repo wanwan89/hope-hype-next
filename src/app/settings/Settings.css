@@ -5,12 +5,10 @@
    Semua diambil dari globals.css (--bg-main, --bg-card, dll.)
 ----------------------------------------------- */
 
-/* Hapus styling body di sini, karena sudah diatur oleh globals.css */
-
 .st-page-wrapper {
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--bg-main);        /* pakai variabel global */
+  background-color: var(--bg-main);
   color: var(--text-main);
   transition: background-color 0.3s ease, color 0.3s ease;
   font-family: 'Poppins', sans-serif;
@@ -20,10 +18,9 @@
 
 /* --- HEADER --- */
 .st-header {
-  padding: 12px 16px; /* lebih ramping */
+  padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top));
-  background: var(--bg-main);              /* solid agar tetap terbaca, tidak perlu glass */
-  /* backdrop-filter dihapus agar seragam dengan global */
+  background: var(--bg-main);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -78,7 +75,6 @@
   border-radius: 22px;
   overflow: hidden;
   border: 1px solid var(--border-card);
-  /* box-shadow dihilangkan agar sesuai dengan estetika global (tanpa bayangan) */
 }
 
 .st-item {
@@ -95,7 +91,7 @@
 .st-item:last-child { border-bottom: none; }
 
 .st-item:active {
-  background-color: var(--bg-secondary);   /* gunakan variabel global */
+  background-color: var(--bg-secondary);
 }
 
 .st-item-left {
@@ -108,7 +104,7 @@
 .st-icon-box {
   width: 38px;
   height: 38px;
-  background: var(--bg-secondary);        /* lebih terlihat di kedua tema */
+  background: var(--bg-secondary);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -136,7 +132,7 @@
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: #d1d5db; /* abu-abu netral, tidak tergantung tema */
+  background-color: #d1d5db;
   transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 34px;
 }
@@ -155,7 +151,7 @@
 }
 
 .st-switch input:checked + .st-slider {
-  background-color: var(--primary);       /* pakai primary global */
+  background-color: var(--primary-bg);   /* ✅ biru tetap */
 }
 
 .st-switch input:checked + .st-slider:before {

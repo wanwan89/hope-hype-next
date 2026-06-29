@@ -32,7 +32,6 @@
   border-left: 1px solid var(--border-card);
   border-right: 1px solid var(--border-card);
   z-index: 10;
-  /* 🔥 Supaya tidak ada celah tambahan */
   padding-top: 0 !important;
 }
 
@@ -41,12 +40,11 @@
 }
 
 /* =============================================================
-   HEADER (🔥 FULL FIX: HEADER LEBIH KE ATAS)
+   HEADER
    ============================================================= */
 .telegram-wrapper .tg-header {
   background-color: var(--bg-main);
   z-index: 20;
-  /* Padding atas minimal, hanya untuk safe area */
   padding-top: max(env(safe-area-inset-top), 4px);
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-card);
@@ -55,7 +53,7 @@
   display: flex; 
   align-items: center; 
   justify-content: space-between; 
-  padding: 8px 16px;  /* lebih rapat */
+  padding: 8px 16px;
 }
 .telegram-wrapper .tg-header-left { 
   display: flex; 
@@ -137,7 +135,7 @@
 .telegram-wrapper .tg-chat-item.unread .tg-time { color: var(--primary); font-weight: 600; }
 .telegram-wrapper .tg-preview { font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; display: flex; align-items: center; gap: 4px; }
 .telegram-wrapper .tg-chat-item.unread .tg-preview { color: var(--text-main); font-weight: 500; }
-.telegram-wrapper .tg-unread-badge { background: var(--primary); color: white; font-size: 11px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 6px; flex-shrink: 0; }
+.telegram-wrapper .tg-unread-badge { background: var(--primary-bg); color: white; font-size: 11px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 6px; flex-shrink: 0; }
 .telegram-wrapper .tg-unread-badge.bump { animation: badgeBounce 0.4s ease; }
 
 /* =============================================================
@@ -235,7 +233,7 @@
 /* =============================================================
    ACTION BUTTONS & CARDS
    ============================================================= */
-.telegram-wrapper .action-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; box-shadow: none; }
+.telegram-wrapper .action-btn { width: 100%; background: var(--primary-bg); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; box-shadow: none; }
 .telegram-wrapper .action-btn:active { transform: scale(0.98); }
 .telegram-wrapper .love-btn { background: linear-gradient(135deg, #1DA1F2, #1f3cff); border-radius: 15px; }
 
@@ -277,7 +275,7 @@
   position: absolute;
   bottom: calc(95px + max(env(safe-area-inset-bottom), 16px));
   right: 20px;
-  width: 56px; height: 56px; border-radius: 50%; background-color: var(--primary); border: none; color: white;
+  width: 56px; height: 56px; border-radius: 50%; background-color: var(--primary-bg); border: none; color: white;
   box-shadow: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50;
   -webkit-tap-highlight-color: transparent;
@@ -298,12 +296,12 @@
 }
 
 .telegram-wrapper .sidebar-header { padding: 40px 20px 20px; background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-card); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-.telegram-wrapper .side-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
+.telegram-wrapper .side-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-bg); }
 .telegram-wrapper .sidebar-user-info { display: flex; flex-direction: column; gap: 2px; }
 .telegram-wrapper .side-username { font-size: 18px; font-weight: 700; color: var(--text-main); margin: 0; }
 .telegram-wrapper .side-id { font-size: 13px; color: var(--text-muted); cursor: pointer; transition: color 0.2s; margin: 0; -webkit-tap-highlight-color: transparent;}
 .telegram-wrapper .side-id:active { color: var(--primary); }
-.telegram-wrapper .btn-edit-bio { background-color: var(--primary); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 5px; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
+.telegram-wrapper .btn-edit-bio { background-color: var(--primary-bg); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 5px; -webkit-tap-highlight-color: transparent; transition: transform 0.2s; }
 .telegram-wrapper .btn-edit-bio:active { transform: scale(0.95); }
 
 .telegram-wrapper .sidebar-menu { display: flex; flex-direction: column; padding: 10px 0; overflow-y: auto; }

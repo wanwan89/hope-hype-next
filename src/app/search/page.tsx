@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Lottie from 'lottie-react';
 
-// Pastikan file lottie ini ada di folder yang sesuai
 import emptyLottie from '@/assets/lottie/empty.json'; 
 import babyLottie from '@/assets/lottie/baby.json';
 
@@ -24,23 +23,19 @@ function SearchContent() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   
-  // STATE TAMPILAN AWAL
   const [recommendedPosts, setRecommendedPosts] = useState<any[]>([]); 
   const [categoryRecommendations, setCategoryRecommendations] = useState<any[]>([]); 
   const [trendingKeywords, setTrendingKeywords] = useState<string[]>([]);
   
-  // STATE AUTOCOMPLETE & HISTORY
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showAllHistory, setShowAllHistory] = useState(false);
   
-  // STATE POP-UP SUPPORT
   const [showSupportPopup, setShowSupportPopup] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // KATA KUNCI SENSITIF
   const sensitiveKeywords = [
     'bunuh diri', 'membunuh', 'trauma', 'depresi', 'mati', 
     'akhiri hidup', 'kesepian', 'putus asa', 'menyakiti diri', 'suicide'
@@ -62,7 +57,6 @@ function SearchContent() {
     };
     initUser();
 
-    // Load Local History
     const savedHistory = localStorage.getItem('hype_recent_searches');
     if (savedHistory) {
       setRecentSearches(JSON.parse(savedHistory));
@@ -121,7 +115,6 @@ function SearchContent() {
     }
   }, [query]);
 
-  // FUNGSI DETEKSI KATA SENSITIF
   const checkSensitiveContent = (text: string) => {
     const lowerText = text.toLowerCase();
     return sensitiveKeywords.some(keyword => lowerText.includes(keyword));
@@ -204,7 +197,6 @@ function SearchContent() {
     if (e.key === 'Enter' && localQuery.trim() !== '') {
       setShowSuggestions(false);
       
-      // CEK INTERCEPT POPUP SUPPORT
       if (checkSensitiveContent(localQuery)) {
         setShowSupportPopup(true);
         return; 
@@ -219,7 +211,6 @@ function SearchContent() {
     setLocalQuery(keyword);
     setShowSuggestions(false);
 
-    // CEK INTERCEPT POPUP SUPPORT
     if (checkSensitiveContent(keyword)) {
       setShowSupportPopup(true);
       return; 
@@ -255,10 +246,16 @@ function SearchContent() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
+    <div style={{ minHeight: '100%', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
       
-      {/* HEADER SEARCH BAR */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', padding: '12px 20px', borderBottom: '1px solid var(--border-card)', display: 'flex', alignItems: 'center', gap: '15px' }}>
+      {/* HEADER SEARCH BAR – solid, tidak transparan */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        background: 'var(--bg-main)',    // solid, bukan glass
+        padding: '12px 20px',
+        borderBottom: '1px solid var(--border-card)',
+        display: 'flex', alignItems: 'center', gap: '15px'
+      }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
           <span className="material-icons">arrow_back</span>
         </button>
@@ -292,9 +289,10 @@ function SearchContent() {
           {showSuggestions && searchSuggestions.length > 0 && (
             <div style={{
               position: 'absolute', top: '48px', left: 0, right: 0,
-              background: 'var(--bg-card)', backdropFilter: 'blur(16px)',
-              borderRadius: '16px', border: '1px solid var(--border-card)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 100, display: 'flex', flexDirection: 'column'
+              background: 'var(--bg-card)', borderRadius: '16px',
+              border: '1px solid var(--border-card)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 100,
+              display: 'flex', flexDirection: 'column'
             }}>
               {searchSuggestions.map((sugg, idx) => (
                 <div 
@@ -446,7 +444,12 @@ function SearchContent() {
                             {!isMe && (
                               <button 
                                 onClick={(e) => handleFollowToggle(e, user.id)}
-                                style={{ background: isFollowing ? 'var(--bg-secondary)' : 'var(--primary)', color: isFollowing ? 'var(--text-main)' : '#fff', border: isFollowing ? '1px solid var(--border-card)' : 'none', padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}
+                                style={{
+                                  background: isFollowing ? 'var(--bg-secondary)' : 'var(--primary-bg)',
+                                  color: isFollowing ? 'var(--text-main)' : '#fff',
+                                  border: isFollowing ? '1px solid var(--border-card)' : 'none',
+                                  padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer'
+                                }}
                               >
                                 {isFollowing ? 'Mengikuti' : 'Ikuti'}
                               </button>
@@ -539,7 +542,7 @@ function SearchContent() {
             textAlign: 'center',
             boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
             border: '1px solid var(--border-card)',
-            animation: 'fadeInUp 0.3s ease-out'
+            animation: 'slideUp 0.3s ease-out'
           }}>
             <div style={{ width: '150px', height: '150px', margin: '0 auto' }}>
               <Lottie animationData={babyLottie} loop={true} />
@@ -556,11 +559,10 @@ function SearchContent() {
               <button 
                 onClick={() => {
                   setShowSupportPopup(false);
-                  // ✅ PERBAIKAN: gunakan parameter "from", bukan "id"
                   router.push('/hypetalk/room?from=b648ab89-32b7-494a-b858-ee186f918f90');
                 }}
                 style={{
-                  background: 'var(--primary)',
+                  background: 'var(--primary-bg)',
                   color: '#fff',
                   border: 'none',
                   padding: '14px',
