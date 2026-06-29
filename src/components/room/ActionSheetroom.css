@@ -1,17 +1,18 @@
 /* =========================================
-   ACTION SHEET - SCOPED DARK MODE (VOICE ROOM)
+   ACTION SHEET - FULL FIX (SINKRON GLOBAL CSS)
    ========================================= */
 
-/* Overlay (sama dengan UserProfileSheetroom) */
+/* Overlay */
 .in-voice-room .user-profile-sheet-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--modal-overlay);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 10005;
   opacity: 0;
   visibility: hidden;
-  transition: 0.3s;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .in-voice-room .user-profile-sheet-overlay.active {
@@ -32,8 +33,8 @@
   transform: translateY(100%);
   transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  border-top: 1px solid var(--border-card);
+  box-shadow: none;
 }
 
 .in-voice-room .user-profile-sheet-overlay.active .user-profile-sheet {
@@ -43,7 +44,8 @@
 .in-voice-room .sheet-handle {
   width: 40px;
   height: 5px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--border-card);
+  opacity: 0.5;
   border-radius: 10px;
   margin: 0 auto 20px;
 }
@@ -73,12 +75,12 @@
 .in-voice-room .btn-action-sheet.danger {
   background: rgba(255, 71, 87, 0.1);
   color: var(--danger);
-  border: 1px solid rgba(255, 71, 87, 0.2);
+  border: 1px solid var(--danger);
 }
 
 /* Tombol gradient (biru) */
 .in-voice-room .btn-action-sheet.btn-gradient {
   background: linear-gradient(135deg, var(--primary), #bc13fe);
   color: #fff;
-  box-shadow: 0 4px 15px rgba(31, 60, 255, 0.3);
-} 
+  box-shadow: none;
+}

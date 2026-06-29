@@ -1,36 +1,37 @@
 /* ==========================================
-   OVERLAY & DRAWER UTAMA
+   GIFT DRAWER – FULL FIX (Sinkron Global CSS)
    ========================================== */
+
+/* Overlay */
 .in-voice-room .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--modal-overlay);
   z-index: 100000;
 }
 
+/* Drawer */
 .in-voice-room .gift-drawer {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-base, #1b1b1f);
+  background: var(--bg-modal);
   border-top-left-radius: 32px;
   border-top-right-radius: 32px;
   z-index: 100001;
   padding-top: 32px;
   padding-bottom: 0;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  box-shadow: none;
+  border-top: 1px solid var(--border-card);
   display: flex;
   flex-direction: column;
   max-height: 90vh;
 
-  /* Animasi slide up sederhana */
   transform: translateY(100%);
   transition: transform 0.25s ease;
 }
 
-/* Saat drawer aktif, tampilkan */
 .in-voice-room .gift-drawer.show {
   transform: translateY(0);
 }
@@ -39,7 +40,8 @@
 .in-voice-room .handle {
   width: 48px;
   height: 5px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--border-card);
+  opacity: 0.5;
   border-radius: 10px;
   position: absolute;
   top: 12px;
@@ -61,11 +63,11 @@
 .in-voice-room .drawer-title {
   font-weight: 800;
   font-size: 16px;
-  color: white;
+  color: var(--text-main);
 }
 
 .in-voice-room .close-btn {
-  color: var(--text-muted, #a1a1aa);
+  color: var(--text-muted);
   font-size: 24px;
   cursor: pointer;
 }
@@ -78,7 +80,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-card);
   margin: 0 20px 15px 20px;
 }
 
@@ -94,8 +96,8 @@
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #1f3cff;
-  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--primary);
+  background: var(--bg-secondary);
 }
 
 .in-voice-room .level-badge-wrapper {
@@ -119,17 +121,17 @@
   align-items: center;
   font-size: 11px;
   font-weight: 800;
-  color: white;
+  color: var(--text-main);
 }
 
 .in-voice-room .max-level {
-  color: #ff0844;
+  color: var(--danger);
 }
 
 .in-voice-room .progress-track {
   width: 100%;
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-secondary);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -137,7 +139,7 @@
 .in-voice-room .progress-fill {
   height: 100%;
   border-radius: 10px;
-  background: #1f3cff;
+  background: var(--primary);
   transition: width 0.5s ease;
 }
 
@@ -151,7 +153,7 @@
 
 .in-voice-room .target-label {
   font-size: 12px;
-  color: #a1a1aa;
+  color: var(--text-muted);
   font-weight: 700;
   margin-bottom: 8px;
   display: block;
@@ -193,18 +195,18 @@
 }
 
 .in-voice-room .target-user.selected .target-avatar {
-  border-color: #1f3cff;
+  border-color: var(--primary);
 }
 
 .in-voice-room .target-name {
   font-size: 11px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
 }
 
 .in-voice-room .no-member-text {
   font-size: 12px;
-  color: var(--text-muted, #a1a1aa);
+  color: var(--text-muted);
   font-style: italic;
   padding: 10px 0;
 }
@@ -219,11 +221,11 @@
   padding: 15px 20px;
   overflow-y: auto;
   flex: 1;
-  max-height: 45vh; /* Sesuaikan kebutuhan */
+  max-height: 45vh;
 }
 
 .in-voice-room .gift-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-secondary);
   border-radius: 12px;
   padding: 12px;
   display: flex;
@@ -236,8 +238,8 @@
 }
 
 .in-voice-room .gift-card.selected {
-  border-color: #1f3cff;
-  background: rgba(31, 60, 255, 0.08);
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .in-voice-room .gift-lottie {
@@ -251,13 +253,13 @@
 .in-voice-room .gift-name {
   font-size: 11px;
   font-weight: 800;
-  color: white;
+  color: var(--text-main);
   text-transform: uppercase;
 }
 
 .in-voice-room .gift-price {
   font-size: 11px;
-  color: #a1a1aa;
+  color: var(--text-muted);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -265,7 +267,7 @@
 }
 
 .in-voice-room .gift-send-btn {
-  background: #1f3cff;
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -290,8 +292,8 @@
   align-items: center;
   padding: 15px 20px;
   padding-bottom: calc(15px + env(safe-area-inset-bottom));
-  background: var(--bg-base, #1b1b1f);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-modal);
+  border-top: 1px solid var(--border-card);
 }
 
 .in-voice-room .footer-coin-box {
@@ -300,14 +302,14 @@
   gap: 6px;
   font-weight: 800;
   font-size: 14px;
-  color: white;
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  background: var(--bg-secondary);
   padding: 8px 14px;
   border-radius: 12px;
 }
 
 .in-voice-room .main-send-btn {
-  background: #1f3cff;
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: 20px;
@@ -315,7 +317,7 @@
   font-weight: 800;
   font-size: 12px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: transform 0.2s;
 }
 
 .in-voice-room .main-send-btn:active {
