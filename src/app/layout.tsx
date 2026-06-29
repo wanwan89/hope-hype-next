@@ -5,7 +5,7 @@ import i18n from '@/lib/i18n';
 import { I18nextProvider } from 'react-i18next';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script';
 
@@ -131,7 +131,42 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 FULL FIX: SETUP PUSH NOTIFICATION, STATUSBAR & NATIVE FEATURES 🔥 ---
+  // ==========================================================
+  // 🔥 🔥 🔥 FULL FIX: Sync Status Bar dengan Tema Light/Dark 🔥 🔥 🔥
+  // ==========================================================
+  const syncStatusBar = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const platform = Capacitor.getPlatform();
+    if (platform !== 'android' && platform !== 'ios') return;
+
+    try {
+      const htmlEl = document.documentElement;
+      // Deteksi mode gelap berdasarkan class dark atau data-theme (sesuai globals.css)
+      const isDark = htmlEl.classList.contains('dark') || htmlEl.getAttribute('data-theme') === 'dark';
+
+      // Ambil warna background dari CSS yang sudah terupdate secara dinamis
+      const computedStyle = getComputedStyle(htmlEl);
+      let bgColor = computedStyle.getPropertyValue('--bg-main').trim();
+      if (!bgColor) bgColor = isDark ? '#0a0a0a' : '#ffffff'; // Fallback warna
+
+      if (isDark) {
+        // Mode Gelap: Background hitam, Ikon PUTIH
+        await StatusBar.setStyle({ style: Style.Dark });
+      } else {
+        // Mode Terang: Background putih, Ikon HITAM
+        await StatusBar.setStyle({ style: Style.Light });
+      }
+
+      // Set background status bar agar menyatu dengan aplikasi
+      if (platform === 'android') {
+        await StatusBar.setBackgroundColor({ color: bgColor });
+      }
+    } catch (e) {
+      console.warn("⚠️ StatusBar sync error:", e);
+    }
+  }, []);
+
+  // --- SETUP PUSH NOTIFICATION & NATIVE FEATURES ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -142,23 +177,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (platform === 'android' || platform === 'ios') {
           console.log("📱 Native Detected: Menghubungkan Firebase FCM & Setup StatusBar...");
 
-          // --- 🔥 FIX: AMBIL BACKGROUND DARI CSS GLOBAL 🔥 ---
-          let bgColor = '#000000'; // Fallback jika CSS var gagal dibaca
-          const computedStyle = getComputedStyle(document.documentElement);
-          const cssBg = computedStyle.getPropertyValue('--bg-main').trim();
-          if (cssBg) bgColor = cssBg;
+          // 🔥 Jalankan sinkronisasi status bar pertama kali
+          await syncStatusBar();
 
-          try {
-            // 🔥 FIX: Ganti Style.Light menjadi Style.Dark agar Ikon & Tulisan menjadi PUTIH 🔥
-            await StatusBar.setStyle({ style: Style.Dark });
-            
-            // 🔥 Set background memakai warna CSS Variable (agar tidak hitam pekat menyatu) 🔥
-            if (platform === 'android') {
-              await StatusBar.setBackgroundColor({ color: bgColor });
-            }
-          } catch (statusErr) {
-            console.warn("⚠️ StatusBar plugin error:", statusErr);
-          }
+          // 🔥 Monitor DOM untuk mendeteksi perubahan tema (Light/Dark)
+          const htmlEl = document.documentElement;
+          const observer = new MutationObserver(() => {
+            syncStatusBar();
+          });
+          // Pantau jika atribut 'class' atau 'data-theme' berubah pada tag html
+          observer.observe(htmlEl, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+
+          // Simpan observer untuk cleanup
+          (window as any).__themeObserver = observer;
 
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
@@ -213,9 +244,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
         PushNotifications.removeAllListeners();
+        // Cleanup observer saat komponen unmount
+        if ((window as any).__themeObserver) {
+          (window as any).__themeObserver.disconnect();
+          delete (window as any).__themeObserver;
+        }
       }
     };
-  }, [router, myProfile]);
+  }, [router, myProfile, syncStatusBar]);
+  // ==========================================================
 
   // --- LOGIKA HALAMAN & RINGTONE ---
   useEffect(() => {
