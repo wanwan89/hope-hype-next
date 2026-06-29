@@ -1,100 +1,99 @@
-// 1. Fungsi Ngitung Level (Maksimal 50, per kelipatan 200 exp)
-export function calculateLevel(giftSent: number) {
+// ============================================================
+// Fungsi Level & Badge (Full Fix) – Sistem Level 1–50
+// ============================================================
+
+/**
+ * Hitung level berdasarkan total giftSent.
+ * Setiap 200 exp naik 1 level, maksimum level 50.
+ */
+export function calculateLevel(giftSent: number): number {
   let exp = giftSent || 0;
   let level = 1;
   let expNeeded = 200;
-  
-  while (exp >= expNeeded) {
+
+  while (exp >= expNeeded && level < 50) {
     exp -= expNeeded;
     level++;
-    expNeeded = level * 200;
+    expNeeded = level * 200;       // tetap naik 200/level agar tidak terlalu cepat
   }
-  
+
   return level > 50 ? 50 : level;
 }
 
-// 2. Fungsi Ambil Ikon & Warna Berdasarkan Tingkat (Tier) Level
-export function getTierInfo(level: number) {
-  if (level >= 40) {
-    return {
-      color: "#ff0055", // Merah Crimson / Pink Tua
-      icon: `<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20v2H2v-2zm.82-10.74l3.05 6.1H18.1l3.08-6.1-4.94 2.82L12 3l-4.24 8.08-4.94-2.82zM12 11.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`
-    };
-  }
-  if (level >= 30) {
-    return {
-      color: "#9d00ff", // Ungu
-      icon: `<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.5L2.5 8 12 22l9.5-14L12 1.5zm0 3.1l5.5 4.4H6.5L12 4.6zM4.6 9h4.8l2.6 9.8L4.6 9zm10 0h4.8l-7.4 9.8L14.6 9z"/></svg>`
-    };
-  }
-  if (level >= 20) {
-    return {
-      color: "#ffaa00", // Orange Emas
-      icon: `<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8.66 15H3.34L12 2zm0 3.5L6.3 14h11.4L12 5.5zM12 9l2.89 5H9.11L12 9z"/></svg>`
-    };
-  }
-  if (level >= 10) {
-    return {
-      color: "#00e676", // Hijau Neon
-      icon: `<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.5l5 2.5v4.5c0 4-2.5 8-5 9.5-2.5-1.5-5-5.5-5-9.5V6l5-2.5z"/></svg>`
-    };
-  }
-  return {
-    color: "#00bfff", // Biru Muda / Cyan
-    icon: `<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.5 8.5L23 11.5l-8.5 2.5L12 23l-2.5-8.5L1 11.5l8.5-2.5L12 0z"/></svg>`
-  };
+/**
+ * Warna isian bintang (SVG) berdasarkan level.
+ * Berganti setiap 10 level.
+ */
+function getLevelColor(level: number): string {
+  if (level >= 40) return '#ff0055'; // Merah
+  if (level >= 30) return '#9d00ff'; // Ungu
+  if (level >= 20) return '#ffaa00'; // Oranye
+  if (level >= 10) return '#00e676'; // Hijau
+  return '#00bfff';                  // Cyan (level 1–9)
 }
 
-// 3. FUNGSI BADGE LEVEL LENGKAP (BOX BIRU PERSEGI, SVG DI DALAM TAPI KELUAR)
-export function getLevelBadgeHTML(levelVal: string | number) {
+/**
+ * Menghasilkan HTML badge level:
+ * - Kotak persegi solid (biru tua)
+ * - SVG bintang dengan centang (warna sesuai level)
+ * - Angka level di sebelah kanan
+ */
+export function getLevelBadgeHTML(levelVal: string | number): string {
   const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
-  
-  // Tentukan warna HANYA untuk SVG berdasarkan level
-  let fillColor: string;
-  if (lvl >= 40) fillColor = '#ff0055'; 
-  else if (lvl >= 30) fillColor = '#9d00ff'; 
-  else if (lvl >= 20) fillColor = '#ffaa00'; 
-  else if (lvl >= 10) fillColor = '#00e676'; 
-  else fillColor = '#00bfff'; 
+  const fillColor = getLevelColor(lvl);
+
+  // Hindari nilai negatif / nol
+  const safeLevel = lvl < 1 ? 1 : lvl;
 
   return `
     <span style="
-      position: relative;
       display: inline-flex;
       align-items: center;
-      background: #1d4ed8; /* Box warna biru */
-      border: 1px solid rgba(255, 255, 255, 0.2); 
-      border-radius: 2px; /* Bentuk persegi (sudut hampir lancip) */
-      padding: 0 6px 0 2px; 
-      height: 14px; /* Tinggi box dibuat kecil agar SVG bisa tumpah keluar */
-      margin-top: 4px; /* Memberi ruang di atas agar efek SVG tidak terpotong */
-      margin-bottom: 4px; /* Memberi ruang di bawah */
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      background: #1d4ed8;                /* biru solid, bukan glass */
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4px;                 /* persegi dengan sudut sedikit melengkung */
+      padding: 2px 6px 2px 2px;
+      height: 20px;
+      box-sizing: border-box;
       font-family: sans-serif;
+      line-height: 1;
+      vertical-align: middle;
     ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 48 48"
-        style="
-          margin-top: -8px; /* Menarik SVG tumpah ke atas */
-          margin-bottom: -8px; /* Menarik SVG tumpah ke bawah */
-          margin-left: -2px; /* Sedikit keluar di area kiri */
-          margin-right: 4px; /* Jarak antara ikon dan angka */
-          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
-          z-index: 2;
-        "
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48"
+        style="margin-right: 4px; flex-shrink: 0; display: block;"
       >
-        <path fill="${fillColor}" stroke="#ffffff" stroke-linejoin="round" stroke-width="2" d="M24 44C32.2347 44 38.9998 37.4742 38.9998 29.0981C38.9998 27.0418 38.8953 24.8375 37.7555 21.4116C36.6157 17.9858 36.3861 17.5436 35.1809 15.4279C34.666 19.7454 31.911 21.5448 31.2111 22.0826C31.2111 21.5231 29.5445 15.3359 27.0176 11.6339C24.537 8 21.1634 5.61592 19.1853 4C19.1853 7.06977 18.3219 11.6339 17.0854 13.9594C15.8489 16.2849 15.6167 16.3696 14.0722 18.1002C12.5278 19.8308 11.8189 20.3653 10.5274 22.4651C9.23596 24.565 9 27.3618 9 29.4181C9 37.7942 15.7653 44 24 44Z"/>
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+          <path fill="${fillColor}" stroke="#000" d="M24 42L4 18.5L9.69488 6L38.3051 6L44 18.5L24 42Z"/>
+          <path stroke="#fff" d="M32 18L24 27L16 18"/>
+        </g>
       </svg>
-      
+
       <span style="
-        font-size: 10px; /* Angka lebih kecil */
+        font-size: 11px;
         font-weight: 700;
         color: #ffffff;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
         line-height: 1;
-        z-index: 1;
       ">
-        ${lvl}
+        ${safeLevel}
       </span>
     </span>
   `;
+}
+
+/**
+ * Dapatkan objek berisi warna dan SVG kecil untuk keperluan lain.
+ * (misal: tampilan tier di profil)
+ */
+export function getTierInfo(level: number): { color: string; icon: string } {
+  const color = getLevelColor(level);
+  const icon = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48" fill="none">
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+        <path fill="${color}" stroke="#000" d="M24 42L4 18.5L9.69488 6L38.3051 6L44 18.5L24 42Z"/>
+        <path stroke="#fff" d="M32 18L24 27L16 18"/>
+      </g>
+    </svg>
+  `;
+  return { color, icon };
 }
