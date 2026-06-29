@@ -40,7 +40,17 @@ const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: an
         <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>local_fire_department</span>
         <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>Rekomendasi Postingan</h3>
       </div>
-      <div className="slider-recommendation" style={{ display: 'flex', overflowX: 'auto', gap: '12px', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', paddingBottom: '5px', willChange: 'transform' }}>
+      <div className="slider-recommendation" style={{ 
+        display: 'flex', 
+        overflowX: 'auto', 
+        gap: '12px', 
+        scrollbarWidth: 'none', 
+        scrollSnapType: 'x mandatory', 
+        paddingBottom: '5px', 
+        willChange: 'transform',
+        WebkitOverflowScrolling: 'touch', // WAJIB untuk iOS agar scroll horizontal tidak macet
+        overscrollBehaviorX: 'contain' // Cegah back-gesture browser saat geser horizontal
+      }}>
         {posts.map(sp => {
           const img = sp.image_url ? sp.image_url.split(',')[0] : '';
           return (
@@ -117,7 +127,7 @@ export default function Gallerypost() {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
 
-  // FIX SCROLL: State untuk menyimpan scroll parent dinamis
+  // BINDING SCROLLER: Mengambil kontrol dari .main-content
   const [scrollParent, setScrollParent] = useState<HTMLElement | undefined>(undefined);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -144,9 +154,9 @@ export default function Gallerypost() {
   
   useGlobalRefresh(refetch);
 
-  // FIX SCROLL: Deteksi container scroll saat komponen dimount
   useEffect(() => {
     setIsMounted(true);
+    // Mencari elemen .main-content dari layout global
     const mainScroller = document.querySelector('.main-content') as HTMLElement;
     if (mainScroller) {
       setScrollParent(mainScroller);
@@ -160,13 +170,9 @@ export default function Gallerypost() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const handleUploadSuccess = () => {
-        refetch();
-      };
+      const handleUploadSuccess = () => refetch();
       window.addEventListener('postUploadSuccess', handleUploadSuccess);
-      return () => {
-        window.removeEventListener('postUploadSuccess', handleUploadSuccess);
-      };
+      return () => window.removeEventListener('postUploadSuccess', handleUploadSuccess);
     }
   }, [refetch]);
 
@@ -297,44 +303,14 @@ export default function Gallerypost() {
         supabase.from("reposts").select("post_id").eq("user_id", currentUser.id).in("post_id", postIds),
         supabase.from("bookmarks").select("post_id").eq("user_id", currentUser.id).in("post_id", postIds),
       ]);
-      setMyLikedPosts(prev => {
-        const n = new Set(prev);
-        myLikes.data?.forEach(l => n.add(String(l.post_id)));
-        return n;
-      });
-      setMyRepostedPosts(prev => {
-        const n = new Set(prev);
-        myReposts.data?.forEach(r => n.add(String(r.post_id)));
-        return n;
-      });
-      setMySavedPosts(prev => {
-        const n = new Set(prev);
-        mySaves.data?.forEach(s => n.add(String(s.post_id)));
-        return n;
-      });
+      
+      setMyLikedPosts(prev => { const n = new Set(prev); myLikes.data?.forEach(l => n.add(String(l.post_id))); return n; });
+      setMyRepostedPosts(prev => { const n = new Set(prev); myReposts.data?.forEach(r => n.add(String(r.post_id))); return n; });
+      setMySavedPosts(prev => { const n = new Set(prev); mySaves.data?.forEach(s => n.add(String(s.post_id))); return n; });
     };
 
     fetchInteractions();
   }, [allPosts, currentUser]);
-
-  const handleSubmitPost = async (fileData: any) => {
-    window.dispatchEvent(new Event('postUploadStart'));
-    localStorage.setItem('isUploading', 'true');
-    localStorage.setItem('uploadProgress', '0');
-  
-    router.push('/');
-  
-    try {
-      window.dispatchEvent(new Event('postUploadSuccess'));
-      localStorage.removeItem('isUploading');
-      localStorage.removeItem('uploadProgress');
-    } catch (error) {
-      console.error('Upload gagal:', error);
-      window.dispatchEvent(new Event('postUploadError'));
-      localStorage.removeItem('isUploading');
-      localStorage.removeItem('uploadProgress');
-    }
-  };
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return router.push('/login');
@@ -575,7 +551,7 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)' }}>
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', overflow: 'visible' }}>
       
       <RepostModal
         isOpen={!!repostModal}
@@ -592,7 +568,6 @@ export default function Gallerypost() {
       <RefreshableWrapper onRefresh={handleRefresh}>
         {isMounted && (
           <Virtuoso
-            // FIX SCROLL: Jika custom scroller ditemukan, matikan window scroll dan gunakan custom
             useWindowScroll={!scrollParent}
             customScrollParent={scrollParent}
             data={allPosts}
