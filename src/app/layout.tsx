@@ -9,10 +9,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Script from 'next/script';
 
-// 🔥 IMPORT CAPACITOR PUSH NOTIFICATIONS 🔥
+// 🔥 IMPORT CAPACITOR PUSH NOTIFICATIONS & NATIVE 🔥
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { StatusBar, Style } from '@capacitor/status-bar'; // 🔥 FIX: Import Status Bar Plugin
 
 // 🔥 IMPORT TOP LOADER 🔥
 import NextTopLoader from 'nextjs-toploader';
@@ -135,7 +136,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // --- 🔥 SETUP PUSH NOTIFICATION NATIVE 🔥 ---
+  // --- 🔥 SETUP PUSH NOTIFICATION & NATIVE FEATURES 🔥 ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
@@ -144,7 +145,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android' || platform === 'ios') {
-          console.log("📱 Native Detected: Menghubungkan Firebase FCM...");
+          console.log("📱 Native Detected: Menghubungkan Firebase FCM & Setup StatusBar...");
+
+          // 🔥 FIX: PENGATURAN STATUS BAR DIMULAI DI SINI 🔥
+          try {
+            // Style.Light berarti konten/ikon gelap (hitam) agar kontras dengan background terang
+            await StatusBar.setStyle({ style: Style.Light });
+            
+            // Set background status bar jadi putih (khusus Android)
+            if (platform === 'android') {
+              await StatusBar.setBackgroundColor({ color: '#FFFFFF' });
+            }
+          } catch (statusErr) {
+            console.warn("⚠️ StatusBar plugin error:", statusErr);
+          }
+          // 🔥 FIX: PENGATURAN STATUS BAR SELESAI 🔥
 
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
@@ -457,17 +472,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>HypeTalk - Creative Community</title>
         
-        {/* 🔥 FIX: MANIFEST DIKEMBALIKAN AGAR TETAP PWA 🔥 */}
+        {/* 🔥 MANIFEST DIKEMBALIKAN AGAR TETAP PWA 🔥 */}
         <link rel="manifest" href="/manifest.json" />
 
+        {/* 🔥 FIX META THEME COLOR: Paksa putih agar status bar konsisten walau dark mode nyala 🔥 */}
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#ffffff" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
         
-        {/* 🔥 FIX: KEMBALIKAN CAPABLE AGAR BISA DIINSTAL 🔥 */}
+        {/* 🔥 KEMBALIKAN CAPABLE AGAR BISA DIINSTAL 🔥 */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         
