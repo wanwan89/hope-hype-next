@@ -9,6 +9,67 @@ import FloatingBubbles from './FloatingBubbles';
 import { getUserBadge } from '@/lib/ui-utils';
 import { formatRelativeTime, getOptimizedImage } from '@/lib/helpers';
 
+// --- Sub-Komponen untuk mengatasi pelanggaran Hook di dalam .map() ---
+const CarouselImageItem = ({
+  url,
+  index,
+  onClick,
+}: {
+  url: string;
+  index: number;
+  onClick: (e: React.MouseEvent) => void;
+}) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  return (
+    <div
+      className="carousel-item"
+      style={{
+        aspectRatio: '3 / 4',
+        width: '100%',
+        flexShrink: 0,
+        scrollSnapAlign: 'start',
+        overflow: 'hidden',
+        position: 'relative',
+        background: 'var(--bg-secondary)',
+        transform: 'translateZ(0)',
+      }}
+    >
+      {!imgLoaded && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3,
+          }}
+        >
+          <div className="loading-spinner" />
+        </div>
+      )}
+      <img
+        src={url}
+        decoding="async"
+        alt={`Postingan Galeri ${index + 1}`}
+        onLoad={() => setImgLoaded(true)}
+        onClick={onClick}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'top center',
+          cursor: 'pointer',
+          opacity: imgLoaded ? 1 : 0,
+          transition: 'opacity 0.3s',
+        }}
+      />
+    </div>
+  );
+};
+
+// --- Tipe Props ---
 type PostCardProps = {
   post: any;
   currentUser: any;
@@ -84,7 +145,7 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 
   const optimizedPhotoUrls = useMemo(
-    () => photoList.map((url) => getOptimizedImage(url)),
+    () => photoList.map((url: string) => getOptimizedImage(url)),
     [photoList]
   );
 
@@ -147,8 +208,9 @@ const PostCard: React.FC<PostCardProps> = ({
 
             document
               .querySelectorAll('.post-video-element, .post-audio-element')
-              .forEach((el: any) => {
-                if (el !== media && !el.paused) el.pause();
+              .forEach((el) => {
+                const mediaEl = el as HTMLMediaElement;
+                if (mediaEl !== media && !mediaEl.paused) mediaEl.pause();
               });
 
             if (!hasViewedRef.current && postIdStr) {
@@ -536,7 +598,7 @@ const PostCard: React.FC<PostCardProps> = ({
               reposters={!isOwner ? mutualReposters : []}
             />
 
-            {/* Carousel media - 🔥 FIX INLINE UNTUK HORIZONTAL SCROLL YANG SMOOTH */}
+            {/* Carousel media */}
             <div
               className="photo-carousel"
               onScroll={handleCarouselScroll}
@@ -691,63 +753,21 @@ const PostCard: React.FC<PostCardProps> = ({
                   </div>
                 </div>
               ) : (
-                photoList.map((url: string, i: number) => {
-                  const [imgLoaded, setImgLoaded] = useState(false);
-                  return (
-                    <div
-                      key={i}
-                      className="carousel-item"
-                      style={{
-                        aspectRatio: '3 / 4',
-                        width: '100%',
-                        flexShrink: 0,
-                        scrollSnapAlign: 'start',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        background: 'var(--bg-secondary)',
-                        transform: 'translateZ(0)',
-                      }}
-                    >
-                      {!imgLoaded && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 3,
-                          }}
-                        >
-                          <div className="loading-spinner" />
-                        </div>
-                      )}
-                      <img
-                        src={optimizedPhotoUrls[i]}
-                        decoding="async"
-                        alt={`Postingan Galeri ${i + 1}`}
-                        onLoad={() => setImgLoaded(true)}
-                        onClick={(e) =>
-                          handleMediaClick(
-                            e,
-                            postIdStr,
-                            creatorIdStr,
-                            optimizedPhotoUrls[i]
-                          )
-                        }
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'top center',
-                          cursor: 'pointer',
-                          opacity: imgLoaded ? 1 : 0,
-                          transition: 'opacity 0.3s',
-                        }}
-                      />
-                    </div>
-                  );
-                })
+                photoList.map((url: string, i: number) => (
+                  <CarouselImageItem
+                    key={i}
+                    url={optimizedPhotoUrls[i]}
+                    index={i}
+                    onClick={(e) =>
+                      handleMediaClick(
+                        e,
+                        postIdStr,
+                        creatorIdStr,
+                        optimizedPhotoUrls[i]
+                      )
+                    }
+                  />
+                ))
               )}
             </div>
 
@@ -818,7 +838,6 @@ const PostCard: React.FC<PostCardProps> = ({
               </button>
             </div>
 
-            {/* 🔥 FIX UTAMA: Menghilangkan onWheel & onTouchMove stopPropagation agar page tetap bisa di-scroll secara vertikal */}
             <div
               style={{
                 maxHeight: actuallyExpanded ? 'none' : 'auto',
