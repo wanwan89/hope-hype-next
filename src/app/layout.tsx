@@ -43,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [isOnline, setIsOnline] = useState(true);
   const [myProfile, setMyProfile] = useState<any>(null);
 
+  // 🔥 FONDASI TOKEN
   const fcmTokenRef = useRef<string | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null);
@@ -58,7 +59,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             await splashModule.SplashScreen.hide();
           }
         }
-      } catch (e) { }
+      } catch (e) {
+        // Abaikan error
+      }
     };
     hideNativeSplash();
   }, []);
@@ -81,13 +84,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const hideNavbar = isStoryPage || isDailyCekPage || isSettingsPage || isVipPage || isContactPage;
   const hideOverlays = isVoicePage || isStoryPage;
 
-  // 🔥 FUNGSI UPDATE TOKEN
+  // 🔥 FUNGSI UPDATE TOKEN KE DATABASE 🔥
   const updatePushToken = async (userId: string, token: string) => {
     try {
-      const { error } = await supabase.from('profiles').update({ push_token: token }).eq('id', userId);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ push_token: token })
+        .eq('id', userId);
       if (error) throw error;
+      console.log("✅ FCM Token berhasil disimpen ke Database!");
     } catch (err: any) {
-      console.error("Gagal simpan FCM Token:", err.message);
+      console.error("❌ Gagal simpan FCM Token ke DB:", err.message);
     }
   };
 
@@ -122,14 +129,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   // ==========================================================
-  // 🔥 SINKRONISASI TEMA NATIVE 🔥
+  // 🔥 🔥 🔥 PERBAIKAN UTAMA: OVERLAY & SINKRONISASI TEMA NATIVE 🔥 🔥 🔥
   // ==========================================================
   const syncStatusBar = useCallback(async () => {
     if (typeof window === 'undefined') return;
     const platform = Capacitor.getPlatform();
+
     try {
       const htmlEl = document.documentElement;
       const isDark = htmlEl.classList.contains('dark') || htmlEl.getAttribute('data-theme') === 'dark';
+
+      // Update meta color-scheme browser
       let metaColorScheme = document.querySelector('meta[name="color-scheme"]');
       if (!metaColorScheme) {
         metaColorScheme = document.createElement('meta');
@@ -137,6 +147,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         document.head.appendChild(metaColorScheme);
       }
       metaColorScheme.setAttribute('content', isDark ? 'dark' : 'light');
+
+      // Update theme-color browser/PWA agar sesuai CSS (--bg-main)
       let metaTheme = document.querySelector('meta[name="theme-color"]');
       if (!metaTheme) {
         metaTheme = document.createElement('meta');
@@ -144,14 +156,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         document.head.appendChild(metaTheme);
       }
       metaTheme.setAttribute('content', isDark ? '#0a0a0a' : '#ffffff');
+
+      // Kondisi khusus untuk perangkat Native (Android/iOS)
       if (platform === 'android' || platform === 'ios') {
+        
+        // ✨ FIX UTAMA: Paksa WebView selalu menembus & menyatu di bawah Status Bar (Anti Bar terpisah)
         await StatusBar.setOverlaysWebView({ overlay: true });
+
         if (isDark) {
           await StatusBar.setStyle({ style: Style.Dark });
         } else {
           await StatusBar.setStyle({ style: Style.Light });
         }
+
         if (platform === 'android') {
+          // Warnai background status bar agar menyatu mutlak dengan warna latar aplikasi hulu
           await StatusBar.setBackgroundColor({ color: isDark ? '#0a0a0a' : '#ffffff' });
         }
       }
@@ -160,39 +179,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
+  // --- OBSERVER PERUBAHAN TEMA ---
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    syncStatusBar();
-    const htmlEl = document.documentElement;
-    const observer = new MutationObserver(() => { syncStatusBar(); });
-    observer.observe(htmlEl, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    return () => { observer.disconnect(); };
-  }, [syncStatusBar]);
 
-  // --- 🔥 🔥 🔥 RAHASIA KUNCI PWA: INJEKSI CSS ANTI REFRESH 🔥 🔥 🔥 ---
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Ini akan memaksa browser PWA untuk tidak menampilkan garis refresh dalam kondisi apapun
-    if (!document.getElementById('pwa-anti-pull-refresh')) {
-      const style = document.createElement('style');
-      style.id = 'pwa-anti-pull-refresh';
-      style.innerHTML = `
-        * {
-          overscroll-behavior: none !important;
-          overscroll-behavior-y: none !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
-        html, body, #__next, main, .layout-wrapper, .main-content {
-          overscroll-behavior: none !important;
-          overscroll-behavior-y: none !important;
-          border-top: none !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }, []);
-  // ----------------------------------------------------------------
+    syncStatusBar();
+
+    const htmlEl = document.documentElement;
+    const observer = new MutationObserver(() => {
+      syncStatusBar();
+    });
+    observer.observe(htmlEl, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [syncStatusBar]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -201,28 +203,63 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return () => clearTimeout(timeout);
   }, []);
 
-  // --- SETUP PUSH NOTIFICATION --- (Bagian sebelumnya tetap sama)
+  // --- 🔥 🔥 🔥 RAHASIA KUNCI PWA: INJEKSI CSS ANTI REFRESH LANGSUNG KE DOM 🔥 🔥 🔥 ---
+  // Ini memastikan tidak ada CSS manapun yang bisa menimpa perintah untuk mematikan pull-to-refresh
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    if (!document.getElementById('force-anti-overscroll')) {
+      const style = document.createElement('style');
+      style.id = 'force-anti-overscroll';
+      style.innerHTML = `
+        * { overscroll-behavior: none !important; overscroll-behavior-y: none !important; }
+        html, body, #__next, main, .layout-wrapper, .main-content { 
+          overscroll-behavior: none !important; 
+          overscroll-behavior-y: none !important; 
+          border-top: none !important; 
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+  // --------------------------------------------------------------------------------
+
+  // --- SETUP PUSH NOTIFICATION & NATIVE FEATURES ---
   useEffect(() => {
     const initNativeFeatures = async () => {
       if (typeof window === 'undefined') return;
+
       try {
         const platform = Capacitor.getPlatform();
+
         if (platform === 'android' || platform === 'ios') {
+          // Pastikan overlay dipicu kembali di init awal native
           await StatusBar.setOverlaysWebView({ overlay: true });
+
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
+
           if (platform === 'android') {
             await PushNotifications.createChannel({
-              id: 'hype_high_channel', name: 'Panggilan & Chat HypeTalk', description: 'Channel penting untuk notifikasi chat dan panggilan masuk', importance: 5, visibility: 1, sound: 'suara_panggilan', vibration: true,
+              id: 'hype_high_channel',
+              name: 'Panggilan & Chat HypeTalk',
+              description: 'Channel penting untuk notifikasi chat dan panggilan masuk',
+              importance: 5,
+              visibility: 1,
+              sound: 'suara_panggilan',
+              vibration: true,
             });
           }
+
           if (permPush.receive === 'granted') {
             await PushNotifications.register();
           }
+
           PushNotifications.addListener('registration', (token) => {
             fcmTokenRef.current = token.value;
             if (myProfile?.id) updatePushToken(myProfile.id, token.value);
           });
+
           PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
             const data = action.notification.data;
             if (data && data.roomId) {
@@ -234,6 +271,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               }
             }
           });
+
           App.addListener('backButton', ({ canGoBack }) => {
             if (canGoBack) {
               window.history.back();
@@ -247,6 +285,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
     };
     initNativeFeatures();
+
     return () => {
       if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
         PushNotifications.removeAllListeners();
@@ -280,13 +319,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, [globalIncomingCall]);
 
-  // --- REALTIME CHAT / CALL GLOBAL LISTENER --- (Dipersingkat biar fokus ke solusi PWA)
+  // --- REALTIME CHAT / CALL GLOBAL LISTENER ---
   useEffect(() => {
     let channel: any;
     const initGlobalListener = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const myUserId = session.user.id;
+
       channel = supabase.channel(`global-root-${myUserId}`)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload: any) => {
           const newMsg = payload.new;
@@ -324,7 +364,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     setGlobalIncomingCall(null);
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      await supabase.from('messages').insert([{ room_id: currentRoomId, user_id: session.user.id, message: `Panggilan Ditolak`, is_system: true }]);
+      await supabase.from('messages').insert([{
+        room_id: currentRoomId,
+        user_id: session.user.id,
+        message: `Panggilan Ditolak`,
+        is_system: true
+      }]);
     }
   };
 
@@ -347,12 +392,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const preventSave = (e: any) => { if (e.target.tagName === 'IMG') e.preventDefault(); };
     document.addEventListener('contextmenu', preventSave);
     document.addEventListener('dragstart', preventSave);
+    
     const handleGestureStart = (e: Event) => e.preventDefault();
     const handleTouchMove = (e: TouchEvent) => { if (e.touches.length > 1) e.preventDefault(); };
+
     document.addEventListener('gesturestart', handleGestureStart);
     document.addEventListener('gesturechange', handleGestureStart);
     document.addEventListener('gestureend', handleGestureStart);
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
+
     return () => {
       document.removeEventListener('contextmenu', preventSave);
       document.removeEventListener('dragstart', preventSave);
@@ -376,10 +424,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   }, [isStandaloneApp]);
 
-  // --- RENDER UI ---
+  // --- RENDER CONTENT HELPER ---
   const renderUI = () => (
     <>
       <GlobalShareModal />
+      
       {!isOnline && (
         <div className="offline-global-overlay" style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 9999999 }}>
           <div className="offline-card" style={{ textAlign: 'center', padding: '2rem', borderRadius: '1.5rem', background: 'transparent', border: 'none', maxWidth: '320px', width: '90%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -391,6 +440,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       )}
+
       {globalMessageNotif && !globalIncomingCall && (
         <div className="global-msg-popup" onClick={handleMessageClick} style={{ top: 'calc(var(--safe-area-top) + 12px)' }}>
           <img src={globalMessageNotif.senderAvatar} className="global-msg-avatar" alt="sender" />
@@ -406,8 +456,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       )}
+
       {globalIncomingCall && (
-        <div className="global-call-ui" style={{ position: 'fixed', top: 'calc(var(--safe-area-top) + 12px)', left: '50%', transform: 'translateX(-50%)', background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999, width: '90%', maxWidth: '360px', animation: 'slideDownGlobal 0.4s' }}>
+        <div className="global-call-ui" style={{ 
+          position: 'fixed', 
+          top: 'calc(var(--safe-area-top) + 12px)', 
+          left: '50%', transform: 'translateX(-50%)', background: 'rgba(20, 20, 20, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(46, 204, 113, 0.4)', borderRadius: '24px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', zIndex: 9999999, width: '90%', maxWidth: '360px', animation: 'slideDownGlobal 0.4s' 
+        }}>
           <img src={globalIncomingCall.callerAvatar || '/asets/png/profile.webp'} className="global-call-avatar" alt="caller" />
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <div style={{ color: 'white', fontWeight: 'bold' }}>{globalIncomingCall.callerName}</div>
@@ -421,16 +476,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       )}
-      <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} style={{ paddingTop: 'var(--safe-area-top)' }}>
+
+      <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} 
+           style={{ paddingTop: 'var(--safe-area-top)' }}>
+        
         {isHomePage && (
-          <div className="search-container" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', zIndex: 10, paddingTop: '10px' }}>
+          <div className="search-container" style={{ 
+            width: '100%', 
+            maxWidth: '600px', 
+            margin: '0 auto', 
+            zIndex: 10,
+            paddingTop: '10px' 
+          }}>
             <SearchWrapper />
           </div>
         )}
+        
         <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
           {children}
         </main>
+        
       </div>
+
       {!hideNavbar && <Navbar />}
     </>
   );
@@ -440,26 +507,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>HypeTalk - Creative Community</title>
         <link rel="manifest" href="/manifest.json" />
+        
         <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        
         <link rel="icon" type="image/png" sizes="192x192" href="/logohypeco.png" />
         <link rel="apple-touch-icon" href="/logohypeco.png" />
+        
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
         
         <style>{`
-          :root { --safe-area-top: env(safe-area-inset-top, 0px); }
-          body { margin: 0; padding: 0; }
-          .layout-wrapper { min-height: 100dvh; }
-          
-          header, .tg-header, .top-header, .navbar-top { border-bottom: none !important; box-shadow: none !important; }
-          /* CSS ini sudah kita paksa lewat JS, tapi tetap kita taruh di sini sebagai cadangan */
+          :root {
+            --safe-area-top: env(safe-area-inset-top, 0px);
+          }
+          body {
+            margin: 0;
+            padding: 0;
+          }
+          .layout-wrapper {
+            min-height: 100dvh;
+          }
+
+          /* 🔥 FIX 3: Hapus garis pembatas / border bawah pada semua elemen header secara global */
+          header, .tg-header, .top-header, .navbar-top {
+            border-bottom: none !important;
+            box-shadow: none !important;
+          }
+
+          /* 🔥 FIX EXTRA ANTI LINE TOP & PULL-TO-REFRESH: Paksa hilangkan border atas bawaan webview & matikan refresh bar */
           html, body, .layout-wrapper, .main-content {
             border-top: none !important;
             box-sizing: border-box;
+            overscroll-behavior-y: none !important; 
+            -webkit-overflow-scrolling: touch;
           }
 
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
@@ -473,7 +558,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'} ${isStandaloneApp ? 'fixed-layout' : ''}`}>
         <CustomSplash />
-        <Script src="https://cdn.jsdelivr.net/npm/eruda" strategy="lazyOnload" onLoad={() => { if (typeof window !== 'undefined' && (window as any).eruda) { (window as any).eruda.init(); } }} />
+        
+        <Script
+          src="https://cdn.jsdelivr.net/npm/eruda"
+          strategy="lazyOnload"
+          onLoad={() => {
+            if (typeof window !== 'undefined' && (window as any).eruda) {
+              (window as any).eruda.init();
+            }
+          }}
+        />
         <Providers>
           <I18nextProvider i18n={i18n}>
             <ThemeProvider>
