@@ -116,6 +116,9 @@ export default function NotificationListView({
             const isSystemNotif = ['coin_receive', 'coin_history', 'payment_status', 'withdraw_request'].includes(notif.type) 
                                   || notif.actor?.username === 'HypeSystem';
 
+            // Cek apakah notifikasi ini berhubungan dengan postingan (Like, Save, Repost, Comment)
+            const isPostAction = ['like', 'like_group', 'save', 'save_group', 'repost', 'repost_group', 'comment', 'reply'].includes(notif.type);
+
             let thumbUrl: string | null = null;
             if (notif.postData) {
               if (notif.postData.image_url)
@@ -377,11 +380,15 @@ export default function NotificationListView({
                     : 'transparent',
                   position: 'relative',
                   paddingRight: !notif.is_read ? '35px' : '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
                 }}
                 onClick={() => handleNotifClick(notif)}
               >
                 {avatarElement}
-                <div className="notif-content">
+                
+                <div className="notif-content" style={{ flex: 1, minWidth: 0 }}>
                   <div
                     className="notif-text"
                     style={{ color: isDark ? 'var(--text-main)' : '#1a1a1a' }}
@@ -398,7 +405,6 @@ export default function NotificationListView({
                         {actorName}
                       </strong>
                     )}
-                    {/* Kalau HypeSystem, nama actor sudah include di SVG, kita lewati saja */}
                     {(isSystemNotif || !actorName) && isSystemNotif && (
                       <strong style={{ marginRight: '4px' }}>HypeSystem</strong>
                     )}
@@ -412,7 +418,16 @@ export default function NotificationListView({
                   </span>
                 </div>
 
-                <div className="notif-action-area">
+                {/* --- LOGIKA ACTION AREA & THUMBNAIL --- */}
+                <div 
+                  className="notif-action-area" 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    flexShrink: 0 
+                  }}
+                >
                   {notif.type === 'follow' && notif.actor_id && (
                     <button
                       className={`notif-follow-btn ${
@@ -434,20 +449,58 @@ export default function NotificationListView({
                               isDark ? 'var(--border-card)' : '#e0e0e0'
                             }`
                           : 'none',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
                       }}
                       onClick={(e) => handleFollowBack(e, notif.actor_id!)}
                     >
                       {isFollowing ? 'Mengikuti' : 'Ikuti Balik'}
                     </button>
                   )}
-                  {thumbUrl && (
-                    <img
-                      src={thumbUrl}
-                      className="notif-post-thumb"
-                      alt="post thumbnail"
-                    />
+                  
+                  {/* Perbaikan: Tampilkan kotak thumbnail (dengan atau tanpa gambar) untuk like, save, repost, comment */}
+                  {isPostAction && (
+                    <div 
+                      style={{ 
+                        width: 48, 
+                        height: 48, 
+                        borderRadius: 8, 
+                        overflow: 'hidden', 
+                        flexShrink: 0, 
+                        background: isDark ? 'var(--bg-secondary)' : '#f0f0f0',
+                        border: `1px solid ${isDark ? 'var(--border-card)' : '#e0e0e0'}`
+                      }}
+                    >
+                      {thumbUrl ? (
+                        <img 
+                          src={thumbUrl} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          alt="Post thumbnail" 
+                        />
+                      ) : (
+                        <div 
+                          style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center' 
+                          }}
+                        >
+                          <span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: 22 }}>
+                            image
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
+                {/* --- END LOGIKA ACTION AREA & THUMBNAIL --- */}
+
                 {!notif.is_read && (
                   <div
                     className="notif-unread-dot"
