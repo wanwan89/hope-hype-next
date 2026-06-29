@@ -117,6 +117,10 @@ export default function Gallerypost() {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
 
+  // FIX SCROLL: State untuk menyimpan scroll parent dinamis
+  const [scrollParent, setScrollParent] = useState<HTMLElement | undefined>(undefined);
+  const [isMounted, setIsMounted] = useState(false);
+
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
@@ -139,6 +143,15 @@ export default function Gallerypost() {
   } = useFeed(currentCategory, currentUser, mutualUsers);
   
   useGlobalRefresh(refetch);
+
+  // FIX SCROLL: Deteksi container scroll saat komponen dimount
+  useEffect(() => {
+    setIsMounted(true);
+    const mainScroller = document.querySelector('.main-content') as HTMLElement;
+    if (mainScroller) {
+      setScrollParent(mainScroller);
+    }
+  }, []);
 
   const handleRefresh = async () => {
     await refetch();
@@ -562,7 +575,7 @@ export default function Gallerypost() {
   }
 
   return (
-    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)', minHeight: '100dvh', paddingBottom: '80px' }}>
+    <section style={{ width: '100%', maxWidth: '100%', padding: 0, margin: 0, background: 'var(--bg-main)' }}>
       
       <RepostModal
         isOpen={!!repostModal}
@@ -577,21 +590,29 @@ export default function Gallerypost() {
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
       <RefreshableWrapper onRefresh={handleRefresh}>
-        <Virtuoso
-          useWindowScroll={true}
-          data={allPosts}
-          endReached={loadMore}
-          overscan={{ main: 600, reverse: 600 }}
-          increaseViewportBy={{ top: 400, bottom: 400 }}
-          itemContent={renderItem}
-          components={{
-            Footer: () => isFetchingNextPage ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-                <div className="pure-spinner"></div>
-              </div>
-            ) : null
-          }}
-        />
+        {isMounted && (
+          <Virtuoso
+            // FIX SCROLL: Jika custom scroller ditemukan, matikan window scroll dan gunakan custom
+            useWindowScroll={!scrollParent}
+            customScrollParent={scrollParent}
+            data={allPosts}
+            endReached={loadMore}
+            overscan={{ main: 600, reverse: 600 }}
+            increaseViewportBy={{ top: 400, bottom: 400 }}
+            itemContent={renderItem}
+            components={{
+              Footer: () => (
+                <div style={{ paddingBottom: '100px' }}>
+                  {isFetchingNextPage && (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                      <div className="pure-spinner"></div>
+                    </div>
+                  )}
+                </div>
+              )
+            }}
+          />
+        )}
       </RefreshableWrapper>
     </section>
   );
