@@ -37,7 +37,7 @@ export default function SearchWrapperpost() {
     if (!mounted || isHidden) return;
     const interval = setInterval(() => {
       setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
-    }, 20000); 
+    }, 20000);
     return () => clearInterval(interval);
   }, [mounted, isHidden, placeholders.length]);
 
@@ -51,16 +51,16 @@ export default function SearchWrapperpost() {
     const handleUploadStart = (e: any) => {
       setIsUploading(true);
       setUploadProgress(0);
-      setUploadType(e.detail?.type || 'post'); 
+      setUploadType(e.detail?.type || 'post');
     };
-    
+
     const handleUploadProgress = (e: any) => {
       setIsUploading(true);
       const progressValue = e.detail?.progress !== undefined ? e.detail.progress : e.detail;
       setUploadProgress(progressValue);
       if (e.detail?.type) setUploadType(e.detail.type);
     };
-    
+
     const handleUploadSuccess = (e: any) => {
       setUploadProgress(100);
       if (e.detail?.type) setUploadType(e.detail.type);
@@ -69,7 +69,7 @@ export default function SearchWrapperpost() {
         setUploadProgress(0);
       }, 2000);
     };
-    
+
     const handleUploadError = () => {
       setIsUploading(false);
       setUploadProgress(0);
@@ -127,8 +127,8 @@ export default function SearchWrapperpost() {
   return (
     <div className="header-main-wrapper" style={{ background: 'var(--bg-main)' }}>
       <div className="search-wrapper glass-effect" style={{ background: 'var(--bg-main)' }}>
-        <div 
-          className="brutal-input-container" 
+        <div
+          className="brutal-input-container"
           style={{ position: 'relative', flex: 1, display: 'flex' }}
         >
           <div
@@ -146,7 +146,7 @@ export default function SearchWrapperpost() {
               fontSize: '14px',
               fontWeight: 500,
               whiteSpace: 'nowrap',
-              zIndex: 2
+              zIndex: 2,
             }}
           >
             <span>Cari</span>
@@ -170,7 +170,7 @@ export default function SearchWrapperpost() {
             className="brutal-input"
             readOnly
             onClick={() => router.push('/search')}
-            style={{ 
+            style={{
               cursor: 'pointer',
               color: 'var(--text-main)',
               width: '100%',
@@ -178,10 +178,9 @@ export default function SearchWrapperpost() {
               WebkitTapHighlightColor: 'transparent',
               caretColor: 'transparent',
               position: 'relative',
-              zIndex: 1
+              zIndex: 1,
             }}
           />
-
         </div>
 
         <button
@@ -222,7 +221,7 @@ export default function SearchWrapperpost() {
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
-              background: 'var(--bg-card)', 
+              background: 'var(--bg-card)',
               borderRadius: '16px',
               padding: '14px 18px',
               width: '100%',
@@ -240,9 +239,9 @@ export default function SearchWrapperpost() {
                       width: '16px',
                       height: '16px',
                       borderRadius: '50%',
-                      border: '2.5px solid var(--bg-input)', 
-                      borderTopColor: 'var(--primary)',      
-                      animation: 'spin 1s linear infinite',  
+                      border: '2.5px solid var(--bg-input)',
+                      borderTopColor: 'var(--primary)',
+                      animation: 'spin 1s linear infinite',
                     }}
                   />
                 ) : (
@@ -257,17 +256,17 @@ export default function SearchWrapperpost() {
                   </span>
                 )}
                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
-                  {uploadProgress < 100 
-                    ? `Mengunggah ${uploadType === 'story' ? 'cerita' : 'postingan'}...` 
+                  {uploadProgress < 100
+                    ? `Mengunggah ${uploadType === 'story' ? 'cerita' : 'postingan'}...`
                     : `${uploadType === 'story' ? 'Cerita' : 'Postingan'} berhasil diunggah`}
                 </span>
               </div>
-              <span 
-                style={{ 
-                  fontSize: '13px', 
-                  fontWeight: 700, 
+              <span
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 700,
                   color: uploadProgress < 100 ? 'var(--primary)' : '#00c853',
-                  transition: 'color 0.3s ease'
+                  transition: 'color 0.3s ease',
                 }}
               >
                 {uploadProgress}%
@@ -278,7 +277,7 @@ export default function SearchWrapperpost() {
               style={{
                 width: '100%',
                 height: '4px',
-                background: 'var(--bg-input)', 
+                background: 'var(--bg-input)',
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}
@@ -313,7 +312,7 @@ export default function SearchWrapperpost() {
                 className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                 style={{
                   padding: '2px',
-                  background: 'var(--accent-story)', // Diselaraskan ke CSS global
+                  background: 'var(--accent-story)',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -327,15 +326,16 @@ export default function SearchWrapperpost() {
                   }
                   alt="avatar"
                   style={{
-                    border: '2px solid var(--bg-main)', // Menghasilkan border transparan alami (celah putih/hitam)
+                    border: '2px solid var(--bg-main)',
                     borderRadius: '50%',
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover'
+                    objectFit: 'cover',
                   }}
                 />
               </div>
-              <span className="story-name" style={{ color: 'var(--text-main)' }}>
+              {/* ✅ Username story sekarang lebih tebal */}
+              <span className="story-name" style={{ color: 'var(--text-main)', fontWeight: 700 }}>
                 {story.profiles?.username}
               </span>
             </div>
