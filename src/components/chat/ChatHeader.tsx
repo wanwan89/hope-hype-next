@@ -48,8 +48,55 @@ export default function ChatHeader({
           </button>
         ) : groupId ? (
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => { setGroupModalTab('invite'); setIsGroupSettingsOpen(true); }} style={{ background: 'rgba(29, 161, 242, 0.1)', color: 'var(--primary-blue)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>INVITE</button>
-            {isOwner && <button onClick={() => { setGroupModalTab('settings'); setIsGroupSettingsOpen(true); }} style={{ background: 'var(--border-color)', color: 'var(--text-color)', border: 'none', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>SETTINGS</button>}
+            {/* ✅ INVITE BUTTON – fixed */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setGroupModalTab('invite');
+                setIsGroupSettingsOpen(true);
+              }}
+              style={{
+                background: 'rgba(29, 161, 242, 0.1)',
+                color: 'var(--primary-blue)',
+                border: 'none',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                zIndex: 5,
+                position: 'relative',
+              }}
+            >
+              INVITE
+            </button>
+
+            {/* ✅ SETTINGS BUTTON – hanya untuk owner, fixed */}
+            {isOwner && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setGroupModalTab('settings');
+                  setIsGroupSettingsOpen(true);
+                }}
+                style={{
+                  background: 'var(--border-color)',
+                  color: 'var(--text-color)',
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  zIndex: 5,
+                  position: 'relative',
+                }}
+              >
+                SETTINGS
+              </button>
+            )}
           </div>
         ) : null}
       </div>

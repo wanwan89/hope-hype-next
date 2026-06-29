@@ -12,7 +12,7 @@
   --text-color: var(--text-main);
   --text-muted: var(--text-muted);
   --border-color: var(--bg-secondary); /* Menggunakan secondary agar border terlihat natural di light/dark */
-  --primary-blue: var(--primary);
+  --primary-blue: var(--primary-bg);
   --header-bg: var(--bg-main);
   --header-text: var(--text-main);
   --input-box-bg: var(--bg-input);
