@@ -129,7 +129,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   // ==========================================================
-  // 🔥 🔥 🔥 FINAL FIX: PWA & NATIVE THEME SYNC 🔥 🔥 🔥
+  // 🔥 🔥 🔥 PERBAIKAN UTAMA: OVERLAY & SINKRONISASI TEMA NATIVE 🔥 🔥 🔥
   // ==========================================================
   const syncStatusBar = useCallback(async () => {
     if (typeof window === 'undefined') return;
@@ -139,7 +139,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       const htmlEl = document.documentElement;
       const isDark = htmlEl.classList.contains('dark') || htmlEl.getAttribute('data-theme') === 'dark';
 
-      // Update meta color-scheme
+      // Update meta color-scheme browser
       let metaColorScheme = document.querySelector('meta[name="color-scheme"]');
       if (!metaColorScheme) {
         metaColorScheme = document.createElement('meta');
@@ -148,7 +148,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
       metaColorScheme.setAttribute('content', isDark ? 'dark' : 'light');
 
-      // 🔥 FIX 1: Update theme-color browser/PWA agar sesuai dengan CSS (--bg-main: #0a0a0a)
+      // Update theme-color browser/PWA agar sesuai CSS (--bg-main)
       let metaTheme = document.querySelector('meta[name="theme-color"]');
       if (!metaTheme) {
         metaTheme = document.createElement('meta');
@@ -157,8 +157,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
       metaTheme.setAttribute('content', isDark ? '#0a0a0a' : '#ffffff');
 
-      // Capacitor StatusBar (hanya untuk native)
+      // Kondisi khusus untuk perangkat Native (Android/iOS)
       if (platform === 'android' || platform === 'ios') {
+        
+        // ✨ FIX UTAMA: Paksa WebView selalu menembus & menyatu di bawah Status Bar (Anti Bar terpisah)
+        await StatusBar.setOverlaysWebView({ overlay: true });
+
         if (isDark) {
           await StatusBar.setStyle({ style: Style.Dark });
         } else {
@@ -166,7 +170,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }
 
         if (platform === 'android') {
-          // 🔥 FIX 2: Set status bar Android agar warnanya #0a0a0a (tidak hitam pekat)
+          // Warnai background status bar agar menyatu mutlak dengan warna latar aplikasi hulu
           await StatusBar.setBackgroundColor({ color: isDark ? '#0a0a0a' : '#ffffff' });
         }
       }
@@ -208,6 +212,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         const platform = Capacitor.getPlatform();
 
         if (platform === 'android' || platform === 'ios') {
+          // Pastikan overlay dipicu kembali di init awal native
+          await StatusBar.setOverlaysWebView({ overlay: true });
+
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
 
@@ -509,6 +516,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           header, .tg-header, .top-header, .navbar-top {
             border-bottom: none !important;
             box-shadow: none !important;
+          }
+
+          /* 🔥 FIX EXTRA ANTI LINE TOP: Paksa hilangkan border atas bawaan webview di area puncak layout */
+          html, body, .layout-wrapper, .main-content {
+            border-top: none !important;
+            box-sizing: border-box;
           }
 
           @keyframes slideDownGlobal { from { transform: translate(-50%, -120%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
