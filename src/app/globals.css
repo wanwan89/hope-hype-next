@@ -69,6 +69,10 @@ html.dark {
   user-select: none;
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
+  
+  /* 🔥 TAMBAHAN RAHASIA: CEGAH SETIAP ELEMEN MEMANTUL SAAT DISERET */
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
 }
 
 input,
@@ -86,8 +90,11 @@ html {
   background-color: var(--bg-main) !important;
   height: 100%;
   scroll-behavior: smooth;
-  overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  
+  /* 🔥 PERBAIKAN UTAMA PWA DISINI: PAKSA NONE DENGAN IMPORTANT */
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
 }
 
 body {
@@ -104,15 +111,23 @@ body {
   text-size-adjust: 100%;
   -webkit-user-zoom: fixed;
   user-zoom: fixed;
-  overscroll-behavior: none;
+  
+  /* 🔥 PERBAIKAN UTAMA PWA DISINI */
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
 }
 
+/* 🔥 FOKUS PADA WRAPPER NEXT.JS (#__next) YANG SERING JADI BIANG KEROK */
 #__next,
 #__nuxt,
 #app {
   background-color: var(--bg-main) !important;
   min-height: 100vh;
-  overscroll-behavior: none;
+  
+  /* 🔥 PASTIKAN INI DIKUNCI: */
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 /* =============================================================
@@ -162,7 +177,10 @@ select,
   height: 100dvh !important;
   overflow: hidden !important;
   position: relative;
-  overscroll-behavior: none;
+  
+  /* 🔥 PASTIKAN PADA FIXED LAYOUT JUGA */
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
 }
 
 .main-content {
@@ -173,6 +191,10 @@ select,
   position: relative;
   /* Menggunakan fallback max() untuk bagian bawah */
   padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  
+  /* 🔥 TAMBAHAN PENGAMAN */
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
 }
 
 @media (min-width: 640px) {
