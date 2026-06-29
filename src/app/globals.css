@@ -95,7 +95,7 @@ body {
   color: var(--text-main);
   width: 100%;
   overflow-x: hidden;
-  font-family: 'Poppins', sans-serif;
+  font-family: system-ui, sans-serif;
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
