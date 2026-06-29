@@ -36,7 +36,7 @@ function getLevelColor(level: number): string {
  * Menghasilkan HTML badge level:
  * - Kotak persegi solid (biru tua)
  * - SVG bintang dengan centang (warna sesuai level)
- * - Angka level di sebelah kanan
+ * - Angka level di sebelah kanan (ukuran kecil)
  */
 export function getLevelBadgeHTML(levelVal: string | number): string {
   const lvl = typeof levelVal === 'string' ? parseInt(levelVal) : (levelVal || 1);
@@ -69,7 +69,7 @@ export function getLevelBadgeHTML(levelVal: string | number): string {
       </svg>
 
       <span style="
-        font-size: 11px;
+        font-size: 9px;                    /* ukuran angka diperkecil */
         font-weight: 700;
         color: #ffffff;
         letter-spacing: 0.3px;
