@@ -46,10 +46,16 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
       <div 
         className={`p-sidebar-overlay ${isOpen ? 'active' : ''}`} 
         onClick={onClose} 
-        style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none', zIndex: 8998 }}
+        style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none', zIndex: 90 }}
       />
       
-      <aside className={`p-sidebar-panel ${isOpen ? 'open' : ''}`} style={{ zIndex: 8999 }}>
+      <aside 
+        className={`p-sidebar-panel ${isOpen ? 'open' : ''}`}
+        style={{
+          zIndex: 91,
+          bottom: 'calc(60px + env(safe-area-inset-bottom))', // ⬅️ berhenti di atas navbar
+        }}
+      >
         <div className="sidebar-search-container">
           <div className="sidebar-search">
             <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
@@ -99,4 +105,3 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
 };
 
 export default React.memo(SidebarMenu);
-

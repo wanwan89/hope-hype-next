@@ -314,7 +314,7 @@ function NavbarContent() {
       style={{
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
-        zIndex: 99999, // DIUBAH KE 99999 AGAR SELALU DI ATAS
+        zIndex: 100, // ✅ TURUNKAN Z-INDEX
         display: 'flex',
         justifyContent: 'center',
       }}
