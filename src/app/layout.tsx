@@ -44,6 +44,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null);
 
+  // ============ ERUDA DEBUGGER ============
+  useEffect(() => {
+    const enableEruda =
+      process.env.NODE_ENV === 'development' ||
+      (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('eruda'));
+
+    if (enableEruda && typeof window !== 'undefined') {
+      // Load Eruda from CDN
+      const script = document.createElement('script');
+      script.src = '//cdn.jsdelivr.net/npm/eruda';
+      script.onload = () => {
+        // @ts-ignore
+        window.eruda.init();
+      };
+      document.head.appendChild(script);
+    }
+  }, []);
+  // =====================================
+
   useEffect(() => {
     const hideNativeSplash = async () => {
       try {
