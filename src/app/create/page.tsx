@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
-import Cropper from 'react-easy-crop';
 import { getCroppedImg, showNotif } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -20,10 +19,14 @@ import AdToggle from '@/components/create/AdToggle';
 import SubmitButtons from '@/components/create/SubmitButtons';
 import MusicSheet from '@/components/create/MusicSheet';
 
-const CLOUDINARY_CLOUD_NAME = "dhhmkb8kl";
-const CLOUDINARY_UPLOAD_PRESET = "post_hope";
+// Import MediaEditor yang baru dipisah
+import MediaEditor from '@/components/create/MediaEditor';
 
-// Global Theme Switch (Sekarang dikontrol 100% via Create.css)
+// Menggunakan Environment Variable untuk keamanan
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
+
+// Global Theme Switch
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
   <div
     onClick={() => onChange(!checked)}
@@ -62,7 +65,10 @@ function CreatePostContent() {
   const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoStart, setVideoStart] = useState(0);
+  const [videoEnd, setVideoEnd] = useState(60); 
   const [coverTime, setCoverTime] = useState(0);
+  const [videoRotation, setVideoRotation] = useState<number>(0); 
+
   const [coverBlob, setCoverBlob] = useState<Blob | null>(null);
   const [coverPreviewUrl, setCoverUrlPreview] = useState<string | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
@@ -323,6 +329,7 @@ function CreatePostContent() {
     else { videoRef.current.play(); setIsVideoPlaying(true); }
   };
 
+  // DIPERBARUI: Fungsi ambil sampul video dengan rotasi
   const captureFrameAndSave = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -330,13 +337,31 @@ function CreatePostContent() {
     setIsProcessingEdit(true);
     
     video.pause(); setIsVideoPlaying(false);
+    
+    // Tentukan apakah video sedang dirotasi vertikal/horizontal
+    const isRotated = videoRotation === 90 || videoRotation === 270;
+    const vw = isRotated ? video.videoHeight : video.videoWidth;
+    const vh = isRotated ? video.videoWidth : video.videoHeight;
+    
+    // 1. Buat kanvas sementara untuk menerapkan rotasi secara utuh
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = vw;
+    tempCanvas.height = vh;
+    const tCtx = tempCanvas.getContext('2d');
+    if (tCtx) {
+      tCtx.translate(vw / 2, vh / 2);
+      tCtx.rotate((videoRotation * Math.PI) / 180);
+      tCtx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
+    }
+
+    // 2. Potong (Crop) kanvas sementara yang sudah diputar ke rasio 2:3
     const ratio = 2 / 3;
-    const vw = video.videoWidth, vh = video.videoHeight;
     let cw: number, ch: number, sx: number, sy: number;
     if (vw / vh > ratio) { ch = vh; cw = ch * ratio; sx = (vw - cw) / 2; sy = 0; }
     else { cw = vw; ch = cw / ratio; sx = 0; sy = (vh - ch) / 2; }
+    
     canvas.width = cw; canvas.height = ch;
-    canvas.getContext('2d')?.drawImage(video, sx, sy, cw, ch, 0, 0, cw, ch);
+    canvas.getContext('2d')?.drawImage(tempCanvas, sx, sy, cw, ch, 0, 0, cw, ch);
     
     canvas.toBlob(blob => {
       if (blob) {
@@ -381,8 +406,10 @@ function CreatePostContent() {
       const fd = new FormData();
       const name = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
       fd.append("file", file, name);
+      if (!CLOUDINARY_UPLOAD_PRESET) { reject("Missing upload preset configuration"); return; }
       fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       const xhr = new XMLHttpRequest();
+      if (!CLOUDINARY_CLOUD_NAME) { reject("Missing cloud name configuration"); return; }
       xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) updateGlobalProgress(Math.round((e.loaded / e.total) * 50));
@@ -471,11 +498,14 @@ function CreatePostContent() {
           }
           finalImageUrl = coverRes.secure_url;
 
-          const clipEnd = Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
+          // DIPERBARUI: Cloudinary URL generator untuk Rotasi dan Video End
+          const clipEnd = videoEnd || Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
+          const rotParam = videoRotation !== 0 ? `a_${videoRotation},` : '';
+          
           const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
           finalVideoUrl = vidRes.secure_url.replace(
             '/upload/',
-            `/upload/c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
+            `/upload/${rotParam}c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
           );
           updateGlobalProgress(50);
         }
@@ -545,161 +575,53 @@ function CreatePostContent() {
     })();
   };
 
-  // ---------- EDITOR INTERACTIVE MODAL COMPONENT ----------
-  const renderEditorScreen = () => {
-    if (step !== 'edit') return null;
-    return (
-      <div className="editor-screen-overlay">
-        {/* Header Editor */}
-        <div className="editor-screen-header">
-          <button 
-            onClick={() => { if (postType === 'image') handleCancelCrop(); else { handleRemoveVideo(); setStep('post'); } }} 
-            className="editor-back-btn"
-          >
-            <span className="material-icons">arrow_back</span>
-          </button>
-          <p className="editor-header-title">
-            {postType === 'image' ? `Atur Foto (${croppedImages.length + 1}/${croppedImages.length + rawImagesQueue.length})` : 'Edit Video'}
-          </p>
-          <button 
-            disabled={isProcessingEdit} 
-            onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
-            className="editor-save-btn"
-          >
-            {isProcessingEdit ? 'Memproses...' : 'Selesai'}
-          </button>
-        </div>
-
-        {/* Ruang Kerja Kreatif */}
-        <div className="editor-workspace">
-          {postType === 'image' && imageForCrop ? (
-            <div className="editor-cropper-container">
-              <Cropper 
-                image={imageForCrop} 
-                crop={crop} 
-                zoom={zoom} 
-                aspect={3 / 4} 
-                onCropChange={setCrop} 
-                onCropComplete={onCropComplete} 
-                onZoomChange={setZoom} 
-              />
-            </div>
-          ) : postType === 'video' && rawVideoUrl ? (
-            <div className="editor-video-preview-frame">
-              <video 
-                ref={videoRef} 
-                src={rawVideoUrl} 
-                playsInline 
-                muted={!isVideoPlaying} 
-                loop 
-                className="editor-video-element"
-                onLoadedMetadata={handleVideoLoadedMetadata} 
-              />
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-              <div 
-                onClick={togglePlayVideo} 
-                className={`editor-video-play-overlay ${isVideoPlaying ? 'is-playing' : ''}`}
-              >
-                {!isVideoPlaying && (
-                  <div className="editor-video-play-btn">
-                    <span className="material-icons">play_arrow</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Footer Panel Kontrol Sesuai Jenis Konten */}
-        <div className="editor-screen-footer">
-          {postType === 'image' ? (
-            <div className="editor-image-zoom-controls">
-              <span className="material-icons">remove</span>
-              <input 
-                type="range" 
-                value={zoom} 
-                min={1} 
-                max={3} 
-                step={0.1} 
-                onChange={e => setZoom(Number(e.target.value))} 
-              />
-              <span className="material-icons">add</span>
-            </div>
-          ) : (
-            <div className="editor-control-wrapper">
-              {/* Pemotong Timeline Video */}
-              <div className="editor-control-card">
-                <div className="editor-control-card-header">
-                  <span className="editor-control-card-title">
-                    <span className="material-icons">content_cut</span> Potong Video (Max {MAX_VIDEO_CLIP}s)
-                  </span>
-                  <span className="editor-control-card-value blue">
-                    {videoStart.toFixed(1)}s - {Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP).toFixed(1)}s
-                  </span>
-                </div>
-                <div className="filmstrip-box">
-                  <div className="filmstrip-images">
-                    {videoThumbnails.map((thumb, idx) => <img key={idx} src={thumb} alt="thumbnail-strip" />)}
-                  </div>
-                  <input 
-                    type="range" 
-                    className="custom-range-timeline blue-slider" 
-                    min={0} 
-                    max={Math.max(0, videoDuration - MAX_VIDEO_CLIP)} 
-                    step={0.1} 
-                    value={videoStart} 
-                    onChange={e => { 
-                      const val = Number(e.target.value); 
-                      setVideoStart(val); 
-                      if (videoRef.current) { 
-                        videoRef.current.currentTime = val; 
-                        videoRef.current.play(); 
-                        setIsVideoPlaying(true); 
-                      } 
-                      if (coverTime < val || coverTime > val + MAX_VIDEO_CLIP) setCoverTime(val); 
-                    }} 
-                  />
-                </div>
-              </div>
-
-              {/* Pemilih Thumbnail / Cover */}
-              <div className="editor-control-card">
-                <div className="editor-control-card-header">
-                  <span className="editor-control-card-title">
-                    <span className="material-icons">image</span> Pilih Sampul Depan
-                  </span>
-                  <span className="editor-control-card-value orange">Tampil di: {coverTime.toFixed(1)}s</span>
-                </div>
-                <div className="filmstrip-box" style={{ height: '30px' }}>
-                  <input 
-                    type="range" 
-                    className="custom-range-timeline orange-slider" 
-                    min={videoStart} 
-                    max={Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP)} 
-                    step={0.1} 
-                    value={coverTime} 
-                    onChange={e => { 
-                      const val = Number(e.target.value); 
-                      setCoverTime(val); 
-                      if (videoRef.current) { 
-                        videoRef.current.currentTime = val; 
-                        videoRef.current.pause(); 
-                        setIsVideoPlaying(false); 
-                      } 
-                    }} 
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="create-page-wrapper">
-      {step === 'edit' && renderEditorScreen()}
+      {step === 'edit' && (
+        <MediaEditor 
+          // Props Utama
+          postType={postType}
+          croppedImagesCount={croppedImages.length}
+          rawImagesCount={rawImagesQueue.length}
+          isProcessingEdit={isProcessingEdit}
+          
+          // Image Tools
+          imageForCrop={imageForCrop}
+          crop={crop}
+          zoom={zoom}
+          setCrop={setCrop}
+          setZoom={setZoom}
+          onCropComplete={onCropComplete}
+          handleSaveCrop={handleSaveCrop}
+          handleCancelCrop={handleCancelCrop}
+          
+          // Video Tools (DIPERBARUI)
+          rawVideoUrl={rawVideoUrl}
+          isVideoPlaying={isVideoPlaying}
+          videoDuration={videoDuration}
+          videoStart={videoStart}
+          videoEnd={videoEnd}
+          coverTime={coverTime}
+          videoRotation={videoRotation}
+          videoThumbnails={videoThumbnails}
+          MAX_VIDEO_CLIP={MAX_VIDEO_CLIP}
+          
+          videoRef={videoRef}
+          canvasRef={canvasRef}
+          
+          setVideoStart={setVideoStart}
+          setVideoEnd={setVideoEnd}
+          setCoverTime={setCoverTime}
+          setVideoRotation={setVideoRotation}
+          
+          handleRemoveVideo={handleRemoveVideo}
+          captureFrameAndSave={captureFrameAndSave}
+          handleVideoLoadedMetadata={handleVideoLoadedMetadata}
+          togglePlayVideo={togglePlayVideo}
+          setStep={setStep}
+          setIsVideoPlaying={setIsVideoPlaying}
+        />
+      )}
 
       <MusicSheet
         isOpen={isMusicSheetOpen}
