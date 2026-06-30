@@ -46,12 +46,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   // ============ ERUDA DEBUGGER (FIXED) ============
   useEffect(() => {
-    // Aktifkan jika mode dev atau jika URL mengandung ?eruda=true
-    const enableEruda =
-      process.env.NODE_ENV === 'development' ||
-      (typeof window !== 'undefined' && window.location.search.includes('eruda=true'));
+    if (typeof window === 'undefined') return;
 
-    if (enableEruda && typeof window !== 'undefined') {
+    // Gunakan window.location.href untuk kompatibilitas Next.js App Router
+    const isDev = process.env.NODE_ENV === 'development';
+    const hasErudaQuery = window.location.href.includes('eruda=true');
+    
+    // Aktifkan jika mode dev atau jika URL mengandung ?eruda=true
+    const enableEruda = isDev || hasErudaQuery;
+
+    if (enableEruda) {
       // Mencegah duplikasi script jika komponen mengalami re-render
       if (document.getElementById('eruda-script')) return;
 
@@ -59,13 +63,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       script.id = 'eruda-script';
       // Wajib pakai https:// penuh. Kalau pakai //cdn... akan error di Capacitor
       script.src = 'https://cdn.jsdelivr.net/npm/eruda'; 
+      script.async = true; // Jangan block render
       script.onload = () => {
         if ((window as any).eruda) {
           (window as any).eruda.init();
           console.log('Eruda Debugger siap digunakan!');
         }
       };
-      document.head.appendChild(script);
+      
+      // WAJIB ditaruh di body, bukan di head
+      document.body.appendChild(script);
     }
   }, []);
   // =====================================
@@ -455,4 +462,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
