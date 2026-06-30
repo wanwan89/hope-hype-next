@@ -99,3 +99,4 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
 };
 
 export default React.memo(SidebarMenu);
+
