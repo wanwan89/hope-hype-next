@@ -44,19 +44,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null);
 
-  // ============ ERUDA DEBUGGER ============
+  // ============ ERUDA DEBUGGER (FIXED) ============
   useEffect(() => {
+    // Aktifkan jika mode dev atau jika URL mengandung ?eruda=true
     const enableEruda =
       process.env.NODE_ENV === 'development' ||
-      (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('eruda'));
+      (typeof window !== 'undefined' && window.location.search.includes('eruda=true'));
 
     if (enableEruda && typeof window !== 'undefined') {
-      // Load Eruda from CDN
+      // Mencegah duplikasi script jika komponen mengalami re-render
+      if (document.getElementById('eruda-script')) return;
+
       const script = document.createElement('script');
-      script.src = '//cdn.jsdelivr.net/npm/eruda';
+      script.id = 'eruda-script';
+      // Wajib pakai https:// penuh. Kalau pakai //cdn... akan error di Capacitor
+      script.src = 'https://cdn.jsdelivr.net/npm/eruda'; 
       script.onload = () => {
-        // @ts-ignore
-        window.eruda.init();
+        if ((window as any).eruda) {
+          (window as any).eruda.init();
+          console.log('Eruda Debugger siap digunakan!');
+        }
       };
       document.head.appendChild(script);
     }
