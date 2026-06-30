@@ -27,7 +27,7 @@ export default function ChatModals({
   isUpdatingGroup,
   groupMembers,
   currentUser,
-  headerInfo,
+  headerInfo, // <-- memiliki avatar grup (headerInfo.avatar)
   handleGroupPhotoUpload,
   newGroupName,
   setNewGroupName,
@@ -42,6 +42,7 @@ export default function ChatModals({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const groupPhotoInputRef = useRef<HTMLInputElement>(null); // 🔥 ref untuk input foto grup
 
   // Reset saat modal gambar dibuka
   useEffect(() => {
@@ -463,6 +464,7 @@ export default function ChatModals({
                 </div>
               ) : (
                 <div>
+                  {/* 🔥 PERUBAHAN: Form Nama Grup (tetap) */}
                   <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
                     Nama Grup
                   </label>
@@ -481,21 +483,93 @@ export default function ChatModals({
                     style={{
                       width: '100%', padding: '10px', borderRadius: '10px',
                       background: 'var(--primary-blue)', color: 'white', border: 'none',
-                      fontWeight: 600, cursor: 'pointer', marginBottom: '16px',
+                      fontWeight: 600, cursor: 'pointer', marginBottom: '24px',
                     }}
                   >
                     Simpan Nama
                   </button>
 
-                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                  {/* 🔥 BAGIAN FOTO GRUP DENGAN GAYA BARU */}
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
                     Foto Grup
                   </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleGroupPhotoUpload}
-                    style={{ fontSize: '14px', marginBottom: '16px' }}
-                  />
+                  
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    {/* Pratinjau foto grup saat ini */}
+                    <div style={{
+                      position: 'relative',
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: '2px solid var(--border-color)',
+                      background: 'var(--bg-secondary)',
+                    }}>
+                      <img
+                        src={headerInfo?.avatar || '/asets/png/profile.webp'}
+                        alt="group avatar"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                      {/* Overlay saat hover untuk menunjukkan bisa diganti */}
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0,
+                        transition: 'opacity 0.2s',
+                        cursor: 'pointer',
+                      }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
+                        onClick={() => groupPhotoInputRef.current?.click()}
+                      >
+                        <span className="material-icons" style={{ color: 'white', fontSize: '32px' }}>photo_camera</span>
+                      </div>
+                    </div>
+
+                    {/* Tombol Ganti Foto */}
+                    <button
+                      onClick={() => groupPhotoInputRef.current?.click()}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid var(--primary-blue)',
+                        color: 'var(--primary-blue)',
+                        borderRadius: '8px',
+                        padding: '6px 16px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '18px' }}>upload</span>
+                      Ganti Foto
+                    </button>
+
+                    {/* Input file tersembunyi */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={groupPhotoInputRef}
+                      style={{ display: 'none' }}
+                      onChange={handleGroupPhotoUpload}
+                    />
+                  </div>
                 </div>
               )}
             </motion.div>

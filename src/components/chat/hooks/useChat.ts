@@ -614,14 +614,31 @@ export function useChat() {
     }
   };
 
+  // MODIFIKASI: Dibuat agar secara dinamis memicu file input picker langsung tanpa memunculkan modal
   const handlePhotoClick = () => {
     const allowedRoles = ['verified', 'vip', 'admin', 'developer', 'creator'];
     const userRole = myProfile?.role?.toLowerCase() || 'user';
+    
     if (!allowedRoles.includes(userRole)) {
       showNotif("Fitur Kirim Foto khusus member Verified/VIP!", "warning");
       return;
     }
-    setIsImageModalOpen(true);
+
+    // Membuat file input tersembunyi
+    const inputElement = document.createElement('input');
+    inputElement.type = 'file';
+    inputElement.accept = 'image/*';
+    
+    inputElement.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        // Otomatis terkirim tanpa caption tambahan (sesuai permintaan user yang ingin bypass modal sepenuhnya)
+        await handleSendImageFromModal(file, ""); 
+      }
+    };
+    
+    // Memanggil dialog file chooser secara programatik
+    inputElement.click();
   };
 
   const handleSendImageFromModal = async (fileOrUrl: File | Blob | string, caption: string) => {

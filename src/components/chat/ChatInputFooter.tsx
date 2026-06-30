@@ -121,7 +121,6 @@ export default function ChatInputFooter({
                     }}
                   />
                   
-                  {/* KONFLIK TERPECAHKAN: Hanya memanggil modal tanpa ada elemen input file tersembunyi yang ikut terpicu */}
                   <button 
                     style={{ background: 'transparent', border: 'none', padding: '12px 14px 12px 0', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} 
                     onClick={handlePhotoClick} disabled={isUploadingImg}
