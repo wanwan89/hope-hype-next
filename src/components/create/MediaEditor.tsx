@@ -1,350 +1,745 @@
 'use client';
 
-import React, { useState } from 'react';
-import Cropper from 'react-easy-crop';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { supabase } from '@/lib/supabase';
+import { getCroppedImg, showNotif } from '@/lib/ui-utils';
+import { useTranslation } from 'react-i18next';
+import { useRouter, useSearchParams } from 'next/navigation';
+import './Create.css';
 
-interface MediaEditorProps {
-  postType: 'image' | 'text' | 'video';
-  croppedImagesCount: number;
-  rawImagesCount: number;
-  isProcessingEdit: boolean;
-  
-  // Image Props
-  imageForCrop: string | null;
-  crop: { x: number; y: number };
-  zoom: number;
-  setCrop: (crop: { x: number; y: number }) => void;
-  setZoom: (zoom: number) => void;
-  onCropComplete: (croppedArea: any, croppedAreaPixels: any) => void;
-  handleSaveCrop: () => void;
-  handleCancelCrop: () => void;
+// Import sub-komponen modular
+import CreateHeader from '@/components/create/CreateHeader';
+import DestinationSelector from '@/components/create/DestinationSelector';
+import PostTypeSelector from '@/components/create/PostTypeSelector';
+import ImageUploader from '@/components/create/ImageUploader';
+import VideoUploader from '@/components/create/VideoUploader';
+import CaptionInput from '@/components/create/CaptionInput';
+import MusicPicker from '@/components/create/MusicPicker';
+import AdToggle from '@/components/create/AdToggle';
+import SubmitButtons from '@/components/create/SubmitButtons';
+import MusicSheet from '@/components/create/MusicSheet';
 
-  // Video Props
-  rawVideoUrl: string | null;
-  isVideoPlaying: boolean;
-  videoDuration: number;
-  videoStart: number;
-  videoEnd?: number; // Tambahan baru
-  coverTime: number;
-  videoRotation?: number; // Tambahan baru: 0, 90, 180, 270
-  videoThumbnails: string[];
-  MAX_VIDEO_CLIP: number;
-  
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  
-  setVideoStart: (start: number) => void;
-  setVideoEnd?: (end: number) => void; // Tambahan baru
-  setCoverTime: (time: number) => void;
-  setVideoRotation?: (rotation: number | ((prev: number) => number)) => void; // Tambahan baru
-  
-  handleRemoveVideo: () => void;
-  captureFrameAndSave: () => void;
-  handleVideoLoadedMetadata: () => void;
-  togglePlayVideo: () => void;
-  setIsVideoPlaying: (playing: boolean) => void;
-  setStep: (step: 'pick' | 'edit' | 'post') => void;
-}
+// Import MediaEditor yang baru dipisah
+import MediaEditor from '@/components/create/MediaEditor';
 
-export default function MediaEditor({
-  postType,
-  croppedImagesCount,
-  rawImagesCount,
-  isProcessingEdit,
-  imageForCrop,
-  crop,
-  zoom,
-  rawVideoUrl,
-  isVideoPlaying,
-  videoDuration,
-  videoStart,
-  videoEnd = MAX_VIDEO_CLIP, 
-  coverTime,
-  videoRotation = 0,
-  videoThumbnails,
-  MAX_VIDEO_CLIP,
-  videoRef,
-  canvasRef,
-  setCrop,
-  setZoom,
-  onCropComplete,
-  setVideoStart,
-  setVideoEnd,
-  setCoverTime,
-  setVideoRotation,
-  handleCancelCrop,
-  handleRemoveVideo,
-  handleSaveCrop,
-  captureFrameAndSave,
-  handleVideoLoadedMetadata,
-  togglePlayVideo,
-  setStep,
-  setIsVideoPlaying
-}: MediaEditorProps) {
-  
-  // State untuk navigasi menu bawah pada editor video (Mirip Capcut)
-  const [activeTab, setActiveTab] = useState<'trim' | 'cover' | 'format'>('trim');
+// Menggunakan Environment Variable untuk keamanan
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 
-  // Menghitung rotasi untuk styling CSS
-  const isRotated = videoRotation === 90 || videoRotation === 270;
+// Global Theme Switch
+const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
+  <div
+    onClick={() => onChange(!checked)}
+    className={`custom-toggle-switch ${checked ? 'is-checked' : ''}`}
+  >
+    <div className="toggle-dot" />
+  </div>
+);
+
+function CreatePostContent() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftId = searchParams?.get('draft_id');
+
+  // ---------- STATE ----------
+  const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
+  const [destination, setDestination] = useState<'feed' | 'story'>('feed');
+  const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
+  const [caption, setCaption] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBusinessUser, setIsBusinessUser] = useState(false);
+  const [isAd, setIsAd] = useState(false);
+
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [allowComments, setAllowComments] = useState(true);
+  const [saveToDevice, setSaveToDevice] = useState(false);
+
+  const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]);
+  const [croppedImages, setCroppedImages] = useState<Blob[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+
+  const [rawVideoFile, setRawVideoFile] = useState<File | null>(null);
+  const [rawVideoUrl, setRawVideoUrl] = useState<string | null>(null);
+  const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoStart, setVideoStart] = useState(0);
+  const [videoEnd, setVideoEnd] = useState(60); 
+  const [coverTime, setCoverTime] = useState(0);
+  const [videoRotation, setVideoRotation] = useState<number>(0); 
+
+  const [coverBlob, setCoverBlob] = useState<Blob | null>(null);
+  const [coverPreviewUrl, setCoverUrlPreview] = useState<string | null>(null);
+  const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  const [searchMusic, setSearchMusic] = useState('');
+  const [musicResults, setMusicResults] = useState<any[]>([]);
+  const [selectedMusic, setSelectedMusic] = useState<any>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isMusicSheetOpen, setIsMusicSheetOpen] = useState(false);
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [popupResults, setPopupResults] = useState<any[]>([]);
+
+  const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
+  const [isProcessingEdit, setIsProcessingEdit] = useState(false);
+  const [imageForCrop, setImageForCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const captionInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const MAX_VIDEO_CLIP = 60;
+
+  // ==================== EFFECTS ====================
+  useEffect(() => {
+    if (!draftId) return;
+    (async () => {
+      const { data } = await supabase.from('posts').select('*').eq('id', draftId).single();
+      if (!data) return;
+      setCaption(data.bio || '');
+      setIsAd(data.is_ad || false);
+      if (data.comments_disabled !== undefined) setAllowComments(!data.comments_disabled);
+      
+      if (data.video_url) {
+        setPostType('video');
+        setExistingVideoUrl(data.video_url);
+        setExistingImageUrl(data.image_url);
+        setCoverUrlPreview(data.image_url);
+        setRawVideoUrl(data.video_url);
+      } else if (data.image_url) {
+        setPostType('image');
+        setExistingImageUrl(data.image_url);
+        setPreviewUrls(data.image_url.split(','));
+      } else setPostType('text');
+      if (data.audio_src) setSelectedMusic({ previewUrl: data.audio_src, trackName: data.title, artistName: data.artist });
+      setStep('post');
+    })();
+  }, [draftId]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase.from('profiles').select('is_business').eq('id', session.user.id).single();
+        if (data?.is_business) setIsBusinessUser(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (showPopup === 'none') return;
+    const fetchSuggestions = async () => {
+      if (showPopup === 'mention') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const myId = session.user.id;
+        const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
+        const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
+        const ids = new Set([...(following?.map(f => f.following_id) || []), ...(followers?.map(f => f.follower_id) || [])]);
+        if (ids.size > 0) {
+          let q = supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(ids)).limit(10);
+          if (searchQuery) q = q.ilike('username', `%${searchQuery}%`);
+          const { data } = await q;
+          setPopupResults(data || []);
+        } else setPopupResults([]);
+      } else if (showPopup === 'hashtag') {
+        let q = searchQuery.toLowerCase().trim();
+        if (!q.startsWith('#')) q = '#' + q;
+        try {
+          const { data } = await supabase.from('hashtags').select('tag').ilike('tag', `${q}%`).limit(10);
+          setPopupResults(data || []);
+        } catch (err) { console.error(err); }
+      }
+    };
+    const t = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery, showPopup]);
+
+  useEffect(() => {
+    if (!searchMusic.trim()) { setMusicResults([]); return; }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchMusic)}&media=music&limit=20`);
+        const data = await res.json();
+        setMusicResults(data.results || []);
+      } catch (err) { console.error(err); }
+      setIsSearching(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [searchMusic]);
+
+  // ==================== HANDLERS ====================
+  const handleClose = () => { audioRef.current?.pause(); router.back(); };
+  const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setCaption(val);
+    const pos = e.target.selectionStart || 0;
+    const before = val.slice(0, pos);
+    const mentionMatch = before.match(/(?:^|\s)@(\w*)$/);
+    const hashtagMatch = before.match(/(?:^|\s)#(\w*)$/);
+    if (mentionMatch) {
+      setShowPopup('mention');
+      setSearchQuery(mentionMatch[1]);
+    } else if (hashtagMatch) {
+      setShowPopup('hashtag');
+      setSearchQuery(hashtagMatch[1]);
+    } else {
+      setShowPopup('none');
+    }
+  };
+
+  const handleSelectPopupItem = (item: string) => {
+    if (!captionInputRef.current) return;
+    const cursor = captionInputRef.current.selectionStart || 0;
+    const before = caption.slice(0, cursor);
+    const after = caption.slice(cursor);
+    let newBefore = '';
+    if (showPopup === 'mention') {
+      newBefore = before.replace(/@\w*$/, `@${item} `);
+    } else {
+      newBefore = before.replace(/#\w*$/, `${item.startsWith('#') ? item : `#${item}`} `);
+    }
+    setCaption(newBefore + after);
+    setShowPopup('none');
+    captionInputRef.current.focus();
+  };
+
+  // ---------- MEDIA: IMAGE TRIMMING ----------
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    if (croppedImages.length + files.length > 3) return showNotif("Maksimal hanya bisa 3 foto!", "warning");
+    Promise.all(files.map(f => new Promise<string>(res => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result as string);
+      reader.readAsDataURL(f);
+    }))).then(results => {
+      setRawImagesQueue(results);
+      setImageForCrop(results[0]);
+      setStep('edit');
+      setExistingImageUrl(null);
+    });
+  };
+
+  const onCropComplete = useCallback((_: any, pixels: any) => setCroppedAreaPixels(pixels), []);
+
+  const handleSaveCrop = async () => {
+    if (!imageForCrop || !croppedAreaPixels) return;
+    setIsProcessingEdit(true);
+    try {
+      const blob = await getCroppedImg(imageForCrop, croppedAreaPixels);
+      setCroppedImages(prev => [...prev, blob]);
+      setPreviewUrls(prev => [...prev, URL.createObjectURL(blob)]);
+      const rest = rawImagesQueue.slice(1);
+      if (rest.length > 0) {
+        setRawImagesQueue(rest);
+        setImageForCrop(rest[0]);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setCroppedAreaPixels(null);
+      } else {
+        setRawImagesQueue([]);
+        setImageForCrop(null);
+        setStep('post');
+      }
+    } catch (e) {
+      console.error(e);
+      showNotif("Gagal memproses gambar", "error");
+    } finally {
+      setIsProcessingEdit(false);
+    }
+  };
+
+  const handleCancelCrop = () => {
+    const rest = rawImagesQueue.slice(1);
+    if (rest.length > 0) {
+      setRawImagesQueue(rest);
+      setImageForCrop(rest[0]);
+    } else {
+      setRawImagesQueue([]);
+      setImageForCrop(null);
+      setStep('post');
+    }
+  };
+
+  const handleRemovePreview = (idx: number) => {
+    setCroppedImages(prev => prev.filter((_, i) => i !== idx));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // ---------- MEDIA: VIDEO PROCESSOR ----------
+  const generateVideoThumbnails = async (url: string, dur: number) => {
+    const video = document.createElement('video');
+    video.src = url; video.muted = true; video.playsInline = true;
+    await new Promise(r => { video.onloadeddata = r; });
+    const canvas = document.createElement('canvas');
+    canvas.width = 60; canvas.height = 80;
+    const ctx = canvas.getContext('2d')!;
+    const thumbs: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      video.currentTime = (dur / 8) * i;
+      await new Promise(r => { video.onseeked = r; });
+      ctx.drawImage(video, 0, 0, 60, 80);
+      thumbs.push(canvas.toDataURL('image/jpeg', 0.6));
+    }
+    setVideoThumbnails(thumbs);
+  };
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) return showNotif("Ukuran video terlalu besar! Maksimal 50MB.", "warning");
+    setRawVideoFile(file);
+    const objUrl = URL.createObjectURL(file);
+    setRawVideoUrl(objUrl);
+    setVideoThumbnails([]);
+    setExistingVideoUrl(null);
+    setExistingImageUrl(null);
+    setStep('edit');
+  };
+
+  const handleVideoLoadedMetadata = () => {
+    if (videoRef.current) {
+      const dur = videoRef.current.duration;
+      setVideoDuration(dur);
+      setVideoStart(0);
+      setCoverTime(0);
+      if (rawVideoUrl && !existingVideoUrl) generateVideoThumbnails(rawVideoUrl, dur);
+      if (dur > MAX_VIDEO_CLIP) {
+        showNotif(`Video berdurasi ${Math.round(dur)} detik. Anda dapat memotong hingga maksimal ${MAX_VIDEO_CLIP} detik.`, "info");
+      }
+    }
+  };
+
+  const togglePlayVideo = () => {
+    if (!videoRef.current) return;
+    if (isVideoPlaying) { videoRef.current.pause(); setIsVideoPlaying(false); }
+    else { videoRef.current.play(); setIsVideoPlaying(true); }
+  };
+
+  // DIPERBARUI: Fungsi ambil sampul video dengan rotasi
+  const captureFrameAndSave = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    setIsProcessingEdit(true);
+    
+    video.pause(); setIsVideoPlaying(false);
+    
+    // Tentukan apakah video sedang dirotasi vertikal/horizontal
+    const isRotated = videoRotation === 90 || videoRotation === 270;
+    const vw = isRotated ? video.videoHeight : video.videoWidth;
+    const vh = isRotated ? video.videoWidth : video.videoHeight;
+    
+    // 1. Buat kanvas sementara untuk menerapkan rotasi secara utuh
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = vw;
+    tempCanvas.height = vh;
+    const tCtx = tempCanvas.getContext('2d');
+    if (tCtx) {
+      tCtx.translate(vw / 2, vh / 2);
+      tCtx.rotate((videoRotation * Math.PI) / 180);
+      tCtx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
+    }
+
+    // 2. Potong (Crop) kanvas sementara yang sudah diputar ke rasio 2:3
+    const ratio = 2 / 3;
+    let cw: number, ch: number, sx: number, sy: number;
+    if (vw / vh > ratio) { ch = vh; cw = ch * ratio; sx = (vw - cw) / 2; sy = 0; }
+    else { cw = vw; ch = cw / ratio; sx = 0; sy = (vh - ch) / 2; }
+    
+    canvas.width = cw; canvas.height = ch;
+    canvas.getContext('2d')?.drawImage(tempCanvas, sx, sy, cw, ch, 0, 0, cw, ch);
+    
+    canvas.toBlob(blob => {
+      if (blob) {
+        setCoverBlob(blob);
+        setCoverUrlPreview(URL.createObjectURL(blob));
+        setStep('post');
+      }
+      setIsProcessingEdit(false);
+    }, 'image/jpeg', 0.9);
+  };
+
+  const handleRemoveVideo = () => {
+    setRawVideoFile(null); setRawVideoUrl(null); setCoverBlob(null);
+    setCoverUrlPreview(null); setVideoThumbnails([]);
+    setExistingVideoUrl(null); setExistingImageUrl(null);
+    setStep('post');
+  };
+
+  const togglePlayPreview = (url: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (playingUrl === url) {
+      audioRef.current?.pause();
+      setPlayingUrl(null);
+    } else {
+      audioRef.current?.pause();
+      const a = new Audio(url);
+      a.play();
+      setPlayingUrl(url);
+      a.onended = () => setPlayingUrl(null);
+      audioRef.current = a;
+    }
+  };
+
+  // ---------- UPLOAD & SUBMIT SUBMISSION ----------
+  const updateGlobalProgress = (progress: number) => {
+    window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: progress }));
+    localStorage.setItem('uploadProgress', String(progress));
+  };
+
+  const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
+    return new Promise<any>((resolve, reject) => {
+      const fd = new FormData();
+      const name = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
+      fd.append("file", file, name);
+      if (!CLOUDINARY_UPLOAD_PRESET) { reject("Missing upload preset configuration"); return; }
+      fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      const xhr = new XMLHttpRequest();
+      if (!CLOUDINARY_CLOUD_NAME) { reject("Missing cloud name configuration"); return; }
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) updateGlobalProgress(Math.round((e.loaded / e.total) * 50));
+      };
+      xhr.onload = () => {
+        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
+        else reject(JSON.parse(xhr.responseText));
+      };
+      xhr.onerror = () => reject("Network error");
+      xhr.send(fd);
+    });
+  };
+
+  const submitPostAction = async (isDraft: boolean = false) => {
+    if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
+      return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
+    if (postType === 'video' && !rawVideoFile && !existingVideoUrl)
+      return showNotif("Pilih video terlebih dahulu!", "warning");
+    if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1)))
+      return showNotif("Story hanya bisa upload 1 foto!", "warning");
+
+    const wordCount = countWords(caption);
+    const maxWords = postType === 'text' ? 150 : 100;
+    if (wordCount > maxWords) {
+      return showNotif(`Caption maksimal ${maxWords} kata!`, "warning");
+    }
+
+    if (saveToDevice) {
+      if (postType === 'image' && croppedImages.length > 0) {
+        croppedImages.forEach((blob, idx) => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `Hype_Image_${Date.now()}_${idx}.jpg`;
+          a.click();
+        });
+      } else if (postType === 'video' && rawVideoFile) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(rawVideoFile);
+        a.download = `Hype_Video_${Date.now()}.mp4`;
+        a.click();
+      }
+    }
+
+    setIsSubmitting(true);
+    localStorage.setItem('isUploading', 'true');
+    updateGlobalProgress(0);
+    window.dispatchEvent(new CustomEvent('postUploadStart'));
+
+    if (!isDraft) {
+      router.push('/');
+    } else {
+      router.back();
+    }
+
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { window.dispatchEvent(new CustomEvent('postUploadError')); return; }
+        const myUserId = session.user.id;
+
+        const tags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
+        if (tags.length > 0) {
+          for (const tg of tags) await supabase.from('hashtags').upsert({ tag: tg });
+        }
+
+        let finalImageUrl: string | null = existingImageUrl;
+        let finalVideoUrl: string | null = existingVideoUrl;
+
+        if (postType === 'image' && croppedImages.length > 0) {
+          const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image')));
+          if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
+            window.dispatchEvent(new CustomEvent('postUploadError'));
+            localStorage.removeItem('isUploading');
+            showNotif("Postingan ditolak! Konten sensitif.", "error");
+            return;
+          }
+          finalImageUrl = results.map(r => r.secure_url).join(',');
+          updateGlobalProgress(50);
+        } else if (postType === 'video' && rawVideoFile && coverBlob) {
+          const coverRes = await uploadToCloudinary(coverBlob, 'image');
+          if (coverRes.moderation?.[0]?.status === 'rejected') {
+            window.dispatchEvent(new CustomEvent('postUploadError'));
+            localStorage.removeItem('isUploading');
+            showNotif("Video ditolak! Sampul sensitif.", "error");
+            return;
+          }
+          finalImageUrl = coverRes.secure_url;
+
+          // DIPERBARUI: Cloudinary URL generator untuk Rotasi dan Video End
+          const clipEnd = videoEnd || Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
+          const rotParam = videoRotation !== 0 ? `a_${videoRotation},` : '';
+          
+          const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
+          finalVideoUrl = vidRes.secure_url.replace(
+            '/upload/',
+            `/upload/${rotParam}c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
+          );
+          updateGlobalProgress(50);
+        }
+
+        updateGlobalProgress(70);
+        let newPostData = null;
+
+        if (destination === "story") {
+          const { data } = await supabase.from("stories").insert({
+            creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
+            content: caption.trim(), audio_src: selectedMusic?.previewUrl,
+            title: selectedMusic?.trackName, artist: selectedMusic?.artistName,
+            visibility, is_ad: isBusinessUser ? isAd : false,
+          }).select('*, profiles(*)').single();
+          newPostData = data;
+        } else {
+          const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+          const payload = {
+            creator_id: myUserId, name: prof?.username || "User", bio: caption.trim(),
+            category: "Karya", image_url: finalImageUrl, video_url: finalVideoUrl,
+            audio_src: selectedMusic?.previewUrl, title: selectedMusic?.trackName,
+            artist: selectedMusic?.artistName, status: isDraft ? "draft" : "approved",
+            is_ad: isBusinessUser ? isAd : false,
+            comments_disabled: !allowComments,
+          };
+          
+          if (draftId) {
+            await supabase.from("posts").update(payload).eq('id', draftId);
+            const { data } = await supabase.from("posts").select('*, profiles(*)').eq('id', draftId).single();
+            newPostData = data;
+          } else {
+            const { data } = await supabase.from("posts").insert(payload).select('*, profiles(*)').single();
+            newPostData = data;
+          }
+        }
+
+        updateGlobalProgress(85);
+
+        if (!isDraft && (newPostData?.id || destination === "story")) {
+          const mentions = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
+          if (mentions.length > 0) {
+            const { data: tagged } = await supabase.from('profiles').select('id, username').in('username', mentions);
+            if (tagged) {
+              const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+              const notifs = tagged.filter(u => u.id !== myUserId).map(u => ({
+                user_id: u.id, actor_id: myUserId, post_id: destination === "feed" ? newPostData.id : null,
+                type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`,
+              }));
+              if (notifs.length) await supabase.from("notifications").insert(notifs);
+            }
+          }
+        }
+
+        updateGlobalProgress(100);
+        window.dispatchEvent(new CustomEvent('postUploadSuccess', { detail: newPostData }));
+        localStorage.removeItem('isUploading');
+        localStorage.removeItem('uploadProgress');
+        showNotif(isDraft ? "Draft tersimpan" : "Postingan berhasil!", "success");
+        audioRef.current?.pause();
+      } catch (err: any) {
+        console.error(err);
+        window.dispatchEvent(new CustomEvent('postUploadError'));
+        localStorage.removeItem('isUploading');
+        localStorage.removeItem('uploadProgress');
+        showNotif("Gagal upload", "error");
+      }
+    })();
+  };
 
   return (
-    <div className="editor-screen-overlay bg-black text-white h-screen w-full flex flex-col fixed inset-0 z-50">
-      
-      {/* 1. Header Editor */}
-      <div className="editor-screen-header flex justify-between items-center p-4 bg-black/80 backdrop-blur-sm z-10">
-        <button 
-          onClick={() => { 
-            if (postType === 'image') handleCancelCrop(); 
-            else { handleRemoveVideo(); setStep('post'); } 
-          }} 
-          className="text-white p-2 hover:bg-gray-800 rounded-full transition-colors"
-        >
-          <span className="material-icons">close</span>
-        </button>
-        <p className="font-semibold text-sm">
-          {postType === 'image' 
-            ? `Edit Foto (${croppedImagesCount + 1}/${croppedImagesCount + rawImagesCount})` 
-            : 'Editor Video'}
-        </p>
-        <button 
-          disabled={isProcessingEdit} 
-          onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
-          className={`px-4 py-1.5 rounded-full font-semibold text-sm ${isProcessingEdit ? 'bg-gray-600 text-gray-400' : 'bg-white text-black hover:bg-gray-200'}`}
-        >
-          {isProcessingEdit ? 'Memproses...' : 'Selesai'}
-        </button>
-      </div>
+    <div className="create-page-wrapper">
+      {step === 'edit' && (
+        <MediaEditor 
+          // Props Utama
+          postType={postType}
+          croppedImagesCount={croppedImages.length}
+          rawImagesCount={rawImagesQueue.length}
+          isProcessingEdit={isProcessingEdit}
+          
+          // Image Tools
+          imageForCrop={imageForCrop}
+          crop={crop}
+          zoom={zoom}
+          setCrop={setCrop}
+          setZoom={setZoom}
+          onCropComplete={onCropComplete}
+          handleSaveCrop={handleSaveCrop}
+          handleCancelCrop={handleCancelCrop}
+          
+          // Video Tools (DIPERBARUI)
+          rawVideoUrl={rawVideoUrl}
+          isVideoPlaying={isVideoPlaying}
+          videoDuration={videoDuration}
+          videoStart={videoStart}
+          videoEnd={videoEnd}
+          coverTime={coverTime}
+          videoRotation={videoRotation}
+          videoThumbnails={videoThumbnails}
+          MAX_VIDEO_CLIP={MAX_VIDEO_CLIP}
+          
+          videoRef={videoRef}
+          canvasRef={canvasRef}
+          
+          setVideoStart={setVideoStart}
+          setVideoEnd={setVideoEnd}
+          setCoverTime={setCoverTime}
+          setVideoRotation={setVideoRotation}
+          
+          handleRemoveVideo={handleRemoveVideo}
+          captureFrameAndSave={captureFrameAndSave}
+          handleVideoLoadedMetadata={handleVideoLoadedMetadata}
+          togglePlayVideo={togglePlayVideo}
+          setStep={setStep}
+          setIsVideoPlaying={setIsVideoPlaying}
+        />
+      )}
 
-      {/* 2. Ruang Kerja Kreatif (Preview) */}
-      <div className="editor-workspace flex-1 relative overflow-hidden flex items-center justify-center bg-zinc-950">
-        {postType === 'image' && imageForCrop ? (
-          <div className="absolute inset-0">
-            <Cropper 
-              image={imageForCrop} 
-              crop={crop} 
-              zoom={zoom} 
-              aspect={3 / 4} 
-              onCropChange={setCrop} 
-              onCropComplete={onCropComplete} 
-              onZoomChange={setZoom} 
-            />
-          </div>
-        ) : postType === 'video' && rawVideoUrl ? (
-          <div className="relative w-full h-full flex items-center justify-center">
-            <video 
-              ref={videoRef as React.RefObject<HTMLVideoElement>} 
-              src={rawVideoUrl} 
-              playsInline 
-              muted={!isVideoPlaying} 
-              loop 
-              onLoadedMetadata={handleVideoLoadedMetadata}
-              className="max-w-full max-h-full transition-transform duration-300 ease-in-out"
-              style={{ 
-                transform: `rotate(${videoRotation}deg)`,
-                objectFit: 'contain',
-                // Penyesuaian scale jika dirotasi agar tidak melebar keluar layar
-                scale: isRotated ? '0.8' : '1' 
-              }}
-            />
-            <canvas ref={canvasRef as React.RefObject<HTMLCanvasElement>} style={{ display: 'none' }} />
-            
-            {/* Play/Pause Overlay */}
-            <div 
-              onClick={togglePlayVideo} 
-              className="absolute inset-0 flex items-center justify-center cursor-pointer z-10"
-            >
-              {!isVideoPlaying && (
-                <div className="bg-black/50 p-4 rounded-full backdrop-blur-md">
-                  <span className="material-icons text-white text-4xl">play_arrow</span>
-                </div>
+      <MusicSheet
+        isOpen={isMusicSheetOpen}
+        onClose={() => { setIsMusicSheetOpen(false); audioRef.current?.pause(); setPlayingUrl(null); }}
+        searchMusic={searchMusic}
+        setSearchMusic={setSearchMusic}
+        isSearching={isSearching}
+        musicResults={musicResults}
+        playingUrl={playingUrl}
+        onTogglePreview={togglePlayPreview}
+        onSelect={(song) => { setSelectedMusic(song); audioRef.current?.pause(); setPlayingUrl(null); setIsMusicSheetOpen(false); }}
+        t={t}
+      />
+
+      {step === 'post' && (
+        <>
+          <CreateHeader draftId={draftId} onClose={handleClose} />
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 20px' }}>
+            <div className="post-form">
+              <DestinationSelector destination={destination} setDestination={setDestination} visibility={visibility} setVisibility={setVisibility} t={t} />
+              <PostTypeSelector postType={postType} setPostType={setPostType} onReset={() => { setCroppedImages([]); setPreviewUrls([]); handleRemoveVideo(); setExistingImageUrl(null); setExistingVideoUrl(null); }} />
+
+              {postType === 'image' && (
+                <ImageUploader
+                  previewUrls={previewUrls}
+                  existingImageUrl={existingImageUrl}
+                  onFileSelect={handleFileChange}
+                  onRemovePreview={handleRemovePreview}
+                  destination={destination}
+                />
               )}
-            </div>
-          </div>
-        ) : null}
-      </div>
 
-      {/* 3. Footer Panel Kontrol (Alat Editor) */}
-      <div className="editor-screen-footer bg-zinc-900 pb-8 pt-4 px-4 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-20 relative">
-        
-        {postType === 'image' ? (
-          // Kontrol Foto
-          <div className="flex items-center gap-4 px-4 py-6">
-            <span className="material-icons text-gray-400">remove</span>
-            <input 
-              type="range" 
-              className="w-full accent-white h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-              value={zoom} min={1} max={3} step={0.1} 
-              onChange={e => setZoom(Number(e.target.value))} 
-            />
-            <span className="material-icons text-gray-400">add</span>
-          </div>
-        ) : (
-          // Kontrol Video (Gaya TikTok/CapCut)
-          <div className="flex flex-col gap-4">
-            
-            {/* Area Alat yang Aktif */}
-            <div className="h-[100px] flex flex-col justify-center">
-              
-              {/* TAB: POTONG VIDEO */}
-              {activeTab === 'trim' && (
-                <div className="animate-fade-in">
-                  <div className="flex justify-between text-xs text-gray-400 mb-2 font-medium">
-                    <span>Geser untuk memotong</span>
-                    <span className="text-white bg-white/10 px-2 py-0.5 rounded">
-                      Durasi: {Math.min(videoDuration, videoEnd - videoStart).toFixed(1)}s
+              {postType === 'video' && (
+                <VideoUploader
+                  coverPreviewUrl={coverPreviewUrl}
+                  existingVideoUrl={existingVideoUrl}
+                  onVideoSelect={handleVideoSelect}
+                  onRemoveVideo={handleRemoveVideo}
+                />
+              )}
+
+              <CaptionInput
+                caption={caption}
+                onChange={handleCaptionChange}
+                onKeyDown={(e) => {
+                  if (showPopup !== 'none' && e.key === "Enter") {
+                    e.preventDefault();
+                    if (popupResults.length > 0) {
+                      handleSelectPopupItem(showPopup === 'mention' ? popupResults[0].username : popupResults[0].tag);
+                    }
+                  }
+                }}
+                postType={postType}
+                wordCount={countWords(caption)}
+                maxWords={postType === 'text' ? 150 : 100}
+                showPopup={showPopup}
+                popupResults={popupResults}
+                onSelectPopupItem={handleSelectPopupItem}
+                inputRef={captionInputRef}
+              />
+
+              <MusicPicker
+                selectedMusic={selectedMusic}
+                onOpenSheet={() => setIsMusicSheetOpen(true)}
+                onRemove={() => { setSelectedMusic(null); if (playingUrl === selectedMusic?.previewUrl) audioRef.current?.pause(); }}
+              />
+
+              {isBusinessUser && <AdToggle isAd={isAd} setIsAd={setIsAd} />}
+
+              {destination === 'feed' && (
+                <div className="more-options-box">
+                  <div onClick={() => setShowMoreOptions(!showMoreOptions)} className="more-options-trigger">
+                    <span className="more-options-title">
+                      <span className="material-icons" style={{ fontSize: '18px' }}>settings</span> Opsi Lainnya
+                    </span>
+                    <span className={`material-icons more-options-icon-chevron ${showMoreOptions ? 'is-expanded' : ''}`}>
+                      expand_more
                     </span>
                   </div>
-                  <div className="relative h-12 bg-zinc-800 rounded-lg overflow-hidden flex border-2 border-transparent focus-within:border-white transition-all">
-                    <div className="absolute inset-0 flex">
-                      {videoThumbnails.map((thumb, idx) => (
-                        <img key={idx} src={thumb} className="h-full w-auto object-cover flex-1 opacity-70" alt="frame" />
-                      ))}
+                  {showMoreOptions && (
+                    <div className="more-options-content">
+                      <div className="more-options-item">
+                        <div>
+                          <p className="more-options-label">Izinkan Komentar</p>
+                          <p className="more-options-subtext">Orang lain bisa mengomentari ini</p>
+                        </div>
+                        <ToggleSwitch checked={allowComments} onChange={setAllowComments} />
+                      </div>
+                      <div className="more-options-item">
+                        <div>
+                          <p className="more-options-label">Simpan ke Perangkat</p>
+                          <p className="more-options-subtext">Otomatis simpan media yang diedit</p>
+                        </div>
+                        <ToggleSwitch checked={saveToDevice} onChange={setSaveToDevice} />
+                      </div>
                     </div>
-                    <input 
-                      type="range" 
-                      className="absolute inset-0 w-full opacity-0 cursor-pointer z-20" 
-                      min={0} 
-                      max={Math.max(0, videoDuration - MAX_VIDEO_CLIP)} 
-                      step={0.1} 
-                      value={videoStart} 
-                      onChange={e => { 
-                        const val = Number(e.target.value); 
-                        setVideoStart(val);
-                        if(setVideoEnd) setVideoEnd(val + MAX_VIDEO_CLIP);
-                        if (videoRef.current) { 
-                          videoRef.current.currentTime = val; 
-                          videoRef.current.play(); 
-                          setIsVideoPlaying(true); 
-                        } 
-                        if (coverTime < val || coverTime > val + MAX_VIDEO_CLIP) setCoverTime(val); 
-                      }} 
-                    />
-                    {/* Visual Indikator Area Terpotong */}
-                    <div 
-                      className="absolute top-0 bottom-0 border-y-4 border-l-4 border-white bg-white/20 z-10 rounded-l-md pointer-events-none"
-                      style={{ 
-                        left: `${(videoStart / videoDuration) * 100}%`,
-                        width: `${(MAX_VIDEO_CLIP / videoDuration) * 100}%`,
-                        minWidth: '20%'
-                      }}
-                    />
-                  </div>
+                  )}
                 </div>
               )}
 
-              {/* TAB: SAMPUL */}
-              {activeTab === 'cover' && (
-                <div className="animate-fade-in">
-                  <div className="flex justify-between text-xs text-gray-400 mb-2 font-medium">
-                    <span>Pilih frame untuk sampul</span>
-                    <span className="text-white">{coverTime.toFixed(1)}s</span>
-                  </div>
-                  <div className="relative h-12 bg-zinc-800 rounded-lg overflow-hidden flex">
-                    <div className="absolute inset-0 flex">
-                      {videoThumbnails.map((thumb, idx) => (
-                        <img key={idx} src={thumb} className="h-full w-auto object-cover flex-1 opacity-50" alt="cover-frame" />
-                      ))}
-                    </div>
-                    <input 
-                      type="range" 
-                      className="absolute inset-0 w-full opacity-0 cursor-pointer z-20" 
-                      min={videoStart} 
-                      max={Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP)} 
-                      step={0.1} 
-                      value={coverTime} 
-                      onChange={e => { 
-                        const val = Number(e.target.value); 
-                        setCoverTime(val); 
-                        if (videoRef.current) { 
-                          videoRef.current.currentTime = val; 
-                          videoRef.current.pause(); 
-                          setIsVideoPlaying(false); 
-                        } 
-                      }} 
-                    />
-                    {/* Visual Indikator Cover */}
-                    <div 
-                      className="absolute top-0 bottom-0 w-2 bg-white z-10 shadow-[0_0_10px_rgba(255,255,255,0.8)] pointer-events-none rounded-full"
-                      style={{ 
-                        left: `${((coverTime - videoStart) / Math.min(videoDuration, MAX_VIDEO_CLIP)) * 100}%`,
-                        transform: 'translateX(-50%)'
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: FORMAT / PUTAR */}
-              {activeTab === 'format' && (
-                <div className="flex justify-center gap-8 animate-fade-in">
-                  <button 
-                    onClick={() => setVideoRotation && setVideoRotation(prev => (prev + 90) % 360)}
-                    className="flex flex-col items-center gap-2 text-white hover:text-gray-300"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
-                      <span className="material-icons">rotate_90_degrees_cw</span>
-                    </div>
-                    <span className="text-xs">Putar 90°</span>
-                  </button>
-                  <button 
-                    onClick={() => {
-                        // Reset rotasi
-                        setVideoRotation && setVideoRotation(0);
-                    }}
-                    className="flex flex-col items-center gap-2 text-white hover:text-gray-300"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
-                      <span className="material-icons">restart_alt</span>
-                    </div>
-                    <span className="text-xs">Reset</span>
-                  </button>
-                </div>
-              )}
-
+              <SubmitButtons
+                isSubmitting={isSubmitting}
+                destination={destination}
+                draftId={draftId}
+                onSubmit={submitPostAction}
+              />
             </div>
-
-            {/* Menu Navigasi Bawah */}
-            <div className="flex justify-around items-center pt-4 border-t border-zinc-800">
-              <button 
-                onClick={() => setActiveTab('trim')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'trim' ? 'text-white' : 'text-zinc-500 hover:text-zinc-400'}`}
-              >
-                <span className="material-icons text-[28px]">content_cut</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase">Potong</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('cover')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'cover' ? 'text-white' : 'text-zinc-500 hover:text-zinc-400'}`}
-              >
-                <span className="material-icons text-[28px]">crop_original</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase">Sampul</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('format')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'format' ? 'text-white' : 'text-zinc-500 hover:text-zinc-400'}`}
-              >
-                <span className="material-icons text-[28px]">crop_rotate</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase">Format</span>
-              </button>
-            </div>
-
           </div>
-        )}
-      </div>
-      
-      {/* Helper CSS untuk Animasi (Bisa dimasukkan ke file CSS Anda) */}
-      <style>{`
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(5px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+        </>
+      )}
     </div>
+  );
+}
+
+export default function CreatePostPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}></div>}>
+      <CreatePostContent />
+    </Suspense>
   );
 }
