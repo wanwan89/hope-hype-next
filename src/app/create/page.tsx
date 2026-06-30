@@ -19,9 +19,6 @@ import SubmitButtons from '@/components/create/SubmitButtons';
 import MusicSheet from '@/components/create/MusicSheet';
 import MediaEditor from '@/components/create/MediaEditor';
 
-const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
-const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
-
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
   <div
     onClick={() => onChange(!checked)}
@@ -36,6 +33,10 @@ function CreatePostContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const draftId = searchParams?.get('draft_id');
+
+  // Pindahkan pemanggilan env ke DALAM komponen
+  const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
+  const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
 
   // --- STATE ---
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
@@ -103,10 +104,10 @@ function CreatePostContent() {
       showNotif(
         'Konfigurasi Cloudinary belum lengkap. Upload media tidak akan berfungsi. Isi NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME dan NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET di .env.local',
         'warning',
-        0 // jangan auto-hide
+        0
       );
     }
-  }, []);
+  }, [CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET]);
 
   // Load draft jika ada
   useEffect(() => {
@@ -325,7 +326,6 @@ function CreatePostContent() {
       const dur = videoRef.current.duration;
       setVideoDuration(dur);
       setVideoStart(0);
-      // Pastikan videoEnd tidak melebihi durasi
       const maxClip = Math.min(MAX_VIDEO_CLIP, dur);
       setVideoEnd(maxClip);
       setCoverTime(0);
@@ -441,7 +441,7 @@ function CreatePostContent() {
   const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
     return new Promise<any>((resolve, reject) => {
       if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-        reject('Konfigurasi Cloudinary tidak ditemukan. Pastikan NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME dan NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET sudah diatur.');
+        reject('Konfigurasi Cloudinary tidak ditemukan. Pastikan file .env.local sudah diisi dengan benar.');
         return;
       }
       const fd = new FormData();
@@ -471,7 +471,6 @@ function CreatePostContent() {
 
   // --- SUBMIT ---
   const submitPostAction = async (isDraft: boolean = false) => {
-    // Validasi awal
     if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
       return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
     if (postType === 'video' && !rawVideoFile && !existingVideoUrl)
@@ -487,7 +486,6 @@ function CreatePostContent() {
       return showNotif(`Caption maksimal ${maxWords} kata!`, "warning");
     }
 
-    // Simpan ke perangkat jika opsi aktif
     if (saveToDevice) {
       if (postType === 'image' && croppedImages.length > 0) {
         croppedImages.forEach((blob, idx) => {
@@ -509,7 +507,6 @@ function CreatePostContent() {
     updateGlobalProgress(0);
     window.dispatchEvent(new CustomEvent('postUploadStart'));
 
-    // Arahkan kembali
     if (!isDraft) router.push('/');
     else router.back();
 
@@ -522,7 +519,6 @@ function CreatePostContent() {
       }
       const myUserId = session.user.id;
 
-      // Proses hashtag
       const tags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
       if (tags.length > 0) {
         for (const tg of tags) await supabase.from('hashtags').upsert({ tag: tg });
@@ -531,7 +527,6 @@ function CreatePostContent() {
       let finalImageUrl: string | null = existingImageUrl;
       let finalVideoUrl: string | null = existingVideoUrl;
 
-      // Upload gambar
       if (postType === 'image' && croppedImages.length > 0) {
         const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image')));
         if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
@@ -543,9 +538,7 @@ function CreatePostContent() {
         finalImageUrl = results.map(r => r.secure_url).join(',');
         updateGlobalProgress(50);
       }
-      // Upload video
       else if (postType === 'video' && rawVideoFile && coverBlob) {
-        // Upload sampul
         const coverRes = await uploadToCloudinary(coverBlob, 'image');
         if (coverRes.moderation?.[0]?.status === 'rejected') {
           showNotif("Video ditolak! Sampul sensitif.", "error");
@@ -555,7 +548,6 @@ function CreatePostContent() {
         }
         finalImageUrl = coverRes.secure_url;
 
-        // Siapkan durasi potong
         const clipEnd = videoEnd || Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
         const rotParam = videoRotation !== 0 ? `a_${videoRotation},` : '';
         const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
@@ -569,7 +561,6 @@ function CreatePostContent() {
       updateGlobalProgress(70);
       let newPostData = null;
 
-      // Simpan ke story / feed
       if (destination === "story") {
         const { data } = await supabase.from("stories").insert({
           creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
@@ -601,7 +592,6 @@ function CreatePostContent() {
 
       updateGlobalProgress(85);
 
-      // Kirim notifikasi mention
       if (!isDraft && (newPostData?.id || destination === "story")) {
         const mentions = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
         if (mentions.length > 0) {
