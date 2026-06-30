@@ -6,9 +6,8 @@ export default function ChatInputFooter({
   chatState, headerInfo, handleTolakRequest, handleTerimaRequest,
   isStickerOpen, setIsStickerOpen, fetchStickers, t, stickers, sendMessage,
   replyTo, setReplyTo, isRecording, recordTime, audioLevel,
-  inputValue, handleTyping, handlePhotoClick, isUploadingImg, fileInputRef,
-  handlePhotoSelect, canSend, handleMicTouchStart, stopVN, handleMicTouchMove,
-  handleSendClick, editMessageId
+  inputValue, handleTyping, handlePhotoClick, isUploadingImg, canSend, 
+  handleMicTouchStart, stopVN, handleMicTouchMove, handleSendClick, editMessageId
 }: any) {
 
   return (
@@ -28,9 +27,7 @@ export default function ChatInputFooter({
       ) : (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           
-          {/* INPUT ROW */}
           <div className="input-row">
-            
             <AnimatePresence>
               {isStickerOpen && (
                 <motion.div 
@@ -53,10 +50,8 @@ export default function ChatInputFooter({
               )}
             </AnimatePresence>
 
-            {/* KONTAINER UTAMA YANG MENYATU (Menggunakan class milikmu dengan kustomisasi layout) */}
             <div className="input-group-wrapper" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', gap: 0 }}>
               
-              {/* KOTAK REPLY - Terintegrasi di bagian atas dalam input bar */}
               <AnimatePresence>
                 {replyTo && (
                   <motion.div 
@@ -67,19 +62,12 @@ export default function ChatInputFooter({
                     style={{ width: '100%', overflow: 'hidden' }}
                   >
                     <div style={{ 
-                      display: 'flex', 
-                      padding: '12px 14px 6px 14px', 
-                      borderLeft: '4px solid var(--primary-blue)',
-                      borderBottom: '1px solid var(--border-color)',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: 'rgba(255, 255, 255, 0.02)' /* Variasi tipis agar sedikit kontras namun senada */
+                      display: 'flex', padding: '12px 14px 6px 14px', borderLeft: '4px solid var(--primary-blue)', borderBottom: '1px solid var(--border-color)', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)' 
                     }}>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ color: 'var(--primary-blue)', fontSize: '13px', fontWeight: 600, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Membalas {replyTo.profiles?.username}
                         </div>
-                        {/* Teks panjang otomatis terpotong menjadi satu baris demi kerapian box (...) */}
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                           {replyTo.message || 'Media'}
                         </div>
@@ -92,7 +80,6 @@ export default function ChatInputFooter({
                 )}
               </AnimatePresence>
 
-              {/* BARIS UTAMA INPUT / RECORDING AUDIO */}
               {isRecording ? (
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0 16px', gap: '12px', height: '48px' }}>
                   <span className="online-dot"></span>
@@ -134,6 +121,7 @@ export default function ChatInputFooter({
                     }}
                   />
                   
+                  {/* KONFLIK TERPECAHKAN: Hanya memanggil modal tanpa ada elemen input file tersembunyi yang ikut terpicu */}
                   <button 
                     style={{ background: 'transparent', border: 'none', padding: '12px 14px 12px 0', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} 
                     onClick={handlePhotoClick} disabled={isUploadingImg}
@@ -143,12 +131,10 @@ export default function ChatInputFooter({
                       <circle cx="12" cy="13" r="4"></circle>
                     </svg>
                   </button>
-                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoSelect} />
                 </div>
               )}
             </div>
             
-            {/* BUTTON AKSI (MIC / SEND) */}
             <button 
               id="action-btn"
               className={isRecording ? 'is-recording' : ''}
