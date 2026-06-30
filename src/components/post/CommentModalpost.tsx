@@ -611,31 +611,39 @@ function CommentModalContent() {
 
   return (
     <>
-      <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick}>
-        <div className="comment-box" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-drag-indicator"></div>
+      {/* 🔥 FIX 1: overscrollBehavior untuk mencegah scroll tembus ke background */}
+      <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick} style={{ overscrollBehavior: 'none' }}>
+        
+        {/* 🔥 FIX 2: Jadikan comment-box sebagai flex-container utama (Header statis, list dinamis) */}
+        <div className="comment-box" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column' }}>
           
-          {isOwner ? (
-            <div className="c-owner-tabs">
-              <div className={`c-tab ${activeTab === 'comment' ? 'active' : ''}`} onClick={() => setActiveTab('comment')}>Komentar</div>
-              <div className={`c-tab ${activeTab === 'likes_all' ? 'active' : ''}`} onClick={() => setActiveTab('likes_all')}>Suka</div>
-              <div className={`c-tab ${activeTab === 'likes_friends' ? 'active' : ''}`} onClick={() => setActiveTab('likes_friends')}>Suka (Teman)</div>
-            </div>
-          ) : (
-            <div className="comment-header">{t('comments_title')}</div>
-          )}
+          {/* Bagian Header yang TETAP DIAM */}
+          <div style={{ flexShrink: 0 }}>
+            <div className="modal-drag-indicator"></div>
+            
+            {isOwner ? (
+              <div className="c-owner-tabs">
+                <div className={`c-tab ${activeTab === 'comment' ? 'active' : ''}`} onClick={() => setActiveTab('comment')}>Komentar</div>
+                <div className={`c-tab ${activeTab === 'likes_all' ? 'active' : ''}`} onClick={() => setActiveTab('likes_all')}>Suka</div>
+                <div className={`c-tab ${activeTab === 'likes_friends' ? 'active' : ''}`} onClick={() => setActiveTab('likes_friends')}>Suka (Teman)</div>
+              </div>
+            ) : (
+              <div className="comment-header">{t('comments_title')}</div>
+            )}
 
-          {activeTab === 'comment' && (
-            <div className="c-filter-bar">
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>{comments.length} Komentar</span>
-              <button className="c-filter-btn" onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}>
-                <span className="material-icons" style={{ fontSize: '14px' }}>sort</span>
-                {sortOrder === 'newest' ? 'Terbaru' : 'Terlama'}
-              </button>
-            </div>
-          )}
+            {activeTab === 'comment' && (
+              <div className="c-filter-bar">
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>{comments.length} Komentar</span>
+                <button className="c-filter-btn" onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}>
+                  <span className="material-icons" style={{ fontSize: '14px' }}>sort</span>
+                  {sortOrder === 'newest' ? 'Terbaru' : 'Terlama'}
+                </button>
+              </div>
+            )}
+          </div>
           
-          <div className="comment-list" id="commentListContainer">
+          {/* 🔥 FIX 3: comment-list dibuat flex: 1 dengan hardware-acceleration agar scroll-nya independen & sangat smooth */}
+          <div className="comment-list" id="commentListContainer" style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', transform: 'translateZ(0)', minHeight: 0 }}>
             {activeTab !== 'comment' ? (
                isLoadingLikers ? (
                   <div className="loading-text">Memuat daftar suka...</div>
@@ -761,36 +769,39 @@ function CommentModalContent() {
             )}
           </div>
 
-          {activeTab === 'comment' && (
-            isCommentsDisabled ? (
-              <div style={{ padding: '15px', textAlign: 'center', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-card)', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600 }}>
-                Komentar dinonaktifkan oleh kreator.
-              </div>
-            ) : (
-              <CommentInputBar 
-                inputRef={inputRef}
-                inputValue={inputValue}
-                isSubmitting={isSubmitting}
-                showMentions={showMentions}
-                mentionResults={mentionResults}
-                showStickers={showStickers}
-                stickers={stickers}
-                stickerQuery={stickerQuery}
-                replyToUsername={replyToUsername}
-                handleInputChange={handleInputChange}
-                handleKeyDown={handleKeyDown}
-                handleSelectMention={handleSelectMention}
-                setStickerQuery={setStickerQuery}
-                handleSendSticker={handleSendSticker}
-                toggleStickers={() => {
-                  const willShow = !showStickers;
-                  setShowStickers(willShow);
-                  if (willShow && stickers.length === 0) fetchStickers("");
-                }}
-                handleGiftClick={() => { setShowStickers(false); handleGiftClick(); }}
-              />
-            )
-          )}
+          {/* 🔥 FIX 4: Bagian Bawah (Input Bar) yang TETAP DIAM */}
+          <div style={{ flexShrink: 0 }}>
+            {activeTab === 'comment' && (
+              isCommentsDisabled ? (
+                <div style={{ padding: '15px', textAlign: 'center', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-card)', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600 }}>
+                  Komentar dinonaktifkan oleh kreator.
+                </div>
+              ) : (
+                <CommentInputBar 
+                  inputRef={inputRef}
+                  inputValue={inputValue}
+                  isSubmitting={isSubmitting}
+                  showMentions={showMentions}
+                  mentionResults={mentionResults}
+                  showStickers={showStickers}
+                  stickers={stickers}
+                  stickerQuery={stickerQuery}
+                  replyToUsername={replyToUsername}
+                  handleInputChange={handleInputChange}
+                  handleKeyDown={handleKeyDown}
+                  handleSelectMention={handleSelectMention}
+                  setStickerQuery={setStickerQuery}
+                  handleSendSticker={handleSendSticker}
+                  toggleStickers={() => {
+                    const willShow = !showStickers;
+                    setShowStickers(willShow);
+                    if (willShow && stickers.length === 0) fetchStickers("");
+                  }}
+                  handleGiftClick={() => { setShowStickers(false); handleGiftClick(); }}
+                />
+              )
+            )}
+          </div>
         </div>
       </div>
       
