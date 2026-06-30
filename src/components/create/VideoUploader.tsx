@@ -31,7 +31,7 @@ export default function VideoUploader({
           onClick={() => videoInputRef.current?.click()}
           style={{
             width: '100%',
-            height: '300px',
+            height: '200px', // 👈 samakan dengan foto
             background: 'var(--bg-secondary)',
             borderRadius: '16px',
             display: 'flex',
@@ -46,19 +46,17 @@ export default function VideoUploader({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: 'var(--primary-bg)', // 👈 biru
             }}
           >
-            {/* ✅ Icon Video SVG */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="48"
               height="48"
               viewBox="0 0 24 24"
+              fill="currentColor"
             >
-              <path
-                fill="currentColor"
-                d="M18 7c0-1.103-.897-2-2-2H4c-1.103 0-2 .897-2 2v10c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-3.333L22 17V7l-4 3.333z"
-              />
+              <path d="M18 7c0-1.103-.897-2-2-2H4c-1.103 0-2 .897-2 2v10c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-3.333L22 17V7l-4 3.333z" />
             </svg>
           </div>
         </div>

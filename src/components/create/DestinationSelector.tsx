@@ -19,7 +19,8 @@ export default function DestinationSelector({
 }: Props) {
   return (
     <div className="destination-container">
-      <p className="dest-header-title">{t('send_to')}</p>
+      {/* ❌ HAPUS TEKS "Kirim ke" */}
+      {/* <p className="dest-header-title">{t('send_to')}</p> */}
 
       <div className="dest-toggle-group">
         {[
