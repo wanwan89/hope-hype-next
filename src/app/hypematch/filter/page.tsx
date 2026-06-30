@@ -4,12 +4,12 @@ import { useRouter } from 'next/navigation';
 
 export default function HypeMatchFilter() {
   const router = useRouter();
-  
+
   // 1. State untuk Filter
   const [genderFilter, setGenderFilter] = useState('Semua');
   const [ageRange, setAgeRange] = useState([18, 40]);
-  const [maxDistance, setMaxDistance] = useState(50); // Filter baru: Jarak dalam km
-  const [goal, setGoal] = useState('Semua'); // Filter baru: Tujuan
+  const [maxDistance, setMaxDistance] = useState(50);
+  const [goal, setGoal] = useState('Semua');
 
   // 2. Load data dari LocalStorage saat halaman pertama kali dibuka
   useEffect(() => {
@@ -31,34 +31,27 @@ export default function HypeMatchFilter() {
     localStorage.setItem('hm_filter_distance', maxDistance.toString());
     localStorage.setItem('hm_filter_goal', goal);
 
-    // Di sini kamu bisa tambahkan logika Context / Supabase jika perlu
-    
     router.back();
   };
 
-  // Warna Aksen Biru yang baru
-  const NEW_ACCENT_COLOR = '#1f3cff'; 
-  const NEW_ACCENT_BG = 'rgba(31, 60, 255, 0.1)'; // Menyesuaikan transparansi dengan warna baru
-
   return (
-    <div 
-      style={{ 
-        backgroundColor: 'var(--bg-main, #ffffff)', 
-        color: 'var(--text-main, #111111)', 
-        minHeight: '100vh', 
-        padding: '20px' 
+    <div
+      style={{
+        backgroundColor: 'var(--bg-main, #ffffff)',
+        color: 'var(--text-main, #111111)',
+        minHeight: '100vh',
+        padding: '20px'
       }}
     >
-      
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '30px' }}>
-        <button 
-          onClick={() => router.back()} 
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: 'var(--text-main)', 
-            cursor: 'pointer', 
+        <button
+          onClick={() => router.back()}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-main)',
+            cursor: 'pointer',
             marginRight: '15px',
             display: 'flex',
             alignItems: 'center',
@@ -75,7 +68,6 @@ export default function HypeMatchFilter() {
 
       {/* Filter Options Container */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-        
         {/* Filter 1: Gender Preference */}
         <div>
           <h3 style={{ fontSize: '1rem', color: 'var(--text-muted, #757575)', marginBottom: '12px', fontWeight: '500' }}>
@@ -92,9 +84,15 @@ export default function HypeMatchFilter() {
                     flex: 1,
                     padding: '12px 10px',
                     borderRadius: '12px',
-                    border: isActive ? `2px solid ${NEW_ACCENT_COLOR}` : '1px solid var(--border-color, #e0e0e0)',
-                    backgroundColor: isActive ? NEW_ACCENT_BG : 'var(--bg-secondary, #f5f5f5)',
-                    color: isActive ? NEW_ACCENT_COLOR : 'var(--text-main)',
+                    border: isActive
+                      ? '2px solid var(--primary-bg, #1f3cff)'
+                      : '1px solid var(--border-color, #e0e0e0)',
+                    backgroundColor: isActive
+                      ? 'var(--primary-soft, rgba(31,60,255,0.1))'
+                      : 'var(--bg-secondary, #f5f5f5)',
+                    color: isActive
+                      ? 'var(--primary-bg, #1f3cff)'
+                      : 'var(--text-main)',
                     cursor: 'pointer',
                     fontWeight: '600',
                     fontSize: '0.9rem',
@@ -114,19 +112,19 @@ export default function HypeMatchFilter() {
             <h3 style={{ fontSize: '1rem', color: 'var(--text-muted, #757575)', margin: 0, fontWeight: '500' }}>
               Batas Usia Maksimal
             </h3>
-            <span style={{ fontWeight: '700', color: NEW_ACCENT_COLOR }}>
+            <span style={{ fontWeight: '700', color: 'var(--primary-bg, #1f3cff)' }}>
               {ageRange[1]} Tahun
             </span>
           </div>
-          <input 
-            type="range" 
-            min="18" 
-            max="60" 
-            value={ageRange[1]} 
+          <input
+            type="range"
+            min="18"
+            max="60"
+            value={ageRange[1]}
             onChange={(e) => setAgeRange([18, parseInt(e.target.value)])}
-            style={{ 
-              width: '100%', 
-              accentColor: NEW_ACCENT_COLOR,
+            style={{
+              width: '100%',
+              accentColor: 'var(--primary-bg, #1f3cff)',
               cursor: 'pointer'
             }}
           />
@@ -138,19 +136,19 @@ export default function HypeMatchFilter() {
             <h3 style={{ fontSize: '1rem', color: 'var(--text-muted, #757575)', margin: 0, fontWeight: '500' }}>
               Jarak Maksimal
             </h3>
-            <span style={{ fontWeight: '700', color: NEW_ACCENT_COLOR }}>
+            <span style={{ fontWeight: '700', color: 'var(--primary-bg, #1f3cff)' }}>
               {maxDistance} km
             </span>
           </div>
-          <input 
-            type="range" 
-            min="1" 
-            max="100" 
-            value={maxDistance} 
+          <input
+            type="range"
+            min="1"
+            max="100"
+            value={maxDistance}
             onChange={(e) => setMaxDistance(parseInt(e.target.value))}
-            style={{ 
-              width: '100%', 
-              accentColor: NEW_ACCENT_COLOR,
+            style={{
+              width: '100%',
+              accentColor: 'var(--primary-bg, #1f3cff)',
               cursor: 'pointer'
             }}
           />
@@ -170,10 +168,16 @@ export default function HypeMatchFilter() {
                   onClick={() => setGoal(tujuan)}
                   style={{
                     padding: '10px 16px',
-                    borderRadius: '20px', // Style pil/chip membulat
-                    border: isActive ? `2px solid ${NEW_ACCENT_COLOR}` : '1px solid var(--border-color, #e0e0e0)',
-                    backgroundColor: isActive ? NEW_ACCENT_BG : 'var(--bg-secondary, #f5f5f5)',
-                    color: isActive ? NEW_ACCENT_COLOR : 'var(--text-main)',
+                    borderRadius: '20px',
+                    border: isActive
+                      ? '2px solid var(--primary-bg, #1f3cff)'
+                      : '1px solid var(--border-color, #e0e0e0)',
+                    backgroundColor: isActive
+                      ? 'var(--primary-soft, rgba(31,60,255,0.1))'
+                      : 'var(--bg-secondary, #f5f5f5)',
+                    color: isActive
+                      ? 'var(--primary-bg, #1f3cff)'
+                      : 'var(--text-main)',
                     cursor: 'pointer',
                     fontWeight: '600',
                     fontSize: '0.9rem',
@@ -186,29 +190,27 @@ export default function HypeMatchFilter() {
             })}
           </div>
         </div>
-
       </div>
 
-      {/* Spacer agar tidak mentok bawah sebelum tombol */}
+      {/* Spacer */}
       <div style={{ height: '40px' }}></div>
 
-      {/* Terapkan Button */}
-      <button 
+      {/* Tombol Terapkan */}
+      <button
         onClick={handleApply}
         style={{
           width: '100%',
           padding: '16px',
-          backgroundColor: NEW_ACCENT_COLOR,
+          backgroundColor: 'var(--primary-bg, #1f3cff)',
           color: '#ffffff',
           border: 'none',
-          borderRadius: '100px', // Pil melengkung penuh
+          borderRadius: '100px',
           fontSize: '1.05rem',
           fontWeight: 'bold',
           cursor: 'pointer',
-          // Menghilangkan efek shadow
-          boxShadow: 'none', 
+          boxShadow: 'none',
           position: 'sticky',
-          bottom: '20px', // Supaya tetap mengambang di bawah jika layar di scroll
+          bottom: '20px',
           transition: 'transform 0.1s ease'
         }}
         onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
@@ -218,7 +220,6 @@ export default function HypeMatchFilter() {
       >
         Terapkan Filter
       </button>
-
     </div>
   );
 }

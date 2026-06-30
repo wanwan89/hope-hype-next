@@ -47,10 +47,7 @@ const SvgIcon = ({ name, className = "", size = 20, style }: { name: string, cla
 
   const icons: Record<string, React.ReactNode> = {
     arrowLeft: <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />,
-    arrowUp: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />,
     filter: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16m-7 6h7" />,
-    x: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18 6L6 18M6 6l12 12" />,
-    heart: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />,
     location: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
     target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>
   };
@@ -67,7 +64,7 @@ export default function HypeMatch() {
 
   const [users, setUsers] = useState<MatchUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showIntro, setShowIntro] = useState(true); 
+  const [showIntro, setShowIntro] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -93,7 +90,7 @@ export default function HypeMatch() {
             .select('gender, avatar_url')
             .eq('id', myId)
             .single();
-          
+
           setCurrentUser({
             id: myId,
             avatar_url: myProfile?.avatar_url || authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
@@ -143,7 +140,7 @@ export default function HypeMatch() {
   }, []);
 
   const handleDragStart = (clientX: number, clientY: number) => {
-    if (showBiodata) return; 
+    if (showBiodata) return;
     dragRef.current = { startX: clientX, startY: clientY, isDragging: true };
   };
 
@@ -156,7 +153,7 @@ export default function HypeMatch() {
     if (!dragRef.current.isDragging) return;
     dragRef.current.isDragging = false;
 
-    const threshold = 100; 
+    const threshold = 100;
     if (dragX < -threshold) {
       handleAction('pass');
     } else if (dragX > threshold) {
@@ -168,7 +165,7 @@ export default function HypeMatch() {
 
   const handleAction = async (action: 'like' | 'pass') => {
     if (!activeUser || !currentUser) return;
-    setDragX(action === 'like' ? 500 : -500); 
+    setDragX(action === 'like' ? 500 : -500);
 
     if (action === 'like') {
       try {
@@ -186,11 +183,11 @@ export default function HypeMatch() {
 
         if (matchData) {
           if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200]); 
+            navigator.vibrate([200, 100, 200]);
           }
           showNotif('Kamu mendapatkan Match baru!', 'success');
           setTimeout(() => { setMatchedUser(activeUser); }, 300);
-          return; 
+          return;
         }
       } catch (err) {
         console.error("Gagal memproses like:", err);
@@ -199,7 +196,7 @@ export default function HypeMatch() {
 
     setTimeout(() => {
       nextCard();
-    }, 300); 
+    }, 300);
   };
 
   const nextCard = () => {
@@ -223,23 +220,22 @@ export default function HypeMatch() {
 
   return (
     <div className="hm-overlay">
-      {/* Font Poppins untuk Hypematch */}
+      {/* Font Poppins */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
       `}</style>
 
       <div className="hm-header">
-        {/* Logo Text + Lottie */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <h1 
-            className="hm-logo-text" 
-            style={{ 
-              fontFamily: "'Poppins', sans-serif", 
+          <h1
+            className="hm-logo-text"
+            style={{
+              fontFamily: "'Poppins', sans-serif",
               fontWeight: 700,
-              fontSize: "1.8rem",          /* sesuaikan dengan header lain */
-              color: "#FF1493", 
+              fontSize: "1.6rem",       /* ukuran diperkecil */
+              color: "#FF1493",
               letterSpacing: "0px",
-              textTransform: "lowercase",  /* tetap lowercase seperti sebelumnya */
+              textTransform: "lowercase",
               margin: 0,
               lineHeight: 1,
               textShadow: "none"
@@ -247,13 +243,13 @@ export default function HypeMatch() {
           >
             hypematch
           </h1>
-          <Lottie 
-            animationData={fireAnimation} 
-            loop={true} 
-            style={{ width: 28, height: 28, marginTop: '-2px' }} 
+          <Lottie
+            animationData={fireAnimation}
+            loop={true}
+            style={{ width: 28, height: 28, marginTop: '-2px' }}
           />
         </div>
-        
+
         <button className="hm-icon-btn-transparent" onClick={() => router.push('/hypematch/filter')}>
           <SvgIcon name="filter" size={26} />
         </button>
@@ -264,16 +260,16 @@ export default function HypeMatch() {
           stackedUsers.map((user, idx) => {
             const isTop = idx === 0;
             const bgColors = ['var(--bg-card)', 'var(--bg-secondary)', 'var(--border-card)'];
-            
+
             return (
-              <div 
+              <div
                 key={user.id}
                 className="hm-card-item"
                 style={{
                   backgroundColor: bgColors[idx % bgColors.length],
                   zIndex: 10 - idx,
-                  transform: isTop 
-                    ? `translateX(${dragX}px) rotate(${dragX * 0.05}deg)` 
+                  transform: isTop
+                    ? `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`
                     : `scale(${1 - idx * 0.04}) translateY(${idx * 15}px)`,
                   opacity: 1 - (idx * 0.1),
                   transition: (isTop && dragRef.current.isDragging) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease',
@@ -287,7 +283,7 @@ export default function HypeMatch() {
                 onTouchEnd={() => isTop && handleDragEnd()}
               >
                 <img src={user.avatar_url || 'https://via.placeholder.com/400x600'} alt="avatar" className="hm-card-img" draggable="false" />
-                
+
                 {isTop && (
                   <>
                     <div className="swipe-stamp stamp-like" style={{ opacity: dragX > 50 ? (dragX / 100) : 0 }}>LIKE</div>
@@ -301,8 +297,8 @@ export default function HypeMatch() {
                     {user.role && <div className="hm-role-badge-wrapper" dangerouslySetInnerHTML={{ __html: getUserBadge(user.role) as string }} />}
                   </h2>
                   <div className="hm-card-pills">
-                    <div className="hm-pill"><SvgIcon name="location" size={14} style={{marginRight: 4}} /> {user.lokasi || "Lokasi disembunyikan"}</div>
-                    {user.tujuan && <div className="hm-pill"><SvgIcon name="target" size={14} style={{marginRight: 4}} />{user.tujuan}</div>}
+                    <div className="hm-pill"><SvgIcon name="location" size={14} style={{ marginRight: 4 }} /> {user.lokasi || "Lokasi disembunyikan"}</div>
+                    {user.tujuan && <div className="hm-pill"><SvgIcon name="target" size={14} style={{ marginRight: 4 }} />{user.tujuan}</div>}
                   </div>
                 </div>
               </div>
@@ -310,10 +306,10 @@ export default function HypeMatch() {
           })
         ) : (
           <div className="hm-empty-state">
-            <Lottie 
-              animationData={emptyAnimation} 
-              loop={true} 
-              style={{ width: 120, height: 120, margin: '0 auto 16px' }} 
+            <Lottie
+              animationData={emptyAnimation}
+              loop={true}
+              style={{ width: 120, height: 120, margin: '0 auto 16px' }}
             />
             <p>Tidak ada lagi pengguna di sekitarmu.</p>
           </div>
@@ -321,29 +317,40 @@ export default function HypeMatch() {
 
         {activeUser && (
           <div className="hm-fixed-action-bar">
+            {/* Tombol X (Pass) - Warna Merah */}
             <button className="hm-action-btn btn-pass" onClick={(e) => { e.stopPropagation(); handleAction('pass'); }} style={{ transform: `scale(${passBtnScale})` }}>
-              <SvgIcon name="x" className="hm-no-margin" size={28} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                <path fill="#FF3B30" d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10s10-4.486 10-10S17.514 2 12 2m4.207 12.793l-1.414 1.414L12 13.414l-2.793 2.793l-1.414-1.414L10.586 12L7.793 9.207l1.414-1.414L12 10.586l2.793-2.793l1.414 1.414L13.414 12z" />
+              </svg>
             </button>
+
+            {/* Tombol Panah Atas (Biodata) - Warna Biru, ukuran lebih besar */}
             <button className="hm-action-btn btn-fire" onClick={(e) => { e.stopPropagation(); setShowBiodata(true); }}>
-              <SvgIcon name="arrowUp" className="hm-no-margin" size={40} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                <path fill="#007AFF" d="M11 11.8V15q0 .425.288.713T12 16t.713-.288T13 15v-3.2l.9.9q.275.275.7.275t.7-.275t.275-.7t-.275-.7l-2.6-2.6q-.3-.3-.7-.3t-.7.3l-2.6 2.6q-.275.275-.275.7t.275.7t.7.275t.7-.275zM12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22" />
+              </svg>
             </button>
+
+            {/* Tombol Love (Like) - Warna Hijau */}
             <button className="hm-action-btn btn-like" onClick={(e) => { e.stopPropagation(); handleAction('like'); }} style={{ transform: `scale(${likeBtnScale})` }}>
-              <SvgIcon name="heart" className="hm-no-margin" size={28} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                <path fill="#34C759" d="M12 2C6.47 2 2 6.5 2 12a10 10 0 0 0 10 10a10 10 0 0 0 10-10A10 10 0 0 0 12 2M9.75 7.82c.87 0 1.7.41 2.25 1.05c.55-.64 1.38-1.05 2.25-1.05c1.54 0 2.75 1.21 2.75 2.75c0 1.89-1.7 3.43-4.28 5.77L12 17l-.72-.66C8.7 14 7 12.46 7 10.57c0-1.54 1.21-2.75 2.75-2.75" />
+              </svg>
             </button>
           </div>
         )}
       </div>
 
-      <BiodataSlide 
-        activeUser={activeUser} 
-        showBiodata={showBiodata} 
-        setShowBiodata={setShowBiodata} 
+      <BiodataSlide
+        activeUser={activeUser}
+        showBiodata={showBiodata}
+        setShowBiodata={setShowBiodata}
       />
 
       <MatchSuccessOverlay
         matchedUser={matchedUser}
         currentUser={currentUser}
-        onChatNow={handleChatNow} 
+        onChatNow={handleChatNow}
         nextCard={nextCard}
         setMatchedUser={setMatchedUser}
       />

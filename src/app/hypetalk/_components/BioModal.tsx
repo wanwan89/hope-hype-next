@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 type Props = {
   bioForm: any;
@@ -10,72 +10,90 @@ type Props = {
 };
 
 // ==========================================
-// KOMPONEN CUSTOM DROPDOWN (Bukan bawaan sistem)
+// KOMPONEN CUSTOM DROPDOWN (Tidak berubah)
 // ==========================================
-const CustomSelect = ({ 
-  value, 
-  onChange, 
-  options, 
-  placeholder 
-}: { 
-  value: string, 
-  onChange: (val: string) => void, 
-  options: { label: string, value: string }[], 
-  placeholder: string 
+const CustomSelect = ({
+  value,
+  onChange,
+  options,
+  placeholder
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { label: string; value: string }[];
+  placeholder: string;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find(opt => opt.value === value);
+  const selectedOption = options.find((opt) => opt.value === value);
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
-      {/* Tampilan Input Select */}
-      <div 
+      <div
         className="custom-input"
         onClick={() => setIsOpen(!isOpen)}
-        style={{ 
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          cursor: 'pointer', userSelect: 'none'
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          userSelect: 'none'
         }}
       >
         <span style={{ color: selectedOption ? 'var(--text-main)' : 'var(--text-muted)' }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <span className="material-icons" style={{ 
-          transform: isOpen ? 'rotate(180deg)' : 'none', 
-          transition: 'transform 0.2s ease',
-          color: 'var(--text-muted)'
-        }}>
+        <span
+          className="material-icons"
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.2s ease',
+            color: 'var(--text-muted)'
+          }}
+        >
           expand_more
         </span>
       </div>
 
-      {/* Pop-up List Pilihan */}
       {isOpen && (
         <>
-          {/* Overlay transparan agar kalau klik di luar, dropdown tertutup */}
-          <div 
-            style={{ position: 'fixed', inset: 0, zIndex: 99 }} 
-            onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} 
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+            }}
           />
-          <div style={{
-            position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 100,
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-card)',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-            maxHeight: '220px', overflowY: 'auto'
-          }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              left: 0,
+              right: 0,
+              zIndex: 100,
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-card)',
+              borderRadius: '12px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+              maxHeight: '220px',
+              overflowY: 'auto'
+            }}
+          >
             {options.map((opt, idx) => (
-              <div 
+              <div
                 key={idx}
-                onClick={(e) => { e.stopPropagation(); onChange(opt.value); setIsOpen(false); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
                 style={{
                   padding: '14px 16px',
                   borderBottom: idx === options.length - 1 ? 'none' : '1px solid var(--border-card)',
                   backgroundColor: value === opt.value ? 'var(--bg-secondary)' : 'transparent',
                   color: value === opt.value ? 'var(--primary)' : 'var(--text-main)',
                   fontWeight: value === opt.value ? 'bold' : 'normal',
-                  cursor: 'pointer', fontSize: '14px'
+                  cursor: 'pointer',
+                  fontSize: '14px'
                 }}
               >
                 {opt.label}
@@ -94,218 +112,325 @@ const CustomSelect = ({
 const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onClose }) => {
   const updateField = (field: string, value: any) => setBioForm({ ...bioForm, [field]: value });
 
+  // 🔥 Dispatch event agar Navbar tahu BioModal terbuka
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('biomodal-state', { detail: { isOpen: true } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('biomodal-state', { detail: { isOpen: false } }));
+    };
+  }, []);
+
   return (
-    <div className="tg-modal-overlay" style={fullScreenOverlayStyle}>
-      <div className="tg-modal-content" style={fullScreenContentStyle}>
-        
-        {/* Header – sekarang sticky */}
-        <div style={headerStyle}>
-          <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>Lengkapi Biodata</h3>
-          <button className="close-modal-btn" onClick={onClose} style={closeBtnStyle}>
-            <span className="material-icons">close</span>
-          </button>
-        </div>
-        
+    <div style={fullScreenOverlayStyle}>
+      {/* HEADER – solid, diluar scroll area */}
+      <div style={headerStyle}>
+        <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>
+          Lengkapi Biodata
+        </h3>
+        <button className="close-modal-btn" onClick={onClose} style={closeBtnStyle}>
+          <span className="material-icons">close</span>
+        </button>
+      </div>
+
+      {/* SCROLL AREA */}
+      <div style={scrollAreaStyle}>
         <div className="form-grid" style={gridStyle}>
-          
           {/* Baris 1 */}
-          <div className="input-group" style={inputGroupStyle}>
-            <input type="number" placeholder="Umur" className="custom-input"
-              value={bioForm.umur || ''} onChange={e => updateField('umur', e.target.value)} />
+          <div style={inputGroupStyle}>
+            <input
+              type="number"
+              placeholder="Umur"
+              className="custom-input"
+              value={bioForm.umur || ''}
+              onChange={(e) => updateField('umur', e.target.value)}
+            />
           </div>
-          <div className="input-group" style={inputGroupStyle}>
-            <CustomSelect 
-              value={bioForm.gender || ''} 
-              onChange={val => updateField('gender', val)}
+          <div style={inputGroupStyle}>
+            <CustomSelect
+              value={bioForm.gender || ''}
+              onChange={(val) => updateField('gender', val)}
               placeholder="Pilih Gender"
-              options={[ {label: 'Pria', value: 'Pria'}, {label: 'Wanita', value: 'Wanita'} ]}
+              options={[
+                { label: 'Pria', value: 'Pria' },
+                { label: 'Wanita', value: 'Wanita' }
+              ]}
             />
           </div>
 
           {/* Baris 2 */}
-          <div className="input-group" style={inputGroupStyle}>
-            <input type="text" placeholder="Lokasi/Kota" className="custom-input"
-              value={bioForm.lokasi || ''} onChange={e => updateField('lokasi', e.target.value)} />
+          <div style={inputGroupStyle}>
+            <input
+              type="text"
+              placeholder="Lokasi/Kota"
+              className="custom-input"
+              value={bioForm.lokasi || ''}
+              onChange={(e) => updateField('lokasi', e.target.value)}
+            />
           </div>
-          <div className="input-group" style={inputGroupStyle}>
-            <CustomSelect 
-              value={bioForm.agama || ''} 
-              onChange={val => updateField('agama', val)}
+          <div style={inputGroupStyle}>
+            <CustomSelect
+              value={bioForm.agama || ''}
+              onChange={(val) => updateField('agama', val)}
               placeholder="Agama"
               options={[
-                {label: 'Islam', value: 'Islam'}, {label: 'Kristen Protestan', value: 'Kristen'},
-                {label: 'Katolik', value: 'Katolik'}, {label: 'Hindu', value: 'Hindu'},
-                {label: 'Buddha', value: 'Buddha'}, {label: 'Lainnya', value: 'Lainnya'}
+                { label: 'Islam', value: 'Islam' },
+                { label: 'Kristen Protestan', value: 'Kristen' },
+                { label: 'Katolik', value: 'Katolik' },
+                { label: 'Hindu', value: 'Hindu' },
+                { label: 'Buddha', value: 'Buddha' },
+                { label: 'Lainnya', value: 'Lainnya' }
               ]}
             />
           </div>
 
           {/* Baris 3 */}
-          <div className="input-group" style={inputGroupStyle}>
-            <input type="text" placeholder="Pekerjaan / Jabatan" className="custom-input"
-              value={bioForm.pekerjaan || ''} onChange={e => updateField('pekerjaan', e.target.value)} />
+          <div style={inputGroupStyle}>
+            <input
+              type="text"
+              placeholder="Pekerjaan / Jabatan"
+              className="custom-input"
+              value={bioForm.pekerjaan || ''}
+              onChange={(e) => updateField('pekerjaan', e.target.value)}
+            />
           </div>
-          <div className="input-group" style={inputGroupStyle}>
-            <CustomSelect 
-              value={bioForm.pendidikan || ''} 
-              onChange={val => updateField('pendidikan', val)}
+          <div style={inputGroupStyle}>
+            <CustomSelect
+              value={bioForm.pendidikan || ''}
+              onChange={(val) => updateField('pendidikan', val)}
               placeholder="Pendidikan Terakhir"
               options={[
-                {label: 'SMA/SMK Sederajat', value: 'SMA/SMK'}, {label: 'Diploma (D1-D4)', value: 'Diploma'},
-                {label: 'Sarjana (S1)', value: 'S1'}, {label: 'Pascasarjana (S2/S3)', value: 'S2/S3'}
+                { label: 'SMA/SMK Sederajat', value: 'SMA/SMK' },
+                { label: 'Diploma (D1-D4)', value: 'Diploma' },
+                { label: 'Sarjana (S1)', value: 'S1' },
+                { label: 'Pascasarjana (S2/S3)', value: 'S2/S3' }
               ]}
             />
           </div>
 
           {/* Baris 4 */}
-          <div className="input-group" style={inputGroupStyle}>
-            <input type="number" placeholder="Tinggi Badan (cm)" className="custom-input"
-              value={bioForm.tinggi_badan || ''} onChange={e => updateField('tinggi_badan', e.target.value)} />
+          <div style={inputGroupStyle}>
+            <input
+              type="number"
+              placeholder="Tinggi Badan (cm)"
+              className="custom-input"
+              value={bioForm.tinggi_badan || ''}
+              onChange={(e) => updateField('tinggi_badan', e.target.value)}
+            />
           </div>
-          <div className="input-group" style={inputGroupStyle}>
-            <CustomSelect 
-              value={bioForm.olahraga || ''} 
-              onChange={val => updateField('olahraga', val)}
+          <div style={inputGroupStyle}>
+            <CustomSelect
+              value={bioForm.olahraga || ''}
+              onChange={(val) => updateField('olahraga', val)}
               placeholder="Olahraga Favorit"
               options={[
-                {label: 'Gym / Fitness', value: 'Gym/Fitness'}, {label: 'Lari / Jogging', value: 'Lari/Jogging'},
-                {label: 'Sepak Bola / Futsal', value: 'Sepak Bola/Futsal'}, {label: 'Berenang', value: 'Berenang'},
-                {label: 'Bela Diri', value: 'Bela Diri'}, {label: 'Jarang Olahraga', value: 'Jarang Olahraga'}
+                { label: 'Gym / Fitness', value: 'Gym/Fitness' },
+                { label: 'Lari / Jogging', value: 'Lari/Jogging' },
+                { label: 'Sepak Bola / Futsal', value: 'Sepak Bola/Futsal' },
+                { label: 'Berenang', value: 'Berenang' },
+                { label: 'Bela Diri', value: 'Bela Diri' },
+                { label: 'Jarang Olahraga', value: 'Jarang Olahraga' }
               ]}
             />
           </div>
 
-          {/* ======================================= */}
-          {/* BIO HYPE MATCH                          */}
-          {/* ======================================= */}
-          <div className="input-group" style={{ ...inputGroupStyle, gridColumn: '1 / -1' }}>
-            <label style={{ marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '600' }}>
+          {/* Bio Hype Match */}
+          <div style={{ ...inputGroupStyle, gridColumn: '1 / -1' }}>
+            <label
+              style={{
+                marginBottom: '8px',
+                fontSize: '0.9rem',
+                color: 'var(--text-main)',
+                fontWeight: '600'
+              }}
+            >
               Bio Hype Match
             </label>
-            <textarea 
-              placeholder="Tulis kalimat singkat, lucu, atau pick-up line (Khusus tampil di Hype Match)..." 
-              className="custom-input" 
+            <textarea
+              placeholder="Tulis kalimat singkat, lucu, atau pick-up line (Khusus tampil di Hype Match)..."
+              className="custom-input"
               style={{ minHeight: '80px', resize: 'vertical' }}
-              value={bioForm.bio_hype || ''} 
-              onChange={e => updateField('bio_hype', e.target.value)} 
+              value={bioForm.bio_hype || ''}
+              onChange={(e) => updateField('bio_hype', e.target.value)}
             />
           </div>
-          
+
           {/* Baris 5 */}
-          <div className="input-group" style={inputGroupStyle}>
-            <CustomSelect 
-              value={bioForm.tujuan || ''} 
-              onChange={val => updateField('tujuan', val)}
+          <div style={inputGroupStyle}>
+            <CustomSelect
+              value={bioForm.tujuan || ''}
+              onChange={(val) => updateField('tujuan', val)}
               placeholder="Tujuan Bergabung"
               options={[
-                {label: 'Nambah Teman / Relasi', value: 'Teman'}, {label: 'Cari Pasangan Serius', value: 'Pasangan'},
-                {label: 'Casual / Santai dulu', value: 'Casual'}, {label: 'Networking Profesional', value: 'Networking'}
+                { label: 'Nambah Teman / Relasi', value: 'Teman' },
+                { label: 'Cari Pasangan Serius', value: 'Pasangan' },
+                { label: 'Casual / Santai dulu', value: 'Casual' },
+                { label: 'Networking Profesional', value: 'Networking' }
               ]}
             />
           </div>
-          <div className="input-group" style={inputGroupStyle}>
-            <input type="text" placeholder="Hobi Utama (Musik, Traveling)" className="custom-input"
-              value={bioForm.hobi || ''} onChange={e => updateField('hobi', e.target.value)} />
+          <div style={inputGroupStyle}>
+            <input
+              type="text"
+              placeholder="Hobi Utama (Musik, Traveling)"
+              className="custom-input"
+              value={bioForm.hobi || ''}
+              onChange={(e) => updateField('hobi', e.target.value)}
+            />
           </div>
 
           {/* Baris 6 */}
-          <div className="input-group" style={inputGroupStyle}>
-             <CustomSelect 
-              value={bioForm.merokok || ''} 
-              onChange={val => updateField('merokok', val)}
+          <div style={inputGroupStyle}>
+            <CustomSelect
+              value={bioForm.merokok || ''}
+              onChange={(val) => updateField('merokok', val)}
               placeholder="Status Merokok"
               options={[
-                {label: 'Sama sekali nggak ngerokok', value: 'Tidak Merokok'}, {label: 'Kadang-kadang (Social)', value: 'Kadang-kadang'},
-                {label: 'Perokok aktif', value: 'Perokok Aktif'}, {label: 'Tim Vape / Pods', value: 'Vape'}
+                { label: 'Sama sekali nggak ngerokok', value: 'Tidak Merokok' },
+                { label: 'Kadang-kadang (Social)', value: 'Kadang-kadang' },
+                { label: 'Perokok aktif', value: 'Perokok Aktif' },
+                { label: 'Tim Vape / Pods', value: 'Vape' }
               ]}
             />
           </div>
-          <div className="input-group" style={inputGroupStyle}>
-            <CustomSelect 
-              value={bioForm.alkohol || ''} 
-              onChange={val => updateField('alkohol', val)}
+          <div style={inputGroupStyle}>
+            <CustomSelect
+              value={bioForm.alkohol || ''}
+              onChange={(val) => updateField('alkohol', val)}
               placeholder="Konsumsi Alkohol"
               options={[
-                {label: 'Sama sekali nggak minum', value: 'Tidak Minum'}, {label: 'Jarang banget', value: 'Jarang'},
-                {label: 'Minum pas nongkrong aja', value: 'Social Drinker'}, {label: 'Lumayan sering', value: 'Sering'}
+                { label: 'Sama sekali nggak minum', value: 'Tidak Minum' },
+                { label: 'Jarang banget', value: 'Jarang' },
+                { label: 'Minum pas nongkrong aja', value: 'Social Drinker' },
+                { label: 'Lumayan sering', value: 'Sering' }
               ]}
             />
           </div>
 
           {/* Media Sosial */}
-          <div className="social-inputs" style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: 'var(--text-main)' }}>Media Sosial (Opsional)</h4>
-            <input type="text" placeholder="IG Username (tanpa @)" className="custom-input"
-              value={bioForm.ig_username || ''} onChange={e => updateField('ig_username', e.target.value)} />
-            <input type="text" placeholder="TikTok Username (tanpa @)" className="custom-input"
-              value={bioForm.tiktok_username || ''} onChange={e => updateField('tiktok_username', e.target.value)} />
-            <input type="text" placeholder="Link Playlist Spotify" className="custom-input"
-              value={bioForm.spotify_url || ''} onChange={e => updateField('spotify_url', e.target.value)} />
+          <div
+            style={{
+              gridColumn: '1 / -1',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              marginTop: '16px'
+            }}
+          >
+            <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: 'var(--text-main)' }}>
+              Media Sosial (Opsional)
+            </h4>
+            <input
+              type="text"
+              placeholder="IG Username (tanpa @)"
+              className="custom-input"
+              value={bioForm.ig_username || ''}
+              onChange={(e) => updateField('ig_username', e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="TikTok Username (tanpa @)"
+              className="custom-input"
+              value={bioForm.tiktok_username || ''}
+              onChange={(e) => updateField('tiktok_username', e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Link Playlist Spotify"
+              className="custom-input"
+              value={bioForm.spotify_url || ''}
+              onChange={(e) => updateField('spotify_url', e.target.value)}
+            />
           </div>
-
         </div>
 
-        {/* Tombol Simpan – sekarang tidak sticky, langsung di bawah input */}
+        {/* Tombol Simpan */}
         <div style={{ paddingTop: '24px' }}>
-          <button className="action-btn" onClick={onSave} disabled={isSaving} style={btnStyle}>
+          <button
+            className="action-btn"
+            onClick={onSave}
+            disabled={isSaving}
+            style={btnStyle}
+          >
             {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
           </button>
         </div>
-
       </div>
     </div>
   );
 };
 
 // ================= STYLES =================
-
 const fullScreenOverlayStyle: React.CSSProperties = {
-  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
   backgroundColor: 'var(--bg-main)',
-  zIndex: 100000, display: 'flex', flexDirection: 'column'
-};
-
-const fullScreenContentStyle: React.CSSProperties = {
-  width: '100%', height: '100%',
-  overflowY: 'auto', 
-  padding: '24px',
-  display: 'flex', flexDirection: 'column',
-  backgroundColor: 'var(--bg-main)'
+  zIndex: 100000,
+  display: 'flex',
+  flexDirection: 'column'
 };
 
 const headerStyle: React.CSSProperties = {
-  position: 'sticky',          // ✅ diam di atas saat scroll
-  top: 0,
-  zIndex: 10,
   backgroundColor: 'var(--bg-main)',
-  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  paddingBottom: '16px',
-  marginBottom: '24px',
-  borderBottom: '1px solid var(--border-card)'
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '16px 24px',
+  borderBottom: '1px solid var(--border-card)',
+  flexShrink: 0,
+  zIndex: 10
 };
 
 const closeBtnStyle: React.CSSProperties = {
-  background: 'var(--bg-secondary)', border: 'none', cursor: 'pointer',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  padding: '8px', borderRadius: '50%', color: 'var(--text-main)'
+  background: 'var(--bg-secondary)',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '8px',
+  borderRadius: '50%',
+  color: 'var(--text-main)'
+};
+
+const scrollAreaStyle: React.CSSProperties = {
+  flex: 1,
+  overflowY: 'auto',
+  padding: '24px',
+  paddingTop: '0',
+  display: 'flex',
+  flexDirection: 'column'
 };
 
 const gridStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)', 
-  gap: '16px'
+  gridTemplateColumns: 'repeat(2, 1fr)',
+  gap: '16px',
+  flex: 1
 };
 
 const inputGroupStyle: React.CSSProperties = {
-  display: 'flex', flexDirection: 'column',
-  width: '100%', margin: 0, padding: 0, border: 'none', background: 'transparent'
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%',
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'transparent'
 };
 
 const btnStyle: React.CSSProperties = {
-  width: '100%', padding: '16px',
-  backgroundColor: 'var(--primary-bg)',   // ✅ latar biru tetap
-  color: 'white', border: 'none',
-  borderRadius: '16px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer',
+  width: '100%',
+  padding: '16px',
+  backgroundColor: 'var(--primary-bg, #1f3cff)',
+  color: 'white',
+  border: 'none',
+  borderRadius: '16px',
+  fontSize: '1.1rem',
+  fontWeight: 'bold',
+  cursor: 'pointer',
   boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)'
 };
 

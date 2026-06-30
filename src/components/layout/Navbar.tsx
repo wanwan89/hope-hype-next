@@ -52,6 +52,19 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
+  // 🔥 State baru: deteksi BioModal terbuka
+  const [isBioModalOpen, setIsBioModalOpen] = useState(false);
+
+  // Dengarkan event dari BioModal
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<{ isOpen: boolean }>;
+      setIsBioModalOpen(customEvent.detail.isOpen);
+    };
+    window.addEventListener('biomodal-state', handler);
+    return () => window.removeEventListener('biomodal-state', handler);
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsLoggedIn(!!session);
@@ -68,24 +81,24 @@ function NavbarContent() {
 
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
+  // 🔥 Perbarui isHiddenPage: tambahkan isBioModalOpen
   const isHiddenPage = [
-    '/login', '/dailycek', '/settings', '/vip', '/contact', 
-    '/create', '/search', '/saldo', '/story', 
+    '/login', '/dailycek', '/settings', '/vip', '/contact',
+    '/create', '/search', '/saldo', '/story',
     '/pending', '/historycoin', '/withdraw',
-    '/hypetalk/room', '/biomodal' 
-  ].some(path => pathname?.startsWith(path)) || 
-  (pathname?.startsWith('/voice') && !pathname?.startsWith('/voice-room'));
+    '/hypetalk/room'
+  ].some(path => pathname?.startsWith(path)) ||
+  (pathname?.startsWith('/voice') && !pathname?.startsWith('/voice-room')) ||
+  isBioModalOpen;
 
   const fetchBadgesAndUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const userId = session.user.id;
 
-    // AMBIL DATA GRUP USER DULU SEBELUM MENGHITUNG CHAT UNREAD
     const { data: groupData } = await supabase.from('group_members').select('group_id').eq('user_id', userId);
     const groupRoomIds = groupData?.map((g: any) => `group_${g.group_id}`) || [];
 
-    // Filter format: Cari chat private (room_id ada user_id) ATAU chat grup (room_id di dalam groupRoomIds)
     let roomFilter = `room_id.ilike.%${userId}%`;
     if (groupRoomIds.length > 0) {
       roomFilter += `,room_id.in.(${groupRoomIds.join(',')})`;
@@ -93,7 +106,6 @@ function NavbarContent() {
 
     const [profileRes, chatRes, dbNotifRes] = await Promise.all([
       supabase.from('profiles').select('avatar_url').eq('id', userId).single(),
-      // MENGHITUNG CHAT PRIVATE & GRUP
       supabase.from('messages')
         .select('id', { count: 'exact', head: true })
         .neq('user_id', userId)
@@ -112,7 +124,7 @@ function NavbarContent() {
       }
       setAvatarUrl(url);
     }
-    
+
     if (chatRes.error) {
       console.error("Error mengambil unread chat:", chatRes.error.message);
     } else if (chatRes.count !== null) {
@@ -125,11 +137,11 @@ function NavbarContent() {
     let readSet = new Set<string>();
     let isFreshInstall = false;
     let localData = null;
-    
+
     if (typeof window !== 'undefined') {
       localData = localStorage.getItem('read_notifs_local');
       if (!localData) {
-        isFreshInstall = true; 
+        isFreshInstall = true;
       } else {
         try { readSet = new Set(JSON.parse(localData)); } catch (e) {}
       }
@@ -139,7 +151,7 @@ function NavbarContent() {
 
     const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
     const postIds = myPosts?.map((p: any) => p.id) || [];
-    
+
     const { data: myComments } = await supabase.from('comments').select('id').eq('user_id', userId);
     const commentIds = myComments?.map((c: any) => c.id) || [];
 
@@ -173,7 +185,7 @@ function NavbarContent() {
     const processItem = (idStr: string) => {
       if (isFreshInstall) {
         newlyFetchedIds.push(idStr);
-        return 0; 
+        return 0;
       }
       return readSet.has(idStr) ? 0 : 1;
     };
@@ -218,7 +230,7 @@ function NavbarContent() {
     if (isLoggedIn) {
       fetchBadgesAndUser();
     }
-    
+
     const handleRefresh = () => {
       if (isLoggedIn) fetchBadgesAndUser();
     };
@@ -237,7 +249,7 @@ function NavbarContent() {
       if (document.visibilityState === 'visible' && isLoggedIn) {
         fetchBadgesAndUser();
       }
-    }, 15000); 
+    }, 15000);
 
     return () => {
       window.removeEventListener('notif-count-changed', handleRefresh);
@@ -256,7 +268,6 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
-      // Ambil data grup untuk realtime filter
       const { data: groupData } = await supabase.from('group_members').select('group_id').eq('user_id', userId);
       const groupRoomIds = groupData?.map((g: any) => `group_${g.group_id}`) || [];
 
@@ -266,9 +277,8 @@ function NavbarContent() {
           { event: 'INSERT', schema: 'public', table: 'messages' },
           (payload) => {
             const newMsg = payload.new;
-            if (newMsg.user_id === userId) return; // Jangan hitung pesan dari diri sendiri
+            if (newMsg.user_id === userId) return;
 
-            // Filter room_id: Apakah itu private chat (ada userId) atau chat grup (room_id terdaftar di grup)?
             const isPrivate = newMsg.room_id && newMsg.room_id.includes(userId);
             const isGroup = newMsg.room_id && groupRoomIds.includes(newMsg.room_id);
 
@@ -305,7 +315,7 @@ function NavbarContent() {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Chat', path: '/hypetalk', icon: MessageCircle, badgeCount: unreadChatCount },
-    { name: 'Voice', path: '/voice-room', icon: CustomVoiceIcon }, 
+    { name: 'Voice', path: '/voice-room', icon: CustomVoiceIcon },
     { name: 'Notif', path: '/notifications', icon: Bell, badgeCount: unreadNotifCount },
     { name: 'Profil', path: '/data', icon: User },
   ];
@@ -324,7 +334,7 @@ function NavbarContent() {
       setAnimatingIcon(item.name);
       setTimeout(() => window.location.reload(), 800);
     }
-    
+
     setClickedItem(item.name);
     setTimeout(() => setClickedItem(null), 300);
   };
@@ -334,7 +344,7 @@ function NavbarContent() {
       style={{
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
-        zIndex: 100, // ✅ TURUNKAN Z-INDEX
+        zIndex: 100,
         display: 'flex',
         justifyContent: 'center',
       }}
@@ -347,22 +357,22 @@ function NavbarContent() {
           --nav-icon-color: #ffffff; 
         }
       `}</style>
-      
+
       <nav
         style={{
           width: '100%',
           height: `calc(60px + env(safe-area-inset-bottom))`,
           paddingBottom: 'env(safe-area-inset-bottom)',
           backgroundColor: 'var(--bg-main, rgba(255, 255, 255, 0.75))',
-          backdropFilter: 'blur(24px)', 
+          backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          borderTop: 'none', 
+          borderTop: 'none',
           boxShadow: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
           boxSizing: 'border-box',
-          color: 'inherit' 
+          color: 'inherit'
         }}
       >
         {navItems.map((item) => {
@@ -422,7 +432,7 @@ function NavbarContent() {
                         color={isActive ? '#1f3cff' : 'var(--nav-icon-color)'}
                         fill={isActive && item.name !== 'Profil' ? '#1f3cff' : 'none'}
                         strokeWidth={isActive ? 2.5 : 2}
-                        style={{ transition: 'color 0.3s ease' }} 
+                        style={{ transition: 'color 0.3s ease' }}
                       />
                     </div>
                   )}
@@ -437,7 +447,7 @@ function NavbarContent() {
                       backgroundColor: '#FF3B30', color: 'white', fontSize: '10px',
                       fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '2px 5px', minWidth: '16px', height: '16px', borderRadius: '12px',
-                      border: '2px solid var(--bg-main, #ffffff)', 
+                      border: '2px solid var(--bg-main, #ffffff)',
                       zIndex: 10,
                     }}
                   >
