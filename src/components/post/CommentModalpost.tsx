@@ -8,9 +8,10 @@ import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { getOptimizedImage, containsBadWords, formatTimeAgo } from '@/lib/comment-utils';
 
-import CommentItem from './components/CommentItem';
-import CommentInputBar from './components/CommentInputBar';
-import CommentActionSheet from './components/CommentActionSheet';
+import CommentItem from './CommentItem';
+import CommentInputBar from './CommentInputBar';
+import CommentActionSheet from './CommentActionSheet';
+
 import './CommentModal.css';
 
 function CommentModalContent() {
