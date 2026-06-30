@@ -1,7 +1,5 @@
-// components/notifications/CategoryMenu.tsx
 import React from 'react';
 
-// SVG Icons
 const HeartIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
     <path d="M2 9.137C2 14 6.02 16.591 8.962 18.911C10 19.729 11 20.5 12 20.5s2-.77 3.038-1.59C17.981 16.592 22 14 22 9.138S16.5.825 12 5.501C7.5.825 2 4.274 2 9.137"/>
@@ -28,15 +26,38 @@ const SystemIcon = () => (
 
 type Props = {
   unreadCounts: { like: number; comment: number; follow: number; other: number };
+  latestNotifs: { like: any; comment: any; follow: any; other: any };
   onSelectCategory: (cat: 'like' | 'comment' | 'follow' | 'other') => void;
 };
 
-const CategoryMenu: React.FC<Props> = ({ unreadCounts, onSelectCategory }) => {
+const getLatestSnippet = (notif: any) => {
+  if (!notif) return 'Tidak ada';
+  const name = notif.actor?.username || 'Seseorang';
+  const others = notif.otherCount > 0 ? ` & ${notif.otherCount} lainnya` : '';
+  
+  if (notif.type.includes('like')) return `${name}${others} menyukai postingan Anda`;
+  if (notif.type.includes('repost')) return `${name}${others} membagikan ulang postingan Anda`;
+  if (notif.type.includes('save')) return `${name}${others} menyimpan postingan Anda`;
+  if (notif.type.includes('comment')) return `${name} mengomentari postingan Anda`;
+  if (notif.type === 'follow') return `${name} mulai mengikuti Anda`;
+  
+  if (notif.type === 'coin_receive') return `Menerima koin: ${notif.amount}`;
+  if (notif.type === 'payment_status') return `Status pembayaran Anda diperbarui`;
+  if (notif.type === 'withdraw_request') return `Permintaan penarikan diperbarui`;
+  if (notif.type === 'coin_history') return `Riwayat Koin: ${notif.amount}`;
+  
+  if (notif.message) {
+    return notif.message.length > 35 ? notif.message.substring(0, 35) + '...' : notif.message;
+  }
+  return 'Pemberitahuan baru';
+};
+
+const CategoryMenu: React.FC<Props> = ({ unreadCounts, latestNotifs, onSelectCategory }) => {
   const items = [
-    { key: 'like', label: 'Suka & Simpan', icon: HeartIcon, count: unreadCounts.like, color: '#ff2e63' },
-    { key: 'comment', label: 'Komentar', icon: CommentIcon, count: unreadCounts.comment, color: '#10b981' },
-    { key: 'follow', label: 'Pengikut Baru', icon: FollowIcon, count: unreadCounts.follow, color: '#8b5cf6' },
-    { key: 'other', label: 'Sistem & Lainnya', icon: SystemIcon, count: unreadCounts.other, color: '#3b82f6' },
+    { key: 'like', label: 'Suka & Simpan', icon: HeartIcon, count: unreadCounts.like, latest: latestNotifs.like, color: '#ff2e63' },
+    { key: 'comment', label: 'Komentar', icon: CommentIcon, count: unreadCounts.comment, latest: latestNotifs.comment, color: '#10b981' },
+    { key: 'follow', label: 'Pengikut Baru', icon: FollowIcon, count: unreadCounts.follow, latest: latestNotifs.follow, color: '#8b5cf6' },
+    { key: 'other', label: 'Sistem & Lainnya', icon: SystemIcon, count: unreadCounts.other, latest: latestNotifs.other, color: '#3b82f6' },
   ];
 
   return (
@@ -58,8 +79,8 @@ const CategoryMenu: React.FC<Props> = ({ unreadCounts, onSelectCategory }) => {
           </div>
           <div className="category-text">
             <span className="category-title">{item.label}</span>
-            <span className="category-desc">
-              {item.count > 0 ? `${item.count} baru` : 'Tidak ada'}
+            <span className="category-desc" style={{ color: item.count === 0 ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+              {item.count > 0 ? `${item.count} pemberitahuan baru` : getLatestSnippet(item.latest)}
             </span>
           </div>
           {item.count > 0 && <span className="category-badge">{item.count}</span>}

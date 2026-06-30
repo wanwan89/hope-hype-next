@@ -340,35 +340,35 @@ export default function NotificationsPage() {
           if (uniqueUsers.length === 0) return;
 
           uniqueUsers.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          
+          const firstActor = uniqueUsers[0];
 
           if (uniqueUsers.length === 1) {
-            const item = uniqueUsers[0];
-            const nId = `${baseType}-${item.id}`;
+            const nId = `${baseType}-${firstActor.id}`;
             result.push({
               id: nId,
               type: baseType,
               post_id: postId,
-              actor_id: item.user_id,
-              created_at: item.created_at,
+              actor_id: firstActor.user_id,
+              created_at: firstActor.created_at,
               is_read: readList.has(nId),
-              actor: getActor(item.user_id),
+              actor: getActor(firstActor.user_id),
               postData: myPosts.find((p) => p.id === postId),
               totalCount: 1,
             });
           } else {
-            const firstTwoIds = uniqueUsers.slice(0, 2).map((u) => u.user_id);
-            const otherCount = uniqueUsers.length - 2 > 0 ? uniqueUsers.length - 2 : 0;
+            const otherCount = uniqueUsers.length - 1;
             const nId = `${baseType}_group-${postId}`;
             result.push({
               id: nId,
               type: `${baseType}_group`,
               post_id: postId,
-              actor_ids: firstTwoIds,
+              actor_id: firstActor.user_id, 
               otherCount,
               totalCount: uniqueUsers.length,
-              created_at: uniqueUsers[0].created_at,
+              created_at: firstActor.created_at,
               is_read: readList.has(nId),
-              actors: firstTwoIds.map((id) => getActor(id)),
+              actor: getActor(firstActor.user_id),
               postData: myPosts.find((p) => p.id === postId),
             });
           }
@@ -680,6 +680,19 @@ export default function NotificationsPage() {
     };
   }, [rawNotifs]);
 
+  const latestNotifs = useMemo(() => {
+    const getLatest = (types: string[], isOther = false) => {
+      const filtered = rawNotifs.filter(n => isOther ? !ALL_HANDLED_TYPES.includes(n.type) : types.includes(n.type));
+      return filtered.length > 0 ? filtered[0] : null;
+    };
+    return {
+      like: getLatest(LIKE_TYPES),
+      comment: getLatest(COMMENT_TYPES),
+      follow: getLatest(FOLLOW_TYPES),
+      other: getLatest([], true)
+    };
+  }, [rawNotifs]);
+
   const filteredNotifs = useMemo(() => {
     return rawNotifs.filter((n) => {
       if (activeView === 'like') return LIKE_TYPES.includes(n.type);
@@ -692,34 +705,27 @@ export default function NotificationsPage() {
 
   const getTitleByView = () => {
     switch (activeView) {
-      case 'like':
-        return 'Suka & Simpan';
-      case 'comment':
-        return 'Komentar';
-      case 'follow':
-        return 'Pengikut Baru';
-      case 'other':
-        return 'Sistem & Lainnya';
-      default:
-        return 'Notifikasi';
+      case 'like': return 'Suka & Simpan';
+      case 'comment': return 'Komentar';
+      case 'follow': return 'Pengikut Baru';
+      case 'other': return 'Sistem & Lainnya';
+      default: return 'Notifikasi';
     }
   };
 
-  // ---------- FULL FIX RETURN ----------
   return (
     <div 
       className="notif-page-container" 
       style={{ 
         display: 'flex', 
         flexDirection: 'column', 
-        minHeight: '100%',          // ganti dari 100dvh
-        overflow: 'visible',        // biarkan .main-content yang scroll
+        minHeight: '100%',
+        overflow: 'visible',
         background: 'var(--bg-main)' 
       }}
     >
       {activeView === 'main' ? (
         <>
-          {/* Header sticky */}
           <header 
             className="notif-header" 
             style={{ 
@@ -736,7 +742,6 @@ export default function NotificationsPage() {
             </h2>
           </header>
 
-          {/* Konten tanpa overflow wrapper tambahan */}
           <div style={{ flex: 1 }}>
             <RefreshableWrapper onRefresh={handleRefresh}>
               <div className="notif-main-view" style={{ minHeight: '100%', paddingBottom: '20px' }}>
@@ -784,7 +789,7 @@ export default function NotificationsPage() {
                   </div>
                 )}
 
-                <CategoryMenu unreadCounts={unreadCounts} onSelectCategory={setActiveView} />
+                <CategoryMenu unreadCounts={unreadCounts} latestNotifs={latestNotifs} onSelectCategory={setActiveView} />
                 <RecommendedFriends 
                   recommended={recommendedFriends} 
                   onFollow={handleFollowAction} 
@@ -795,7 +800,6 @@ export default function NotificationsPage() {
           </div>
         </>
       ) : (
-        /* Detail view (like, comment, dll) */
         <div style={{ flex: 1 }}>
           <RefreshableWrapper onRefresh={handleRefresh}>
             <NotificationListView

@@ -1,4 +1,3 @@
-// components/notifications/NotificationListView.tsx
 import React from 'react';
 
 type Props = {
@@ -22,8 +21,30 @@ const NotificationListView: React.FC<Props> = ({
   myFollowings,
   router,
   formatDate,
-  getIconAndColor,
 }) => {
+
+  const renderNotifText = (notif: any, actor: any) => {
+    const name = actor?.username || 'Seseorang';
+    const others = notif.otherCount > 0 ? (<span> dan <b>{notif.otherCount} lainnya</b></span>) : null;
+    
+    if (notif.type === 'follow') return <><b>{name}</b> mulai mengikuti Anda</>;
+    if (notif.type === 'story_likes') return <><b>{name}</b> menyukai cerita Anda</>;
+    
+    if (notif.type.includes('like')) return <><b>{name}</b>{others} menyukai postingan Anda</>;
+    if (notif.type.includes('repost')) return <><b>{name}</b>{others} membagikan ulang postingan Anda</>;
+    if (notif.type.includes('save')) return <><b>{name}</b>{others} menyimpan postingan Anda</>;
+    if (notif.type.includes('comment')) return <><b>{name}</b> mengomentari postingan Anda{notif.message ? `: "${notif.message}"` : ''}</>;
+    
+    if (notif.type === 'coin_receive') return <>Anda menerima koin: <b>{notif.amount}</b> {notif.description ? `(${notif.description})` : ''}</>;
+    if (notif.type === 'payment_status') return <>Status pembayaran Anda: <b>{notif.status}</b></>;
+    if (notif.type === 'withdraw_request') return <>Permintaan penarikan <b>{notif.amount}</b>: {notif.status}</>;
+    if (notif.type === 'coin_history') return <>Riwayat Koin: <b>{notif.amount}</b> {notif.description ? `(${notif.description})` : ''}</>;
+    
+    if (notif.message) return <><b>{name}</b>: {notif.message}</>;
+    
+    return <><b>{name}</b> berinteraksi dengan Anda</>;
+  };
+
   return (
     <div className="notif-detail-view">
       <div className="notif-detail-header">
@@ -40,7 +61,6 @@ const NotificationListView: React.FC<Props> = ({
         </div>
       ) : (
         notifs.map((notif) => {
-          const { icon, color } = getIconAndColor(notif.type);
           const actor = notif.actor || notif.actors?.[0];
           const postThumb = notif.postData?.image_url?.split(',')[0] || notif.postData?.video_url || null;
 
@@ -49,8 +69,9 @@ const NotificationListView: React.FC<Props> = ({
               key={notif.id}
               className="notif-item"
               onClick={() => handleNotifClick(notif)}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
             >
-              <div className="notif-avatar-wrapper">
+              <div className="notif-avatar-wrapper" style={{ position: 'relative' }}>
                 {actor ? (
                   <img
                     src={actor.avatar_url || '/asets/png/profile.webp'}
@@ -62,50 +83,32 @@ const NotificationListView: React.FC<Props> = ({
                     <span className="material-icons">person</span>
                   </div>
                 )}
-                <div className="notif-icon-badge" style={{ background: color }}>
-                  <span className="material-icons" style={{ fontSize: 12 }}>{icon}</span>
-                </div>
+                {/* Badge Icon Dihilangkan Secara Keseluruhan */}
               </div>
 
-              <div className="notif-content">
+              <div className="notif-content" style={{ flex: 1, paddingRight: '12px' }}>
                 <div className="notif-text">
-                  {notif.type === 'follow' ? (
-                    <>
-                      <b>{actor?.username || 'Seseorang'}</b> mulai mengikuti Anda
-                    </>
-                  ) : notif.type === 'story_likes' ? (
-                    <>
-                      <b>{actor?.username || 'Seseorang'}</b> menyukai cerita Anda
-                    </>
-                  ) : (
-                    <>
-                      <b>{actor?.username || 'Seseorang'}</b>{' '}
-                      {notif.type.includes('like') && 'menyukai postingan Anda'}
-                      {notif.type.includes('repost') && 'membagikan ulang postingan Anda'}
-                      {notif.type.includes('save') && 'menyimpan postingan Anda'}
-                      {notif.type.includes('comment') && 'mengomentari postingan Anda'}
-                      {notif.message && `: "${notif.message}"`}
-                      {notif.otherCount > 0 && ` dan ${notif.otherCount} lainnya`}
-                    </>
-                  )}
+                  {renderNotifText(notif, actor)}
                 </div>
-                <span className="notif-date">{formatDate(notif.created_at)}</span>
+                <span className="notif-date" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  {formatDate(notif.created_at)}
+                </span>
               </div>
 
-              {/* Thumbnail postingan */}
+              {/* Menampilkan Thumbnail Postingan Di Sebelah Kanan */}
               {postThumb && (
-                <div className="notif-post-thumb">
+                <div className="notif-post-thumb" style={{ marginLeft: 'auto', flexShrink: 0 }}>
                   <img
                     src={postThumb}
                     alt="post"
-                    style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover' }}
+                    style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block' }}
                   />
                 </div>
               )}
 
               {/* Tombol Follow */}
               {notif.type === 'follow' && !myFollowings.has(notif.actor_id) && (
-                <div className="notif-action-area">
+                <div className="notif-action-area" style={{ marginLeft: 'auto' }}>
                   <button
                     className={`notif-follow-btn ${myFollowings.has(notif.actor_id) ? 'followed' : ''}`}
                     onClick={(e) => handleFollowBack(e, notif.actor_id)}
