@@ -129,7 +129,7 @@ html.dark .profile-page-container {
     background: var(--modal-overlay); 
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    z-index: 9001; /* ✅ FIX: Diubah menjadi 9001 agar berada di atas Navbar (9000) */
+    z-index: 8998; /* ✅ FIX: Diubah menjadi 8998 agar berada di bawah Navbar */
     opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; 
 }
 .p-sidebar-overlay.active { opacity: 1; visibility: visible; }
@@ -138,11 +138,12 @@ html.dark .profile-page-container {
 .p-sidebar-panel { 
     position: fixed !important; top: 0 !important; bottom: 0 !important; right: 0 !important; left: auto !important; 
     width: 280px; max-width: 85%; background: var(--bg-main); 
-    z-index: 9002; /* ✅ FIX: Diubah menjadi 9002 agar tertampil paling depan */
+    z-index: 8999; /* ✅ FIX: Diubah menjadi 8999 agar berada di bawah Navbar */
     transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
     display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.2); border-left: 1px solid var(--border-color);
 }
 .p-sidebar-panel.open { transform: translateX(0) !important; }
+
 
 /* FOLLOW BOTTOM SHEET */
 .p-follow-sheet {
