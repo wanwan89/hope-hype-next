@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+// 🔥 TAMBAHKAN BARIS INI UNTUK MENCEGAH ERROR SAAT BUILD 🔥
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q') || '';
