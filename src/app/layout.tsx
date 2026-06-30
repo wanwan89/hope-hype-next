@@ -131,7 +131,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       metaTheme.setAttribute('content', isDark ? '#0a0a0a' : '#ffffff');
 
       if (platform === 'android' || platform === 'ios') {
-        await StatusBar.setOverlaysWebView({ overlay: true });
+        // 🔥 FIX 1: Ganti overlay menjadi FALSE agar status bar tidak menumpuk
+        await StatusBar.setOverlaysWebView({ overlay: false });
         await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
         if (platform === 'android') {
           await StatusBar.setBackgroundColor({ color: isDark ? '#0a0a0a' : '#ffffff' });
@@ -162,7 +163,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       try {
         const platform = Capacitor.getPlatform();
         if (platform === 'android' || platform === 'ios') {
-          await StatusBar.setOverlaysWebView({ overlay: true });
+          // 🔥 FIX 2: Ganti overlay menjadi FALSE agar webview turun
+          await StatusBar.setOverlaysWebView({ overlay: false });
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
           if (platform === 'android') {
@@ -357,8 +359,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {/* WRAPPER UTAMA */}
-      <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`} style={{ paddingTop: 'var(--safe-area-top)' }}>
+      {/* 🔥 FIX 3: Hapus inline 'paddingTop' (style di bawah ini dihapus) */}
+      <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
+        
         {/* MAIN SCROLL AREA */}
         <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
           {isHomePage && (

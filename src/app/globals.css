@@ -147,12 +147,16 @@ main {
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
+  
+  /* 🔥 FIX 1: Tambahkan padding-top ini untuk menghindari Status Bar */
+  padding-top: max(env(safe-area-inset-top), 0px); 
 }
 
 .fixed-layout {
   height: 100dvh !important;
   overflow: hidden !important;
   position: relative;
+  padding-top: max(env(safe-area-inset-top), 0px); /* 🔥 FIX 2: Cadangan jika ada yang pake class ini */
 }
 
 .main-content {
@@ -169,11 +173,6 @@ main {
   
   overscroll-behavior-y: none;
 }
-
-/* 🔥 FIX UTAMA: 
-  Menghapus class `.main-content * { touch-action: auto !important; }` dari sini.
-  Dengan menghapusnya, `touchAction: 'pan-y'` milik Framer Motion bisa jalan dengan sempurna!
-*/
 
 @media (min-width: 640px) {
   .main-content {
@@ -277,4 +276,4 @@ select,
   background-image: linear-gradient(var(--bg-main), var(--bg-main)), var(--accent-story);
   background-origin: padding-box, border-box; background-clip: padding-box, border-box;
 }
-.story-ring .default-avatar .material-icons { font-size: 32px !important; color: var(--text-muted) !important; }  
+.story-ring .default-avatar .material-icons { font-size: 32px !important; color: var(--text-muted) !important; }
