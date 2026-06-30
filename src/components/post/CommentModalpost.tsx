@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation'; 
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase';
 import CommentItem from './CommentItem';
 import CommentInput from './CommentInput';
@@ -9,6 +9,8 @@ import './CommentModal.css';
 
 function CommentModalContent() {
   const searchParams = useSearchParams(); 
+  const router = useRouter();
+  const pathname = usePathname();
   
   const [isActive, setIsActive] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
@@ -24,9 +26,43 @@ function CommentModalContent() {
   
   const [actionSheetComment, setActionSheetComment] = useState<any>(null);
 
+  // 1. EFFECT UNTUK MENANGKAP URL & FETCH DATA
   useEffect(() => {
-     // ... (Logic pengecekan search params & fetch data utama)
-  }, []);
+    const postIdFromUrl = searchParams.get('postId');
+
+    if (postIdFromUrl) {
+      setIsActive(true);
+      setCurrentPostId(postIdFromUrl);
+      fetchComments(postIdFromUrl);
+    } else {
+      setIsActive(false);
+      setComments([]);
+      setCurrentPostId(null);
+    }
+  }, [searchParams]);
+
+  // 2. FUNGSI FETCH KE SUPABASE
+  const fetchComments = async (postId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('comments') // Sesuaikan dengan nama tabelmu
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false }); // Urutkan dari yang terbaru
+
+      if (error) throw error;
+      if (data) setComments(data);
+    } catch (error) {
+      console.error("Gagal mengambil komentar:", error);
+    }
+  };
+
+  // 3. FUNGSI UNTUK MENUTUP MODAL
+  const closeModal = () => {
+    setIsActive(false);
+    // Hapus parameter postId dari URL agar kembali ke halaman tanpa modal
+    router.push(pathname); 
+  };
 
   const handleCommentAdded = (newComment: any) => {
     setComments(prev => [newComment, ...prev]);
@@ -44,6 +80,11 @@ function CommentModalContent() {
     <>
       <div id="commentModal" className={isActive ? "active" : ""}>
         <div className="comment-box">
+          {/* Tombol Close Modal */}
+          <button className="close-modal-btn" onClick={closeModal}>
+            Tutup (X)
+          </button>
+
           <div className="comment-list">
             {parents.map(p => (
               <CommentItem 
@@ -53,7 +94,6 @@ function CommentModalContent() {
                 currentCreatorId={currentCreatorId}
                 setReplyTo={setReplyTo}
                 handleTouchStart={setActionSheetComment}
-                // ... pass likes states
               />
             ))}
           </div>

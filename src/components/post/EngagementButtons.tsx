@@ -1,9 +1,10 @@
 'use client';
 import React from 'react';
+import { useRouter, usePathname } from 'next/navigation'; // TAMBAHKAN IMPORT INI
 
 type EngagementButtonsProps = {
   postId: string;
-  creatorId: string;
+  creatorId: string; // Walaupun creatorId belum dipakai di URL, tetap dibiarkan untuk struktur datamu
   counts: Record<string, { likes: number; comments: number; reposts: number; saves: number }>;
   mySavedPosts: Set<string>;
   myRepostedPosts: Set<string>;
@@ -18,6 +19,16 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
   postId, creatorId, counts, mySavedPosts, myRepostedPosts, myLikedPosts,
   animatingReposts, handleSave, openRepostModal, handleLike
 }) => {
+  // PANGGIL ROUTER & PATHNAME
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // FUNGSI UNTUK MEMBUKA MODAL KOMENTAR
+  const handleOpenComment = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Mencegah klik tembus ke belakang (misal kalau post-nya bisa di-klik untuk buka detail)
+    router.push(`${pathname}?postId=${postId}`); // Menambahkan parameter ke URL
+  };
+
   return (
     <div className="engagement-group" onClick={(e) => e.stopPropagation()}>
       {/* Save (Bookmark) */}
@@ -31,7 +42,6 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         <svg 
           viewBox="0 0 24 24" 
           className="icon" 
-          /* PERBAIKAN: Masukkan warna langsung ke atribut fill, hapus currentColor */
           fill={mySavedPosts.has(postId) ? "#FBBF24" : "var(--text-main)"}
           style={{ transition: '0.2s' }}
         >
@@ -80,7 +90,7 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         className="icon-btn comment-toggle btn-press"
         data-post={postId}
         data-creator={creatorId}
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleOpenComment} // UBAH BAGIAN INI
       >
         <svg viewBox="0 0 24 24" className="icon" fill="currentColor" style={{ color: 'var(--text-main)' }}>
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
