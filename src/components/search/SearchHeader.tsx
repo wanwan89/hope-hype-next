@@ -17,13 +17,11 @@ export default function SearchHeader({ initialQuery, onSearch }: SearchHeaderPro
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Update local query jika URL berubah
   useEffect(() => {
     setLocalQuery(initialQuery);
     setShowSuggestions(false);
   }, [initialQuery]);
 
-  // Fetch saran pencarian (autocomplete)
   useEffect(() => {
     if (localQuery.trim().length > 1 && localQuery !== initialQuery) {
       fetchSuggestions(localQuery);

@@ -54,7 +54,6 @@ export default function MusicSheet({
 
   if (!isOpen) return null;
 
-  // ✅ renderMusicItem sekarang menerima playingUrl & onTogglePreview dari closure
   const renderMusicItem = (song: any, index: number) => (
     <div
       key={index}
@@ -64,7 +63,7 @@ export default function MusicSheet({
         background: 'var(--bg-main)',
         padding: '12px',
         borderRadius: '16px',
-        border: '1px solid var(--border-card)',
+        // ✅ tanpa border
       }}
     >
       <div
@@ -134,7 +133,7 @@ export default function MusicSheet({
       <button
         onClick={() => onSelect(song)}
         style={{
-          background: '#1f3cff',
+          background: 'var(--primary-bg)', // ✅ ikut tema biru
           color: 'white',
           border: 'none',
           padding: '8px 16px',
@@ -201,7 +200,7 @@ export default function MusicSheet({
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '0 20px 15px',
-            borderBottom: '1px solid var(--border-card)',
+            // ✅ hapus borderBottom
           }}
         >
           <h3
@@ -252,7 +251,7 @@ export default function MusicSheet({
                 width: '100%',
                 padding: '14px 15px 14px 45px',
                 borderRadius: '14px',
-                border: '1px solid var(--border-card)',
+                border: 'none', // ✅ tanpa border
                 background: 'var(--bg-input)',
                 color: 'var(--text-main)',
                 fontSize: '15px',

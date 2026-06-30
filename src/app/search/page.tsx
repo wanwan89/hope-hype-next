@@ -6,16 +6,17 @@ import { supabase } from '@/lib/supabase';
 import Lottie from 'lottie-react';
 import SearchHeader from '@/components/search/SearchHeader';
 
-import emptyLottie from '@/assets/lottie/empty.json'; 
+import emptyLottie from '@/assets/lottie/empty.json';
 import babyLottie from '@/assets/lottie/baby.json';
 
-// SPINNERS
+// SPINNER KECIL (hanya untuk area trending)
 const SmallSpinner = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 0', width: '100%' }}>
     <div style={{ width: 25, height: 25, border: '3px solid var(--bg-secondary)', borderTopColor: 'var(--primary-bg)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
   </div>
 );
 
+// FULL SPINNER (tidak dipakai lagi, tapi tetap ada untuk fallback Suspense)
 const FullSpinner = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh', width: '100%' }}>
     <div style={{ width: 40, height: 40, border: '3px solid var(--bg-secondary)', borderTopColor: 'var(--primary-bg)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -27,20 +28,20 @@ function SearchContent() {
   const router = useRouter();
   const query = searchParams.get('q') || '';
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Hapus state isLoading
   const [users, setUsers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
-  const [recommendedPosts, setRecommendedPosts] = useState<any[]>([]); 
-  const [categoryRecommendations, setCategoryRecommendations] = useState<any[]>([]); 
+  const [recommendedPosts, setRecommendedPosts] = useState<any[]>([]);
+  const [categoryRecommendations, setCategoryRecommendations] = useState<any[]>([]);
   const [trendingKeywords, setTrendingKeywords] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [showSupportPopup, setShowSupportPopup] = useState(false);
 
   const sensitiveKeywords = [
-    'bunuh diri', 'membunuh', 'trauma', 'depresi', 'mati', 
+    'bunuh diri', 'membunuh', 'trauma', 'depresi', 'mati',
     'akhiri hidup', 'kesepian', 'putus asa', 'menyakiti diri', 'suicide'
   ];
 
@@ -68,7 +69,7 @@ function SearchContent() {
   }, [query]);
 
   const fetchInitialDiscoverData = async () => {
-    setIsLoading(true);
+    // Hapus setIsLoading(true/false)
     try {
       const { data: trendData } = await supabase.from('search_history').select('query').order('created_at', { ascending: false }).limit(200);
       const counts: Record<string, number> = {};
@@ -78,20 +79,18 @@ function SearchContent() {
         setTrendingKeywords(sorted.length > 0 ? sorted : ['hope hype', 'musik viral', 'tutorial ui']);
       }
 
-      const { data: recPosts } = await supabase.from('posts').select(`id, image_url, video_url, bio, profiles:creator_id(username), categories(name)`).eq('status', 'approved').limit(20); 
+      const { data: recPosts } = await supabase.from('posts').select(`id, image_url, video_url, bio, profiles:creator_id(username), categories(name)`).eq('status', 'approved').limit(20);
       if (recPosts) {
         const shuffled = recPosts.sort(() => Math.random() - 0.5).slice(0, 5);
         setCategoryRecommendations(shuffled.map((post: any) => ({ ...post, categoryName: post.categories?.name || "Eksplorasi" })));
       }
     } catch (error) {
       console.error("Gagal memuat discover data", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const fetchSearchResults = async () => {
-    setIsLoading(true);
+    // Hapus setIsLoading(true/false)
     try {
       const isHashtag = query.startsWith('#');
 
@@ -111,23 +110,21 @@ function SearchContent() {
 
       if (!postData || postData.length === 0) {
         const { data: recData } = await supabase.from('posts').select('id, image_url, video_url, bio, profiles:creator_id(username)').eq('status', 'approved').limit(20);
-        if (recData) setRecommendedPosts(recData.sort(() => Math.random() - 0.5).slice(0, 9)); 
+        if (recData) setRecommendedPosts(recData.sort(() => Math.random() - 0.5).slice(0, 9));
       } else {
-        setRecommendedPosts([]); 
+        setRecommendedPosts([]);
       }
     } catch (error) {
       console.error("Search Error:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleExecuteSearch = async (keyword: string) => {
     const lowerText = keyword.toLowerCase();
-    
+
     if (sensitiveKeywords.some(kw => lowerText.includes(kw))) {
       setShowSupportPopup(true);
-      return; 
+      return;
     }
 
     if (keyword.trim()) {
@@ -144,7 +141,7 @@ function SearchContent() {
   };
 
   const deleteHistoryItem = (e: React.MouseEvent, textToRemove: string) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     const newRecent = recentSearches.filter(item => item !== textToRemove);
     setRecentSearches(newRecent);
     localStorage.setItem('hype_recent_searches', JSON.stringify(newRecent));
@@ -153,7 +150,7 @@ function SearchContent() {
   const handleFollowToggle = async (e: any, targetUserId: string) => {
     e.stopPropagation();
     if (!currentUser) return alert("Silakan login untuk mengikuti user.");
-    if (currentUser.id === targetUserId) return; 
+    if (currentUser.id === targetUserId) return;
 
     const isFollowing = followedUsers.has(targetUserId);
     setFollowedUsers(prev => {
@@ -173,17 +170,16 @@ function SearchContent() {
 
   return (
     <div style={{ minHeight: '100%', background: 'var(--bg-main)', paddingBottom: '80px', maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
-      
       <SearchHeader initialQuery={query} onSearch={handleExecuteSearch} />
 
       <div style={{ padding: '20px' }}>
-        {query && !isLoading && (
+        {query && (
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
             Hasil pencarian untuk <strong style={{ color: 'var(--text-main)' }}>"{query}"</strong>
           </div>
         )}
 
-        {/* TAMPILAN DISCOVER */}
+        {/* TAMPILAN DISCOVER (saat tidak ada query) */}
         {!query && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             {recentSearches.length > 0 && (
@@ -237,93 +233,94 @@ function SearchContent() {
               <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span className="material-icons" style={{ color: '#ff2e63', fontSize: '18px' }}>trending_up</span> SEDANG TREN
               </h3>
-              {isLoading ? <SmallSpinner /> : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {trendingKeywords.map((kw, i) => (
+              {/* Hanya SmallSpinner untuk area kecil ini, tidak mengganggu layout */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                {trendingKeywords.length === 0 ? (
+                  <SmallSpinner />
+                ) : (
+                  trendingKeywords.map((kw, i) => (
                     <div key={i} onClick={() => handleExecuteSearch(kw)} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-card)', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span className="material-icons" style={{ fontSize: '14px', color: 'var(--primary)' }}>trending_up</span> {kw}
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* HASIL PENCARIAN */}
+        {/* HASIL PENCARIAN (saat ada query) - tanpa spinner */}
         {query && (
-          isLoading ? <FullSpinner /> : (
-            <>
-              {users.length > 0 && (
-                <div style={{ marginBottom: '30px' }}>
-                  <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>KREATOR DITEMUKAN</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    {users.map(user => {
-                      const isFollowing = followedUsers.has(user.id);
-                      const isMe = currentUser?.id === user.id;
-                      return (
-                        <div key={user.id} style={{ background: 'var(--bg-card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${user.id}`)}>
-                            <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}`} alt="avatar" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {user.username} {user.is_private && <span className="material-icons" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>lock</span>}
-                              </div>
-                              <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{user.bio || 'Kreator HypeTalk'}</div>
+          <>
+            {users.length > 0 && (
+              <div style={{ marginBottom: '30px' }}>
+                <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>KREATOR DITEMUKAN</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {users.map(user => {
+                    const isFollowing = followedUsers.has(user.id);
+                    const isMe = currentUser?.id === user.id;
+                    return (
+                      <div key={user.id} style={{ background: 'var(--bg-card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border-card)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${user.id}`)}>
+                          <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}`} alt="avatar" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {user.username} {user.is_private && <span className="material-icons" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>lock</span>}
                             </div>
-                            {!isMe && (
-                              <button onClick={(e) => handleFollowToggle(e, user.id)} style={{ background: isFollowing ? 'var(--bg-secondary)' : 'var(--primary-bg)', color: isFollowing ? 'var(--text-main)' : '#fff', padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>
-                                {isFollowing ? 'Mengikuti' : 'Ikuti'}
-                              </button>
-                            )}
+                            <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{user.bio || 'Kreator HypeTalk'}</div>
                           </div>
-                          {!user.is_private && user.recentPosts?.length > 0 && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
-                              {user.recentPosts.map((rp: any) => (
-                                <div key={rp.id} onClick={(e) => { e.stopPropagation(); router.push(`/post?id=${rp.id}`); }} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer' }}>
-                                  <img src={getThumbnail(rp)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post" />
-                                </div>
-                              ))}
-                            </div>
+                          {!isMe && (
+                            <button onClick={(e) => handleFollowToggle(e, user.id)} style={{ background: isFollowing ? 'var(--bg-secondary)' : 'var(--primary-bg)', color: isFollowing ? 'var(--text-main)' : '#fff', padding: '6px 16px', borderRadius: '20px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>
+                              {isFollowing ? 'Mengikuti' : 'Ikuti'}
+                            </button>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {posts.length > 0 && (
-                <div>
-                  <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>POSTINGAN TERKAIT</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                    {posts.map(post => (
-                      <div key={post.id} onClick={() => router.push(`/post?id=${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
-                        <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {!user.is_private && user.recentPosts?.length > 0 && (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '15px' }}>
+                            {user.recentPosts.map((rp: any) => (
+                              <div key={rp.id} onClick={(e) => { e.stopPropagation(); router.push(`/post?id=${rp.id}`); }} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer' }}>
+                                <img src={getThumbnail(rp)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="post" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            )}
 
-              {posts.length === 0 && recommendedPosts.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
-                  <div style={{ textAlign: 'center', padding: '20px 0 40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ width: '180px', height: '180px' }}><Lottie animationData={emptyLottie} loop={true} /></div>
-                    <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginTop: '10px' }}>Tidak ada hasil yang cocok.</p>
-                  </div>
-                  <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, textAlign: 'center' }}>🔥 MUNGKIN ANDA SUKA</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                    {recommendedPosts.map(post => (
-                      <div key={post.id} onClick={() => router.push(`/post?id=${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
-                        <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    ))}
-                  </div>
+            {posts.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>POSTINGAN TERKAIT</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {posts.map(post => (
+                    <div key={post.id} onClick={() => router.push(`/post?id=${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
+                      <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))}
                 </div>
-              )}
-            </>
-          )
+              </div>
+            )}
+
+            {posts.length === 0 && recommendedPosts.length > 0 && (
+              <div style={{ marginTop: '20px' }}>
+                <div style={{ textAlign: 'center', padding: '20px 0 40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: '180px', height: '180px' }}><Lottie animationData={emptyLottie} loop={true} /></div>
+                  <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginTop: '10px' }}>Tidak ada hasil yang cocok.</p>
+                </div>
+                <h3 style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '15px', fontWeight: 800, textAlign: 'center' }}>🔥 MUNGKIN ANDA SUKA</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {recommendedPosts.map(post => (
+                    <div key={post.id} onClick={() => router.push(`/post?id=${post.id}`)} style={{ position: 'relative', aspectRatio: '3/4', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
+                      <img src={getThumbnail(post)} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -34,10 +34,8 @@ function CreatePostContent() {
   const searchParams = useSearchParams();
   const draftId = searchParams?.get('draft_id');
 
-  // Masukkan langsung string-nya seperti ini:
   const CLOUDINARY_CLOUD_NAME = 'dhhmkb8kl';
   const CLOUDINARY_UPLOAD_PRESET = 'post_hope';
-
 
   // --- STATE ---
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
@@ -71,6 +69,11 @@ function CreatePostContent() {
   const [coverPreviewUrl, setCoverUrlPreview] = useState<string | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  // *** NEW: Video crop state ***
+  const [videoCropX, setVideoCropX] = useState(0);
+  const [videoCropY, setVideoCropY] = useState(0);
+  const [videoZoom, setVideoZoom] = useState(1);
 
   // Music
   const [searchMusic, setSearchMusic] = useState('');
@@ -319,6 +322,10 @@ function CreatePostContent() {
     setVideoThumbnails([]);
     setExistingVideoUrl(null);
     setExistingImageUrl(null);
+    // Reset crop video ketika video baru dipilih
+    setVideoCropX(0);
+    setVideoCropY(0);
+    setVideoZoom(1);
     setStep('edit');
   };
 
@@ -343,7 +350,7 @@ function CreatePostContent() {
     else { videoRef.current.play(); setIsVideoPlaying(true); }
   };
 
-  // CAPTURE FRAME + SAVE COVER
+  // CAPTURE FRAME + SAVE COVER (dengan crop video & rotasi)
   const captureFrameAndSave = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -355,6 +362,11 @@ function CreatePostContent() {
     video.pause();
     setIsVideoPlaying(false);
 
+    const targetAspect = 2 / 3;
+    const targetWidth = 1080; // lebar target cover
+    const targetHeight = targetWidth / targetAspect;
+
+    // Dapatkan ukuran asli video (dengan rotasi)
     const isRotated = videoRotation === 90 || videoRotation === 270;
     const vw = isRotated ? video.videoHeight : video.videoWidth;
     const vh = isRotated ? video.videoWidth : video.videoHeight;
@@ -365,39 +377,50 @@ function CreatePostContent() {
       return;
     }
 
+    // Gambar video dengan rotasi pada kanvas sementara
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = vw;
     tempCanvas.height = vh;
-    const tCtx = tempCanvas.getContext('2d');
-    if (tCtx) {
-      tCtx.translate(vw / 2, vh / 2);
-      tCtx.rotate((videoRotation * Math.PI) / 180);
-      tCtx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
-    }
-
-    const ratio = 2 / 3;
-    let cw: number, ch: number, sx: number, sy: number;
-    if (vw / vh > ratio) {
-      ch = vh;
-      cw = ch * ratio;
-      sx = (vw - cw) / 2;
-      sy = 0;
-    } else {
-      cw = vw;
-      ch = cw / ratio;
-      sx = 0;
-      sy = (vh - ch) / 2;
-    }
-
-    canvas.width = cw;
-    canvas.height = ch;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) {
       showNotif("Gagal memproses sampul.", "error");
       setIsProcessingEdit(false);
       return;
     }
-    ctx.drawImage(tempCanvas, sx, sy, cw, ch, 0, 0, cw, ch);
+    tempCtx.save();
+    tempCtx.translate(vw / 2, vh / 2);
+    tempCtx.rotate((videoRotation * Math.PI) / 180);
+    tempCtx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
+    tempCtx.restore();
+
+    // Skala video berdasarkan zoom crop
+    const scaledW = vw * videoZoom;
+    const scaledH = vh * videoZoom;
+
+    // Posisi crop (videoCropX/Y adalah pergeseran dalam piksel sebelum zoom)
+    const cropOffsetX = videoCropX * videoZoom;
+    const cropOffsetY = videoCropY * videoZoom;
+
+    // Area yang diambil dari video yang sudah dirotasi & diskala
+    const sx = (scaledW - targetWidth) / 2 - cropOffsetX;
+    const sy = (scaledH - targetHeight) / 2 - cropOffsetY;
+
+    // Buat kanvas target (1080x1620)
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      showNotif("Gagal membuat sampul.", "error");
+      setIsProcessingEdit(false);
+      return;
+    }
+
+    // Background hitam (untuk area kosong)
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+    // Gambar area yang dipilih (akan menampilkan bagian yang di-crop, atau hitam jika di luar)
+    ctx.drawImage(tempCanvas, sx, sy, scaledW, scaledH);
 
     canvas.toBlob(blob => {
       if (blob) {
@@ -415,6 +438,7 @@ function CreatePostContent() {
     setRawVideoFile(null); setRawVideoUrl(null); setCoverBlob(null);
     setCoverUrlPreview(null); setVideoThumbnails([]);
     setExistingVideoUrl(null); setExistingImageUrl(null);
+    setVideoCropX(0); setVideoCropY(0); setVideoZoom(1);
     setStep('post');
   };
 
@@ -658,6 +682,12 @@ function CreatePostContent() {
           setVideoEnd={setVideoEnd}
           setCoverTime={setCoverTime}
           setVideoRotation={setVideoRotation}
+          videoCropX={videoCropX}
+          videoCropY={videoCropY}
+          videoZoom={videoZoom}
+          setVideoCropX={setVideoCropX}
+          setVideoCropY={setVideoCropY}
+          setVideoZoom={setVideoZoom}
           handleRemoveVideo={handleRemoveVideo}
           captureFrameAndSave={captureFrameAndSave}
           handleVideoLoadedMetadata={handleVideoLoadedMetadata}
