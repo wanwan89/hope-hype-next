@@ -24,9 +24,9 @@ interface MediaEditorProps {
   isVideoPlaying: boolean;
   videoDuration: number;
   videoStart: number;
-  videoEnd?: number; // Tambahan baru
+  videoEnd?: number;
   coverTime: number;
-  videoRotation?: number; // Tambahan baru: 0, 90, 180, 270
+  videoRotation?: number;
   videoThumbnails: string[];
   MAX_VIDEO_CLIP: number;
   
@@ -34,9 +34,9 @@ interface MediaEditorProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   
   setVideoStart: (start: number) => void;
-  setVideoEnd?: (end: number) => void; // Tambahan baru
+  setVideoEnd?: (end: number) => void;
   setCoverTime: (time: number) => void;
-  setVideoRotation?: (rotation: number | ((prev: number) => number)) => void; // Tambahan baru
+  setVideoRotation?: (rotation: number | ((prev: number) => number)) => void;
   
   handleRemoveVideo: () => void;
   captureFrameAndSave: () => void;
@@ -82,269 +82,333 @@ export default function MediaEditor({
   setIsVideoPlaying
 }: MediaEditorProps) {
   
-  // State untuk navigasi menu bawah pada editor video (Mirip Capcut)
   const [activeTab, setActiveTab] = useState<'trim' | 'cover' | 'format'>('trim');
-
-  // Menghitung rotasi untuk styling CSS
   const isRotated = videoRotation === 90 || videoRotation === 270;
 
   return (
-    <div className="editor-screen-overlay bg-black text-white h-screen w-full flex flex-col fixed inset-0 z-50">
-      
-      {/* 1. Header Editor */}
-      <div className="editor-screen-header flex justify-between items-center p-4 bg-black/80 backdrop-blur-sm z-10">
-        <button 
-          onClick={() => { 
-            if (postType === 'image') handleCancelCrop(); 
-            else { handleRemoveVideo(); setStep('post'); } 
-          }} 
-          className="text-white p-2 hover:bg-gray-800 rounded-full transition-colors"
-        >
-          <span className="material-icons">close</span>
-        </button>
-        <p className="font-semibold text-sm">
-          {postType === 'image' 
-            ? `Edit Foto (${croppedImagesCount + 1}/${croppedImagesCount + rawImagesCount})` 
-            : 'Editor Video'}
-        </p>
-        <button 
-          disabled={isProcessingEdit} 
-          onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
-          className={`px-4 py-1.5 rounded-full font-semibold text-sm ${isProcessingEdit ? 'bg-gray-600 text-gray-400' : 'bg-white text-black hover:bg-gray-200'}`}
-        >
-          {isProcessingEdit ? 'Memproses...' : 'Selesai'}
-        </button>
-      </div>
-
-      {/* 2. Ruang Kerja Kreatif (Preview) */}
-      <div className="editor-workspace flex-1 relative overflow-hidden flex items-center justify-center bg-zinc-950">
-        {postType === 'image' && imageForCrop ? (
-          <div className="absolute inset-0">
-            <Cropper 
-              image={imageForCrop} 
-              crop={crop} 
-              zoom={zoom} 
-              aspect={3 / 4} 
-              onCropChange={setCrop} 
-              onCropComplete={onCropComplete} 
-              onZoomChange={setZoom} 
-            />
-          </div>
-        ) : postType === 'video' && rawVideoUrl ? (
-          <div className="relative w-full h-full flex items-center justify-center">
-            <video 
-              ref={videoRef as React.RefObject<HTMLVideoElement>} 
-              src={rawVideoUrl} 
-              playsInline 
-              muted={!isVideoPlaying} 
-              loop 
-              onLoadedMetadata={handleVideoLoadedMetadata}
-              className="max-w-full max-h-full transition-transform duration-300 ease-in-out"
-              style={{ 
-                transform: `rotate(${videoRotation}deg)`,
-                objectFit: 'contain',
-                // Penyesuaian scale jika dirotasi agar tidak melebar keluar layar
-                scale: isRotated ? '0.8' : '1' 
-              }}
-            />
-            <canvas ref={canvasRef as React.RefObject<HTMLCanvasElement>} style={{ display: 'none' }} />
-            
-            {/* Play/Pause Overlay */}
-            <div 
-              onClick={togglePlayVideo} 
-              className="absolute inset-0 flex items-center justify-center cursor-pointer z-10"
-            >
-              {!isVideoPlaying && (
-                <div className="bg-black/50 p-4 rounded-full backdrop-blur-md">
-                  <span className="material-icons text-white text-4xl">play_arrow</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* 3. Footer Panel Kontrol (Alat Editor) */}
-      <div className="editor-screen-footer bg-zinc-900 pb-8 pt-4 px-4 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-20 relative">
-        
-        {postType === 'image' ? (
-          // Kontrol Foto
-          <div className="flex items-center gap-4 px-4 py-6">
-            <span className="material-icons text-gray-400">remove</span>
-            <input 
-              type="range" 
-              className="w-full accent-white h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-              value={zoom} min={1} max={3} step={0.1} 
-              onChange={e => setZoom(Number(e.target.value))} 
-            />
-            <span className="material-icons text-gray-400">add</span>
-          </div>
-        ) : (
-          // Kontrol Video (Gaya TikTok/CapCut)
-          <div className="flex flex-col gap-4">
-            
-            {/* Area Alat yang Aktif */}
-            <div className="h-[100px] flex flex-col justify-center">
-              
-              {/* TAB: POTONG VIDEO */}
-              {activeTab === 'trim' && (
-                <div className="animate-fade-in">
-                  <div className="flex justify-between text-xs text-gray-400 mb-2 font-medium">
-                    <span>Geser untuk memotong</span>
-                    <span className="text-white bg-white/10 px-2 py-0.5 rounded">
-                      Durasi: {Math.min(videoDuration, videoEnd - videoStart).toFixed(1)}s
-                    </span>
-                  </div>
-                  <div className="relative h-12 bg-zinc-800 rounded-lg overflow-hidden flex border-2 border-transparent focus-within:border-white transition-all">
-                    <div className="absolute inset-0 flex">
-                      {videoThumbnails.map((thumb, idx) => (
-                        <img key={idx} src={thumb} className="h-full w-auto object-cover flex-1 opacity-70" alt="frame" />
-                      ))}
-                    </div>
-                    <input 
-                      type="range" 
-                      className="absolute inset-0 w-full opacity-0 cursor-pointer z-20" 
-                      min={0} 
-                      max={Math.max(0, videoDuration - MAX_VIDEO_CLIP)} 
-                      step={0.1} 
-                      value={videoStart} 
-                      onChange={e => { 
-                        const val = Number(e.target.value); 
-                        setVideoStart(val);
-                        if(setVideoEnd) setVideoEnd(val + MAX_VIDEO_CLIP);
-                        if (videoRef.current) { 
-                          videoRef.current.currentTime = val; 
-                          videoRef.current.play(); 
-                          setIsVideoPlaying(true); 
-                        } 
-                        if (coverTime < val || coverTime > val + MAX_VIDEO_CLIP) setCoverTime(val); 
-                      }} 
-                    />
-                    {/* Visual Indikator Area Terpotong */}
-                    <div 
-                      className="absolute top-0 bottom-0 border-y-4 border-l-4 border-white bg-white/20 z-10 rounded-l-md pointer-events-none"
-                      style={{ 
-                        left: `${(videoStart / videoDuration) * 100}%`,
-                        width: `${(MAX_VIDEO_CLIP / videoDuration) * 100}%`,
-                        minWidth: '20%'
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: SAMPUL */}
-              {activeTab === 'cover' && (
-                <div className="animate-fade-in">
-                  <div className="flex justify-between text-xs text-gray-400 mb-2 font-medium">
-                    <span>Pilih frame untuk sampul</span>
-                    <span className="text-white">{coverTime.toFixed(1)}s</span>
-                  </div>
-                  <div className="relative h-12 bg-zinc-800 rounded-lg overflow-hidden flex">
-                    <div className="absolute inset-0 flex">
-                      {videoThumbnails.map((thumb, idx) => (
-                        <img key={idx} src={thumb} className="h-full w-auto object-cover flex-1 opacity-50" alt="cover-frame" />
-                      ))}
-                    </div>
-                    <input 
-                      type="range" 
-                      className="absolute inset-0 w-full opacity-0 cursor-pointer z-20" 
-                      min={videoStart} 
-                      max={Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP)} 
-                      step={0.1} 
-                      value={coverTime} 
-                      onChange={e => { 
-                        const val = Number(e.target.value); 
-                        setCoverTime(val); 
-                        if (videoRef.current) { 
-                          videoRef.current.currentTime = val; 
-                          videoRef.current.pause(); 
-                          setIsVideoPlaying(false); 
-                        } 
-                      }} 
-                    />
-                    {/* Visual Indikator Cover */}
-                    <div 
-                      className="absolute top-0 bottom-0 w-2 bg-white z-10 shadow-[0_0_10px_rgba(255,255,255,0.8)] pointer-events-none rounded-full"
-                      style={{ 
-                        left: `${((coverTime - videoStart) / Math.min(videoDuration, MAX_VIDEO_CLIP)) * 100}%`,
-                        transform: 'translateX(-50%)'
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: FORMAT / PUTAR */}
-              {activeTab === 'format' && (
-                <div className="flex justify-center gap-8 animate-fade-in">
-                  <button 
-                    onClick={() => setVideoRotation && setVideoRotation(prev => (prev + 90) % 360)}
-                    className="flex flex-col items-center gap-2 text-white hover:text-gray-300"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
-                      <span className="material-icons">rotate_90_degrees_cw</span>
-                    </div>
-                    <span className="text-xs">Putar 90°</span>
-                  </button>
-                  <button 
-                    onClick={() => {
-                        // Reset rotasi
-                        setVideoRotation && setVideoRotation(0);
-                    }}
-                    className="flex flex-col items-center gap-2 text-white hover:text-gray-300"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
-                      <span className="material-icons">restart_alt</span>
-                    </div>
-                    <span className="text-xs">Reset</span>
-                  </button>
-                </div>
-              )}
-
-            </div>
-
-            {/* Menu Navigasi Bawah */}
-            <div className="flex justify-around items-center pt-4 border-t border-zinc-800">
-              <button 
-                onClick={() => setActiveTab('trim')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'trim' ? 'text-white' : 'text-zinc-500 hover:text-zinc-400'}`}
-              >
-                <span className="material-icons text-[28px]">content_cut</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase">Potong</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('cover')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'cover' ? 'text-white' : 'text-zinc-500 hover:text-zinc-400'}`}
-              >
-                <span className="material-icons text-[28px]">crop_original</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase">Sampul</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('format')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'format' ? 'text-white' : 'text-zinc-500 hover:text-zinc-400'}`}
-              >
-                <span className="material-icons text-[28px]">crop_rotate</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase">Format</span>
-              </button>
-            </div>
-
-          </div>
-        )}
-      </div>
-      
-      {/* Helper CSS untuk Animasi (Bisa dimasukkan ke file CSS Anda) */}
+    <>
+      {/* INJECT CSS GLOBAL (Khusus Komponen Ini): 
+        - Mengatasi Material Icons yang tidak muncul
+        - Mengatasi tampilan input range (slider) yang berantakan 
+      */}
       <style>{`
+        @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+        .custom-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+        .custom-slider:focus {
+          outline: none;
+        }
+        .custom-slider::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 4px;
+          background-color: #4b5563;
+          border-radius: 8px;
+        }
+        .custom-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          margin-top: -6px;
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background-color: #ffffff;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
         .animate-fade-in {
-          animation: fadeIn 0.3s ease-in-out;
+          animation: fadeIn 0.3s ease-in-out forwards;
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(5px); }
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </div>
+
+      {/* OVERLAY WRAPPER */}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: '#000000', color: '#ffffff',
+        display: 'flex', flexDirection: 'column',
+        zIndex: 99999, height: '100vh', width: '100vw',
+        overflow: 'hidden', fontFamily: 'sans-serif'
+      }}>
+        
+        {/* 1. HEADER */}
+        <div style={{
+          flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '16px', backgroundColor: 'rgba(0, 0, 0, 0.9)', borderBottom: '1px solid #27272a', zIndex: 10
+        }}>
+          <button 
+            onClick={() => { 
+              if (postType === 'image') handleCancelCrop(); 
+              else { handleRemoveVideo(); setStep('post'); } 
+            }} 
+            style={{
+              background: 'transparent', border: 'none', color: '#fff', 
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#27272a'
+            }}
+          >
+            <span className="material-icons">close</span>
+          </button>
+          
+          <p style={{ margin: 0, fontSize: '15px', fontWeight: 'bold' }}>
+            {postType === 'image' 
+              ? `Edit Foto (${croppedImagesCount + 1}/${croppedImagesCount + rawImagesCount})` 
+              : 'Editor Video'}
+          </p>
+          
+          <button 
+            disabled={isProcessingEdit} 
+            onClick={postType === 'image' ? handleSaveCrop : captureFrameAndSave} 
+            style={{
+              backgroundColor: isProcessingEdit ? '#4b5563' : '#ffffff',
+              color: isProcessingEdit ? '#9ca3af' : '#000000',
+              border: 'none', padding: '6px 16px', borderRadius: '20px',
+              fontWeight: 'bold', fontSize: '14px', cursor: isProcessingEdit ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {isProcessingEdit ? 'Memproses...' : 'Selesai'}
+          </button>
+        </div>
+
+        {/* 2. WORKSPACE (CANVAS UTAMA) */}
+        <div style={{
+          flex: 1, position: 'relative', display: 'flex', 
+          alignItems: 'center', justifyContent: 'center', 
+          backgroundColor: '#09090b', overflow: 'hidden'
+        }}>
+          
+          {/* KONDISI: JIKA FOTO */}
+          {postType === 'image' && imageForCrop ? (
+            /* FIX FOTO BLANK: Container wajib punya position absolute dan width/height 100% */
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+              <Cropper 
+                image={imageForCrop} 
+                crop={crop} 
+                zoom={zoom} 
+                aspect={3 / 4} 
+                onCropChange={setCrop} 
+                onCropComplete={onCropComplete} 
+                onZoomChange={setZoom} 
+              />
+            </div>
+          ) : 
+          
+          /* KONDISI: JIKA VIDEO */
+          postType === 'video' && rawVideoUrl ? (
+            <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <video 
+                ref={videoRef} 
+                src={rawVideoUrl} 
+                playsInline 
+                muted={!isVideoPlaying} 
+                loop 
+                onLoadedMetadata={handleVideoLoadedMetadata}
+                style={{ 
+                  maxWidth: '100%', maxHeight: '100%', objectFit: 'contain',
+                  transform: `rotate(${videoRotation}deg)`,
+                  scale: isRotated ? '0.8' : '1',
+                  transition: 'transform 0.3s ease'
+                }}
+              />
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+              
+              {/* Overlay Play/Pause */}
+              <div 
+                onClick={togglePlayVideo} 
+                style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 10
+                }}
+              >
+                {!isVideoPlaying && (
+                  <div style={{
+                    backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '50%'
+                  }}>
+                    <span className="material-icons" style={{ fontSize: '40px', color: '#fff' }}>play_arrow</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* 3. FOOTER PANEL (ALAT EDITOR) */}
+        <div style={{
+          flexShrink: 0, backgroundColor: '#18181b', padding: '16px 16px 32px 16px',
+          borderTopLeftRadius: '20px', borderTopRightRadius: '20px', position: 'relative', zIndex: 20
+        }}>
+          
+          {postType === 'image' ? (
+            // Slider Zoom Foto
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '24px 16px' }}>
+              <span className="material-icons" style={{ color: '#9ca3af' }}>remove</span>
+              <input 
+                type="range" 
+                className="custom-slider"
+                style={{ flex: 1 }}
+                value={zoom} min={1} max={3} step={0.1} 
+                onChange={e => setZoom(Number(e.target.value))} 
+              />
+              <span className="material-icons" style={{ color: '#9ca3af' }}>add</span>
+            </div>
+          ) : (
+            // Panel Video
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              <div style={{ height: '100px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                
+                {/* TAB: POTONG VIDEO */}
+                {activeTab === 'trim' && (
+                  <div className="animate-fade-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>
+                      <span>Geser untuk memotong</span>
+                      <span style={{ color: '#fff' }}>Durasi: {Math.min(videoDuration, videoEnd - videoStart).toFixed(1)}s</span>
+                    </div>
+                    
+                    <div style={{ 
+                      position: 'relative', height: '48px', backgroundColor: '#27272a', 
+                      borderRadius: '8px', overflow: 'hidden', display: 'flex' 
+                    }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
+                        {videoThumbnails.map((thumb, idx) => (
+                          <img key={idx} src={thumb} style={{ height: '100%', width: 'auto', flex: 1, objectFit: 'cover', opacity: 0.6 }} alt="frame" />
+                        ))}
+                      </div>
+                      
+                      <input 
+                        type="range" 
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', opacity: 0, cursor: 'pointer', zIndex: 20 }}
+                        min={0} max={Math.max(0, videoDuration - MAX_VIDEO_CLIP)} step={0.1} 
+                        value={videoStart} 
+                        onChange={e => { 
+                          const val = Number(e.target.value); 
+                          setVideoStart(val);
+                          if(setVideoEnd) setVideoEnd(val + MAX_VIDEO_CLIP);
+                          if (videoRef.current) { 
+                            videoRef.current.currentTime = val; 
+                            videoRef.current.play(); 
+                            setIsVideoPlaying(true); 
+                          } 
+                          if (coverTime < val || coverTime > val + MAX_VIDEO_CLIP) setCoverTime(val); 
+                        }} 
+                      />
+                      
+                      {/* Visual Box Potongan */}
+                      <div style={{ 
+                        position: 'absolute', top: 0, bottom: 0, zIndex: 10, pointerEvents: 'none',
+                        borderTop: '4px solid #fff', borderBottom: '4px solid #fff', borderLeft: '4px solid #fff',
+                        backgroundColor: 'rgba(255,255,255,0.2)', borderTopLeftRadius: '6px', borderBottomLeftRadius: '6px',
+                        left: `${(videoStart / videoDuration) * 100}%`,
+                        width: `${(MAX_VIDEO_CLIP / videoDuration) * 100}%`,
+                        minWidth: '20%'
+                      }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB: SAMPUL */}
+                {activeTab === 'cover' && (
+                  <div className="animate-fade-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>
+                      <span>Pilih frame untuk sampul</span>
+                      <span style={{ color: '#fff' }}>{coverTime.toFixed(1)}s</span>
+                    </div>
+                    <div style={{ position: 'relative', height: '48px', backgroundColor: '#27272a', borderRadius: '8px', overflow: 'hidden', display: 'flex' }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
+                        {videoThumbnails.map((thumb, idx) => (
+                          <img key={idx} src={thumb} style={{ height: '100%', width: 'auto', flex: 1, objectFit: 'cover', opacity: 0.5 }} alt="cover" />
+                        ))}
+                      </div>
+                      <input 
+                        type="range" 
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', opacity: 0, cursor: 'pointer', zIndex: 20 }}
+                        min={videoStart} max={Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP)} step={0.1} 
+                        value={coverTime} 
+                        onChange={e => { 
+                          const val = Number(e.target.value); 
+                          setCoverTime(val); 
+                          if (videoRef.current) { 
+                            videoRef.current.currentTime = val; 
+                            videoRef.current.pause(); 
+                            setIsVideoPlaying(false); 
+                          } 
+                        }} 
+                      />
+                      {/* Indikator Garis Sampul */}
+                      <div style={{ 
+                        position: 'absolute', top: 0, bottom: 0, width: '4px', backgroundColor: '#fff', zIndex: 10,
+                        pointerEvents: 'none', borderRadius: '4px', boxShadow: '0 0 10px rgba(255,255,255,0.8)',
+                        left: `${((coverTime - videoStart) / Math.min(videoDuration, MAX_VIDEO_CLIP)) * 100}%`,
+                        transform: 'translateX(-50%)'
+                      }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB: FORMAT / PUTAR */}
+                {activeTab === 'format' && (
+                  <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'center', gap: '32px' }}>
+                    <button 
+                      onClick={() => setVideoRotation && setVideoRotation(prev => (prev + 90) % 360)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+                    >
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span className="material-icons">rotate_90_degrees_cw</span>
+                      </div>
+                      <span style={{ fontSize: '11px' }}>Putar 90°</span>
+                    </button>
+                    <button 
+                      onClick={() => setVideoRotation && setVideoRotation(0)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+                    >
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span className="material-icons">restart_alt</span>
+                      </div>
+                      <span style={{ fontSize: '11px' }}>Reset</span>
+                    </button>
+                  </div>
+                )}
+
+              </div>
+
+              {/* MENU NAVIGASI BAWAH */}
+              <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #27272a' }}>
+                <button 
+                  onClick={() => setActiveTab('trim')}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'trim' ? '#ffffff' : '#71717a' }}
+                >
+                  <span className="material-icons" style={{ fontSize: '28px' }}>content_cut</span>
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' }}>POTONG</span>
+                </button>
+                
+                <button 
+                  onClick={() => setActiveTab('cover')}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'cover' ? '#ffffff' : '#71717a' }}
+                >
+                  <span className="material-icons" style={{ fontSize: '28px' }}>crop_original</span>
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' }}>SAMPUL</span>
+                </button>
+                
+                <button 
+                  onClick={() => setActiveTab('format')}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'format' ? '#ffffff' : '#71717a' }}
+                >
+                  <span className="material-icons" style={{ fontSize: '28px' }}>crop_rotate</span>
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' }}>FORMAT</span>
+                </button>
+              </div>
+
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
