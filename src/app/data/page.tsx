@@ -13,14 +13,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import RefreshableWrapper from '@/components/RefreshableWrapper';
 
 // Import komponen anak
-import ProfileHeader from './ProfileHeader';
-import ProfileInfo from './ProfileInfo';
-import ProfileTabs from './ProfileTabs';
-import PostGrid from './PostGrid';
-import EditProfileModal from './EditProfileModal';
-import FollowModal from './FollowModal';
-import ActionSheet from './ActionSheet';
-import SidebarMenu from './SidebarMenu';
+import ProfileHeader from '.@/components/profiles/ProfileHeader';
+import ProfileInfo from '.@/components/profiles/ProfileInfo';
+import ProfileTabs from '.@/components/profiles/ProfileTabs';
+import PostGrid from '.@/components/profiles/postGrid';
+import EditProfileModal from '.@/components/profiles/EditProfileModal';
+import FollowModal from '.@/components/profiles/FollowModal';
+import ActionSheet from '.@/components/profiles/ActionSheet';
+import SidebarMenu from '.@/components/profiles/SidebarMenu';
 
 import './DataProfile.css';
 

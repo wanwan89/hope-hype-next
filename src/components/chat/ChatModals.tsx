@@ -40,13 +40,11 @@ export default function ChatModals({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   
-  // 🔥 PERBAIKAN 1: State sementara untuk hasil crop agar tidak re-render seluruh array
   const [croppedPixels, setCroppedPixels] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const groupPhotoInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset saat modal gambar dibuka atau ganti gambar
   useEffect(() => {
     if (isImageModalOpen) {
       setImages([]);
@@ -55,7 +53,6 @@ export default function ChatModals({
     }
   }, [isImageModalOpen]);
 
-  // Reset state crop setiap kali ganti foto yang sedang dilihat
   useEffect(() => {
     setCroppedPixels(null);
     setCrop({ x: 0, y: 0 });
@@ -107,12 +104,10 @@ export default function ChatModals({
     }
   };
 
-  // 🔥 PERBAIKAN 2: Hanya update state sementara, tidak update setImages
   const onCropComplete = useCallback((_croppedArea: any, currentCroppedPixels: any) => {
     setCroppedPixels(currentCroppedPixels);
   }, []);
 
-  // 🔥 PERBAIKAN 3: Gunakan state `croppedPixels` dan update object menggunakan .map()
   const handleSaveCrop = async () => {
     const currentImg = images[currentIndex];
     
@@ -124,7 +119,6 @@ export default function ChatModals({
           const originalName = (currentImg.file as File)?.name || `image_${Date.now()}.jpg`;
           const croppedFile = new File([croppedBlob], `cropped_${originalName}`, { type: croppedBlob.type || 'image/jpeg' });
 
-          // Update array dengan benar tanpa mengubah mutasi objek langsung
           setImages(prev => prev.map((img, idx) => 
             idx === currentIndex 
               ? { ...img, croppedPreview: croppedUrl, croppedFile: croppedFile, croppedAreaPixels: croppedPixels } 
@@ -161,35 +155,72 @@ export default function ChatModals({
                 exit={{ opacity: 0 }}
                 style={{
                   position: 'fixed', inset: 0, zIndex: 9999999,
-                  background: 'var(--bg-main)',
+                  background: 'rgba(0, 0, 0, 0.6)', // Backdrop redup
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
+                  padding: '20px'
                 }}
               >
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    background: 'var(--primary-blue)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    padding: '14px 32px',
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Pilih Foto
-                </button>
-                <button
-                  onClick={onCloseImageModal}
-                  style={{
-                    marginTop: '20px', background: 'transparent', border: 'none',
-                    color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer',
-                  }}
-                >
-                  Batal
-                </button>
+                <div style={{
+                  background: 'var(--bg-panel)', // Menyesuaikan Dark/Light Mode
+                  padding: '32px',
+                  borderRadius: '24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+                  width: '100%',
+                  maxWidth: '320px'
+                }}>
+                  <div style={{
+                    width: '64px', height: '64px', borderRadius: '50%',
+                    background: 'var(--bg-secondary)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '20px'
+                  }}>
+                    <span className="material-icons" style={{ fontSize: '32px', color: 'var(--text-muted)' }}>add_photo_alternate</span>
+                  </div>
+                  
+                  <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '18px' }}>Kirim Foto</h3>
+                  <p style={{ margin: '0 0 24px 0', color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center' }}>
+                    Pilih foto dari perangkatmu untuk dibagikan.
+                  </p>
+
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      width: '100%',
+                      background: 'var(--primary-blue)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '14px',
+                      padding: '14px',
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginBottom: '12px'
+                    }}
+                  >
+                    Pilih Foto
+                  </button>
+                  <button
+                    onClick={onCloseImageModal}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-main)',
+                      border: 'none',
+                      borderRadius: '14px',
+                      padding: '14px',
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Batal
+                  </button>
+                </div>
+
                 <input
                   type="file"
                   multiple
@@ -325,7 +356,6 @@ export default function ChatModals({
                       placeholder={images.length > 1 ? `Keterangan untuk foto ke-${currentIndex + 1}...` : "Tambahkan keterangan..."}
                       value={currentMedia?.caption || ''}
                       onChange={(e) => {
-                        // 🔥 PERBAIKAN 4: Update objek dalam array yang benar
                         setImages(prev => prev.map((img, idx) => 
                           idx === currentIndex ? { ...img, caption: e.target.value } : img
                         ));

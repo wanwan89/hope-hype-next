@@ -113,7 +113,7 @@ export default function CoinSheet({ isOpen, onClose, currentUser, onSuccess }: C
 
         <div style={{
           width: '100%', height: '90px', borderRadius: '16px', margin: '16px 0',
-          backgroundImage: 'url("/asets/png/topup.webp")', backgroundSize: 'cover',
+          backgroundImage: 'url("@/assets/png/topup.webp")', backgroundSize: 'cover',
           backgroundPosition: 'center', boxShadow: 'none'
         }}></div>
 

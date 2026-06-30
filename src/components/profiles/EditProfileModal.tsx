@@ -17,8 +17,8 @@ type Props = {
 };
 
 const avatarPresets = [
-  '/asets/png/avatar1.png', '/asets/png/avatar2.png',
-  '/asets/png/avatar3.png', '/asets/png/avatar4.png'
+  '@/assets/png/avatar1.png', '@/assets/png/avatar2.png',
+  '@/assets/png/avatar3.png', '@/assets/png/avatar4.png'
 ];
 
 const EditProfileModal: React.FC<Props> = ({

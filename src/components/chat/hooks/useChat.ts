@@ -122,15 +122,15 @@ export function useChat() {
     setMyProfile(prof);
 
     refs.audio.current = {
-      send: new Audio("/asets/sound/send.mp3"),
-      receive: new Audio("/asets/sound/receive.mp3"),
-      ring: new Audio("/asets/sound/call.wav")
+      send: new Audio("@/assets/sounds/send.mp3"),
+      receive: new Audio("@/assets/sounds/receive.mp3"),
+      ring: new Audio("@/assets/sounds/call.wav")
     };
     if (refs.audio.current?.ring) refs.audio.current.ring.loop = true;
 
     let currentRoom = 'room-1';
     let pName = 'User';
-    let pAvatar = '/asets/png/profile.webp';
+    let pAvatar = '@/assets/png/profile.webp';
 
     if (groupId) {
       currentRoom = `group_${groupId}`;
