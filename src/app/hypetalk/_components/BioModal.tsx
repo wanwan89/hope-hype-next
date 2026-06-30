@@ -14,11 +14,14 @@ export interface UserBioData {
   occupation: string;
   gender: string;
   tinggi_badan: number | null;
+  umur: string; // Tambahan field
   agama: string;
   tujuan: string;
   olahraga: string;
   merokok: string;
   alkohol: string;
+  hobi: string; // Tambahan field
+  zodiak: string; // Tambahan field
 }
 
 type Props = {
@@ -439,6 +442,18 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 }
               }}
             />
+            {/* Tambahan Umur */}
+            <ListItem
+              icon="cake"
+              label="Umur"
+              value={bioForm.umur || 'Pilih'}
+              onClick={() => {
+                const inputUmur = prompt("Masukkan umur:", bioForm.umur?.toString() || "");
+                if (inputUmur !== null) {
+                  updateField('umur', inputUmur);
+                }
+              }}
+            />
             <ListItem
               icon="church"
               label="Agama"
@@ -530,6 +545,45 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                     { label: 'Peminum ringan', value: 'Peminum ringan' },
                     { label: 'Sering', value: 'Sering' },
                     { label: 'Tidak minum', value: 'Tidak minum' },
+                  ],
+                })
+              }
+            />
+            {/* Tambahan Hobi */}
+            <ListItem
+              icon="favorite"
+              label="Hobi"
+              value={bioForm.hobi || 'Pilih'}
+              onClick={() => {
+                const inputHobi = prompt("Masukkan hobi:", bioForm.hobi || "");
+                if (inputHobi !== null) {
+                  updateField('hobi', inputHobi);
+                }
+              }}
+            />
+            {/* Tambahan Zodiak */}
+            <ListItem
+              icon="auto_awesome"
+              label="Zodiak"
+              value={bioForm.zodiak || 'Pilih'}
+              onClick={() =>
+                openSelection({
+                  field: 'zodiak',
+                  title: 'Apa zodiakmu?',
+                  icon: 'auto_awesome',
+                  options: [
+                    { label: 'Aries', value: 'Aries' },
+                    { label: 'Taurus', value: 'Taurus' },
+                    { label: 'Gemini', value: 'Gemini' },
+                    { label: 'Cancer', value: 'Cancer' },
+                    { label: 'Leo', value: 'Leo' },
+                    { label: 'Virgo', value: 'Virgo' },
+                    { label: 'Libra', value: 'Libra' },
+                    { label: 'Scorpio', value: 'Scorpio' },
+                    { label: 'Sagitarius', value: 'Sagitarius' },
+                    { label: 'Capricorn', value: 'Capricorn' },
+                    { label: 'Aquarius', value: 'Aquarius' },
+                    { label: 'Pisces', value: 'Pisces' },
                   ],
                 })
               }
