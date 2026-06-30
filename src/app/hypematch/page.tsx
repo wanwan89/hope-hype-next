@@ -99,12 +99,16 @@ export default function HypeMatch() {
           if (myProfile) myGender = myProfile.gender;
         }
 
+        // UPDATE QUERY: Mengambil data dari profiles + JOIN ke user_bios
         let query = supabase
           .from('profiles')
           .select(`
-            id, username, avatar_url, bio_hype, gender, umur, pekerjaan, hobi, zodiak,
-            lokasi, foto_tambahan, pendidikan, minat, preferensi, tinggi_badan, 
-            bahasa, agama, merokok, alkohol, olahraga, tujuan, ig_username, spotify_url, tiktok_username, role
+            id, username, avatar_url, gender, umur, hobi, zodiak,
+            lokasi, minat, preferensi, bahasa, ig_username, spotify_url, tiktok_username, role,
+            user_bios (
+              bio_hype, pendidikan, occupation, tinggi_badan, 
+              agama, merokok, alkohol, olahraga, tujuan, photos
+            )
           `)
           .limit(10);
 
@@ -123,10 +127,37 @@ export default function HypeMatch() {
         if (error) throw error;
 
         if (data) {
+          // UPDATE MAPPING: Gabungkan data dari profiles dan user_bios menjadi satu object flat
           const cleanUsers = data.map((profile: any) => ({
-            ...profile,
+            id: profile.id,
             username: profile.username || 'Anonim',
+            avatar_url: profile.avatar_url,
+            gender: profile.gender,
+            umur: profile.umur,
+            lokasi: profile.lokasi,
+            role: profile.role,
+            hobi: profile.hobi,
+            zodiak: profile.zodiak,
+            minat: profile.minat,
+            preferensi: profile.preferensi,
+            bahasa: profile.bahasa,
+            ig_username: profile.ig_username,
+            spotify_url: profile.spotify_url,
+            tiktok_username: profile.tiktok_username,
+
+            // Data dari tabel user_bios (dengan fallback)
+            bio_hype: profile.user_bios?.bio_hype || '',
+            pendidikan: profile.user_bios?.pendidikan || '',
+            pekerjaan: profile.user_bios?.occupation || '', // di mapped sbg 'pekerjaan' dari field 'occupation'
+            tinggi_badan: profile.user_bios?.tinggi_badan || null,
+            agama: profile.user_bios?.agama || '',
+            merokok: profile.user_bios?.merokok || '',
+            alkohol: profile.user_bios?.alkohol || '',
+            olahraga: profile.user_bios?.olahraga || '',
+            tujuan: profile.user_bios?.tujuan || '',
+            foto_tambahan: profile.user_bios?.photos || [],
           }));
+          
           setUsers(cleanUsers);
         }
       } catch (error) {
@@ -232,7 +263,7 @@ export default function HypeMatch() {
             style={{
               fontFamily: "'Poppins', sans-serif",
               fontWeight: 700,
-              fontSize: "1.6rem",       /* ukuran diperkecil */
+              fontSize: "1.6rem",       
               color: "#FF1493",
               letterSpacing: "0px",
               textTransform: "lowercase",
@@ -324,7 +355,7 @@ export default function HypeMatch() {
               </svg>
             </button>
 
-            {/* Tombol Panah Atas (Biodata) - Warna Biru, ukuran lebih besar */}
+            {/* Tombol Panah Atas (Biodata) - Warna Biru */}
             <button className="hm-action-btn btn-fire" onClick={(e) => { e.stopPropagation(); setShowBiodata(true); }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
                 <path fill="#007AFF" d="M11 11.8V15q0 .425.288.713T12 16t.713-.288T13 15v-3.2l.9.9q.275.275.7.275t.7-.275t.275-.7t-.275-.7l-2.6-2.6q-.3-.3-.7-.3t-.7.3l-2.6 2.6q-.275.275-.275.7t.275.7t.7.275t.7-.275zM12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22" />
