@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 type Props = {
   bioForm: any;
@@ -68,6 +68,10 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
   const [activeView, setActiveView] = useState<'main' | 'selection'>('main');
   const [selectionConfig, setSelectionConfig] = useState<SelectionConfig>(null);
 
+  // Ref & State untuk upload foto
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadIndex, setUploadIndex] = useState<number>(0);
+
   // Helper untuk update state form
   const updateField = (field: string, value: any) => {
     setBioForm({ ...bioForm, [field]: value });
@@ -86,6 +90,59 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
       window.dispatchEvent(new CustomEvent('biomodal-state', { detail: { isOpen: false } }));
     };
   }, []);
+
+  // ==========================================
+  // LOGIKA PENGELOLAAN 3 FOTO
+  // ==========================================
+  // Ambil array foto dari form, atau buat fallback dari avatar_url jika belum berbentuk array
+  const photos = Array.isArray(bioForm.photos)
+    ? bioForm.photos
+    : [bioForm.avatar_url || null, null, null];
+
+  // Membuka file picker untuk slot tertentu
+  const triggerPhotoUpload = (index: number) => {
+    setUploadIndex(index);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // Handle ketika user memilih file
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Buat URL sementara untuk preview UI (Nanti file ini harus di-upload ke backend/storage saat Save)
+    const tempUrl = URL.createObjectURL(file);
+
+    const newPhotos = [...photos];
+    newPhotos[uploadIndex] = tempUrl;
+
+    // Simpan ke bioForm
+    setBioForm({
+      ...bioForm,
+      photos: newPhotos,
+      // Update avatar_url untuk kompatibilitas jika itu adalah slot pertama
+      ...(uploadIndex === 0 ? { avatar_url: tempUrl } : {})
+    });
+
+    // Reset input agar bisa pilih file yang sama lagi jika dibutuhkan
+    e.target.value = '';
+  };
+
+  // Handle hapus foto dari slot
+  const handlePhotoRemove = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Mencegah klik menyebar ke slot (yang akan memicu upload)
+    
+    const newPhotos = [...photos];
+    newPhotos[index] = null;
+    
+    setBioForm({
+      ...bioForm,
+      photos: newPhotos,
+      ...(index === 0 ? { avatar_url: '' } : {})
+    });
+  };
 
   // ==========================================
   // VIEW 2: HALAMAN PILIHAN (SELECTION VIEW)
@@ -193,45 +250,51 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
         </button>
       </div>
 
-      {/* Tabs Mockup */}
-      <div style={tabsContainerStyle}>
-        <div style={{ ...tabStyle, ...activeTabStyle }}>Ubah</div>
-        <div style={tabStyle}>Pratinjau</div>
-      </div>
+      {/* Input File Tersembunyi untuk Upload Foto */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handlePhotoChange}
+        accept="image/*"
+        style={{ display: 'none' }}
+      />
 
-      {/* Scroll Area */}
+      {/* Scroll Area (Tanpa Tabs) */}
       <div className="main-content" style={scrollAreaStyle}>
         
         {/* Foto Grid */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: '600' }}>Foto Profil</span>
-            <span style={{ fontSize: '14px', color: 'var(--primary-bg)', fontWeight: '600' }}>Ubah Foto</span>
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Maks. 3</span>
           </div>
           <div style={photoGridStyle}>
-            {/* Slot Foto Utama (Menggunakan data profil real jika ada) */}
-            <div style={photoSlotStyle}>
-              {bioForm.avatar_url ? (
-                <img src={bioForm.avatar_url} alt="Profile" style={imgStyle} />
-              ) : (
-                <div style={{...imgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', color: 'var(--text-muted)'}}>
-                  <span className="material-icons" style={{fontSize: '40px'}}>person</span>
-                </div>
-              )}
-              {bioForm.avatar_url && (
-                <div style={removeBtnStyle}>
-                  <span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span>
-                </div>
-              )}
-            </div>
             
-            {/* Slot Kosong untuk ditambahkan kemudian (UI Only) */}
-            <div style={emptySlotStyle}>
-              <span className="material-icons" style={{fontSize: '32px', color: 'var(--text-muted)'}}>add_photo_alternate</span>
-            </div>
-            <div style={emptySlotStyle}>
-              <span className="material-icons" style={{fontSize: '32px', color: 'var(--text-muted)'}}>add_photo_alternate</span>
-            </div>
+            {/* Generate 3 Slot Foto Secara Dinamis */}
+            {[0, 1, 2].map((index) => (
+              <div 
+                key={index}
+                onClick={() => triggerPhotoUpload(index)}
+                style={photos[index] ? photoSlotStyle : emptySlotStyle}
+              >
+                {photos[index] ? (
+                  <>
+                    <img src={photos[index]} alt={`Profile ${index + 1}`} style={imgStyle} />
+                    <div 
+                      style={removeBtnStyle} 
+                      onClick={(e) => handlePhotoRemove(index, e)}
+                    >
+                      <span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span>
+                    </div>
+                  </>
+                ) : (
+                  <span className="material-icons" style={{fontSize: '32px', color: 'var(--text-muted)'}}>
+                    add_photo_alternate
+                  </span>
+                )}
+              </div>
+            ))}
+
           </div>
         </div>
 
@@ -459,28 +522,7 @@ const headerStyle: React.CSSProperties = {
   alignItems: 'center',
   padding: '16px 20px',
   flexShrink: 0,
-};
-
-const tabsContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  backgroundColor: 'var(--bg-main)',
-  padding: '0 24px',
   borderBottom: '1px solid var(--border-editor)',
-};
-
-const tabStyle: React.CSSProperties = {
-  flex: 1,
-  textAlign: 'center',
-  padding: '12px 0',
-  color: 'var(--text-muted)',
-  fontSize: '15px',
-  cursor: 'pointer',
-};
-
-const activeTabStyle: React.CSSProperties = {
-  color: 'var(--primary-bg)',
-  fontWeight: 'bold',
-  borderBottom: '2px solid var(--primary-bg)',
 };
 
 const iconBtnStyle: React.CSSProperties = {
@@ -515,7 +557,7 @@ const cardStyle: React.CSSProperties = {
   borderRadius: '16px',
   padding: '8px 16px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  border: '1px solid var(--border-editor)', // Menyesuaikan dengan mode gelap/terang
+  border: '1px solid var(--border-editor)',
 };
 
 // Photo Grid Styles
@@ -531,6 +573,7 @@ const photoSlotStyle: React.CSSProperties = {
   borderRadius: '12px',
   overflow: 'hidden',
   backgroundColor: 'var(--bg-secondary)',
+  cursor: 'pointer',
 };
 
 const imgStyle: React.CSSProperties = {
@@ -543,7 +586,7 @@ const removeBtnStyle: React.CSSProperties = {
   position: 'absolute',
   bottom: '8px',
   right: '8px',
-  backgroundColor: 'var(--danger)', // Menggunakan warna danger dari CSS variables
+  backgroundColor: 'var(--danger)',
   borderRadius: '50%',
   width: '24px',
   height: '24px',
@@ -552,6 +595,7 @@ const removeBtnStyle: React.CSSProperties = {
   alignItems: 'center',
   cursor: 'pointer',
   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+  zIndex: 10,
 };
 
 const emptySlotStyle: React.CSSProperties = {
