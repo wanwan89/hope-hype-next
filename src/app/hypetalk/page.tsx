@@ -45,7 +45,24 @@ export default function HypetalkPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   
-  const [bioForm, setBioForm] = useState({ umur: '', gender: 'Pria', zodiak: '', pekerjaan: '', hobi: '' });
+  // FIX 1: Perbarui state awal bioForm agar menampung SEMUA data
+  const [bioForm, setBioForm] = useState<any>({ 
+    umur: '', 
+    gender: 'Pria', 
+    zodiak: '', 
+    occupation: '', 
+    hobi: '',
+    photos: [null, null, null],
+    bio_hype: '',
+    pendidikan: '',
+    tinggi_badan: null,
+    agama: '',
+    tujuan: '',
+    olahraga: '',
+    merokok: '',
+    alkohol: ''
+  });
+  
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
   const [groupName, setGroupName] = useState('');
@@ -114,12 +131,12 @@ export default function HypetalkPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return router.push('/login');
 
-    // MENGUBAH QUERY: Ambil profil dan relasi tabel user_bios sekaligus
+    // FIX 2: Gunakan user_bios (*) agar semua kolom diambil dari Supabase
     const { data: profile } = await supabase
       .from('profiles')
       .select(`
         *,
-        user_bios (umur, gender, zodiak, occupation, hobi)
+        user_bios (*)
       `)
       .eq('id', user.id)
       .single();
@@ -131,14 +148,24 @@ export default function HypetalkPage() {
       // Gabungkan data user dan profile + bios
       setCurrentUser({ ...user, ...profile, ...bios });
 
-      // Gunakan data dari tabel user_bios sebagai prioritas default (fallback ke profile jika kosong)
+      // FIX 3: Masukkan semua data dari database ke state bioForm
       setBioForm({
         umur: bios.umur || profile.umur || '',
         gender: bios.gender || profile.gender || 'Pria',
         zodiak: bios.zodiak || profile.zodiak || '',
-        pekerjaan: bios.occupation || profile.pekerjaan || '',
-        hobi: bios.hobi || profile.hobi || ''
+        occupation: bios.occupation || profile.pekerjaan || '',
+        hobi: bios.hobi || profile.hobi || '',
+        photos: bios.photos || [null, null, null],
+        bio_hype: bios.bio_hype || '',
+        pendidikan: bios.pendidikan || '',
+        tinggi_badan: bios.tinggi_badan || null,
+        agama: bios.agama || '',
+        tujuan: bios.tujuan || '',
+        olahraga: bios.olahraga || '',
+        merokok: bios.merokok || '',
+        alkohol: bios.alkohol || ''
       });
+      
       setPrivacySettings({
         show_online: profile.show_online !== false,
         last_seen: profile.last_seen || 'public'
@@ -401,32 +428,40 @@ export default function HypetalkPage() {
   const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
   const closeModal = () => { setActiveModal(null); };
 
-  // MENGUBAH FUNGSI INI: Simpan ke tabel user_bios menggunakan upsert
+  // FIX 4: Masukkan semua data ke payload biosData sebelum dikirim ke Supabase
   const handleSaveBio = async () => {
     setIsSavingBio(true);
     try {
       if (!currentUser?.id) throw new Error("Gagal menyimpan, user tidak terautentikasi.");
+
+      // Hapus nilai null dari array photos agar PostgreSQL tidak menolak tipe datanya
+      const cleanPhotos = Array.isArray(bioForm.photos) ? bioForm.photos.filter((p: any) => p !== null) : [];
 
       const biosData = {
         id: currentUser.id,
         umur: Number(bioForm.umur) || null,
         gender: bioForm.gender,
         zodiak: bioForm.zodiak,
-        occupation: bioForm.pekerjaan, // Mapping dari 'pekerjaan' (state) ke 'occupation' (kolom db)
+        occupation: bioForm.occupation || bioForm.pekerjaan, // Antisipasi dua penamaan state/db
         hobi: bioForm.hobi,
+        photos: cleanPhotos, // Data foto dimasukkan
+        bio_hype: bioForm.bio_hype, // Data bio dimasukkan
+        pendidikan: bioForm.pendidikan, // Data pendidikan dimasukkan
+        tinggi_badan: Number(bioForm.tinggi_badan) || null, // Pastikan jadi angka/null
+        agama: bioForm.agama,
+        tujuan: bioForm.tujuan,
+        olahraga: bioForm.olahraga,
+        merokok: bioForm.merokok,
+        alkohol: bioForm.alkohol,
         updated_at: new Date().toISOString()
       };
 
-      // 1. Simpan ke tabel user_bios (update jika sudah ada, insert jika belum)
+      // Simpan ke tabel user_bios (update jika sudah ada, insert jika belum)
       const { error: biosError } = await supabase
         .from('user_bios')
         .upsert(biosData, { onConflict: 'id' });
 
       if (biosError) throw biosError;
-
-      // (Opsional/Fallback) Tergantung arsitektur kamu, jika kolom ini masih ada di 'profiles' 
-      // dan butuh disinkronkan, jalankan kode di bawah ini:
-      // await supabase.from('profiles').update({ gender: bioForm.gender, umur: biosData.umur }).eq('id', currentUser.id);
 
       showNotif("Profil HypeMatch tersimpan!", "success");
       setCurrentUser((prev: any) => ({ ...prev, ...bioForm, umur: biosData.umur }));
@@ -693,4 +728,3 @@ export default function HypetalkPage() {
     </ConfirmProvider>
   );
 }
-
