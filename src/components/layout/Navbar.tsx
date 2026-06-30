@@ -68,7 +68,6 @@ function NavbarContent() {
 
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
-  // PENAMBAHAN '/biomodal' DI SINI
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/saldo', '/story', 
@@ -82,13 +81,24 @@ function NavbarContent() {
     if (!session) return;
     const userId = session.user.id;
 
+    // AMBIL DATA GRUP USER DULU SEBELUM MENGHITUNG CHAT UNREAD
+    const { data: groupData } = await supabase.from('group_members').select('group_id').eq('user_id', userId);
+    const groupRoomIds = groupData?.map((g: any) => `group_${g.group_id}`) || [];
+
+    // Filter format: Cari chat private (room_id ada user_id) ATAU chat grup (room_id di dalam groupRoomIds)
+    let roomFilter = `room_id.ilike.%${userId}%`;
+    if (groupRoomIds.length > 0) {
+      roomFilter += `,room_id.in.(${groupRoomIds.join(',')})`;
+    }
+
     const [profileRes, chatRes, dbNotifRes] = await Promise.all([
       supabase.from('profiles').select('avatar_url').eq('id', userId).single(),
+      // MENGHITUNG CHAT PRIVATE & GRUP
       supabase.from('messages')
         .select('id', { count: 'exact', head: true })
-        .ilike('room_id', `%${userId}%`)
         .neq('user_id', userId)
-        .or('status.neq.read,status.is.null'),
+        .or('status.neq.read,status.is.null')
+        .or(roomFilter),
       supabase.from('notifications')
         .select('type')
         .eq('user_id', userId)
@@ -246,13 +256,23 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
+      // Ambil data grup untuk realtime filter
+      const { data: groupData } = await supabase.from('group_members').select('group_id').eq('user_id', userId);
+      const groupRoomIds = groupData?.map((g: any) => `group_${g.group_id}`) || [];
+
       msgChannel = supabase.channel('navbar-messages-realtime')
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages' },
           (payload) => {
             const newMsg = payload.new;
-            if (newMsg.room_id && newMsg.room_id.includes(userId) && newMsg.user_id !== userId) {
+            if (newMsg.user_id === userId) return; // Jangan hitung pesan dari diri sendiri
+
+            // Filter room_id: Apakah itu private chat (ada userId) atau chat grup (room_id terdaftar di grup)?
+            const isPrivate = newMsg.room_id && newMsg.room_id.includes(userId);
+            const isGroup = newMsg.room_id && groupRoomIds.includes(newMsg.room_id);
+
+            if (isPrivate || isGroup) {
               setUnreadChatCount((prev) => prev + 1);
             }
           }
