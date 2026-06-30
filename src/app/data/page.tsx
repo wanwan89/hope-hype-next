@@ -12,7 +12,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 // 🔥 GANTI: Import RefreshableWrapper langsung ke sini
 import RefreshableWrapper from '@/components/RefreshableWrapper';
 
-// Import komponen anak
 import ProfileHeader from '.@/components/profiles/ProfileHeader';
 import ProfileInfo from '.@/components/profiles/ProfileInfo';
 import ProfileTabs from '.@/components/profiles/ProfileTabs';
