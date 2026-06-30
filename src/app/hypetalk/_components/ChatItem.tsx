@@ -22,7 +22,7 @@ type Props = {
   chat: any;
   typingStatus: Record<string, string>;
   mutedChats: Set<string>;
-  onlineUsers: Set<string>;
+  isOnline: boolean; // 🔥 DIUBAH: Dari onlineUsers (Set) menjadi boolean primitif
   currentUser: any;
   onOpenChat: (chat: any) => void;
   onAvatarClick: (e: React.MouseEvent, chatId: string, chatType: string) => void;
@@ -33,14 +33,13 @@ const ChatItem: React.FC<Props> = ({
   chat,
   typingStatus,
   mutedChats,
-  onlineUsers,
+  isOnline, // 🔥 Ditangkap langsung sebagai boolean
   currentUser,
   onOpenChat,
   onAvatarClick,
   renderReadReceipt,
 }) => {
   const isMuted = mutedChats.has(chat.id);
-  const isOnline = onlineUsers.has(chat.id);
 
   return (
     <div className="tg-chat-item" onClick={() => onOpenChat(chat)}>
@@ -78,10 +77,11 @@ const ChatItem: React.FC<Props> = ({
               right: 0,
               width: 13,
               height: 13,
-              backgroundColor: isOnline ? '#2ecc71' : '#8a8b91',
+              backgroundColor: isOnline ? '#2ecc71' : '#8a8b91', // ✅ Langsung reaktif mengikuti perubahan prop
               borderRadius: '50%',
               border: '2.5px solid var(--bg-main)',
               zIndex: 2,
+              transition: 'background-color 0.3s ease', // Animasi transisi halus saat status berubah
             }}
           />
         )}
@@ -123,14 +123,14 @@ const ChatItem: React.FC<Props> = ({
           >
             {chat.name}
 
-            {/* Ikon grup — sekarang pakai SVG, warna mengikuti teks */}
+            {/* Ikon grup */}
             {chat.type === 'group' && (
               <span style={{ marginLeft: 4, display: 'inline-flex' }}>
                 <GroupIconSvg />
               </span>
             )}
 
-            {/* Badge VIP / centang — dari helper getUserBadge */}
+            {/* Badge VIP / centang */}
             {chat.type === 'private' && (
               <span
                 dangerouslySetInnerHTML={{ __html: getUserBadge(chat.role || 'user') }}
@@ -205,7 +205,7 @@ const ChatItem: React.FC<Props> = ({
           {chat.unread > 0 && !isMuted && (
             <div
               style={{
-                background: 'var(--primary-bg)',   // ✅ latar biru tetap
+                background: 'var(--primary-bg)',
                 color: 'white',
                 borderRadius: 10,
                 padding: '0 6px',

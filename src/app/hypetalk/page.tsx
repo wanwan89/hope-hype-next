@@ -79,14 +79,20 @@ export default function HypetalkPage() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser?.id) return;
+    
     const savedMutes = localStorage.getItem(`muted_chats_${currentUser.id}`);
     if (savedMutes) setMutedChats(new Set(JSON.parse(savedMutes)));
 
-    if (!privacySettings.show_online) return;
-    const presenceChannel = supabase.channel('global_online_users', {
+    if (!privacySettings.show_online) {
+      setOnlineUsers(new Set());
+      return;
+    }
+
+    const presenceChannel = supabase.channel('hypetalk_presence', {
       config: { presence: { key: currentUser.id } }
     });
+
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
@@ -97,8 +103,12 @@ export default function HypetalkPage() {
           await presenceChannel.track({ online_at: new Date().toISOString() });
         }
       });
-    return () => { supabase.removeChannel(presenceChannel); };
-  }, [currentUser, privacySettings.show_online]);
+
+    return () => { 
+      presenceChannel.unsubscribe();
+      supabase.removeChannel(presenceChannel); 
+    };
+  }, [currentUser?.id, privacySettings.show_online]);
 
   const initUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -265,7 +275,6 @@ export default function HypetalkPage() {
       .subscribe();
   };
 
-  // --- IMPLEMENTASI GLOBAL REFRESH HOOK ---
   const refetch = async () => {
     if (currentUser?.id) {
       await loadAllChats(currentUser.id, true);
@@ -275,7 +284,7 @@ export default function HypetalkPage() {
 
   const roomIdsStr = chats.map(c => c.id).sort().join(',');
   useEffect(() => {
-    if (!currentUser || chats.length === 0) return;
+    if (!currentUser?.id || chats.length === 0) return;
     const channels = chats.map(chat => {
       let roomIdStr = '';
       if (chat.type === 'global') roomIdStr = 'room-1';
@@ -300,7 +309,7 @@ export default function HypetalkPage() {
         .subscribe();
     });
     return () => { channels.forEach(c => c && supabase.removeChannel(c)); };
-  }, [roomIdsStr, currentUser]);
+  }, [roomIdsStr, currentUser?.id]);
 
   // ========== LONG PRESS & SELEKSI HANDLERS ==========
   const handlePressStart = (chat: any) => {
@@ -422,12 +431,21 @@ export default function HypetalkPage() {
     router.push('/hypematch');
   };
 
+  // 🔥 UPDATE LOGIKA PENCARIAN DI SINI 🔥
   const handleSearchAndChat = async () => {
     if (!searchUserId) return;
     const cleanId = searchUserId.replace('#', '').toUpperCase();
-    const { data: target } = await supabase.from('profiles').select('id').eq('short_id', cleanId).maybeSingle();
-    if (target) router.push(`/hypetalk/room?from=${target.id}`);
-    else showNotif("ID tidak ditemukan", "error");
+    
+    // Ambil SEMUA data profil (*) karena kita butuh datanya untuk UserProfileModal
+    const { data: target, error } = await supabase.from('profiles').select('*').eq('short_id', cleanId).maybeSingle();
+    
+    if (target && !error) {
+      setSelectedProfile(target);       // Set data user ke state selectedProfile
+      setActiveModal('user-profile');   // Beralih dari 'search' modal ke 'user-profile' modal
+      setSearchUserId('');              // Reset kolom input ID
+    } else {
+      showNotif("ID tidak ditemukan", "error");
+    }
   };
 
   const handleCreateGroup = async () => {
@@ -526,7 +544,6 @@ export default function HypetalkPage() {
     <ConfirmProvider>
       <div className={`telegram-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         
-        {/* HEADER DENGAN PROPS SELEKSI TERBARU */}
         <HypetalkHeader
           onMenuClick={() => setIsSidebarOpen(true)}
           searchQuery={searchQuery}
@@ -546,6 +563,7 @@ export default function HypetalkPage() {
           typingStatus={typingStatus}
           mutedChats={mutedChats}
           onlineUsers={onlineUsers}
+          onlineUsersHash={Array.from(onlineUsers).join(',')}
           currentUser={currentUser}
           handleOpenChat={handleOpenChat}
           handleAvatarClick={handleAvatarClick}
@@ -557,7 +575,6 @@ export default function HypetalkPage() {
           onDeleteChat={executeDeleteRooms}
         />
 
-        {/* FAB dengan SVG pesan */}
         {!activeModal && !isSelectionMode && (
           <button className="tg-fab" onClick={() => openModal('search')}>
             <ChatSvgIcon size={24} />
@@ -574,6 +591,8 @@ export default function HypetalkPage() {
         />
 
         {/* MODALS */}
+        
+        {/* Ketika activeModal pindah ke 'user-profile', akan otomatis ngerender komponen ini */}
         {activeModal === 'user-profile' && selectedProfile && (
           <UserProfileModal
             profile={selectedProfile}

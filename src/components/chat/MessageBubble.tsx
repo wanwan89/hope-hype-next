@@ -33,9 +33,8 @@ const getOptimizedImage = (url: string) => {
 const renderFormattedText = (text: string) => {
   if (!text) return null;
   
-  // 🔥 FIX 3: jika teks hanya "Mengirim Foto" atau "Voice Note", jangan render apapun
   if (text.trim().match(/^(📸\s*)?Mengirim Foto$/i) || text.trim().match(/^(🎤\s*)?Voice Note$/i)) {
-    return null; // tidak ada teks/ikon
+    return null; 
   }
 
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -98,7 +97,6 @@ export default function MessageBubble({
 
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
-  // 🔥 FIX 11: di global/grup, tampilkan detail user (avatar) tanpa username
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
   const isStoryReply = msg.message && msg.message.includes("Membalas ceritamu");
 
@@ -361,7 +359,6 @@ export default function MessageBubble({
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
 
-  // 🔥 FIX 3: untuk gambar/stiker/audio tanpa teks caption, tidak ada teks
   const isMediaOnly = (
     msg.image_url && !msg.message?.trim() || 
     msg.sticker_url && !msg.message?.trim() || 
@@ -513,7 +510,6 @@ export default function MessageBubble({
             ) : (
               <>
                 {showUserDetail && (
-                  // 🔥 FIX 11: hanya avatar, tanpa username
                   <img src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
                 )}
                 
@@ -544,7 +540,6 @@ export default function MessageBubble({
                     </div>
                   )}
 
-                  {/* 🔥 FIX 11: username dihapus, hanya avatar di atas */}
                   {liveReply && !isDeleted && (
                     <div className="reply-preview-in-chat" onClick={(e) => { e.stopPropagation(); document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}} 
                       style={{ 
@@ -605,7 +600,7 @@ export default function MessageBubble({
                                 position: 'absolute', top: offset, left: offset, zIndex: 10 - i,
                                 width: `calc(100% - 16px)`, height: `calc(100% - 16px)`,
                                 borderRadius: '14px', overflow: 'hidden',
-                                border: isMe ? '2px solid rgba(255,255,255,0.3)' : '2px solid var(--bg-main)',
+                                border: isMe ? '2px solid rgba(255,255,255,0.3)' : '2px solid rgba(0,0,0,0.05)', /* FIX BORDER SHARING FOTO */
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                               }}>
                                 <img 
@@ -633,9 +628,10 @@ export default function MessageBubble({
                       )}
 
                       {msg.shared_post && (
-                        <div className="shared-post-card" onClick={(e) => { e.stopPropagation(); if(!isSelectionMode) router.push(`/post/${msg.shared_post.id}`); }} style={{ background: isMe ? 'rgba(255,255,255,0.1)' : 'var(--bg-secondary)', borderRadius: '12px', padding: '10px', width: '250px', marginBottom: shouldShowText ? '8px' : '0', border: isMe ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-color)', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                        /* FIX BORDER SHARED POST */
+                        <div className="shared-post-card" onClick={(e) => { e.stopPropagation(); if(!isSelectionMode) router.push(`/post/${msg.shared_post.id}`); }} style={{ background: isMe ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)', borderRadius: '12px', padding: '10px', width: '250px', marginBottom: shouldShowText ? '8px' : '0', border: 'none', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                            <img src={msg.shared_post.author_avatar || '/asets/png/profile.webp'} style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #ccc' }} alt="author" />
+                            <img src={msg.shared_post.author_avatar || '/asets/png/profile.webp'} style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', border: 'none' }} alt="author" />
                             <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'inherit' }}>{msg.shared_post.author_username || 'User'}</span>
                           </div>
                           {msg.shared_post.image_url && (
@@ -653,7 +649,8 @@ export default function MessageBubble({
                       )}
 
                       {isStoryReply && msg.sticker_url ? (
-                        <div className="story-reply-card" onClick={(e) => { e.stopPropagation(); if(!isSelectionMode) setPreviewImage(msg.sticker_url); }} style={{ cursor: 'pointer', background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--bg-secondary)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: isMe ? 'none' : '1px solid var(--border-color)', width: '100%' }}>
+                        /* FIX BORDER STORY REPLY */
+                        <div className="story-reply-card" onClick={(e) => { e.stopPropagation(); if(!isSelectionMode) setPreviewImage(msg.sticker_url); }} style={{ cursor: 'pointer', background: isMe ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.04)', padding: '6px', borderRadius: '10px', display: 'flex', gap: '10px', alignItems: 'center', marginBottom: shouldShowText ? '8px' : '0', border: 'none', width: '100%' }}>
                           <div style={{ position: 'relative', width: '40px', height: '55px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
                              <img src={msg.sticker_url} alt="story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>

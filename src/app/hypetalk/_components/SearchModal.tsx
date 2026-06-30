@@ -11,12 +11,23 @@ type Props = {
 const SearchModal: React.FC<Props> = ({ searchId, setSearchId, onSearch, onClose }) => (
   <div className="tg-modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
     <div className="tg-modal-content" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header"><h3>Mulai Chat Baru</h3><button className="close-modal-btn" onClick={onClose}><span className="material-icons">close</span></button></div>
+      <div className="modal-header">
+        <h3>Mulai Chat Baru</h3>
+        <button className="close-modal-btn" onClick={onClose}>
+          <span className="material-icons">close</span>
+        </button>
+      </div>
       <div className="input-group">
         <span className="material-icons">tag</span>
-        <input type="text" placeholder="ID teman (Contoh: ABCD)" value={searchId} onChange={e => setSearchId(e.target.value)} />
+        <input 
+          type="text" 
+          placeholder="ID teman (Contoh: ABCD)" 
+          value={searchId} 
+          onChange={e => setSearchId(e.target.value)} 
+        />
       </div>
-      <button className="action-btn" onClick={onSearch}>Cari dan Chat</button>
+      {/* Mengubah teks dari "Cari dan Chat" menjadi "Cari" agar sesuai dengan alur baru */}
+      <button className="action-btn" onClick={onSearch}>Cari</button>
     </div>
   </div>
 );

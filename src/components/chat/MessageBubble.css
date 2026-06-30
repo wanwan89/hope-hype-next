@@ -33,7 +33,7 @@
   margin: 0 6px 2px 0; 
   object-fit: cover; 
   flex-shrink: 0; 
-  border: 1px solid var(--border-card);
+  border: none !important; /* Dihapus agar smooth */
 }
 
 /* 🔥 BUBBLE CONTENT 🔥 */
@@ -44,23 +44,27 @@
   width: auto !important; 
   flex: 0 1 auto; 
   position: relative;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.06);
   min-width: 50px; 
   -webkit-tap-highlight-color: transparent;
+  /* FIX BORDER: Force hilangkan semua border & shadow keras */
+  border: none !important; 
+  outline: none !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important; 
 }
 
 /* FIX 1 & 2: Bentuk Clean & Warna Bubble Kita (Biru-Ungu) */
 .hype-chat-scope .chat-message.self .content { 
   background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%) !important; 
   color: #ffffff !important; 
-  border-radius: 18px 18px 4px 18px; /* Clean look */
+  border-radius: 18px 18px 4px 18px; 
 }
 
 /* FIX 1 & 4: Bentuk Clean & Warna Bubble Lawan (Light/Dark Mode friendly) */
 .hype-chat-scope .chat-message.other .content { 
-  background: #f1f5f9 !important; /* Abu-abu terang (Light mode) */
+  background: #f1f5f9 !important; 
   color: #0f172a !important; 
-  border-radius: 18px 18px 18px 4px; /* Clean look */
+  border-radius: 18px 18px 18px 4px;
+  border: 1px solid transparent !important; /* FIX ANTI-ALIASING BROWSER */
 }
 
 /* DARK MODE: Warna Bubble */
@@ -72,8 +76,9 @@ html.dark .hype-chat-scope .chat-message.self .content {
 
 [data-theme='dark'] .hype-chat-scope .chat-message.other .content,
 html.dark .hype-chat-scope .chat-message.other .content { 
-  background: #334155 !important; /* Abu-abu gelap (Dark mode) */
+  background: #334155 !important; 
   color: #f8fafc !important; 
+  box-shadow: none !important; /* Hapus bayangan agar tidak tampak seperti garis di dark mode */
 }
 
 /* Paksa teks di dalam bubble sesuai warna background */
@@ -87,11 +92,11 @@ html.dark .hype-chat-scope .chat-message.other .text {
 
 /* FIX 5: Warna Username Dinamis & Badge Kecil */
 .hype-chat-scope .chat-username {
-  color: #0f172a; /* Hitam di mode terang */
+  color: #0f172a; 
 }
 [data-theme='dark'] .hype-chat-scope .chat-username,
 html.dark .hype-chat-scope .chat-username {
-  color: #f8fafc; /* Putih di mode gelap */
+  color: #f8fafc; 
 }
 
 .hype-chat-scope .chat-badge svg,
@@ -103,7 +108,7 @@ html.dark .hype-chat-scope .chat-username {
 
 /* REPLY BOX DI DALAM BUBBLE */
 .hype-chat-scope .reply-preview-in-chat { 
-  background: rgba(0, 0, 0, 0.05); 
+  background: rgba(0, 0, 0, 0.04); 
   border-left: 3px solid currentColor; 
   padding: 6px 10px; 
   border-radius: 8px; 
@@ -118,7 +123,7 @@ html.dark .hype-chat-scope .chat-username {
   background: rgba(255, 255, 255, 0.15); 
 }
 [data-theme='dark'] .hype-chat-scope .chat-message.other .reply-preview-in-chat { 
-  background: rgba(255, 255, 255, 0.06); 
+  background: rgba(255, 255, 255, 0.05); 
 }
 
 /* TEXT */
@@ -219,7 +224,7 @@ html.dark .hype-chat-scope .option-btn.danger {
   box-shadow: 0 4px 15px rgba(0,0,0,0.12);
   display: flex;
   gap: 10px;
-  border: 1px solid var(--border-card, #e2e8f0);
+  border: none !important; /* Dihapus agar lebih menyatu */
   z-index: 100;
   animation: popReaction 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -229,7 +234,6 @@ html.dark .hype-chat-scope .option-btn.danger {
 }
 [data-theme='dark'] .hype-chat-scope .reaction-menu {
   background: #1e293b;
-  border-color: #334155;
 }
 .hype-chat-scope .reaction-btn {
   font-size: 22px;
@@ -246,16 +250,15 @@ html.dark .hype-chat-scope .option-btn.danger {
   bottom: -8px;
   right: 6px;
   background: var(--bg-card, #ffffff);
-  border: 1px solid var(--border-card, #e2e8f0);
+  border: none !important; /* Dihapus agar clean */
   padding: 1px 5px;
   border-radius: 12px;
   font-size: 11px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   z-index: 2;
 }
 [data-theme='dark'] .hype-chat-scope .message-reactions {
   background: #1e293b;
-  border-color: #334155;
 }
 .hype-chat-scope .chat-message.other .message-reactions {
   right: auto;
@@ -306,15 +309,16 @@ html.dark .hype-chat-scope .option-btn.danger {
 /* SYSTEM NOTICE */
 .hype-chat-scope .chat-message.system { justify-content: center !important; margin: 8px 0 !important; }
 .hype-chat-scope .system-text { 
-  background: rgba(0,0,0,0.06) !important; 
+  background: rgba(0,0,0,0.05) !important; 
   color: #64748b !important; 
   font-size: 11px !important; 
   padding: 4px 14px !important; 
   border-radius: 12px !important; 
   text-align: center; 
+  border: none !important;
 }
 [data-theme='dark'] .hype-chat-scope .system-text {
-  background: rgba(255,255,255,0.06) !important;
+  background: rgba(255,255,255,0.05) !important;
   color: #94a3b8 !important;
 }
 
