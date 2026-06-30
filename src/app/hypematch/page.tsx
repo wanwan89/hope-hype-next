@@ -85,27 +85,41 @@ export default function HypeMatch() {
 
         if (authData?.user) {
           myId = authData.user.id;
+          
+          // Mengambil gender dan foto dari tabel user_bios
           const { data: myProfile } = await supabase
             .from('profiles')
-            .select('gender, avatar_url')
+            .select(`
+              id,
+              user_bios (gender, photos)
+            `)
             .eq('id', myId)
             .single();
 
+          const myBios = Array.isArray(myProfile?.user_bios) ? myProfile?.user_bios[0] : myProfile?.user_bios;
+          
+          // Fallback avatar ke index 0 dari photos jika ada, jika tidak pakai dari metadata Google/Auth
+          const myPhotos = myBios?.photos || [];
           setCurrentUser({
             id: myId,
-            avatar_url: myProfile?.avatar_url || authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
+            avatar_url: myPhotos.length > 0 && myPhotos[0] ? myPhotos[0] : (authData.user.user_metadata?.avatar_url || 'https://via.placeholder.com/150'),
           });
 
-          if (myProfile) myGender = myProfile.gender;
+          if (myBios) {
+             myGender = myBios.gender;
+          }
         }
 
-        // UPDATE QUERY: Mengambil data dari profiles + JOIN ke user_bios
+        // UPDATE QUERY: Mengambil HANYA username dari profiles, sisanya dari user_bios
+        // Menggunakan !inner agar kita bisa memfilter berdasarkan field di dalam user_bios (contohnya gender)
         let query = supabase
           .from('profiles')
           .select(`
-            id, username, avatar_url, gender, umur, hobi, zodiak,
-            lokasi, minat, preferensi, bahasa, ig_username, spotify_url, tiktok_username, role,
-            user_bios (
+            id, 
+            username, 
+            user_bios!inner (
+              gender, umur, hobi, zodiak, lokasi, minat, preferensi, bahasa,
+              ig_username, spotify_url, tiktok_username, role, avatar_url,
               bio_hype, pendidikan, occupation, tinggi_badan, 
               agama, merokok, alkohol, olahraga, tujuan, photos
             )
@@ -114,12 +128,13 @@ export default function HypeMatch() {
 
         if (myId) query = query.neq('id', myId);
 
+        // Filter lawan jenis berdasarkan tabel user_bios
         if (myGender) {
           const genderLower = myGender.toLowerCase();
           if (genderLower === 'laki-laki' || genderLower === 'pria') {
-            query = query.in('gender', ['Perempuan', 'Wanita']);
+            query = query.in('user_bios.gender', ['Perempuan', 'Wanita']);
           } else if (genderLower === 'perempuan' || genderLower === 'wanita') {
-            query = query.in('gender', ['Laki-laki', 'Pria']);
+            query = query.in('user_bios.gender', ['Laki-laki', 'Pria']);
           }
         }
 
@@ -127,36 +142,46 @@ export default function HypeMatch() {
         if (error) throw error;
 
         if (data) {
-          // UPDATE MAPPING: Gabungkan data dari profiles dan user_bios menjadi satu object flat
-          const cleanUsers = data.map((profile: any) => ({
-            id: profile.id,
-            username: profile.username || 'Anonim',
-            avatar_url: profile.avatar_url,
-            gender: profile.gender,
-            umur: profile.umur,
-            lokasi: profile.lokasi,
-            role: profile.role,
-            hobi: profile.hobi,
-            zodiak: profile.zodiak,
-            minat: profile.minat,
-            preferensi: profile.preferensi,
-            bahasa: profile.bahasa,
-            ig_username: profile.ig_username,
-            spotify_url: profile.spotify_url,
-            tiktok_username: profile.tiktok_username,
+          // UPDATE MAPPING: Semua data selain id dan username diambil dari object user_bios
+          const cleanUsers = data.map((profile: any) => {
+            // Jika relasi one-to-one mereturn array, ambil item pertama
+            const bios = Array.isArray(profile.user_bios) ? profile.user_bios[0] : (profile.user_bios || {});
+            
+            // Prioritaskan foto pertama di array photos, jika tidak ada cari avatar_url, lalu placeholder
+            const defaultAvatar = (bios.photos && bios.photos.length > 0 && bios.photos[0]) 
+              ? bios.photos[0] 
+              : (bios.avatar_url || 'https://via.placeholder.com/400x600');
 
-            // Data dari tabel user_bios (dengan fallback)
-            bio_hype: profile.user_bios?.bio_hype || '',
-            pendidikan: profile.user_bios?.pendidikan || '',
-            pekerjaan: profile.user_bios?.occupation || '', // di mapped sbg 'pekerjaan' dari field 'occupation'
-            tinggi_badan: profile.user_bios?.tinggi_badan || null,
-            agama: profile.user_bios?.agama || '',
-            merokok: profile.user_bios?.merokok || '',
-            alkohol: profile.user_bios?.alkohol || '',
-            olahraga: profile.user_bios?.olahraga || '',
-            tujuan: profile.user_bios?.tujuan || '',
-            foto_tambahan: profile.user_bios?.photos || [],
-          }));
+            return {
+              id: profile.id,
+              username: profile.username || 'Anonim',
+              
+              // Sisanya diambil 100% dari user_bios
+              avatar_url: defaultAvatar,
+              gender: bios.gender,
+              umur: bios.umur,
+              lokasi: bios.lokasi,
+              role: bios.role,
+              hobi: bios.hobi,
+              zodiak: bios.zodiak,
+              minat: bios.minat,
+              preferensi: bios.preferensi,
+              bahasa: bios.bahasa,
+              ig_username: bios.ig_username,
+              spotify_url: bios.spotify_url,
+              tiktok_username: bios.tiktok_username,
+              bio_hype: bios.bio_hype || '',
+              pendidikan: bios.pendidikan || '',
+              pekerjaan: bios.occupation || '', 
+              tinggi_badan: bios.tinggi_badan || null,
+              agama: bios.agama || '',
+              merokok: bios.merokok || '',
+              alkohol: bios.alkohol || '',
+              olahraga: bios.olahraga || '',
+              tujuan: bios.tujuan || '',
+              foto_tambahan: bios.photos || [],
+            };
+          });
           
           setUsers(cleanUsers);
         }

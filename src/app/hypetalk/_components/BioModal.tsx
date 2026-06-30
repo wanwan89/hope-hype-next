@@ -1,21 +1,24 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 
-// Interface disesuaikan persis dengan skema database
+// Konstanta Cloudinary
+const CLOUDINARY_CLOUD_NAME = 'dhhmkb8kl';
+const CLOUDINARY_UPLOAD_PRESET = 'post_hope';
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
 export interface UserBioData {
   id?: string;
-  photos: (string | null)[]; // URL array
+  photos: (string | null)[]; 
   bio_hype: string;
   pendidikan: string;
   occupation: string;
   gender: string;
-  tinggi_badan: number | null; // integer di DB
+  tinggi_badan: number | null;
   agama: string;
   tujuan: string;
   olahraga: string;
   merokok: string;
   alkohol: string;
-  [key: string]: any; // Untuk nampung raw_file_ sementara
 }
 
 type Props = {
@@ -85,8 +88,10 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadIndex, setUploadIndex] = useState<number>(0);
+  
+  // State untuk melacak foto mana yang sedang di-upload
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
-  // Pastikan photos selalu berupa array dengan panjang 3
   const currentPhotos = Array.isArray(bioForm.photos) && bioForm.photos.length > 0
     ? [...bioForm.photos, null, null, null].slice(0, 3) 
     : [null, null, null];
@@ -108,30 +113,65 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
   }, []);
 
   // ==========================================
-  // LOGIKA PENGELOLAAN FOTO
+  // LOGIKA UPLOAD CLOUDINARY
   // ==========================================
   const triggerPhotoUpload = (index: number) => {
+    // Cegah klik jika sedang ada proses upload di slot ini
+    if (uploadingIndex === index) return;
+    
     setUploadIndex(index);
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Tampilkan preview instan lokal & set status loading
+    setUploadingIndex(uploadIndex);
     const tempUrl = URL.createObjectURL(file);
-    const newPhotos = [...currentPhotos];
+    let newPhotos = [...currentPhotos];
     newPhotos[uploadIndex] = tempUrl;
+    setBioForm({ ...bioForm, photos: newPhotos });
 
-    setBioForm({
-      ...bioForm,
-      photos: newPhotos,
-      [`raw_file_${uploadIndex}`]: file 
-    });
+    // 2. Siapkan data untuk Cloudinary
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
-    e.target.value = '';
+    try {
+      // 3. Tembak API Cloudinary
+      const res = await fetch(CLOUDINARY_UPLOAD_URL, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.secure_url) {
+        // 4. Sukses: Ganti URL preview lokal dengan URL asli Cloudinary
+        newPhotos = [...newPhotos];
+        newPhotos[uploadIndex] = data.secure_url;
+        setBioForm({ ...bioForm, photos: newPhotos });
+      } else {
+        throw new Error('Gagal mendapatkan URL dari Cloudinary');
+      }
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      alert('Gagal mengunggah foto. Silakan coba lagi.');
+      
+      // Revert (hapus) foto jika upload gagal
+      newPhotos = [...newPhotos];
+      newPhotos[uploadIndex] = null;
+      setBioForm({ ...bioForm, photos: newPhotos });
+    } finally {
+      // Selesai upload & reset input file
+      setUploadingIndex(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handlePhotoRemove = (index: number, e: React.MouseEvent) => {
@@ -139,13 +179,11 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     const newPhotos = [...currentPhotos];
     newPhotos[index] = null;
     
+    // Susun ulang foto agar yang null tergeser ke belakang
     const filteredPhotos = newPhotos.filter(Boolean);
     const finalizedPhotos = [...filteredPhotos, null, null, null].slice(0, 3);
 
-    const updatedBioForm = { ...bioForm, photos: finalizedPhotos };
-    delete updatedBioForm[`raw_file_${index}`];
-
-    setBioForm(updatedBioForm);
+    setBioForm({ ...bioForm, photos: finalizedPhotos });
   };
 
   // ==========================================
@@ -241,7 +279,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-main)' }}>
           Ubah Profil
         </h3>
-        <button onClick={onSave} disabled={isSaving} style={{ ...iconBtnStyle, color: 'var(--primary-bg)' }}>
+        <button onClick={onSave} disabled={isSaving || uploadingIndex !== null} style={{ ...iconBtnStyle, color: 'var(--primary-bg)' }}>
           {isSaving ? (
             <span className="material-icons" style={{ fontSize: '18px', animation: 'spin 1s linear infinite' }}>hourglass_empty</span>
           ) : (
@@ -273,13 +311,25 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
               >
                 {currentPhotos[index] ? (
                   <>
-                    <img src={currentPhotos[index]} alt={`Profile ${index + 1}`} style={imgStyle} />
-                    <div 
-                      style={removeBtnStyle} 
-                      onClick={(e) => handlePhotoRemove(index, e)}
-                    >
-                      <span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span>
-                    </div>
+                    <img 
+                      src={currentPhotos[index]} 
+                      alt={`Profile ${index + 1}`} 
+                      style={{
+                        ...imgStyle, 
+                        opacity: uploadingIndex === index ? 0.5 : 1 // Redupkan saat upload
+                      }} 
+                    />
+                    
+                    {/* State Uploading */}
+                    {uploadingIndex === index ? (
+                      <div style={loadingOverlayStyle}>
+                        <span className="material-icons" style={{ fontSize: '20px', animation: 'spin 1s linear infinite' }}>sync</span>
+                      </div>
+                    ) : (
+                      <div style={removeBtnStyle} onClick={(e) => handlePhotoRemove(index, e)}>
+                        <span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <span className="material-icons" style={{fontSize: '32px', color: 'var(--text-muted)'}}>
@@ -384,7 +434,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
               value={bioForm.tinggi_badan ? `${bioForm.tinggi_badan} cm` : 'Pilih'}
               onClick={() => {
                 const tinggi = prompt("Masukkan tinggi badan (cm):", bioForm.tinggi_badan?.toString() || "");
-                // Memastikan data disave sebagai Integer sesuai dengan DB schema
                 if (tinggi && !isNaN(Number(tinggi))) {
                   updateField('tinggi_badan', parseInt(tinggi, 10));
                 }
@@ -571,6 +620,7 @@ const imgStyle: React.CSSProperties = {
   width: '100%',
   height: '100%',
   objectFit: 'cover',
+  transition: 'opacity 0.2s ease',
 };
 
 const removeBtnStyle: React.CSSProperties = {
@@ -586,6 +636,20 @@ const removeBtnStyle: React.CSSProperties = {
   alignItems: 'center',
   cursor: 'pointer',
   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+  zIndex: 10,
+};
+
+const loadingOverlayStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '0',
+  left: '0',
+  right: '0',
+  bottom: '0',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'rgba(0,0,0,0.3)',
+  color: '#ffffff',
   zIndex: 10,
 };
 
@@ -624,3 +688,15 @@ const progressFillStyle: React.CSSProperties = {
   backgroundColor: 'var(--primary-bg)',
   borderRadius: '2px',
 };
+
+// Tambahkan keyframes untuk animasi spin secara global jika belum ada di CSS-mu
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+}
