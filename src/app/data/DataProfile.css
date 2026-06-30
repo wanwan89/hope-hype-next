@@ -129,7 +129,7 @@ html.dark .profile-page-container {
     background: var(--modal-overlay); 
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    z-index: 10000; 
+    z-index: 8998; /* ✅ Di bawah Navbar (9000) */
     opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; 
 }
 .p-sidebar-overlay.active { opacity: 1; visibility: visible; }
@@ -137,7 +137,8 @@ html.dark .profile-page-container {
 /* SIDEBAR PANEL */
 .p-sidebar-panel { 
     position: fixed !important; top: 0 !important; bottom: 0 !important; right: 0 !important; left: auto !important; 
-    width: 280px; max-width: 85%; background: var(--bg-main); z-index: 10001; 
+    width: 280px; max-width: 85%; background: var(--bg-main); 
+    z-index: 8999; /* ✅ Di bawah Navbar (9000) agar tertimpa */
     transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
     display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.2); border-left: 1px solid var(--border-color);
 }
@@ -176,7 +177,13 @@ html.dark .profile-page-container {
 .menu-item-tiktok .menu-text { flex: 1; font-size: 15px; font-weight: 600; margin-left: 10px; }
 .menu-item-tiktok .arrow-right { color: var(--text-muted); font-size: 18px; }
 .menu-divider { border: 0; border-top: 1px solid var(--border-color); margin: 10px 16px; }
-.menu-item-tiktok.logout { color: #ff4757; margin-top: auto; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+
+/* ✅ Menambahkan padding bottom extra agar tidak tertutup konten Navbar yang fixed di bawah */
+.menu-item-tiktok.logout { 
+    color: #ff4757; 
+    margin-top: auto; 
+    padding-bottom: calc(85px + env(safe-area-inset-bottom)); 
+}
 .menu-item-tiktok.logout .icon-wrapper, .menu-item-tiktok.logout .menu-text { color: #ff4757 !important; }
 
 /* --- 🔥 MODAL EDIT PROFIL 🔥 --- */
