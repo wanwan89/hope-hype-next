@@ -7,12 +7,24 @@ type Props = {
   onRemoveVideo: () => void;
 };
 
-export default function VideoUploader({ coverPreviewUrl, existingVideoUrl, onVideoSelect, onRemoveVideo }: Props) {
+export default function VideoUploader({
+  coverPreviewUrl,
+  existingVideoUrl,
+  onVideoSelect,
+  onRemoveVideo,
+}: Props) {
   const videoInputRef = useRef<HTMLInputElement>(null);
-  
+
   return (
     <div style={{ marginTop: '20px' }}>
-      <input type="file" ref={videoInputRef} accept="video/*" hidden onChange={onVideoSelect} />
+      <input
+        type="file"
+        ref={videoInputRef}
+        accept="video/*"
+        hidden
+        onChange={onVideoSelect}
+      />
+
       {!coverPreviewUrl ? (
         <div
           className="post-upload-area"
@@ -26,47 +38,50 @@ export default function VideoUploader({ coverPreviewUrl, existingVideoUrl, onVid
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            border: '2px dashed var(--border-card)',
           }}
         >
-          <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-            <span
-              className="material-icons"
-              style={{ fontSize: '50px', marginBottom: '10px', color: 'var(--primary-bg)' }}
+          <div
+            className="post-upload-placeholder"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {/* ✅ Icon Video SVG */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
             >
-              videocam
-            </span>
-            <div className="post-upload-text" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-main)' }}>
-              {existingVideoUrl ? 'Ganti Video Draf' : 'Pilih Video Vertikal'}
-            </div>
-            <div style={{ fontSize: '12px', marginTop: '5px' }}>(Max 50MB)</div>
+              <path
+                fill="currentColor"
+                d="M18 7c0-1.103-.897-2-2-2H4c-1.103 0-2 .897-2 2v10c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-3.333L22 17V7l-4 3.333z"
+              />
+            </svg>
           </div>
         </div>
       ) : (
-        <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000' }}>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            background: '#000',
+          }}
+        >
           <img
             src={coverPreviewUrl}
             alt="Cover Preview"
-            style={{ width: '100%', display: 'block', aspectRatio: '2/3', objectFit: 'cover' }}
-          />
-          <div
             style={{
-              position: 'absolute',
-              top: '15px',
-              left: '15px',
-              background: 'rgba(0,0,0,0.6)',
-              color: 'white',
-              padding: '6px 12px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
+              width: '100%',
+              display: 'block',
+              aspectRatio: '2/3',
+              objectFit: 'cover',
             }}
-          >
-            <span className="material-icons" style={{ fontSize: '16px' }}>play_circle_filled</span> Trimmed (15s)
-          </div>
+          />
           <button
             type="button"
             onClick={onRemoveVideo}
@@ -87,7 +102,9 @@ export default function VideoUploader({ coverPreviewUrl, existingVideoUrl, onVid
               boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
             }}
           >
-            <span className="material-icons" style={{ fontSize: '20px' }}>delete</span>
+            <span className="material-icons" style={{ fontSize: '20px' }}>
+              delete
+            </span>
           </button>
         </div>
       )}

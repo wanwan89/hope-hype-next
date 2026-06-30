@@ -41,36 +41,28 @@ export default function ImageUploader({
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            border: '2px dashed var(--border-card)',
           }}
         >
           <div
             className="post-upload-placeholder"
             style={{
-              textAlign: 'center',
-              color: 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            <span
-              className="material-icons"
-              style={{
-                fontSize: '40px',
-                marginBottom: '10px',
-                color: 'var(--primary-bg)',
-              }}
+            {/* ✅ Icon Foto SVG */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
             >
-              add_photo_alternate
-            </span>
-            <div
-              className="post-upload-text"
-              style={{
-                fontSize: '15px',
-                fontWeight: 600,
-                color: 'var(--text-main)',
-              }}
-            >
-              {existingImageUrl ? 'Ganti Foto Draf' : 'Pilih Foto (Max 3)'}
-            </div>
+              <path
+                fill="currentColor"
+                d="M9 14h10l-3.45-4.5l-2.3 3l-1.55-2zm-1 4q-.825 0-1.412-.587T6 16V4q0-.825.588-1.412T8 2h12q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm0-2h12V4H8zm-4 6q-.825 0-1.412-.587T2 20V6h2v14h14v2z"
+              />
+            </svg>
           </div>
         </div>
       ) : (
@@ -134,7 +126,6 @@ export default function ImageUploader({
               style={{
                 width: '120px',
                 height: '160px',
-                border: '2px dashed var(--border-card)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -142,6 +133,7 @@ export default function ImageUploader({
                 cursor: 'pointer',
                 flexShrink: 0,
                 color: 'var(--text-muted)',
+                background: 'var(--bg-secondary)',
               }}
             >
               <span className="material-icons" style={{ fontSize: '30px' }}>

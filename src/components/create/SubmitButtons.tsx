@@ -15,7 +15,7 @@ export default function SubmitButtons({
     <div
       style={{
         display: 'flex',
-        gap: '10px',
+        gap: '12px',
         marginTop: '30px',
         width: '100%',
       }}
@@ -27,15 +27,16 @@ export default function SubmitButtons({
           onClick={() => onSubmit(true)}
           style={{
             flex: 1,
-            padding: '16px',
+            padding: '16px 0',
             borderRadius: '14px',
-            border: '1px solid var(--border-card)',
-            background: 'var(--bg-secondary)',
+            border: 'none',                         // ✅ hilangkan border
+            background: 'var(--bg-input)',          // ✅ bg senada textarea
             color: 'var(--text-main)',
             fontSize: '15px',
             fontWeight: 700,
             cursor: isSubmitting ? 'not-allowed' : 'pointer',
             transition: '0.2s ease',
+            opacity: isSubmitting ? 0.5 : 1,
           }}
         >
           Simpan Draft
@@ -48,7 +49,7 @@ export default function SubmitButtons({
         disabled={isSubmitting}
         style={{
           flex: destination !== 'story' ? 2 : 1,
-          padding: '16px',
+          padding: '16px 0',
           color: '#fff',
           border: 'none',
           borderRadius: '14px',
