@@ -5,48 +5,98 @@ import Cropper from 'react-easy-crop';
 interface MediaItem {
   id: string;
   originalUrl: string;
-  file: File | Blob | null;
+  file: File | null;
   caption: string;
   croppedAreaPixels: any;
   croppedPreview: string | null;
-  croppedFile: File | null; // Menyimpan file hasil crop asli dalam bentuk File object
+  croppedFile: File | null;
 }
 
-// --- Komponen Utama ---
 export default function ChatModals({
-  pendingImagePreview, setPendingImage, setPendingImagePreview, setImageCaption, imageCaption,
-  handleSendImageFullScreen, isGroupSettingsOpen, setIsGroupSettingsOpen,
-  groupModalTab, inviteSearch, setInviteSearch, handleAddMember, isUpdatingGroup, groupMembers,
-  currentUser, headerInfo, handleGroupPhotoUpload, newGroupName, setNewGroupName, updateGroupInfo,
-  isOwner, kickMember
+  // Props untuk modal gambar (baru)
+  isImageModalOpen,
+  onCloseImageModal,
+  onSendImage,
+  // Props untuk group settings
+  isGroupSettingsOpen,
+  setIsGroupSettingsOpen,
+  groupModalTab,
+  inviteSearch,
+  setInviteSearch,
+  handleAddMember,
+  isUpdatingGroup,
+  groupMembers,
+  currentUser,
+  headerInfo,
+  handleGroupPhotoUpload,
+  newGroupName,
+  setNewGroupName,
+  updateGroupInfo,
+  isOwner,
+  kickMember,
 }: any) {
-
   // State untuk Multi Image
   const [images, setImages] = useState<MediaItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // State untuk fitur Crop
   const [isCropping, setIsCropping] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Masukkan single image dari props lama ke state multi-image
+  // Reset saat modal gambar dibuka
   useEffect(() => {
-    if (pendingImagePreview && images.length === 0) {
-      setImages([{
+    if (isImageModalOpen) {
+      setImages([]);
+      setCurrentIndex(0);
+      setIsCropping(false);
+    }
+  }, [isImageModalOpen]);
+
+  // Buka file picker untuk memilih gambar pertama (dari tombol "Kirim Foto")
+  const handleInitialFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files).slice(0, 10);
+      const newImages = filesArray.map(file => ({
         id: Math.random().toString(36).substring(7),
-        originalUrl: pendingImagePreview,
-        file: null, 
-        caption: imageCaption || '',
+        originalUrl: URL.createObjectURL(file),
+        file,
+        caption: '',
         croppedAreaPixels: null,
         croppedPreview: null,
         croppedFile: null,
-      }]);
+      }));
+      setImages(newImages);
       setCurrentIndex(0);
     }
-  }, [pendingImagePreview]);
+  };
+
+  const handleAddMorePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      const remainingSlots = 10 - images.length;
+      const allowedFiles = filesArray.slice(0, remainingSlots);
+      const newImages = allowedFiles.map(file => ({
+        id: Math.random().toString(36).substring(7),
+        originalUrl: URL.createObjectURL(file),
+        file,
+        caption: '',
+        croppedAreaPixels: null,
+        croppedPreview: null,
+        croppedFile: null,
+      }));
+      setImages(prev => [...prev, ...newImages]);
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    const newImages = images.filter((_, i) => i !== index);
+    setImages(newImages);
+    if (newImages.length === 0) {
+      onCloseImageModal();
+    } else if (currentIndex >= newImages.length) {
+      setCurrentIndex(newImages.length - 1);
+    }
+  };
 
   const onCropComplete = useCallback((_croppedArea: any, croppedPixels: any) => {
     setImages(prev => {
@@ -58,7 +108,6 @@ export default function ChatModals({
     });
   }, [currentIndex]);
 
-  // FUNGSI FIX: Memproses crop langsung di sini & sinkronisasi ke Parent Component
   const handleSaveCrop = async () => {
     const currentImg = images[currentIndex];
     if (currentImg && currentImg.croppedAreaPixels) {
@@ -66,23 +115,15 @@ export default function ChatModals({
         const croppedBlob = await getCroppedImg(currentImg.originalUrl, currentImg.croppedAreaPixels);
         if (croppedBlob) {
           const croppedUrl = URL.createObjectURL(croppedBlob);
-          
-          // Konversi Blob menjadi File agar kompatibel dengan sistem upload backend/parent
           const originalName = (currentImg.file as File)?.name || `image_${Date.now()}.jpg`;
           const croppedFile = new File([croppedBlob], `cropped_${originalName}`, { type: croppedBlob.type || 'image/jpeg' });
 
           setImages(prev => {
             const newImages = [...prev];
             newImages[currentIndex].croppedPreview = croppedUrl;
-            newImages[currentIndex].croppedFile = croppedFile; // Simpan file hasil potong
+            newImages[currentIndex].croppedFile = croppedFile;
             return newImages;
           });
-
-          // SINKRONISASI KRUSIAL: Update state milik parent jika ini gambar pertama/utama
-          if (currentIndex === 0) {
-            if (typeof setPendingImage === 'function') setPendingImage(croppedFile);
-            if (typeof setPendingImagePreview === 'function') setPendingImagePreview(croppedUrl);
-          }
         }
       } catch (error) {
         console.error("Gagal membuat preview crop", error);
@@ -91,186 +132,381 @@ export default function ChatModals({
     setIsCropping(false);
   };
 
-  const handleAddMorePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      const remainingSlots = 10 - images.length;
-      const allowedFiles = filesArray.slice(0, remainingSlots);
-
-      const newImages = allowedFiles.map(file => ({
-        id: Math.random().toString(36).substring(7),
-        originalUrl: URL.createObjectURL(file),
-        file: file,
-        caption: '',
-        croppedAreaPixels: null,
-        croppedPreview: null,
-        croppedFile: null,
-      }));
-
-      setImages(prev => [...prev, ...newImages]);
-    }
-  };
-
-  const handleRemovePhoto = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index);
-    setImages(newImages);
-    if (newImages.length === 0) {
-      handleCloseModal();
-    } else if (currentIndex >= newImages.length) {
-      setCurrentIndex(newImages.length - 1);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setPendingImage(null);
-    setPendingImagePreview(null);
-    setImageCaption('');
-    setImages([]);
-    setIsCropping(false);
-  };
-
-  // FUNGSI FIX: Mengirim instan tanpa perlu re-generate crop async lagi
-  const handleInstantSend = () => {
-    images.forEach((item, idx) => {
-      // Ambil file crop jika ada, jika tidak gunakan file asli, paling akhir string URL-nya
+  const handleInstantSend = async () => {
+    for (const item of images) {
       const fileToSend = item.croppedFile || item.file || item.originalUrl;
-      
-      // Keamanan ganda: pastikan parent state terupdate tepat sebelum dikirim
-      if (idx === 0 && item.croppedFile) {
-        if (typeof setPendingImage === 'function') setPendingImage(item.croppedFile);
-      }
-
-      handleSendImageFullScreen(fileToSend, item.caption);
-    });
-
-    // Reset & Tutup Modal
-    handleCloseModal();
+      await onSendImage(fileToSend, item.caption);
+    }
+    onCloseImageModal();
   };
 
   const currentMedia = images[currentIndex];
 
+  // ---------- RENDER ----------
   return (
     <>
+      {/* ====== MODAL GAMBAR MULTI‑IMAGE + CROP ====== */}
       <AnimatePresence>
-        {images.length > 0 && currentMedia && (
-          <motion.div 
-            initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            style={{ position: 'fixed', inset: 0, background: 'var(--bg-main)', zIndex: 9999999, display: 'flex', flexDirection: 'column' }}
-          >
-            {/* HEADER */}
-            <div style={{ flexShrink: 0, padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000000', zIndex: 10 }}>
-              <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                <span className="material-icons" style={{fontSize: '28px'}}>close</span>
-              </button>
-              
-              <span style={{ color: 'white', fontWeight: 600, fontSize: '16px' }}>
-                {isCropping ? 'Potong Gambar' : `Kirim Foto (${currentIndex + 1}/${images.length})`}
-              </span>
-              
-              {isCropping ? (
-                <button onClick={handleSaveCrop} style={{ background: 'none', border: 'none', color: '#4CAF50', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}>
-                  Selesai
-                </button>
-              ) : (
-                <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setIsCropping(true)}>
-                  <span className="material-icons" style={{fontSize: '24px'}}>crop</span>
-                </button>
-              )}
-            </div>
-
-            {/* AREA GAMBAR / CROPPER */}
-            <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isCropping ? (
-                <Cropper
-                  image={currentMedia.originalUrl}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={1} 
-                  onCropChange={setCrop}
-                  onCropComplete={onCropComplete}
-                  onZoomChange={setZoom}
-                />
-              ) : (
-                <img 
-                  src={currentMedia.croppedPreview || currentMedia.originalUrl} 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-                  alt="preview full" 
-                />
-              )}
-            </div>
-
-            {/* THUMBNAIL CAROUSEL */}
-            {!isCropping && (
-              <div style={{ padding: '10px 16px', background: '#111', display: 'flex', gap: '10px', overflowX: 'auto', alignItems: 'center', borderTop: '1px solid #333' }}>
-                {images.map((img, idx) => (
-                  <div key={img.id} style={{ position: 'relative', flexShrink: 0 }}>
-                     <img 
-                        src={img.croppedPreview || img.originalUrl} 
-                        onClick={() => setCurrentIndex(idx)}
-                        style={{ 
-                          width: '56px', height: '56px', objectFit: 'cover', cursor: 'pointer',
-                          border: currentIndex === idx ? '2px solid var(--primary-blue, #1f3cff)' : '2px solid transparent',
-                          borderRadius: '8px', opacity: currentIndex === idx ? 1 : 0.5, transition: 'all 0.2s'
-                        }} 
-                        alt={`thumb-${idx}`}
-                     />
-                     <button 
-                       onClick={(e) => { e.stopPropagation(); handleRemovePhoto(idx); }}
-                       style={{ position: 'absolute', top: -6, right: -6, background: '#ff4757', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px', zIndex: 5, boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                       ×
-                     </button>
-                  </div>
-                ))}
-                
-                {/* Tombol Tambah Foto */}
-                {images.length < 10 && (
-                  <>
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      style={{ width: '56px', height: '56px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px dashed #777', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span className="material-icons">add</span>
-                    </button>
-                    <input type="file" multiple accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAddMorePhotos} />
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* FOOTER & INPUT CHAT */}
-            <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              <div className="slim-input-wrapper" style={{ flex: 1, background: 'var(--bg-secondary)', borderRadius: '20px' }}>
-                <textarea 
-                  placeholder={images.length > 1 ? `Keterangan untuk foto ke-${currentIndex + 1}...` : "Tambahkan keterangan..."} 
-                  value={currentMedia.caption}
-                  onChange={(e) => {
-                    const newImages = [...images];
-                    newImages[currentIndex].caption = e.target.value;
-                    setImages(newImages);
+        {isImageModalOpen && (
+          <>
+            {/* Jika belum ada gambar, tampilkan file picker dulu */}
+            {images.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 9999999,
+                  background: 'var(--bg-main)',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    background: 'var(--primary-blue)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '14px 32px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
                   }}
-                  rows={1}
-                  style={{ width: '100%', padding: '10px 14px', fontSize: '15px', color: 'var(--text-main)', background: 'transparent', border: 'none', outline: 'none', resize: 'none' }}
-                  disabled={isCropping}
+                >
+                  Pilih Foto
+                </button>
+                <button
+                  onClick={onCloseImageModal}
+                  style={{
+                    marginTop: '20px', background: 'transparent', border: 'none',
+                    color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer',
+                  }}
+                >
+                  Batal
+                </button>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleInitialFileSelect}
                 />
-              </div>
-              
-              <button onClick={handleInstantSend} className="send-btn-round" style={{ background: 'var(--primary-blue)', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-                 <span className="material-icons">send</span>
-              </button>
-            </div>
-          </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: '100%' }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                style={{
+                  position: 'fixed', inset: 0, background: 'var(--bg-main)',
+                  zIndex: 9999999, display: 'flex', flexDirection: 'column',
+                }}
+              >
+                {/* Header */}
+                <div style={{
+                  flexShrink: 0, padding: '20px', paddingTop: 'max(20px, env(safe-area-inset-top))',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: '#000', zIndex: 10,
+                }}>
+                  <button onClick={onCloseImageModal} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+                    <span className="material-icons" style={{ fontSize: '28px' }}>close</span>
+                  </button>
+                  <span style={{ color: 'white', fontWeight: 600, fontSize: '16px' }}>
+                    {isCropping ? 'Potong Gambar' : `Kirim Foto (${currentIndex + 1}/${images.length})`}
+                  </span>
+                  {isCropping ? (
+                    <button onClick={handleSaveCrop} style={{ background: 'none', border: 'none', color: '#4CAF50', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
+                      Selesai
+                    </button>
+                  ) : (
+                    <button onClick={() => setIsCropping(true)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+                      <span className="material-icons" style={{ fontSize: '24px' }}>crop</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Area Gambar / Cropper */}
+                <div style={{
+                  flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden',
+                  background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {isCropping ? (
+                    <Cropper
+                      image={currentMedia.originalUrl}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={1}
+                      onCropChange={setCrop}
+                      onCropComplete={onCropComplete}
+                      onZoomChange={setZoom}
+                    />
+                  ) : (
+                    <img
+                      src={currentMedia.croppedPreview || currentMedia.originalUrl}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      alt="preview"
+                    />
+                  )}
+                </div>
+
+                {/* Thumbnail Carousel */}
+                {!isCropping && (
+                  <div style={{
+                    padding: '10px 16px', background: '#111', display: 'flex', gap: '10px',
+                    overflowX: 'auto', alignItems: 'center', borderTop: '1px solid #333',
+                  }}>
+                    {images.map((img, idx) => (
+                      <div key={img.id} style={{ position: 'relative', flexShrink: 0 }}>
+                        <img
+                          src={img.croppedPreview || img.originalUrl}
+                          onClick={() => setCurrentIndex(idx)}
+                          style={{
+                            width: '56px', height: '56px', objectFit: 'cover', cursor: 'pointer',
+                            border: currentIndex === idx ? '2px solid var(--primary-blue)' : '2px solid transparent',
+                            borderRadius: '8px', opacity: currentIndex === idx ? 1 : 0.5, transition: 'all 0.2s',
+                          }}
+                          alt={`thumb-${idx}`}
+                        />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemovePhoto(idx); }}
+                          style={{
+                            position: 'absolute', top: -6, right: -6, background: '#ff4757', color: 'white',
+                            border: 'none', borderRadius: '50%', width: '22px', height: '22px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', fontSize: '14px', zIndex: 5, boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {images.length < 10 && (
+                      <>
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{
+                            width: '56px', height: '56px', borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px dashed #777',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span className="material-icons">add</span>
+                        </button>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          ref={fileInputRef}
+                          style={{ display: 'none' }}
+                          onChange={handleAddMorePhotos}
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer & Input Caption */}
+                <div style={{
+                  flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
+                  background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)',
+                  display: 'flex', gap: '10px', alignItems: 'flex-end',
+                }}>
+                  <div style={{ flex: 1, background: 'var(--bg-secondary)', borderRadius: '20px' }}>
+                    <textarea
+                      placeholder={images.length > 1 ? `Keterangan untuk foto ke-${currentIndex + 1}...` : "Tambahkan keterangan..."}
+                      value={currentMedia?.caption || ''}
+                      onChange={(e) => {
+                        const newImages = [...images];
+                        newImages[currentIndex].caption = e.target.value;
+                        setImages(newImages);
+                      }}
+                      rows={1}
+                      style={{
+                        width: '100%', padding: '10px 14px', fontSize: '15px',
+                        color: 'var(--text-main)', background: 'transparent',
+                        border: 'none', outline: 'none', resize: 'none',
+                      }}
+                      disabled={isCropping}
+                    />
+                  </div>
+                  <button
+                    onClick={handleInstantSend}
+                    style={{
+                      background: 'var(--primary-blue)', color: 'white', border: 'none',
+                      borderRadius: '50%', width: '45px', height: '45px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', flexShrink: 0,
+                    }}
+                  >
+                    <span className="material-icons">send</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </>
         )}
       </AnimatePresence>
 
+      {/* ====== MODAL GROUP SETTINGS ====== */}
       <AnimatePresence>
         {isGroupSettingsOpen && (
-             <div></div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999998,
+              background: 'rgba(0,0,0,0.6)', display: 'flex',
+              alignItems: 'flex-end', justifyContent: 'center',
+            }}
+            onClick={() => setIsGroupSettingsOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 250 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: '500px', background: 'var(--bg-panel)',
+                borderRadius: '20px 20px 0 0', padding: '20px',
+                maxHeight: '80vh', overflowY: 'auto',
+              }}
+            >
+              {/* Tab sederhana */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                <button
+                  onClick={() => groupModalTab !== 'invite' && setInviteSearch('')}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
+                    background: groupModalTab === 'invite' ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                    color: groupModalTab === 'invite' ? 'white' : 'var(--text-main)',
+                    fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Invite
+                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => {}}
+                    style={{
+                      flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
+                      background: groupModalTab === 'settings' ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                      color: groupModalTab === 'settings' ? 'white' : 'var(--text-main)',
+                      fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Settings
+                  </button>
+                )}
+              </div>
+
+              {/* Konten Tab */}
+              {groupModalTab === 'invite' ? (
+                <div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <input
+                      placeholder="Username atau Short ID"
+                      value={inviteSearch}
+                      onChange={(e) => setInviteSearch(e.target.value)}
+                      style={{
+                        flex: 1, padding: '10px 14px', borderRadius: '10px',
+                        border: '1px solid var(--border-color)', background: 'var(--bg-secondary)',
+                        color: 'var(--text-main)', fontSize: '14px',
+                      }}
+                    />
+                    <button
+                      onClick={handleAddMember}
+                      disabled={isUpdatingGroup}
+                      style={{
+                        padding: '10px 16px', borderRadius: '10px', background: 'var(--primary-blue)',
+                        color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      Tambah
+                    </button>
+                  </div>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {groupMembers.map((member: any) => (
+                      <div key={member.user_id} style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '8px 0', borderBottom: '1px solid var(--border-color)',
+                      }}>
+                        <img
+                          src={member.profiles?.avatar_url || '/asets/png/profile.webp'}
+                          style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }}
+                          alt=""
+                        />
+                        <span style={{ flex: 1, fontSize: '14px', fontWeight: 500 }}>
+                          {member.profiles?.username || 'User'}
+                        </span>
+                        {isOwner && member.user_id !== currentUser?.id && (
+                          <button
+                            onClick={() => kickMember(member.user_id, member.profiles?.username)}
+                            style={{
+                              background: 'transparent', border: '1px solid #ff4757',
+                              color: '#ff4757', borderRadius: '8px', padding: '4px 12px',
+                              cursor: 'pointer', fontSize: '12px',
+                            }}
+                          >
+                            Kick
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                    Nama Grup
+                  </label>
+                  <input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: '10px',
+                      border: '1px solid var(--border-color)', background: 'var(--bg-secondary)',
+                      color: 'var(--text-main)', fontSize: '14px', marginBottom: '12px',
+                    }}
+                  />
+                  <button
+                    onClick={() => updateGroupInfo('name', newGroupName)}
+                    disabled={isUpdatingGroup}
+                    style={{
+                      width: '100%', padding: '10px', borderRadius: '10px',
+                      background: 'var(--primary-blue)', color: 'white', border: 'none',
+                      fontWeight: 600, cursor: 'pointer', marginBottom: '16px',
+                    }}
+                  >
+                    Simpan Nama
+                  </button>
+
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                    Foto Grup
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleGroupPhotoUpload}
+                    style={{ fontSize: '14px', marginBottom: '16px' }}
+                  />
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
   );
 }
 
+// ---------- Utility Crop (tidak berubah) ----------
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -280,12 +516,10 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
-// OPTIMISASI UTILITY: Menggambar langsung ke ukuran target agar performa lebih mulus
 async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-
   if (!ctx) return null;
 
   canvas.width = pixelCrop.width;
@@ -297,8 +531,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob | n
     pixelCrop.y,
     pixelCrop.width,
     pixelCrop.height,
-    0,
-    0,
+    0, 0,
     pixelCrop.width,
     pixelCrop.height
   );

@@ -17,7 +17,6 @@ export const getStatusIcon = (status: string) => {
   return <span className="status-icon sent" style={{color: '#e2e8f0'}}><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>; 
 };
 
-// Menggunakan emoji biasa tanpa SVG untuk reaction
 const renderReactionIcon = (emoji: string, size = 18) => {
   return <span style={{ fontSize: `${size}px`, lineHeight: 1 }}>{emoji}</span>;
 };
@@ -31,25 +30,12 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
-// Fungsi baru untuk merender teks dengan link & mengganti label Foto/VN dengan ikon SVG
 const renderFormattedText = (text: string) => {
   if (!text) return null;
   
-  if (text.trim().match(/^(📸\s*)?Mengirim Foto$/i)) {
-     return (
-       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> 
-         Foto
-       </span>
-     );
-  }
-  if (text.trim().match(/^(🎤\s*)?Voice Note$/i)) {
-     return (
-       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> 
-         Voice Note
-       </span>
-     );
+  // 🔥 FIX 3: jika teks hanya "Mengirim Foto" atau "Voice Note", jangan render apapun
+  if (text.trim().match(/^(📸\s*)?Mengirim Foto$/i) || text.trim().match(/^(🎤\s*)?Voice Note$/i)) {
+    return null; // tidak ada teks/ikon
   }
 
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -112,6 +98,7 @@ export default function MessageBubble({
 
   const isGlobalChat = msg.room_id === 'room-1';
   const isGroupChat = msg.room_id?.startsWith('group_');
+  // 🔥 FIX 11: di global/grup, tampilkan detail user (avatar) tanpa username
   const showUserDetail = (isGlobalChat || isGroupChat) && !isMe;
   const isStoryReply = msg.message && msg.message.includes("Membalas ceritamu");
 
@@ -374,13 +361,13 @@ export default function MessageBubble({
     if (cleanMsg.startsWith(':') || cleanMsg.startsWith('-')) cleanMsg = cleanMsg.substring(1).trim();
   }
 
-  // Membersihkan caption default agar tidak ganda di render main bubble
-  if (cleanMsg.match(/^(📸\s*)?Mengirim Foto$/i)) {
-    cleanMsg = "";
-  }
-
-  const isMediaOnly = ["Stiker", "Voice Note", " Voice Note", "Pesan ini telah dihapus", "📸 Mengirim Foto", " Mengirim Foto"].includes(cleanMsg.trim());
-  const shouldShowText = cleanMsg.length > 0 && !isMediaOnly && !isDeleted;
+  // 🔥 FIX 3: untuk gambar/stiker/audio tanpa teks caption, tidak ada teks
+  const isMediaOnly = (
+    msg.image_url && !msg.message?.trim() || 
+    msg.sticker_url && !msg.message?.trim() || 
+    msg.audio_url
+  );
+  const shouldShowText = cleanMsg.length > 0 && !isDeleted && !isMediaOnly;
 
   const vnBgColor = isMe ? '#ffffff' : 'var(--primary-blue, #1f3cff)';
   const vnIconColor = isMe ? 'var(--primary-blue, #1f3cff)' : '#ffffff';
@@ -526,6 +513,7 @@ export default function MessageBubble({
             ) : (
               <>
                 {showUserDetail && (
+                  // 🔥 FIX 11: hanya avatar, tanpa username
                   <img src={msg.profiles?.avatar_url || "/asets/png/profile.webp"} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginBottom: '2px', border: '1px solid var(--border-color)' }} />
                 )}
                 
@@ -556,13 +544,7 @@ export default function MessageBubble({
                     </div>
                   )}
 
-                  {showUserDetail && (
-                    <div className="chat-username" style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', marginLeft: '2px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: (msg.image_url || msg.sticker_url || msg.shared_post || msg.post_id) && !isDeleted ? '4px' : '0' }}>
-                      {msg.profiles?.username || 'User'} 
-                      <span className="chat-badge" dangerouslySetInnerHTML={{__html: getUserBadge(msg.profiles?.role || 'user')}} style={{ display: 'inline-flex', alignItems: 'center' }}/>
-                    </div>
-                  )}
-                  
+                  {/* 🔥 FIX 11: username dihapus, hanya avatar di atas */}
                   {liveReply && !isDeleted && (
                     <div className="reply-preview-in-chat" onClick={(e) => { e.stopPropagation(); document.getElementById(`msg-${liveReply.id}`)?.scrollIntoView({behavior: 'smooth'})}} 
                       style={{ 
