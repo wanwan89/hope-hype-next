@@ -44,39 +44,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const msgNotifTimerRef = useRef<any>(null);
 
-  // ============ ERUDA DEBUGGER (FIXED) ============
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Gunakan window.location.href untuk kompatibilitas Next.js App Router
-    const isDev = process.env.NODE_ENV === 'development';
-    const hasErudaQuery = window.location.href.includes('eruda=true');
-    
-    // Aktifkan jika mode dev atau jika URL mengandung ?eruda=true
-    const enableEruda = isDev || hasErudaQuery;
-
-    if (enableEruda) {
-      // Mencegah duplikasi script jika komponen mengalami re-render
-      if (document.getElementById('eruda-script')) return;
-
-      const script = document.createElement('script');
-      script.id = 'eruda-script';
-      // Wajib pakai https:// penuh. Kalau pakai //cdn... akan error di Capacitor
-      script.src = 'https://cdn.jsdelivr.net/npm/eruda'; 
-      script.async = true; // Jangan block render
-      script.onload = () => {
-        if ((window as any).eruda) {
-          (window as any).eruda.init();
-          console.log('Eruda Debugger siap digunakan!');
-        }
-      };
-      
-      // WAJIB ditaruh di body, bukan di head
-      document.body.appendChild(script);
-    }
-  }, []);
-  // =====================================
-
   useEffect(() => {
     const hideNativeSplash = async () => {
       try {
@@ -446,6 +413,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`antialiased ${isVoicePage ? 'in-voice-room' : 'in-home-app'} ${isStandaloneApp ? 'fixed-layout' : ''}`}>
+        
+        {/* ======== ERUDA SCRIPT INJECTION ======== */}
+        <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+        <script dangerouslySetInnerHTML={{ __html: `eruda.init();` }}></script>
+        {/* ======================================== */}
+
         <CustomSplash />
         <Providers>
           <I18nextProvider i18n={i18n}>
