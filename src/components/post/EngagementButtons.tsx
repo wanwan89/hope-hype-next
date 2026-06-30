@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 type EngagementButtonsProps = {
   postId: string;
@@ -21,14 +21,22 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // FUNGSI UNTUK MEMBUKA MODAL KOMENTAR (FIXED)
+  // 🔥 Fungsi toggle modal komentar
   const handleOpenComment = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Mencegah klik tembus ke card/belakang
-    
-    // 🔥 FIX 1: Sesuaikan query dengan yang diminta CommentModal (`openComment` & `id`)
-    // 🔥 FIX 2: Tambahkan { scroll: false } agar posisi scroll tidak lompat ke atas/awal!
-    router.push(`${pathname}?openComment=true&id=${postId}`, { scroll: false }); 
+    e.stopPropagation();
+
+    const currentOpenId = searchParams.get('id');
+    const isOpen = searchParams.get('openComment') === 'true';
+
+    // Jika modal komentar sudah terbuka untuk post ini → tutup (hapus query)
+    if (isOpen && currentOpenId === postId) {
+      router.replace(pathname, { scroll: false });
+    } else {
+      // Buka modal untuk post ini
+      router.push(`${pathname}?openComment=true&id=${postId}`, { scroll: false });
+    }
   };
 
   return (

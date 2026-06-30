@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import './Create.css';
 
-// Import sub-komponen modular
 import CreateHeader from '@/components/create/CreateHeader';
 import DestinationSelector from '@/components/create/DestinationSelector';
 import PostTypeSelector from '@/components/create/PostTypeSelector';
@@ -18,15 +17,11 @@ import MusicPicker from '@/components/create/MusicPicker';
 import AdToggle from '@/components/create/AdToggle';
 import SubmitButtons from '@/components/create/SubmitButtons';
 import MusicSheet from '@/components/create/MusicSheet';
-
-// Import MediaEditor yang baru dipisah
 import MediaEditor from '@/components/create/MediaEditor';
 
-// Menggunakan Environment Variable untuk keamanan
-const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
-const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
 
-// Global Theme Switch
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
   <div
     onClick={() => onChange(!checked)}
@@ -42,7 +37,7 @@ function CreatePostContent() {
   const searchParams = useSearchParams();
   const draftId = searchParams?.get('draft_id');
 
-  // ---------- STATE ----------
+  // --- STATE ---
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
   const [destination, setDestination] = useState<'feed' | 'story'>('feed');
   const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
@@ -55,25 +50,27 @@ function CreatePostContent() {
   const [allowComments, setAllowComments] = useState(true);
   const [saveToDevice, setSaveToDevice] = useState(false);
 
+  // Image state
   const [rawImagesQueue, setRawImagesQueue] = useState<string[]>([]);
   const [croppedImages, setCroppedImages] = useState<Blob[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
+  // Video state
   const [rawVideoFile, setRawVideoFile] = useState<File | null>(null);
   const [rawVideoUrl, setRawVideoUrl] = useState<string | null>(null);
   const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoStart, setVideoStart] = useState(0);
-  const [videoEnd, setVideoEnd] = useState(60); 
+  const [videoEnd, setVideoEnd] = useState(60);
   const [coverTime, setCoverTime] = useState(0);
-  const [videoRotation, setVideoRotation] = useState<number>(0); 
-
+  const [videoRotation, setVideoRotation] = useState(0);
   const [coverBlob, setCoverBlob] = useState<Blob | null>(null);
   const [coverPreviewUrl, setCoverUrlPreview] = useState<string | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
+  // Music
   const [searchMusic, setSearchMusic] = useState('');
   const [musicResults, setMusicResults] = useState<any[]>([]);
   const [selectedMusic, setSelectedMusic] = useState<any>(null);
@@ -82,10 +79,12 @@ function CreatePostContent() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Mention/Hashtag
   const [showPopup, setShowPopup] = useState<'none' | 'mention' | 'hashtag'>('none');
   const [searchQuery, setSearchQuery] = useState('');
   const [popupResults, setPopupResults] = useState<any[]>([]);
 
+  // Editor steps
   const [step, setStep] = useState<'pick' | 'edit' | 'post'>('post');
   const [isProcessingEdit, setIsProcessingEdit] = useState(false);
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
@@ -96,10 +95,20 @@ function CreatePostContent() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const captionInputRef = useRef<HTMLTextAreaElement>(null);
-
   const MAX_VIDEO_CLIP = 60;
 
-  // ==================== EFFECTS ====================
+  // --- VALIDASI ENVIRONMENT ---
+  useEffect(() => {
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      showNotif(
+        'Konfigurasi Cloudinary belum lengkap. Upload media tidak akan berfungsi. Isi NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME dan NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET di .env.local',
+        'warning',
+        0 // jangan auto-hide
+      );
+    }
+  }, []);
+
+  // Load draft jika ada
   useEffect(() => {
     if (!draftId) return;
     (async () => {
@@ -125,6 +134,7 @@ function CreatePostContent() {
     })();
   }, [draftId]);
 
+  // Cek role business
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -135,6 +145,7 @@ function CreatePostContent() {
     })();
   }, []);
 
+  // Suggestion mention/hashtag
   useEffect(() => {
     if (showPopup === 'none') return;
     const fetchSuggestions = async () => {
@@ -154,16 +165,15 @@ function CreatePostContent() {
       } else if (showPopup === 'hashtag') {
         let q = searchQuery.toLowerCase().trim();
         if (!q.startsWith('#')) q = '#' + q;
-        try {
-          const { data } = await supabase.from('hashtags').select('tag').ilike('tag', `${q}%`).limit(10);
-          setPopupResults(data || []);
-        } catch (err) { console.error(err); }
+        const { data } = await supabase.from('hashtags').select('tag').ilike('tag', `${q}%`).limit(10);
+        setPopupResults(data || []);
       }
     };
     const t = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(t);
   }, [searchQuery, showPopup]);
 
+  // Music search
   useEffect(() => {
     if (!searchMusic.trim()) { setMusicResults([]); return; }
     const timer = setTimeout(async () => {
@@ -178,7 +188,7 @@ function CreatePostContent() {
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
-  // ==================== HANDLERS ====================
+  // --- HANDLER ---
   const handleClose = () => { audioRef.current?.pause(); router.back(); };
   const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
@@ -216,7 +226,7 @@ function CreatePostContent() {
     captionInputRef.current.focus();
   };
 
-  // ---------- MEDIA: IMAGE TRIMMING ----------
+  // --- IMAGE CROP ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -256,7 +266,7 @@ function CreatePostContent() {
       }
     } catch (e) {
       console.error(e);
-      showNotif("Gagal memproses gambar", "error");
+      showNotif("Gagal memproses gambar. Pastikan area crop valid.", "error");
     } finally {
       setIsProcessingEdit(false);
     }
@@ -279,7 +289,7 @@ function CreatePostContent() {
     setPreviewUrls(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // ---------- MEDIA: VIDEO PROCESSOR ----------
+  // --- VIDEO ---
   const generateVideoThumbnails = async (url: string, dur: number) => {
     const video = document.createElement('video');
     video.src = url; video.muted = true; video.playsInline = true;
@@ -315,6 +325,9 @@ function CreatePostContent() {
       const dur = videoRef.current.duration;
       setVideoDuration(dur);
       setVideoStart(0);
+      // Pastikan videoEnd tidak melebihi durasi
+      const maxClip = Math.min(MAX_VIDEO_CLIP, dur);
+      setVideoEnd(maxClip);
       setCoverTime(0);
       if (rawVideoUrl && !existingVideoUrl) generateVideoThumbnails(rawVideoUrl, dur);
       if (dur > MAX_VIDEO_CLIP) {
@@ -329,21 +342,28 @@ function CreatePostContent() {
     else { videoRef.current.play(); setIsVideoPlaying(true); }
   };
 
-  // DIPERBARUI: Fungsi ambil sampul video dengan rotasi
+  // CAPTURE FRAME + SAVE COVER
   const captureFrameAndSave = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video || !canvas) {
+      showNotif("Editor video belum siap. Silakan tunggu.", "error");
+      return;
+    }
     setIsProcessingEdit(true);
-    
-    video.pause(); setIsVideoPlaying(false);
-    
-    // Tentukan apakah video sedang dirotasi vertikal/horizontal
+    video.pause();
+    setIsVideoPlaying(false);
+
     const isRotated = videoRotation === 90 || videoRotation === 270;
     const vw = isRotated ? video.videoHeight : video.videoWidth;
     const vh = isRotated ? video.videoWidth : video.videoHeight;
-    
-    // 1. Buat kanvas sementara untuk menerapkan rotasi secara utuh
+
+    if (vw === 0 || vh === 0) {
+      showNotif("Video belum termuat. Coba lagi.", "error");
+      setIsProcessingEdit(false);
+      return;
+    }
+
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = vw;
     tempCanvas.height = vh;
@@ -354,20 +374,37 @@ function CreatePostContent() {
       tCtx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
     }
 
-    // 2. Potong (Crop) kanvas sementara yang sudah diputar ke rasio 2:3
     const ratio = 2 / 3;
     let cw: number, ch: number, sx: number, sy: number;
-    if (vw / vh > ratio) { ch = vh; cw = ch * ratio; sx = (vw - cw) / 2; sy = 0; }
-    else { cw = vw; ch = cw / ratio; sx = 0; sy = (vh - ch) / 2; }
-    
-    canvas.width = cw; canvas.height = ch;
-    canvas.getContext('2d')?.drawImage(tempCanvas, sx, sy, cw, ch, 0, 0, cw, ch);
-    
+    if (vw / vh > ratio) {
+      ch = vh;
+      cw = ch * ratio;
+      sx = (vw - cw) / 2;
+      sy = 0;
+    } else {
+      cw = vw;
+      ch = cw / ratio;
+      sx = 0;
+      sy = (vh - ch) / 2;
+    }
+
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      showNotif("Gagal memproses sampul.", "error");
+      setIsProcessingEdit(false);
+      return;
+    }
+    ctx.drawImage(tempCanvas, sx, sy, cw, ch, 0, 0, cw, ch);
+
     canvas.toBlob(blob => {
       if (blob) {
         setCoverBlob(blob);
         setCoverUrlPreview(URL.createObjectURL(blob));
         setStep('post');
+      } else {
+        showNotif("Gagal membuat sampul video.", "error");
       }
       setIsProcessingEdit(false);
     }, 'image/jpeg', 0.9);
@@ -395,7 +432,7 @@ function CreatePostContent() {
     }
   };
 
-  // ---------- UPLOAD & SUBMIT SUBMISSION ----------
+  // --- UPLOAD TO CLOUDINARY ---
   const updateGlobalProgress = (progress: number) => {
     window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: progress }));
     localStorage.setItem('uploadProgress', String(progress));
@@ -403,33 +440,46 @@ function CreatePostContent() {
 
   const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
     return new Promise<any>((resolve, reject) => {
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        reject('Konfigurasi Cloudinary tidak ditemukan. Pastikan NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME dan NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET sudah diatur.');
+        return;
+      }
       const fd = new FormData();
       const name = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
       fd.append("file", file, name);
-      if (!CLOUDINARY_UPLOAD_PRESET) { reject("Missing upload preset configuration"); return; }
       fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       const xhr = new XMLHttpRequest();
-      if (!CLOUDINARY_CLOUD_NAME) { reject("Missing cloud name configuration"); return; }
       xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) updateGlobalProgress(Math.round((e.loaded / e.total) * 50));
       };
       xhr.onload = () => {
         if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
-        else reject(JSON.parse(xhr.responseText));
+        else {
+          try {
+            const err = JSON.parse(xhr.responseText);
+            reject(err.error?.message || 'Gagal upload ke Cloudinary');
+          } catch {
+            reject('Gagal upload ke Cloudinary');
+          }
+        }
       };
-      xhr.onerror = () => reject("Network error");
+      xhr.onerror = () => reject("Jaringan bermasalah. Periksa koneksi internet.");
       xhr.send(fd);
     });
   };
 
+  // --- SUBMIT ---
   const submitPostAction = async (isDraft: boolean = false) => {
+    // Validasi awal
     if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
       return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
     if (postType === 'video' && !rawVideoFile && !existingVideoUrl)
       return showNotif("Pilih video terlebih dahulu!", "warning");
     if (destination === "story" && postType === 'image' && (croppedImages.length > 1 || (existingImageUrl && existingImageUrl.split(',').length > 1)))
       return showNotif("Story hanya bisa upload 1 foto!", "warning");
+    if (postType === 'video' && !coverBlob && !existingVideoUrl)
+      return showNotif("Sampul video belum dibuat. Silakan atur ulang editor.", "warning");
 
     const wordCount = countWords(caption);
     const maxWords = postType === 'text' ? 150 : 100;
@@ -437,6 +487,7 @@ function CreatePostContent() {
       return showNotif(`Caption maksimal ${maxWords} kata!`, "warning");
     }
 
+    // Simpan ke perangkat jika opsi aktif
     if (saveToDevice) {
       if (postType === 'image' && croppedImages.length > 0) {
         croppedImages.forEach((blob, idx) => {
@@ -458,134 +509,141 @@ function CreatePostContent() {
     updateGlobalProgress(0);
     window.dispatchEvent(new CustomEvent('postUploadStart'));
 
-    if (!isDraft) {
-      router.push('/');
-    } else {
-      router.back();
-    }
+    // Arahkan kembali
+    if (!isDraft) router.push('/');
+    else router.back();
 
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.dispatchEvent(new CustomEvent('postUploadError')); return; }
-        const myUserId = session.user.id;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.dispatchEvent(new CustomEvent('postUploadError'));
+        showNotif("Sesi habis, silakan login ulang.", "error");
+        return;
+      }
+      const myUserId = session.user.id;
 
-        const tags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
-        if (tags.length > 0) {
-          for (const tg of tags) await supabase.from('hashtags').upsert({ tag: tg });
+      // Proses hashtag
+      const tags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
+      if (tags.length > 0) {
+        for (const tg of tags) await supabase.from('hashtags').upsert({ tag: tg });
+      }
+
+      let finalImageUrl: string | null = existingImageUrl;
+      let finalVideoUrl: string | null = existingVideoUrl;
+
+      // Upload gambar
+      if (postType === 'image' && croppedImages.length > 0) {
+        const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image')));
+        if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
+          showNotif("Postingan ditolak! Konten sensitif.", "error");
+          window.dispatchEvent(new CustomEvent('postUploadError'));
+          localStorage.removeItem('isUploading');
+          return;
         }
-
-        let finalImageUrl: string | null = existingImageUrl;
-        let finalVideoUrl: string | null = existingVideoUrl;
-
-        if (postType === 'image' && croppedImages.length > 0) {
-          const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image')));
-          if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
-            window.dispatchEvent(new CustomEvent('postUploadError'));
-            localStorage.removeItem('isUploading');
-            showNotif("Postingan ditolak! Konten sensitif.", "error");
-            return;
-          }
-          finalImageUrl = results.map(r => r.secure_url).join(',');
-          updateGlobalProgress(50);
-        } else if (postType === 'video' && rawVideoFile && coverBlob) {
-          const coverRes = await uploadToCloudinary(coverBlob, 'image');
-          if (coverRes.moderation?.[0]?.status === 'rejected') {
-            window.dispatchEvent(new CustomEvent('postUploadError'));
-            localStorage.removeItem('isUploading');
-            showNotif("Video ditolak! Sampul sensitif.", "error");
-            return;
-          }
-          finalImageUrl = coverRes.secure_url;
-
-          // DIPERBARUI: Cloudinary URL generator untuk Rotasi dan Video End
-          const clipEnd = videoEnd || Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
-          const rotParam = videoRotation !== 0 ? `a_${videoRotation},` : '';
-          
-          const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
-          finalVideoUrl = vidRes.secure_url.replace(
-            '/upload/',
-            `/upload/${rotParam}c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
-          );
-          updateGlobalProgress(50);
+        finalImageUrl = results.map(r => r.secure_url).join(',');
+        updateGlobalProgress(50);
+      }
+      // Upload video
+      else if (postType === 'video' && rawVideoFile && coverBlob) {
+        // Upload sampul
+        const coverRes = await uploadToCloudinary(coverBlob, 'image');
+        if (coverRes.moderation?.[0]?.status === 'rejected') {
+          showNotif("Video ditolak! Sampul sensitif.", "error");
+          window.dispatchEvent(new CustomEvent('postUploadError'));
+          localStorage.removeItem('isUploading');
+          return;
         }
+        finalImageUrl = coverRes.secure_url;
 
-        updateGlobalProgress(70);
-        let newPostData = null;
+        // Siapkan durasi potong
+        const clipEnd = videoEnd || Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
+        const rotParam = videoRotation !== 0 ? `a_${videoRotation},` : '';
+        const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
+        finalVideoUrl = vidRes.secure_url.replace(
+          '/upload/',
+          `/upload/${rotParam}c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
+        );
+        updateGlobalProgress(50);
+      }
 
-        if (destination === "story") {
-          const { data } = await supabase.from("stories").insert({
-            creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
-            content: caption.trim(), audio_src: selectedMusic?.previewUrl,
-            title: selectedMusic?.trackName, artist: selectedMusic?.artistName,
-            visibility, is_ad: isBusinessUser ? isAd : false,
-          }).select('*, profiles(*)').single();
+      updateGlobalProgress(70);
+      let newPostData = null;
+
+      // Simpan ke story / feed
+      if (destination === "story") {
+        const { data } = await supabase.from("stories").insert({
+          creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
+          content: caption.trim(), audio_src: selectedMusic?.previewUrl,
+          title: selectedMusic?.trackName, artist: selectedMusic?.artistName,
+          visibility, is_ad: isBusinessUser ? isAd : false,
+        }).select('*, profiles(*)').single();
+        newPostData = data;
+      } else {
+        const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+        const payload = {
+          creator_id: myUserId, name: prof?.username || "User", bio: caption.trim(),
+          category: "Karya", image_url: finalImageUrl, video_url: finalVideoUrl,
+          audio_src: selectedMusic?.previewUrl, title: selectedMusic?.trackName,
+          artist: selectedMusic?.artistName, status: isDraft ? "draft" : "approved",
+          is_ad: isBusinessUser ? isAd : false,
+          comments_disabled: !allowComments,
+        };
+
+        if (draftId) {
+          await supabase.from("posts").update(payload).eq('id', draftId);
+          const { data } = await supabase.from("posts").select('*, profiles(*)').eq('id', draftId).single();
           newPostData = data;
         } else {
-          const { data: prof } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-          const payload = {
-            creator_id: myUserId, name: prof?.username || "User", bio: caption.trim(),
-            category: "Karya", image_url: finalImageUrl, video_url: finalVideoUrl,
-            audio_src: selectedMusic?.previewUrl, title: selectedMusic?.trackName,
-            artist: selectedMusic?.artistName, status: isDraft ? "draft" : "approved",
-            is_ad: isBusinessUser ? isAd : false,
-            comments_disabled: !allowComments,
-          };
-          
-          if (draftId) {
-            await supabase.from("posts").update(payload).eq('id', draftId);
-            const { data } = await supabase.from("posts").select('*, profiles(*)').eq('id', draftId).single();
-            newPostData = data;
-          } else {
-            const { data } = await supabase.from("posts").insert(payload).select('*, profiles(*)').single();
-            newPostData = data;
-          }
+          const { data } = await supabase.from("posts").insert(payload).select('*, profiles(*)').single();
+          newPostData = data;
         }
-
-        updateGlobalProgress(85);
-
-        if (!isDraft && (newPostData?.id || destination === "story")) {
-          const mentions = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
-          if (mentions.length > 0) {
-            const { data: tagged } = await supabase.from('profiles').select('id, username').in('username', mentions);
-            if (tagged) {
-              const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
-              const notifs = tagged.filter(u => u.id !== myUserId).map(u => ({
-                user_id: u.id, actor_id: myUserId, post_id: destination === "feed" ? newPostData.id : null,
-                type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`,
-              }));
-              if (notifs.length) await supabase.from("notifications").insert(notifs);
-            }
-          }
-        }
-
-        updateGlobalProgress(100);
-        window.dispatchEvent(new CustomEvent('postUploadSuccess', { detail: newPostData }));
-        localStorage.removeItem('isUploading');
-        localStorage.removeItem('uploadProgress');
-        showNotif(isDraft ? "Draft tersimpan" : "Postingan berhasil!", "success");
-        audioRef.current?.pause();
-      } catch (err: any) {
-        console.error(err);
-        window.dispatchEvent(new CustomEvent('postUploadError'));
-        localStorage.removeItem('isUploading');
-        localStorage.removeItem('uploadProgress');
-        showNotif("Gagal upload", "error");
       }
-    })();
+
+      updateGlobalProgress(85);
+
+      // Kirim notifikasi mention
+      if (!isDraft && (newPostData?.id || destination === "story")) {
+        const mentions = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
+        if (mentions.length > 0) {
+          const { data: tagged } = await supabase.from('profiles').select('id, username').in('username', mentions);
+          if (tagged) {
+            const { data: myProf } = await supabase.from("profiles").select("username").eq("id", myUserId).single();
+            const notifs = tagged.filter(u => u.id !== myUserId).map(u => ({
+              user_id: u.id, actor_id: myUserId, post_id: destination === "feed" ? newPostData.id : null,
+              type: "mention", message: `${myProf?.username} menyebut Anda dalam ${destination === "story" ? "cerita" : "postingan"} barunya.`,
+            }));
+            if (notifs.length) await supabase.from("notifications").insert(notifs);
+          }
+        }
+      }
+
+      updateGlobalProgress(100);
+      window.dispatchEvent(new CustomEvent('postUploadSuccess', { detail: newPostData }));
+      localStorage.removeItem('isUploading');
+      localStorage.removeItem('uploadProgress');
+      showNotif(isDraft ? "Draft tersimpan" : "Postingan berhasil!", "success");
+      audioRef.current?.pause();
+    } catch (err: any) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent('postUploadError'));
+      localStorage.removeItem('isUploading');
+      localStorage.removeItem('uploadProgress');
+      const msg = typeof err === 'string' ? err : err?.message || 'Gagal upload';
+      showNotif(msg, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
+  // ==================== RENDER ====================
   return (
     <div className="create-page-wrapper">
       {step === 'edit' && (
         <MediaEditor 
-          // Props Utama
           postType={postType}
           croppedImagesCount={croppedImages.length}
           rawImagesCount={rawImagesQueue.length}
           isProcessingEdit={isProcessingEdit}
-          
-          // Image Tools
           imageForCrop={imageForCrop}
           crop={crop}
           zoom={zoom}
@@ -594,8 +652,6 @@ function CreatePostContent() {
           onCropComplete={onCropComplete}
           handleSaveCrop={handleSaveCrop}
           handleCancelCrop={handleCancelCrop}
-          
-          // Video Tools (DIPERBARUI)
           rawVideoUrl={rawVideoUrl}
           isVideoPlaying={isVideoPlaying}
           videoDuration={videoDuration}
@@ -605,15 +661,12 @@ function CreatePostContent() {
           videoRotation={videoRotation}
           videoThumbnails={videoThumbnails}
           MAX_VIDEO_CLIP={MAX_VIDEO_CLIP}
-          
           videoRef={videoRef}
           canvasRef={canvasRef}
-          
           setVideoStart={setVideoStart}
           setVideoEnd={setVideoEnd}
           setCoverTime={setCoverTime}
           setVideoRotation={setVideoRotation}
-          
           handleRemoveVideo={handleRemoveVideo}
           captureFrameAndSave={captureFrameAndSave}
           handleVideoLoadedMetadata={handleVideoLoadedMetadata}

@@ -24,7 +24,7 @@ interface MediaEditorProps {
   isVideoPlaying: boolean;
   videoDuration: number;
   videoStart: number;
-  videoEnd?: number;
+  videoEnd?: number;            // sekarang optional, default dihitung dari MAX_VIDEO_CLIP
   coverTime: number;
   videoRotation?: number;
   videoThumbnails: string[];
@@ -58,7 +58,7 @@ export default function MediaEditor({
   isVideoPlaying,
   videoDuration,
   videoStart,
-  videoEnd = MAX_VIDEO_CLIP, 
+  videoEnd,          // optional, bisa undefined
   coverTime,
   videoRotation = 0,
   videoThumbnails,
@@ -83,14 +83,14 @@ export default function MediaEditor({
 }: MediaEditorProps) {
   
   const [activeTab, setActiveTab] = useState<'trim' | 'cover' | 'format'>('trim');
+
+  // Hitung akhir klip yang efektif (perbaikan bug default parameter)
+  const effectiveEnd = videoEnd ?? videoStart + MAX_VIDEO_CLIP;
   const isRotated = videoRotation === 90 || videoRotation === 270;
 
   return (
     <>
-      {/* INJECT CSS GLOBAL (Khusus Komponen Ini): 
-        - Mengatasi Material Icons yang tidak muncul
-        - Mengatasi tampilan input range (slider) yang berantakan 
-      */}
+      {/* INJECT CSS GLOBAL (Khusus Komponen Ini) */}
       <style>{`
         @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
@@ -183,9 +183,8 @@ export default function MediaEditor({
           backgroundColor: '#09090b', overflow: 'hidden'
         }}>
           
-          {/* KONDISI: JIKA FOTO */}
+          {/* JIKA FOTO */}
           {postType === 'image' && imageForCrop ? (
-            /* FIX FOTO BLANK: Container wajib punya position absolute dan width/height 100% */
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
               <Cropper 
                 image={imageForCrop} 
@@ -199,9 +198,20 @@ export default function MediaEditor({
             </div>
           ) : 
           
-          /* KONDISI: JIKA VIDEO */
+          /* JIKA VIDEO */
           postType === 'video' && rawVideoUrl ? (
-            <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              /* Container dengan aspek 2:3 (sesuai feed video) */
+              width: '100%',
+              maxWidth: '100%',
+              aspectRatio: '2 / 3',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#000',
+              overflow: 'hidden'
+            }}>
               <video 
                 ref={videoRef} 
                 src={rawVideoUrl} 
@@ -210,9 +220,10 @@ export default function MediaEditor({
                 loop 
                 onLoadedMetadata={handleVideoLoadedMetadata}
                 style={{ 
-                  maxWidth: '100%', maxHeight: '100%', objectFit: 'contain',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',      /* tampilan persis seperti feed */
                   transform: `rotate(${videoRotation}deg)`,
-                  scale: isRotated ? '0.8' : '1',
                   transition: 'transform 0.3s ease'
                 }}
               />
@@ -269,7 +280,7 @@ export default function MediaEditor({
                   <div className="animate-fade-in">
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>
                       <span>Geser untuk memotong</span>
-                      <span style={{ color: '#fff' }}>Durasi: {Math.min(videoDuration, videoEnd - videoStart).toFixed(1)}s</span>
+                      <span style={{ color: '#fff' }}>Durasi: {Math.min(videoDuration, effectiveEnd - videoStart).toFixed(1)}s</span>
                     </div>
                     
                     <div style={{ 

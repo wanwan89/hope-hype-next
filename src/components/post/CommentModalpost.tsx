@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation'; 
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils'; 
+import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils';
 import { useTranslation } from 'react-i18next';
 import { getOptimizedImage, containsBadWords, formatTimeAgo } from '@/lib/comment-utils';
 
@@ -16,112 +16,94 @@ import './CommentModal.css';
 
 function CommentModalContent() {
   const { t } = useTranslation();
-  const searchParams = useSearchParams(); 
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
+  // --- STATE ---
   const [isActive, setIsActive] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
-  
+
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set()); 
+  const [dislikedComments, setDislikedComments] = useState<Set<string>>(new Set());
   const [commentLikesCount, setCommentLikesCount] = useState<Record<string, number>>({});
-  
+
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
   const [currentCreatorId, setCurrentCreatorId] = useState<string | null>(null);
-  const [isCommentsDisabled, setIsCommentsDisabled] = useState(false); 
-  
+  const [isCommentsDisabled, setIsCommentsDisabled] = useState(false);
+
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyToUsername, setReplyToUsername] = useState<string | null>(null);
-  const [replyToUserId, setReplyToUserId] = useState<string | null>(null); 
-  
-  const [inputValue, setInputValue] = useState("");
+  const [replyToUserId, setReplyToUserId] = useState<string | null>(null);
+
+  const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
 
   const [showMentions, setShowMentions] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionQuery, setMentionQuery] = useState('');
   const [mentionResults, setMentionResults] = useState<any[]>([]);
-  
+
   const [actionSheetComment, setActionSheetComment] = useState<any>(null);
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const currentPostIdRef = useRef<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null); 
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'comment' | 'likes_all' | 'likes_friends'>('comment');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  
+
   const [postLikers, setPostLikers] = useState<any[]>([]);
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [isLoadingLikers, setIsLoadingLikers] = useState(false);
 
   const [showStickers, setShowStickers] = useState(false);
   const [stickers, setStickers] = useState<any[]>([]);
-  const [stickerQuery, setStickerQuery] = useState("");
+  const [stickerQuery, setStickerQuery] = useState('');
 
+  // ==================== SINKRONISASI URL ====================
   useEffect(() => {
     const openComment = searchParams?.get('openComment');
     const postId = searchParams?.get('id');
 
     if (openComment === 'true' && postId) {
+      // Buka modal
       setCurrentPostId(postId);
-      setCurrentCreatorId(null); 
       setIsActive(true);
       setActiveTab('comment');
-      document.body.style.overflow = "hidden";
-      loadComments(postId); 
+      document.body.style.overflow = 'hidden';
+      
+      // Ambil creator_id
+      (async () => {
+        const { data } = await supabase.from('posts').select('creator_id').eq('id', postId).single();
+        if (data) setCurrentCreatorId(data.creator_id);
+      })();
+      
+      // Ambil user id
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) setMyUserId(session.user.id);
+      });
+      
+      loadComments(postId);
+      checkPostSettings(postId);
+    } else {
+      // Tidak ada param -> tutup modal (tanpa mengubah URL untuk menghindari loop)
+      closeModal(false);
     }
   }, [searchParams]);
 
-  useEffect(() => { currentPostIdRef.current = currentPostId; }, [currentPostId]);
-
-  useEffect(() => {
-    const handleBodyClick = async (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const btn = target.closest(".comment-toggle") as HTMLElement;
-      
-      if (btn) {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session || !session.user) {
-          requireLogin(null);
-          return;
-        }
-
-        const userId = session.user.id;
-        setMyUserId(userId);
-
-        const postId = btn.dataset.post || null;
-        const creatorId = btn.dataset.creator || null;
-        
-        setCurrentPostId(postId);
-        setCurrentCreatorId(creatorId);
-        setIsActive(true);
-        setActiveTab('comment'); 
-        document.body.style.overflow = "hidden";
-        
-        if (postId) {
-          loadComments(postId, userId);
-          checkPostSettings(postId); 
-          if (creatorId === userId) {
-            checkMutuals(userId);
-          }
-        }
-      }
-    };
-    document.body.addEventListener("click", handleBodyClick);
-    return () => document.body.removeEventListener("click", handleBodyClick);
-  }, []);
+  // ==================== HILANGKAN LISTENER BODY CLICK LAMA ====================
+  // (Tidak ada useEffect untuk click .comment-toggle lagi)
 
   const checkPostSettings = async (postId: string) => {
     try {
       const { data } = await supabase.from('posts').select('comments_disabled').eq('id', postId).single();
       setIsCommentsDisabled(!!data?.comments_disabled);
     } catch (err) {
-      console.error("Gagal cek status komentar", err);
+      console.error('Gagal cek status komentar', err);
     }
   };
 
@@ -129,7 +111,7 @@ function CommentModalContent() {
     try {
       const [followsRes, followersRes] = await Promise.all([
         supabase.from('followers').select('following_id').eq('follower_id', userId),
-        supabase.from('followers').select('follower_id').eq('following_id', userId)
+        supabase.from('followers').select('follower_id').eq('following_id', userId),
       ]);
       if (followsRes.data && followersRes.data) {
         const followingSet = new Set(followsRes.data.map(f => String(f.following_id)));
@@ -137,8 +119,16 @@ function CommentModalContent() {
         const mutuals = new Set([...followingSet].filter(x => followerSet.has(x)));
         setMutualUsers(mutuals);
       }
-    } catch (err) { console.error("Error cek mutuals", err); }
+    } catch (err) {
+      console.error('Error cek mutuals', err);
+    }
   };
+
+  useEffect(() => {
+    if (myUserId && currentCreatorId && currentCreatorId === myUserId) {
+      checkMutuals(myUserId);
+    }
+  }, [myUserId, currentCreatorId]);
 
   const loadLikers = async () => {
     if (!currentPostId) return;
@@ -149,9 +139,11 @@ function CommentModalContent() {
         .select('user_id, created_at, profiles(id, username, full_name, avatar_url, role)')
         .eq('post_id', currentPostId)
         .order('created_at', { ascending: false });
-        
+
       setPostLikers(data || []);
-    } catch (err) { console.error("Error load likers", err); }
+    } catch (err) {
+      console.error('Error load likers', err);
+    }
     setIsLoadingLikers(false);
   };
 
@@ -159,8 +151,70 @@ function CommentModalContent() {
     if ((activeTab === 'likes_all' || activeTab === 'likes_friends') && currentPostId && postLikers.length === 0) {
       loadLikers();
     }
-  }, [activeTab]);
+  }, [activeTab, currentPostId]);
 
+  // ==================== CLOSE MODAL (MEMBERSIHKAN URL) ====================
+  const closeModal = (updateUrl = true) => {
+    setIsActive(false);
+    document.body.style.overflow = '';
+    setReplyToId(null);
+    setReplyToUsername(null);
+    setReplyToUserId(null);
+    setInputValue('');
+    setShowMentions(false);
+    setShowStickers(false);
+    setStickerQuery('');
+    setIsActionSheetOpen(false);
+    setPostLikers([]);
+
+    if (updateUrl) {
+      // Hapus query param agar tidak terbuka saat refresh
+      router.replace(pathname, { scroll: false });
+    }
+  };
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) closeModal(true);
+  };
+
+  // ==================== LOAD COMMENTS ====================
+  const loadComments = async (postId: string, userId?: string) => {
+    setIsLoading(true);
+    const { data: commsData } = await supabase
+      .from('comments')
+      .select('id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+
+    if (commsData && commsData.length > 0) {
+      const commentIds = commsData.map(c => c.id);
+      const { data: allLikesData } = await supabase.from('comment_likes').select('comment_id').in('comment_id', commentIds);
+
+      const newCounts: Record<string, number> = {};
+      commentIds.forEach(id => (newCounts[String(id)] = 0));
+      allLikesData?.forEach(like => {
+        newCounts[String(like.comment_id)] += 1;
+      });
+      setCommentLikesCount(newCounts);
+      setComments(commsData);
+
+      if (userId) {
+        const { data: myLikes } = await supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', userId)
+          .in('comment_id', commentIds);
+        const likedSet = new Set<string>();
+        myLikes?.forEach(l => likedSet.add(String(l.comment_id)));
+        setLikedComments(likedSet);
+      }
+    } else {
+      setComments([]);
+    }
+    setIsLoading(false);
+  };
+
+  // ==================== GIFT HANDLER ====================
   useEffect(() => {
     const handleInsertGift = async (e: any) => {
       const { postId, giftName, creatorId } = e.detail;
@@ -171,46 +225,56 @@ function CommentModalContent() {
         if (!session) return;
 
         const content = `GIFT||${giftName}`;
-
-        await supabase.from("comments").insert({
+        await supabase.from('comments').insert({
           post_id: parseInt(postId),
           user_id: session.user.id,
           content: content,
           parent_id: null,
-          reply_to_username: null
+          reply_to_username: null,
         });
 
         if (creatorId !== session.user.id && creatorId) {
-          const { data: prof } = await supabase.from("profiles").select("username").eq("id", session.user.id).single();
-          await supabase.from("notifications").insert({
+          const { data: prof } = await supabase.from('profiles').select('username').eq('id', session.user.id).single();
+          await supabase.from('notifications').insert({
             user_id: creatorId,
             actor_id: session.user.id,
             post_id: parseInt(postId),
-            type: "gift",
-            message: t('notif_gave_gift', { username: prof?.username, giftName: giftName })
+            type: 'gift',
+            message: t('notif_gave_gift', { username: prof?.username, giftName: giftName }),
           });
         }
 
-        if (currentPostIdRef.current === String(postId)) loadComments(String(postId), session.user.id);
+        // Refresh jika modal sedang terbuka untuk post ini
+        if (currentPostId === String(postId)) {
+          loadComments(String(postId), session.user.id);
+        }
 
-        const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", postId);
+        // Update count badge
+        const { count } = await supabase
+          .from('comments')
+          .select('id', { count: 'exact', head: true })
+          .eq('post_id', postId);
         const countBadge = document.querySelector(`.comment-toggle[data-post="${postId}"] .comment-count`);
         if (countBadge) countBadge.textContent = String(count || 0);
-
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error(err);
+      }
     };
-    window.addEventListener("insertGiftComment", handleInsertGift);
-    return () => window.removeEventListener("insertGiftComment", handleInsertGift);
-  }, [t]);
+    window.addEventListener('insertGiftComment', handleInsertGift);
+    return () => window.removeEventListener('insertGiftComment', handleInsertGift);
+  }, [t, currentPostId]);
 
-  const fetchStickers = async (q="") => {
+  // ==================== STICKERS ====================
+  const fetchStickers = async (q = '') => {
     try {
       const apiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
-      const res = await fetch(`https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=${apiKey}&limit=20&rating=g${q ? `&q=${q}` : ''}`);
-      const d = await res.json(); 
+      const res = await fetch(
+        `https://api.giphy.com/v1/stickers/${q ? 'search' : 'trending'}?api_key=${apiKey}&limit=20&rating=g${q ? `&q=${q}` : ''}`
+      );
+      const d = await res.json();
       setStickers(d.data || []);
     } catch (error) {
-      console.error("Gagal memuat stiker", error);
+      console.error('Gagal memuat stiker', error);
     }
   };
 
@@ -222,59 +286,7 @@ function CommentModalContent() {
     return () => clearTimeout(delayDebounceFn);
   }, [stickerQuery, showStickers]);
 
-  const loadComments = async (postId: string, userId?: string) => {
-    setIsLoading(true);
-    const { data: commsData } = await supabase.from("comments")
-      .select("id, content, created_at, user_id, parent_id, reply_to_username, profiles(id, username, avatar_url, role)")
-      .eq("post_id", postId)
-      .order("created_at", { ascending: true });
-
-    if (commsData && commsData.length > 0) {
-      const commentIds = commsData.map(c => c.id);
-      const { data: allLikesData } = await supabase.from("comment_likes").select("comment_id").in("comment_id", commentIds);
-      
-      const newCounts: Record<string, number> = {};
-      commentIds.forEach(id => newCounts[String(id)] = 0);
-      allLikesData?.forEach(like => { newCounts[String(like.comment_id)] += 1; });
-      setCommentLikesCount(newCounts);
-
-      setComments(commsData); 
-
-      if (userId) {
-        const { data: myLikes } = await supabase.from("comment_likes").select("comment_id").eq("user_id", userId).in("comment_id", commentIds);
-        const likedSet = new Set<string>();
-        myLikes?.forEach(l => likedSet.add(String(l.comment_id)));
-        setLikedComments(likedSet);
-      }
-    } else {
-      setComments([]);
-    }
-    setIsLoading(false);
-  };
-
-  const closeModal = () => {
-    setIsActive(false);
-    document.body.style.overflow = "";
-    setReplyToId(null);
-    setReplyToUsername(null);
-    setReplyToUserId(null);
-    setInputValue("");
-    setShowMentions(false);
-    setShowStickers(false);
-    setStickerQuery("");
-    setIsActionSheetOpen(false);
-    setPostLikers([]);
-  };
-
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) closeModal();
-  };
-
-  const handleGiftClick = () => {
-    if (!currentCreatorId) return;
-    window.dispatchEvent(new CustomEvent('openGift', { detail: { creatorId: currentCreatorId, postId: currentPostId } }));
-  };
-
+  // ==================== INPUT HANDLING ====================
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
@@ -301,14 +313,18 @@ function CommentModalContent() {
 
       const { data: following } = await supabase.from('followers').select('following_id').eq('follower_id', myId);
       const { data: followers } = await supabase.from('followers').select('follower_id').eq('following_id', myId);
-      
+
       const connectedIds = new Set([
-          ...(following?.map(f => f.following_id) || []),
-          ...(followers?.map(f => f.follower_id) || [])
+        ...(following?.map(f => f.following_id) || []),
+        ...(followers?.map(f => f.follower_id) || []),
       ]);
 
       if (connectedIds.size > 0) {
-        let query = supabase.from('profiles').select('id, username, avatar_url, role').in('id', Array.from(connectedIds)).limit(10);
+        let query = supabase
+          .from('profiles')
+          .select('id, username, avatar_url, role')
+          .in('id', Array.from(connectedIds))
+          .limit(10);
         if (mentionQuery) query = query.ilike('username', `%${mentionQuery}%`);
 
         const { data: profiles } = await query;
@@ -328,95 +344,22 @@ function CommentModalContent() {
     const textBeforeCursor = inputValue.slice(0, cursor);
     const textAfterCursor = inputValue.slice(cursor);
     const newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${username} `);
-    
+
     setInputValue(newTextBefore + textAfterCursor);
     setShowMentions(false);
     inputRef.current.focus();
   };
 
-  const handleSendSticker = async (stickerUrl: string) => {
-    if (!currentPostId || isCommentsDisabled || isSubmitting) return;
-    
-    setIsSubmitting(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      
-      const userId = session.user.id;
-      const pid = parseInt(currentPostId);
-      const parentId = replyToId;
-      const targetUser = replyToUsername;
-      const targetUserId = replyToUserId;
-      
-      let finalCaption = inputValue.trim();
-
-      if (containsBadWords(finalCaption)) {
-        showNotif("Komentar ditolak! Mengandung bahasa yang tidak pantas.", "error");
-        setIsSubmitting(false);
-        return; 
-      }
-
-      if (targetUser && finalCaption.startsWith(`@${targetUser}`)) {
-        finalCaption = finalCaption.replace(`@${targetUser}`, '').trim();
-      }
-
-      const content = `STICKER||${stickerUrl}||${finalCaption}`;
-
-      const { data: newComment, error } = await supabase.from("comments").insert({
-        post_id: pid,
-        user_id: userId,
-        content: content, 
-        parent_id: parentId ? parseInt(parentId) : null,
-        reply_to_username: targetUser || null
-      }).select('*, profiles(id, username, avatar_url, role)').single();
-
-      if (error) throw error;
-      
-      const { data: myProf } = await supabase.from("profiles").select("username").eq("id", userId).single();
-
-      if (targetUserId && targetUserId !== userId) {
-        await supabase.from("notifications").insert({
-          user_id: targetUserId, actor_id: userId, post_id: pid, type: "reply",
-          message: `${myProf?.username} membalas dengan stiker.`
-        });
-      }
-
-      if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
-        await supabase.from("notifications").insert({
-          user_id: currentCreatorId, actor_id: userId, post_id: pid, type: "comment",
-          message: `${myProf?.username} mengomentari postingan Anda dengan stiker.`
-        });
-      }
-
-      if (newComment) {
-        setComments(prev => [newComment, ...prev]);
-        setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
-      }
-
-      setReplyToId(null);
-      setReplyToUsername(null);
-      setReplyToUserId(null);
-      setShowStickers(false);
-      setStickerQuery("");
-      setInputValue(""); 
-      
-    } catch (err) {
-      showNotif(t('comment_error'), "error"); 
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  // ==================== KIRIM KOMENTAR ====================
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputValue.trim() && !isSubmitting && !showMentions) {
+    if (e.key === 'Enter' && inputValue.trim() && !isSubmitting && !showMentions) {
       e.preventDefault();
-      if (!currentPostId || isCommentsDisabled) return; 
+      if (!currentPostId || isCommentsDisabled) return;
 
       let finalContent = inputValue.trim();
-
       if (containsBadWords(finalContent)) {
-        showNotif("Komentar ditolak! Mengandung bahasa yang tidak pantas.", "error");
-        return; 
+        showNotif('Komentar ditolak! Mengandung bahasa yang tidak pantas.', 'error');
+        return;
       }
 
       const parentId = replyToId;
@@ -430,36 +373,45 @@ function CommentModalContent() {
       if (!finalContent) return;
 
       setIsSubmitting(true);
-
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
         const userId = session.user.id;
         const pid = parseInt(currentPostId);
-        
-        const { data: newComment, error } = await supabase.from("comments").insert({
-          post_id: pid,
-          user_id: userId,
-          content: finalContent, 
-          parent_id: parentId ? parseInt(parentId) : null,
-          reply_to_username: targetUser || null
-        }).select('*, profiles(id, username, avatar_url, role)').single();
+
+        const { data: newComment, error } = await supabase
+          .from('comments')
+          .insert({
+            post_id: pid,
+            user_id: userId,
+            content: finalContent,
+            parent_id: parentId ? parseInt(parentId) : null,
+            reply_to_username: targetUser || null,
+          })
+          .select('*, profiles(id, username, avatar_url, role)')
+          .single();
 
         if (error) throw error;
-        
-        const { data: myProf } = await supabase.from("profiles").select("username").eq("id", userId).single();
+
+        const { data: myProf } = await supabase.from('profiles').select('username').eq('id', userId).single();
 
         if (targetUserId && targetUserId !== userId) {
-          await supabase.from("notifications").insert({
-            user_id: targetUserId, actor_id: userId, post_id: pid, type: "reply",
-            message: `${myProf?.username} membalas komentar Anda.`
+          await supabase.from('notifications').insert({
+            user_id: targetUserId,
+            actor_id: userId,
+            post_id: pid,
+            type: 'reply',
+            message: `${myProf?.username} membalas komentar Anda.`,
           });
         }
 
         if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
-          await supabase.from("notifications").insert({
-            user_id: currentCreatorId, actor_id: userId, post_id: pid, type: "comment",
-            message: t('notif_commented', { username: myProf?.username })
+          await supabase.from('notifications').insert({
+            user_id: currentCreatorId,
+            actor_id: userId,
+            post_id: pid,
+            type: 'comment',
+            message: t('notif_commented', { username: myProf?.username }),
           });
         }
 
@@ -471,20 +423,102 @@ function CommentModalContent() {
         setReplyToId(null);
         setReplyToUsername(null);
         setReplyToUserId(null);
-        setInputValue("");
-        
+        setInputValue('');
       } catch (err) {
-        showNotif(t('comment_error'), "error"); 
+        showNotif(t('comment_error'), 'error');
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
+  // ==================== KIRIM STICKER ====================
+  const handleSendSticker = async (stickerUrl: string) => {
+    if (!currentPostId || isCommentsDisabled || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const userId = session.user.id;
+      const pid = parseInt(currentPostId);
+      const parentId = replyToId;
+      const targetUser = replyToUsername;
+      const targetUserId = replyToUserId;
+
+      let finalCaption = inputValue.trim();
+      if (containsBadWords(finalCaption)) {
+        showNotif('Komentar ditolak! Mengandung bahasa yang tidak pantas.', 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (targetUser && finalCaption.startsWith(`@${targetUser}`)) {
+        finalCaption = finalCaption.replace(`@${targetUser}`, '').trim();
+      }
+
+      const content = `STICKER||${stickerUrl}||${finalCaption}`;
+
+      const { data: newComment, error } = await supabase
+        .from('comments')
+        .insert({
+          post_id: pid,
+          user_id: userId,
+          content: content,
+          parent_id: parentId ? parseInt(parentId) : null,
+          reply_to_username: targetUser || null,
+        })
+        .select('*, profiles(id, username, avatar_url, role)')
+        .single();
+
+      if (error) throw error;
+
+      const { data: myProf } = await supabase.from('profiles').select('username').eq('id', userId).single();
+
+      if (targetUserId && targetUserId !== userId) {
+        await supabase.from('notifications').insert({
+          user_id: targetUserId,
+          actor_id: userId,
+          post_id: pid,
+          type: 'reply',
+          message: `${myProf?.username} membalas dengan stiker.`,
+        });
+      }
+
+      if (currentCreatorId && currentCreatorId !== userId && currentCreatorId !== targetUserId && !parentId) {
+        await supabase.from('notifications').insert({
+          user_id: currentCreatorId,
+          actor_id: userId,
+          post_id: pid,
+          type: 'comment',
+          message: `${myProf?.username} mengomentari postingan Anda dengan stiker.`,
+        });
+      }
+
+      if (newComment) {
+        setComments(prev => [newComment, ...prev]);
+        setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
+      }
+
+      setReplyToId(null);
+      setReplyToUsername(null);
+      setReplyToUserId(null);
+      setShowStickers(false);
+      setStickerQuery('');
+      setInputValue('');
+    } catch (err) {
+      showNotif(t('comment_error'), 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==================== LIKE / DISLIKE ====================
   const handleLikeComment = async (commentIdStr: string) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!requireLogin(session?.user)) return;
-    
+
     const isLiked = likedComments.has(commentIdStr);
     const commentId = parseInt(commentIdStr);
 
@@ -504,16 +538,18 @@ function CommentModalContent() {
 
     setCommentLikesCount(prev => ({
       ...prev,
-      [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) + (isLiked ? -1 : 1))
+      [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) + (isLiked ? -1 : 1)),
     }));
 
     try {
       if (isLiked) {
-        await supabase.from("comment_likes").delete().match({ comment_id: commentId, user_id: session!.user.id });
+        await supabase.from('comment_likes').delete().match({ comment_id: commentId, user_id: session!.user.id });
       } else {
-        await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: session!.user.id });
+        await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: session!.user.id });
       }
-    } catch (err) { console.error("Like error", err); }
+    } catch (err) {
+      console.error('Like error', err);
+    }
   };
 
   const handleDislikeComment = async (commentIdStr: string) => {
@@ -530,9 +566,13 @@ function CommentModalContent() {
       });
       setCommentLikesCount(prev => ({
         ...prev,
-        [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) - 1)
+        [commentIdStr]: Math.max(0, (prev[commentIdStr] || 0) - 1),
       }));
-      supabase.from("comment_likes").delete().match({ comment_id: parseInt(commentIdStr), user_id: session!.user.id }).then();
+      supabase
+        .from('comment_likes')
+        .delete()
+        .match({ comment_id: parseInt(commentIdStr), user_id: session!.user.id })
+        .then();
     }
 
     setDislikedComments(prev => {
@@ -542,13 +582,14 @@ function CommentModalContent() {
     });
   };
 
+  // ==================== ACTION SHEET ====================
   const handleTouchStart = (comment: any) => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = setTimeout(() => {
       if (navigator.vibrate) navigator.vibrate(50);
       setActionSheetComment(comment);
       setIsActionSheetOpen(true);
-    }, 450); 
+    }, 450);
   };
 
   const handleTouchEnd = () => {
@@ -562,23 +603,27 @@ function CommentModalContent() {
     setComments(prev => prev.filter(c => c.id !== actionSheetComment.id && c.parent_id !== actionSheetComment.id));
 
     try {
-      const { error } = await supabase.from("comments").delete().eq("id", actionSheetComment.id);
+      const { error } = await supabase.from('comments').delete().eq('id', actionSheetComment.id);
       if (error) throw error;
-      showNotif("Komentar dihapus", "success");
-      
-      const { count } = await supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", currentPostId);
+      showNotif('Komentar dihapus', 'success');
+
+      const { count } = await supabase
+        .from('comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('post_id', currentPostId);
       const countBadge = document.querySelector(`.comment-toggle[data-post="${currentPostId}"] .comment-count`);
       if (countBadge) countBadge.textContent = String(count || 0);
     } catch (err) {
-      showNotif("Gagal menghapus komentar", "error");
+      showNotif('Gagal menghapus komentar', 'error');
     }
   };
 
   const handleReportComment = () => {
     setIsActionSheetOpen(false);
-    showNotif("Laporan telah dikirim ke Admin untuk ditinjau.", "info");
+    showNotif('Laporan telah dikirim ke Admin untuk ditinjau.', 'info');
   };
 
+  // ==================== MENTION CLICK ====================
   const handleMentionClick = async (e: React.MouseEvent, username: string) => {
     e.stopPropagation();
     try {
@@ -586,7 +631,7 @@ function CommentModalContent() {
       if (data && data.id) {
         window.location.href = `/data?id=${data.id}`;
       } else {
-        showNotif(`User @${username} tidak ditemukan`, "warning");
+        showNotif(`User @${username} tidak ditemukan`, 'warning');
       }
     } catch (err) {
       console.error(err);
@@ -598,10 +643,18 @@ function CommentModalContent() {
     setReplyToUsername(username);
     setReplyToUserId(userId);
     setInputValue(`@${username} `);
+    inputRef.current?.focus();
   };
 
-  const isOwner = currentCreatorId === myUserId;
+  const handleGiftClick = () => {
+    if (!currentCreatorId) return;
+    window.dispatchEvent(
+      new CustomEvent('openGift', { detail: { creatorId: currentCreatorId, postId: currentPostId } })
+    );
+  };
 
+  // ==================== DERIVED DATA ====================
+  const isOwner = currentCreatorId === myUserId;
   const parents = comments.filter(c => !c.parent_id);
   const sortedParents = [...parents].sort((a, b) => {
     const timeA = new Date(a.created_at).getTime();
@@ -609,23 +662,44 @@ function CommentModalContent() {
     return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
   });
 
+  // ==================== RENDER ====================
   return (
     <>
-      {/* 🔥 FIX 1: overscrollBehavior untuk mencegah scroll tembus ke background */}
-      <div id="commentModal" className={isActive ? "active" : ""} onClick={handleOverlayClick} style={{ overscrollBehavior: 'none' }}>
-        
-        {/* 🔥 FIX 2: Jadikan comment-box sebagai flex-container utama (Header statis, list dinamis) */}
-        <div className="comment-box" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column' }}>
-          
-          {/* Bagian Header yang TETAP DIAM */}
+      <div
+        id="commentModal"
+        className={isActive ? 'active' : ''}
+        onClick={handleOverlayClick}
+        style={{ overscrollBehavior: 'none' }}
+      >
+        <div
+          className="comment-box"
+          onClick={e => e.stopPropagation()}
+          style={{ display: 'flex', flexDirection: 'column' }}
+        >
+          {/* Header tetap */}
           <div style={{ flexShrink: 0 }}>
-            <div className="modal-drag-indicator"></div>
-            
+            <div className="modal-drag-indicator" />
+
             {isOwner ? (
               <div className="c-owner-tabs">
-                <div className={`c-tab ${activeTab === 'comment' ? 'active' : ''}`} onClick={() => setActiveTab('comment')}>Komentar</div>
-                <div className={`c-tab ${activeTab === 'likes_all' ? 'active' : ''}`} onClick={() => setActiveTab('likes_all')}>Suka</div>
-                <div className={`c-tab ${activeTab === 'likes_friends' ? 'active' : ''}`} onClick={() => setActiveTab('likes_friends')}>Suka (Teman)</div>
+                <div
+                  className={`c-tab ${activeTab === 'comment' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('comment')}
+                >
+                  Komentar
+                </div>
+                <div
+                  className={`c-tab ${activeTab === 'likes_all' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('likes_all')}
+                >
+                  Suka
+                </div>
+                <div
+                  className={`c-tab ${activeTab === 'likes_friends' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('likes_friends')}
+                >
+                  Suka (Teman)
+                </div>
               </div>
             ) : (
               <div className="comment-header">{t('comments_title')}</div>
@@ -633,151 +707,211 @@ function CommentModalContent() {
 
             {activeTab === 'comment' && (
               <div className="c-filter-bar">
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>{comments.length} Komentar</span>
-                <button className="c-filter-btn" onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}>
-                  <span className="material-icons" style={{ fontSize: '14px' }}>sort</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  {comments.length} Komentar
+                </span>
+                <button
+                  className="c-filter-btn"
+                  onClick={() => setSortOrder(prev => (prev === 'newest' ? 'oldest' : 'newest'))}
+                >
+                  <span className="material-icons" style={{ fontSize: '14px' }}>
+                    sort
+                  </span>
                   {sortOrder === 'newest' ? 'Terbaru' : 'Terlama'}
                 </button>
               </div>
             )}
           </div>
-          
-          {/* 🔥 FIX 3: comment-list dibuat flex: 1 dengan hardware-acceleration agar scroll-nya independen & sangat smooth */}
-          <div className="comment-list" id="commentListContainer" style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', transform: 'translateZ(0)', minHeight: 0 }}>
+
+          {/* List komentar (flex: 1) */}
+          <div
+            className="comment-list"
+            id="commentListContainer"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              transform: 'translateZ(0)',
+              minHeight: 0,
+            }}
+          >
             {activeTab !== 'comment' ? (
-               isLoadingLikers ? (
-                  <div className="loading-text">Memuat daftar suka...</div>
-               ) : (
-                  (() => {
-                    const filteredLikers = activeTab === 'likes_friends' ? postLikers.filter(l => mutualUsers.has(l.user_id)) : postLikers;
-                    if (filteredLikers.length === 0) return <div className="empty-text">Belum ada yang menyukai</div>;
-                    
-                    return filteredLikers.map(liker => (
-                      <div className="c-liker-item" key={liker.user_id}>
-                        <div className="c-liker-left" onClick={() => window.location.href = `/data?id=${liker.user_id}`}>
-                          <img className="c-liker-avatar" src={getOptimizedImage(liker.profiles?.avatar_url) || '/asets/png/profile.webp'} alt="av" />
-                          <div>
-                            <div className="c-liker-name">
-                              {liker.profiles?.username} 
-                              <span dangerouslySetInnerHTML={{ __html: getUserBadge(liker.profiles?.role || 'user') }} />
-                            </div>
-                            <div className="c-liker-time">{formatTimeAgo(liker.created_at)}</div>
-                          </div>
-                        </div>
-                        <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>favorite</span>
-                      </div>
-                    ));
-                  })()
-               )
-            ) : (
-              isLoading ? (
-                <div className="loading-text">{t('loading_comments')}</div>
-              ) : sortedParents.length === 0 ? (
-                <div className="empty-text">{t('empty_comments')}</div>
+              isLoadingLikers ? (
+                <div className="loading-text">Memuat daftar suka...</div>
               ) : (
-                sortedParents.map(p => {
-                  const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
-                  const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
-                  const remainingChilds = firstCreatorReply ? allChilds.filter(c => c.id !== firstCreatorReply.id) : allChilds;
-                  const isExpanded = expandedReplies[p.id];
+                (() => {
+                  const filteredLikers =
+                    activeTab === 'likes_friends'
+                      ? postLikers.filter(l => mutualUsers.has(l.user_id))
+                      : postLikers;
+                  if (filteredLikers.length === 0)
+                    return <div className="empty-text">Belum ada yang menyukai</div>;
 
-                  return (
-                    <div className="comment-thread" key={p.id}>
-                      <CommentItem 
-                        comment={p} 
-                        isReply={false} 
-                        currentCreatorId={currentCreatorId}
-                        likedComments={likedComments}
-                        dislikedComments={dislikedComments}
-                        commentLikesCount={commentLikesCount}
-                        isCommentsDisabled={isCommentsDisabled}
-                        handleTouchStart={handleTouchStart}
-                        handleTouchEnd={handleTouchEnd}
-                        handleLikeComment={handleLikeComment}
-                        handleDislikeComment={handleDislikeComment}
-                        handleMentionClick={handleMentionClick}
-                        setReplyData={setReplyData}
-                        inputRef={inputRef}
-                      />
-
-                      {firstCreatorReply && (
-                        <div className="replies-container">
-                          <div className="reply-group">
-                            <div className="thread-line" style={{ height: 'calc(100% - 10px)', top: '10px' }}></div>
-                            <div className="comment-item-wrap reply">
-                              <span className="reply-curve" style={{ top: '15px' }}></span>
-                              <CommentItem 
-                                comment={firstCreatorReply} 
-                                isReply={true} 
-                                currentCreatorId={currentCreatorId}
-                                likedComments={likedComments}
-                                dislikedComments={dislikedComments}
-                                commentLikesCount={commentLikesCount}
-                                isCommentsDisabled={isCommentsDisabled}
-                                handleTouchStart={handleTouchStart}
-                                handleTouchEnd={handleTouchEnd}
-                                handleLikeComment={handleLikeComment}
-                                handleDislikeComment={handleDislikeComment}
-                                handleMentionClick={handleMentionClick}
-                                setReplyData={setReplyData}
-                                inputRef={inputRef}
-                              />
-                            </div>
+                  return filteredLikers.map(liker => (
+                    <div className="c-liker-item" key={liker.user_id}>
+                      <div
+                        className="c-liker-left"
+                        onClick={() => (window.location.href = `/data?id=${liker.user_id}`)}
+                      >
+                        <img
+                          className="c-liker-avatar"
+                          src={
+                            getOptimizedImage(liker.profiles?.avatar_url) ||
+                            '/asets/png/profile.webp'
+                          }
+                          alt="av"
+                        />
+                        <div>
+                          <div className="c-liker-name">
+                            {liker.profiles?.username}
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: getUserBadge(liker.profiles?.role || 'user'),
+                              }}
+                            />
                           </div>
+                          <div className="c-liker-time">{formatTimeAgo(liker.created_at)}</div>
                         </div>
-                      )}
-
-                      {remainingChilds.length > 0 && (
-                        <div className="replies-container">
-                          <div className="view-replies-btn" onClick={() => setExpandedReplies(prev => ({ ...prev, [p.id]: !prev[p.id] }))}>
-                            <span className="btn-line"></span>
-                            {isExpanded ? t('hide_replies') : t('show_replies_count', { count: remainingChilds.length })}
-                          </div>
-
-                          {isExpanded && (
-                            <div className="reply-group">
-                              <div className="thread-line"></div>
-                              {remainingChilds.map(c => (
-                                <div className="comment-item-wrap reply" key={c.id}>
-                                  <span className="reply-curve"></span>
-                                  <CommentItem 
-                                    comment={c} 
-                                    isReply={true} 
-                                    currentCreatorId={currentCreatorId}
-                                    likedComments={likedComments}
-                                    dislikedComments={dislikedComments}
-                                    commentLikesCount={commentLikesCount}
-                                    isCommentsDisabled={isCommentsDisabled}
-                                    handleTouchStart={handleTouchStart}
-                                    handleTouchEnd={handleTouchEnd}
-                                    handleLikeComment={handleLikeComment}
-                                    handleDislikeComment={handleDislikeComment}
-                                    handleMentionClick={handleMentionClick}
-                                    setReplyData={setReplyData}
-                                    inputRef={inputRef}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      </div>
+                      <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>
+                        favorite
+                      </span>
                     </div>
-                  );
-                })
+                  ));
+                })()
               )
+            ) : isLoading ? (
+              <div className="loading-text">{t('loading_comments')}</div>
+            ) : sortedParents.length === 0 ? (
+              <div className="empty-text">{t('empty_comments')}</div>
+            ) : (
+              sortedParents.map(p => {
+                const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
+                const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
+                const remainingChilds = firstCreatorReply
+                  ? allChilds.filter(c => c.id !== firstCreatorReply.id)
+                  : allChilds;
+                const isExpanded = expandedReplies[p.id];
+
+                return (
+                  <div className="comment-thread" key={p.id}>
+                    <CommentItem
+                      comment={p}
+                      isReply={false}
+                      currentCreatorId={currentCreatorId}
+                      likedComments={likedComments}
+                      dislikedComments={dislikedComments}
+                      commentLikesCount={commentLikesCount}
+                      isCommentsDisabled={isCommentsDisabled}
+                      handleTouchStart={handleTouchStart}
+                      handleTouchEnd={handleTouchEnd}
+                      handleLikeComment={handleLikeComment}
+                      handleDislikeComment={handleDislikeComment}
+                      handleMentionClick={handleMentionClick}
+                      setReplyData={setReplyData}
+                      inputRef={inputRef}
+                    />
+
+                    {firstCreatorReply && (
+                      <div className="replies-container">
+                        <div className="reply-group">
+                          <div
+                            className="thread-line"
+                            style={{ height: 'calc(100% - 10px)', top: '10px' }}
+                          ></div>
+                          <div className="comment-item-wrap reply">
+                            <span className="reply-curve" style={{ top: '15px' }}></span>
+                            <CommentItem
+                              comment={firstCreatorReply}
+                              isReply={true}
+                              currentCreatorId={currentCreatorId}
+                              likedComments={likedComments}
+                              dislikedComments={dislikedComments}
+                              commentLikesCount={commentLikesCount}
+                              isCommentsDisabled={isCommentsDisabled}
+                              handleTouchStart={handleTouchStart}
+                              handleTouchEnd={handleTouchEnd}
+                              handleLikeComment={handleLikeComment}
+                              handleDislikeComment={handleDislikeComment}
+                              handleMentionClick={handleMentionClick}
+                              setReplyData={setReplyData}
+                              inputRef={inputRef}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {remainingChilds.length > 0 && (
+                      <div className="replies-container">
+                        <div
+                          className="view-replies-btn"
+                          onClick={() =>
+                            setExpandedReplies(prev => ({
+                              ...prev,
+                              [p.id]: !prev[p.id],
+                            }))
+                          }
+                        >
+                          <span className="btn-line"></span>
+                          {isExpanded
+                            ? t('hide_replies')
+                            : t('show_replies_count', { count: remainingChilds.length })}
+                        </div>
+
+                        {isExpanded && (
+                          <div className="reply-group">
+                            <div className="thread-line"></div>
+                            {remainingChilds.map(c => (
+                              <div className="comment-item-wrap reply" key={c.id}>
+                                <span className="reply-curve"></span>
+                                <CommentItem
+                                  comment={c}
+                                  isReply={true}
+                                  currentCreatorId={currentCreatorId}
+                                  likedComments={likedComments}
+                                  dislikedComments={dislikedComments}
+                                  commentLikesCount={commentLikesCount}
+                                  isCommentsDisabled={isCommentsDisabled}
+                                  handleTouchStart={handleTouchStart}
+                                  handleTouchEnd={handleTouchEnd}
+                                  handleLikeComment={handleLikeComment}
+                                  handleDislikeComment={handleDislikeComment}
+                                  handleMentionClick={handleMentionClick}
+                                  setReplyData={setReplyData}
+                                  inputRef={inputRef}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
 
-          {/* 🔥 FIX 4: Bagian Bawah (Input Bar) yang TETAP DIAM */}
+          {/* Input bar tetap */}
           <div style={{ flexShrink: 0 }}>
-            {activeTab === 'comment' && (
-              isCommentsDisabled ? (
-                <div style={{ padding: '15px', textAlign: 'center', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-card)', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600 }}>
+            {activeTab === 'comment' &&
+              (isCommentsDisabled ? (
+                <div
+                  style={{
+                    padding: '15px',
+                    textAlign: 'center',
+                    background: 'var(--bg-secondary)',
+                    borderTop: '1px solid var(--border-card)',
+                    color: 'var(--text-muted)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                  }}
+                >
                   Komentar dinonaktifkan oleh kreator.
                 </div>
               ) : (
-                <CommentInputBar 
+                <CommentInputBar
                   inputRef={inputRef}
                   inputValue={inputValue}
                   isSubmitting={isSubmitting}
@@ -795,17 +929,19 @@ function CommentModalContent() {
                   toggleStickers={() => {
                     const willShow = !showStickers;
                     setShowStickers(willShow);
-                    if (willShow && stickers.length === 0) fetchStickers("");
+                    if (willShow && stickers.length === 0) fetchStickers('');
                   }}
-                  handleGiftClick={() => { setShowStickers(false); handleGiftClick(); }}
+                  handleGiftClick={() => {
+                    setShowStickers(false);
+                    handleGiftClick();
+                  }}
                 />
-              )
-            )}
+              ))}
           </div>
         </div>
       </div>
-      
-      <CommentActionSheet 
+
+      <CommentActionSheet
         isOpen={isActionSheetOpen}
         onClose={() => setIsActionSheetOpen(false)}
         comment={actionSheetComment}
