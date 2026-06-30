@@ -31,7 +31,7 @@ function CircularChase() {
         height: 20,
         borderRadius: '50%',
         border: '3px solid rgba(128,128,128,0.2)',
-        borderTopColor: '#1f3cff', // Premium Fintech Blue
+        borderTopColor: '#1f3cff',
       }}
       animate={{ rotate: 360 }}
       transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
@@ -52,7 +52,6 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
-  // 1. Cek status login secara real-time
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsLoggedIn(!!session);
@@ -69,7 +68,6 @@ function NavbarContent() {
 
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
-  // [PERBAIKAN] Logika untuk pengecekan rute agar voice-room tidak ikut tersembunyi
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/saldo', '/story', 
@@ -78,7 +76,6 @@ function NavbarContent() {
   ].some(path => pathname?.startsWith(path)) || 
   (pathname?.startsWith('/voice') && !pathname?.startsWith('/voice-room'));
 
-  // Menggunakan useCallback agar fungsi ini stabil dan bisa dipanggil di berbagai useEffect
   const fetchBadgesAndUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -114,10 +111,22 @@ function NavbarContent() {
     const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
     let unreadNotifs = (dbNotifRes.data || []).filter(n => !synthesizeTypes.includes(n.type)).length;
 
+    // LOGIKA PERBAIKAN LOCAL STORAGE
     let readSet = new Set<string>();
+    let isFreshInstall = false;
+    let localData = null;
+    
     if (typeof window !== 'undefined') {
-      try { readSet = new Set(JSON.parse(localStorage.getItem('read_notifs_local') || '[]')); } catch (e) {}
+      localData = localStorage.getItem('read_notifs_local');
+      if (!localData) {
+        isFreshInstall = true; // Data kosong (baru install / hapus PWA)
+      } else {
+        try { readSet = new Set(JSON.parse(localData)); } catch (e) {}
+      }
     }
+
+    // Limit performa: Hanya ambil data interaksi 3 hari terakhir untuk menghemat quota DB
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
     const postIds = myPosts?.map((p: any) => p.id) || [];
@@ -126,35 +135,46 @@ function NavbarContent() {
     const commentIds = myComments?.map((c: any) => c.id) || [];
 
     const promises: Promise<any>[] = [
-      supabase.from('followers').select('follower_id').eq('following_id', userId),
-      supabase.from('coin_transactions').select('id').eq('user_id', userId).gt('amount', 0).limit(20),
-      supabase.from('payments').select('id').eq('user_id', userId).limit(20)
+      supabase.from('followers').select('follower_id').eq('following_id', userId).gte('created_at', threeDaysAgo),
+      supabase.from('coin_transactions').select('id').eq('user_id', userId).gt('amount', 0).gte('created_at', threeDaysAgo).limit(20),
+      supabase.from('payments').select('id').eq('user_id', userId).gte('created_at', threeDaysAgo).limit(20)
     ];
 
     if (postIds.length > 0) {
       promises.push(
-        supabase.from('likes').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
-        supabase.from('comments').select('id').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
-        supabase.from('reposts').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30),
-        supabase.from('bookmarks').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(30)
+        supabase.from('likes').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).gte('created_at', threeDaysAgo).order('created_at', { ascending: false }).limit(30),
+        supabase.from('comments').select('id, post_id, user_id').in('post_id', postIds).neq('user_id', userId).gte('created_at', threeDaysAgo).order('created_at', { ascending: false }).limit(30),
+        supabase.from('reposts').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).gte('created_at', threeDaysAgo).order('created_at', { ascending: false }).limit(30),
+        supabase.from('bookmarks').select('id, post_id, user_id, created_at').in('post_id', postIds).neq('user_id', userId).gte('created_at', threeDaysAgo).order('created_at', { ascending: false }).limit(30)
       );
     } else {
       promises.push(Promise.resolve({data:[]}), Promise.resolve({data:[]}), Promise.resolve({data:[]}), Promise.resolve({data:[]}));
     }
 
     if (commentIds.length > 0) {
-      promises.push(supabase.from('comment_likes').select('id').in('comment_id', commentIds).neq('user_id', userId).order('created_at', { ascending: false }).limit(20));
+      promises.push(supabase.from('comment_likes').select('id').in('comment_id', commentIds).neq('user_id', userId).gte('created_at', threeDaysAgo).order('created_at', { ascending: false }).limit(20));
     } else {
       promises.push(Promise.resolve({data:[]}));
     }
 
     const [fRes, coinRes, payRes, likesRes, commentsRes, repostsRes, savesRes, cLikesRes] = await Promise.all(promises);
 
-    (fRes.data || []).forEach((f: any) => { if (!readSet.has(`follow-${f.follower_id}`)) unreadNotifs++; });
-    (coinRes.data || []).forEach((c: any) => { if (!readSet.has(`coin-${c.id}`)) unreadNotifs++; });
-    (payRes.data || []).forEach((p: any) => { if (!readSet.has(`pay-${p.id}`)) unreadNotifs++; });
-    (commentsRes.data || []).forEach((c: any) => { if (!readSet.has(`comment-${c.id}`)) unreadNotifs++; });
-    (cLikesRes.data || []).forEach((cl: any) => { if (!readSet.has(`comment_like-${cl.id}`)) unreadNotifs++; });
+    const newlyFetchedIds: string[] = [];
+
+    // Helper untuk mengecek apakah ID sudah dibaca
+    const processItem = (idStr: string) => {
+      if (isFreshInstall) {
+        newlyFetchedIds.push(idStr);
+        return 0; // Anggap otomatis sudah terbaca agar badge tidak error
+      }
+      return readSet.has(idStr) ? 0 : 1;
+    };
+
+    (fRes.data || []).forEach((f: any) => { unreadNotifs += processItem(`follow-${f.follower_id}`); });
+    (coinRes.data || []).forEach((c: any) => { unreadNotifs += processItem(`coin-${c.id}`); });
+    (payRes.data || []).forEach((p: any) => { unreadNotifs += processItem(`pay-${p.id}`); });
+    (commentsRes.data || []).forEach((c: any) => { unreadNotifs += processItem(`comment-${c.id}`); });
+    (cLikesRes.data || []).forEach((cl: any) => { unreadNotifs += processItem(`comment_like-${cl.id}`); });
 
     const countGrouped = (data: any[], type: string) => {
       const byPost: Record<string, any[]> = {};
@@ -167,9 +187,9 @@ function NavbarContent() {
         const uniqueMap = new Map(items.map((i: any) => [i.user_id, i]));
         const uniqueUsers = Array.from(uniqueMap.values());
         if (uniqueUsers.length === 1) {
-          if (!readSet.has(`${type}-${(uniqueUsers[0] as any).id}`)) count++;
+          count += processItem(`${type}-${(uniqueUsers[0] as any).id}`);
         } else if (uniqueUsers.length > 1) {
-          if (!readSet.has(`${type}_group-${postId}`)) count++;
+          count += processItem(`${type}_group-${postId}`);
         }
       });
       return count;
@@ -179,10 +199,15 @@ function NavbarContent() {
     unreadNotifs += countGrouped(repostsRes.data || [], 'repost');
     unreadNotifs += countGrouped(savesRes.data || [], 'save');
 
+    // Jika ini fresh install, simpan semua ID ke localStorage sekarang 
+    // agar pembacaan berikutnya berfungsi normal tanpa meledakkan badge
+    if (isFreshInstall && typeof window !== 'undefined' && newlyFetchedIds.length > 0) {
+      localStorage.setItem('read_notifs_local', JSON.stringify(newlyFetchedIds));
+    }
+
     setUnreadNotifCount(unreadNotifs);
   }, []);
 
-  // Listener untuk menangani WebView Android (APK)
   useEffect(() => {
     if (isLoggedIn) {
       fetchBadgesAndUser();
@@ -192,7 +217,6 @@ function NavbarContent() {
       if (isLoggedIn) fetchBadgesAndUser();
     };
 
-    // Deteksi ketika aplikasi di HP dibuka kembali dari background
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isLoggedIn) {
         fetchBadgesAndUser();
@@ -203,12 +227,11 @@ function NavbarContent() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
 
-    // Fallback Polling untuk Android jika WebSocket terputus
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible' && isLoggedIn) {
         fetchBadgesAndUser();
       }
-    }, 15000); // Sinkronisasi paksa tiap 15 detik
+    }, 15000); 
 
     return () => {
       window.removeEventListener('notif-count-changed', handleRefresh);
@@ -218,7 +241,6 @@ function NavbarContent() {
     };
   }, [pathname, isLoggedIn, fetchBadgesAndUser]);
 
-  // Penambahan Realtime untuk Tabel Notifications
   useEffect(() => {
     let msgChannel: any;
     let notifChannel: any;
@@ -228,7 +250,6 @@ function NavbarContent() {
       if (!session) return;
       const userId = session.user.id;
 
-      // Realtime Chat
       msgChannel = supabase.channel('navbar-messages-realtime')
         .on(
           'postgres_changes',
@@ -242,13 +263,11 @@ function NavbarContent() {
         )
         .subscribe();
 
-      // Realtime Notifikasi (Listen ke Insert dan Update)
       notifChannel = supabase.channel('navbar-notifs-realtime')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
           () => {
-            // Panggil ulang semua badge saat ada notif baru atau saat notif ditandai dibaca
             fetchBadgesAndUser();
           }
         )
@@ -393,7 +412,6 @@ function NavbarContent() {
                   )}
                 </AnimatePresence>
 
-                {/* Logika badge dinamis */}
                 {item.badgeCount !== undefined && item.badgeCount > 0 && !isActive && (
                   <motion.div
                     initial={{ scale: 0 }}
