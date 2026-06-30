@@ -26,11 +26,9 @@ export default function MusicSheet({
   onSelect,
   t,
 }: Props) {
-  // State untuk trending dari Apple Music (hasil pencarian otomatis)
   const [trendingResults, setTrendingResults] = useState<any[]>([]);
   const [isTrendLoading, setIsTrendLoading] = useState(false);
 
-  // 🔥 Ambil rekomendasi dari Apple Music saat sheet dibuka
   useEffect(() => {
     if (isOpen && trendingResults.length === 0) {
       fetchTrendingFromApple();
@@ -40,9 +38,10 @@ export default function MusicSheet({
   const fetchTrendingFromApple = async () => {
     setIsTrendLoading(true);
     try {
-      // Gunakan keyword yang sesuai target pengguna, misal "Indonesia pop", "trending", atau "popular"
       const term = encodeURIComponent('popular music 2025');
-      const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&limit=10`);
+      const res = await fetch(
+        `https://itunes.apple.com/search?term=${term}&media=music&limit=10`
+      );
       const data = await res.json();
       setTrendingResults(data.results || []);
     } catch (err) {
@@ -55,7 +54,7 @@ export default function MusicSheet({
 
   if (!isOpen) return null;
 
-  // Komponen item lagu (digunakan oleh trending & hasil pencarian)
+  // ✅ renderMusicItem sekarang menerima playingUrl & onTogglePreview dari closure
   const renderMusicItem = (song: any, index: number) => (
     <div
       key={index}
@@ -88,7 +87,7 @@ export default function MusicSheet({
         />
         {song.previewUrl && (
           <div
-            onClick={() => onTogglePreview(song.previewUrl)}
+            onClick={(e) => onTogglePreview(song.previewUrl, e)}
             style={{
               position: 'absolute',
               inset: 0,
@@ -100,7 +99,10 @@ export default function MusicSheet({
               cursor: 'pointer',
             }}
           >
-            <span className="material-icons" style={{ color: '#fff', fontSize: '30px' }}>
+            <span
+              className="material-icons"
+              style={{ color: '#fff', fontSize: '30px' }}
+            >
               {playingUrl === song.previewUrl ? 'pause' : 'play_arrow'}
             </span>
           </div>
@@ -155,7 +157,12 @@ export default function MusicSheet({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999 }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.6)',
+          zIndex: 9999,
+        }}
       />
       <motion.div
         initial={{ y: '100%' }}
@@ -176,6 +183,7 @@ export default function MusicSheet({
           flexDirection: 'column',
         }}
       >
+        {/* Handle */}
         <div
           style={{
             width: '40px',
@@ -185,6 +193,8 @@ export default function MusicSheet({
             margin: '15px auto 10px',
           }}
         />
+
+        {/* Header */}
         <div
           style={{
             display: 'flex',
@@ -194,7 +204,13 @@ export default function MusicSheet({
             borderBottom: '1px solid var(--border-card)',
           }}
         >
-          <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '18px' }}>
+          <h3
+            style={{
+              color: 'var(--text-main)',
+              margin: 0,
+              fontSize: '18px',
+            }}
+          >
             Tambahkan Musik
           </h3>
           <button
@@ -249,7 +265,7 @@ export default function MusicSheet({
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
-          {/* 🔥 Rekomendasi dari Apple Music (muncul saat tidak ada pencarian manual) */}
+          {/* Trending */}
           {!searchMusic && (
             <>
               <div
@@ -260,22 +276,43 @@ export default function MusicSheet({
                   marginBottom: '12px',
                 }}
               >
-                <span className="material-icons" style={{ color: '#ff2e63', fontSize: '18px' }}>
+                <span
+                  className="material-icons"
+                  style={{ color: '#ff2e63', fontSize: '18px' }}
+                >
                   local_fire_department
                 </span>
-                <span style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '15px' }}>
-                  Rekomendasi tranding
+                <span
+                  style={{
+                    color: 'var(--text-main)',
+                    fontWeight: 700,
+                    fontSize: '15px',
+                  }}
+                >
+                  Rekomendasi trending
                 </span>
               </div>
 
               {isTrendLoading ? (
                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                  <span className="material-icons" style={{ fontSize: '40px', animation: 'spin 1s linear infinite' }}>
+                  <span
+                    className="material-icons"
+                    style={{
+                      fontSize: '40px',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  >
                     autorenew
                   </span>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
                   {trendingResults.map(renderMusicItem)}
                 </div>
               )}
@@ -293,18 +330,38 @@ export default function MusicSheet({
             </>
           )}
 
-          {/* Hasil pencarian manual */}
+          {/* Search Results */}
           {searchMusic && (
             <>
               {isSearching ? (
-                <div style={{ textAlign: 'center', marginTop: '40px', color: 'var(--text-muted)' }}>
-                  <span className="material-icons" style={{ fontSize: '40px', animation: 'spin 1s linear infinite' }}>
+                <div
+                  style={{
+                    textAlign: 'center',
+                    marginTop: '40px',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <span
+                    className="material-icons"
+                    style={{
+                      fontSize: '40px',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  >
                     autorenew
                   </span>
-                  <p style={{ fontWeight: 600, marginTop: '10px' }}>Mencari lagu...</p>
+                  <p style={{ fontWeight: 600, marginTop: '10px' }}>
+                    Mencari lagu...
+                  </p>
                 </div>
               ) : musicResults.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
                   {musicResults.map(renderMusicItem)}
                 </div>
               ) : (

@@ -5,9 +5,21 @@ type Props = {
   onSubmit: (isDraft: boolean) => void;
 };
 
-export default function SubmitButtons({ isSubmitting, destination, draftId, onSubmit }: Props) {
+export default function SubmitButtons({
+  isSubmitting,
+  destination,
+  draftId,
+  onSubmit,
+}: Props) {
   return (
-    <div style={{ display: 'flex', gap: '10px', marginTop: '30px', width: '100%' }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: '10px',
+        marginTop: '30px',
+        width: '100%',
+      }}
+    >
       {destination !== 'story' && (
         <button
           type="button"
@@ -45,12 +57,24 @@ export default function SubmitButtons({ isSubmitting, destination, draftId, onSu
           cursor: isSubmitting ? 'not-allowed' : 'pointer',
           position: 'relative',
           overflow: 'hidden',
-          background: isSubmitting ? 'var(--bg-input)' : 'var(--primary-bg)',   // ✅ biru tetap
+          background: isSubmitting
+            ? 'var(--bg-input)'
+            : 'var(--primary-bg)',
           transform: 'translateZ(0)',
         }}
       >
-        <span style={{ position: 'relative', zIndex: 2, color: isSubmitting ? 'var(--text-muted)' : '#fff' }}>
-          {isSubmitting ? 'Memposting...' : (draftId ? 'Publikasikan Draf' : 'Posting')}
+        <span
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            color: isSubmitting ? 'var(--text-muted)' : '#fff',
+          }}
+        >
+          {isSubmitting
+            ? 'Memposting...'
+            : draftId
+            ? 'Publikasikan Draf'
+            : 'Posting'}
         </span>
       </button>
     </div>

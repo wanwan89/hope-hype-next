@@ -8,12 +8,26 @@ type Props = {
   destination: 'feed' | 'story';
 };
 
-export default function ImageUploader({ previewUrls, existingImageUrl, onFileSelect, onRemovePreview, destination }: Props) {
+export default function ImageUploader({
+  previewUrls,
+  existingImageUrl,
+  onFileSelect,
+  onRemovePreview,
+  destination,
+}: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   return (
     <div style={{ marginTop: '20px' }}>
-      <input type="file" ref={fileInputRef} accept="image/*" multiple hidden onChange={onFileSelect} />
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        multiple
+        hidden
+        onChange={onFileSelect}
+      />
+
       {previewUrls.length === 0 ? (
         <div
           className="post-upload-area"
@@ -30,26 +44,63 @@ export default function ImageUploader({ previewUrls, existingImageUrl, onFileSel
             border: '2px dashed var(--border-card)',
           }}
         >
-          <div className="post-upload-placeholder" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+          <div
+            className="post-upload-placeholder"
+            style={{
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+            }}
+          >
             <span
               className="material-icons"
-              style={{ fontSize: '40px', marginBottom: '10px', color: 'var(--primary-bg)' }}
+              style={{
+                fontSize: '40px',
+                marginBottom: '10px',
+                color: 'var(--primary-bg)',
+              }}
             >
               add_photo_alternate
             </span>
-            <div className="post-upload-text" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>
+            <div
+              className="post-upload-text"
+              style={{
+                fontSize: '15px',
+                fontWeight: 600,
+                color: 'var(--text-main)',
+              }}
+            >
               {existingImageUrl ? 'Ganti Foto Draf' : 'Pilih Foto (Max 3)'}
             </div>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '10px',
+            overflowX: 'auto',
+            paddingBottom: '10px',
+          }}
+        >
           {previewUrls.map((url, i) => (
-            <div key={i} style={{ position: 'relative', width: '120px', height: '160px', flexShrink: 0 }}>
+            <div
+              key={i}
+              style={{
+                position: 'relative',
+                width: '120px',
+                height: '160px',
+                flexShrink: 0,
+              }}
+            >
               <img
                 src={url}
                 alt={`Preview ${i}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '12px',
+                }}
               />
               <button
                 type="button"
@@ -70,10 +121,13 @@ export default function ImageUploader({ previewUrls, existingImageUrl, onFileSel
                   cursor: 'pointer',
                 }}
               >
-                <span className="material-icons" style={{ fontSize: '14px' }}>close</span>
+                <span className="material-icons" style={{ fontSize: '14px' }}>
+                  close
+                </span>
               </button>
             </div>
           ))}
+
           {previewUrls.length < 3 && destination === 'feed' && (
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -90,7 +144,9 @@ export default function ImageUploader({ previewUrls, existingImageUrl, onFileSel
                 color: 'var(--text-muted)',
               }}
             >
-              <span className="material-icons" style={{ fontSize: '30px' }}>add</span>
+              <span className="material-icons" style={{ fontSize: '30px' }}>
+                add
+              </span>
             </div>
           )}
         </div>

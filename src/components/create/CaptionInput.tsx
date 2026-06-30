@@ -8,7 +8,7 @@ type Props = {
   showPopup: 'none' | 'mention' | 'hashtag';
   popupResults: any[];
   onSelectPopupItem: (item: string) => void;
-  inputRef?: React.RefObject<HTMLTextAreaElement>; // ✅ Tambahan
+  inputRef?: React.RefObject<HTMLTextAreaElement>;
 };
 
 export default function CaptionInput({
@@ -21,7 +21,7 @@ export default function CaptionInput({
   showPopup,
   popupResults,
   onSelectPopupItem,
-  inputRef, // ✅ Destructure
+  inputRef,
 }: Props) {
   return (
     <div style={{ position: 'relative', marginTop: '20px' }}>
@@ -49,7 +49,10 @@ export default function CaptionInput({
                   </>
                 ) : (
                   <>
-                    <span className="material-icons" style={{ color: 'var(--primary)' }}>
+                    <span
+                      className="material-icons"
+                      style={{ color: 'var(--primary)' }}
+                    >
                       tag
                     </span>
                     <div className="popup-tag">{item.tag}</div>
@@ -63,9 +66,9 @@ export default function CaptionInput({
         </div>
       )}
 
-      {/* Textarea utama – ref diteruskan */}
+      {/* Textarea utama */}
       <textarea
-        ref={inputRef} // ✅ kunci fix hashtag
+        ref={inputRef}
         className="post-textarea"
         placeholder={
           postType === 'text'
@@ -76,7 +79,6 @@ export default function CaptionInput({
         value={caption}
         onChange={onChange}
         onKeyDown={onKeyDown}
-        // Style dihapus karena sudah ada di CSS class .post-textarea
       />
 
       <div
