@@ -64,26 +64,26 @@ const ListItem = ({
 // MAIN COMPONENT
 // ==========================================
 export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClose }: Props) {
-  // State untuk mengontrol view mana yang aktif ('main' atau 'selection')
   const [activeView, setActiveView] = useState<'main' | 'selection'>('main');
   const [selectionConfig, setSelectionConfig] = useState<SelectionConfig>(null);
 
-  // Ref & State untuk upload foto
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadIndex, setUploadIndex] = useState<number>(0);
 
-  // Helper untuk update state form
+  // Pastikan photos selalu berupa array dengan panjang 3
+  const currentPhotos = Array.isArray(bioForm.photos) && bioForm.photos.length > 0
+    ? [...bioForm.photos, null, null, null].slice(0, 3) // Force length to 3
+    : [bioForm.avatar_url || null, null, null];
+
   const updateField = (field: string, value: any) => {
     setBioForm({ ...bioForm, [field]: value });
   };
 
-  // Buka halaman pilihan
   const openSelection = (config: NonNullable<SelectionConfig>) => {
     setSelectionConfig(config);
     setActiveView('selection');
   };
 
-  // Dispatch event agar Navbar tahu BioModal terbuka
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('biomodal-state', { detail: { isOpen: true } }));
     return () => {
@@ -94,12 +94,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
   // ==========================================
   // LOGIKA PENGELOLAAN 3 FOTO
   // ==========================================
-  // Ambil array foto dari form, atau buat fallback dari avatar_url jika belum berbentuk array
-  const photos = Array.isArray(bioForm.photos)
-    ? bioForm.photos
-    : [bioForm.avatar_url || null, null, null];
-
-  // Membuka file picker untuk slot tertentu
   const triggerPhotoUpload = (index: number) => {
     setUploadIndex(index);
     if (fileInputRef.current) {
@@ -107,41 +101,47 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     }
   };
 
-  // Handle ketika user memilih file
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Buat URL sementara untuk preview UI (Nanti file ini harus di-upload ke backend/storage saat Save)
+    // CATATAN: Ini hanya URL sementara untuk preview! 
+    // Kamu wajib meng-upload 'file' (object fisik) ini ke Supabase Storage di fungsi onSave() milik parent component.
     const tempUrl = URL.createObjectURL(file);
-
-    const newPhotos = [...photos];
+    const newPhotos = [...currentPhotos];
     newPhotos[uploadIndex] = tempUrl;
 
-    // Simpan ke bioForm
     setBioForm({
       ...bioForm,
       photos: newPhotos,
-      // Update avatar_url untuk kompatibilitas jika itu adalah slot pertama
-      ...(uploadIndex === 0 ? { avatar_url: tempUrl } : {})
+      ...(uploadIndex === 0 ? { avatar_url: tempUrl } : {}),
+      // Opsional: Simpan object file mentah agar mudah diakses saat onSave di parent
+      [`raw_file_${uploadIndex}`]: file 
     });
 
-    // Reset input agar bisa pilih file yang sama lagi jika dibutuhkan
     e.target.value = '';
   };
 
-  // Handle hapus foto dari slot
   const handlePhotoRemove = (index: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Mencegah klik menyebar ke slot (yang akan memicu upload)
-    
-    const newPhotos = [...photos];
+    e.stopPropagation();
+    const newPhotos = [...currentPhotos];
     newPhotos[index] = null;
     
-    setBioForm({
-      ...bioForm,
-      photos: newPhotos,
-      ...(index === 0 ? { avatar_url: '' } : {})
-    });
+    // Geser foto yang kosong agar rapi (opsional)
+    const filteredPhotos = newPhotos.filter(Boolean);
+    const finalizedPhotos = [...filteredPhotos, null, null, null].slice(0, 3);
+
+    const updatedBioForm = { ...bioForm, photos: finalizedPhotos };
+    if (index === 0 && finalizedPhotos[0]) {
+      updatedBioForm.avatar_url = finalizedPhotos[0];
+    } else if (index === 0) {
+      updatedBioForm.avatar_url = '';
+    }
+
+    // Hapus raw file jika ada
+    delete updatedBioForm[`raw_file_${index}`];
+
+    setBioForm(updatedBioForm);
   };
 
   // ==========================================
@@ -152,7 +152,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
 
     return (
       <div style={fullScreenOverlayStyle}>
-        {/* Header Selection */}
         <div style={selectionHeaderStyle}>
           <button
             onClick={() => setActiveView('main')}
@@ -160,13 +159,11 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
           >
             <span className="material-icons">close</span>
           </button>
-          {/* Progress Bar Mockup */}
           <div style={progressBarStyle}>
             <div style={progressFillStyle}></div>
           </div>
         </div>
 
-        {/* Content Selection */}
         <div style={{ padding: '24px', textAlign: 'center', flex: 1, overflowY: 'auto' }}>
           <span className="material-icons" style={{ fontSize: '48px', color: 'var(--text-main)', marginBottom: '16px' }}>
             {selectionConfig.icon}
@@ -183,7 +180,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                   key={idx}
                   onClick={() => {
                     updateField(selectionConfig.field, opt.value);
-                    setTimeout(() => setActiveView('main'), 150); // Delay sedikit agar user melihat efek klik
+                    setTimeout(() => setActiveView('main'), 150);
                   }}
                   style={{
                     padding: '16px',
@@ -204,7 +201,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
           </div>
         </div>
 
-        {/* Footer Selection */}
         <div style={{ padding: '24px', borderTop: '1px solid var(--bg-secondary)', backgroundColor: 'var(--bg-main)' }}>
           <button
             onClick={() => {
@@ -212,6 +208,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
               setActiveView('main');
             }}
             style={{
+              width: '100%',
               padding: '12px 24px',
               borderRadius: '20px',
               border: '1px solid var(--bg-secondary)',
@@ -233,7 +230,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
   // ==========================================
   return (
     <div style={fullScreenOverlayStyle}>
-      {/* Header Utama */}
       <div style={headerStyle}>
         <button onClick={onClose} style={{ ...iconBtnStyle, color: 'var(--text-main)' }}>
           <span className="material-icons">arrow_back</span>
@@ -243,14 +239,13 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
         </h3>
         <button onClick={onSave} disabled={isSaving} style={{ ...iconBtnStyle, color: 'var(--primary-bg)' }}>
           {isSaving ? (
-            <span className="material-icons" style={{ fontSize: '18px' }}>hourglass_empty</span>
+            <span className="material-icons" style={{ fontSize: '18px', animation: 'spin 1s linear infinite' }}>hourglass_empty</span>
           ) : (
             <span className="material-icons">check</span>
           )}
         </button>
       </div>
 
-      {/* Input File Tersembunyi untuk Upload Foto */}
       <input
         type="file"
         ref={fileInputRef}
@@ -259,27 +254,22 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
         style={{ display: 'none' }}
       />
 
-      {/* Scroll Area (Tanpa Tabs) */}
       <div className="main-content" style={scrollAreaStyle}>
-        
-        {/* Foto Grid */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: '600' }}>Foto Profil</span>
             <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Maks. 3</span>
           </div>
           <div style={photoGridStyle}>
-            
-            {/* Generate 3 Slot Foto Secara Dinamis */}
             {[0, 1, 2].map((index) => (
               <div 
                 key={index}
                 onClick={() => triggerPhotoUpload(index)}
-                style={photos[index] ? photoSlotStyle : emptySlotStyle}
+                style={currentPhotos[index] ? photoSlotStyle : emptySlotStyle}
               >
-                {photos[index] ? (
+                {currentPhotos[index] ? (
                   <>
-                    <img src={photos[index]} alt={`Profile ${index + 1}`} style={imgStyle} />
+                    <img src={currentPhotos[index]} alt={`Profile ${index + 1}`} style={imgStyle} />
                     <div 
                       style={removeBtnStyle} 
                       onClick={(e) => handlePhotoRemove(index, e)}
@@ -294,11 +284,9 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 )}
               </div>
             ))}
-
           </div>
         </div>
 
-        {/* Tentang Aku */}
         <div style={sectionStyle}>
           <div style={sectionTitleStyle}>Tentang Aku</div>
           <div style={cardStyle}>
@@ -321,7 +309,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
           </div>
         </div>
 
-        {/* Profesi dan Pendidikan */}
         <div style={sectionStyle}>
           <div style={sectionTitleStyle}>Profesi dan Pendidikan</div>
           <div style={cardStyle}>
@@ -368,7 +355,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
           </div>
         </div>
 
-        {/* Informasi Dasar */}
         <div style={sectionStyle}>
           <div style={sectionTitleStyle}>Informasi Dasar</div>
           <div style={cardStyle}>
@@ -420,7 +406,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
           </div>
         </div>
 
-        {/* Gaya Hidup */}
         <div style={sectionStyle}>
           <div style={sectionTitleStyle}>Gaya Hidup</div>
           <div style={cardStyle}>
@@ -537,7 +522,7 @@ const iconBtnStyle: React.CSSProperties = {
 const scrollAreaStyle: React.CSSProperties = {
   flex: 1,
   padding: '20px',
-  paddingBottom: '80px', // Ruang ekstra di bawah untuk scroll
+  paddingBottom: '80px', 
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -560,7 +545,6 @@ const cardStyle: React.CSSProperties = {
   border: '1px solid var(--border-editor)',
 };
 
-// Photo Grid Styles
 const photoGridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(3, 1fr)',
@@ -586,7 +570,7 @@ const removeBtnStyle: React.CSSProperties = {
   position: 'absolute',
   bottom: '8px',
   right: '8px',
-  backgroundColor: 'var(--danger)',
+  backgroundColor: '#ff4757', // warna merah langsung
   borderRadius: '50%',
   width: '24px',
   height: '24px',
@@ -611,7 +595,6 @@ const emptySlotStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-// Selection View Styles
 const selectionHeaderStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'center',
