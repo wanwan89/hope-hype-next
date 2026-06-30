@@ -13,11 +13,9 @@ interface MediaItem {
 }
 
 export default function ChatModals({
-  // Props untuk modal gambar (baru)
   isImageModalOpen,
   onCloseImageModal,
   onSendImage,
-  // Props untuk group settings
   isGroupSettingsOpen,
   setIsGroupSettingsOpen,
   groupModalTab,
@@ -27,7 +25,7 @@ export default function ChatModals({
   isUpdatingGroup,
   groupMembers,
   currentUser,
-  headerInfo, // <-- memiliki avatar grup (headerInfo.avatar)
+  headerInfo, 
   handleGroupPhotoUpload,
   newGroupName,
   setNewGroupName,
@@ -35,16 +33,20 @@ export default function ChatModals({
   isOwner,
   kickMember,
 }: any) {
-  // State untuk Multi Image
   const [images, setImages] = useState<MediaItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isCropping, setIsCropping] = useState(false);
+  
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const groupPhotoInputRef = useRef<HTMLInputElement>(null); // 🔥 ref untuk input foto grup
+  
+  // 🔥 PERBAIKAN 1: State sementara untuk hasil crop agar tidak re-render seluruh array
+  const [croppedPixels, setCroppedPixels] = useState<any>(null);
 
-  // Reset saat modal gambar dibuka
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const groupPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset saat modal gambar dibuka atau ganti gambar
   useEffect(() => {
     if (isImageModalOpen) {
       setImages([]);
@@ -53,7 +55,13 @@ export default function ChatModals({
     }
   }, [isImageModalOpen]);
 
-  // Buka file picker untuk memilih gambar pertama (dari tombol "Kirim Foto")
+  // Reset state crop setiap kali ganti foto yang sedang dilihat
+  useEffect(() => {
+    setCroppedPixels(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+  }, [currentIndex, isCropping]);
+
   const handleInitialFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files).slice(0, 10);
@@ -99,32 +107,29 @@ export default function ChatModals({
     }
   };
 
-  const onCropComplete = useCallback((_croppedArea: any, croppedPixels: any) => {
-    setImages(prev => {
-      const newImages = [...prev];
-      if (newImages[currentIndex]) {
-        newImages[currentIndex].croppedAreaPixels = croppedPixels;
-      }
-      return newImages;
-    });
-  }, [currentIndex]);
+  // 🔥 PERBAIKAN 2: Hanya update state sementara, tidak update setImages
+  const onCropComplete = useCallback((_croppedArea: any, currentCroppedPixels: any) => {
+    setCroppedPixels(currentCroppedPixels);
+  }, []);
 
+  // 🔥 PERBAIKAN 3: Gunakan state `croppedPixels` dan update object menggunakan .map()
   const handleSaveCrop = async () => {
     const currentImg = images[currentIndex];
-    if (currentImg && currentImg.croppedAreaPixels) {
+    
+    if (currentImg && croppedPixels) {
       try {
-        const croppedBlob = await getCroppedImg(currentImg.originalUrl, currentImg.croppedAreaPixels);
+        const croppedBlob = await getCroppedImg(currentImg.originalUrl, croppedPixels);
         if (croppedBlob) {
           const croppedUrl = URL.createObjectURL(croppedBlob);
           const originalName = (currentImg.file as File)?.name || `image_${Date.now()}.jpg`;
           const croppedFile = new File([croppedBlob], `cropped_${originalName}`, { type: croppedBlob.type || 'image/jpeg' });
 
-          setImages(prev => {
-            const newImages = [...prev];
-            newImages[currentIndex].croppedPreview = croppedUrl;
-            newImages[currentIndex].croppedFile = croppedFile;
-            return newImages;
-          });
+          // Update array dengan benar tanpa mengubah mutasi objek langsung
+          setImages(prev => prev.map((img, idx) => 
+            idx === currentIndex 
+              ? { ...img, croppedPreview: croppedUrl, croppedFile: croppedFile, croppedAreaPixels: croppedPixels } 
+              : img
+          ));
         }
       } catch (error) {
         console.error("Gagal membuat preview crop", error);
@@ -143,14 +148,12 @@ export default function ChatModals({
 
   const currentMedia = images[currentIndex];
 
-  // ---------- RENDER ----------
   return (
     <>
       {/* ====== MODAL GAMBAR MULTI‑IMAGE + CROP ====== */}
       <AnimatePresence>
         {isImageModalOpen && (
           <>
-            {/* Jika belum ada gambar, tampilkan file picker dulu */}
             {images.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -322,9 +325,10 @@ export default function ChatModals({
                       placeholder={images.length > 1 ? `Keterangan untuk foto ke-${currentIndex + 1}...` : "Tambahkan keterangan..."}
                       value={currentMedia?.caption || ''}
                       onChange={(e) => {
-                        const newImages = [...images];
-                        newImages[currentIndex].caption = e.target.value;
-                        setImages(newImages);
+                        // 🔥 PERBAIKAN 4: Update objek dalam array yang benar
+                        setImages(prev => prev.map((img, idx) => 
+                          idx === currentIndex ? { ...img, caption: e.target.value } : img
+                        ));
                       }}
                       rows={1}
                       style={{
@@ -464,7 +468,6 @@ export default function ChatModals({
                 </div>
               ) : (
                 <div>
-                  {/* 🔥 PERUBAHAN: Form Nama Grup (tetap) */}
                   <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
                     Nama Grup
                   </label>
@@ -489,7 +492,6 @@ export default function ChatModals({
                     Simpan Nama
                   </button>
 
-                  {/* 🔥 BAGIAN FOTO GRUP DENGAN GAYA BARU */}
                   <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
                     Foto Grup
                   </label>
@@ -501,7 +503,6 @@ export default function ChatModals({
                     gap: '12px',
                     marginBottom: '16px'
                   }}>
-                    {/* Pratinjau foto grup saat ini */}
                     <div style={{
                       position: 'relative',
                       width: '80px',
@@ -520,7 +521,6 @@ export default function ChatModals({
                           objectFit: 'cover',
                         }}
                       />
-                      {/* Overlay saat hover untuk menunjukkan bisa diganti */}
                       <div style={{
                         position: 'absolute',
                         inset: 0,
@@ -540,7 +540,6 @@ export default function ChatModals({
                       </div>
                     </div>
 
-                    {/* Tombol Ganti Foto */}
                     <button
                       onClick={() => groupPhotoInputRef.current?.click()}
                       style={{
@@ -561,7 +560,6 @@ export default function ChatModals({
                       Ganti Foto
                     </button>
 
-                    {/* Input file tersembunyi */}
                     <input
                       type="file"
                       accept="image/*"
@@ -580,7 +578,6 @@ export default function ChatModals({
   );
 }
 
-// ---------- Utility Crop (tidak berubah) ----------
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image();
