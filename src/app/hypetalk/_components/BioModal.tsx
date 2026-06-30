@@ -40,20 +40,20 @@ const ListItem = ({
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: '16px',
-      borderBottom: isLast ? 'none' : '1px solid #f0f0f0',
+      borderBottom: isLast ? 'none' : '1px solid var(--bg-secondary)',
       cursor: 'pointer',
-      backgroundColor: '#fff',
+      backgroundColor: 'transparent',
     }}
   >
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-      <span className="material-icons" style={{ color: '#666', fontSize: '20px' }}>
+      <span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: '20px' }}>
         {icon}
       </span>
-      <span style={{ fontSize: '15px', color: '#333' }}>{label}</span>
+      <span style={{ fontSize: '15px', color: 'var(--text-main)' }}>{label}</span>
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-      <span style={{ fontSize: '14px', color: '#999' }}>{value || ''}</span>
-      <span className="material-icons" style={{ color: '#ccc', fontSize: '20px' }}>
+      <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{value || ''}</span>
+      <span className="material-icons" style={{ color: 'var(--text-muted)', fontSize: '20px', opacity: 0.7 }}>
         chevron_right
       </span>
     </div>
@@ -79,7 +79,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     setActiveView('selection');
   };
 
-  // 🔥 Dispatch event agar Navbar tahu BioModal terbuka
+  // Dispatch event agar Navbar tahu BioModal terbuka
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('biomodal-state', { detail: { isOpen: true } }));
     return () => {
@@ -99,7 +99,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
         <div style={selectionHeaderStyle}>
           <button
             onClick={() => setActiveView('main')}
-            style={{ ...iconBtnStyle, color: '#ccc', position: 'absolute', left: '16px' }}
+            style={{ ...iconBtnStyle, color: 'var(--text-muted)', position: 'absolute', left: '16px' }}
           >
             <span className="material-icons">close</span>
           </button>
@@ -111,10 +111,10 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
 
         {/* Content Selection */}
         <div style={{ padding: '24px', textAlign: 'center', flex: 1, overflowY: 'auto' }}>
-          <span className="material-icons" style={{ fontSize: '48px', color: '#333', marginBottom: '16px' }}>
+          <span className="material-icons" style={{ fontSize: '48px', color: 'var(--text-main)', marginBottom: '16px' }}>
             {selectionConfig.icon}
           </span>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333', marginBottom: '32px' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '32px' }}>
             {selectionConfig.title}
           </h2>
 
@@ -131,9 +131,9 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                   style={{
                     padding: '16px',
                     borderRadius: '30px',
-                    border: isSelected ? 'none' : '1px solid #e0e0e0',
-                    backgroundColor: isSelected ? '#10b981' : '#fff', // Hijau jika dipilih
-                    color: isSelected ? '#fff' : '#333',
+                    border: isSelected ? 'none' : '1px solid var(--bg-secondary)',
+                    backgroundColor: isSelected ? 'var(--primary-bg)' : 'var(--bg-card)',
+                    color: isSelected ? '#ffffff' : 'var(--text-main)',
                     fontSize: '15px',
                     fontWeight: isSelected ? 'bold' : 'normal',
                     cursor: 'pointer',
@@ -148,7 +148,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
         </div>
 
         {/* Footer Selection */}
-        <div style={{ padding: '24px', borderTop: '1px solid #f0f0f0' }}>
+        <div style={{ padding: '24px', borderTop: '1px solid var(--bg-secondary)', backgroundColor: 'var(--bg-main)' }}>
           <button
             onClick={() => {
               updateField(selectionConfig.field, '');
@@ -157,13 +157,14 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
             style={{
               padding: '12px 24px',
               borderRadius: '20px',
-              border: '1px solid #e0e0e0',
-              backgroundColor: '#fff',
-              color: '#666',
+              border: '1px solid var(--bg-secondary)',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
+              fontWeight: '600'
             }}
           >
-            Hapus
+            Hapus Pilihan
           </button>
         </div>
       </div>
@@ -177,13 +178,13 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     <div style={fullScreenOverlayStyle}>
       {/* Header Utama */}
       <div style={headerStyle}>
-        <button onClick={onClose} style={{ ...iconBtnStyle, color: '#00c99f' }}>
+        <button onClick={onClose} style={{ ...iconBtnStyle, color: 'var(--text-main)' }}>
           <span className="material-icons">arrow_back</span>
         </button>
-        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600', color: '#333' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-main)' }}>
           Ubah Profil
         </h3>
-        <button onClick={onSave} disabled={isSaving} style={{ ...iconBtnStyle, color: '#00c99f' }}>
+        <button onClick={onSave} disabled={isSaving} style={{ ...iconBtnStyle, color: 'var(--primary-bg)' }}>
           {isSaving ? (
             <span className="material-icons" style={{ fontSize: '18px' }}>hourglass_empty</span>
           ) : (
@@ -199,40 +200,37 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
       </div>
 
       {/* Scroll Area */}
-      <div style={scrollAreaStyle}>
+      <div className="main-content" style={scrollAreaStyle}>
         
-        {/* Mockup Foto Grid */}
+        {/* Foto Grid */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '14px', color: '#666' }}>Foto</span>
-            <span style={{ fontSize: '14px', color: '#ff4d4f' }}>+10%</span>
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: '600' }}>Foto Profil</span>
+            <span style={{ fontSize: '14px', color: 'var(--primary-bg)', fontWeight: '600' }}>Ubah Foto</span>
           </div>
           <div style={photoGridStyle}>
-            {/* Slot Foto (Simulasi) */}
+            {/* Slot Foto Utama (Menggunakan data profil real jika ada) */}
             <div style={photoSlotStyle}>
-              <img src="/api/placeholder/100/100" alt="foto" style={imgStyle} />
-              <div style={removeBtnStyle}><span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span></div>
+              {bioForm.avatar_url ? (
+                <img src={bioForm.avatar_url} alt="Profile" style={imgStyle} />
+              ) : (
+                <div style={{...imgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', color: 'var(--text-muted)'}}>
+                  <span className="material-icons" style={{fontSize: '40px'}}>person</span>
+                </div>
+              )}
+              {bioForm.avatar_url && (
+                <div style={removeBtnStyle}>
+                  <span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span>
+                </div>
+              )}
             </div>
-            <div style={photoSlotStyle}>
-              <img src="/api/placeholder/100/100" alt="foto" style={imgStyle} />
-              <div style={removeBtnStyle}><span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span></div>
-            </div>
-            <div style={photoSlotStyle}>
-              <img src="/api/placeholder/100/100" alt="foto" style={imgStyle} />
-              <div style={removeBtnStyle}><span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span></div>
-            </div>
-            {/* Slot Kosong */}
+            
+            {/* Slot Kosong untuk ditambahkan kemudian (UI Only) */}
             <div style={emptySlotStyle}>
-              <span className="material-icons" style={{fontSize: '32px', color: '#666'}}>beach_access</span>
-              <span style={{fontSize:'12px', color: '#999', marginTop: '8px'}}>Travel</span>
-            </div>
-            <div style={emptySlotStyle}>
-              <span className="material-icons" style={{fontSize: '32px', color: '#666'}}>pets</span>
-              <span style={{fontSize:'12px', color: '#999', marginTop: '8px', textAlign: 'center'}}>Bersama Peliharaan</span>
+              <span className="material-icons" style={{fontSize: '32px', color: 'var(--text-muted)'}}>add_photo_alternate</span>
             </div>
             <div style={emptySlotStyle}>
-              <span className="material-icons" style={{fontSize: '32px', color: '#666'}}>menu_book</span>
-              <span style={{fontSize:'12px', color: '#999', marginTop: '8px'}}>Kehidupan</span>
+              <span className="material-icons" style={{fontSize: '32px', color: 'var(--text-muted)'}}>add_photo_alternate</span>
             </div>
           </div>
         </div>
@@ -252,7 +250,9 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 resize: 'none',
                 fontSize: '15px',
                 outline: 'none',
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                backgroundColor: 'transparent',
+                color: 'var(--text-main)'
               }}
             />
           </div>
@@ -331,7 +331,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
               value={bioForm.tinggi_badan ? `${bioForm.tinggi_badan} cm` : 'Pilih'}
               onClick={() => {
                 const tinggi = prompt("Masukkan tinggi badan (cm):", bioForm.tinggi_badan || "");
-                if(tinggi) updateField('tinggi_badan', tinggi);
+                if(tinggi && !isNaN(Number(tinggi))) updateField('tinggi_badan', tinggi);
               }}
             />
             <ListItem
@@ -446,15 +446,14 @@ const fullScreenOverlayStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   bottom: 0,
-  backgroundColor: '#f8f9fa',
+  backgroundColor: 'var(--bg-main)',
   zIndex: 100000,
   display: 'flex',
   flexDirection: 'column',
-  fontFamily: 'sans-serif',
 };
 
 const headerStyle: React.CSSProperties = {
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--bg-main)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -464,24 +463,24 @@ const headerStyle: React.CSSProperties = {
 
 const tabsContainerStyle: React.CSSProperties = {
   display: 'flex',
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--bg-main)',
   padding: '0 24px',
-  borderBottom: '1px solid #eee',
+  borderBottom: '1px solid var(--border-editor)',
 };
 
 const tabStyle: React.CSSProperties = {
   flex: 1,
   textAlign: 'center',
   padding: '12px 0',
-  color: '#999',
+  color: 'var(--text-muted)',
   fontSize: '15px',
   cursor: 'pointer',
 };
 
 const activeTabStyle: React.CSSProperties = {
-  color: '#00c99f',
+  color: 'var(--primary-bg)',
   fontWeight: 'bold',
-  borderBottom: '2px solid #00c99f',
+  borderBottom: '2px solid var(--primary-bg)',
 };
 
 const iconBtnStyle: React.CSSProperties = {
@@ -495,9 +494,8 @@ const iconBtnStyle: React.CSSProperties = {
 
 const scrollAreaStyle: React.CSSProperties = {
   flex: 1,
-  overflowY: 'auto',
   padding: '20px',
-  paddingBottom: '80px',
+  paddingBottom: '80px', // Ruang ekstra di bawah untuk scroll
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -506,17 +504,18 @@ const sectionStyle: React.CSSProperties = {
 
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: '14px',
-  color: '#888',
+  fontWeight: '600',
+  color: 'var(--text-muted)',
   marginBottom: '12px',
   marginLeft: '4px',
 };
 
 const cardStyle: React.CSSProperties = {
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--bg-card)',
   borderRadius: '16px',
   padding: '8px 16px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  border: '1px solid #f0f0f0',
+  border: '1px solid var(--border-editor)', // Menyesuaikan dengan mode gelap/terang
 };
 
 // Photo Grid Styles
@@ -531,7 +530,7 @@ const photoSlotStyle: React.CSSProperties = {
   aspectRatio: '3/4',
   borderRadius: '12px',
   overflow: 'hidden',
-  backgroundColor: '#eee',
+  backgroundColor: 'var(--bg-secondary)',
 };
 
 const imgStyle: React.CSSProperties = {
@@ -544,7 +543,7 @@ const removeBtnStyle: React.CSSProperties = {
   position: 'absolute',
   bottom: '8px',
   right: '8px',
-  backgroundColor: '#00c99f',
+  backgroundColor: 'var(--danger)', // Menggunakan warna danger dari CSS variables
   borderRadius: '50%',
   width: '24px',
   height: '24px',
@@ -558,13 +557,14 @@ const removeBtnStyle: React.CSSProperties = {
 const emptySlotStyle: React.CSSProperties = {
   aspectRatio: '3/4',
   borderRadius: '12px',
-  backgroundColor: '#fff',
-  border: '1px solid #e0e0e0',
+  backgroundColor: 'var(--bg-card)',
+  border: '2px dashed var(--bg-secondary)',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'center',
   alignItems: 'center',
   padding: '8px',
+  cursor: 'pointer',
 };
 
 // Selection View Styles
@@ -573,20 +573,20 @@ const selectionHeaderStyle: React.CSSProperties = {
   justifyContent: 'center',
   alignItems: 'center',
   padding: '20px',
-  backgroundColor: '#f8f9fa',
+  backgroundColor: 'var(--bg-main)',
   position: 'relative',
 };
 
 const progressBarStyle: React.CSSProperties = {
   width: '120px',
   height: '4px',
-  backgroundColor: '#e0e0e0',
+  backgroundColor: 'var(--bg-secondary)',
   borderRadius: '2px',
 };
 
 const progressFillStyle: React.CSSProperties = {
   width: '70%',
   height: '100%',
-  backgroundColor: '#10b981', // Hijau
+  backgroundColor: 'var(--primary-bg)',
   borderRadius: '2px',
 };
