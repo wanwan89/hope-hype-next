@@ -6,6 +6,7 @@ import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatInputFooter from './ChatInputFooter';
 import ChatModals from './ChatModals'; 
+// Ubah baris import hook menjadi:
 import { useChat } from '@/components/chat/hooks/useChat';
 
 export default function ChatArea() {
@@ -86,6 +87,7 @@ export default function ChatArea() {
         handleMicTouchMove={actions.handleMicTouchMove} 
         handleSendClick={actions.handleSendClick} 
         editMessageId={state.editMessageId}
+        setIsImageModalOpen={setIsImageModalOpen} 
       />
 
       <ChatModals 

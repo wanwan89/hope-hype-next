@@ -6,7 +6,9 @@ export default function ChatInputFooter({
   chatState, headerInfo, handleTolakRequest, handleTerimaRequest,
   isStickerOpen, setIsStickerOpen, fetchStickers, t, stickers, sendMessage,
   replyTo, setReplyTo, isRecording, recordTime, audioLevel,
-  inputValue, handleTyping, handlePhotoClick, isUploadingImg, canSend, 
+  inputValue, handleTyping, 
+  setIsImageModalOpen, // 🔥 TAMBAHAN: Masukkan prop ini agar bisa membuka modal
+  isUploadingImg, canSend, 
   handleMicTouchStart, stopVN, handleMicTouchMove, handleSendClick, editMessageId
 }: any) {
 
@@ -121,9 +123,11 @@ export default function ChatInputFooter({
                     }}
                   />
                   
+                  {/* 🔥 PERBAIKAN: Tombol ini sekarang hanya bertugas membuka modal gambar */}
                   <button 
                     style={{ background: 'transparent', border: 'none', padding: '12px 14px 12px 0', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }} 
-                    onClick={handlePhotoClick} disabled={isUploadingImg}
+                    onClick={() => setIsImageModalOpen(true)} 
+                    disabled={isUploadingImg}
                   >
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -145,17 +149,46 @@ export default function ChatInputFooter({
               onClick={() => canSend && handleSendClick()}
             >
               <AnimatePresence mode="wait">
-                <motion.span
-                  key={editMessageId ? 'edit' : canSend ? 'send' : 'mic'}
-                  initial={{ scale: 0, opacity: 0, rotate: -45 }}
-                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  exit={{ scale: 0, opacity: 0, rotate: 45 }}
-                  transition={{ duration: 0.15 }}
-                  className="material-icons"
-                  style={{ fontSize: '20px' }}
-                >
-                  {editMessageId ? 'check' : (canSend ? 'send' : 'mic')}
-                </motion.span>
+                {editMessageId ? (
+                  <motion.span
+                    key="edit"
+                    initial={{ scale: 0, opacity: 0, rotate: -45 }}
+                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                    exit={{ scale: 0, opacity: 0, rotate: 45 }}
+                    transition={{ duration: 0.15 }}
+                    className="material-icons"
+                    style={{ fontSize: '20px' }}
+                  >
+                    check
+                  </motion.span>
+                ) : canSend ? (
+                  <motion.span
+                    key="send"
+                    initial={{ scale: 0, opacity: 0, rotate: -45 }}
+                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                    exit={{ scale: 0, opacity: 0, rotate: 45 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                      <path fill="currentColor" fillRule="evenodd" d="M2.345 2.245a1 1 0 0 1 1.102-.14l18 9a1 1 0 0 1 0 1.79l-18 9a1 1 0 0 1-1.396-1.211L4.613 13H10a1 1 0 1 0 0-2H4.613L2.05 3.316a1 1 0 0 1 .294-1.071z" clipRule="evenodd"/>
+                    </svg>
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="mic"
+                    initial={{ scale: 0, opacity: 0, rotate: -45 }}
+                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                    exit={{ scale: 0, opacity: 0, rotate: 45 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512">
+                      <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="32" d="M192 448h128m64-240v32c0 70.4-57.6 128-128 128h0c-70.4 0-128-57.6-128-128v-32m128 160v80"/>
+                      <path fill="currentColor" d="M256 320a78.83 78.83 0 0 1-56.55-24.1A80.9 80.9 0 0 1 176 239V128a79.69 79.69 0 0 1 80-80c44.86 0 80 35.14 80 80v111c0 44.66-35.89 81-80 81"/>
+                    </svg>
+                  </motion.span>
+                )}
               </AnimatePresence>
             </button>
           </div>
