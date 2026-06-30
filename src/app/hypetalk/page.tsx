@@ -114,21 +114,37 @@ export default function HypetalkPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return router.push('/login');
 
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    setCurrentUser({ ...user, ...profile });
+    // MENGUBAH QUERY: Ambil profil dan relasi tabel user_bios sekaligus
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        user_bios (umur, gender, zodiak, occupation, hobi)
+      `)
+      .eq('id', user.id)
+      .single();
 
     if (profile) {
+      // Ambil data bios (handle jika direturn berupa array dari Supabase)
+      const bios = Array.isArray(profile.user_bios) ? profile.user_bios[0] : (profile.user_bios || {});
+
+      // Gabungkan data user dan profile + bios
+      setCurrentUser({ ...user, ...profile, ...bios });
+
+      // Gunakan data dari tabel user_bios sebagai prioritas default (fallback ke profile jika kosong)
       setBioForm({
-        umur: profile.umur || '',
-        gender: profile.gender || 'Pria',
-        zodiak: profile.zodiak || '',
-        pekerjaan: profile.pekerjaan || '',
-        hobi: profile.hobi || ''
+        umur: bios.umur || profile.umur || '',
+        gender: bios.gender || profile.gender || 'Pria',
+        zodiak: bios.zodiak || profile.zodiak || '',
+        pekerjaan: bios.occupation || profile.pekerjaan || '',
+        hobi: bios.hobi || profile.hobi || ''
       });
       setPrivacySettings({
         show_online: profile.show_online !== false,
         last_seen: profile.last_seen || 'public'
       });
+    } else {
+      setCurrentUser(user);
     }
 
     await loadAllChats(user.id, false);
@@ -385,16 +401,42 @@ export default function HypetalkPage() {
   const openModal = (modalName: string) => { setActiveModal(modalName); setIsSidebarOpen(false); };
   const closeModal = () => { setActiveModal(null); };
 
+  // MENGUBAH FUNGSI INI: Simpan ke tabel user_bios menggunakan upsert
   const handleSaveBio = async () => {
     setIsSavingBio(true);
     try {
-      const updateData = { ...bioForm, umur: Number(bioForm.umur) || null };
-      await supabase.from("profiles").update(updateData).eq("id", currentUser.id);
-      showNotif("Profil tersimpan!", "success");
-      setCurrentUser((prev: any) => ({ ...prev, ...updateData }));
+      if (!currentUser?.id) throw new Error("Gagal menyimpan, user tidak terautentikasi.");
+
+      const biosData = {
+        id: currentUser.id,
+        umur: Number(bioForm.umur) || null,
+        gender: bioForm.gender,
+        zodiak: bioForm.zodiak,
+        occupation: bioForm.pekerjaan, // Mapping dari 'pekerjaan' (state) ke 'occupation' (kolom db)
+        hobi: bioForm.hobi,
+        updated_at: new Date().toISOString()
+      };
+
+      // 1. Simpan ke tabel user_bios (update jika sudah ada, insert jika belum)
+      const { error: biosError } = await supabase
+        .from('user_bios')
+        .upsert(biosData, { onConflict: 'id' });
+
+      if (biosError) throw biosError;
+
+      // (Opsional/Fallback) Tergantung arsitektur kamu, jika kolom ini masih ada di 'profiles' 
+      // dan butuh disinkronkan, jalankan kode di bawah ini:
+      // await supabase.from('profiles').update({ gender: bioForm.gender, umur: biosData.umur }).eq('id', currentUser.id);
+
+      showNotif("Profil HypeMatch tersimpan!", "success");
+      setCurrentUser((prev: any) => ({ ...prev, ...bioForm, umur: biosData.umur }));
       closeModal();
-    } catch (err) { showNotif("Gagal simpan.", "error"); }
-    finally { setIsSavingBio(false); }
+    } catch (err: any) { 
+      console.error(err);
+      showNotif(err.message || "Gagal menyimpan biodata.", "error"); 
+    } finally { 
+      setIsSavingBio(false); 
+    }
   };
 
   const handleSavePrivacy = async () => {
@@ -431,18 +473,16 @@ export default function HypetalkPage() {
     router.push('/hypematch');
   };
 
-  // 🔥 UPDATE LOGIKA PENCARIAN DI SINI 🔥
   const handleSearchAndChat = async () => {
     if (!searchUserId) return;
     const cleanId = searchUserId.replace('#', '').toUpperCase();
     
-    // Ambil SEMUA data profil (*) karena kita butuh datanya untuk UserProfileModal
     const { data: target, error } = await supabase.from('profiles').select('*').eq('short_id', cleanId).maybeSingle();
     
     if (target && !error) {
-      setSelectedProfile(target);       // Set data user ke state selectedProfile
-      setActiveModal('user-profile');   // Beralih dari 'search' modal ke 'user-profile' modal
-      setSearchUserId('');              // Reset kolom input ID
+      setSelectedProfile(target);       
+      setActiveModal('user-profile');   
+      setSearchUserId('');              
     } else {
       showNotif("ID tidak ditemukan", "error");
     }
@@ -591,8 +631,6 @@ export default function HypetalkPage() {
         />
 
         {/* MODALS */}
-        
-        {/* Ketika activeModal pindah ke 'user-profile', akan otomatis ngerender komponen ini */}
         {activeModal === 'user-profile' && selectedProfile && (
           <UserProfileModal
             profile={selectedProfile}
