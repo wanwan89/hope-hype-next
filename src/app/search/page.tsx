@@ -79,28 +79,52 @@ function SearchHeader({ initialQuery, onSearch }: SearchHeaderProps) {
         <span className="material-icons">arrow_back</span>
       </button>
       
-      <div ref={wrapperRef} style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <span className="material-icons" style={{ position: 'absolute', left: '12px', color: isFocused ? 'var(--primary)' : 'var(--text-muted)', fontSize: '18px', zIndex: 2, transition: 'color 0.3s ease' }}>search</span>
-        <input 
-          type="text" 
-          value={localQuery}
-          onChange={(e) => setLocalQuery(e.target.value)}
-          onKeyDown={handleSearchEnter}
-          onFocus={() => { 
-            setIsFocused(true);
-            if (localQuery.length > 1) setShowSuggestions(true); 
-          }}
-          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
-          placeholder="Cari kreator, postingan, #hashtag..."
-          style={{ 
-            width: '100%', padding: '10px 15px 10px 38px', borderRadius: '24px', 
-            background: 'var(--bg-input)', color: 'var(--text-main)', 
-            border: '1px solid var(--border-card)',
-            boxShadow: isFocused ? '0 0 0 3px var(--primary-soft)' : 'none',
-            transition: 'box-shadow 0.3s ease',
-            fontSize: '14px', outline: 'none', position: 'relative', zIndex: 1
-          }}
-        />
+     <div ref={wrapperRef} style={{ 
+  flex: 1, 
+  position: 'relative', 
+  display: 'flex', 
+  alignItems: 'center',
+  minWidth: 0 // <--- PENTING: Mencegah flex child menyusut melebihi konten
+}}>
+  
+  <span className="material-icons" style={{ 
+    position: 'absolute', 
+    left: '12px', 
+    color: isFocused ? 'var(--primary)' : 'var(--text-muted)', 
+    fontSize: '18px', 
+    zIndex: 2, 
+    transition: 'color 0.3s ease',
+    flexShrink: 0 // <--- Menjaga ikon tidak gepeng
+  }}>search</span>
+  
+  <input 
+    type="text" 
+    value={localQuery}
+    onChange={(e) => setLocalQuery(e.target.value)}
+    onKeyDown={handleSearchEnter}
+    onFocus={() => { 
+      setIsFocused(true);
+      if (localQuery.length > 1) setShowSuggestions(true); 
+    }}
+    onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+    placeholder="Cari kreator, postingan, #hashtag..."
+    style={{ 
+      width: '100%', 
+      flex: 1, // <--- Memastikan input selalu mengisi sisa ruang
+      padding: '10px 15px 10px 38px', 
+      borderRadius: '24px', 
+      background: 'var(--bg-input)', 
+      color: 'var(--text-main)', 
+      border: '1px solid var(--border-card)',
+      boxShadow: isFocused ? '0 0 0 3px var(--primary-soft)' : 'none',
+      transition: 'box-shadow 0.3s ease',
+      fontSize: '14px', 
+      outline: 'none', 
+      position: 'relative', 
+      zIndex: 1,
+      minWidth: '200px' // <--- Tambahkan ini agar tidak bisa menyusut terlalu kecil
+    }}
+  />
 
         {showSuggestions && searchSuggestions.length > 0 && (
           <div style={{
