@@ -34,9 +34,10 @@ function CreatePostContent() {
   const searchParams = useSearchParams();
   const draftId = searchParams?.get('draft_id');
 
-  // Pindahkan pemanggilan env ke DALAM komponen
-  const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
-  const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
+  // Masukkan langsung string-nya seperti ini:
+  const CLOUDINARY_CLOUD_NAME = 'dhhmkb8kl';
+  const CLOUDINARY_UPLOAD_PRESET = 'post_hope';
+
 
   // --- STATE ---
   const [postType, setPostType] = useState<'image' | 'text' | 'video'>('image');
