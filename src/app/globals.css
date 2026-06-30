@@ -218,6 +218,17 @@ textarea,
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+/* =============================================================
+   HILANGKAN BAYANGAN & OUTLINE PADA INPUT / TEXTAREA / SELECT SAAT FOKUS
+   ============================================================= */
+input:focus,
+textarea:focus,
+select:focus,
+[contenteditable="true"]:focus {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 a,
 button,
 select,

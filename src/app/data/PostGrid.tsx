@@ -3,11 +3,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
-// 🔥 IMPORT LOTTIE SECARA DINAMIS (Mencegah SSR Error di Next.js) 🔥
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
-
-// 🔥 IMPORT FILE LOTTIE JSON 🔥
-// Sesuaikan dengan alias Next.js Anda (biasanya @ merujuk ke folder src)
 import lockAnimation from '@/assets/lottie/lock.json';
 import kittyAnimation from '@/assets/lottie/kitty.json';
 
@@ -22,37 +18,51 @@ type Props = {
   t: (key: string, fallback?: string) => string;
 };
 
+// --- SVG Icon Views (mata) ---
+const ViewsIcon = ({ size = 14 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="1.5"
+    style={{ display: 'inline-block', verticalAlign: 'middle' }}
+  >
+    <path d="M14.581 9.402C16.194 10.718 17 11.375 17 12.5s-.806 1.783-2.419 3.098a23 23 0 0 1-1.292.99c-.356.25-.759.508-1.176.762c-1.609.978-2.413 1.467-3.134.926c-.722-.542-.787-1.675-.918-3.943A33 33 0 0 1 8 12.5c0-.563.023-1.192.06-1.833c.132-2.267.197-3.401.919-3.943c.721-.541 1.525-.052 3.134.926c.417.254.82.512 1.176.762a23 23 0 0 1 1.292.99" />
+  </svg>
+);
+
 const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, profile, activeTab, onPostClick, t }) => {
   const router = useRouter();
 
-  // 🔥 PISAHKAN DRAF DAN POSTINGAN PUBLIK 🔥
   const draftPosts = posts.filter(p => p.status === 'draft');
   const publishedPostsRaw = posts.filter(p => p.status !== 'draft');
 
-  // 🔥 LOGIKA PIN: HANYA BERLAKU DI TAB 'POST' (MAKS 3) 🔥
   let publishedPosts: any[] = [];
-
   if (activeTab === 'post') {
-    // Kalau di tab postingan utama, urutkan yang di-pin ke atas
     const sortedPosts = [...publishedPostsRaw].sort((a, b) => {
       const aPinned = a.is_pinned === true ? 1 : 0;
       const bPinned = b.is_pinned === true ? 1 : 0;
-      return bPinned - aPinned; 
+      return bPinned - aPinned;
     });
 
     let pinCount = 0;
     publishedPosts = sortedPosts.map(post => {
       if (post.is_pinned === true && pinCount < 3) {
         pinCount++;
-        return { ...post, visually_pinned: true }; // Masuk kuota pin
+        return { ...post, visually_pinned: true };
       }
-      return { ...post, visually_pinned: false }; // Sisa postingan biasa
+      return { ...post, visually_pinned: false };
     });
   } else {
-    // Tab lain (Like, Repost, Private, dsb) nggak boleh ada pin, biarkan urutan asli
     publishedPosts = publishedPostsRaw.map(post => ({ ...post, visually_pinned: false }));
   }
 
+  // Loading state
   if (isLoadingPosts) {
     return (
       <div className="post-grid">
@@ -61,12 +71,11 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
     );
   }
 
-  // 🔥 STATE: AKUN PRIVAT 🔥
+  // Private account
   if (profile.is_private && !isMutual && !isMe) {
     return (
       <div className="post-grid">
         <div className="no-posts-v2">
-          {/* Lottie Animasi Lock */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
             <Lottie animationData={lockAnimation} loop={true} style={{ width: 120, height: 120 }} />
           </div>
@@ -77,12 +86,11 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
     );
   }
 
-  // 🔥 STATE: AKTIVITAS PRIVAT (LIKE / REPOST DISEMBUNYIKAN) 🔥
+  // Hidden activity
   if ((activeTab === 'like' && !isMe && profile.hide_likes) || (activeTab === 'repost' && !isMe && profile.hide_reposts)) {
     return (
       <div className="post-grid">
         <div className="no-posts-v2">
-          {/* Lottie Animasi Lock */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
             <Lottie animationData={lockAnimation} loop={true} style={{ width: 120, height: 120 }} />
           </div>
@@ -93,17 +101,16 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
     );
   }
 
-  // 🔥 STATE: TIDAK ADA POSTINGAN (PUBLIK MAUPUN PRIVAT) 🔥
+  // No posts
   if (posts.length === 0) {
     return (
       <div className="post-grid">
         <div className="no-posts-v2">
-          {/* Lottie Kondisional: Lock untuk privat, Kitty untuk selain privat */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-            <Lottie 
-              animationData={activeTab === 'private' ? lockAnimation : kittyAnimation} 
-              loop={true} 
-              style={{ width: 150, height: 150 }} 
+            <Lottie
+              animationData={activeTab === 'private' ? lockAnimation : kittyAnimation}
+              loop={true}
+              style={{ width: 150, height: 150 }}
             />
           </div>
           <h3>{activeTab === 'private' ? 'Tidak ada postingan privat' : t('no_posts', 'Belum ada postingan')}</h3>
@@ -119,18 +126,23 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
 
   return (
     <div className="post-grid">
-      
-      {/* 🔥 KOTAK KHUSUS FOLDER DRAF DENGAN PREVIEW (HANYA MUNCUL BUAT OWNER DI TAB POST) 🔥 */}
+      {/* Draft folder (owner only) */}
       {isMe && activeTab === 'post' && draftPosts.length > 0 && (
-        <div 
-          className="grid-item" 
-          style={{ 
-            cursor: 'pointer', position: 'relative', overflow: 'hidden', 
-            background: 'var(--bg-secondary)', border: '2px dashed #f59e0b' 
-          }} 
+        <div
+          className="grid-item"
+          style={{
+            cursor: 'pointer', position: 'relative', overflow: 'hidden',
+            background: 'var(--bg-secondary)', border: '2px dashed #f59e0b'
+          }}
           onClick={() => router.push('/drafts')}
         >
-          <div style={{ position: 'absolute', top: '6px', left: '6px', zIndex: 5, background: 'rgba(245, 158, 11, 0.9)', color: '#000', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+          <div style={{
+            position: 'absolute', top: '6px', left: '6px', zIndex: 5,
+            background: 'rgba(245, 158, 11, 0.9)', color: '#000',
+            padding: '4px 8px', borderRadius: '12px', fontSize: '10px',
+            fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          }}>
             <span className="material-icons" style={{ fontSize: '14px' }}>inventory_2</span>
             {draftPosts.length} Draf
           </div>
@@ -157,41 +169,37 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
           })()}
 
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, pointerEvents: 'none' }}>
-             <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff', textShadow: '0 2px 5px rgba(0,0,0,0.8)' }}>Lihat Draf</span>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff', textShadow: '0 2px 5px rgba(0,0,0,0.8)' }}>Lihat Draf</span>
           </div>
         </div>
       )}
 
-      {/* 🔥 RENDER POSTINGAN YANG SUDAH DI-PUBLISH 🔥 */}
+      {/* Published posts */}
       {publishedPosts.map(post => {
         const allImages = post.image_url ? post.image_url.split(',') : [];
         const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
         const isVideo = !!post.video_url;
-        
-        // 🔥 JADIKAN STRING EKSPLISIT BIAR AMAN 🔥
         const safeId = String(post.id);
 
         return (
-          <div 
-            key={safeId} 
-            className="grid-item" 
-            style={{ cursor: 'pointer', position: 'relative' }} 
-            // 🔥 POTONG KOMPAS LANGSUNG PAKAI ROUTER.PUSH 🔥
+          <div
+            key={safeId}
+            className="grid-item"
+            style={{ cursor: 'pointer', position: 'relative' }}
             onClick={() => {
               if (post.status === 'draft') {
                 router.push(`/create?draft_id=${safeId}`);
               } else {
-                // 🔥 FIX: TAMBAHKAN FROM DAN USERID 🔥
                 router.push(`/post?id=${safeId}&from=profile&userId=${post.creator_id}`);
               }
             }}
           >
-            {/* 🔥 LENCANA JELAS UNTUK POSTINGAN YANG DISEMATKAN (HANYA TAB POST, MAX 3) 🔥 */}
+            {/* Pin badge */}
             {post.visually_pinned && (
-              <div style={{ 
-                position: 'absolute', top: '6px', right: '6px', zIndex: 3, 
-                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', 
-                padding: '4px 8px', borderRadius: '12px', display: 'flex', 
+              <div style={{
+                position: 'absolute', top: '6px', right: '6px', zIndex: 3,
+                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
+                padding: '4px 8px', borderRadius: '12px', display: 'flex',
                 alignItems: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
                 border: '1px solid rgba(255,255,255,0.1)'
               }}>
@@ -203,16 +211,23 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
             {thumbUrl || isVideo ? (
               <>
                 {thumbUrl ? <img src={thumbUrl} alt="post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <video src={post.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                
-                {/* Ikon tambahan kalau video / multi-gambar */}
+
+                {/* Play / multi-image icons */}
                 {!post.visually_pinned && isVideo ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '20px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>play_circle_filled</span>
                 ) : !post.visually_pinned && allImages.length > 1 ? (
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span>
                 ) : null}
-                
-                <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
-                  <span className="material-icons" style={{ fontSize: '14px' }}>visibility</span>{post.views || 0}
+
+                {/* Views count – sekarang pakai SVG */}
+                <div style={{
+                  position: 'absolute', bottom: '6px', left: '8px',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  color: 'white', fontSize: '11px', fontWeight: 'bold',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.8)'
+                }}>
+                  <ViewsIcon size={14} />
+                  {post.views || 0}
                 </div>
               </>
             ) : (
