@@ -1,16 +1,33 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 
+// Interface disesuaikan persis dengan skema database
+export interface UserBioData {
+  id?: string;
+  photos: (string | null)[]; // URL array
+  bio_hype: string;
+  pendidikan: string;
+  occupation: string;
+  gender: string;
+  tinggi_badan: number | null; // integer di DB
+  agama: string;
+  tujuan: string;
+  olahraga: string;
+  merokok: string;
+  alkohol: string;
+  [key: string]: any; // Untuk nampung raw_file_ sementara
+}
+
 type Props = {
-  bioForm: any;
-  setBioForm: (data: any) => void;
+  bioForm: Partial<UserBioData>;
+  setBioForm: (data: Partial<UserBioData>) => void;
   isSaving: boolean;
   onSave: () => void;
   onClose: () => void;
 };
 
 type SelectionConfig = {
-  field: string;
+  field: keyof UserBioData;
   title: string;
   icon: string;
   options: { label: string; value: string }[];
@@ -28,7 +45,7 @@ const ListItem = ({
 }: {
   icon: string;
   label: string;
-  value: string;
+  value: string | number | null;
   onClick: () => void;
   isLast?: boolean;
 }) => (
@@ -74,7 +91,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     ? [...bioForm.photos, null, null, null].slice(0, 3) 
     : [null, null, null];
 
-  const updateField = (field: string, value: any) => {
+  const updateField = (field: keyof UserBioData, value: any) => {
     setBioForm({ ...bioForm, [field]: value });
   };
 
@@ -111,7 +128,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     setBioForm({
       ...bioForm,
       photos: newPhotos,
-      // Simpan object file mentah agar bisa di-upload ke Cloudinary via Parent
       [`raw_file_${uploadIndex}`]: file 
     });
 
@@ -127,8 +143,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     const finalizedPhotos = [...filteredPhotos, null, null, null].slice(0, 3);
 
     const updatedBioForm = { ...bioForm, photos: finalizedPhotos };
-
-    // Hapus raw file jika ada
     delete updatedBioForm[`raw_file_${index}`];
 
     setBioForm(updatedBioForm);
@@ -194,7 +208,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
         <div style={{ padding: '24px', borderTop: '1px solid var(--bg-secondary)', backgroundColor: 'var(--bg-main)' }}>
           <button
             onClick={() => {
-              updateField(selectionConfig.field, '');
+              updateField(selectionConfig.field, null);
               setActiveView('main');
             }}
             style={{
@@ -321,7 +335,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 })
               }
             />
-            {/* Field pekerjaan diubah menjadi occupation */}
             <ListItem
               icon="work"
               label="Pekerjaan"
@@ -370,8 +383,11 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
               label="Tinggi"
               value={bioForm.tinggi_badan ? `${bioForm.tinggi_badan} cm` : 'Pilih'}
               onClick={() => {
-                const tinggi = prompt("Masukkan tinggi badan (cm):", bioForm.tinggi_badan || "");
-                if(tinggi && !isNaN(Number(tinggi))) updateField('tinggi_badan', tinggi);
+                const tinggi = prompt("Masukkan tinggi badan (cm):", bioForm.tinggi_badan?.toString() || "");
+                // Memastikan data disave sebagai Integer sesuai dengan DB schema
+                if (tinggi && !isNaN(Number(tinggi))) {
+                  updateField('tinggi_badan', parseInt(tinggi, 10));
+                }
               }}
             />
             <ListItem
