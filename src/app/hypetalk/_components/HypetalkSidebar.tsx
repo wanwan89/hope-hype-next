@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type Props = {
   isOpen: boolean;
@@ -28,30 +29,83 @@ const MatchIcon = () => (
 );
 
 const HypetalkSidebar: React.FC<Props> = ({ isOpen, currentUser, onOpenModal, onHypeMatch }) => (
-  <aside className={`tg-sidebar ${isOpen ? 'open' : ''}`}>
-    <div className="sidebar-header">
-      <img className="side-avatar" src={currentUser?.avatar_url || "/asets/png/profile.webp"} alt="me" />
-      <div className="sidebar-user-info">
-        <h3 className="side-username">{currentUser?.username || "User"}</h3>
-        <p className="side-id">#{currentUser?.short_id || "0000"}</p>
-      </div>
-      <button className="btn-edit-bio" onClick={() => onOpenModal('bio')}>Edit Biodata</button>
-    </div>
-    <div className="sidebar-menu">
-      <button className="menu-item" onClick={() => onOpenModal('group')}>
-        <BuatGrupIcon />
-        <span style={{ marginLeft: 12 }}>Buat Grup Baru</span>
-      </button>
-      <button className="menu-item" onClick={() => onOpenModal('privacy-settings')}>
-        <GembokIcon />
-        <span style={{ marginLeft: 12 }}>Privasi & Status</span>
-      </button>
-      <button className="menu-item btn-hype-match" onClick={onHypeMatch} style={{ marginTop: '10px' }}>
-        <MatchIcon />
-        <span style={{ marginLeft: 12 }}>Hype Match</span>
-      </button>
-    </div>
-  </aside>
+  <>
+    {/* Overlay dengan animasi fade */}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="tg-sidebar-overlay active"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 99990,
+          }}
+        />
+      )}
+    </AnimatePresence>
+
+    {/* Sidebar panel dengan animasi slide dari kanan */}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.aside
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{
+            type: 'spring',
+            stiffness: 300,
+            damping: 30,
+            mass: 0.8,
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: '100%',
+            maxWidth: '320px',
+            backgroundColor: 'var(--bg-main)',
+            zIndex: 99991,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
+            borderLeft: '1px solid var(--border-card)',
+          }}
+        >
+          <div className="sidebar-header">
+            <img className="side-avatar" src={currentUser?.avatar_url || "/asets/png/profile.webp"} alt="me" />
+            <div className="sidebar-user-info">
+              <h3 className="side-username">{currentUser?.username || "User"}</h3>
+              <p className="side-id">#{currentUser?.short_id || "0000"}</p>
+            </div>
+            <button className="btn-edit-bio" onClick={() => onOpenModal('bio')}>
+              Edit Biodata
+            </button>
+          </div>
+          <div className="sidebar-menu">
+            <button className="menu-item" onClick={() => onOpenModal('group')}>
+              <BuatGrupIcon />
+              <span style={{ marginLeft: 12 }}>Buat Grup Baru</span>
+            </button>
+            <button className="menu-item" onClick={() => onOpenModal('privacy-settings')}>
+              <GembokIcon />
+              <span style={{ marginLeft: 12 }}>Privasi & Status</span>
+            </button>
+            <button className="menu-item btn-hype-match" onClick={onHypeMatch} style={{ marginTop: '10px' }}>
+              <MatchIcon />
+              <span style={{ marginLeft: 12 }}>Hype Match</span>
+            </button>
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  </>
 );
 
 export default React.memo(HypetalkSidebar);

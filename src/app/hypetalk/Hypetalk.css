@@ -303,7 +303,15 @@
   .telegram-wrapper .tg-sidebar.open { transform: translateX(0); }
 }
 
-.telegram-wrapper .sidebar-header { padding: 40px 20px 20px; background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-card); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.telegram-wrapper .sidebar-header {
+  padding: 40px 20px 20px;
+  background-color: var(--bg-main);         /* ✅ putih di light, hitam di dark */
+  border-bottom: 1px solid var(--border-card);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
 .telegram-wrapper .side-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-bg); }
 .telegram-wrapper .sidebar-user-info { display: flex; flex-direction: column; gap: 2px; }
 .telegram-wrapper .side-username { font-size: 18px; font-weight: 700; color: var(--text-main); margin: 0; }

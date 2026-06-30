@@ -49,7 +49,13 @@ const SidebarMenu: React.FC<Props> = ({ isOpen, onClose, t }) => {
         style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none' }}
       />
       
-      <aside className={`p-sidebar-panel ${isOpen ? 'open' : ''}`}>
+      <aside 
+        className={`p-sidebar-panel ${isOpen ? 'open' : ''}`}
+        style={{
+          bottom: 'calc(65px + env(safe-area-inset-bottom))', // ⬅️ berhenti di atas navbar
+          zIndex: 10001,
+        }}
+      >
         <div className="sidebar-search-container">
           <div className="sidebar-search">
             <span className="material-icons" style={{fontSize: '20px', color: '#8a8b91'}}>search</span>
