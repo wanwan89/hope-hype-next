@@ -68,11 +68,12 @@ function NavbarContent() {
 
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
+  // PENAMBAHAN '/biomodal' DI SINI
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact', 
     '/create', '/search', '/saldo', '/story', 
     '/pending', '/historycoin', '/withdraw',
-    '/hypetalk/room' 
+    '/hypetalk/room', '/biomodal' 
   ].some(path => pathname?.startsWith(path)) || 
   (pathname?.startsWith('/voice') && !pathname?.startsWith('/voice-room'));
 
@@ -111,7 +112,6 @@ function NavbarContent() {
     const synthesizeTypes = ['like', 'comment', 'repost', 'save', 'comment_like', 'follow'];
     let unreadNotifs = (dbNotifRes.data || []).filter(n => !synthesizeTypes.includes(n.type)).length;
 
-    // LOGIKA PERBAIKAN LOCAL STORAGE
     let readSet = new Set<string>();
     let isFreshInstall = false;
     let localData = null;
@@ -119,13 +119,12 @@ function NavbarContent() {
     if (typeof window !== 'undefined') {
       localData = localStorage.getItem('read_notifs_local');
       if (!localData) {
-        isFreshInstall = true; // Data kosong (baru install / hapus PWA)
+        isFreshInstall = true; 
       } else {
         try { readSet = new Set(JSON.parse(localData)); } catch (e) {}
       }
     }
 
-    // Limit performa: Hanya ambil data interaksi 3 hari terakhir untuk menghemat quota DB
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', userId);
@@ -161,11 +160,10 @@ function NavbarContent() {
 
     const newlyFetchedIds: string[] = [];
 
-    // Helper untuk mengecek apakah ID sudah dibaca
     const processItem = (idStr: string) => {
       if (isFreshInstall) {
         newlyFetchedIds.push(idStr);
-        return 0; // Anggap otomatis sudah terbaca agar badge tidak error
+        return 0; 
       }
       return readSet.has(idStr) ? 0 : 1;
     };
@@ -199,8 +197,6 @@ function NavbarContent() {
     unreadNotifs += countGrouped(repostsRes.data || [], 'repost');
     unreadNotifs += countGrouped(savesRes.data || [], 'save');
 
-    // Jika ini fresh install, simpan semua ID ke localStorage sekarang 
-    // agar pembacaan berikutnya berfungsi normal tanpa meledakkan badge
     if (isFreshInstall && typeof window !== 'undefined' && newlyFetchedIds.length > 0) {
       localStorage.setItem('read_notifs_local', JSON.stringify(newlyFetchedIds));
     }
@@ -318,7 +314,7 @@ function NavbarContent() {
       style={{
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
-        zIndex: 9000,
+        zIndex: 99999, // DIUBAH KE 99999 AGAR SELALU DI ATAS
         display: 'flex',
         justifyContent: 'center',
       }}
