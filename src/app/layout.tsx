@@ -131,11 +131,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       metaTheme.setAttribute('content', isDark ? '#0a0a0a' : '#ffffff');
 
       if (platform === 'android' || platform === 'ios') {
-        // 🔥 FIX 1: Ganti overlay menjadi FALSE agar status bar tidak menumpuk
         await StatusBar.setOverlaysWebView({ overlay: false });
         await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
         if (platform === 'android') {
           await StatusBar.setBackgroundColor({ color: isDark ? '#0a0a0a' : '#ffffff' });
+          // 🔥 BAGIAN NAVIGATION BAR DIHAPUS KARENA PAKAI JAVA SAJA
         }
       }
     } catch (e) { console.warn(e); }
@@ -163,7 +163,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       try {
         const platform = Capacitor.getPlatform();
         if (platform === 'android' || platform === 'ios') {
-          // 🔥 FIX 2: Ganti overlay menjadi FALSE agar webview turun
           await StatusBar.setOverlaysWebView({ overlay: false });
           let permPush = await PushNotifications.checkPermissions();
           if (permPush.receive === 'prompt') permPush = await PushNotifications.requestPermissions();
@@ -304,18 +303,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  useIsomorphicLayoutEffect(() => {
-    const root = document.documentElement;
-    const body = document.body;
-    if (isStandaloneApp) {
-      root.classList.add('fixed-layout');
-      body.classList.add('fixed-layout');
-    } else {
-      root.classList.remove('fixed-layout');
-      body.classList.remove('fixed-layout');
-    }
-  }, [isStandaloneApp]);
-
   const renderUI = () => (
     <>
       <GlobalShareModal />
@@ -359,10 +346,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {/* 🔥 FIX 3: Hapus inline 'paddingTop' (style di bawah ini dihapus) */}
       <div className={`layout-wrapper ${isStandaloneApp ? 'fixed-layout' : ''}`}>
-        
-        {/* MAIN SCROLL AREA */}
         <main className={`main-content ${hasNavbar ? 'with-bottom-nav' : ''} ${isFullscreenPage ? 'is-fullscreen' : ''}`}>
           {isHomePage && (
             <div
