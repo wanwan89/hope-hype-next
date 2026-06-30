@@ -73,7 +73,7 @@ const CustomSelect = ({
                   padding: '14px 16px',
                   borderBottom: idx === options.length - 1 ? 'none' : '1px solid var(--border-card)',
                   backgroundColor: value === opt.value ? 'var(--bg-secondary)' : 'transparent',
-                  color: value === opt.value ? 'var(--primary)' : 'var(--text-main)',
+                  color: value === opt.value ? 'var(--primary)' : 'var(--text-main)',  // ✅ teks saja
                   fontWeight: value === opt.value ? 'bold' : 'normal',
                   cursor: 'pointer', fontSize: '14px'
                 }}
@@ -251,7 +251,7 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
         {/* Tombol Simpan Sticky di Bawah (UPDATED) */}
         <div style={{ 
           position: 'sticky', bottom: 0, padding: '16px 0', 
-          backgroundColor: 'transparent' // <-- Sudah diubah menjadi transparan
+          backgroundColor: 'transparent'
         }}>
           <button className="action-btn" onClick={onSave} disabled={isSaving} style={btnStyle}>
             {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -267,7 +267,7 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
 
 const fullScreenOverlayStyle: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'var(--bg-main)', // 100% mengikuti warna background tema
+  backgroundColor: 'var(--bg-main)',
   zIndex: 100000, display: 'flex', flexDirection: 'column'
 };
 
@@ -276,19 +276,19 @@ const fullScreenContentStyle: React.CSSProperties = {
   overflowY: 'auto', 
   padding: '24px',
   display: 'flex', flexDirection: 'column',
-  backgroundColor: 'var(--bg-main)' // Memastikan isi juga mengikuti tema
+  backgroundColor: 'var(--bg-main)'
 };
 
 const headerStyle: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   marginBottom: '24px', paddingBottom: '16px',
-  borderBottom: '1px solid var(--border-card)' // Garis bawah sesuai tema
+  borderBottom: '1px solid var(--border-card)'
 };
 
 const closeBtnStyle: React.CSSProperties = {
   background: 'var(--bg-secondary)', border: 'none', cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  padding: '8px', borderRadius: '50%', color: 'var(--text-main)' // Icon silang sesuai tema
+  padding: '8px', borderRadius: '50%', color: 'var(--text-main)'
 };
 
 const gridStyle: React.CSSProperties = {
@@ -304,7 +304,8 @@ const inputGroupStyle: React.CSSProperties = {
 
 const btnStyle: React.CSSProperties = {
   width: '100%', padding: '16px',
-  backgroundColor: 'var(--primary)', color: 'white', border: 'none',
+  backgroundColor: 'var(--primary-bg)',   // ✅ latar biru tetap
+  color: 'white', border: 'none',
   borderRadius: '16px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer',
   boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)'
 };
