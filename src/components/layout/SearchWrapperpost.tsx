@@ -95,9 +95,10 @@ export default function SearchWrapperpost() {
   const fetchStories = async () => {
     try {
       const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // ✅ Ambil full_name dari profiles
       const { data } = await supabase
         .from('stories')
-        .select('*, profiles(username, avatar_url)')
+        .select('*, profiles(username, avatar_url, full_name)')
         .gte('created_at', timeLimit)
         .order('created_at', { ascending: false });
 
@@ -299,47 +300,51 @@ export default function SearchWrapperpost() {
 
       {stories.length > 0 && (
         <div className="stories-container" style={{ background: 'var(--bg-main)' }}>
-          {stories.map((story) => (
-            <div
-              key={story.id}
-              className="story-item"
-              onClick={() => handleStoryClick(story.id)}
-              style={{
-                transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)',
-                transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-              }}
-            >
+          {stories.map((story) => {
+            // ✅ Gunakan full_name jika tersedia, fallback ke username
+            const displayName = story.profiles?.full_name || story.profiles?.username || 'User';
+            return (
               <div
-                className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
+                key={story.id}
+                className="story-item"
+                onClick={() => handleStoryClick(story.id)}
                 style={{
-                  padding: '2px',
-                  background: 'var(--accent-story)',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  transform: animatingStoryId === story.id ? 'scale(0.92)' : 'scale(1)',
+                  transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 }}
               >
-                <img
-                  src={
-                    story.profiles?.avatar_url ||
-                    `https://ui-avatars.com/api/?name=${story.profiles?.username}`
-                  }
-                  alt="avatar"
+                <div
+                  className={`story-circle unseen ${animatingStoryId === story.id ? 'animating' : ''}`}
                   style={{
-                    border: '2px solid var(--bg-main)',
+                    padding: '2px',
+                    background: 'var(--accent-story)',
                     borderRadius: '50%',
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                />
+                >
+                  <img
+                    src={
+                      story.profiles?.avatar_url ||
+                      `https://ui-avatars.com/api/?name=${story.profiles?.username}`
+                    }
+                    alt="avatar"
+                    style={{
+                      border: '2px solid var(--bg-main)',
+                      borderRadius: '50%',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+                <span className="story-name" style={{ color: 'var(--text-main)', fontWeight: 700 }}>
+                  {displayName}
+                </span>
               </div>
-              <span className="story-name" style={{ color: 'var(--text-main)', fontWeight: 700 }}>
-                {story.profiles?.username}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

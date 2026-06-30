@@ -73,7 +73,7 @@ const CustomSelect = ({
                   padding: '14px 16px',
                   borderBottom: idx === options.length - 1 ? 'none' : '1px solid var(--border-card)',
                   backgroundColor: value === opt.value ? 'var(--bg-secondary)' : 'transparent',
-                  color: value === opt.value ? 'var(--primary)' : 'var(--text-main)',  // ✅ teks saja
+                  color: value === opt.value ? 'var(--primary)' : 'var(--text-main)',
                   fontWeight: value === opt.value ? 'bold' : 'normal',
                   cursor: 'pointer', fontSize: '14px'
                 }}
@@ -98,7 +98,7 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
     <div className="tg-modal-overlay" style={fullScreenOverlayStyle}>
       <div className="tg-modal-content" style={fullScreenContentStyle}>
         
-        {/* Header Lengkapi Biodata */}
+        {/* Header – sekarang sticky */}
         <div style={headerStyle}>
           <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>Lengkapi Biodata</h3>
           <button className="close-modal-btn" onClick={onClose} style={closeBtnStyle}>
@@ -245,14 +245,8 @@ const BioModal: React.FC<Props> = ({ bioForm, setBioForm, isSaving, onSave, onCl
 
         </div>
 
-        {/* Spacer agar tombol tidak mepet ke konten paling bawah */}
-        <div style={{ flexGrow: 1, minHeight: '40px' }}></div>
-
-        {/* Tombol Simpan Sticky di Bawah (UPDATED) */}
-        <div style={{ 
-          position: 'sticky', bottom: 0, padding: '16px 0', 
-          backgroundColor: 'transparent'
-        }}>
+        {/* Tombol Simpan – sekarang tidak sticky, langsung di bawah input */}
+        <div style={{ paddingTop: '24px' }}>
           <button className="action-btn" onClick={onSave} disabled={isSaving} style={btnStyle}>
             {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
           </button>
@@ -280,8 +274,13 @@ const fullScreenContentStyle: React.CSSProperties = {
 };
 
 const headerStyle: React.CSSProperties = {
+  position: 'sticky',          // ✅ diam di atas saat scroll
+  top: 0,
+  zIndex: 10,
+  backgroundColor: 'var(--bg-main)',
   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  marginBottom: '24px', paddingBottom: '16px',
+  paddingBottom: '16px',
+  marginBottom: '24px',
   borderBottom: '1px solid var(--border-card)'
 };
 
