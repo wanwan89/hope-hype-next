@@ -15,7 +15,7 @@ import RefreshableWrapper from '@/components/RefreshableWrapper';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ProfileInfo from '@/components/profiles/ProfileInfo';
 import ProfileTabs from '@/components/profiles/ProfileTabs';
-import PostGrid from '@/components/profiles/postGrid'; 
+import PostGrid from '@/components/profiles/PostGrid'; 
 import EditProfileModal from '@/components/profiles/EditProfileModal';
 import FollowModal from '@/components/profiles/FollowModal';
 import ActionSheet from '@/components/profiles/ActionSheet';
