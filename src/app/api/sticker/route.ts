@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server'; // Perbaikan huruf kecil 'i'
 
 // Paksa agar route ini selalu dijalankan di server (tidak statis)
 export const dynamic = 'force-dynamic';
@@ -8,12 +8,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q') || '';
     
-    // Ambil API Key dengan cara yang paling aman untuk Next.js
+    // Ambil API Key 
+    // Catatan: Karena ini di server (API Route), lebih aman pakai GIPHY_API_KEY saja 
+    // (tanpa NEXT_PUBLIC_) jika tidak butuh diakses langsung oleh sisi client.
     const apiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
 
     if (!apiKey) {
       console.error("API Key Giphy kosong!");
-      return NextResponse.json({ data: [] }); // Kembalikan array kosong daripada error
+      return NextResponse.json({ data: [] }); 
     }
 
     const endpoint = q ? 'search' : 'trending';
@@ -30,7 +32,6 @@ export async function GET(request: Request) {
     
   } catch (error) {
     console.error("Sticker API Error:", error);
-    // Jika gagal, kembalikan data kosong agar build tidak crash
     return NextResponse.json({ data: [] });
   }
 }
