@@ -81,19 +81,14 @@ export default function ChatMessageList({
                   display: 'flex', 
                   alignItems: 'center', 
                   width: '100%',
-                  cursor: isSelectionMode ? 'pointer' : 'default' // Tambahkan kursor pointer agar UX lebih baik
+                  cursor: isSelectionMode ? 'pointer' : 'default'
                 }}
                 onClick={() => {
-                  // Membuat seluruh baris pesan bisa diklik untuk memilih/membatalkan pilihan
                   if (isSelectionMode) {
                     toggleSelectMessage(msg.id);
                   }
                 }}
               >
-                {/* Checkbox kotak bawaan HTML telah dihapus dari sini. 
-                  Sekarang kita hanya menggunakan checkbox lingkaran yang berada di dalam komponen MessageBubble.
-                */}
-
                 <div style={{ flex: 1, pointerEvents: isSelectionMode ? 'none' : 'auto' }}>
                   <MessageBubble
                     msg={msg}
@@ -131,69 +126,10 @@ export default function ChatMessageList({
             );
           })}
 
+          {/* PERUBAHAN: TYPING INDICATOR HANYA BERUPA ANIMASI LOADER */}
           {typingUser && (
-            <div
-              className="chat-message other"
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'flex-end',
-                gap: '8px',
-                marginBottom: '8px',
-                paddingLeft: '12px',
-              }}
-            >
-              <img
-                src={typingUser.avatar_url || '/asets/png/profile.webp'}
-                alt="avatar"
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  flexShrink: 0,
-                  marginBottom: '2px',
-                  border: '1px solid var(--border-color)',
-                }}
-              />
-              <div
-                className="content"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  width: 'fit-content',
-                  background: 'var(--bg-panel)',
-                  padding: '8px 14px',
-                  borderRadius: '14px 14px 14px 4px',
-                  border: '1px solid var(--border-color)',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    color: 'var(--primary)',
-                    marginBottom: '4px',
-                  }}
-                >
-                  {typingUser.username}
-                </div>
-                <div
-                  className="typing-bubble"
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '14px' }}
-                >
-                  <span
-                    style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out' }}
-                  ></span>
-                  <span
-                    style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.2s' }}
-                  ></span>
-                  <span
-                    style={{ width: '6px', height: '6px', background: 'var(--text-muted)', borderRadius: '50%', animation: 'typingBounce 1.4s infinite ease-in-out 0.4s' }}
-                  ></span>
-                </div>
-              </div>
+            <div style={{ paddingLeft: '16px', marginBottom: '16px', marginTop: '8px' }}>
+              <div className="loader"></div>
             </div>
           )}
         </>

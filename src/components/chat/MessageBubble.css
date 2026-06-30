@@ -318,20 +318,22 @@ html.dark .hype-chat-scope .option-btn.danger {
   color: #94a3b8 !important;
 }
 
-/* TYPING INDICATOR */
-.hype-chat-scope .chat-message.other div:has(> .typing-bubble) {
-  background: #f1f5f9 !important; 
-  border-radius: 18px 18px 18px 4px;
+/* ========== TYPING INDICATOR BARU ========== */
+.loader {
+  width: 40px;
+  aspect-ratio: 2;
+  --_g: no-repeat radial-gradient(circle closest-side, var(--text-muted, #94a3b8) 90%, transparent);
+  background: 
+    var(--_g) 0%   50%,
+    var(--_g) 50%  50%,
+    var(--_g) 100% 50%;
+  background-size: calc(100%/3) 50%;
+  animation: l3 1s infinite linear;
 }
-[data-theme='dark'] .hype-chat-scope .chat-message.other div:has(> .typing-bubble) { background: #334155 !important; }
 
-.hype-chat-scope .typing-bubble { display: flex; align-items: center; gap: 4px; padding: 8px 12px; }
-.hype-chat-scope .typing-bubble span { 
-  width: 5px; height: 5px; 
-  background: #94a3b8; border-radius: 50%; 
-  animation: typingBounce 1.4s infinite ease-in-out; 
+@keyframes l3 {
+  20% { background-position: 0%   0%, 50%  50%, 100%  50%; }
+  40% { background-position: 0% 100%, 50%   0%, 100%  50%; }
+  60% { background-position: 0%  50%, 50% 100%, 100%   0%; }
+  80% { background-position: 0%  50%, 50%  50%, 100% 100%; }
 }
-.hype-chat-scope .typing-bubble span:nth-child(2) { animation-delay: 0.2s; }
-.hype-chat-scope .typing-bubble span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes typingBounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
