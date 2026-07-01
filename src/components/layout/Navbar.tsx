@@ -6,8 +6,6 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Home, Bell, MessageCircle, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-// 🔥 Import Capacitor untuk deteksi platform
-import { Capacitor } from '@capacitor/core';
 
 // Komponen Custom SVG untuk Voice
 const CustomVoiceIcon = ({ size = 24, color = '#000000', style }: any) => (
@@ -328,25 +326,18 @@ function NavbarContent() {
       return;
     }
 
-    // 🔥 FITUR REFRESH Klik 2 Kali, DIJAMIN JALAN DI ANDROID & PWA!
+    // 🔥 FITUR REFRESH SMOOTH (Bisa dipakai di Android & PWA tanpa glitch!)
     if (isActive) {
       e.preventDefault();
       setAnimatingIcon(item.name);
-      
-      const platform = Capacitor.getPlatform();
-      
-      if (platform === 'android' || platform === 'ios') {
-        // Di App Native (Capacitor), pakai router.refresh() halus agar TIDAK glitch!
-        router.refresh();
-      } else {
-        // Di PWA/Web Browser, pakai reload beneran agar terasa di-refresh!
-        window.location.reload();
-      }
 
-      // Scroll mulus ke atas
+      // router.refresh() adalah kunci refresh paling SMOOTH di Next.js (Android & Web)
+      router.refresh();
+      
+      // Scroll mulus ke paling atas
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Matikan spinner setelah beberapa saat
+      // Matikan animasi spinner setelah refresh selesai
       setTimeout(() => setAnimatingIcon(null), 800);
       return;
     }

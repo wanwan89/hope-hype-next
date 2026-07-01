@@ -130,7 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         metaTheme.setAttribute('name', 'theme-color');
         document.head.appendChild(metaTheme);
       }
-      // 🔥 Update Warna Navbar PWA otomatis sesuai tema
+      // 🔥 PENTING: Paksa update warna navbar PWA (Chrome Android)
       metaTheme.setAttribute('content', isDark ? '#0a0a0a' : '#ffffff');
 
       if (platform === 'android' || platform === 'ios') {
@@ -139,11 +139,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (platform === 'android') {
           await StatusBar.setBackgroundColor({ color: isDark ? '#0a0a0a' : '#ffffff' });
           
-          // 🔥 LOGIKA NAVIGATION BAR BAWAH (Berubah di Android)
+          // 🔥 LOGIKA NAVIGATION BAR BAWAH (PUTIH SAAT TERANG, HITAM SAAT GELAP)
           try {
             await NavigationBar.setColor({
               color: isDark ? '#0a0a0a' : '#ffffff'
             });
+            // dark: true = Icon Putih (Mode Gelap), dark: false = Icon Hitam (Mode Terang)
             await NavigationBar.setDark({ dark: isDark });
           } catch (navErr) {
             console.warn("Navbar sync error:", navErr);
