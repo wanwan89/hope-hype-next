@@ -71,7 +71,7 @@ export default function PostCardText(props: Props) {
     handleMediaClick = () => {},
   } = props;
 
-  const postIdStr = String(post.id);
+  const postIdStr = String(post.id); // bisa UUID asli atau 'tanggapan_UUID'
   const creatorIdStr = String(post.creator_id);
   const isOwner = currentUser && currentUser.id === post.creator_id;
   const badge = getUserBadge(post.profiles?.role);
@@ -105,8 +105,10 @@ export default function PostCardText(props: Props) {
               audio.muted = isGloballyMuted;
               audio.play().catch(() => {});
             }
-            const numericId = Number(postIdStr);
-            if (!hasViewedRef.current && postIdStr && numericId > 0) {
+
+            // Hanya post asli (bukan tanggapan) yang menambah view
+            const isRealPost = !postIdStr.startsWith('tanggapan_');
+            if (!hasViewedRef.current && isRealPost) {
               hasViewedRef.current = true;
               supabase
                 .rpc('increment_post_view', { p_id: postIdStr })
@@ -130,16 +132,17 @@ export default function PostCardText(props: Props) {
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // Fetch top comment (hanya jika showTopComment true dan bukan tanggapan)
+  // Fetch top comment (hanya untuk post asli, bukan tanggapan)
   useEffect(() => {
     let isMounted = true;
-    const numericId = Number(postIdStr);
-    if (showTopComment && !postIdStr.startsWith('tanggapan-') && numericId > 0) {
+    const isRealPost = !postIdStr.startsWith('tanggapan_');
+
+    if (showTopComment && isRealPost) {
       const fetchTop = async () => {
         const { data, error } = await supabase
           .from('tanggapan')
           .select(`id, content, created_at, profiles:user_id (username, full_name, avatar_url, role)`)
-          .eq('post_id', postIdStr)
+          .eq('post_id', postIdStr) // postIdStr adalah UUID post asli
           .order('created_at', { ascending: false })
           .limit(1);
         if (!error && isMounted && data?.length) setTopComment(data[0]);
@@ -158,11 +161,10 @@ export default function PostCardText(props: Props) {
     e.preventDefault();
     e.stopPropagation();
 
-    const numericId = Number(postIdStr);
-    const isTanggapan = postIdStr.startsWith('tanggapan-') || numericId < 0;
+    const isTanggapan = postIdStr.startsWith('tanggapan_');
 
     if (isTanggapan) {
-      // Jika ini adalah tanggapan, kita arahkan ke parent post
+      // Arahkan ke parent post
       const parentId = post.post_id ? String(post.post_id) : null;
       if (parentId) {
         if (onTanggapanClick) {
@@ -174,7 +176,7 @@ export default function PostCardText(props: Props) {
       }
     }
 
-    // Untuk post utama, buka modal atau navigasi
+    // Post utama
     if (onTanggapanClick) {
       onTanggapanClick('', postIdStr);
     } else {
@@ -397,7 +399,7 @@ export default function PostCardText(props: Props) {
       {tanggapan.length > 0 && (
         <PostTanggapanList
           tanggapan={tanggapan}
-          parentPostId={postIdStr}
+          parentPostId={postIdStr} // UUID post induk asli
           currentUser={currentUser}
           counts={counts}
           myLikedPosts={myLikedPosts}

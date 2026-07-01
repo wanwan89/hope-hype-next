@@ -28,7 +28,7 @@ type Props = {
   setActivePreviewImage: (url: string | null) => void;
   router: any;
   t: any;
-  parentPostId: string;
+  parentPostId: string; // UUID post induk
   onTanggapanClick: (initialText: string, postId: string) => void;
 };
 
@@ -93,7 +93,8 @@ export default function PostTanggapanList({
             tanggapanLabel="Balas"
             tanggapan={[]}
             onTanggapanClick={(initialText: string, postId: string) => {
-              // Tidak dipakai langsung, override di sini untuk memicu balasan dengan mention
+              // Override: ketika tombol balas di tanggapan diklik,
+              // kita arahkan ke parent post dengan mention
               const mention = `@${item.profiles?.username} `;
               if (rest.onTanggapanClick) {
                 rest.onTanggapanClick(mention, parentPostId);
