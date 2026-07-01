@@ -6,18 +6,22 @@ import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
-import PostCardText from '@/components/post/PostCardText'; // import baru
+import PostCardText from '@/components/post/PostCardText';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
+
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
 
 function PostContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ✅ FIX: jangan ubah UUID menjadi integer
   const rawPostId = searchParams.get('id');
-  const postIdFromUrl = rawPostId || null; // biarkan sebagai string UUID
+  // Hanya gunakan ID jika valid UUID
+  const postIdFromUrl = rawPostId && isValidUUID(rawPostId) ? rawPostId : null;
   const source = searchParams.get('from');
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -206,10 +210,9 @@ function PostContent() {
       }
     }
 
-    // ✅ Ubah ID lokal tanggapan menjadi 'tanggapan_' + UUID
     const transformedTanggapan = tanggapanRes.data?.map((t: any) => ({
-      id: 'tanggapan_' + t.id,            // key unik di state
-      real_tanggapan_id: t.id,            // UUID asli untuk DB
+      id: 'tanggapan_' + t.id,
+      real_tanggapan_id: t.id,
       post_id: t.post_id,
       creator_id: t.user_id,
       bio: t.content || '',
@@ -235,11 +238,11 @@ function PostContent() {
 
       transformedTanggapan.forEach((t: any) => {
         const realId = t.real_tanggapan_id;
-        baseCounts[t.id] = { 
-          likes: tLikesData.filter(l => l.tanggapan_id === realId).length, 
-          tanggapan: 0, 
-          reposts: tRepostsData.filter(r => r.tanggapan_id === realId).length, 
-          saves: tSavesData.filter(s => s.tanggapan_id === realId).length 
+        baseCounts[t.id] = {
+          likes: tLikesData.filter(l => l.tanggapan_id === realId).length,
+          tanggapan: 0,
+          reposts: tRepostsData.filter(r => r.tanggapan_id === realId).length,
+          saves: tSavesData.filter(s => s.tanggapan_id === realId).length
         };
       });
 
@@ -253,26 +256,26 @@ function PostContent() {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
 
-      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle(); 
+      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle();
       const isSavedByUser = !!userBookmark;
 
-      setMyLikedPosts(prev => { 
-        const n = new Set(prev); 
-        if (liked) n.add(pid); 
-        userTLikes.forEach(id => n.add(id)); // id sudah 'tanggapan_...'
-        return n; 
+      setMyLikedPosts(prev => {
+        const n = new Set(prev);
+        if (liked) n.add(pid);
+        userTLikes.forEach(id => n.add(id));
+        return n;
       });
-      setMyRepostedPosts(prev => { 
-        const n = new Set(prev); 
-        if (reposted) n.add(pid); 
-        userTReposts.forEach(id => n.add(id)); 
-        return n; 
+      setMyRepostedPosts(prev => {
+        const n = new Set(prev);
+        if (reposted) n.add(pid);
+        userTReposts.forEach(id => n.add(id));
+        return n;
       });
-      setMySavedPosts(prev => { 
-        const n = new Set(prev); 
-        if (isSavedByUser) n.add(pid); 
-        userTSaves.forEach(id => n.add(id)); 
-        return n; 
+      setMySavedPosts(prev => {
+        const n = new Set(prev);
+        if (isSavedByUser) n.add(pid);
+        userTSaves.forEach(id => n.add(id));
+        return n;
       });
     }
   };
@@ -291,10 +294,9 @@ function PostContent() {
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
-  // ✅ Kirim tanggapan dengan UUID langsung
   const handleSubmitTanggapan = async () => {
     if (!tanggapanInput.trim() || !currentUserRef.current || !tanggapanModal.postId) return;
-    
+
     setIsSubmittingTanggapan(true);
     const postId = tanggapanModal.postId; // UUID string
 
@@ -317,7 +319,7 @@ function PostContent() {
 
       if (data) {
         const newTanggapan = {
-          id: 'tanggapan_' + data.id, // gunakan prefix
+          id: 'tanggapan_' + data.id,
           real_tanggapan_id: data.id,
           post_id: data.post_id,
           creator_id: data.user_id,
@@ -329,7 +331,7 @@ function PostContent() {
           audio_src: null,
         };
 
-        const targetParentPost = postId; // UUID
+        const targetParentPost = postId;
 
         setTanggapanMap(prev => ({
           ...prev,
@@ -347,11 +349,11 @@ function PostContent() {
 
         const postOwner = userPosts.find(p => String(p.id) === targetParentPost)?.creator_id;
         if (postOwner && postOwner !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({ 
-            senderId: currentUserRef.current.id, 
-            receiverId: postOwner, 
-            type: "tanggapan", 
-            postId: targetParentPost 
+          await sendPushAndAppNotif({
+            senderId: currentUserRef.current.id,
+            receiverId: postOwner,
+            type: "tanggapan",
+            postId: targetParentPost
           });
         }
 
@@ -401,12 +403,11 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
-  // ✅ Handler like yang mendukung prefix 'tanggapan_'
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
     const isTanggapan = postId.startsWith('tanggapan_');
-    const realId = isTanggapan ? postId.slice('tanggapan_'.length) : postId; // UUID
+    const realId = isTanggapan ? postId.slice('tanggapan_'.length) : postId;
     const isLiked = myLikedPostsRef.current.has(postId);
 
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
@@ -427,13 +428,12 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
-  // ✅ Handler repost dengan prefix
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
     const isTanggapan = postId.startsWith('tanggapan_');
     const realId = isTanggapan ? postId.slice('tanggapan_'.length) : postId;
-    
+
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
@@ -460,7 +460,6 @@ function PostContent() {
     } catch (err) {}
   }, [repostNote]);
 
-  // ✅ Handler save dengan prefix
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
@@ -520,17 +519,16 @@ function PostContent() {
 
   const openShareOptions = useCallback((postToShare: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
-      // Jika post adalah tanggapan, ID asli adalah post_id induk
       const isTanggapan = postToShare.id?.startsWith('tanggapan_');
       const shareId = isTanggapan ? postToShare.post_id : postToShare.id;
 
       window.openGlobalShare(
-        `${window.location.origin}/post?id=${shareId}`, 
-        "Postingan HypeTalk", 
-        "Lihat karya keren ini di HypeTalk!", 
-        postToShare.profiles?.username || "User", 
-        shareId, 
-        isOwner, 
+        `${window.location.origin}/post?id=${shareId}`,
+        "Postingan HypeTalk",
+        "Lihat karya keren ini di HypeTalk!",
+        postToShare.profiles?.username || "User",
+        shareId,
+        isOwner,
         postToShare.is_private || false
       );
     }
@@ -544,7 +542,7 @@ function PostContent() {
 
   return (
     <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh', position: 'relative' }}>
-      
+
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -555,7 +553,6 @@ function PostContent() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* Modal Input Tanggapan */}
       {tanggapanModal.isOpen && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setTanggapanModal({ isOpen: false, postId: '' })}>
           <div className="slide-up-modal" style={{ background: 'var(--bg-main)', width: '100%', maxWidth: '600px', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '20px', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
@@ -696,7 +693,7 @@ function PostContent() {
           </div>
         )}
       </div>
-      
+
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         @keyframes popHeartAnim {
