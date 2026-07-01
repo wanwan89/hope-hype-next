@@ -1,56 +1,48 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback, Suspense, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
-import PostCardText from '@/components/post/PostCardText';
-import PostTanggapanList from '@/components/post/PostTanggapanList';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
+import EngagementButton from '@/components/post/EngagementButton';
 
 function PostContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const rawPostId = searchParams.get('id');
-  // JANGAN divalidasi UUID agar semua ID tetap diproses
-  const postIdFromUrl = rawPostId || null;
-  const source = searchParams.get('from');
+  
+  const postIdFromUrl = searchParams.get('id');
+  const source = searchParams.get('from'); 
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
+  // States Interaksi
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
-
-  // ✅ FIX 1: Tambahkan 'comments' ke dalam tipe state counts
-  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; tanggapan: number; reposts: number; saves: number }>>({});
-  
+  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; reposts: number; saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
-
-  const [tanggapanMap, setTanggapanMap] = useState<Record<string, any[]>>({});
-
-  const [tanggapanModal, setTanggapanModal] = useState<{ isOpen: boolean; postId: string }>({ isOpen: false, postId: '' });
-  const [tanggapanInput, setTanggapanInput] = useState('');
-  const [isSubmittingTanggapan, setIsSubmittingTanggapan] = useState(false);
+  
+  // State Baru untuk Menyimpan Tanggapan/Komentar
+  const [commentsMap, setCommentsMap] = useState<Record<string, any[]>>({});
 
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
-
+  
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
 
@@ -65,6 +57,7 @@ function PostContent() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
+  // Matikan Scroll Restoration Bawaan Browser Saat Refresh
   useEffect(() => {
     if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
@@ -78,8 +71,12 @@ function PostContent() {
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
   useEffect(() => {
-    if (postIdFromUrl) initializePage();
-    else setIsLoading(false);
+    if (postIdFromUrl) {
+      initializePage();
+    } else {
+      setIsLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postIdFromUrl, source]);
 
   const initializePage = async () => {
@@ -101,28 +98,29 @@ function PostContent() {
       }
     }
 
-    if (source === 'profile') await loadProfileMode(user);
-    else await loadSinglePost(postIdFromUrl!, user);
+    if (source === 'profile') {
+      await loadProfileMode(user);
+    } else {
+      await loadSinglePost(postIdFromUrl!, user);
+    }
   };
 
   const loadProfileMode = async (user: any) => {
-    console.log(`[DEBUG-POST] Menjalankan mode Profile untuk ID Post:`, postIdFromUrl);
     const { data: exactPost, error: errExact } = await supabase
-      .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle();
+      .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle(); 
 
     if (errExact || !exactPost) {
-      console.warn(`[DEBUG-POST] Gagal mendapatkan creator_id di Profile Mode. Error:`, errExact?.message);
       setUserPosts([]);
       setIsLoading(false);
       return;
     }
 
-    const targetUserId = exactPost.creator_id;
+    const targetUserId = exactPost.creator_id; 
     const isMe = user && targetUserId === user.id;
     setIsMyOwnProfile(isMe);
 
     if (!isMe) {
-      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).maybeSingle();
+      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).maybeSingle(); 
       if (profileData) setProfileUsername(profileData.username);
     }
 
@@ -133,10 +131,7 @@ function PostContent() {
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
 
-    console.log(`[DEBUG-POST] Hasil fetching postingan profil untuk user ${targetUserId}:`, { jumlah: postsData?.length, error });
-
     if (error || !postsData) {
-      console.error(`[DEBUG-POST] Query profil error:`, error?.message);
       setUserPosts([]);
       setIsLoading(false);
       return;
@@ -155,9 +150,6 @@ function PostContent() {
   };
 
   const loadSinglePost = async (id: string, user: any) => {
-    console.log(`[DEBUG-POST] ======= MEMULAI FETCH SINGLE POST =======`);
-    console.log(`[DEBUG-POST] Mencari Postingan dengan ID: ${id}`);
-
     try {
       const { data: postData, error } = await supabase
         .from('posts')
@@ -165,110 +157,64 @@ function PostContent() {
         .eq('id', id)
         .maybeSingle();
 
-      console.log(`[DEBUG-POST] Respons Supabase untuk Single Post:`, { data: postData, error });
-
-      if (error) {
-        console.error(`[DEBUG-POST] ERROR Supabase (Kemungkinan RLS, sintaks, atau format ID salah):`, error.message, error.details);
-      }
-
       if (error || !postData) {
-        console.warn(`[DEBUG-POST] Postingan tidak ditemukan. Kemungkinan penyebab:`);
-        console.warn(`[DEBUG-POST] 1. ID tidak valid di database.`);
-        console.warn(`[DEBUG-POST] 2. Postingan tersebut diblokir oleh kebijakan Row Level Security (RLS) untuk pengguna saat ini.`);
-        console.warn(`[DEBUG-POST] 3. Postingan bertipe teks belum memiliki status atau parameter spesifik yang diminta RLS.`);
-        
         setUserPosts([]);
         setIsLoading(false);
         return;
       }
 
-      console.log(`[DEBUG-POST] Postingan berhasil ditarik:`, postData);
       setUserPosts([postData]);
       await fetchPostInteractions(postData.id, user);
     } catch (err) {
-      console.error(`[DEBUG-POST] Exception terlempar di loadSinglePost:`, err);
+      console.error(err);
     } finally {
       setIsLoading(false);
-      console.log(`[DEBUG-POST] ======= SELESAI FETCH SINGLE POST =======`);
     }
   };
 
   const fetchPostInteractions = async (postId: string | number, user: any) => {
     const pid = String(postId);
-    // ✅ FIX 2: Tambahkan fetch untuk tabel 'comments' agar kita bisa menghitung length (jumlah) komentar
-    const [likesRes, tanggapanRes, repostsRes, savesRes, commentsRes] = await Promise.all([
+    const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
-      supabase.from('tanggapan')
-        .select('id, post_id, user_id, content, created_at, profiles:user_id(full_name, username, role, avatar_url)')
+      // Mengambil data tanggapan asli beserta profil pengirim tanggapan (diurutkan dari yang terlama)
+      supabase.from('comments')
+        .select('id, post_id, user_id, content, comment_text, text, created_at, profiles:user_id(full_name, username, role, avatar_url)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true }),
       supabase.from('reposts').select('user_id, note, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
-      supabase.rpc('get_bookmark_counts', { post_ids: [postId] }),
-      supabase.from('comments').select('id').eq('post_id', postId) // Fetch jumlah komentar!
+      supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
     ]);
 
-    const tanggapanIds = tanggapanRes.data?.map((t: any) => t.id) || [];
-    let tLikesData: any[] = [];
-    let tRepostsData: any[] = [];
-    let tSavesData: any[] = [];
-    let userTLikes = new Set<string>();
-    let userTReposts = new Set<string>();
-    let userTSaves = new Set<string>();
-
-    if (tanggapanIds.length > 0) {
-      const [tLikesRes, tRepostsRes, tSavesRes] = await Promise.all([
-        supabase.from('tanggapan_likes').select('tanggapan_id, user_id').in('tanggapan_id', tanggapanIds),
-        supabase.from('tanggapan_reposts').select('tanggapan_id, user_id').in('tanggapan_id', tanggapanIds),
-        supabase.from('tanggapan_bookmarks').select('tanggapan_id, user_id').in('tanggapan_id', tanggapanIds),
-      ]);
-      tLikesData = tLikesRes.data || [];
-      tRepostsData = tRepostsRes.data || [];
-      tSavesData = tSavesRes.data || [];
-
-      if (user) {
-        tLikesData.filter(l => String(l.user_id) === user.id).forEach(l => userTLikes.add('tanggapan_' + l.tanggapan_id));
-        tRepostsData.filter(r => String(r.user_id) === user.id).forEach(r => userTReposts.add('tanggapan_' + r.tanggapan_id));
-        tSavesData.filter(s => String(s.user_id) === user.id).forEach(s => userTSaves.add('tanggapan_' + s.tanggapan_id));
-      }
-    }
-
-    const transformedTanggapan = tanggapanRes.data?.map((t: any) => ({
-      id: 'tanggapan_' + t.id,
-      real_tanggapan_id: t.id,
-      post_id: t.post_id,
-      creator_id: t.user_id,
-      bio: t.content || '',
-      created_at: t.created_at,
-      profiles: t.profiles,
+    // Transformasi data tanggapan agar memiliki properti yang sama seperti objek post biasa
+    const transformedComments = commentsRes.data?.map((c: any) => ({
+      id: `comment-${c.id}`, // Beri prefix string agar tidak bentrok dengan ID post utama
+      real_comment_id: c.id,
+      post_id: c.post_id,
+      creator_id: c.user_id,
+      bio: c.content || c.comment_text || c.text || '', // Fallback deteksi teks tanggapan
+      created_at: c.created_at,
+      profiles: c.profiles,
       image_url: null,
       video_url: null,
       audio_src: null,
     })) || [];
 
-    setTanggapanMap(prev => ({ ...prev, [pid]: transformedTanggapan }));
+    setCommentsMap(prev => ({ ...prev, [pid]: transformedComments }));
 
-    // ✅ FIX 3: Masukkan data comments ke dalam objek counts
     setCounts(prev => {
       const baseCounts = {
         ...prev,
         [pid]: {
           likes: likesRes.data?.length || 0,
-          comments: commentsRes.data?.length || 0, // Hitung length dari commentsRes
-          tanggapan: transformedTanggapan.length,
+          comments: transformedComments.length,
           reposts: repostsRes.data?.length || 0,
           saves: (savesRes.data && savesRes.data[0]?.count) || 0,
         }
       };
 
-      transformedTanggapan.forEach((t: any) => {
-        const realId = t.real_tanggapan_id;
-        baseCounts[t.id] = {
-          likes: tLikesData.filter(l => l.tanggapan_id === realId).length,
-          comments: 0, // Tanggapan biasanya tidak punya child 'comments'
-          tanggapan: 0,
-          reposts: tRepostsData.filter(r => r.tanggapan_id === realId).length,
-          saves: tSavesData.filter(s => s.tanggapan_id === realId).length
-        };
+      // Berikan mapping count default 0 untuk kartu tanggapan agar komponen child tidak melempar nilai NaN/error
+      transformedComments.forEach((c: any) => {
+        baseCounts[c.id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
       });
 
       return baseCounts;
@@ -280,31 +226,17 @@ function PostContent() {
     if (user) {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
-
-      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle();
+      
+      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle(); 
       const isSavedByUser = !!userBookmark;
-
-      setMyLikedPosts(prev => {
-        const n = new Set(prev);
-        if (liked) n.add(pid);
-        userTLikes.forEach(id => n.add(id));
-        return n;
-      });
-      setMyRepostedPosts(prev => {
-        const n = new Set(prev);
-        if (reposted) n.add(pid);
-        userTReposts.forEach(id => n.add(id));
-        return n;
-      });
-      setMySavedPosts(prev => {
-        const n = new Set(prev);
-        if (isSavedByUser) n.add(pid);
-        userTSaves.forEach(id => n.add(id));
-        return n;
-      });
+      
+      setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
+      setMyRepostedPosts(prev => { const n = new Set(prev); if (reposted) n.add(pid); return n; });
+      setMySavedPosts(prev => { const n = new Set(prev); if (isSavedByUser) n.add(pid); return n; });
     }
   };
 
+  // Perbaikan Logika Auto-Scroll dengan Retry Mechanism untuk Lazy Load
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
       const scrollToPost = () => {
@@ -313,96 +245,25 @@ function PostContent() {
           targetPost.scrollIntoView({ behavior: 'auto', block: 'center' });
         }
       };
+
       const timer1 = setTimeout(scrollToPost, 150);
       const timer2 = setTimeout(scrollToPost, 600);
-      return () => { clearTimeout(timer1); clearTimeout(timer2); };
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
   }, [isLoading, userPosts, postIdFromUrl]);
-
-  const handleSubmitTanggapan = async () => {
-    if (!tanggapanInput.trim() || !currentUserRef.current || !tanggapanModal.postId) return;
-
-    setIsSubmittingTanggapan(true);
-    const postId = tanggapanModal.postId; 
-
-    try {
-      const { data, error } = await supabase
-        .from('tanggapan')
-        .insert({
-          post_id: postId,
-          user_id: currentUserRef.current.id,
-          content: tanggapanInput.trim()
-        })
-        .select('id, post_id, user_id, content, created_at, profiles:user_id(full_name, username, role, avatar_url)')
-        .maybeSingle();
-
-      if (error) {
-        console.error("Supabase Error:", error.message);
-        alert("Gagal mengirim tanggapan. Silakan periksa koneksi atau kebijakan RLS tabel Anda.");
-        return;
-      }
-
-      if (data) {
-        const newTanggapan = {
-          id: 'tanggapan_' + data.id,
-          real_tanggapan_id: data.id,
-          post_id: data.post_id,
-          creator_id: data.user_id,
-          bio: data.content,
-          created_at: data.created_at,
-          profiles: data.profiles,
-          image_url: null,
-          video_url: null,
-          audio_src: null,
-        };
-
-        const targetParentPost = postId;
-
-        setTanggapanMap(prev => ({
-          ...prev,
-          [targetParentPost]: [...(prev[targetParentPost] || []), newTanggapan]
-        }));
-
-        // ✅ FIX 4: Tambahkan property comments juga ketika membuat item baru agar Typescript aman
-        setCounts(prev => ({
-          ...prev,
-          [targetParentPost]: {
-            ...prev[targetParentPost],
-            tanggapan: (prev[targetParentPost]?.tanggapan || 0) + 1
-          },
-          [newTanggapan.id]: { likes: 0, comments: 0, tanggapan: 0, reposts: 0, saves: 0 }
-        }));
-
-        const postOwner = userPosts.find(p => String(p.id) === targetParentPost)?.creator_id;
-        if (postOwner && postOwner !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({
-            senderId: currentUserRef.current.id,
-            receiverId: postOwner,
-            type: "tanggapan",
-            postId: targetParentPost
-          });
-        }
-
-        setTanggapanModal({ isOpen: false, postId: '' });
-        setTanggapanInput('');
-      } else {
-        console.warn("Data berhasil masuk namun gagal dimuat kembali instan. Memuat ulang data tanggapan.");
-        setTanggapanModal({ isOpen: false, postId: '' });
-        setTanggapanInput('');
-        if (postIdFromUrl) fetchPostInteractions(postIdFromUrl, currentUserRef.current);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmittingTanggapan(false);
-    }
-  };
 
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(postId)) newSet.delete(postId);
-      else newSet.add(postId);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
       return newSet;
     });
   }, []);
@@ -413,8 +274,10 @@ function PostContent() {
     if (currentUserRef.current.id === creatorId) return;
 
     const isFollowing = followedUsersRef.current.has(creatorId);
+    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
+
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
     try {
@@ -431,80 +294,24 @@ function PostContent() {
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    
+    // Cegah interaksi melempar error SQL jika dipicu dari kartu tanggapan
+    if (String(postId).startsWith('comment-')) return;
 
-    const isTanggapan = postId.startsWith('tanggapan_');
-    const realId = isTanggapan ? postId.slice('tanggapan_'.length) : postId;
+    const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
 
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
 
     try {
-      const tableName = isTanggapan ? "tanggapan_likes" : "likes";
-      const idColumn = isTanggapan ? "tanggapan_id" : "post_id";
-
       if (isLiked) {
-        await supabase.from(tableName).delete().match({ [idColumn]: realId, user_id: currentUserRef.current.id });
+        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        await supabase.from(tableName).insert({ [idColumn]: realId, user_id: currentUserRef.current.id });
-        if (creatorId !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: isTanggapan ? realId : postId });
+        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (!error && creatorId !== currentUserRef.current.id) {
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
         }
-      }
-    } catch (err) {}
-  }, []);
-
-  const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-
-    const isTanggapan = postId.startsWith('tanggapan_');
-    const realId = isTanggapan ? postId.slice('tanggapan_'.length) : postId;
-
-    const finalNote = repostNote.trim().substring(0, 15);
-    setRepostModal(null);
-
-    setAnimatingReposts((prev) => new Set(prev).add(postId));
-    setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
-
-    const wasReposted = myRepostedPostsRef.current.has(postId);
-    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
-
-    try {
-      const tableName = isTanggapan ? "tanggapan_reposts" : "reposts";
-      const idColumn = isTanggapan ? "tanggapan_id" : "post_id";
-
-      if (isUnrepost) {
-        await supabase.from(tableName).delete().match({ [idColumn]: realId, user_id: currentUserRef.current.id });
-      } else {
-        const { error } = await supabase.from(tableName).insert({ [idColumn]: realId, user_id: currentUserRef.current.id, note: finalNote });
-        if (error) {
-          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
-          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
-        }
-      }
-    } catch (err) {}
-  }, [repostNote]);
-
-  const handleSave = useCallback(async (postId: string) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-
-    const isTanggapan = postId.startsWith('tanggapan_');
-    const realId = isTanggapan ? postId.slice('tanggapan_'.length) : postId;
-    const isSaved = mySavedPostsRef.current.has(postId);
-
-    setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
-
-    try {
-      const tableName = isTanggapan ? "tanggapan_bookmarks" : "bookmarks";
-      const idColumn = isTanggapan ? "tanggapan_id" : "post_id";
-
-      if (isSaved) {
-        await supabase.from(tableName).delete().match({ [idColumn]: realId, user_id: currentUserRef.current.id });
-      } else {
-        const { error } = await supabase.from(tableName).insert({ [idColumn]: realId, user_id: currentUserRef.current.id });
-        if (error && error.code !== "23505") console.error(error);
       }
     } catch (err) {}
   }, []);
@@ -533,47 +340,82 @@ function PostContent() {
     }
   }, [handleLike]);
 
-  const toggleMute = useCallback((e: React.MouseEvent, currentMedia?: any) => {
+  const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (String(postId).startsWith('comment-')) return;
+
+    const numericPostId = parseInt(postId);
+    const finalNote = repostNote.trim().substring(0, 15);
+    setRepostModal(null);
+
+    setAnimatingReposts((prev) => new Set(prev).add(postId));
+    setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
+
+    const wasReposted = myRepostedPostsRef.current.has(postId);
+    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
+    try {
+      if (isUnrepost) {
+        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
+        if (error) {
+          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
+          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
+        }
+      }
+    } catch (err) {}
+  }, [repostNote]);
+
+  const handleSave = useCallback(async (postId: string) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (String(postId).startsWith('comment-')) return;
+
+    const numericPostId = parseInt(postId);
+    const isSaved = mySavedPostsRef.current.has(postId);
+
+    setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+
+    try {
+      if (isSaved) {
+        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        if (error && error.code !== "23505") console.error(error);
+      }
+    } catch (err) {}
+  }, []);
+
+  const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setIsGloballyMuted(prev => {
       const next = !prev;
       isMutedRef.current = next;
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
-        el.muted = next; 
-        if (!next && currentMedia && el !== currentMedia) {
-          el.pause();
-        }
-      });
+      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
       return next;
     });
   }, []);
 
   const openShareOptions = useCallback((postToShare: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
-      const isTanggapan = postToShare.id?.startsWith('tanggapan_');
-      const shareId = isTanggapan ? postToShare.post_id : postToShare.id;
-
-      window.openGlobalShare(
-        `${window.location.origin}/post?id=${shareId}`,
-        "Postingan HypeTalk",
-        "Lihat karya keren ini di HypeTalk!",
-        postToShare.profiles?.username || "User",
-        shareId,
-        isOwner,
-        postToShare.is_private || false
-      );
+      window.openGlobalShare(`${window.location.origin}/post?id=${postToShare.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", postToShare.profiles?.username || "User", postToShare.id, isOwner, postToShare.is_private || false);
     }
   }, []);
 
   let headerTitle = "Detail Postingan";
   if (source === 'profile' && userPosts.length > 0) {
-    if (isMyOwnProfile) headerTitle = "Postingan Anda";
-    else headerTitle = `Postingan ${profileUsername || userPosts[0].profiles?.username || 'User'}`;
+    if (isMyOwnProfile) {
+       headerTitle = "Postingan Anda";
+    } else {
+       headerTitle = `Postingan ${profileUsername || userPosts[0].profiles?.username || 'User'}`;
+    }
   }
 
   return (
-    <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh', position: 'relative' }}>
-
+    <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%' }}>
+      {/* HEADER */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -584,35 +426,7 @@ function PostContent() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {tanggapanModal.isOpen && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setTanggapanModal({ isOpen: false, postId: '' })}>
-          <div className="slide-up-modal" style={{ background: 'var(--bg-main)', width: '100%', maxWidth: '600px', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '20px', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>Beri Tanggapan</h3>
-              <button onClick={() => setTanggapanModal({ isOpen: false, postId: '' })} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <span className="material-icons">close</span>
-              </button>
-            </div>
-            <textarea
-              value={tanggapanInput}
-              onChange={(e) => setTanggapanInput(e.target.value)}
-              placeholder="Tulis tanggapan Anda di sini..."
-              style={{ width: '100%', minHeight: '100px', background: 'var(--bg-comment)', color: 'var(--text-main)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '12px', boxSizing: 'border-box', resize: 'none', fontSize: '14px', marginBottom: '16px', outline: 'none' }}
-              disabled={isSubmittingTanggapan}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={handleSubmitTanggapan}
-                disabled={isSubmittingTanggapan || !tanggapanInput.trim()}
-                style={{ background: '#1f3cff', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '20px', fontWeight: 700, cursor: 'pointer', opacity: (isSubmittingTanggapan || !tanggapanInput.trim()) ? 0.5 : 1 }}
-              >
-                {isSubmittingTanggapan ? 'Mengirim...' : 'Kirim'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* GALLERY */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
@@ -622,73 +436,100 @@ function PostContent() {
           <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
             <span className="material-icons" style={{ fontSize: '48px', marginBottom: '10px' }}>error_outline</span>
             <h3>Postingan Tidak Ditemukan</h3>
-            <p style={{ fontSize: '13px', marginTop: '8px' }}>Silakan periksa Console <code>F12</code> untuk melihat detail kenapa data diblokir/error.</p>
           </div>
         ) : (
-          <div className="gallery" id="mainGallery" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0px' }}>
+          <div 
+            className="gallery" 
+            id="mainGallery" 
+            style={{ 
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0px' // Diubah ke 0px agar alur garis menyambung rapat antar komponen thread
+            }}
+          >
             {userPosts.map((p) => {
               const isTextOrAudio = !p.image_url && !p.video_url;
               const isExpanded = expandedPosts.has(p.id);
-              const postTanggapan = tanggapanMap[String(p.id)] || [];
-
-              const commonHandlers = {
-                openRepostModal: (id: string, cid: string) => {
-                  if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                  if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                  else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
-                },
-                onTanggapanClick: (postId: string) => {
-                  if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                  setTanggapanInput('');
-                  setTanggapanModal({ isOpen: true, postId: String(postId) });
-                },
-              };
+              
+              // Ambil tanggapan khusus untuk postingan saat ini
+              const postComments = commentsMap[String(p.id)] || [];
 
               return (
-                <div key={p.id} id={`post-wrapper-${p.id}`} style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0', paddingBottom: postTanggapan.length > 0 ? '16px' : '0' }}>
-                  {postTanggapan.length > 0 && (
-                    <div style={{ position: 'absolute', left: '48px', top: '70px', bottom: '50px', width: '2px', backgroundColor: 'var(--border-card)', zIndex: 10, pointerEvents: 'none', opacity: 0.8 }} />
-                  )}
-
-                  {isTextOrAudio ? (
-                    <PostCardText
-                      post={p}
-                      currentUser={currentUser}
-                      counts={counts}
-                      myLikedPosts={myLikedPosts}
-                      myRepostedPosts={myRepostedPosts}
-                      mySavedPosts={mySavedPosts}
-                      followedUsers={followedUsers}
-                      mutualUsers={mutualUsers}
-                      animatingFollows={animatingFollows}
-                      animatingReposts={animatingReposts}
-                      isGloballyMuted={isGloballyMuted}
-                      poppingHeart={poppingHeart}
-                      activePreviewImage={activePreviewImage}
-                      likersMap={likersMap}
-                      repostersMap={repostersMap}
-                      handleLike={handleLike}
-                      handleSave={handleSave}
-                      openRepostModal={commonHandlers.openRepostModal}
-                      handleMediaClick={handleMediaClick}
-                      toggleMute={toggleMute}
-                      openShareOptions={openShareOptions}
-                      handleFollowToggle={handleFollowToggle}
-                      setActivePreviewImage={setActivePreviewImage}
-                      router={router}
-                      t={t}
-                      showTopComment={false}
-                      tanggapan={postTanggapan}
-                      onTanggapanClick={(initialText, parentId) => {
-                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                        setTanggapanInput(initialText);
-                        setTanggapanModal({ isOpen: true, postId: parentId });
+                <div 
+                  key={p.id} 
+                  id={`post-wrapper-${p.id}`} 
+                  style={{ 
+                    position: 'relative',
+                    width: '100%',
+                    padding: isTextOrAudio ? '0 12px' : '0'
+                  }}
+                >
+                  {/* GARIS VERTIKAL PENGHUBUNG THREAD (Hanya muncul di postingan teks & jika ada tanggapan) */}
+                  {isTextOrAudio && postComments.length > 0 && (
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        left: '48px', // Posisi center pas di bawah foto avatar utama (12px outer + 15px inner + 21px half-avatar)
+                        top: '70px',  // Dimulai dari batas bawah avatar utama
+                        bottom: '50px', // Berakhir tepat di batas tengah/avatar tanggapan paling akhir
+                        width: '2px',
+                        backgroundColor: 'var(--border-card)',
+                        zIndex: 10,
+                        pointerEvents: 'none',
+                        opacity: 0.8
                       }}
                     />
-                  ) : (
-                    <>
+                  )}
+
+                  {/* POSTINGAN UTAMA */}
+                  <PostCard
+                    post={p}
+                    currentUser={currentUser}
+                    counts={counts}
+                    myLikedPosts={myLikedPosts}
+                    myRepostedPosts={myRepostedPosts}
+                    mySavedPosts={mySavedPosts}
+                    followedUsers={followedUsers}
+                    mutualUsers={mutualUsers}
+                    animatingFollows={animatingFollows}
+                    animatingReposts={animatingReposts}
+                    isGloballyMuted={isGloballyMuted}
+                    poppingHeart={poppingHeart}
+                    activePreviewImage={activePreviewImage}
+                    likersMap={likersMap} 
+                    repostersMap={repostersMap}
+                    handleLike={handleLike}
+                    handleSave={handleSave}
+                    openRepostModal={(id, cid) => {
+                      if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                      if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                      else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                    }}
+                    handleMediaClick={handleMediaClick}
+                    toggleMute={toggleMute}
+                    openShareOptions={openShareOptions}
+                    handleFollowToggle={handleFollowToggle}
+                    setActivePreviewImage={setActivePreviewImage}
+                    router={router}
+                    t={t}
+                    isExpanded={isExpanded}
+                    onToggleExpand={handleToggleExpand}
+                  />
+
+                  {/* AREA TANGGAPAN USER LAIN (RENDERING BERGAYA THREAD TWITTER) */}
+                  {isTextOrAudio && postComments.map((comment) => (
+                    <div 
+                      key={comment.id}
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        marginTop: '-13px', // Menarik posisi ke atas menempel kartu utama menghilangkan margin pemisah
+                        padding: '0'
+                      }}
+                    >
                       <PostCard
-                        post={p}
+                        post={comment}
                         currentUser={currentUser}
                         counts={counts}
                         myLikedPosts={myLikedPosts}
@@ -701,11 +542,11 @@ function PostContent() {
                         isGloballyMuted={isGloballyMuted}
                         poppingHeart={poppingHeart}
                         activePreviewImage={activePreviewImage}
-                        likersMap={likersMap}
+                        likersMap={likersMap} 
                         repostersMap={repostersMap}
                         handleLike={handleLike}
                         handleSave={handleSave}
-                        openRepostModal={commonHandlers.openRepostModal}
+                        openRepostModal={() => {}} // Nonaktifkan sejenak fitur modal repos di level tanggapan teks
                         handleMediaClick={handleMediaClick}
                         toggleMute={toggleMute}
                         openShareOptions={openShareOptions}
@@ -713,55 +554,19 @@ function PostContent() {
                         setActivePreviewImage={setActivePreviewImage}
                         router={router}
                         t={t}
-                        isExpanded={isExpanded}
-                        onToggleExpand={handleToggleExpand}
-                        onTanggapanClick={commonHandlers.onTanggapanClick}
-                        showTopComment={false}
+                        isExpanded={false}
+                        onToggleExpand={() => {}}
                       />
-                      {postTanggapan.length > 0 && (
-                        <PostTanggapanList
-                          tanggapan={postTanggapan}
-                          parentPostId={String(p.id)}
-                          currentUser={currentUser}
-                          counts={counts}
-                          myLikedPosts={myLikedPosts}
-                          myRepostedPosts={myRepostedPosts}
-                          mySavedPosts={mySavedPosts}
-                          followedUsers={followedUsers}
-                          mutualUsers={mutualUsers}
-                          animatingFollows={animatingFollows}
-                          animatingReposts={animatingReposts}
-                          isGloballyMuted={isGloballyMuted}
-                          poppingHeart={poppingHeart}
-                          activePreviewImage={activePreviewImage}
-                          likersMap={likersMap}
-                          repostersMap={repostersMap}
-                          handleLike={handleLike}
-                          handleSave={handleSave}
-                          openRepostModal={commonHandlers.openRepostModal}
-                          handleMediaClick={handleMediaClick}
-                          toggleMute={toggleMute}
-                          openShareOptions={openShareOptions}
-                          handleFollowToggle={handleFollowToggle}
-                          setActivePreviewImage={setActivePreviewImage}
-                          router={router}
-                          t={t}
-                          onTanggapanClick={(initialText, parentId) => {
-                            if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                            setTanggapanInput(initialText);
-                            setTanggapanModal({ isOpen: true, postId: parentId });
-                          }}
-                        />
-                      )}
-                    </>
-                  )}
+                    </div>
+                  ))}
                 </div>
               );
             })}
           </div>
         )}
       </div>
-
+      
+      {/* SUNTIKAN CSS GLOBAL */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         @keyframes popHeartAnim {
@@ -771,19 +576,28 @@ function PostContent() {
           70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
           100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
         }
-        @keyframes slideUp {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-        .slide-up-modal { animation: slideUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
+
         .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
-          border-radius: 50% !important; aspect-ratio: 1 / 1 !important; object-fit: cover !important;
+          border-radius: 50% !important;
+          aspect-ratio: 1 / 1 !important;
+          object-fit: cover !important;
         }
+
         .see-more-btn {
-          color: #1f3cff !important; cursor: pointer; font-size: 13px !important; font-weight: 700 !important;
-          display: inline-block; margin-top: 6px; background: none; border: none; padding: 0; z-index: 10; pointer-events: auto;
+          color: #1f3cff !important;
+          cursor: pointer;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          display: inline-block;
+          margin-top: 6px;
+          background: none;
+          border: none;
+          padding: 0;
+          z-index: 10;
+          pointer-events: auto;
         }
       `}</style>
     </div>
