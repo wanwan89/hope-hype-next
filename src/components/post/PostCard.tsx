@@ -270,32 +270,53 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-  // Fetching 1 tanggapan teratas dengan jumlah like terbanyak (Khusus Postingan Teks/Audio)
-  useEffect(() => {
-    let isMounted = true;
-    if (!isVideoPost && photoList.length === 0) {
-      const fetchTopComment = async () => {
-        try {
-          let query = supabase
-            .from('comments')
-            .select(`
-              id,
-              content,
-              created_at,
-              likes,
-              profiles:user_id (
-                username,
-                full_name,
-                avatar_url,
-                role
-              )
-            `)
-            .eq('post_id', postIdStr)
-            .order('likes', { ascending: false });
+// Fetching 1 tanggapan teratas (Most Recent/Latest)
+useEffect(() => {
+  let isMounted = true;
+  if (!isVideoPost && photoList.length === 0) {
+    const fetchTopTanggapan = async () => {
+      try {
+        // Ganti 'comments' menjadi 'tanggapan'
+        let query = supabase
+          .from('tanggapan')
+          .select(`
+            id,
+            content,
+            created_at,
+            profiles:user_id (
+              username,
+              full_name,
+              avatar_url,
+              role
+            )
+          `)
+          .eq('post_id', postIdStr)
+          .order('created_at', { ascending: false }); // Mengurutkan berdasarkan yang terbaru
 
-          // Mengecualikan komentar dari user yang sedang login
-          if (currentUser?.id) {
-            query = query.neq('user_id', currentUser.id);
+        if (currentUser?.id) {
+          query = query.neq('user_id', currentUser.id);
+        }
+
+        const { data, error } = await query.limit(1);
+
+        if (error) {
+          console.error("Gagal memuat tanggapan teratas:", error);
+          return;
+        }
+
+        if (isMounted && data && data.length > 0) {
+          setTopComment(data[0]);
+        }
+      } catch (err) {
+        console.error("Error fetching tanggapan:", err);
+      }
+    };
+
+    fetchTopTanggapan();
+  }
+  return () => { isMounted = false; };
+}, [postIdStr, isVideoPost, photoList.length, currentUser?.id]);
+
           }
 
           const { data, error } = await query.limit(1);
