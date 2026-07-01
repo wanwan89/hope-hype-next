@@ -73,7 +73,8 @@ const CarouselImageItem = ({
 type PostCardProps = {
   post: any;
   currentUser: any;
-  counts: Record<string, { likes: number; comments: number; reposts: number; saves: number }>;
+  // FIX 3: Sesuaikan tipe 'comments' menjadi 'tanggapan' sesuai logika PostContent Anda
+  counts: Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>;
   myLikedPosts: Set<string>;
   myRepostedPosts: Set<string>;
   mySavedPosts: Set<string>;
@@ -98,6 +99,8 @@ type PostCardProps = {
   t: any;
   isExpanded?: boolean;
   onToggleExpand?: (postId: string) => void;
+  // FIX 1: Tambahkan prop onTanggapanClick
+  onTanggapanClick?: (postId: string) => void; 
 };
 
 const PostCard: React.FC<PostCardProps> = ({
@@ -109,6 +112,7 @@ const PostCard: React.FC<PostCardProps> = ({
   setActivePreviewImage, router, t,
   isExpanded = false,
   onToggleExpand = () => {},
+  onTanggapanClick = () => {}, // Destructure prop baru dengan default function
 }) => {
   const postIdStr = String(post.id);
   const creatorIdStr = String(post.creator_id);
@@ -503,7 +507,8 @@ const PostCard: React.FC<PostCardProps> = ({
     [actuallyExpanded]
   );
 
-  const commentCount = counts[postIdStr]?.comments || 0;
+  // FIX 3 (Lanjutan): Hitung menggunakan key 'tanggapan'
+  const commentCount = counts[postIdStr]?.tanggapan || 0;
 
   // Optimasi Avatar untuk komentar teratas
   const rawCommentAvatar = topComment?.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${topComment?.profiles?.username || 'User'}`;
@@ -1022,7 +1027,9 @@ const PostCard: React.FC<PostCardProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                onClick={() => router.push(`/post?id=${postIdStr}`)}
+                // (Opsional) jika mau tombol Detail ini juga buka pop up komentar, 
+                // ubah bagian onClick di bawah ini. Sementara dibiarkan default router.push.
+                onClick={() => router.push(`/post?id=${postIdStr}`)} 
                 className="primary btn-press"
                 style={{
                   display: 'inline-block',
@@ -1293,7 +1300,12 @@ const PostCard: React.FC<PostCardProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => router.push(`/post?id=${postIdStr}&action=comment`)}
+              // FIX 2: Ganti router.push menjadi eksekusi onTanggapanClick 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onTanggapanClick) onTanggapanClick(postIdStr);
+              }}
               className="btn-press"
               style={{
                 fontSize: '13px',
@@ -1371,7 +1383,6 @@ const PostCard: React.FC<PostCardProps> = ({
                 }}>
                   {topComment.content}
                 </p>
-                {/* Bagian likes sengaja dihapus karena kolom tidak ada */}
               </div>
             </div>
           )}
