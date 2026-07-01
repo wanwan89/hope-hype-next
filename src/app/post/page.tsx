@@ -7,12 +7,9 @@ import { useTranslation } from 'react-i18next';
 import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import PostCardText from '@/components/post/PostCardText';
+import PostTanggapanList from '@/components/post/PostTanggapanList'; // tambahan
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
-
-function isValidUUID(str: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-}
 
 function PostContent() {
   const { t } = useTranslation();
@@ -20,8 +17,8 @@ function PostContent() {
   const searchParams = useSearchParams();
 
   const rawPostId = searchParams.get('id');
-  // Hanya gunakan ID jika valid UUID
-  const postIdFromUrl = rawPostId && isValidUUID(rawPostId) ? rawPostId : null;
+  // JANGAN divalidasi UUID agar semua ID tetap diproses
+  const postIdFromUrl = rawPostId || null;
   const source = searchParams.get('from');
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -599,9 +596,23 @@ function PostContent() {
               const isExpanded = expandedPosts.has(p.id);
               const postTanggapan = tanggapanMap[String(p.id)] || [];
 
+              const commonHandlers = {
+                openRepostModal: (id: string, cid: string) => {
+                  if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                  if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                  else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                },
+                onTanggapanClick: (postId: string) => {
+                  if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                  setTanggapanInput('');
+                  setTanggapanModal({ isOpen: true, postId: String(postId) });
+                },
+              };
+
               return (
                 <div key={p.id} id={`post-wrapper-${p.id}`} style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0', paddingBottom: postTanggapan.length > 0 ? '16px' : '0' }}>
-                  {isTextOrAudio && postTanggapan.length > 0 && (
+                  {/* Garis vertikal untuk tanggapan */}
+                  {postTanggapan.length > 0 && (
                     <div style={{ position: 'absolute', left: '48px', top: '70px', bottom: '50px', width: '2px', backgroundColor: 'var(--border-card)', zIndex: 10, pointerEvents: 'none', opacity: 0.8 }} />
                   )}
 
@@ -624,11 +635,7 @@ function PostContent() {
                       repostersMap={repostersMap}
                       handleLike={handleLike}
                       handleSave={handleSave}
-                      openRepostModal={(id, cid) => {
-                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                        if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                        else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
-                      }}
+                      openRepostModal={commonHandlers.openRepostModal}
                       handleMediaClick={handleMediaClick}
                       toggleMute={toggleMute}
                       openShareOptions={openShareOptions}
@@ -646,46 +653,76 @@ function PostContent() {
                       }}
                     />
                   ) : (
-                    <PostCard
-                      post={p}
-                      currentUser={currentUser}
-                      counts={counts}
-                      myLikedPosts={myLikedPosts}
-                      myRepostedPosts={myRepostedPosts}
-                      mySavedPosts={mySavedPosts}
-                      followedUsers={followedUsers}
-                      mutualUsers={mutualUsers}
-                      animatingFollows={animatingFollows}
-                      animatingReposts={animatingReposts}
-                      isGloballyMuted={isGloballyMuted}
-                      poppingHeart={poppingHeart}
-                      activePreviewImage={activePreviewImage}
-                      likersMap={likersMap}
-                      repostersMap={repostersMap}
-                      handleLike={handleLike}
-                      handleSave={handleSave}
-                      openRepostModal={(id, cid) => {
-                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                        if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                        else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
-                      }}
-                      handleMediaClick={handleMediaClick}
-                      toggleMute={toggleMute}
-                      openShareOptions={openShareOptions}
-                      handleFollowToggle={handleFollowToggle}
-                      setActivePreviewImage={setActivePreviewImage}
-                      router={router}
-                      t={t}
-                      isExpanded={isExpanded}
-                      onToggleExpand={handleToggleExpand}
-                      onTanggapanClick={(id) => {
-                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                        setTanggapanInput('');
-                        setTanggapanModal({ isOpen: true, postId: String(id) });
-                      }}
-                      showTopComment={false}
-                      tanggapanLabel="Beri Tanggapan"
-                    />
+                    <>
+                      <PostCard
+                        post={p}
+                        currentUser={currentUser}
+                        counts={counts}
+                        myLikedPosts={myLikedPosts}
+                        myRepostedPosts={myRepostedPosts}
+                        mySavedPosts={mySavedPosts}
+                        followedUsers={followedUsers}
+                        mutualUsers={mutualUsers}
+                        animatingFollows={animatingFollows}
+                        animatingReposts={animatingReposts}
+                        isGloballyMuted={isGloballyMuted}
+                        poppingHeart={poppingHeart}
+                        activePreviewImage={activePreviewImage}
+                        likersMap={likersMap}
+                        repostersMap={repostersMap}
+                        handleLike={handleLike}
+                        handleSave={handleSave}
+                        openRepostModal={commonHandlers.openRepostModal}
+                        handleMediaClick={handleMediaClick}
+                        toggleMute={toggleMute}
+                        openShareOptions={openShareOptions}
+                        handleFollowToggle={handleFollowToggle}
+                        setActivePreviewImage={setActivePreviewImage}
+                        router={router}
+                        t={t}
+                        isExpanded={isExpanded}
+                        onToggleExpand={handleToggleExpand}
+                        onTanggapanClick={commonHandlers.onTanggapanClick}
+                        showTopComment={false}
+                        tanggapanLabel="Beri Tanggapan"
+                      />
+                      {/* Render daftar tanggapan untuk post media */}
+                      {postTanggapan.length > 0 && (
+                        <PostTanggapanList
+                          tanggapan={postTanggapan}
+                          parentPostId={String(p.id)}
+                          currentUser={currentUser}
+                          counts={counts}
+                          myLikedPosts={myLikedPosts}
+                          myRepostedPosts={myRepostedPosts}
+                          mySavedPosts={mySavedPosts}
+                          followedUsers={followedUsers}
+                          mutualUsers={mutualUsers}
+                          animatingFollows={animatingFollows}
+                          animatingReposts={animatingReposts}
+                          isGloballyMuted={isGloballyMuted}
+                          poppingHeart={poppingHeart}
+                          activePreviewImage={activePreviewImage}
+                          likersMap={likersMap}
+                          repostersMap={repostersMap}
+                          handleLike={handleLike}
+                          handleSave={handleSave}
+                          openRepostModal={commonHandlers.openRepostModal}
+                          handleMediaClick={handleMediaClick}
+                          toggleMute={toggleMute}
+                          openShareOptions={openShareOptions}
+                          handleFollowToggle={handleFollowToggle}
+                          setActivePreviewImage={setActivePreviewImage}
+                          router={router}
+                          t={t}
+                          onTanggapanClick={(initialText, parentId) => {
+                            if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                            setTanggapanInput(initialText);
+                            setTanggapanModal({ isOpen: true, postId: parentId });
+                          }}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
               );
