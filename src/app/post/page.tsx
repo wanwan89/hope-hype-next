@@ -168,7 +168,6 @@ function PostContent() {
     }
   };
 
-  // FIX: Sinkronisasi pengambilan data interaksi Like/Bookmark/Repost milik komentar
   const fetchPostInteractions = async (postId: string | number, user: any) => {
     const pid = String(postId);
     const [likesRes, tanggapanRes, repostsRes, savesRes] = await Promise.all([
@@ -189,7 +188,6 @@ function PostContent() {
     let userTReposts = new Set<number>();
     let userTSaves = new Set<number>();
 
-    // Tarik data interaksi untuk seluruh komentar yang ada di post ini
     if (tanggapanIds.length > 0) {
       const [tLikesRes, tRepostsRes, tSavesRes] = await Promise.all([
         supabase.from('tanggapan_likes').select('tanggapan_id, user_id').in('tanggapan_id', tanggapanIds),
@@ -207,7 +205,6 @@ function PostContent() {
       }
     }
 
-    // FIX: Menggunakan ID negatif (-t.id) agar lolos validasi tipe data bigint di PostCard
     const transformedTanggapan = tanggapanRes.data?.map((t: any) => ({
       id: -t.id, 
       real_tanggapan_id: t.id,
@@ -234,7 +231,6 @@ function PostContent() {
         }
       };
 
-      // Hitung total interaksi masing-masing komentar secara akurat
       transformedTanggapan.forEach((t: any) => {
         const realId = t.real_tanggapan_id;
         baseCounts[String(t.id)] = { 
@@ -300,6 +296,7 @@ function PostContent() {
     const postIdNum = Math.abs(parseInt(tanggapanModal.postId));
 
     try {
+      // FIX: Mengubah .single() menjadi .maybeSingle() untuk mencegah crash fatal PGRST116 jika select mengembalikan 0 baris akibat konfigurasi RLS
       const { data, error } = await supabase
         .from('tanggapan')
         .insert({
@@ -308,11 +305,17 @@ function PostContent() {
           content: tanggapanInput.trim()
         })
         .select('id, post_id, user_id, content, created_at, profiles:user_id(full_name, username, role, avatar_url)')
-        .single();
+        .maybeSingle();
 
-      if (!error && data) {
+      if (error) {
+        console.error("Supabase Error:", error.message);
+        alert("Gagal mengirim tanggapan. Silakan periksa koneksi atau kebijakan RLS tabel Anda.");
+        return;
+      }
+
+      if (data) {
         const newTanggapan = {
-          id: -data.id, // Menggunakan ID negatif
+          id: -data.id, 
           real_tanggapan_id: data.id,
           post_id: data.post_id,
           creator_id: data.user_id,
@@ -352,6 +355,13 @@ function PostContent() {
 
         setTanggapanModal({ isOpen: false, postId: '' });
         setTanggapanInput('');
+      } else {
+        // Jika data bernilai null padahal tidak ada error, ini tanda kuat RLS SELECT bermasalah
+        console.warn("Data berhasil masuk namun gagal dimuat kembali. Cek RLS SELECT kebijakan tabel tanggapan Anda.");
+        setTanggapanModal({ isOpen: false, postId: '' });
+        setTanggapanInput('');
+        // Pemicu muat ulang data manual sebagai cadangan jika dibutuhkan
+        if (postIdFromUrl) fetchPostInteractions(postIdFromUrl, currentUserRef.current);
       }
     } catch (err) {
       console.error(err);
@@ -391,7 +401,6 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
-  // FIX: Menggunakan logika deteksi ID negatif untuk penentuan parameter database
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
@@ -472,7 +481,6 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
-
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
     const lastTapTime = lastTapRef.current[postId] || 0;
@@ -509,7 +517,6 @@ function PostContent() {
 
   const openShareOptions = useCallback((postToShare: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
-      // Jika yang dibagikan komentar, ambil post_id utamanya agar URL share tetap valid berupa angka positif
       const isTanggapan = Number(postToShare.id) < 0;
       const shareId = isTanggapan ? postToShare.post_id : postToShare.id;
 
@@ -543,6 +550,36 @@ function PostContent() {
 
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
+
+      {/* FIX: Render UI Modal Input Tanggapan agar state tanggapanModal.isOpen dapat berfungsi secara visual */}
+      {tanggapanModal.isOpen && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setTanggapanModal({ isOpen: false, postId: '' })}>
+          <div className="slide-up-modal" style={{ background: 'var(--bg-main)', width: '100%', maxWidth: '600px', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '20px', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>Beri Tanggapan</h3>
+              <button onClick={() => setTanggapanModal({ isOpen: false, postId: '' })} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+            <textarea
+              value={tanggapanInput}
+              onChange={(e) => setTanggapanInput(e.target.value)}
+              placeholder="Tulis tanggapan Anda di sini..."
+              style={{ width: '100%', minHeight: '100px', background: 'var(--bg-comment)', color: 'var(--text-main)', border: '1px solid var(--border-card)', borderRadius: '8px', padding: '12px', boxSizing: 'border-box', resize: 'none', fontSize: '14px', marginBottom: '16px', outline: 'none' }}
+              disabled={isSubmittingTanggapan}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleSubmitTanggapan}
+                disabled={isSubmittingTanggapan || !tanggapanInput.trim()}
+                style={{ background: '#1f3cff', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '20px', fontWeight: 700, cursor: 'pointer', opacity: (isSubmittingTanggapan || !tanggapanInput.trim()) ? 0.5 : 1 }}
+              >
+                {isSubmittingTanggapan ? 'Mengirim...' : 'Kirim'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
@@ -678,7 +715,7 @@ function PostContent() {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
         }
-        .slide-up-modal { animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        .slide-up-modal { animation: slideUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
         .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
