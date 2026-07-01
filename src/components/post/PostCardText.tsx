@@ -78,7 +78,7 @@ export default function PostCardText(props: Props) {
               audio.play().catch(() => {});
             }
             
-            // FIX: Mengamankan RPC agar tidak menembak ID negatif (tanggapan/komentar) yang memicu PGRST116
+            // Mengamankan RPC agar tidak menembak ID negatif (tanggapan/komentar) yang memicu PGRST116
             const numericId = Number(postIdStr);
             if (!hasViewedRef.current && postIdStr && numericId > 0) {
               hasViewedRef.current = true;
@@ -99,7 +99,7 @@ export default function PostCardText(props: Props) {
   useEffect(() => {
     let isMounted = true;
     
-    // FIX: Cegah pencarian jika kartu ini sendiri adalah sebuah tanggapan (ID negatif atau string khusus)
+    // Cegah pencarian jika kartu ini sendiri adalah sebuah tanggapan (ID negatif atau string khusus)
     const numericId = Number(postIdStr);
     if (showTopComment && !postIdStr.startsWith('tanggapan-') && numericId > 0) {
       const fetchTop = async () => {
@@ -123,12 +123,27 @@ export default function PostCardText(props: Props) {
     e.preventDefault();
     e.stopPropagation();
     
-    // Jika ID negatif (berupa tanggapan), arahkan ke ID post utama induknya agar halaman detail post valid
-    const numericId = Number(postIdStr);
-    const destinationId = numericId < 0 && post.post_id ? String(post.post_id) : postIdStr;
+    let destinationId = postIdStr;
+    
+    // 1. Deteksi apakah kartu ini adalah sebuah tanggapan 
+    // (Mengecek awalan 'tanggapan-' ATAU angka negatif)
+    const isTanggapan = postIdStr.startsWith('tanggapan-') || Number(postIdStr) < 0;
 
-    if (onTanggapanClick) onTanggapanClick(destinationId);
-    else router.push(`/post?id=${destinationId}`);
+    // 2. Jika ini tanggapan, kita harus membuka Postingan Induknya
+    if (isTanggapan) {
+      if (post.post_id) {
+        destinationId = String(post.post_id);
+      } else {
+        console.warn("Peringatan: Objek tanggapan tidak memiliki 'post_id'. Pastikan query API Anda mengambil kolom post_id.");
+      }
+    }
+
+    // 3. Arahkan pengguna ke halaman yang tepat
+    if (onTanggapanClick) {
+      onTanggapanClick(destinationId);
+    } else {
+      router.push(`/post?id=${destinationId}`);
+    }
   };
 
   return (
