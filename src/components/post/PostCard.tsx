@@ -621,7 +621,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     scrollSnapAlign: 'start',
                     overflow: 'hidden',
                     position: 'relative',
-                    background: 'var(--bg-secondary)',
+                    background: '#000', // 👈 FIX 1: Diubah ke hitam pekat (#000) agar area kosong berwarna hitam
                     cursor: 'default',
                     transform: 'translateZ(0)',
                   }}
@@ -660,11 +660,12 @@ const PostCard: React.FC<PostCardProps> = ({
                     style={{
                       width: '100%',
                       height: '100%',
-                      objectFit: 'cover',
-                      objectPosition: 'top center',
+                      objectFit: 'contain', // 👈 FIX 2: Diubah dari 'cover' ke 'contain' agar bentuk video tidak terpotong penuh
+                      objectPosition: 'center', // 👈 FIX 3: Diubah ke 'center' agar video ditaruh pas di tengah container secara presisi
                       pointerEvents: 'none',
                       opacity: videoLoaded ? 1 : 0,
                       transition: 'opacity 0.3s',
+                      backgroundColor: '#000' // 👈 FIX 4: Ditambahkan background internal hitam cadangan
                     }}
                   />
 
