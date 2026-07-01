@@ -548,10 +548,10 @@ function CreatePostContent() {
 
         const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
         
-        // ✅ Terapkan transformasi Cloudinary c_pad (memberikan border hitam otomatis)
+        // ✅ Terapkan transformasi Cloudinary c_fill agar otomatis terpotong tanpa border hitam
         finalVideoUrl = vidRes.secure_url.replace(
           '/upload/',
-          `/upload/${rotParam}c_pad,b_black,ar_${clRatio}/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
+          `/upload/${rotParam}c_fill,ar_${clRatio}/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
         );
         updateGlobalProgress(50);
       }
