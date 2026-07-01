@@ -17,6 +17,7 @@ function PostContent() {
   const searchParams = useSearchParams();
 
   const rawPostId = searchParams.get('id');
+  // JANGAN divalidasi UUID agar semua ID tetap diproses
   const postIdFromUrl = rawPostId || null;
   const source = searchParams.get('from');
 
@@ -39,7 +40,6 @@ function PostContent() {
 
   const [tanggapanMap, setTanggapanMap] = useState<Record<string, any[]>>({});
 
-  // Modal tanggapan
   const [tanggapanModal, setTanggapanModal] = useState<{ isOpen: boolean; postId: string }>({ isOpen: false, postId: '' });
   const [tanggapanInput, setTanggapanInput] = useState('');
   const [isSubmittingTanggapan, setIsSubmittingTanggapan] = useState(false);
@@ -58,11 +58,16 @@ function PostContent() {
   const [profileUsername, setProfileUsername] = useState<string>('');
   const [isMyOwnProfile, setIsMyOwnProfile] = useState<boolean>(false);
 
-  // Refs untuk state yang sering berubah
   const myLikedPostsRef = useRef(myLikedPosts);
   const myRepostedPostsRef = useRef(myRepostedPosts);
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { myLikedPostsRef.current = myLikedPosts; }, [myLikedPosts]);
@@ -70,17 +75,12 @@ function PostContent() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  // Inisialisasi
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
     if (postIdFromUrl) initializePage();
     else setIsLoading(false);
   }, [postIdFromUrl, source]);
 
   const initializePage = async () => {
-    console.log('[Init] Memulai inisialisasi halaman detail');
     setIsLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user || null;
@@ -104,12 +104,12 @@ function PostContent() {
   };
 
   const loadProfileMode = async (user: any) => {
-    console.log('[ProfileMode] Memuat postingan profil');
+    console.log(`[DEBUG-POST] Menjalankan mode Profile untuk ID Post:`, postIdFromUrl);
     const { data: exactPost, error: errExact } = await supabase
       .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle();
 
     if (errExact || !exactPost) {
-      console.warn('[ProfileMode] Post tidak ditemukan');
+      console.warn(`[DEBUG-POST] Gagal mendapatkan creator_id di Profile Mode. Error:`, errExact?.message);
       setUserPosts([]);
       setIsLoading(false);
       return;
@@ -131,8 +131,10 @@ function PostContent() {
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
 
+    console.log(`[DEBUG-POST] Hasil fetching postingan profil untuk user ${targetUserId}:`, { jumlah: postsData?.length, error });
+
     if (error || !postsData) {
-      console.error('[ProfileMode] Error fetching posts:', error);
+      console.error(`[DEBUG-POST] Query profil error:`, error?.message);
       setUserPosts([]);
       setIsLoading(false);
       return;
@@ -146,13 +148,14 @@ function PostContent() {
     });
 
     setUserPosts(filtered);
-    console.log(`[ProfileMode] Menampilkan ${filtered.length} post`);
     await Promise.all(filtered.map(post => fetchPostInteractions(post.id, user)));
     setIsLoading(false);
   };
 
   const loadSinglePost = async (id: string, user: any) => {
-    console.log('[SinglePost] Memuat post tunggal');
+    console.log(`[DEBUG-POST] ======= MEMULAI FETCH SINGLE POST =======`);
+    console.log(`[DEBUG-POST] Mencari Postingan dengan ID: ${id}`);
+
     try {
       const { data: postData, error } = await supabase
         .from('posts')
@@ -160,25 +163,36 @@ function PostContent() {
         .eq('id', id)
         .maybeSingle();
 
+      console.log(`[DEBUG-POST] Respons Supabase untuk Single Post:`, { data: postData, error });
+
+      if (error) {
+        console.error(`[DEBUG-POST] ERROR Supabase (Kemungkinan RLS, sintaks, atau format ID salah):`, error.message, error.details);
+      }
+
       if (error || !postData) {
-        console.error('[SinglePost] Post tidak ditemukan:', error);
+        console.warn(`[DEBUG-POST] Postingan tidak ditemukan. Kemungkinan penyebab:`);
+        console.warn(`[DEBUG-POST] 1. ID tidak valid di database.`);
+        console.warn(`[DEBUG-POST] 2. Postingan tersebut diblokir oleh kebijakan Row Level Security (RLS) untuk pengguna saat ini.`);
+        console.warn(`[DEBUG-POST] 3. Postingan bertipe teks belum memiliki status atau parameter spesifik yang diminta RLS.`);
+        
         setUserPosts([]);
         setIsLoading(false);
         return;
       }
 
+      console.log(`[DEBUG-POST] Postingan berhasil ditarik:`, postData);
       setUserPosts([postData]);
       await fetchPostInteractions(postData.id, user);
     } catch (err) {
-      console.error('[SinglePost] Error:', err);
+      console.error(`[DEBUG-POST] Exception terlempar di loadSinglePost:`, err);
     } finally {
       setIsLoading(false);
+      console.log(`[DEBUG-POST] ======= SELESAI FETCH SINGLE POST =======`);
     }
   };
 
   const fetchPostInteractions = async (postId: string | number, user: any) => {
     const pid = String(postId);
-    console.log(`[FetchInteractions] Memuat interaksi untuk ${pid}`);
     const [likesRes, tanggapanRes, repostsRes, savesRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
       supabase.from('tanggapan')
@@ -260,12 +274,7 @@ function PostContent() {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
 
-      const { data: userBookmark } = await supabase
-        .from('bookmarks')
-        .select('user_id')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle();
       const isSavedByUser = !!userBookmark;
 
       setMyLikedPosts(prev => {
@@ -287,17 +296,14 @@ function PostContent() {
         return n;
       });
     }
-    console.log(`[FetchInteractions] Selesai untuk ${pid}, likes: ${likesRes.data?.length}, tanggapan: ${transformedTanggapan.length}`);
   };
 
-  // Scroll ke post target setelah loading
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
       const scrollToPost = () => {
         const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
         if (targetPost) {
           targetPost.scrollIntoView({ behavior: 'auto', block: 'center' });
-          console.log(`[Scroll] Menuju post ${postIdFromUrl}`);
         }
       };
       const timer1 = setTimeout(scrollToPost, 150);
@@ -306,13 +312,11 @@ function PostContent() {
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
-  // Submit tanggapan (modal)
   const handleSubmitTanggapan = async () => {
     if (!tanggapanInput.trim() || !currentUserRef.current || !tanggapanModal.postId) return;
 
     setIsSubmittingTanggapan(true);
-    const postId = tanggapanModal.postId;
-    console.log(`[Tanggapan] Submit ke post ${postId}`);
+    const postId = tanggapanModal.postId; 
 
     try {
       const { data, error } = await supabase
@@ -326,8 +330,8 @@ function PostContent() {
         .maybeSingle();
 
       if (error) {
-        console.error("[Tanggapan] Supabase Error:", error.message);
-        alert("Gagal mengirim tanggapan.");
+        console.error("Supabase Error:", error.message);
+        alert("Gagal mengirim tanggapan. Silakan periksa koneksi atau kebijakan RLS tabel Anda.");
         return;
       }
 
@@ -346,6 +350,7 @@ function PostContent() {
         };
 
         const targetParentPost = postId;
+
         setTanggapanMap(prev => ({
           ...prev,
           [targetParentPost]: [...(prev[targetParentPost] || []), newTanggapan]
@@ -372,10 +377,14 @@ function PostContent() {
 
         setTanggapanModal({ isOpen: false, postId: '' });
         setTanggapanInput('');
-        console.log('[Tanggapan] Berhasil dikirim');
+      } else {
+        console.warn("Data berhasil masuk namun gagal dimuat kembali instan. Memuat ulang data tanggapan.");
+        setTanggapanModal({ isOpen: false, postId: '' });
+        setTanggapanInput('');
+        if (postIdFromUrl) fetchPostInteractions(postIdFromUrl, currentUserRef.current);
       }
     } catch (err) {
-      console.error('[Tanggapan] Error:', err);
+      console.error(err);
     } finally {
       setIsSubmittingTanggapan(false);
     }
@@ -409,9 +418,7 @@ function PostContent() {
           if (!error) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
         }
       }
-    } catch (err) {
-      console.error('[Follow] Error:', err);
-    }
+    } catch (err) {}
   }, []);
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
@@ -436,9 +443,7 @@ function PostContent() {
           await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: isTanggapan ? realId : postId });
         }
       }
-    } catch (err) {
-      console.error('[Like] Error:', err);
-    }
+    } catch (err) {}
   }, []);
 
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
@@ -446,12 +451,14 @@ function PostContent() {
 
     const isTanggapan = postId.startsWith('tanggapan_');
     const realId = isTanggapan ? postId.slice('tanggapan_'.length) : postId;
+
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
     setAnimatingReposts((prev) => new Set(prev).add(postId));
     setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
 
+    const wasReposted = myRepostedPostsRef.current.has(postId);
     setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
 
@@ -464,14 +471,11 @@ function PostContent() {
       } else {
         const { error } = await supabase.from(tableName).insert({ [idColumn]: realId, user_id: currentUserRef.current.id, note: finalNote });
         if (error) {
-          // rollback
-          setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
+          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
           setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
         }
       }
-    } catch (err) {
-      console.error('[Repost] Error:', err);
-    }
+    } catch (err) {}
   }, [repostNote]);
 
   const handleSave = useCallback(async (postId: string) => {
@@ -492,11 +496,9 @@ function PostContent() {
         await supabase.from(tableName).delete().match({ [idColumn]: realId, user_id: currentUserRef.current.id });
       } else {
         const { error } = await supabase.from(tableName).insert({ [idColumn]: realId, user_id: currentUserRef.current.id });
-        if (error && error.code !== "23505") console.error('[Save] Error:', error);
+        if (error && error.code !== "23505") console.error(error);
       }
-    } catch (err) {
-      console.error('[Save] Error:', err);
-    }
+    } catch (err) {}
   }, []);
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
@@ -528,10 +530,11 @@ function PostContent() {
     setIsGloballyMuted(prev => {
       const next = !prev;
       isMutedRef.current = next;
-      console.log(`[GlobalMute] Diubah menjadi ${next}`);
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-        el.muted = next;
-        // Jangan pause semua; biarkan observer yang mengatur playback
+      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
+        el.muted = next; 
+        if (!next && currentMedia && el !== currentMedia) {
+          el.pause();
+        }
       });
       return next;
     });
@@ -554,14 +557,6 @@ function PostContent() {
     }
   }, []);
 
-  // Handler tombol tanggapan pada PostTanggapanList (reply)
-  const handleReplyToTanggapan = (initialText: string, parentId: string) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-    console.log(`[Reply] Membuka modal untuk post ${parentId}`);
-    setTanggapanInput(initialText);
-    setTanggapanModal({ isOpen: true, postId: parentId });
-  };
-
   let headerTitle = "Detail Postingan";
   if (source === 'profile' && userPosts.length > 0) {
     if (isMyOwnProfile) headerTitle = "Postingan Anda";
@@ -570,7 +565,7 @@ function PostContent() {
 
   return (
     <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh', position: 'relative' }}>
-      {/* Header */}
+
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -578,24 +573,12 @@ function PostContent() {
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>{headerTitle}</h2>
       </div>
 
-      {/* Repost Modal */}
-      <RepostModal
-        isOpen={!!repostModal}
-        postId={repostModal?.postId || ''}
-        creatorId={repostModal?.creatorId || ''}
-        note={repostNote}
-        setNote={setRepostNote}
-        onClose={() => setRepostModal(null)}
-        onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }}
-      />
+      <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* Modal Tanggapan */}
       {tanggapanModal.isOpen && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          onClick={() => setTanggapanModal({ isOpen: false, postId: '' })}>
-          <div className="slide-up-modal" style={{ background: 'var(--bg-main)', width: '100%', maxWidth: '600px', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '20px', boxSizing: 'border-box' }}
-            onClick={(e) => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setTanggapanModal({ isOpen: false, postId: '' })}>
+          <div className="slide-up-modal" style={{ background: 'var(--bg-main)', width: '100%', maxWidth: '600px', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '20px', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>Beri Tanggapan</h3>
               <button onClick={() => setTanggapanModal({ isOpen: false, postId: '' })} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -622,7 +605,6 @@ function PostContent() {
         </div>
       )}
 
-      {/* Konten Utama */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
@@ -632,6 +614,7 @@ function PostContent() {
           <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
             <span className="material-icons" style={{ fontSize: '48px', marginBottom: '10px' }}>error_outline</span>
             <h3>Postingan Tidak Ditemukan</h3>
+            <p style={{ fontSize: '13px', marginTop: '8px' }}>Silakan periksa Console <code>F12</code> untuk melihat detail kenapa data diblokir/error.</p>
           </div>
         ) : (
           <div className="gallery" id="mainGallery" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0px' }}>
@@ -640,11 +623,17 @@ function PostContent() {
               const isExpanded = expandedPosts.has(p.id);
               const postTanggapan = tanggapanMap[String(p.id)] || [];
 
-              // Fungsi untuk buka modal repost/unrepost
-              const openRepost = (id: string, cid: string) => {
-                if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+              const commonHandlers = {
+                openRepostModal: (id: string, cid: string) => {
+                  if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                  if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                  else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                },
+                onTanggapanClick: (postId: string) => {
+                  if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                  setTanggapanInput('');
+                  setTanggapanModal({ isOpen: true, postId: String(postId) });
+                },
               };
 
               return (
@@ -672,7 +661,7 @@ function PostContent() {
                       repostersMap={repostersMap}
                       handleLike={handleLike}
                       handleSave={handleSave}
-                      openRepostModal={openRepost}
+                      openRepostModal={commonHandlers.openRepostModal}
                       handleMediaClick={handleMediaClick}
                       toggleMute={toggleMute}
                       openShareOptions={openShareOptions}
@@ -681,10 +670,13 @@ function PostContent() {
                       router={router}
                       t={t}
                       showTopComment={false}
-                      // 🔥 Tidak kirim tanggapanLabel → otomatis tampil jumlah
+                      // ✅ Dihapus: tanggapanLabel="Beri Tanggapan" (agar angkanya selalu keluar)
                       tanggapan={postTanggapan}
-                      // 🔥 Tidak kirim onTanggapanClick → navigasi ke /post?id=...
-                      // (untuk reply tetap pakai modal di dalam PostTanggapanList)
+                      onTanggapanClick={(initialText, parentId) => {
+                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                        setTanggapanInput(initialText);
+                        setTanggapanModal({ isOpen: true, postId: parentId });
+                      }}
                     />
                   ) : (
                     <>
@@ -706,7 +698,7 @@ function PostContent() {
                         repostersMap={repostersMap}
                         handleLike={handleLike}
                         handleSave={handleSave}
-                        openRepostModal={openRepost}
+                        openRepostModal={commonHandlers.openRepostModal}
                         handleMediaClick={handleMediaClick}
                         toggleMute={toggleMute}
                         openShareOptions={openShareOptions}
@@ -716,8 +708,9 @@ function PostContent() {
                         t={t}
                         isExpanded={isExpanded}
                         onToggleExpand={handleToggleExpand}
+                        onTanggapanClick={commonHandlers.onTanggapanClick}
                         showTopComment={false}
-                        // 🔥 Tidak kirim tanggapanLabel & onTanggapanClick
+                        // ✅ Dihapus: tanggapanLabel="Beri Tanggapan" (agar angkanya selalu keluar)
                       />
                       {postTanggapan.length > 0 && (
                         <PostTanggapanList
@@ -739,7 +732,7 @@ function PostContent() {
                           repostersMap={repostersMap}
                           handleLike={handleLike}
                           handleSave={handleSave}
-                          openRepostModal={openRepost}
+                          openRepostModal={commonHandlers.openRepostModal}
                           handleMediaClick={handleMediaClick}
                           toggleMute={toggleMute}
                           openShareOptions={openShareOptions}
@@ -747,7 +740,11 @@ function PostContent() {
                           setActivePreviewImage={setActivePreviewImage}
                           router={router}
                           t={t}
-                          onTanggapanClick={handleReplyToTanggapan}
+                          onTanggapanClick={(initialText, parentId) => {
+                            if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                            setTanggapanInput(initialText);
+                            setTanggapanModal({ isOpen: true, postId: parentId });
+                          }}
                         />
                       )}
                     </>

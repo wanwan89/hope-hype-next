@@ -14,9 +14,6 @@ const isValidUUID = (id: string) => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
 };
 
-// 🌍 Global tracker untuk audio aktif (hanya browser)
-let globalActiveAudio: HTMLAudioElement | null = null;
-
 type Props = {
   post: any;
   currentUser: any;
@@ -30,7 +27,6 @@ type Props = {
   animatingReposts: Set<string>;
   isGloballyMuted: boolean;
   poppingHeart: string | null;
-  // ✅ Menambahkan deklarasi prop yang terlewat untuk PostTanggapanList
   likersMap?: Record<string, any[]>;
   repostersMap?: Record<string, any[]>;
   handleLike: (postId: string, creatorId: string) => void;
@@ -102,14 +98,12 @@ export default function PostCardText(props: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const hasViewedRef = useRef(false);
 
-  // Sync isGloballyMuted status to Ref untuk menghindari race condition
+  // Sync isGloballyMuted status to Ref to prevent IntersectionObserver race conditions
   const isMutedRef = useRef(isGloballyMuted);
   useEffect(() => {
     isMutedRef.current = isGloballyMuted;
-    console.log(`[PostCardText ${postIdStr}] Global mute menjadi ${isGloballyMuted}`);
-  }, [isGloballyMuted, postIdStr]);
+  }, [isGloballyMuted]);
 
-  // Intersection Observer & Audio Management
   useEffect(() => {
     const audio = mediaRef.current;
     const card = cardRef.current;
@@ -120,63 +114,44 @@ export default function PostCardText(props: Props) {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            console.log(`[Intersection] ${postIdStr} masuk viewport`);
             if (audio) {
-              // Jika global mute mati, mainkan audio (satu saja)
+              audio.muted = isMutedRef.current;
+              // Mengamankan logika bentrok suara, jeda audio/video lain ketika audio ini unmuted & intersect
               if (!isMutedRef.current) {
-                // Pause audio lain yang sedang aktif
-                if (globalActiveAudio && globalActiveAudio !== audio) {
-                  console.log(`[Audio] Pause audio lain (${globalActiveAudio.src}) untuk ${postIdStr}`);
-                  globalActiveAudio.pause();
-                }
-                // Mainkan audio ini
-                audio.muted = false;
-                audio.play().catch((err) => console.warn(`[Audio] Gagal play ${postIdStr}:`, err));
-                globalActiveAudio = audio;
-                console.log(`[Audio] Memainkan audio ${postIdStr}`);
-              } else {
-                audio.muted = true;
+                document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+                  if (el !== audio) el.pause();
+                });
               }
+              audio.play().catch(() => {});
             }
 
-            // Logika view count (hanya untuk post non-teks dengan ID valid)
             const isRealPost = !postIdStr.startsWith('tanggapan_');
+            // ✅ Deteksi apakah postingan hanya berupa teks
             const isTextOnly = !post.image_url && !post.video_url && !post.audio_src;
+            
+            // ✅ Block view hitung jika ID tidak valid UUID ATAU postingan hanya berupa teks
             if (!hasViewedRef.current && isRealPost && postIdStr && isValidUUID(postIdStr) && !isTextOnly) {
               hasViewedRef.current = true;
               supabase
                 .rpc('increment_post_view', { p_id: postIdStr })
                 .then(
                   ({ error }) => {
-                    if (error) console.error('[View] Error increment:', error.message);
-                    else console.log(`[View] Tercatat untuk post ${postIdStr}`);
+                    if (error) console.error('Error view count:', error.message);
                   },
-                  (err) => console.error('[View] RPC failed:', err)
+                  (err) => {
+                    console.error('RPC failed:', err);
+                  }
                 );
             }
           } else {
-            // Tidak terlihat → pause audio
-            if (audio) {
-              console.log(`[Intersection] ${postIdStr} keluar viewport, pause audio`);
-              audio.pause();
-              if (globalActiveAudio === audio) {
-                globalActiveAudio = null;
-              }
-            }
+            if (audio) audio.pause();
           }
         });
       },
       { threshold: 0.5 }
     );
-
     observer.observe(card);
-    return () => {
-      observer.disconnect();
-      // Bersihkan global tracker jika audio ini yang aktif
-      if (audio && globalActiveAudio === audio) {
-        globalActiveAudio = null;
-      }
-    };
+    return () => observer.disconnect();
   }, [postIdStr, post.image_url, post.video_url, post.audio_src]);
 
   // Fetch top comment
@@ -184,6 +159,7 @@ export default function PostCardText(props: Props) {
     let isMounted = true;
     const isRealPost = !postIdStr.startsWith('tanggapan_');
 
+    // ✅ Tambahkan filter validasi UUID agar komentar juga tidak error saat dipanggil
     if (showTopComment && isRealPost && postIdStr && isValidUUID(postIdStr)) {
       const fetchTop = async () => {
         const { data, error } = await supabase
@@ -192,10 +168,7 @@ export default function PostCardText(props: Props) {
           .eq('post_id', postIdStr)
           .order('created_at', { ascending: false })
           .limit(1);
-        if (!error && isMounted && data?.length) {
-          setTopComment(data[0]);
-          console.log(`[TopComment] Ditemukan untuk ${postIdStr}:`, data[0].content);
-        }
+        if (!error && isMounted && data?.length) setTopComment(data[0]);
       };
       fetchTop();
     }
@@ -205,14 +178,15 @@ export default function PostCardText(props: Props) {
   }, [postIdStr, showTopComment]);
 
   const commentCount = counts[postIdStr]?.tanggapan || 0;
-  // Label default menampilkan jumlah jika ada, jika tidak: "Tanggapi"
-  const tanggapanButtonLabel = tanggapanLabel || (commentCount > 0 ? `${commentCount} Tanggapan` : 'Tanggapi');
+  // ✅ FIX: Prioritaskan format "X Tanggapan" untuk memunculkan angkanya secara eksplisit
+  const tanggapanButtonLabel = tanggapanLabel || `${commentCount} Tanggapan`;
 
   const handleTanggapanClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     const isTanggapan = postIdStr.startsWith('tanggapan_');
+
     if (isTanggapan) {
       const parentId = post.post_id ? String(post.post_id) : null;
       if (parentId) {
@@ -226,13 +200,14 @@ export default function PostCardText(props: Props) {
       return;
     }
 
-    // Jika tidak ada callback, navigasi ke halaman detail
     if (onTanggapanClick) {
+      // Buka modal di halaman detail
       onTanggapanClick('', postIdStr);
     } else if (postIdStr) {
+      // Jika berada di feed / belum di detail page, pindah ke halaman detail postingan 
       router.push(`/post?id=${postIdStr}`);
     } else {
-      console.warn('[Navigasi] Invalid post ID:', postIdStr);
+      console.warn('Invalid post ID for navigation:', postIdStr);
     }
   };
 
@@ -254,7 +229,6 @@ export default function PostCardText(props: Props) {
         position: 'relative',
       }}
     >
-      {/* Avatar & Info */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', zIndex: 2 }}>
         <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
           <img
@@ -281,15 +255,17 @@ export default function PostCardText(props: Props) {
               {post.is_ad && (
                 <>
                   <span>•</span>
-                  <span style={{
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-card)',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    color: 'var(--text-main)',
-                  }}>
+                  <span
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-card)',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: 'var(--text-main)',
+                    }}
+                  >
                     <span className="material-icons" style={{ fontSize: '12px', color: '#1f3cff' }}>campaign</span> Iklan
                   </span>
                 </>
@@ -314,27 +290,40 @@ export default function PostCardText(props: Props) {
         </button>
       </div>
 
-      {/* Animasi like */}
       {poppingHeart?.startsWith(postIdStr) && (
-        <span className="material-icons" style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)', color: '#ff2e63', fontSize: '160px',
-          animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-          filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none',
-        }}>
+        <span
+          className="material-icons"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: '#ff2e63',
+            fontSize: '160px',
+            animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+            filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))',
+            zIndex: 9999,
+            pointerEvents: 'none',
+          }}
+        >
           favorite
         </span>
       )}
 
-      {/* Bio / Teks Post */}
-      <div style={{
-        marginBottom: '12px', fontSize: '14.5px', color: 'var(--text-main)',
-        lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap', marginTop: '8px',
-      }}>
+      <div
+        style={{
+          marginBottom: '12px',
+          fontSize: '14.5px',
+          color: 'var(--text-main)',
+          lineHeight: 1.5,
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          marginTop: '8px',
+        }}
+      >
         {post.bio?.trim()}
       </div>
 
-      {/* Audio & Marquee */}
       {post.audio_src && (
         <>
           <audio
@@ -362,8 +351,12 @@ export default function PostCardText(props: Props) {
                 background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-card)',
                 color: 'var(--text-main)',
-                width: '32px', height: '32px', borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               <span className="material-icons" style={{ fontSize: '18px' }}>
@@ -374,13 +367,15 @@ export default function PostCardText(props: Props) {
         </>
       )}
 
-      {/* Actions */}
       <div
         className="actions"
         style={{
           borderTop: '1px solid var(--border-card)',
-          marginTop: '12px', paddingTop: '12px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginTop: '12px',
+          paddingTop: '12px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -388,9 +383,16 @@ export default function PostCardText(props: Props) {
           onClick={handleTanggapanClick}
           className="btn-press"
           style={{
-            fontSize: '13px', color: 'var(--text-muted)', background: 'transparent',
-            border: 'none', fontWeight: 600, display: 'flex', alignItems: 'center',
-            gap: '6px', cursor: 'pointer', padding: '0',
+            fontSize: '13px',
+            color: 'var(--text-muted)',
+            background: 'transparent',
+            border: 'none',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+            padding: '0',
           }}
         >
           <span className="material-icons" style={{ fontSize: '18px' }}>chat_bubble_outline</span>
@@ -410,12 +412,10 @@ export default function PostCardText(props: Props) {
         />
       </div>
 
-      {/* Top Comment */}
       {showTopComment && topComment && tanggapan.length === 0 && (
         <TopTanggapan topComment={topComment} />
       )}
 
-      {/* Daftar Tanggapan */}
       {tanggapan.length > 0 && (
         <PostTanggapanList
           tanggapan={tanggapan}
