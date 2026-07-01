@@ -70,33 +70,26 @@ function CommentModalContent() {
     const postId = searchParams?.get('id');
 
     if (openComment === 'true' && postId) {
-      // Buka modal
       setCurrentPostId(postId);
       setIsActive(true);
       setActiveTab('comment');
       document.body.style.overflow = 'hidden';
-      
-      // Ambil creator_id
+
       (async () => {
         const { data } = await supabase.from('posts').select('creator_id').eq('id', postId).single();
         if (data) setCurrentCreatorId(data.creator_id);
       })();
-      
-      // Ambil user id
+
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) setMyUserId(session.user.id);
       });
-      
+
       loadComments(postId);
       checkPostSettings(postId);
     } else {
-      // Tidak ada param -> tutup modal (tanpa mengubah URL untuk menghindari loop)
       closeModal(false);
     }
   }, [searchParams]);
-
-  // ==================== HILANGKAN LISTENER BODY CLICK LAMA ====================
-  // (Tidak ada useEffect untuk click .comment-toggle lagi)
 
   const checkPostSettings = async (postId: string) => {
     try {
@@ -153,7 +146,6 @@ function CommentModalContent() {
     }
   }, [activeTab, currentPostId]);
 
-  // ==================== CLOSE MODAL (MEMBERSIHKAN URL) ====================
   const closeModal = (updateUrl = true) => {
     setIsActive(false);
     document.body.style.overflow = '';
@@ -168,7 +160,6 @@ function CommentModalContent() {
     setPostLikers([]);
 
     if (updateUrl) {
-      // Hapus query param agar tidak terbuka saat refresh
       router.replace(pathname, { scroll: false });
     }
   };
@@ -214,6 +205,15 @@ function CommentModalContent() {
     setIsLoading(false);
   };
 
+  // ✅ FIX: Helper untuk dispatch event count update
+  const dispatchCommentCountUpdate = (postId: string, newCount: number) => {
+    window.dispatchEvent(
+      new CustomEvent('commentCountUpdated', {
+        detail: { postId, newCount },
+      })
+    );
+  };
+
   // ==================== GIFT HANDLER ====================
   useEffect(() => {
     const handleInsertGift = async (e: any) => {
@@ -244,18 +244,17 @@ function CommentModalContent() {
           });
         }
 
-        // Refresh jika modal sedang terbuka untuk post ini
+        // ✅ FIX: Refresh comment list + update count via event
         if (currentPostId === String(postId)) {
           loadComments(String(postId), session.user.id);
         }
 
-        // Update count badge
+        // Ambil count terbaru dari DB
         const { count } = await supabase
           .from('comments')
           .select('id', { count: 'exact', head: true })
           .eq('post_id', postId);
-        const countBadge = document.querySelector(`.comment-toggle[data-post="${postId}"] .comment-count`);
-        if (countBadge) countBadge.textContent = String(count || 0);
+        dispatchCommentCountUpdate(String(postId), count || 0);
       } catch (err) {
         console.error(err);
       }
@@ -350,7 +349,7 @@ function CommentModalContent() {
     inputRef.current.focus();
   };
 
-  // ==================== KIRIM KOMENTAR ====================
+  // ==================== KIRIM KOMENTAR TEKS ====================
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim() && !isSubmitting && !showMentions) {
       e.preventDefault();
@@ -418,6 +417,9 @@ function CommentModalContent() {
         if (newComment) {
           setComments(prev => [newComment, ...prev]);
           setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
+          // ✅ FIX: Dispatch count update
+          const newCount = comments.length + 1;
+          dispatchCommentCountUpdate(currentPostId, newCount);
         }
 
         setReplyToId(null);
@@ -499,6 +501,9 @@ function CommentModalContent() {
       if (newComment) {
         setComments(prev => [newComment, ...prev]);
         setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
+        // ✅ FIX: Dispatch count update
+        const newCount = comments.length + 1;
+        dispatchCommentCountUpdate(currentPostId, newCount);
       }
 
       setReplyToId(null);
@@ -600,19 +605,20 @@ function CommentModalContent() {
     if (!actionSheetComment) return;
     setIsActionSheetOpen(false);
 
-    setComments(prev => prev.filter(c => c.id !== actionSheetComment.id && c.parent_id !== actionSheetComment.id));
-
     try {
       const { error } = await supabase.from('comments').delete().eq('id', actionSheetComment.id);
       if (error) throw error;
-      showNotif('Komentar dihapus', 'success');
 
+      setComments(prev => prev.filter(c => c.id !== actionSheetComment.id && c.parent_id !== actionSheetComment.id));
+
+      // ✅ FIX: Ambil count terbaru dari DB lalu dispatch event
       const { count } = await supabase
         .from('comments')
         .select('id', { count: 'exact', head: true })
         .eq('post_id', currentPostId);
-      const countBadge = document.querySelector(`.comment-toggle[data-post="${currentPostId}"] .comment-count`);
-      if (countBadge) countBadge.textContent = String(count || 0);
+      dispatchCommentCountUpdate(currentPostId!, count || 0);
+
+      showNotif('Komentar dihapus', 'success');
     } catch (err) {
       showNotif('Gagal menghapus komentar', 'error');
     }

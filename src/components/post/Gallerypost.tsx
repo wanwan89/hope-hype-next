@@ -48,8 +48,8 @@ const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: an
         scrollSnapType: 'x mandatory', 
         paddingBottom: '5px', 
         willChange: 'transform',
-        WebkitOverflowScrolling: 'touch', // WAJIB untuk iOS agar scroll horizontal tidak macet
-        overscrollBehaviorX: 'contain' // Cegah back-gesture browser saat geser horizontal
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorX: 'contain'
       }}>
         {posts.map(sp => {
           const img = sp.image_url ? sp.image_url.split(',')[0] : '';
@@ -127,7 +127,6 @@ export default function Gallerypost() {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [suggestedPosts, setSuggestedPosts] = useState<any[]>([]);
 
-  // BINDING SCROLLER: Mengambil kontrol dari .main-content
   const [scrollParent, setScrollParent] = useState<HTMLElement | undefined>(undefined);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -156,7 +155,6 @@ export default function Gallerypost() {
 
   useEffect(() => {
     setIsMounted(true);
-    // Mencari elemen .main-content dari layout global
     const mainScroller = document.querySelector('.main-content') as HTMLElement;
     if (mainScroller) {
       setScrollParent(mainScroller);
@@ -175,6 +173,23 @@ export default function Gallerypost() {
       return () => window.removeEventListener('postUploadSuccess', handleUploadSuccess);
     }
   }, [refetch]);
+
+  // ==================== FIX: Listener untuk commentCountUpdated ====================
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      const { postId, newCount } = e.detail;
+      setCounts(prev => ({
+        ...prev,
+        [postId]: {
+          ...prev[postId],
+          comments: newCount,
+        },
+      }));
+    };
+
+    window.addEventListener('commentCountUpdated', handler as EventListener);
+    return () => window.removeEventListener('commentCountUpdated', handler as EventListener);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
