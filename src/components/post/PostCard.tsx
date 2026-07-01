@@ -186,6 +186,9 @@ const PostCard: React.FC<PostCardProps> = ({
   const lastTapVideoRef = useRef<number>(0);
   const wasPlayingRef = useRef(false);
 
+  // State baru untuk menyimpan 1 tanggapan teratas
+  const [topComment, setTopComment] = useState<any>(null);
+
   // --- 3. Observer video/audio ---
   useEffect(() => {
     const media = mediaRef.current;
@@ -266,6 +269,52 @@ const PostCard: React.FC<PostCardProps> = ({
       video.removeEventListener('pause', onPause);
     };
   }, [isVideoPost, isSeeking]);
+
+  // Fetching 1 tanggapan teratas dengan jumlah like terbanyak (Khusus Postingan Teks/Audio)
+  useEffect(() => {
+    let isMounted = true;
+    if (!isVideoPost && photoList.length === 0) {
+      const fetchTopComment = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('comments')
+            .select(`
+              id,
+              content,
+              created_at,
+              likes,
+              profiles:user_id (
+                username,
+                full_name,
+                avatar_url,
+                role
+              )
+            `)
+            .eq('post_id', postIdStr)
+            .order('likes', { ascending: false })
+            .limit(1);
+
+          if (error) {
+            console.error("Gagal memuat tanggapan teratas:", error);
+            return;
+          }
+
+          if (isMounted && data && data.length > 0) {
+            setTopComment(data[0]);
+          } else if (isMounted) {
+            setTopComment(null);
+          }
+        } catch (err) {
+          console.error("Error fetching comment:", err);
+        }
+      };
+
+      fetchTopComment();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [postIdStr, isVideoPost, photoList.length]);
 
   // Deteksi bio
   useEffect(() => {
@@ -458,6 +507,18 @@ const PostCard: React.FC<PostCardProps> = ({
     }),
     [actuallyExpanded]
   );
+
+  // Ambil jumlah komentar untuk dipasang di button
+  const commentCount = counts[postIdStr]?.comments || 0;
+
+  // Optimasi Avatar untuk komentar teratas
+  const rawCommentAvatar = topComment?.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${topComment?.profiles?.username || 'User'}`;
+  const optimizedCommentAvatar = useMemo(() => {
+    if (rawCommentAvatar.includes('res.cloudinary.com') && !rawCommentAvatar.includes('f_auto')) {
+      return rawCommentAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
+    }
+    return rawCommentAvatar;
+  }, [rawCommentAvatar]);
 
   // ====================== RENDER ======================
   return (
@@ -1000,12 +1061,31 @@ const PostCard: React.FC<PostCardProps> = ({
         </>
       ) : (
         // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
-        <div style={{ padding: '15px' }}>
+        <div style={{ padding: '15px', position: 'relative' }}>
+          {/* Garis Konektor Khas Threads Threadline */}
+          {topComment && (
+            <div
+              style={{
+                position: 'absolute',
+                left: '36px', // Titik tengah antara padding kiri (15px) + setengah lebar avatar utama (21px)
+                top: '72px',  // Dimulai tepat di bawah avatar postingan utama
+                bottom: '48px', // Berakhir tepat menyentuh batas atas avatar tanggapan
+                width: '2px',
+                background: 'var(--border-card)',
+                opacity: 0.6,
+                zIndex: 1,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+
           <div
             style={{
               display: 'flex',
               justifyContent: 'space-between',
               marginBottom: '8px',
+              position: 'relative',
+              zIndex: 2
             }}
           >
             <div
@@ -1021,6 +1101,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   height: '42px',
                   borderRadius: '50%',
                   objectFit: 'cover',
+                  background: 'var(--bg-main)'
                 }}
               />
               <div
@@ -1145,6 +1226,9 @@ const PostCard: React.FC<PostCardProps> = ({
               wordBreak: 'break-word',
               whiteSpace: 'pre-wrap',
               textAlign: 'left',
+              paddingLeft: '54px',
+              position: 'relative',
+              zIndex: 2
             }}
           >
             {bioContent}
@@ -1176,6 +1260,8 @@ const PostCard: React.FC<PostCardProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
+                  paddingLeft: '54px',
+                  zIndex: 2
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1220,11 +1306,14 @@ const PostCard: React.FC<PostCardProps> = ({
             className="actions"
             style={{
               borderTop: '1px solid var(--border-card)',
-              marginTop: '4px',
+              marginTop: '12px',
               paddingTop: '12px',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              paddingLeft: '54px',
+              position: 'relative',
+              zIndex: 2
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1248,7 +1337,7 @@ const PostCard: React.FC<PostCardProps> = ({
               <span className="material-icons" style={{ fontSize: '15px' }}>
                 chat_bubble_outline
               </span>
-              Tanggapi
+              Tanggapi {commentCount > 0 ? `(${commentCount})` : ''}
             </button>
             <EngagementButtons
               postId={postIdStr}
@@ -1263,6 +1352,66 @@ const PostCard: React.FC<PostCardProps> = ({
               handleLike={handleLike}
             />
           </div>
+
+          {/* Menampilkan 1 Tanggapan Teratas (Most Liked Comment) */}
+          {topComment && (
+            <div
+              style={{
+                marginTop: '14px',
+                paddingTop: '14px',
+                borderTop: '1px dashed var(--border-card)',
+                paddingLeft: '54px',
+                position: 'relative',
+                zIndex: 2,
+                textAlign: 'left'
+              }}
+            >
+              {/* Avatar Tanggapan Teratas disinkronkan presisi dengan garis thread */}
+              <img
+                src={optimizedCommentAvatar}
+                alt="Avatar Penanggap"
+                style={{
+                  position: 'absolute',
+                  left: '21px', // Titik tengah presisi di sumbu X 36px (36px - setengah lebar avatar (15px) = 21px)
+                  top: '14px',
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2.5px solid var(--bg-main)', // Masking memotong garis di belakangnya dengan rapi
+                  zIndex: 3
+                }}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--text-main)' }}>
+                    {topComment.profiles?.full_name || topComment.profiles?.username || 'User'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    • {formatRelativeTime(topComment.created_at)}
+                  </span>
+                </div>
+                <p
+                  style={{
+                    margin: '2px 0 4px 0',
+                    fontSize: '13.5px',
+                    color: 'var(--text-main)',
+                    lineHeight: 1.4,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {topComment.content}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '11px' }}>
+                  <span className="material-icons" style={{ fontSize: '12px', color: '#ff2e63' }}>
+                    favorite_border
+                  </span>
+                  <span>{topComment.likes || 0} suka</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
