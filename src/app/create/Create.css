@@ -224,7 +224,7 @@
 
 .type-btn.active {
   background: var(--bg-card);
-  color: var(--primary-bg);           /* ✅ teks biru */
+  color: var(--text-main);            /* ✅ ikuti tema */
   box-shadow: none;
 }
 
