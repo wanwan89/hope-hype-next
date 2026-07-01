@@ -329,10 +329,12 @@ function NavbarContent() {
       return;
     }
 
+    // 🔥 FIX UTAMA: Hapus reload paksa yang bikin glitch di Android!
     if (isActive) {
       e.preventDefault();
-      setAnimatingIcon(item.name);
-      setTimeout(() => window.location.reload(), 800);
+      // Cukup scroll halus ke paling atas aja, jangan reload.
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
 
     setClickedItem(item.name);
