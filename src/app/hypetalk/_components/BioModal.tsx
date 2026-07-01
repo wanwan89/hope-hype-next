@@ -8,20 +8,20 @@ const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOU
 
 export interface UserBioData {
   id?: string;
-  photos: (string | null)[]; 
+  photos: (string | null)[];
   bio_hype: string;
   pendidikan: string;
   occupation: string;
   gender: string;
   tinggi_badan: number | null;
-  umur: string; // Tambahan field
+  umur: string;
   agama: string;
   tujuan: string;
   olahraga: string;
   merokok: string;
   alkohol: string;
-  hobi: string; // Tambahan field
-  zodiak: string; // Tambahan field
+  hobi: string;
+  zodiak: string;
 }
 
 type Props = {
@@ -91,12 +91,10 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadIndex, setUploadIndex] = useState<number>(0);
-  
-  // State untuk melacak foto mana yang sedang di-upload
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
   const currentPhotos = Array.isArray(bioForm.photos) && bioForm.photos.length > 0
-    ? [...bioForm.photos, null, null, null].slice(0, 3) 
+    ? [...bioForm.photos, null, null, null].slice(0, 3)
     : [null, null, null];
 
   const updateField = (field: keyof UserBioData, value: any) => {
@@ -119,33 +117,26 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
   // LOGIKA UPLOAD CLOUDINARY
   // ==========================================
   const triggerPhotoUpload = (index: number) => {
-    // Cegah klik jika sedang ada proses upload di slot ini
     if (uploadingIndex === index) return;
-    
     setUploadIndex(index);
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    fileInputRef.current?.click();
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 1. Tampilkan preview instan lokal & set status loading
     setUploadingIndex(uploadIndex);
     const tempUrl = URL.createObjectURL(file);
     let newPhotos = [...currentPhotos];
     newPhotos[uploadIndex] = tempUrl;
     setBioForm({ ...bioForm, photos: newPhotos });
 
-    // 2. Siapkan data untuk Cloudinary
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
     try {
-      // 3. Tembak API Cloudinary
       const res = await fetch(CLOUDINARY_UPLOAD_URL, {
         method: 'POST',
         body: formData,
@@ -153,7 +144,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
       const data = await res.json();
 
       if (data.secure_url) {
-        // 4. Sukses: Ganti URL preview lokal dengan URL asli Cloudinary
         newPhotos = [...newPhotos];
         newPhotos[uploadIndex] = data.secure_url;
         setBioForm({ ...bioForm, photos: newPhotos });
@@ -163,13 +153,10 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     } catch (error) {
       console.error('Error uploading to Cloudinary:', error);
       alert('Gagal mengunggah foto. Silakan coba lagi.');
-      
-      // Revert (hapus) foto jika upload gagal
       newPhotos = [...newPhotos];
       newPhotos[uploadIndex] = null;
       setBioForm({ ...bioForm, photos: newPhotos });
     } finally {
-      // Selesai upload & reset input file
       setUploadingIndex(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -181,11 +168,8 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
     e.stopPropagation();
     const newPhotos = [...currentPhotos];
     newPhotos[index] = null;
-    
-    // Susun ulang foto agar yang null tergeser ke belakang
     const filteredPhotos = newPhotos.filter(Boolean);
     const finalizedPhotos = [...filteredPhotos, null, null, null].slice(0, 3);
-
     setBioForm({ ...bioForm, photos: finalizedPhotos });
   };
 
@@ -307,35 +291,33 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
           </div>
           <div style={photoGridStyle}>
             {[0, 1, 2].map((index) => (
-              <div 
+              <div
                 key={index}
                 onClick={() => triggerPhotoUpload(index)}
                 style={currentPhotos[index] ? photoSlotStyle : emptySlotStyle}
               >
                 {currentPhotos[index] ? (
                   <>
-                    <img 
-                      src={currentPhotos[index]} 
-                      alt={`Profile ${index + 1}`} 
+                    <img
+                      src={currentPhotos[index]}
+                      alt={`Profile ${index + 1}`}
                       style={{
-                        ...imgStyle, 
-                        opacity: uploadingIndex === index ? 0.5 : 1 // Redupkan saat upload
-                      }} 
+                        ...imgStyle,
+                        opacity: uploadingIndex === index ? 0.5 : 1,
+                      }}
                     />
-                    
-                    {/* State Uploading */}
                     {uploadingIndex === index ? (
                       <div style={loadingOverlayStyle}>
                         <span className="material-icons" style={{ fontSize: '20px', animation: 'spin 1s linear infinite' }}>sync</span>
                       </div>
                     ) : (
                       <div style={removeBtnStyle} onClick={(e) => handlePhotoRemove(index, e)}>
-                        <span className="material-icons" style={{fontSize: '14px', color: '#fff'}}>close</span>
+                        <span className="material-icons" style={{ fontSize: '14px', color: '#fff' }}>close</span>
                       </div>
                     )}
                   </>
                 ) : (
-                  <span className="material-icons" style={{fontSize: '32px', color: 'var(--text-muted)'}}>
+                  <span className="material-icons" style={{ fontSize: '32px', color: 'var(--text-muted)' }}>
                     add_photo_alternate
                   </span>
                 )}
@@ -360,7 +342,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 outline: 'none',
                 fontFamily: 'inherit',
                 backgroundColor: 'transparent',
-                color: 'var(--text-main)'
+                color: 'var(--text-main)',
               }}
             />
           </div>
@@ -431,7 +413,7 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 })
               }
             />
-             <ListItem
+            <ListItem
               icon="height"
               label="Tinggi"
               value={bioForm.tinggi_badan ? `${bioForm.tinggi_badan} cm` : 'Pilih'}
@@ -442,7 +424,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 }
               }}
             />
-            {/* Tambahan Umur */}
             <ListItem
               icon="cake"
               label="Umur"
@@ -549,7 +530,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 })
               }
             />
-            {/* Tambahan Hobi */}
             <ListItem
               icon="favorite"
               label="Hobi"
@@ -561,7 +541,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
                 }
               }}
             />
-            {/* Tambahan Zodiak */}
             <ListItem
               icon="auto_awesome"
               label="Zodiak"
@@ -591,7 +570,6 @@ export default function BioModal({ bioForm, setBioForm, isSaving, onSave, onClos
             />
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -632,7 +610,7 @@ const iconBtnStyle: React.CSSProperties = {
 const scrollAreaStyle: React.CSSProperties = {
   flex: 1,
   padding: '20px',
-  paddingBottom: '80px', 
+  paddingBottom: '80px',
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -647,12 +625,13 @@ const sectionTitleStyle: React.CSSProperties = {
   marginLeft: '4px',
 };
 
+// 🔥 UBAH: background jadi abu-abu (--bg-input), border pakai --bg-secondary
 const cardStyle: React.CSSProperties = {
-  backgroundColor: 'var(--bg-card)',
+  backgroundColor: 'var(--bg-input)',
   borderRadius: '16px',
   padding: '8px 16px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  border: '1px solid var(--border-editor)',
+  border: '1px solid var(--bg-secondary)',
 };
 
 const photoGridStyle: React.CSSProperties = {
@@ -707,10 +686,11 @@ const loadingOverlayStyle: React.CSSProperties = {
   zIndex: 10,
 };
 
+// 🔥 UBAH: background slot kosong jadi abu-abu (--bg-input)
 const emptySlotStyle: React.CSSProperties = {
   aspectRatio: '3/4',
   borderRadius: '12px',
-  backgroundColor: 'var(--bg-card)',
+  backgroundColor: 'var(--bg-input)',
   border: '2px dashed var(--bg-secondary)',
   display: 'flex',
   flexDirection: 'column',
