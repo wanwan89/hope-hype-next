@@ -22,7 +22,6 @@ function PostContent() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
-  // States Interaksi
   const [myLikedPosts, setMyLikedPosts] = useState<Set<string>>(new Set());
   const [myRepostedPosts, setMyRepostedPosts] = useState<Set<string>>(new Set());
   const [mySavedPosts, setMySavedPosts] = useState<Set<string>>(new Set());
@@ -30,21 +29,17 @@ function PostContent() {
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   
-  // NOTE: Key untuk jumlah tanggapan sekarang pakai 'tanggapan'
   const [counts, setCounts] = useState<Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>>({});
   
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   
-  // State Khusus Tanggapan
   const [tanggapanMap, setTanggapanMap] = useState<Record<string, any[]>>({});
   
-  // === STATE MODAL SLIDE UP TANGGAPAN ===
   const [tanggapanModal, setTanggapanModal] = useState<{ isOpen: boolean; postId: string }>({ isOpen: false, postId: '' });
   const [tanggapanInput, setTanggapanInput] = useState('');
   const [isSubmittingTanggapan, setIsSubmittingTanggapan] = useState(false);
-  // ================================================
 
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
@@ -253,7 +248,6 @@ function PostContent() {
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
-  // === FUNGSI SUBMIT TANGGAPAN BARU ===
   const handleSubmitTanggapan = async () => {
     if (!tanggapanInput.trim() || !currentUserRef.current || !tanggapanModal.postId) return;
     
@@ -318,7 +312,6 @@ function PostContent() {
       setIsSubmittingTanggapan(false);
     }
   };
-  // =====================================
 
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
@@ -478,7 +471,6 @@ function PostContent() {
   return (
     <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh', position: 'relative' }}>
       
-      {/* SLIDE UP MODAL TANGGAPAN */}
       {tanggapanModal.isOpen && (
         <>
           <div 
@@ -524,7 +516,6 @@ function PostContent() {
         </>
       )}
 
-      {/* HEADER */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -535,7 +526,6 @@ function PostContent() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* GALLERY */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
@@ -566,7 +556,6 @@ function PostContent() {
                   id={`post-wrapper-${p.id}`} 
                   style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0', paddingBottom: postTanggapan.length > 0 ? '16px' : '0' }}
                 >
-                  {/* GARIS VERTIKAL PENGHUBUNG THREAD */}
                   {isTextOrAudio && postTanggapan.length > 0 && (
                     <div 
                       style={{
@@ -577,7 +566,6 @@ function PostContent() {
                     />
                   )}
 
-                  {/* POSTINGAN UTAMA */}
                   <PostCard
                     post={p}
                     currentUser={currentUser}
@@ -610,7 +598,6 @@ function PostContent() {
                     t={t}
                     isExpanded={isExpanded}
                     onToggleExpand={handleToggleExpand}
-                    // BUKA MODAL TANGGAPAN DARI POST UTAMA
                     onTanggapanClick={(id) => {
                       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
                       setTanggapanInput('');
@@ -618,14 +605,12 @@ function PostContent() {
                     }}
                   />
 
-                  {/* Teks Penanda Jumlah Tanggapan */}
                   {isTextOrAudio && postTanggapan.length > 0 && (
                     <div style={{ padding: '4px 16px', marginLeft: '38px', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
                        {postTanggapan.length} Tanggapan
                     </div>
                   )}
 
-                  {/* AREA BALASAN / TANGGAPAN USER LAIN */}
                   {isTextOrAudio && postTanggapan.map((tanggapanItem) => (
                     <div 
                       key={tanggapanItem.id}
@@ -659,7 +644,6 @@ function PostContent() {
                         t={t}
                         isExpanded={false}
                         onToggleExpand={() => {}}
-                        // Klik icon tanggapan di level anak (balasan) = membalas di thread post utama
                         onTanggapanClick={() => {
                            if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
                            setTanggapanInput('');
@@ -675,7 +659,6 @@ function PostContent() {
         )}
       </div>
       
-      {/* SUNTIKAN CSS GLOBAL & ANIMASI MODAL */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         @keyframes popHeartAnim {

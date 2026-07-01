@@ -9,7 +9,7 @@ import FloatingBubbles from './FloatingBubbles';
 import { getUserBadge } from '@/lib/ui-utils';
 import { formatRelativeTime, getOptimizedImage } from '@/lib/helpers';
 
-// --- Sub-Komponen untuk mengatasi pelanggaran Hook di dalam .map() ---
+// --- Sub-Komponen CarouselImageItem ---
 const CarouselImageItem = ({
   url,
   index,
@@ -73,7 +73,6 @@ const CarouselImageItem = ({
 type PostCardProps = {
   post: any;
   currentUser: any;
-  // FIX 3: Sesuaikan tipe 'comments' menjadi 'tanggapan' sesuai logika PostContent Anda
   counts: Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>;
   myLikedPosts: Set<string>;
   myRepostedPosts: Set<string>;
@@ -99,8 +98,7 @@ type PostCardProps = {
   t: any;
   isExpanded?: boolean;
   onToggleExpand?: (postId: string) => void;
-  // FIX 1: Tambahkan prop onTanggapanClick
-  onTanggapanClick?: (postId: string) => void; 
+  onTanggapanClick?: (postId: string) => void;
 };
 
 const PostCard: React.FC<PostCardProps> = ({
@@ -112,13 +110,13 @@ const PostCard: React.FC<PostCardProps> = ({
   setActivePreviewImage, router, t,
   isExpanded = false,
   onToggleExpand = () => {},
-  onTanggapanClick = () => {}, // Destructure prop baru dengan default function
+  onTanggapanClick,
 }) => {
   const postIdStr = String(post.id);
   const creatorIdStr = String(post.creator_id);
   const isOwner = currentUser && currentUser.id === post.creator_id;
 
-  // --- 1. Nilai turunan dari post ---
+  // --- Nilai turunan ---
   const photoList = useMemo(
     () => (post.image_url ? post.image_url.split(',') : []),
     [post.image_url]
@@ -164,7 +162,7 @@ const PostCard: React.FC<PostCardProps> = ({
     [reposters, mutualUsers]
   );
 
-  // --- 2. Refs dan state lokal ---
+  // --- Refs & state lokal ---
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -507,7 +505,6 @@ const PostCard: React.FC<PostCardProps> = ({
     [actuallyExpanded]
   );
 
-  // FIX 3 (Lanjutan): Hitung menggunakan key 'tanggapan'
   const commentCount = counts[postIdStr]?.tanggapan || 0;
 
   // Optimasi Avatar untuk komentar teratas
@@ -518,6 +515,16 @@ const PostCard: React.FC<PostCardProps> = ({
     }
     return rawCommentAvatar;
   }, [rawCommentAvatar]);
+
+  const handleTanggapanClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onTanggapanClick) {
+      onTanggapanClick(postIdStr);
+    } else {
+      router.push(`/post?id=${postIdStr}`);
+    }
+  };
 
   // ====================== RENDER ======================
   return (
@@ -1027,9 +1034,7 @@ const PostCard: React.FC<PostCardProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                // (Opsional) jika mau tombol Detail ini juga buka pop up komentar, 
-                // ubah bagian onClick di bawah ini. Sementara dibiarkan default router.push.
-                onClick={() => router.push(`/post?id=${postIdStr}`)} 
+                onClick={() => router.push(`/post?id=${postIdStr}`)}
                 className="primary btn-press"
                 style={{
                   display: 'inline-block',
@@ -1300,12 +1305,7 @@ const PostCard: React.FC<PostCardProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              // FIX 2: Ganti router.push menjadi eksekusi onTanggapanClick 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (onTanggapanClick) onTanggapanClick(postIdStr);
-              }}
+              onClick={handleTanggapanClick}
               className="btn-press"
               style={{
                 fontSize: '13px',
@@ -1339,50 +1339,70 @@ const PostCard: React.FC<PostCardProps> = ({
             />
           </div>
 
-          {/* Menampilkan 1 Tanggapan Teratas (Tanpa likes) */}
+          {/* Menampilkan 1 Tanggapan Teratas dengan garis thread */}
           {topComment && (
             <div
               style={{
+                position: 'relative',
                 marginTop: '14px',
                 paddingTop: '14px',
-                borderTop: '1px dashed var(--border-card)',
-                textAlign: 'left',
-                display: 'flex',
-                gap: '10px',
-                position: 'relative',
-                zIndex: 2
               }}
             >
-              <img
-                src={optimizedCommentAvatar}
-                alt="Avatar"
+              {/* Garis vertikal thread */}
+              <div
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  background: 'var(--bg-main)'
+                  position: 'absolute',
+                  left: '20px',
+                  top: '0',
+                  bottom: '0',
+                  width: '2px',
+                  backgroundColor: 'var(--border-card)',
+                  zIndex: 0,
                 }}
               />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--text-main)' }}>
-                    {topComment.profiles?.full_name || topComment.profiles?.username || 'User'}
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    • {formatRelativeTime(topComment.created_at)}
-                  </span>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  position: 'relative',
+                  zIndex: 2,
+                  paddingLeft: '8px',
+                }}
+              >
+                <img
+                  src={optimizedCommentAvatar}
+                  alt="Avatar"
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    background: 'var(--bg-main)',
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--text-main)' }}>
+                      {topComment.profiles?.full_name || topComment.profiles?.username || 'User'}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      • {formatRelativeTime(topComment.created_at)}
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      margin: '2px 0 4px 0',
+                      fontSize: '13.5px',
+                      color: 'var(--text-main)',
+                      lineHeight: 1.4,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {topComment.content}
+                  </p>
                 </div>
-                <p style={{
-                  margin: '2px 0 4px 0',
-                  fontSize: '13.5px',
-                  color: 'var(--text-main)',
-                  lineHeight: 1.4,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word'
-                }}>
-                  {topComment.content}
-                </p>
               </div>
             </div>
           )}
