@@ -356,89 +356,43 @@ function CreatePostContent() {
   const captureFrameAndSave = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) {
-      showNotif("Editor video belum siap. Silakan tunggu.", "error");
-      return;
-    }
+    if (!video || !canvas) return;
+  
     setIsProcessingEdit(true);
-    video.pause();
-    setIsVideoPlaying(false);
-
-    // ✅ Tentukan targetAspect dinamis berdasarkan pilihan user
-    let targetAspect = 2 / 3;
-    if (videoAspectRatio === '1/1') targetAspect = 1 / 1;
-    else if (videoAspectRatio === '16/9') targetAspect = 16 / 9;
-
-    const targetWidth = 1080; // Tetapkan lebar konstan agar kualitas HD
-    const targetHeight = targetWidth / targetAspect;
-
-    const isRotated = videoRotation === 90 || videoRotation === 270;
-    const vw = isRotated ? video.videoHeight : video.videoWidth;
-    const vh = isRotated ? video.videoWidth : video.videoHeight;
-
-    if (vw === 0 || vh === 0) {
-      showNotif("Video belum termuat. Coba lagi.", "error");
-      setIsProcessingEdit(false);
-      return;
-    }
-
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = vw;
-    tempCanvas.height = vh;
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) return setIsProcessingEdit(false);
-    
-    tempCtx.save();
-    tempCtx.translate(vw / 2, vh / 2);
-    tempCtx.rotate((videoRotation * Math.PI) / 180);
-    tempCtx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
-    tempCtx.restore();
-
-    // Kalkulasi Letterbox (Black bars calculation) untuk Canvas Frame
-    const videoAspect = vw / vh;
-    let renderW = targetWidth;
-    let renderH = targetHeight;
-    let renderX = 0;
-    let renderY = 0;
-
-    if (videoAspect > targetAspect) {
-      renderH = targetWidth / videoAspect;
-      renderY = (targetHeight - renderH) / 2;
-    } else {
-      renderW = targetHeight * videoAspect;
-      renderX = (targetWidth - renderW) / 2;
-    }
-
-    // Terapkan Zoom Video
-    renderW = renderW * videoZoom;
-    renderH = renderH * videoZoom;
-    
-    // Terapkan Posisi pergeseran (Crop/Pan) dengan koreksi skala
-    const scaleDiffX = targetWidth / vw;
-    const scaleDiffY = targetHeight / vh;
-    const cropOffsetX = videoCropX * scaleDiffX * videoZoom;
-    const cropOffsetY = videoCropY * scaleDiffY * videoZoom;
-
-    // Set Up Canvas Cover Final
+  
+    // Ambil rasio dari state
+    const [w, h] = videoAspectRatio.split('/').map(Number);
+    const targetAspect = w / h;
+    const targetWidth = 1080;
+    const targetHeight = 1080 / targetAspect;
+  
     canvas.width = targetWidth;
     canvas.height = targetHeight;
+    
     const ctx = canvas.getContext('2d');
-    if (!ctx) return setIsProcessingEdit(false);
-
-    // 1. Gambar Background Hitam (Wajib)
+    if (!ctx) return;
+  
+    // Isi latar hitam (Wajib)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, targetWidth, targetHeight);
-
-    // 2. Gambar Video di Atas Latar Hitam 
-    ctx.drawImage(tempCanvas, renderX - cropOffsetX, renderY - cropOffsetY, renderW, renderH);
-
+  
+    // Gambar video dengan transformasi
+    ctx.save();
+    ctx.translate(targetWidth / 2, targetHeight / 2);
+    ctx.rotate((videoRotation * Math.PI) / 180);
+    ctx.scale(videoZoom, videoZoom);
+    
+    // Hitung agar tetap di tengah dengan offset crop
+    const drawW = targetWidth;
+    const drawH = (video.videoHeight / video.videoWidth) * targetWidth;
+    ctx.drawImage(video, -targetWidth / 2 + videoCropX, -targetHeight / 2 + videoCropY, drawW, drawH);
+    ctx.restore();
+  
     canvas.toBlob(blob => {
       if (blob) {
         setCoverBlob(blob);
         setCoverUrlPreview(URL.createObjectURL(blob));
         setStep('post');
-      } else {
-        showNotif("Gagal membuat sampul video.", "error");
       }
       setIsProcessingEdit(false);
     }, 'image/jpeg', 0.9);

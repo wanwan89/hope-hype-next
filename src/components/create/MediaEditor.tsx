@@ -175,26 +175,36 @@ export default function MediaEditor({
           </div>
         ) : postType === 'video' && rawVideoUrl ? (
           <div style={{
-            width: '100%', maxWidth: '100%', 
-            aspectRatio: activeRatio, // <--- DISINI BERUBAH DINAMIS
-            position: 'relative', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            backgroundColor: '#000', overflow: 'hidden',
-            transition: 'aspect-ratio 0.3s ease'
+            width: '100%', 
+            aspectRatio: activeRatio, // Menggunakan prop rasio yang dikirim
+            position: 'relative', 
+            display: 'flex',
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backgroundColor: '#000', 
+            overflow: 'hidden'
           }}>
-            <video ref={videoRef} src={rawVideoUrl} playsInline muted={!isVideoPlaying} loop
+            <video 
+              ref={videoRef} 
+              src={rawVideoUrl} 
+              playsInline 
+              muted={!isVideoPlaying} 
+              loop
               onLoadedMetadata={handleVideoLoadedMetadata}
               style={{
-                position: 'absolute',
-                top: 0, left: 0,
-                width: '100%', height: '100%',
-                objectFit: 'contain', // <--- MEMASTIKAN TDK TERCROP & MUNCUL BLACK BARS
+                width: '100%', 
+                height: '100%',
+                // objectFit: 'contain' akan otomatis mengikuti aspect-ratio container
+                objectFit: 'contain', 
                 transform: `translate(${videoCropX}px, ${videoCropY}px) scale(${videoZoom}) rotate(${videoRotation}deg)`,
-                transition: 'transform 0.1s ease',
-                backgroundColor: '#000'
-              }} />
+                transition: 'transform 0.1s ease'
+              }} 
+            />
+            
+            {/* Canvas disembunyikan untuk keperluan capture frame */}
             <canvas ref={canvasRef} style={{ display: 'none' }} />
 
+            {/* Play Overlay */}
             {!isVideoPlaying && (
               <div onClick={togglePlayVideo} style={{
                 position: 'absolute', inset: 0,
@@ -231,7 +241,6 @@ export default function MediaEditor({
               {/* TAB TRIM */}
               {activeTab === 'trim' && (
                 <div className="animate-fade-in">
-                  {/* ... Kode tab trim tetap sama seperti sebelumnya ... */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>
                     <span>Geser untuk memotong durasi</span>
                     <span style={{ color: '#fff' }}>Durasi: {Math.min(videoDuration, effectiveEnd - videoStart).toFixed(1)}s</span>
@@ -266,7 +275,6 @@ export default function MediaEditor({
               {/* TAB COVER */}
               {activeTab === 'cover' && (
                 <div className="animate-fade-in">
-                  {/* ... Kode tab cover tetap sama ... */}
                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>
                     <span>Pilih frame sampul</span>
                     <span style={{ color: '#fff' }}>{coverTime.toFixed(1)}s</span>
@@ -298,7 +306,6 @@ export default function MediaEditor({
               {/* TAB CROP */}
               {activeTab === 'crop' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 8px' }}>
-                  {/* ... Kode tab crop tetap sama ... */}
                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af' }}>
                     <span>Geser & perbesar area video</span>
                     <span>Zoom: {videoZoom.toFixed(1)}x</span>
