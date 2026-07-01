@@ -9,6 +9,10 @@ import { supabase } from '@/lib/supabase';
 import { formatRelativeTime } from '@/lib/helpers';
 import { getUserBadge } from '@/lib/ui-utils';
 
+// Validasi UUID sederhana
+const isValidUUID = (str: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 type Props = {
   post: any;
   currentUser: any;
@@ -108,10 +112,10 @@ export default function PostCardText(props: Props) {
 
             // Hanya post asli (bukan tanggapan) yang menambah view
             const isRealPost = !postIdStr.startsWith('tanggapan_');
-            if (!hasViewedRef.current && isRealPost) {
+            if (!hasViewedRef.current && isRealPost && isValidUUID(postIdStr)) {
               hasViewedRef.current = true;
               supabase
-                .rpc('increment_post_view', { p_id: postIdStr }) // UUID asli
+                .rpc('increment_post_view', { p_id: postIdStr })
                 .then(
                   ({ error }) => {
                     if (error) console.error('Error view count:', error.message);
@@ -137,7 +141,7 @@ export default function PostCardText(props: Props) {
     let isMounted = true;
     const isRealPost = !postIdStr.startsWith('tanggapan_');
 
-    if (showTopComment && isRealPost) {
+    if (showTopComment && isRealPost && isValidUUID(postIdStr)) {
       const fetchTop = async () => {
         const { data, error } = await supabase
           .from('tanggapan')
@@ -164,21 +168,30 @@ export default function PostCardText(props: Props) {
     const isTanggapan = postIdStr.startsWith('tanggapan_');
 
     if (isTanggapan) {
+      // Arahkan ke parent post
       const parentId = post.post_id ? String(post.post_id) : null;
       if (parentId) {
         if (onTanggapanClick) {
           onTanggapanClick('', parentId);
-        } else {
+        } else if (isValidUUID(parentId)) {
           router.push(`/post?id=${parentId}`);
         }
         return;
       }
+      // Jika tidak ada parentId, tidak bisa navigasi
+      return;
     }
 
+    // Post utama
     if (onTanggapanClick) {
       onTanggapanClick('', postIdStr);
-    } else {
+    } else if (isValidUUID(postIdStr)) {
+      // Hanya navigasi jika ID valid UUID
       router.push(`/post?id=${postIdStr}`);
+    } else {
+      console.warn('Invalid post ID for navigation:', postIdStr);
+      // Opsional: tampilkan toast atau redirect ke home
+      // router.push('/');
     }
   };
 
