@@ -75,6 +75,7 @@ export default function PostCardText(props: Props) {
           if (entry.isIntersecting) {
             if (audio) {
               audio.muted = isGloballyMuted;
+              // audio.play() mengembalikan Promise standar, .catch() aman di sini
               audio.play().catch(() => {});
             }
             
@@ -82,7 +83,18 @@ export default function PostCardText(props: Props) {
             const numericId = Number(postIdStr);
             if (!hasViewedRef.current && postIdStr && numericId > 0) {
               hasViewedRef.current = true;
-              supabase.rpc('increment_post_view', { p_id: postIdStr }).catch(() => {});
+              
+              // FIX: Menghindari .catch() langsung pada builder Supabase
+              supabase
+                .rpc('increment_post_view', { p_id: postIdStr })
+                .then(
+                  ({ error }) => {
+                    if (error) console.error("Error view count:", error.message);
+                  },
+                  (err) => {
+                    console.error("RPC failed:", err);
+                  }
+                );
             }
           } else {
             if (audio) audio.pause();
@@ -118,7 +130,7 @@ export default function PostCardText(props: Props) {
   const commentCount = counts[postIdStr]?.tanggapan || 0;
   const tanggapanButtonLabel = tanggapanLabel || (commentCount > 0 ? `${commentCount} Tanggapan` : 'Tanggapi');
 
-  // FIX: Perbaikan logika klik tanggapan
+  // Perbaikan logika klik tanggapan
   const handleTanggapanClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -131,7 +143,6 @@ export default function PostCardText(props: Props) {
       if (post.post_id) {
         destinationId = String(post.post_id);
       } else {
-        // Blokade utama: Jika post_id tidak terdeteksi, berhentikan eksekusi di sini!
         console.error("Gagal membuka komentar: post_id induk tidak ditemukan pada objek tanggapan.");
         return; 
       }

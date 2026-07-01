@@ -14,7 +14,7 @@ function PostContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // FIX: Mengamankan ID dari URL agar selalu berupa angka positif murni
+  // Mengamankan ID dari URL agar selalu berupa angka positif murni
   const rawPostId = searchParams.get('id');
   const postIdFromUrl = rawPostId ? String(Math.abs(parseInt(rawPostId))) : null;
   const source = searchParams.get('from'); 
@@ -296,7 +296,7 @@ function PostContent() {
     const postIdNum = Math.abs(parseInt(tanggapanModal.postId));
 
     try {
-      // FIX: Mengubah .single() menjadi .maybeSingle() untuk mencegah crash fatal PGRST116 jika select mengembalikan 0 baris akibat konfigurasi RLS
+      // FIX: Menggunakan .maybeSingle() agar hasil kosong dari DB/RLS tidak memicu error aplikasi
       const { data, error } = await supabase
         .from('tanggapan')
         .insert({
@@ -356,11 +356,10 @@ function PostContent() {
         setTanggapanModal({ isOpen: false, postId: '' });
         setTanggapanInput('');
       } else {
-        // Jika data bernilai null padahal tidak ada error, ini tanda kuat RLS SELECT bermasalah
-        console.warn("Data berhasil masuk namun gagal dimuat kembali. Cek RLS SELECT kebijakan tabel tanggapan Anda.");
+        // Jika data bernilai null (akibat RLS SELECT diblokir)
+        console.warn("Data berhasil masuk namun gagal dimuat kembali instan. Memuat ulang data tanggapan.");
         setTanggapanModal({ isOpen: false, postId: '' });
         setTanggapanInput('');
-        // Pemicu muat ulang data manual sebagai cadangan jika dibutuhkan
         if (postIdFromUrl) fetchPostInteractions(postIdFromUrl, currentUserRef.current);
       }
     } catch (err) {
@@ -551,7 +550,7 @@ function PostContent() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* FIX: Render UI Modal Input Tanggapan agar state tanggapanModal.isOpen dapat berfungsi secara visual */}
+      {/* Render UI Modal Input Tanggapan */}
       {tanggapanModal.isOpen && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setTanggapanModal({ isOpen: false, postId: '' })}>
           <div className="slide-up-modal" style={{ background: 'var(--bg-main)', width: '100%', maxWidth: '600px', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '20px', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
