@@ -1,83 +1,67 @@
 /* =============================================================
-   GLOBAL CSS - HYPETALK (DIROMBAK TOTAL)
+   START GLOBAL CSS (Tanpa tag style karena ini diproses Tailwind)
    ============================================================= */
 
 @tailwind base;
 @tailwind utilities;
 @tailwind components;
 
-/* =============================================================
-   CSS VARIABLES LIGHT & DARK MODE (REVISED)
-   ============================================================= */
+/* === CSS VARIABLES LIGHT & DARK MODE === */
 :root {
-  /* Latar utama */
   --bg-main: #ffffff;
-  --bg-modal: #ffffff;            /* Sama dengan main di light */
+  --text-main: #1c1e21;
   --bg-card: #ffffff;
-  --bg-secondary: #f1f5f9;        /* Abu-abu terang */
-  --bg-input: #f1f5f9;            /* Sama dengan secondary */
-  --bg-story-seen: #e2e8f0;
-
-  /* Teks */
-  --text-main: #0f172a;           /* Hitam pekat */
-  --text-muted: #64748b;          /* Abu-abu teks */
-  --icon-fill: #0f172a;
-
-  /* Aksen */
-  --primary-bg: #2563eb;          /* Biru utama */
-  --primary-soft: rgba(37, 99, 235, 0.1);
-  --primary: #0f172a;             /* Untuk teks di atas primary */
-
-  /* Border */
-  --border-card: #e2e8f0;         /* Border tipis */
-  --border-input: #cbd5e1;        /* Border input */
-
-  /* Status */
-  --danger: #ef4444;
-  --success: #10b981;
-  --warning: #f59e0b;
-
-  /* Story & overlay */
+  --border-card: transparent;
+  --text-muted: #64748b;
+  --bg-modal: #ffffff;
+  --bg-input: #e2e8f0;
+  --icon-fill: #1c1e21;
+  --bg-secondary: #e4e6eb;
   --accent-story: linear-gradient(45deg, #00ffa3, #03e1ff);
+  --bg-story-seen: #dddfe2;
   --modal-overlay: rgba(0, 0, 0, 0.5);
+  --primary: #1c1e21;                
+  --primary-bg: #1f3cff;             
+  --primary-soft: rgba(31, 60, 255, 0.1);
+
+  --bg-editor: #0a0a0a;
+  --text-editor: #f8fafc;
+  --border-editor: rgba(255, 255, 255, 0.1);
+  --danger: #ff4757;
+  --color-warning: #f59e0b;
 
   color-scheme: light;
 }
 
-/* =============================================================
-   DARK MODE – BACKGROUND MENGGUNAKAN #111111 (--bg-modal)
-   ============================================================= */
 [data-theme='dark'],
 html.dark {
-  --bg-main: #111111;             /* ✨ Pakai warna bg-modal */
-  --bg-modal: #1a1a1a;           /* Lebih terang sedikit untuk modal */
-  --bg-card: #1e1e1e;            /* Card sedikit lebih terang */
-  --bg-secondary: #252525;        /* Elemen sekunder */
-  --bg-input: #2a2a2a;           /* Input field */
-  --bg-story-seen: #333333;
-
-  --text-main: #f1f5f9;          /* Putih terang */
+  --bg-main: #0a0a0a;
+  --text-main: #f8fafc;
+  --bg-card: #0a0a0a;
+  --border-card: transparent;
   --text-muted: #94a3b8;
-  --icon-fill: #e2e8f0;
-
-  --primary-bg: #3b82f6;         /* Biru sedikit lebih terang */
-  --primary-soft: rgba(59, 130, 246, 0.15);
-  --primary: #f1f5f9;
-
-  --border-card: #2e2e2e;
-  --border-input: #404040;
-
-  --danger: #f87171;
-  --success: #34d399;
-  --warning: #fbbf24;
-
+  --bg-modal: #111111;
+  --bg-input: #1e1e1e;
+  --icon-fill: #e0e0e0;
+  --bg-secondary: #1e293b;
+  --bg-story-seen: #2c2c2c;
   --modal-overlay: rgba(0, 0, 0, 0.7);
+
+  --bg-editor: #0a0a0a;
+  --text-editor: #f8fafc;
+  --border-editor: rgba(255, 255, 255, 0.1);
+  --danger: #ff4757;
+  --color-warning: #f59e0b;
+
+  --primary: #f8fafc;                
+  --primary-bg: #1f3cff;             
+  --primary-soft: rgba(31, 60, 255, 0.15);
 
   color-scheme: dark;
 }
 
 /* =============================================================
-   RESET & ANTI-SELECT (TIDAK BERUBAH)
+   RESET GLOBAL + ANTI-COPY/SELECT
    ============================================================= */
 ::-webkit-scrollbar {
   display: none !important;
@@ -107,7 +91,7 @@ textarea,
 }
 
 /* =============================================================
-   HTML & BODY
+   HTML & BODY - LOCK LAYAR LUAR + ANTI-SELECT
    ============================================================= */
 html, 
 body {
@@ -124,7 +108,7 @@ body {
 }
 
 /* =============================================================
-   TYPOGRAPHY
+   TYPOGRAPHY – HEADING DENGAN POPPINS
    ============================================================= */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Poppins', sans-serif;
@@ -163,14 +147,16 @@ main {
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
-  padding-top: max(env(safe-area-inset-top), 0px);
+  
+  /* 🔥 FIX 1: Tambahkan padding-top ini untuk menghindari Status Bar */
+  padding-top: max(env(safe-area-inset-top), 0px); 
 }
 
 .fixed-layout {
   height: 100dvh !important;
   overflow: hidden !important;
   position: relative;
-  padding-top: max(env(safe-area-inset-top), 0px);
+  padding-top: max(env(safe-area-inset-top), 0px); /* 🔥 FIX 2: Cadangan jika ada yang pake class ini */
 }
 
 .main-content {
@@ -181,8 +167,10 @@ main {
   margin: 0 auto;
   position: relative;
   padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch !important;
+  
   overscroll-behavior-y: none;
 }
 
@@ -207,9 +195,10 @@ main {
 }
 
 /* =============================================================
-   TRANSISI TEMA HALUS
+   TRANSISI TEMA HALUS (FIX FLASH & SMOOTH)
    ============================================================= */
 html.theme-ready * {
+  /* 🔥 FIX 3: Durasi dipercepat dari 0.5s ke 0.15s agar tidak ngeglict */
   transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
@@ -229,13 +218,10 @@ textarea,
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-/* =============================================================
-   ANTI GLITCH PWA
-   ============================================================= */
+/* 🔥 FIX 4: Anti Glitch PWA dan Next.js (Mencegah flash putih/error saat ganti halaman) */
 .nextjs-toast-errors-parent {
   display: none !important;
 }
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none !important;
@@ -243,7 +229,7 @@ textarea,
 }
 
 /* =============================================================
-   HILANGKAN OUTLINE DEFAULT (TAPI TETAP AKSESIBEL DENGAN :focus-visible)
+   HILANGKAN BAYANGAN & OUTLINE PADA INPUT / TEXTAREA / SELECT SAAT FOKUS
    ============================================================= */
 input:focus,
 textarea:focus,
@@ -251,12 +237,6 @@ select:focus,
 [contenteditable="true"]:focus {
   box-shadow: none !important;
   outline: none !important;
-}
-
-/* Fokus keyboard tetap terlihat untuk aksesibilitas */
-:focus-visible {
-  outline: 2px solid var(--primary-bg) !important;
-  outline-offset: 2px;
 }
 
 a,
@@ -269,9 +249,6 @@ select,
   cursor: pointer;
 }
 
-/* =============================================================
-   PAGE FADE ANIMATION
-   ============================================================= */
 .page-fade {
   animation: smoothFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -282,7 +259,7 @@ select,
 }
 
 /* =============================================================
-   STORY RING (TIDAK BERUBAH)
+   STORY RING
    ============================================================= */
 .story-ring {
   width: 66px;
@@ -311,17 +288,3 @@ select,
   background-origin: padding-box, border-box; background-clip: padding-box, border-box;
 }
 .story-ring .default-avatar .material-icons { font-size: 32px !important; color: var(--text-muted) !important; }
-
-/* =============================================================
-   TAMBAHAN: UTILITY CLASSES UNTUK KONSISTENSI
-   ============================================================= */
-.bg-main { background-color: var(--bg-main); }
-.bg-card { background-color: var(--bg-card); }
-.bg-secondary { background-color: var(--bg-secondary); }
-.bg-input { background-color: var(--bg-input); }
-.text-main { color: var(--text-main); }
-.text-muted { color: var(--text-muted); }
-.border-card { border: 1px solid var(--border-card); }
-.rounded-xl { border-radius: 16px; }
-.rounded-2xl { border-radius: 20px; }
-.shadow-card { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
