@@ -78,7 +78,7 @@ export default function PostCardText(props: Props) {
               audio.play().catch(() => {});
             }
             
-            // Mengamankan RPC agar tidak menembak ID negatif (tanggapan/komentar) yang memicu PGRST116
+            // Mengamankan RPC agar tidak menembak ID negatif
             const numericId = Number(postIdStr);
             if (!hasViewedRef.current && postIdStr && numericId > 0) {
               hasViewedRef.current = true;
@@ -95,11 +95,10 @@ export default function PostCardText(props: Props) {
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // Fetch 1 tanggapan teratas (Hanya jika showTopComment bernilai true)
+  // Fetch 1 tanggapan teratas
   useEffect(() => {
     let isMounted = true;
     
-    // Cegah pencarian jika kartu ini sendiri adalah sebuah tanggapan (ID negatif atau string khusus)
     const numericId = Number(postIdStr);
     if (showTopComment && !postIdStr.startsWith('tanggapan-') && numericId > 0) {
       const fetchTop = async () => {
@@ -119,26 +118,25 @@ export default function PostCardText(props: Props) {
   const commentCount = counts[postIdStr]?.tanggapan || 0;
   const tanggapanButtonLabel = tanggapanLabel || (commentCount > 0 ? `${commentCount} Tanggapan` : 'Tanggapi');
 
+  // FIX: Perbaikan logika klik tanggapan
   const handleTanggapanClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     let destinationId = postIdStr;
-    
-    // 1. Deteksi apakah kartu ini adalah sebuah tanggapan 
-    // (Mengecek awalan 'tanggapan-' ATAU angka negatif)
-    const isTanggapan = postIdStr.startsWith('tanggapan-') || Number(postIdStr) < 0;
+    const numericId = Number(postIdStr);
+    const isTanggapan = postIdStr.startsWith('tanggapan-') || numericId < 0;
 
-    // 2. Jika ini tanggapan, kita harus membuka Postingan Induknya
     if (isTanggapan) {
       if (post.post_id) {
         destinationId = String(post.post_id);
       } else {
-        console.warn("Peringatan: Objek tanggapan tidak memiliki 'post_id'. Pastikan query API Anda mengambil kolom post_id.");
+        // Blokade utama: Jika post_id tidak terdeteksi, berhentikan eksekusi di sini!
+        console.error("Gagal membuka komentar: post_id induk tidak ditemukan pada objek tanggapan.");
+        return; 
       }
     }
 
-    // 3. Arahkan pengguna ke halaman yang tepat
     if (onTanggapanClick) {
       onTanggapanClick(destinationId);
     } else {
@@ -198,7 +196,6 @@ export default function PostCardText(props: Props) {
         <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts} mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts} animatingReposts={animatingReposts} handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
       </div>
 
-      {/* Merender topComment jika diizinkan oleh page.tsx */}
       {showTopComment && topComment && <TopTanggapan topComment={topComment} />}
     </div>
   );
