@@ -245,7 +245,9 @@ function PostContent() {
     if (!tanggapanInput.trim() || !currentUserRef.current || !tanggapanModal.postId) return;
     
     setIsSubmittingTanggapan(true);
-    const postIdNum = parseInt(tanggapanModal.postId);
+    // Mengamankan foreign key DB dengan tetap mengambil ID post aslinya
+    const rawPostId = tanggapanModal.postId.replace('tanggapan-', '');
+    const postIdNum = parseInt(rawPostId);
 
     try {
       const { data, error } = await supabase
@@ -272,27 +274,29 @@ function PostContent() {
           audio_src: null,
         };
 
+        const targetParentPost = tanggapanModal.postId.replace('tanggapan-', '');
+
         setTanggapanMap(prev => ({
           ...prev,
-          [tanggapanModal.postId]: [...(prev[tanggapanModal.postId] || []), newTanggapan]
+          [targetParentPost]: [...(prev[targetParentPost] || []), newTanggapan]
         }));
 
         setCounts(prev => ({
           ...prev,
-          [tanggapanModal.postId]: {
-            ...prev[tanggapanModal.postId],
-            tanggapan: (prev[tanggapanModal.postId]?.tanggapan || 0) + 1
+          [targetParentPost]: {
+            ...prev[targetParentPost],
+            tanggapan: (prev[targetParentPost]?.tanggapan || 0) + 1
           },
           [newTanggapan.id]: { likes: 0, tanggapan: 0, reposts: 0, saves: 0 }
         }));
 
-        const postOwner = userPosts.find(p => String(p.id) === String(tanggapanModal.postId))?.creator_id;
+        const postOwner = userPosts.find(p => String(p.id) === String(targetParentPost))?.creator_id;
         if (postOwner && postOwner !== currentUserRef.current.id) {
           await sendPushAndAppNotif({ 
             senderId: currentUserRef.current.id, 
             receiverId: postOwner, 
             type: "tanggapan", 
-            postId: tanggapanModal.postId 
+            postId: targetParentPost 
           });
         }
 
@@ -337,27 +341,90 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
+  // --- MEMPERBAIKI LIKE UNTUK TANGGAPAN ---
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    if (String(postId).startsWith('tanggapan-')) return; 
 
-    const numericPostId = parseInt(postId);
+    const isTanggapan = String(postId).startsWith('tanggapan-');
+    const numericPostId = isTanggapan ? parseInt(postId.replace('tanggapan-', '')) : parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
 
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
 
     try {
+      // Pastikan tabel "tanggapan_likes" ada di Supabase kamu, atau ubah namanya sesuai struktur DB-mu
+      const tableName = isTanggapan ? "tanggapan_likes" : "likes";
+      const idColumn = isTanggapan ? "tanggapan_id" : "post_id";
+
       if (isLiked) {
-        await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        await supabase.from(tableName).delete().match({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+        const { error } = await supabase.from(tableName).insert({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
         if (!error && creatorId !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: String(numericPostId) });
         }
       }
     } catch (err) {}
   }, []);
+
+  // --- MEMPERBAIKI REPOST UNTUK TANGGAPAN ---
+  const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+
+    const isTanggapan = String(postId).startsWith('tanggapan-');
+    const numericPostId = isTanggapan ? parseInt(postId.replace('tanggapan-', '')) : parseInt(postId);
+    
+    const finalNote = repostNote.trim().substring(0, 15);
+    setRepostModal(null);
+
+    setAnimatingReposts((prev) => new Set(prev).add(postId));
+    setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
+
+    const wasReposted = myRepostedPostsRef.current.has(postId);
+    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
+
+    try {
+      const tableName = isTanggapan ? "tanggapan_reposts" : "reposts";
+      const idColumn = isTanggapan ? "tanggapan_id" : "post_id";
+
+      if (isUnrepost) {
+        await supabase.from(tableName).delete().match({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from(tableName).insert({ [idColumn]: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
+        if (error) {
+          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
+          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
+        }
+      }
+    } catch (err) {}
+  }, [repostNote]);
+
+  // --- MEMPERBAIKI SAVE UNTUK TANGGAPAN ---
+  const handleSave = useCallback(async (postId: string) => {
+    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+
+    const isTanggapan = String(postId).startsWith('tanggapan-');
+    const numericPostId = isTanggapan ? parseInt(postId.replace('tanggapan-', '')) : parseInt(postId);
+    const isSaved = mySavedPostsRef.current.has(postId);
+
+    setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
+    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
+
+    try {
+      const tableName = isTanggapan ? "tanggapan_bookmarks" : "bookmarks";
+      const idColumn = isTanggapan ? "tanggapan_id" : "post_id";
+
+      if (isSaved) {
+        await supabase.from(tableName).delete().match({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
+      } else {
+        const { error } = await supabase.from(tableName).insert({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
+        if (error && error.code !== "23505") console.error(error);
+      }
+    } catch (err) {}
+  }, []);
+
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
@@ -382,54 +449,6 @@ function PostContent() {
       }
     }
   }, [handleLike]);
-
-  const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    if (String(postId).startsWith('tanggapan-')) return;
-
-    const numericPostId = parseInt(postId);
-    const finalNote = repostNote.trim().substring(0, 15);
-    setRepostModal(null);
-
-    setAnimatingReposts((prev) => new Set(prev).add(postId));
-    setTimeout(() => setAnimatingReposts((prev) => { const n = new Set(prev); n.delete(postId); return n; }), 500);
-
-    const wasReposted = myRepostedPostsRef.current.has(postId);
-    setMyRepostedPosts((prev) => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
-
-    try {
-      if (isUnrepost) {
-        await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
-        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
-        if (error) {
-          setMyRepostedPosts((prev) => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
-          setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
-        }
-      }
-    } catch (err) {}
-  }, [repostNote]);
-
-  const handleSave = useCallback(async (postId: string) => {
-    if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    if (String(postId).startsWith('tanggapan-')) return;
-
-    const numericPostId = parseInt(postId);
-    const isSaved = mySavedPostsRef.current.has(postId);
-
-    setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
-    setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
-
-    try {
-      if (isSaved) {
-        await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      } else {
-        const { error } = await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (error && error.code !== "23505") console.error(error);
-      }
-    } catch (err) {}
-  }, []);
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -587,7 +606,7 @@ function PostContent() {
                       setTanggapanInput('');
                       setTanggapanModal({ isOpen: true, postId: String(id) });
                     }}
-                    showTopComment={false}
+                    showTopComment={false} 
                     tanggapanLabel="Beri Tanggapan"
                   />
 
@@ -620,7 +639,12 @@ function PostContent() {
                         repostersMap={repostersMap}
                         handleLike={handleLike}
                         handleSave={handleSave}
-                        openRepostModal={() => {}} 
+                        // FIx: Berikan fungsi repot yang benar pada loop tanggapan
+                        openRepostModal={(id, cid) => {
+                          if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                          if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                          else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                        }}
                         handleMediaClick={handleMediaClick}
                         toggleMute={toggleMute}
                         openShareOptions={openShareOptions}
@@ -630,12 +654,14 @@ function PostContent() {
                         t={t}
                         isExpanded={false}
                         onToggleExpand={() => {}}
+                        // FIX: Membalas komentar otomatis mengisi username pengguna
                         onTanggapanClick={() => {
                            if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                           setTanggapanInput('');
+                           setTanggapanInput(`@${tanggapanItem.profiles?.username} `);
+                           // Kirimkan ID post utamanya supaya komentar tetap berada di rantai thread ini
                            setTanggapanModal({ isOpen: true, postId: String(p.id) });
                         }}
-                        showTopComment={false}
+                        showTopComment={false} 
                         tanggapanLabel="Beri Tanggapan"
                       />
                     </div>

@@ -48,11 +48,13 @@ export default function PostCardText(props: Props) {
   const isOwner = currentUser && currentUser.id === post.creator_id;
   const badge = getUserBadge(post.profiles?.role);
   const rawAvatarUrl = post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.username}`;
+  
   const optimizedAvatar = useMemo(() => {
     if (rawAvatarUrl.includes('res.cloudinary.com') && !rawAvatarUrl.includes('f_auto'))
       return rawAvatarUrl.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
     return rawAvatarUrl;
   }, [rawAvatarUrl]);
+  
   const formattedDate = formatRelativeTime(post.created_at);
 
   const [topComment, setTopComment] = useState<any>(null);
@@ -60,12 +62,13 @@ export default function PostCardText(props: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const hasViewedRef = useRef(false);
 
-  // Observer
+  // Observer untuk auto-play & view count
   useEffect(() => {
     const audio = mediaRef.current;
     const card = cardRef.current;
     if (!card) return;
     if (audio) audio.muted = isGloballyMuted;
+    
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -89,10 +92,10 @@ export default function PostCardText(props: Props) {
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // Fetch 1 tanggapan teratas
+  // Fetch 1 tanggapan teratas (Hanya jika showTopComment bernilai true)
   useEffect(() => {
     let isMounted = true;
-    if (showTopComment) {
+    if (showTopComment && !postIdStr.startsWith('tanggapan-')) {
       const fetchTop = async () => {
         const { data, error } = await supabase
           .from('tanggapan')
@@ -119,6 +122,7 @@ export default function PostCardText(props: Props) {
 
   return (
     <div key={postIdStr} id={`post-${postIdStr}`} data-postid={postIdStr} className="card" ref={cardRef} style={{ background: 'var(--bg-main)', borderRadius: '0px', padding: '15px', borderTop: '1px solid var(--border-card)', borderBottom: '1px solid var(--border-card)', width: '100%', marginBottom: '12px', position: 'relative' }}>
+      
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', zIndex: 2 }}>
         <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
@@ -168,6 +172,7 @@ export default function PostCardText(props: Props) {
         <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts} mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts} animatingReposts={animatingReposts} handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
       </div>
 
+      {/* Merender topComment jika diizinkan oleh page.tsx */}
       {showTopComment && topComment && <TopTanggapan topComment={topComment} />}
     </div>
   );
