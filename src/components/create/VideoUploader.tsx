@@ -67,7 +67,7 @@ export default function VideoUploader({
             width: '100%',
             borderRadius: '16px',
             overflow: 'hidden',
-            background: '#000',
+            background: '#000', // 👈 Background hitam agar letterbox terlihat natural
           }}
         >
           <img
@@ -76,8 +76,8 @@ export default function VideoUploader({
             style={{
               width: '100%',
               display: 'block',
-              aspectRatio: '2/3',
-              objectFit: 'cover',
+              /* ✅ Diubah: Hapus aspectRatio agar gambar bisa dinamis bentuknya */
+              objectFit: 'contain', /* ✅ Diubah: dari cover menjadi contain agar letterbox tidak terpotong */
             }}
           />
           <button

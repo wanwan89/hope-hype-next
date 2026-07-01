@@ -484,8 +484,9 @@
   position: fixed;
   inset: 0;
   z-index: 50;
-  background-color: #000000;
-  color: #ffffff;
+  /* ✅ Diubah: Menggunakan background utama dan teks utama global */
+  background-color: var(--bg-main);
+  color: var(--text-main);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -500,16 +501,19 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background-color: rgba(0, 0, 0, 0.8);
+  /* ✅ Diubah: Menggunakan bg-card agar menyesuaikan tema */
+  background-color: var(--bg-card);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 10;
+  border-bottom: 1px solid var(--border-card);
 }
 
 .editor-back-btn {
   background: transparent;
   border: none;
-  color: #ffffff;
+  /* ✅ Diubah: Ikon back menyesuaikan warna teks */
+  color: var(--text-main);
   font-size: 24px;
   cursor: pointer;
   display: flex;
@@ -517,31 +521,33 @@
 }
 
 .editor-header-title {
-  color: #ffffff;
+  /* ✅ Diubah: Judul menyesuaikan warna teks global */
+  color: var(--text-main);
   font-size: 14px;
   font-weight: 600;
   margin: 0;
 }
 
 .editor-save-btn {
-  background-color: #ffffff;
+  /* ✅ Diubah: Background kontras dengan tema (hitam di terang, putih di gelap) */
+  background-color: var(--text-main);
   border: none;
-  color: #000000;
+  color: var(--bg-main);
   padding: 6px 16px;
   border-radius: 9999px;
   font-weight: 600;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s ease, opacity 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .editor-save-btn:hover:not(:disabled) {
-  background-color: #e5e7eb;
+  opacity: 0.8;
 }
 
 .editor-save-btn:disabled {
-  background-color: #4b5563;
-  color: #9ca3af;
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
@@ -553,7 +559,8 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  background-color: #09090b; /* zinc-950 */
+  /* ✅ Diubah: Background canvas menggunakan warna sekunder */
+  background-color: var(--bg-secondary); 
   overflow: hidden;
 }
 
@@ -579,7 +586,8 @@
   overflow: hidden;
   aspect-ratio: 2 / 3;
   border-radius: 16px;
-  border: 1px solid var(--border-editor, #27272a);
+  /* ✅ Diubah: Border frame menggunakan variabel border global */
+  border: 1px solid var(--border-card);
 }
 
 .editor-video-element {
@@ -595,7 +603,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  /* ℹ️ Tetap hitam transparan karena ini berada di atas video */
+  background: rgba(0, 0, 0, 0.4); 
   cursor: pointer;
   z-index: 10;
 }
@@ -613,22 +622,26 @@
 
 .editor-video-play-btn .material-icons {
   font-size: 36px;
-  color: #ffffff;
+  /* ℹ️ Tetap putih karena background tombol play-nya selalu gelap */
+  color: #ffffff; 
 }
 
-/* Panel Kontrol Bawah (Gaya Capcut) */
+/* Panel Kontrol Bawah */
 .editor-screen-footer {
   flex-shrink: 0;
-  background-color: #18181b; /* zinc-900 */
+  /* ✅ Diubah: Background footer menggunakan bg-card */
+  background-color: var(--bg-card); 
   padding-top: 16px;
   padding-bottom: 32px;
   padding-left: 16px;
   padding-right: 16px;
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  /* ✅ Diubah: Bayangan disesuaikan agar tidak terlalu pekat di light mode */
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08); 
   z-index: 20;
   position: relative;
+  border-top: 1px solid var(--border-card);
 }
 
 /* Navigasi Menu Slider & Timeline Tabs */
@@ -655,14 +668,15 @@
 .editor-screen-footer input[type="range"]::-webkit-slider-runnable-track {
   width: 100%;
   height: 4px;
-  background-color: #4b5563;
+  /* ✅ Diubah: Track slider menggunakan warna border atau sekunder */
+  background-color: var(--bg-secondary);
   border-radius: 8px;
 }
 
 .editor-screen-footer input[type="range"]::-moz-range-track {
   width: 100%;
   height: 4px;
-  background-color: #4b5563;
+  background-color: var(--bg-secondary);
   border-radius: 8px;
 }
 
@@ -674,8 +688,9 @@
   height: 16px;
   width: 16px;
   border-radius: 9999px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  /* ✅ Diubah: Knob slider menyesuaikan warna teks utama (hitam/putih) */
+  background-color: var(--text-main); 
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .editor-screen-footer input[type="range"]::-moz-range-thumb {
@@ -683,8 +698,8 @@
   width: 16px;
   border: none;
   border-radius: 9999px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  background-color: var(--text-main);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Pendukung Filmstrip Slider Timeline */

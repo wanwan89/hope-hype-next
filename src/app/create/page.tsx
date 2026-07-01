@@ -70,10 +70,11 @@ function CreatePostContent() {
   const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-  // *** NEW: Video crop state ***
+  // *** NEW: Video crop & aspect ratio state ***
   const [videoCropX, setVideoCropX] = useState(0);
   const [videoCropY, setVideoCropY] = useState(0);
   const [videoZoom, setVideoZoom] = useState(1);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<string>('2/3'); // ✅ State rasio video baru
 
   // Music
   const [searchMusic, setSearchMusic] = useState('');
@@ -322,10 +323,11 @@ function CreatePostContent() {
     setVideoThumbnails([]);
     setExistingVideoUrl(null);
     setExistingImageUrl(null);
-    // Reset crop video ketika video baru dipilih
+    // Reset crop & rasio ketika video baru
     setVideoCropX(0);
     setVideoCropY(0);
     setVideoZoom(1);
+    setVideoAspectRatio('2/3'); // ✅ Reset ke Vertikal Default
     setStep('edit');
   };
 
@@ -350,7 +352,7 @@ function CreatePostContent() {
     else { videoRef.current.play(); setIsVideoPlaying(true); }
   };
 
-  // CAPTURE FRAME + SAVE COVER (dengan crop video & rotasi)
+  // CAPTURE FRAME + SAVE COVER (dengan rasio, crop & latar hitam)
   const captureFrameAndSave = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -362,11 +364,14 @@ function CreatePostContent() {
     video.pause();
     setIsVideoPlaying(false);
 
-    const targetAspect = 2 / 3;
-    const targetWidth = 1080; // lebar target cover
+    // ✅ Tentukan targetAspect dinamis berdasarkan pilihan user
+    let targetAspect = 2 / 3;
+    if (videoAspectRatio === '1/1') targetAspect = 1 / 1;
+    else if (videoAspectRatio === '16/9') targetAspect = 16 / 9;
+
+    const targetWidth = 1080; // Tetapkan lebar konstan agar kualitas HD
     const targetHeight = targetWidth / targetAspect;
 
-    // Dapatkan ukuran asli video (dengan rotasi)
     const isRotated = videoRotation === 90 || videoRotation === 270;
     const vw = isRotated ? video.videoHeight : video.videoWidth;
     const vh = isRotated ? video.videoWidth : video.videoHeight;
@@ -377,50 +382,55 @@ function CreatePostContent() {
       return;
     }
 
-    // Gambar video dengan rotasi pada kanvas sementara
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = vw;
     tempCanvas.height = vh;
     const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) {
-      showNotif("Gagal memproses sampul.", "error");
-      setIsProcessingEdit(false);
-      return;
-    }
+    if (!tempCtx) return setIsProcessingEdit(false);
+    
     tempCtx.save();
     tempCtx.translate(vw / 2, vh / 2);
     tempCtx.rotate((videoRotation * Math.PI) / 180);
     tempCtx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
     tempCtx.restore();
 
-    // Skala video berdasarkan zoom crop
-    const scaledW = vw * videoZoom;
-    const scaledH = vh * videoZoom;
+    // Kalkulasi Letterbox (Black bars calculation) untuk Canvas Frame
+    const videoAspect = vw / vh;
+    let renderW = targetWidth;
+    let renderH = targetHeight;
+    let renderX = 0;
+    let renderY = 0;
 
-    // Posisi crop (videoCropX/Y adalah pergeseran dalam piksel sebelum zoom)
-    const cropOffsetX = videoCropX * videoZoom;
-    const cropOffsetY = videoCropY * videoZoom;
+    if (videoAspect > targetAspect) {
+      renderH = targetWidth / videoAspect;
+      renderY = (targetHeight - renderH) / 2;
+    } else {
+      renderW = targetHeight * videoAspect;
+      renderX = (targetWidth - renderW) / 2;
+    }
 
-    // Area yang diambil dari video yang sudah dirotasi & diskala
-    const sx = (scaledW - targetWidth) / 2 - cropOffsetX;
-    const sy = (scaledH - targetHeight) / 2 - cropOffsetY;
+    // Terapkan Zoom Video
+    renderW = renderW * videoZoom;
+    renderH = renderH * videoZoom;
+    
+    // Terapkan Posisi pergeseran (Crop/Pan) dengan koreksi skala
+    const scaleDiffX = targetWidth / vw;
+    const scaleDiffY = targetHeight / vh;
+    const cropOffsetX = videoCropX * scaleDiffX * videoZoom;
+    const cropOffsetY = videoCropY * scaleDiffY * videoZoom;
 
-    // Buat kanvas target (1080x1620)
+    // Set Up Canvas Cover Final
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      showNotif("Gagal membuat sampul.", "error");
-      setIsProcessingEdit(false);
-      return;
-    }
+    if (!ctx) return setIsProcessingEdit(false);
 
-    // Background hitam (untuk area kosong)
+    // 1. Gambar Background Hitam (Wajib)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, targetWidth, targetHeight);
 
-    // Gambar area yang dipilih (akan menampilkan bagian yang di-crop, atau hitam jika di luar)
-    ctx.drawImage(tempCanvas, sx, sy, scaledW, scaledH);
+    // 2. Gambar Video di Atas Latar Hitam 
+    ctx.drawImage(tempCanvas, renderX - cropOffsetX, renderY - cropOffsetY, renderW, renderH);
 
     canvas.toBlob(blob => {
       if (blob) {
@@ -439,6 +449,7 @@ function CreatePostContent() {
     setCoverUrlPreview(null); setVideoThumbnails([]);
     setExistingVideoUrl(null); setExistingImageUrl(null);
     setVideoCropX(0); setVideoCropY(0); setVideoZoom(1);
+    setVideoAspectRatio('2/3'); // Reset rasio
     setStep('post');
   };
 
@@ -575,10 +586,18 @@ function CreatePostContent() {
 
         const clipEnd = videoEnd || Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
         const rotParam = videoRotation !== 0 ? `a_${videoRotation},` : '';
+        
+        // ✅ Format Ratio String untuk Cloudinary Transform (Format `16:9` bukan `16/9`)
+        let clRatio = '2:3';
+        if (videoAspectRatio === '1/1') clRatio = '1:1';
+        else if (videoAspectRatio === '16/9') clRatio = '16:9';
+
         const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
+        
+        // ✅ Terapkan transformasi Cloudinary c_pad (memberikan border hitam otomatis)
         finalVideoUrl = vidRes.secure_url.replace(
           '/upload/',
-          `/upload/${rotParam}c_fill,ar_2:3/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
+          `/upload/${rotParam}c_pad,b_black,ar_${clRatio}/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
         );
         updateGlobalProgress(50);
       }
@@ -676,6 +695,11 @@ function CreatePostContent() {
           videoRotation={videoRotation}
           videoThumbnails={videoThumbnails}
           MAX_VIDEO_CLIP={MAX_VIDEO_CLIP}
+          
+          // ✅ PASS PROPS ASPECT RATIO BARU
+          videoAspectRatio={videoAspectRatio}
+          setVideoAspectRatio={setVideoAspectRatio}
+          
           videoRef={videoRef}
           canvasRef={canvasRef}
           setVideoStart={setVideoStart}

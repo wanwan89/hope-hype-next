@@ -29,6 +29,10 @@ interface MediaEditorProps {
   videoRotation?: number;
   videoThumbnails: string[];
   MAX_VIDEO_CLIP: number;
+  
+  // NEW: Props untuk Aspect Ratio Video
+  videoAspectRatio?: string; 
+  setVideoAspectRatio?: (ratio: string) => void;
 
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -71,6 +75,8 @@ export default function MediaEditor({
   videoRotation = 0,
   videoThumbnails,
   MAX_VIDEO_CLIP,
+  videoAspectRatio = '2/3', // Default ke Vertikal
+  setVideoAspectRatio,      // Fungsi pengubah rasio
   videoRef,
   canvasRef,
   setCrop,
@@ -96,6 +102,15 @@ export default function MediaEditor({
   setIsVideoPlaying
 }: MediaEditorProps) {
   const [activeTab, setActiveTab] = useState<'trim' | 'cover' | 'crop' | 'format'>('trim');
+  
+  // Local state fallback jika parent belum mengirim setVideoAspectRatio
+  const [localRatio, setLocalRatio] = useState<string>(videoAspectRatio);
+  const activeRatio = setVideoAspectRatio ? videoAspectRatio : localRatio;
+  
+  const handleRatioChange = (ratio: string) => {
+    if (setVideoAspectRatio) setVideoAspectRatio(ratio);
+    else setLocalRatio(ratio);
+  };
 
   const effectiveEnd = videoEnd ?? videoStart + MAX_VIDEO_CLIP;
 
@@ -125,7 +140,7 @@ export default function MediaEditor({
         }} style={{
           background: 'transparent', border: 'none', color: '#fff',
           width: 36, height: 36, borderRadius: '50%', backgroundColor: '#27272a',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
         }}>
           <span className="material-icons">close</span>
         </button>
@@ -160,10 +175,12 @@ export default function MediaEditor({
           </div>
         ) : postType === 'video' && rawVideoUrl ? (
           <div style={{
-            width: '100%', maxWidth: '100%', aspectRatio: '2/3',
+            width: '100%', maxWidth: '100%', 
+            aspectRatio: activeRatio, // <--- DISINI BERUBAH DINAMIS
             position: 'relative', display: 'flex',
             alignItems: 'center', justifyContent: 'center',
-            backgroundColor: '#000', overflow: 'hidden'
+            backgroundColor: '#000', overflow: 'hidden',
+            transition: 'aspect-ratio 0.3s ease'
           }}>
             <video ref={videoRef} src={rawVideoUrl} playsInline muted={!isVideoPlaying} loop
               onLoadedMetadata={handleVideoLoadedMetadata}
@@ -171,7 +188,7 @@ export default function MediaEditor({
                 position: 'absolute',
                 top: 0, left: 0,
                 width: '100%', height: '100%',
-                objectFit: 'contain',
+                objectFit: 'contain', // <--- MEMASTIKAN TDK TERCROP & MUNCUL BLACK BARS
                 transform: `translate(${videoCropX}px, ${videoCropY}px) scale(${videoZoom}) rotate(${videoRotation}deg)`,
                 transition: 'transform 0.1s ease',
                 backgroundColor: '#000'
@@ -210,9 +227,11 @@ export default function MediaEditor({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ height: 100, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              
               {/* TAB TRIM */}
               {activeTab === 'trim' && (
                 <div className="animate-fade-in">
+                  {/* ... Kode tab trim tetap sama seperti sebelumnya ... */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>
                     <span>Geser untuk memotong durasi</span>
                     <span style={{ color: '#fff' }}>Durasi: {Math.min(videoDuration, effectiveEnd - videoStart).toFixed(1)}s</span>
@@ -247,7 +266,8 @@ export default function MediaEditor({
               {/* TAB COVER */}
               {activeTab === 'cover' && (
                 <div className="animate-fade-in">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>
+                  {/* ... Kode tab cover tetap sama ... */}
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>
                     <span>Pilih frame sampul</span>
                     <span style={{ color: '#fff' }}>{coverTime.toFixed(1)}s</span>
                   </div>
@@ -275,10 +295,11 @@ export default function MediaEditor({
                 </div>
               )}
 
-              {/* TAB CROP (AREA VIDEO) */}
+              {/* TAB CROP */}
               {activeTab === 'crop' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af' }}>
+                  {/* ... Kode tab crop tetap sama ... */}
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af' }}>
                     <span>Geser & perbesar area video</span>
                     <span>Zoom: {videoZoom.toFixed(1)}x</span>
                   </div>
@@ -310,30 +331,63 @@ export default function MediaEditor({
                 </div>
               )}
 
-              {/* TAB FORMAT (PUTAR) */}
+              {/* TAB FORMAT (PUTAR & RASIO) */}
               {activeTab === 'format' && (
-                <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'center', gap: 32 }}>
-                  <button onClick={() => setVideoRotation && setVideoRotation(prev => (prev + 90) % 360)}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: '#fff' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', backgroundColor: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="1 4 1 10 7 10" />
-                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                      </svg>
-                    </div>
-                    <span style={{ fontSize: 11 }}>Putar 90°</span>
-                  </button>
-                  <button onClick={() => setVideoRotation && setVideoRotation(0)}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: '#fff' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', backgroundColor: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="1 4 1 10 7 10" />
-                        <polyline points="23 20 23 14 17 14" />
-                        <path d="M20.49 9A9 9 0 1 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
-                      </svg>
-                    </div>
-                    <span style={{ fontSize: 11 }}>Reset</span>
-                  </button>
+                <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'center', gap: 24, alignItems: 'center' }}>
+                  
+                  {/* GROUP: ROTASI */}
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    <button onClick={() => setVideoRotation && setVideoRotation(prev => (prev + 90) % 360)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="1 4 1 10 7 10" />
+                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: 10 }}>Putar</span>
+                    </button>
+                  </div>
+
+                  {/* SEPARATOR */}
+                  <div style={{ width: 1, height: 40, backgroundColor: '#3f3f46' }} />
+
+                  {/* GROUP: RASIO ASPEK */}
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    {/* Vertikal (2:3) */}
+                    <button onClick={() => handleRatioChange('2/3')}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: activeRatio === '2/3' ? '#fff' : '#71717a', cursor: 'pointer' }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: activeRatio === '2/3' ? '#3f3f46' : '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="6" y="2" width="12" height="20" rx="2" />
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: 10 }}>2:3</span>
+                    </button>
+                    
+                    {/* Square (1:1) */}
+                    <button onClick={() => handleRatioChange('1/1')}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: activeRatio === '1/1' ? '#fff' : '#71717a', cursor: 'pointer' }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: activeRatio === '1/1' ? '#3f3f46' : '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="4" y="4" width="16" height="16" rx="2" />
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: 10 }}>1:1</span>
+                    </button>
+
+                    {/* Horizontal (16:9) */}
+                    <button onClick={() => handleRatioChange('16/9')}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: activeRatio === '16/9' ? '#fff' : '#71717a', cursor: 'pointer' }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: activeRatio === '16/9' ? '#3f3f46' : '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="2" y="6" width="20" height="12" rx="2" />
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: 10 }}>16:9</span>
+                    </button>
+                  </div>
+
                 </div>
               )}
             </div>
@@ -342,8 +396,7 @@ export default function MediaEditor({
             <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', paddingTop: 16, borderTop: '1px solid #27272a' }}>
               <TabButton icon="content_cut" label="POTONG" active={activeTab === 'trim'} onClick={() => setActiveTab('trim')} />
               <TabButton icon="crop_original" label="SAMPUL" active={activeTab === 'cover'} onClick={() => setActiveTab('cover')} />
-              {/* Tab Crop menggunakan SVG khusus */}
-              <button onClick={() => setActiveTab('crop')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: activeTab === 'crop' ? '#fff' : '#71717a' }}>
+              <button onClick={() => setActiveTab('crop')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: activeTab === 'crop' ? '#fff' : '#71717a', cursor: 'pointer' }}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z" />
                 </svg>
@@ -358,7 +411,7 @@ export default function MediaEditor({
   );
 }
 
-// Komponen tombol tab kecil (reusable)
+// Komponen tombol tab kecil
 function TabButton({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
