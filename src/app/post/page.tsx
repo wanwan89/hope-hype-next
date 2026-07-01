@@ -14,9 +14,9 @@ function PostContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // FIX: Bersihkan postId jika yang masuk dari URL secara tidak sengaja adalah ID tanggapan (misal share link dari komentar)
+  // FIX: Mengamankan ID dari URL agar selalu berupa angka positif murni
   const rawPostId = searchParams.get('id');
-  const postIdFromUrl = rawPostId?.startsWith('tanggapan-') ? rawPostId.replace('tanggapan-', '') : rawPostId;
+  const postIdFromUrl = rawPostId ? String(Math.abs(parseInt(rawPostId))) : null;
   const source = searchParams.get('from'); 
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -168,6 +168,7 @@ function PostContent() {
     }
   };
 
+  // FIX: Sinkronisasi pengambilan data interaksi Like/Bookmark/Repost milik komentar
   const fetchPostInteractions = async (postId: string | number, user: any) => {
     const pid = String(postId);
     const [likesRes, tanggapanRes, repostsRes, savesRes] = await Promise.all([
@@ -180,8 +181,35 @@ function PostContent() {
       supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
     ]);
 
+    const tanggapanIds = tanggapanRes.data?.map((t: any) => t.id) || [];
+    let tLikesData: any[] = [];
+    let tRepostsData: any[] = [];
+    let tSavesData: any[] = [];
+    let userTLikes = new Set<number>();
+    let userTReposts = new Set<number>();
+    let userTSaves = new Set<number>();
+
+    // Tarik data interaksi untuk seluruh komentar yang ada di post ini
+    if (tanggapanIds.length > 0) {
+      const [tLikesRes, tRepostsRes, tSavesRes] = await Promise.all([
+        supabase.from('tanggapan_likes').select('tanggapan_id, user_id').in('tanggapan_id', tanggapanIds),
+        supabase.from('tanggapan_reposts').select('tanggapan_id, user_id').in('tanggapan_id', tanggapanIds),
+        supabase.from('tanggapan_bookmarks').select('tanggapan_id, user_id').in('tanggapan_id', tanggapanIds),
+      ]);
+      tLikesData = tLikesRes.data || [];
+      tRepostsData = tRepostsRes.data || [];
+      tSavesData = tSavesRes.data || [];
+
+      if (user) {
+        tLikesData.filter(l => String(l.user_id) === user.id).forEach(l => userTLikes.add(l.tanggapan_id));
+        tRepostsData.filter(r => String(r.user_id) === user.id).forEach(r => userTReposts.add(r.tanggapan_id));
+        tSavesData.filter(s => String(s.user_id) === user.id).forEach(s => userTSaves.add(s.tanggapan_id));
+      }
+    }
+
+    // FIX: Menggunakan ID negatif (-t.id) agar lolos validasi tipe data bigint di PostCard
     const transformedTanggapan = tanggapanRes.data?.map((t: any) => ({
-      id: `tanggapan-${t.id}`, 
+      id: -t.id, 
       real_tanggapan_id: t.id,
       post_id: t.post_id,
       creator_id: t.user_id,
@@ -206,8 +234,15 @@ function PostContent() {
         }
       };
 
+      // Hitung total interaksi masing-masing komentar secara akurat
       transformedTanggapan.forEach((t: any) => {
-        baseCounts[t.id] = { likes: 0, tanggapan: 0, reposts: 0, saves: 0 };
+        const realId = t.real_tanggapan_id;
+        baseCounts[String(t.id)] = { 
+          likes: tLikesData.filter(l => l.tanggapan_id === realId).length, 
+          tanggapan: 0, 
+          reposts: tRepostsData.filter(r => r.tanggapan_id === realId).length, 
+          saves: tSavesData.filter(s => s.tanggapan_id === realId).length 
+        };
       });
 
       return baseCounts;
@@ -223,9 +258,24 @@ function PostContent() {
       const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle(); 
       const isSavedByUser = !!userBookmark;
       
-      setMyLikedPosts(prev => { const n = new Set(prev); if (liked) n.add(pid); return n; });
-      setMyRepostedPosts(prev => { const n = new Set(prev); if (reposted) n.add(pid); return n; });
-      setMySavedPosts(prev => { const n = new Set(prev); if (isSavedByUser) n.add(pid); return n; });
+      setMyLikedPosts(prev => { 
+        const n = new Set(prev); 
+        if (liked) n.add(pid); 
+        userTLikes.forEach(id => n.add(String(-id))); 
+        return n; 
+      });
+      setMyRepostedPosts(prev => { 
+        const n = new Set(prev); 
+        if (reposted) n.add(pid); 
+        userTReposts.forEach(id => n.add(String(-id))); 
+        return n; 
+      });
+      setMySavedPosts(prev => { 
+        const n = new Set(prev); 
+        if (isSavedByUser) n.add(pid); 
+        userTSaves.forEach(id => n.add(String(-id))); 
+        return n; 
+      });
     }
   };
 
@@ -247,9 +297,7 @@ function PostContent() {
     if (!tanggapanInput.trim() || !currentUserRef.current || !tanggapanModal.postId) return;
     
     setIsSubmittingTanggapan(true);
-    // Mengamankan foreign key DB dengan tetap mengambil ID post aslinya
-    const rawPostId = tanggapanModal.postId.replace('tanggapan-', '');
-    const postIdNum = parseInt(rawPostId);
+    const postIdNum = Math.abs(parseInt(tanggapanModal.postId));
 
     try {
       const { data, error } = await supabase
@@ -264,7 +312,7 @@ function PostContent() {
 
       if (!error && data) {
         const newTanggapan = {
-          id: `tanggapan-${data.id}`,
+          id: -data.id, // Menggunakan ID negatif
           real_tanggapan_id: data.id,
           post_id: data.post_id,
           creator_id: data.user_id,
@@ -276,7 +324,7 @@ function PostContent() {
           audio_src: null,
         };
 
-        const targetParentPost = tanggapanModal.postId.replace('tanggapan-', '');
+        const targetParentPost = String(postIdNum);
 
         setTanggapanMap(prev => ({
           ...prev,
@@ -289,10 +337,10 @@ function PostContent() {
             ...prev[targetParentPost],
             tanggapan: (prev[targetParentPost]?.tanggapan || 0) + 1
           },
-          [newTanggapan.id]: { likes: 0, tanggapan: 0, reposts: 0, saves: 0 }
+          [String(newTanggapan.id)]: { likes: 0, tanggapan: 0, reposts: 0, saves: 0 }
         }));
 
-        const postOwner = userPosts.find(p => String(p.id) === String(targetParentPost))?.creator_id;
+        const postOwner = userPosts.find(p => String(p.id) === targetParentPost)?.creator_id;
         if (postOwner && postOwner !== currentUserRef.current.id) {
           await sendPushAndAppNotif({ 
             senderId: currentUserRef.current.id, 
@@ -343,11 +391,12 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
+  // FIX: Menggunakan logika deteksi ID negatif untuk penentuan parameter database
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-    const isTanggapan = String(postId).startsWith('tanggapan-');
-    const numericPostId = isTanggapan ? parseInt(postId.replace('tanggapan-', '')) : parseInt(postId);
+    const isTanggapan = Number(postId) < 0;
+    const numericPostId = Math.abs(parseInt(postId));
     const isLiked = myLikedPostsRef.current.has(postId);
 
     setMyLikedPosts((prev) => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
@@ -360,8 +409,8 @@ function PostContent() {
       if (isLiked) {
         await supabase.from(tableName).delete().match({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
       } else {
-        const { error } = await supabase.from(tableName).insert({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) {
+        await supabase.from(tableName).insert({ [idColumn]: numericPostId, user_id: currentUserRef.current.id });
+        if (creatorId !== currentUserRef.current.id) {
           await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId: String(numericPostId) });
         }
       }
@@ -371,8 +420,8 @@ function PostContent() {
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-    const isTanggapan = String(postId).startsWith('tanggapan-');
-    const numericPostId = isTanggapan ? parseInt(postId.replace('tanggapan-', '')) : parseInt(postId);
+    const isTanggapan = Number(postId) < 0;
+    const numericPostId = Math.abs(parseInt(postId));
     
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
@@ -403,8 +452,8 @@ function PostContent() {
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
-    const isTanggapan = String(postId).startsWith('tanggapan-');
-    const numericPostId = isTanggapan ? parseInt(postId.replace('tanggapan-', '')) : parseInt(postId);
+    const isTanggapan = Number(postId) < 0;
+    const numericPostId = Math.abs(parseInt(postId));
     const isSaved = mySavedPostsRef.current.has(postId);
 
     setMySavedPosts((prev) => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
@@ -422,6 +471,7 @@ function PostContent() {
       }
     } catch (err) {}
   }, []);
+
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
@@ -457,12 +507,12 @@ function PostContent() {
     });
   }, []);
 
-  // FIX: Modifikasi agar Share URL selalu mengarah ke Parent Post ketika tanggapan di-share
   const openShareOptions = useCallback((postToShare: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
-      const isTanggapan = String(postToShare.id).startsWith('tanggapan-');
+      // Jika yang dibagikan komentar, ambil post_id utamanya agar URL share tetap valid berupa angka positif
+      const isTanggapan = Number(postToShare.id) < 0;
       const shareId = isTanggapan ? postToShare.post_id : postToShare.id;
-      
+
       window.openGlobalShare(
         `${window.location.origin}/post?id=${shareId}`, 
         "Postingan HypeTalk", 
@@ -484,51 +534,6 @@ function PostContent() {
   return (
     <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh', position: 'relative' }}>
       
-      {tanggapanModal.isOpen && (
-        <>
-          <div 
-            onClick={() => { setTanggapanModal({ isOpen: false, postId: '' }); setTanggapanInput(''); }}
-            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9998, transition: 'opacity 0.3s' }} 
-          />
-          <div className="slide-up-modal" style={{ 
-            position: 'fixed', bottom: 0, left: 0, right: 0, maxWidth: '600px', margin: '0 auto', 
-            backgroundColor: 'var(--bg-main)', zIndex: 9999, 
-            borderTopLeftRadius: '24px', borderTopRightRadius: '24px', 
-            padding: '20px 24px 30px', display: 'flex', flexDirection: 'column', gap: '16px',
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ width: '40px', height: '5px', backgroundColor: 'var(--border-card)', borderRadius: '10px', alignSelf: 'center', marginBottom: '8px' }} />
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>Beri Tanggapan</h3>
-            <textarea
-              autoFocus
-              placeholder="Apa yang ingin kamu sampaikan?"
-              value={tanggapanInput}
-              onChange={(e) => setTanggapanInput(e.target.value)}
-              style={{ 
-                width: '100%', minHeight: '120px', backgroundColor: 'transparent', 
-                color: 'var(--text-main)', border: 'none', outline: 'none', 
-                resize: 'none', fontSize: '16px', lineHeight: '1.5'
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                disabled={!tanggapanInput.trim() || isSubmittingTanggapan}
-                onClick={handleSubmitTanggapan}
-                style={{ 
-                  backgroundColor: '#1f3cff', color: '#fff', border: 'none', 
-                  padding: '10px 24px', borderRadius: '24px', fontWeight: 700, fontSize: '15px',
-                  cursor: tanggapanInput.trim() ? 'pointer' : 'not-allowed', 
-                  opacity: tanggapanInput.trim() ? 1 : 0.6,
-                  transition: 'opacity 0.2s'
-                }}
-              >
-                {isSubmittingTanggapan ? 'Mengirim...' : 'Kirim'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -550,32 +555,16 @@ function PostContent() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div 
-            className="gallery" 
-            id="mainGallery" 
-            style={{ 
-              width: '100%', display: 'flex', flexDirection: 'column', gap: '0px'
-            }}
-          >
+          <div className="gallery" id="mainGallery" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0px' }}>
             {userPosts.map((p) => {
               const isTextOrAudio = !p.image_url && !p.video_url;
               const isExpanded = expandedPosts.has(p.id);
               const postTanggapan = tanggapanMap[String(p.id)] || [];
 
               return (
-                <div 
-                  key={p.id} 
-                  id={`post-wrapper-${p.id}`} 
-                  style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0', paddingBottom: postTanggapan.length > 0 ? '16px' : '0' }}
-                >
+                <div key={p.id} id={`post-wrapper-${p.id}`} style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0', paddingBottom: postTanggapan.length > 0 ? '16px' : '0' }}>
                   {isTextOrAudio && postTanggapan.length > 0 && (
-                    <div 
-                      style={{
-                        position: 'absolute', left: '48px', top: '70px', bottom: '50px',
-                        width: '2px', backgroundColor: 'var(--border-card)', zIndex: 10,
-                        pointerEvents: 'none', opacity: 0.8
-                      }}
-                    />
+                    <div style={{ position: 'absolute', left: '48px', top: '70px', bottom: '50px', width: '2px', backgroundColor: 'var(--border-card)', zIndex: 10, pointerEvents: 'none', opacity: 0.8 }} />
                   )}
 
                   <PostCard
@@ -626,10 +615,7 @@ function PostContent() {
                   )}
 
                   {isTextOrAudio && postTanggapan.map((tanggapanItem) => (
-                    <div 
-                      key={tanggapanItem.id}
-                      style={{ position: 'relative', width: '100%', marginTop: '-13px', padding: '0' }}
-                    >
+                    <div key={tanggapanItem.id} style={{ position: 'relative', width: '100%', marginTop: '-13px', padding: '0' }}>
                       <PostCard
                         post={tanggapanItem}
                         currentUser={currentUser}
@@ -663,9 +649,8 @@ function PostContent() {
                         isExpanded={false}
                         onToggleExpand={() => {}}
                         onTanggapanClick={() => {
-                           if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                           if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
                            setTanggapanInput(`@${tanggapanItem.profiles?.username} `);
-                           // Kirimkan ID post utamanya supaya komentar tetap berada di rantai thread ini
                            setTanggapanModal({ isOpen: true, postId: String(p.id) });
                         }}
                         showTopComment={false} 
@@ -693,32 +678,15 @@ function PostContent() {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
         }
-
-        .slide-up-modal {
-          animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-
+        .slide-up-modal { animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
-
         .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
-          border-radius: 50% !important;
-          aspect-ratio: 1 / 1 !important;
-          object-fit: cover !important;
+          border-radius: 50% !important; aspect-ratio: 1 / 1 !important; object-fit: cover !important;
         }
-
         .see-more-btn {
-          color: #1f3cff !important;
-          cursor: pointer;
-          font-size: 13px !important;
-          font-weight: 700 !important;
-          display: inline-block;
-          margin-top: 6px;
-          background: none;
-          border: none;
-          padding: 0;
-          z-index: 10;
-          pointer-events: auto;
+          color: #1f3cff !important; cursor: pointer; font-size: 13px !important; font-weight: 700 !important;
+          display: inline-block; margin-top: 6px; background: none; border: none; padding: 0; z-index: 10; pointer-events: auto;
         }
       `}</style>
     </div>
