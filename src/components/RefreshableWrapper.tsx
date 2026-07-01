@@ -37,7 +37,7 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
     return () => chatList.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Event listener untuk swipe (tetap sama)
+  // Event listener untuk swipe
   useEffect(() => {
     const onSwipeStart = () => setIsSwipeActive(true);
     const onSwipeEnd = () => setIsSwipeActive(false);
@@ -48,6 +48,32 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
       window.removeEventListener('swipe-end', onSwipeEnd);
     };
   }, []);
+
+  // ═════════════════════════════════════
+  // Listener dari trigger Navbar
+  // ═════════════════════════════════════
+  useEffect(() => {
+    const handleProgrammaticRefresh = async () => {
+      if (isRefreshing) return;
+
+      // Munculkan animasi lottie (tinggi 80px)
+      setPullDistance(80);
+      setIsRefreshing(true);
+      lottieRef.current?.play();
+      
+      // Jalankan fungsi refresh
+      await onRefresh();
+      
+      // Selesai, kembalikan posisi semula
+      setIsRefreshing(false);
+      setPullDistance(0);
+    };
+
+    window.addEventListener('trigger-navbar-refresh', handleProgrammaticRefresh);
+    return () => {
+      window.removeEventListener('trigger-navbar-refresh', handleProgrammaticRefresh);
+    };
+  }, [isRefreshing, onRefresh]);
 
   const updateLottieFrame = (distance: number) => {
     if (!lottieRef.current) return;
@@ -106,7 +132,7 @@ export default function RefreshableWrapper({ children, onRefresh }: RefreshableW
           overflow: 'hidden', 
           display: 'flex', 
           justifyContent: 'center',
-          transition: isPulling.current ? 'none' : 'height 0.3s ease-out'
+          transition: isPulling.current ? 'none' : 'height 0.3s ease-out' // Transisi otomatis mulus jika programatis
         }}
       >
         <div style={{ width: 60, height: 60 }}>

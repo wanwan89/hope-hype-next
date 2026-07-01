@@ -326,18 +326,21 @@ function NavbarContent() {
       return;
     }
 
-    // 🔥 FITUR REFRESH SMOOTH (Bisa dipakai di Android & PWA tanpa glitch!)
+    // 🔥 FITUR REFRESH SAAT KLIK 2X (TRIGGER KE REFRESHABLE WRAPPER)
     if (isActive) {
       e.preventDefault();
       setAnimatingIcon(item.name);
 
-      // router.refresh() adalah kunci refresh paling SMOOTH di Next.js (Android & Web)
+      // Trigger animasi Lottie & fungsi onRefresh di RefreshableWrapper
+      window.dispatchEvent(new CustomEvent('trigger-navbar-refresh'));
+
+      // router.refresh() bawaan Next.js tetap dieksekusi agar Server Component ke update
       router.refresh();
       
       // Scroll mulus ke paling atas
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Matikan animasi spinner setelah refresh selesai
+      // Matikan animasi spinner dari navbar
       setTimeout(() => setAnimatingIcon(null), 800);
       return;
     }

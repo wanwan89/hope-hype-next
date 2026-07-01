@@ -18,10 +18,7 @@ export default function DestinationSelector({
   t,
 }: Props) {
   return (
-    <div className="destination-container">
-      {/* ❌ HAPUS TEKS "Kirim ke" */}
-      {/* <p className="dest-header-title">{t('send_to')}</p> */}
-
+    <div className="destination-container" style={{ color: 'var(--text-main)' }}>
       <div className="dest-toggle-group">
         {[
           { id: 'feed', title: t('feed_title'), desc: t('feed_desc') },
@@ -36,33 +33,23 @@ export default function DestinationSelector({
               onChange={() => setDestination(dest.id as any)}
             />
             <div className="dest-content">
-              <div className="dest-icon-box">
+              <div className="dest-icon-box" style={{ color: 'var(--icon-fill)' }}>
                 {dest.id === 'feed' ? (
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                     <circle cx="8.5" cy="8.5" r="1.5" />
                     <polyline points="21 15 16 10 5 21" />
                   </svg>
                 ) : (
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                 )}
               </div>
               <div className="dest-text">
-                <div className="dest-title">{dest.title}</div>
-                <div className="dest-desc">{dest.desc}</div>
+                <div className="dest-title" style={{ color: 'var(--text-main)' }}>{dest.title}</div>
+                <div className="dest-desc" style={{ color: 'var(--text-muted)' }}>{dest.desc}</div>
               </div>
               <div className="dest-check" />
             </div>
@@ -76,6 +63,10 @@ export default function DestinationSelector({
             type="button"
             className={`type-btn ${visibility === 'public' ? 'active' : ''}`}
             onClick={() => setVisibility('public')}
+            style={{ 
+              color: visibility === 'public' ? '#fff' : 'var(--text-main)',
+              backgroundColor: visibility === 'public' ? 'var(--primary-bg)' : 'var(--bg-input)'
+            }}
           >
             Publik
           </button>
@@ -83,6 +74,10 @@ export default function DestinationSelector({
             type="button"
             className={`type-btn ${visibility === 'followers' ? 'active' : ''}`}
             onClick={() => setVisibility('followers')}
+            style={{ 
+              color: visibility === 'followers' ? '#fff' : 'var(--text-main)',
+              backgroundColor: visibility === 'followers' ? 'var(--primary-bg)' : 'var(--bg-input)'
+            }}
           >
             Hanya Followers
           </button>
