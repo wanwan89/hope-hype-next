@@ -77,7 +77,10 @@ export default function PostCardText(props: Props) {
               audio.muted = isGloballyMuted;
               audio.play().catch(() => {});
             }
-            if (!hasViewedRef.current && postIdStr) {
+            
+            // FIX: Mengamankan RPC agar tidak menembak ID negatif (tanggapan/komentar) yang memicu PGRST116
+            const numericId = Number(postIdStr);
+            if (!hasViewedRef.current && postIdStr && numericId > 0) {
               hasViewedRef.current = true;
               supabase.rpc('increment_post_view', { p_id: postIdStr }).catch(() => {});
             }
@@ -95,7 +98,10 @@ export default function PostCardText(props: Props) {
   // Fetch 1 tanggapan teratas (Hanya jika showTopComment bernilai true)
   useEffect(() => {
     let isMounted = true;
-    if (showTopComment && !postIdStr.startsWith('tanggapan-')) {
+    
+    // FIX: Cegah pencarian jika kartu ini sendiri adalah sebuah tanggapan (ID negatif atau string khusus)
+    const numericId = Number(postIdStr);
+    if (showTopComment && !postIdStr.startsWith('tanggapan-') && numericId > 0) {
       const fetchTop = async () => {
         const { data, error } = await supabase
           .from('tanggapan')
@@ -116,8 +122,13 @@ export default function PostCardText(props: Props) {
   const handleTanggapanClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onTanggapanClick) onTanggapanClick(postIdStr);
-    else router.push(`/post?id=${postIdStr}`);
+    
+    // Jika ID negatif (berupa tanggapan), arahkan ke ID post utama induknya agar halaman detail post valid
+    const numericId = Number(postIdStr);
+    const destinationId = numericId < 0 && post.post_id ? String(post.post_id) : postIdStr;
+
+    if (onTanggapanClick) onTanggapanClick(destinationId);
+    else router.push(`/post?id=${destinationId}`);
   };
 
   return (
