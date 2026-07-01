@@ -1,6 +1,6 @@
 // components/post/PostTanggapanList.tsx
 import React from 'react';
-import PostCardText from './PostCardText'; // sesuaikan path
+import PostCardText from './PostCardText'; // sesuaikan path jika berbeda
 
 type Props = {
   tanggapan: any[];
@@ -29,7 +29,7 @@ type Props = {
   router: any;
   t: any;
   parentPostId: string; // UUID post induk
-  onTanggapanClick: (initialText: string, postId: string) => void;
+  onTanggapanClick?: (initialText: string, postId: string) => void;
 };
 
 export default function PostTanggapanList({
@@ -38,6 +38,9 @@ export default function PostTanggapanList({
   ...rest
 }: Props) {
   if (!tanggapan || tanggapan.length === 0) return null;
+
+  // LOG 1: Mengecek apakah List menerima data parentPostId yang benar
+  console.log(`[PostTanggapanList] Memuat ${tanggapan.length} tanggapan untuk Parent Post:`, parentPostId);
 
   return (
     <>
@@ -53,6 +56,7 @@ export default function PostTanggapanList({
       >
         {tanggapan.length} Tanggapan
       </div>
+      
       {tanggapan.map((item) => (
         <div
           key={item.id}
@@ -93,11 +97,18 @@ export default function PostTanggapanList({
             tanggapanLabel="Balas"
             tanggapan={[]}
             onTanggapanClick={(initialText: string, postId: string) => {
-              // Override: ketika tombol balas di tanggapan diklik,
-              // kita arahkan ke parent post dengan mention
-              const mention = `@${item.profiles?.username} `;
+              // LOG 2: Mengecek apakah tombol balas ditekan
+              console.log(`[PostTanggapanList] Tombol 'Balas' ditekan pada ID:`, item.id);
+              
+              const mention = item.profiles?.username ? `@${item.profiles.username} ` : '';
+              
               if (rest.onTanggapanClick) {
+                // LOG 3: Memastikan fungsi diteruskan kembali ke PostPage
+                console.log(`[PostTanggapanList] Meneruskan tanggapan ke PostPage. Parent: ${parentPostId}, Mention: ${mention}`);
                 rest.onTanggapanClick(mention, parentPostId);
+              } else {
+                // LOG 4: Muncul jika Props dari PostPage gagal diteruskan
+                console.warn(`[PostTanggapanList] ERROR: Fungsi onTanggapanClick tidak ditemukan (undefined)`);
               }
             }}
           />
