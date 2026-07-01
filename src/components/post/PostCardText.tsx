@@ -1,3 +1,4 @@
+
 // components/post/PostCardText.tsx
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import FollowButton from './FollowButton';
@@ -8,10 +9,6 @@ import PostTanggapanList from './PostTanggapanList';
 import { supabase } from '@/lib/supabase';
 import { formatRelativeTime } from '@/lib/helpers';
 import { getUserBadge } from '@/lib/ui-utils';
-
-// Validasi UUID sederhana
-const isValidUUID = (str: string) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 type Props = {
   post: any;
@@ -29,7 +26,7 @@ type Props = {
   handleLike: (postId: string, creatorId: string) => void;
   handleSave: (postId: string) => void;
   openRepostModal: (postId: string, creatorId: string) => void;
-  toggleMute: (e: React.MouseEvent) => void;
+  toggleMute: (e: React.MouseEvent, currentMedia?: any) => void;
   openShareOptions: (post: any, isOwner: boolean) => void;
   handleFollowToggle: (e: any, creatorId: string) => void;
   router: ReturnType<typeof import('next/navigation').useRouter>;
@@ -37,7 +34,6 @@ type Props = {
   onTanggapanClick?: (initialText: string, postId: string) => void;
   showTopComment?: boolean;
   tanggapanLabel?: string;
-  // Props tambahan untuk integrasi tanggapan
   tanggapan?: any[];
   activePreviewImage?: string | null;
   setActivePreviewImage?: (url: string | null) => void;
@@ -75,7 +71,7 @@ export default function PostCardText(props: Props) {
     handleMediaClick = () => {},
   } = props;
 
-  const postIdStr = String(post.id); // UUID asli atau 'tanggapan_UUID'
+  const postIdStr = String(post.id); 
   const creatorIdStr = String(post.creator_id);
   const isOwner = currentUser && currentUser.id === post.creator_id;
   const badge = getUserBadge(post.profiles?.role);
@@ -94,25 +90,35 @@ export default function PostCardText(props: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const hasViewedRef = useRef(false);
 
-  // Observer auto-play & view count
+  // Sync isGloballyMuted status to Ref to prevent IntersectionObserver race conditions
+  const isMutedRef = useRef(isGloballyMuted);
+  useEffect(() => {
+    isMutedRef.current = isGloballyMuted;
+  }, [isGloballyMuted]);
+
   useEffect(() => {
     const audio = mediaRef.current;
     const card = cardRef.current;
     if (!card) return;
-    if (audio) audio.muted = isGloballyMuted;
+    if (audio) audio.muted = isMutedRef.current;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             if (audio) {
-              audio.muted = isGloballyMuted;
+              audio.muted = isMutedRef.current;
+              // Mengamankan logika bentrok suara, jeda audio/video lain ketika audio ini unmuted & intersect
+              if (!isMutedRef.current) {
+                document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
+                  if (el !== audio) el.pause();
+                });
+              }
               audio.play().catch(() => {});
             }
 
-            // Hanya post asli (bukan tanggapan) yang menambah view
             const isRealPost = !postIdStr.startsWith('tanggapan_');
-            if (!hasViewedRef.current && isRealPost && isValidUUID(postIdStr)) {
+            if (!hasViewedRef.current && isRealPost && postIdStr) {
               hasViewedRef.current = true;
               supabase
                 .rpc('increment_post_view', { p_id: postIdStr })
@@ -134,14 +140,14 @@ export default function PostCardText(props: Props) {
     );
     observer.observe(card);
     return () => observer.disconnect();
-  }, [isGloballyMuted, postIdStr]);
+  }, [postIdStr]);
 
-  // Fetch top comment (hanya untuk post asli)
+  // Fetch top comment
   useEffect(() => {
     let isMounted = true;
     const isRealPost = !postIdStr.startsWith('tanggapan_');
 
-    if (showTopComment && isRealPost && isValidUUID(postIdStr)) {
+    if (showTopComment && isRealPost && postIdStr) {
       const fetchTop = async () => {
         const { data, error } = await supabase
           .from('tanggapan')
@@ -168,30 +174,24 @@ export default function PostCardText(props: Props) {
     const isTanggapan = postIdStr.startsWith('tanggapan_');
 
     if (isTanggapan) {
-      // Arahkan ke parent post
       const parentId = post.post_id ? String(post.post_id) : null;
       if (parentId) {
         if (onTanggapanClick) {
           onTanggapanClick('', parentId);
-        } else if (isValidUUID(parentId)) {
+        } else {
           router.push(`/post?id=${parentId}`);
         }
         return;
       }
-      // Jika tidak ada parentId, tidak bisa navigasi
       return;
     }
 
-    // Post utama
     if (onTanggapanClick) {
       onTanggapanClick('', postIdStr);
-    } else if (isValidUUID(postIdStr)) {
-      // Hanya navigasi jika ID valid UUID
+    } else if (postIdStr) {
       router.push(`/post?id=${postIdStr}`);
     } else {
       console.warn('Invalid post ID for navigation:', postIdStr);
-      // Opsional: tampilkan toast atau redirect ke home
-      // router.push('/');
     }
   };
 
@@ -213,7 +213,6 @@ export default function PostCardText(props: Props) {
         position: 'relative',
       }}
     >
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', zIndex: 2 }}>
         <div style={{ display: 'flex', gap: '12px', cursor: 'pointer' }} onClick={() => router.push(`/data?id=${creatorIdStr}`)}>
           <img
@@ -295,7 +294,6 @@ export default function PostCardText(props: Props) {
         </span>
       )}
 
-      {/* Konten */}
       <div
         style={{
           marginBottom: '12px',
@@ -310,7 +308,6 @@ export default function PostCardText(props: Props) {
         {post.bio?.trim()}
       </div>
 
-      {/* Audio player */}
       {post.audio_src && (
         <>
           <audio
@@ -329,9 +326,8 @@ export default function PostCardText(props: Props) {
               className="btn-press"
               onClick={(e) => {
                 e.stopPropagation();
-                toggleMute(e);
-                if (mediaRef.current && isGloballyMuted) {
-                  mediaRef.current.muted = false;
+                toggleMute(e, mediaRef.current);
+                if (mediaRef.current && !mediaRef.current.muted) {
                   mediaRef.current.play().catch(() => {});
                 }
               }}
@@ -355,7 +351,6 @@ export default function PostCardText(props: Props) {
         </>
       )}
 
-      {/* Actions */}
       <div
         className="actions"
         style={{
@@ -401,12 +396,10 @@ export default function PostCardText(props: Props) {
         />
       </div>
 
-      {/* Top comment jika tidak ada daftar tanggapan penuh */}
       {showTopComment && topComment && tanggapan.length === 0 && (
         <TopTanggapan topComment={topComment} />
       )}
 
-      {/* Daftar tanggapan penuh */}
       {tanggapan.length > 0 && (
         <PostTanggapanList
           tanggapan={tanggapan}

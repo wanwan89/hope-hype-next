@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -504,12 +504,17 @@ function PostContent() {
     }
   }, [handleLike]);
 
-  const toggleMute = useCallback((e: React.MouseEvent) => {
+  const toggleMute = useCallback((e: React.MouseEvent, currentMedia?: any) => {
     e.stopPropagation();
     setIsGloballyMuted(prev => {
       const next = !prev;
       isMutedRef.current = next;
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { el.muted = next; });
+      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => { 
+        el.muted = next; 
+        if (!next && currentMedia && el !== currentMedia) {
+          el.pause();
+        }
+      });
       return next;
     });
   }, []);
@@ -611,7 +616,6 @@ function PostContent() {
 
               return (
                 <div key={p.id} id={`post-wrapper-${p.id}`} style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0', paddingBottom: postTanggapan.length > 0 ? '16px' : '0' }}>
-                  {/* Garis vertikal untuk tanggapan */}
                   {postTanggapan.length > 0 && (
                     <div style={{ position: 'absolute', left: '48px', top: '70px', bottom: '50px', width: '2px', backgroundColor: 'var(--border-card)', zIndex: 10, pointerEvents: 'none', opacity: 0.8 }} />
                   )}
@@ -686,7 +690,6 @@ function PostContent() {
                         showTopComment={false}
                         tanggapanLabel="Beri Tanggapan"
                       />
-                      {/* Render daftar tanggapan untuk post media */}
                       {postTanggapan.length > 0 && (
                         <PostTanggapanList
                           tanggapan={postTanggapan}
