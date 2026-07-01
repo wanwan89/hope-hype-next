@@ -10,23 +10,22 @@ type RepostModalProps = {
   setNote: (val: string) => void;
   onClose: () => void;
   onConfirm: () => void;
-  isUnrepost?: boolean; // <-- tambahan
+  isUnrepost?: boolean;
 };
 
 const RepostModal: React.FC<RepostModalProps> = ({
   isOpen,
-  postId,
-  creatorId,
   note,
   setNote,
   onClose,
   onConfirm,
-  isUnrepost = false, // default false biar aman
+  isUnrepost = false,
 }) => {
   return (
     <AnimatePresence>
       {isOpen && (
         <>
+          {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -35,31 +34,43 @@ const RepostModal: React.FC<RepostModalProps> = ({
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0,0,0,0.7)', // Backdrop tanpa blur agar lebih ringan
+              background: 'var(--modal-overlay)',
               zIndex: 99998,
             }}
           />
+
+          {/* Bottom Sheet */}
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: '-50%', x: '-50%' }}
-            animate={{ scale: 1, opacity: 1, y: '-50%', x: '-50%' }}
-            exit={{ scale: 0.9, opacity: 0, y: '-50%', x: '-50%' }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             style={{
               position: 'fixed',
-              top: '50%',
-              left: '50%',
-              background: 'var(--bg-secondary)',
-              borderRadius: '24px',
-              padding: '24px',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: 'var(--bg-main)', // ✅ Sesuai permintaan: background utama
+              borderRadius: '24px 24px 0 0',
+              padding: '24px 20px 30px',
               zIndex: 99999,
-              width: '85%',
-              maxWidth: '340px',
-              boxShadow: '0 15px 40px rgba(0,0,0,0.6)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
+              maxWidth: '600px',
+              margin: '0 auto',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.3)',
             }}
           >
-            {/* Judul dinamis */}
+            {/* Drag handle */}
+            <div
+              style={{
+                width: '40px',
+                height: '5px',
+                background: 'var(--border-card)',
+                borderRadius: '10px',
+                margin: '0 auto 20px',
+              }}
+            />
+
+            {/* Judul */}
             <h3
               style={{
                 margin: '0 0 20px 0',
@@ -72,7 +83,7 @@ const RepostModal: React.FC<RepostModalProps> = ({
               {isUnrepost ? 'Batalkan Repost?' : 'Repost Karya Ini'}
             </h3>
 
-            {/* Input catatan hanya muncul jika bukan batal repost */}
+            {/* Input catatan (hanya untuk repost) */}
             {!isUnrepost && (
               <>
                 <input
@@ -86,7 +97,7 @@ const RepostModal: React.FC<RepostModalProps> = ({
                     padding: '16px',
                     borderRadius: '16px',
                     border: '2px solid var(--border-card)',
-                    background: 'var(--bg-main)',
+                    background: 'var(--bg-input)',
                     color: 'var(--text-main)',
                     outline: 'none',
                     marginBottom: '8px',
@@ -95,8 +106,12 @@ const RepostModal: React.FC<RepostModalProps> = ({
                     fontWeight: 700,
                     transition: 'border-color 0.2s',
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = '#1f3cff')}
-                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-card)')}
+                  onFocus={(e) =>
+                    (e.target.style.borderColor = 'var(--primary-bg)')
+                  }
+                  onBlur={(e) =>
+                    (e.target.style.borderColor = 'var(--border-card)')
+                  }
                 />
                 <div
                   style={{
@@ -113,7 +128,7 @@ const RepostModal: React.FC<RepostModalProps> = ({
               </>
             )}
 
-            {/* Tombol aksi */}
+            {/* Tombol Aksi */}
             <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
               <button
                 onClick={onClose}
@@ -122,14 +137,18 @@ const RepostModal: React.FC<RepostModalProps> = ({
                   padding: '14px',
                   borderRadius: '14px',
                   border: 'none',
-                  background: 'var(--border-card)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
                   fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'transform 0.1s',
                 }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
-                onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                onMouseDown={(e) =>
+                  (e.currentTarget.style.transform = 'scale(0.95)')
+                }
+                onMouseUp={(e) =>
+                  (e.currentTarget.style.transform = 'scale(1)')
+                }
               >
                 Batal
               </button>
@@ -140,14 +159,20 @@ const RepostModal: React.FC<RepostModalProps> = ({
                   padding: '14px',
                   borderRadius: '14px',
                   border: 'none',
-                  background: isUnrepost ? '#ff2e63' : '#1f3cff', // merah untuk batal
+                  background: isUnrepost
+                    ? 'var(--danger)'
+                    : 'var(--primary-bg)',
                   color: 'white',
                   fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'transform 0.1s',
                 }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
-                onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                onMouseDown={(e) =>
+                  (e.currentTarget.style.transform = 'scale(0.95)')
+                }
+                onMouseUp={(e) =>
+                  (e.currentTarget.style.transform = 'scale(1)')
+                }
               >
                 {isUnrepost ? 'Ya, Batalkan' : 'Repost'}
               </button>
