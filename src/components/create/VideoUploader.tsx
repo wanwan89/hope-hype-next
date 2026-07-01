@@ -31,7 +31,7 @@ export default function VideoUploader({
           onClick={() => videoInputRef.current?.click()}
           style={{
             width: '100%',
-            height: '200px', // 👈 samakan dengan foto
+            height: '200px', 
             background: 'var(--bg-secondary)',
             borderRadius: '16px',
             display: 'flex',
@@ -46,7 +46,7 @@ export default function VideoUploader({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--primary-bg)', // 👈 biru
+              color: 'var(--primary-bg)', 
             }}
           >
             <svg
@@ -65,9 +65,13 @@ export default function VideoUploader({
           style={{
             position: 'relative',
             width: '100%',
+            aspectRatio: '2 / 3', /* 🔥 KUNCI 1: Tetapkan ukuran rasio container agar ruang kosongnya terlihat */
             borderRadius: '16px',
             overflow: 'hidden',
-            background: '#000', // 👈 Background hitam agar letterbox terlihat natural
+            background: '#000', /* 🔥 Background hitam untuk menutupi ruang kosong tersebut */
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
           <img
@@ -75,9 +79,9 @@ export default function VideoUploader({
             alt="Cover Preview"
             style={{
               width: '100%',
+              height: '100%', /* 🔥 KUNCI 2: Gambar harus memenuhi container */
               display: 'block',
-              /* ✅ Diubah: Hapus aspectRatio agar gambar bisa dinamis bentuknya */
-              objectFit: 'contain', /* ✅ Diubah: dari cover menjadi contain agar letterbox tidak terpotong */
+              objectFit: 'contain', /* 🔥 KUNCI 3: Gambar tidak dipotong, sisa ruang akan diisi warna dari background container (#000) */
             }}
           />
           <button
