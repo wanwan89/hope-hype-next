@@ -10,15 +10,14 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. FIX UTAMA: Memberi jarak agar konten UI (Header) tidak tertutup Status Bar (Bagian Atas)
+        // 1. FIX UTAMA: Memberi jarak agar konten UI (Header) tidak tertutup Status Bar
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
-        // 2. 🔥 SOLUSI NAVBAR BAWAH:
-        // Biarkan warna navigation bar TRANSPARAN!
-        // Kuncinya di sini: Java tidak usah ngatur warna, biarkan plugin TSX yang mengatur.
-        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        // 2. 🔥 FIX NAVBAR BAWAH: Set warna default HITAM PEKAT
+        // Ini agar saat startup atau mode gelap, warnanya hitam pekat, BUKAN abu-abu.
+        getWindow().setNavigationBarColor(Color.parseColor("#0a0a0a"));
         
-        // 3. Biarkan Android menentukan warna icon tombol berdasarkan kontras
+        // 3. Biarkan Android menentukan warna icon tombol navigasi (agar kontras)
         getWindow().setNavigationBarContrastEnforced(false);
     }
 }

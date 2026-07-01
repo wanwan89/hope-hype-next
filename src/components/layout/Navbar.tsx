@@ -52,7 +52,7 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
-  // 🔥 State baru: deteksi BioModal terbuka
+  // 🔥 State: deteksi BioModal terbuka
   const [isBioModalOpen, setIsBioModalOpen] = useState(false);
 
   // Dengarkan event dari BioModal
@@ -81,7 +81,7 @@ function NavbarContent() {
 
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
-  // 🔥 Perbarui isHiddenPage: tambahkan isBioModalOpen
+  // 🔥 Perbarui isHiddenPage
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact',
     '/create', '/search', '/saldo', '/story',
@@ -329,11 +329,21 @@ function NavbarContent() {
       return;
     }
 
-    // 🔥 FIX UTAMA: Hapus reload paksa yang bikin glitch di Android!
+    // 🔥 FITUR REFRESH TAB AKTIF (Klik 2 Kali) SUDAH KEMBALI & ANTI-GLITCH
     if (isActive) {
       e.preventDefault();
-      // Cukup scroll halus ke paling atas aja, jangan reload.
+      
+      // Nyalakan animasi spinner dulu
+      setAnimatingIcon(item.name);
+      
+      // Gunakan router.refresh() Next.js untuk muat ulang data, aman tanpa window.location.reload()
+      router.refresh();
+
+      // Scroll mulus ke atas
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Matikan animasi spinner setelah 800ms
+      setTimeout(() => setAnimatingIcon(null), 800);
       return;
     }
 
