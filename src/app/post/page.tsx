@@ -30,7 +30,7 @@ function PostContent() {
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   
-  // NOTE: Key untuk jumlah tanggapan sekarang pakai 'tanggapan' bukan 'comments'
+  // NOTE: Key untuk jumlah tanggapan sekarang pakai 'tanggapan'
   const [counts, setCounts] = useState<Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>>({});
   
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
@@ -182,7 +182,7 @@ function PostContent() {
     const pid = String(postId);
     const [likesRes, tanggapanRes, repostsRes, savesRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
-      supabase.from('tanggapan') // <-- Update ke tabel tanggapan
+      supabase.from('tanggapan')
         .select('id, post_id, user_id, content, created_at, profiles:user_id(full_name, username, role, avatar_url)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true }),
@@ -262,7 +262,7 @@ function PostContent() {
 
     try {
       const { data, error } = await supabase
-        .from('tanggapan') // <-- Update ke tabel tanggapan
+        .from('tanggapan')
         .insert({
           post_id: postIdNum,
           user_id: currentUserRef.current.id,
@@ -301,8 +301,6 @@ function PostContent() {
 
         const postOwner = userPosts.find(p => String(p.id) === String(tanggapanModal.postId))?.creator_id;
         if (postOwner && postOwner !== currentUserRef.current.id) {
-          // Tetap bisa pakai type: "comment" di notifikasi jika sistem notif-mu masih mendeteksi "comment"
-          // Atau ubah ke "tanggapan" jika push notification handler-mu juga diubah
           await sendPushAndAppNotif({ 
             senderId: currentUserRef.current.id, 
             receiverId: postOwner, 
@@ -612,7 +610,7 @@ function PostContent() {
                     t={t}
                     isExpanded={isExpanded}
                     onToggleExpand={handleToggleExpand}
-                    // BUKA MODAL TANGGAPAN
+                    // BUKA MODAL TANGGAPAN DARI POST UTAMA
                     onTanggapanClick={(id) => {
                       if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
                       setTanggapanInput('');
@@ -661,7 +659,7 @@ function PostContent() {
                         t={t}
                         isExpanded={false}
                         onToggleExpand={() => {}}
-                        // Klik icon tanggapan di level anak = membalas di thread post utama
+                        // Klik icon tanggapan di level anak (balasan) = membalas di thread post utama
                         onTanggapanClick={() => {
                            if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
                            setTanggapanInput('');

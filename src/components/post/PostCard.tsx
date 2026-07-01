@@ -186,7 +186,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const lastTapVideoRef = useRef<number>(0);
   const wasPlayingRef = useRef(false);
 
-  // State baru untuk menyimpan 1 tanggapan teratas
+  // State untuk menyimpan 1 tanggapan teratas
   const [topComment, setTopComment] = useState<any>(null);
 
   // --- 3. Observer video/audio ---
@@ -276,7 +276,7 @@ const PostCard: React.FC<PostCardProps> = ({
     if (!isVideoPost && photoList.length === 0) {
       const fetchTopComment = async () => {
         try {
-          const { data, error } = await supabase
+          let query = supabase
             .from('comments')
             .select(`
               id,
@@ -291,8 +291,14 @@ const PostCard: React.FC<PostCardProps> = ({
               )
             `)
             .eq('post_id', postIdStr)
-            .order('likes', { ascending: false })
-            .limit(1);
+            .order('likes', { ascending: false });
+
+          // Mengecualikan komentar dari user yang sedang login
+          if (currentUser?.id) {
+            query = query.neq('user_id', currentUser.id);
+          }
+
+          const { data, error } = await query.limit(1);
 
           if (error) {
             console.error("Gagal memuat tanggapan teratas:", error);
@@ -314,7 +320,7 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [postIdStr, isVideoPost, photoList.length]);
+  }, [postIdStr, isVideoPost, photoList.length, currentUser?.id]);
 
   // Deteksi bio
   useEffect(() => {
@@ -1062,23 +1068,6 @@ const PostCard: React.FC<PostCardProps> = ({
       ) : (
         // ==================== TAMPILAN POSTINGAN TEKS / AUDIO ====================
         <div style={{ padding: '15px', position: 'relative' }}>
-          {/* Garis Konektor Khas Threads Threadline */}
-          {topComment && (
-            <div
-              style={{
-                position: 'absolute',
-                left: '36px', // Titik tengah antara padding kiri (15px) + setengah lebar avatar utama (21px)
-                top: '72px',  // Dimulai tepat di bawah avatar postingan utama
-                bottom: '48px', // Berakhir tepat menyentuh batas atas avatar tanggapan
-                width: '2px',
-                background: 'var(--border-card)',
-                opacity: 0.6,
-                zIndex: 1,
-                pointerEvents: 'none',
-              }}
-            />
-          )}
-
           <div
             style={{
               display: 'flex',
@@ -1226,7 +1215,7 @@ const PostCard: React.FC<PostCardProps> = ({
               wordBreak: 'break-word',
               whiteSpace: 'pre-wrap',
               textAlign: 'left',
-              paddingLeft: '54px',
+              marginTop: '8px',
               position: 'relative',
               zIndex: 2
             }}
@@ -1260,7 +1249,6 @@ const PostCard: React.FC<PostCardProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
-                  paddingLeft: '54px',
                   zIndex: 2
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1311,7 +1299,6 @@ const PostCard: React.FC<PostCardProps> = ({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              paddingLeft: '54px',
               position: 'relative',
               zIndex: 2
             }}
@@ -1322,22 +1309,21 @@ const PostCard: React.FC<PostCardProps> = ({
               className="btn-press"
               style={{
                 fontSize: '13px',
-                color: '#1f3cff',
-                background: 'rgba(31, 60, 255, 0.1)',
+                color: 'var(--text-muted)',
+                background: 'transparent',
                 border: 'none',
-                fontWeight: 700,
+                fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 cursor: 'pointer',
-                padding: '6px 14px',
-                borderRadius: '20px',
+                padding: '0',
               }}
             >
-              <span className="material-icons" style={{ fontSize: '15px' }}>
+              <span className="material-icons" style={{ fontSize: '18px' }}>
                 chat_bubble_outline
               </span>
-              Tanggapi {commentCount > 0 ? `(${commentCount})` : ''}
+              {commentCount > 0 ? commentCount : 'Tanggapi'}
             </button>
             <EngagementButtons
               postId={postIdStr}
@@ -1360,29 +1346,26 @@ const PostCard: React.FC<PostCardProps> = ({
                 marginTop: '14px',
                 paddingTop: '14px',
                 borderTop: '1px dashed var(--border-card)',
-                paddingLeft: '54px',
                 position: 'relative',
                 zIndex: 2,
-                textAlign: 'left'
+                textAlign: 'left',
+                display: 'flex',
+                gap: '10px'
               }}
             >
-              {/* Avatar Tanggapan Teratas disinkronkan presisi dengan garis thread */}
               <img
                 src={optimizedCommentAvatar}
                 alt="Avatar Penanggap"
                 style={{
-                  position: 'absolute',
-                  left: '21px', // Titik tengah presisi di sumbu X 36px (36px - setengah lebar avatar (15px) = 21px)
-                  top: '14px',
-                  width: '30px',
-                  height: '30px',
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
                   objectFit: 'cover',
-                  border: '2.5px solid var(--bg-main)', // Masking memotong garis di belakangnya dengan rapi
+                  background: 'var(--bg-main)',
                   zIndex: 3
                 }}
               />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--text-main)' }}>
                     {topComment.profiles?.full_name || topComment.profiles?.username || 'User'}
@@ -1404,7 +1387,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   {topComment.content}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '11px' }}>
-                  <span className="material-icons" style={{ fontSize: '12px', color: '#ff2e63' }}>
+                  <span className="material-icons" style={{ fontSize: '14px', color: '#ff2e63' }}>
                     favorite_border
                   </span>
                   <span>{topComment.likes || 0} suka</span>
