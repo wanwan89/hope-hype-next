@@ -54,16 +54,38 @@ export default function MusicSheet({
 
   if (!isOpen) return null;
 
+  // Spinner komponen kecil
+  const Spinner = () => (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px 0',
+      }}
+    >
+      <div
+        style={{
+          width: 30,
+          height: 30,
+          border: '3px solid var(--bg-secondary)',
+          borderTopColor: 'var(--primary-bg)',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      />
+    </div>
+  );
+
   const renderMusicItem = (song: any, index: number) => (
     <div
       key={index}
       style={{
         display: 'flex',
         alignItems: 'center',
-        background: 'var(--bg-main)',
+        background: 'var(--bg-secondary)', // ✅ abu-abu di light, gelap di dark
         padding: '12px',
         borderRadius: '16px',
-        // ✅ tanpa border
       }}
     >
       <div
@@ -133,7 +155,7 @@ export default function MusicSheet({
       <button
         onClick={() => onSelect(song)}
         style={{
-          background: 'var(--primary-bg)', // ✅ ikut tema biru
+          background: 'var(--primary-bg)',
           color: 'white',
           border: 'none',
           padding: '8px 16px',
@@ -151,6 +173,13 @@ export default function MusicSheet({
 
   return (
     <>
+      {/* Keyframes untuk spinner */}
+      <style>{`
+        @keyframes spin {
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -174,7 +203,7 @@ export default function MusicSheet({
           left: 0,
           right: 0,
           height: '75dvh',
-          background: 'var(--bg-secondary)',
+          background: 'var(--bg-main)', // putih di light, hitam di dark
           borderTopLeftRadius: '24px',
           borderTopRightRadius: '24px',
           zIndex: 10000,
@@ -200,7 +229,6 @@ export default function MusicSheet({
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '0 20px 15px',
-            // ✅ hapus borderBottom
           }}
         >
           <h3
@@ -251,7 +279,7 @@ export default function MusicSheet({
                 width: '100%',
                 padding: '14px 15px 14px 45px',
                 borderRadius: '14px',
-                border: 'none', // ✅ tanpa border
+                border: 'none',
                 background: 'var(--bg-input)',
                 color: 'var(--text-main)',
                 fontSize: '15px',
@@ -293,17 +321,7 @@ export default function MusicSheet({
               </div>
 
               {isTrendLoading ? (
-                <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                  <span
-                    className="material-icons"
-                    style={{
-                      fontSize: '40px',
-                      animation: 'spin 1s linear infinite',
-                    }}
-                  >
-                    autorenew
-                  </span>
-                </div>
+                <Spinner />
               ) : (
                 <div
                   style={{
@@ -333,23 +351,9 @@ export default function MusicSheet({
           {searchMusic && (
             <>
               {isSearching ? (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    marginTop: '40px',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  <span
-                    className="material-icons"
-                    style={{
-                      fontSize: '40px',
-                      animation: 'spin 1s linear infinite',
-                    }}
-                  >
-                    autorenew
-                  </span>
-                  <p style={{ fontWeight: 600, marginTop: '10px' }}>
+                <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                  <Spinner />
+                  <p style={{ fontWeight: 600, marginTop: '10px', color: 'var(--text-muted)' }}>
                     Mencari lagu...
                   </p>
                 </div>
