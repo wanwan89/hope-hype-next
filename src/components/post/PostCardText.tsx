@@ -1,12 +1,12 @@
 // components/post/PostCardText.tsx
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import FollowButton from './FollowButton';
 import EngagementButtons from './EngagementButtons';
 import MusicMarquee from './MusicMarquee';
 import TopTanggapan from './TopTanggapan';
 import PostTanggapanList from './PostTanggapanList';
 import { supabase } from '@/lib/supabase';
-import { getOptimizedImage, formatRelativeTime } from '@/lib/helpers';
+import { formatRelativeTime } from '@/lib/helpers';
 import { getUserBadge } from '@/lib/ui-utils';
 
 type Props = {
@@ -71,7 +71,7 @@ export default function PostCardText(props: Props) {
     handleMediaClick = () => {},
   } = props;
 
-  const postIdStr = String(post.id); // bisa UUID asli atau 'tanggapan_UUID'
+  const postIdStr = String(post.id); // UUID asli atau 'tanggapan_UUID'
   const creatorIdStr = String(post.creator_id);
   const isOwner = currentUser && currentUser.id === post.creator_id;
   const badge = getUserBadge(post.profiles?.role);
@@ -111,7 +111,7 @@ export default function PostCardText(props: Props) {
             if (!hasViewedRef.current && isRealPost) {
               hasViewedRef.current = true;
               supabase
-                .rpc('increment_post_view', { p_id: postIdStr })
+                .rpc('increment_post_view', { p_id: postIdStr }) // UUID asli
                 .then(
                   ({ error }) => {
                     if (error) console.error('Error view count:', error.message);
@@ -132,7 +132,7 @@ export default function PostCardText(props: Props) {
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // Fetch top comment (hanya untuk post asli, bukan tanggapan)
+  // Fetch top comment (hanya untuk post asli)
   useEffect(() => {
     let isMounted = true;
     const isRealPost = !postIdStr.startsWith('tanggapan_');
@@ -142,7 +142,7 @@ export default function PostCardText(props: Props) {
         const { data, error } = await supabase
           .from('tanggapan')
           .select(`id, content, created_at, profiles:user_id (username, full_name, avatar_url, role)`)
-          .eq('post_id', postIdStr) // postIdStr adalah UUID post asli
+          .eq('post_id', postIdStr)
           .order('created_at', { ascending: false })
           .limit(1);
         if (!error && isMounted && data?.length) setTopComment(data[0]);
@@ -164,7 +164,6 @@ export default function PostCardText(props: Props) {
     const isTanggapan = postIdStr.startsWith('tanggapan_');
 
     if (isTanggapan) {
-      // Arahkan ke parent post
       const parentId = post.post_id ? String(post.post_id) : null;
       if (parentId) {
         if (onTanggapanClick) {
@@ -176,7 +175,6 @@ export default function PostCardText(props: Props) {
       }
     }
 
-    // Post utama
     if (onTanggapanClick) {
       onTanggapanClick('', postIdStr);
     } else {
@@ -284,7 +282,7 @@ export default function PostCardText(props: Props) {
         </span>
       )}
 
-      {/* Bio / Konten */}
+      {/* Konten */}
       <div
         style={{
           marginBottom: '12px',
@@ -399,7 +397,7 @@ export default function PostCardText(props: Props) {
       {tanggapan.length > 0 && (
         <PostTanggapanList
           tanggapan={tanggapan}
-          parentPostId={postIdStr} // UUID post induk asli
+          parentPostId={postIdStr}
           currentUser={currentUser}
           counts={counts}
           myLikedPosts={myLikedPosts}

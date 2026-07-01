@@ -79,7 +79,6 @@ function SearchHeader({ initialQuery, onSearch }: SearchHeaderProps) {
         padding: '12px 20px',
       }}
     >
-      {/* Wadah agar konten header tetap terpusat dan maks 600px */}
       <div
         style={{
           maxWidth: '600px',
@@ -474,7 +473,7 @@ function SearchContent() {
       style={{
         minHeight: '100vh',
         background: 'var(--bg-main)',
-        paddingTop: '72px', // ⬅️ Sesuaikan dengan tinggi header (12px padding atas+bawah + tinggi konten ~48px = 72px)
+        paddingTop: '72px',
         paddingBottom: '80px',
         maxWidth: '600px',
         margin: '0 auto',

@@ -179,7 +179,7 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
         const allImages = post.image_url ? post.image_url.split(',') : [];
         const thumbUrl = allImages.length > 0 ? allImages[0].trim() : null;
         const isVideo = !!post.video_url;
-        const safeId = String(post.id);
+        const safeId = String(post.id); // UUID sudah aman
 
         return (
           <div
@@ -190,6 +190,7 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
               if (post.status === 'draft') {
                 router.push(`/create?draft_id=${safeId}`);
               } else {
+                // Langsung kirim UUID string
                 router.push(`/post?id=${safeId}&from=profile&userId=${post.creator_id}`);
               }
             }}
@@ -219,7 +220,7 @@ const PostGrid: React.FC<Props> = ({ posts, isLoadingPosts, isMe, isMutual, prof
                   <span className="material-icons" style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', fontSize: '18px', textShadow: '0 0 4px rgba(0,0,0,0.5)' }}>filter_none</span>
                 ) : null}
 
-                {/* Views count – sekarang pakai SVG */}
+                {/* Views count */}
                 <div style={{
                   position: 'absolute', bottom: '6px', left: '8px',
                   display: 'flex', alignItems: 'center', gap: '4px',
