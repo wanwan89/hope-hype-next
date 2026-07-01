@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
+import PostCardText from '@/components/post/PostCardText'; // <-- import baru
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
 
@@ -13,11 +14,11 @@ function PostContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Mengamankan ID dari URL agar selalu berupa angka positif murni
   const rawPostId = searchParams.get('id');
   const postIdFromUrl = rawPostId ? String(Math.abs(parseInt(rawPostId))) : null;
-  const source = searchParams.get('from'); 
+  const source = searchParams.get('from');
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,14 +31,14 @@ function PostContent() {
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
-  
+
   const [counts, setCounts] = useState<Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>>({});
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
-  
+
   const [tanggapanMap, setTanggapanMap] = useState<Record<string, any[]>>({});
-  
+
   const [tanggapanModal, setTanggapanModal] = useState<{ isOpen: boolean; postId: string }>({ isOpen: false, postId: '' });
   const [tanggapanInput, setTanggapanInput] = useState('');
   const [isSubmittingTanggapan, setIsSubmittingTanggapan] = useState(false);
@@ -46,7 +47,7 @@ function PostContent() {
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string } | null>(null);
   const [repostNote, setRepostNote] = useState("");
-  
+
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
   const isMutedRef = useRef(true);
 
@@ -103,7 +104,7 @@ function PostContent() {
 
   const loadProfileMode = async (user: any) => {
     const { data: exactPost, error: errExact } = await supabase
-      .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle(); 
+      .from('posts').select('creator_id').eq('id', postIdFromUrl).maybeSingle();
 
     if (errExact || !exactPost) {
       setUserPosts([]);
@@ -111,12 +112,12 @@ function PostContent() {
       return;
     }
 
-    const targetUserId = exactPost.creator_id; 
+    const targetUserId = exactPost.creator_id;
     const isMe = user && targetUserId === user.id;
     setIsMyOwnProfile(isMe);
 
     if (!isMe) {
-      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).maybeSingle(); 
+      const { data: profileData } = await supabase.from('profiles').select('username').eq('id', targetUserId).maybeSingle();
       if (profileData) setProfileUsername(profileData.username);
     }
 
@@ -206,7 +207,7 @@ function PostContent() {
     }
 
     const transformedTanggapan = tanggapanRes.data?.map((t: any) => ({
-      id: -t.id, 
+      id: -t.id,
       real_tanggapan_id: t.id,
       post_id: t.post_id,
       creator_id: t.user_id,
@@ -233,11 +234,11 @@ function PostContent() {
 
       transformedTanggapan.forEach((t: any) => {
         const realId = t.real_tanggapan_id;
-        baseCounts[String(t.id)] = { 
-          likes: tLikesData.filter(l => l.tanggapan_id === realId).length, 
-          tanggapan: 0, 
-          reposts: tRepostsData.filter(r => r.tanggapan_id === realId).length, 
-          saves: tSavesData.filter(s => s.tanggapan_id === realId).length 
+        baseCounts[String(t.id)] = {
+          likes: tLikesData.filter(l => l.tanggapan_id === realId).length,
+          tanggapan: 0,
+          reposts: tRepostsData.filter(r => r.tanggapan_id === realId).length,
+          saves: tSavesData.filter(s => s.tanggapan_id === realId).length
         };
       });
 
@@ -250,27 +251,27 @@ function PostContent() {
     if (user) {
       const liked = likesRes.data?.some(l => String(l.user_id) === user.id) || false;
       const reposted = repostsRes.data?.some(r => String(r.user_id) === user.id) || false;
-      
-      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle(); 
+
+      const { data: userBookmark } = await supabase.from('bookmarks').select('user_id').eq('post_id', postId).eq('user_id', user.id).maybeSingle();
       const isSavedByUser = !!userBookmark;
-      
-      setMyLikedPosts(prev => { 
-        const n = new Set(prev); 
-        if (liked) n.add(pid); 
-        userTLikes.forEach(id => n.add(String(-id))); 
-        return n; 
+
+      setMyLikedPosts(prev => {
+        const n = new Set(prev);
+        if (liked) n.add(pid);
+        userTLikes.forEach(id => n.add(String(-id)));
+        return n;
       });
-      setMyRepostedPosts(prev => { 
-        const n = new Set(prev); 
-        if (reposted) n.add(pid); 
-        userTReposts.forEach(id => n.add(String(-id))); 
-        return n; 
+      setMyRepostedPosts(prev => {
+        const n = new Set(prev);
+        if (reposted) n.add(pid);
+        userTReposts.forEach(id => n.add(String(-id)));
+        return n;
       });
-      setMySavedPosts(prev => { 
-        const n = new Set(prev); 
-        if (isSavedByUser) n.add(pid); 
-        userTSaves.forEach(id => n.add(String(-id))); 
-        return n; 
+      setMySavedPosts(prev => {
+        const n = new Set(prev);
+        if (isSavedByUser) n.add(pid);
+        userTSaves.forEach(id => n.add(String(-id)));
+        return n;
       });
     }
   };
@@ -291,12 +292,11 @@ function PostContent() {
 
   const handleSubmitTanggapan = async () => {
     if (!tanggapanInput.trim() || !currentUserRef.current || !tanggapanModal.postId) return;
-    
+
     setIsSubmittingTanggapan(true);
     const postIdNum = Math.abs(parseInt(tanggapanModal.postId));
 
     try {
-      // FIX: Menggunakan .maybeSingle() agar hasil kosong dari DB/RLS tidak memicu error aplikasi
       const { data, error } = await supabase
         .from('tanggapan')
         .insert({
@@ -315,7 +315,7 @@ function PostContent() {
 
       if (data) {
         const newTanggapan = {
-          id: -data.id, 
+          id: -data.id,
           real_tanggapan_id: data.id,
           post_id: data.post_id,
           creator_id: data.user_id,
@@ -345,18 +345,17 @@ function PostContent() {
 
         const postOwner = userPosts.find(p => String(p.id) === targetParentPost)?.creator_id;
         if (postOwner && postOwner !== currentUserRef.current.id) {
-          await sendPushAndAppNotif({ 
-            senderId: currentUserRef.current.id, 
-            receiverId: postOwner, 
-            type: "tanggapan", 
-            postId: targetParentPost 
+          await sendPushAndAppNotif({
+            senderId: currentUserRef.current.id,
+            receiverId: postOwner,
+            type: "tanggapan",
+            postId: targetParentPost
           });
         }
 
         setTanggapanModal({ isOpen: false, postId: '' });
         setTanggapanInput('');
       } else {
-        // Jika data bernilai null (akibat RLS SELECT diblokir)
         console.warn("Data berhasil masuk namun gagal dimuat kembali instan. Memuat ulang data tanggapan.");
         setTanggapanModal({ isOpen: false, postId: '' });
         setTanggapanInput('');
@@ -430,7 +429,7 @@ function PostContent() {
 
     const isTanggapan = Number(postId) < 0;
     const numericPostId = Math.abs(parseInt(postId));
-    
+
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
 
@@ -520,12 +519,12 @@ function PostContent() {
       const shareId = isTanggapan ? postToShare.post_id : postToShare.id;
 
       window.openGlobalShare(
-        `${window.location.origin}/post?id=${shareId}`, 
-        "Postingan HypeTalk", 
-        "Lihat karya keren ini di HypeTalk!", 
-        postToShare.profiles?.username || "User", 
-        shareId, 
-        isOwner, 
+        `${window.location.origin}/post?id=${shareId}`,
+        "Postingan HypeTalk",
+        "Lihat karya keren ini di HypeTalk!",
+        postToShare.profiles?.username || "User",
+        shareId,
+        isOwner,
         postToShare.is_private || false
       );
     }
@@ -539,7 +538,7 @@ function PostContent() {
 
   return (
     <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh', position: 'relative' }}>
-      
+
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -603,104 +602,97 @@ function PostContent() {
                     <div style={{ position: 'absolute', left: '48px', top: '70px', bottom: '50px', width: '2px', backgroundColor: 'var(--border-card)', zIndex: 10, pointerEvents: 'none', opacity: 0.8 }} />
                   )}
 
-                  <PostCard
-                    post={p}
-                    currentUser={currentUser}
-                    counts={counts}
-                    myLikedPosts={myLikedPosts}
-                    myRepostedPosts={myRepostedPosts}
-                    mySavedPosts={mySavedPosts}
-                    followedUsers={followedUsers}
-                    mutualUsers={mutualUsers}
-                    animatingFollows={animatingFollows}
-                    animatingReposts={animatingReposts}
-                    isGloballyMuted={isGloballyMuted}
-                    poppingHeart={poppingHeart}
-                    activePreviewImage={activePreviewImage}
-                    likersMap={likersMap} 
-                    repostersMap={repostersMap}
-                    handleLike={handleLike}
-                    handleSave={handleSave}
-                    openRepostModal={(id, cid) => {
-                      if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                      if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                      else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
-                    }}
-                    handleMediaClick={handleMediaClick}
-                    toggleMute={toggleMute}
-                    openShareOptions={openShareOptions}
-                    handleFollowToggle={handleFollowToggle}
-                    setActivePreviewImage={setActivePreviewImage}
-                    router={router}
-                    t={t}
-                    isExpanded={isExpanded}
-                    onToggleExpand={handleToggleExpand}
-                    onTanggapanClick={(id) => {
-                      if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                      setTanggapanInput('');
-                      setTanggapanModal({ isOpen: true, postId: String(id) });
-                    }}
-                    showTopComment={false} 
-                    tanggapanLabel="Beri Tanggapan"
-                  />
-
-                  {isTextOrAudio && postTanggapan.length > 0 && (
-                    <div style={{ padding: '4px 16px', marginLeft: '38px', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                       {postTanggapan.length} Tanggapan
-                    </div>
+                  {isTextOrAudio ? (
+                    // Gunakan PostCardText untuk post teks/audio
+                    <PostCardText
+                      post={p}
+                      currentUser={currentUser}
+                      counts={counts}
+                      myLikedPosts={myLikedPosts}
+                      myRepostedPosts={myRepostedPosts}
+                      mySavedPosts={mySavedPosts}
+                      followedUsers={followedUsers}
+                      mutualUsers={mutualUsers}
+                      animatingFollows={animatingFollows}
+                      animatingReposts={animatingReposts}
+                      isGloballyMuted={isGloballyMuted}
+                      poppingHeart={poppingHeart}
+                      activePreviewImage={activePreviewImage}
+                      likersMap={likersMap}
+                      repostersMap={repostersMap}
+                      handleLike={handleLike}
+                      handleSave={handleSave}
+                      openRepostModal={(id, cid) => {
+                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                        if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                        else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                      }}
+                      handleMediaClick={handleMediaClick}
+                      toggleMute={toggleMute}
+                      openShareOptions={openShareOptions}
+                      handleFollowToggle={handleFollowToggle}
+                      setActivePreviewImage={setActivePreviewImage}
+                      router={router}
+                      t={t}
+                      showTopComment={false}
+                      tanggapanLabel="Beri Tanggapan"
+                      tanggapan={postTanggapan}
+                      onTanggapanClick={(initialText, parentId) => {
+                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                        setTanggapanInput(initialText);
+                        setTanggapanModal({ isOpen: true, postId: parentId });
+                      }}
+                    />
+                  ) : (
+                    // Untuk post dengan gambar/video, tetap gunakan PostCard biasa
+                    <PostCard
+                      post={p}
+                      currentUser={currentUser}
+                      counts={counts}
+                      myLikedPosts={myLikedPosts}
+                      myRepostedPosts={myRepostedPosts}
+                      mySavedPosts={mySavedPosts}
+                      followedUsers={followedUsers}
+                      mutualUsers={mutualUsers}
+                      animatingFollows={animatingFollows}
+                      animatingReposts={animatingReposts}
+                      isGloballyMuted={isGloballyMuted}
+                      poppingHeart={poppingHeart}
+                      activePreviewImage={activePreviewImage}
+                      likersMap={likersMap}
+                      repostersMap={repostersMap}
+                      handleLike={handleLike}
+                      handleSave={handleSave}
+                      openRepostModal={(id, cid) => {
+                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                        if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
+                        else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
+                      }}
+                      handleMediaClick={handleMediaClick}
+                      toggleMute={toggleMute}
+                      openShareOptions={openShareOptions}
+                      handleFollowToggle={handleFollowToggle}
+                      setActivePreviewImage={setActivePreviewImage}
+                      router={router}
+                      t={t}
+                      isExpanded={isExpanded}
+                      onToggleExpand={handleToggleExpand}
+                      onTanggapanClick={(id) => {
+                        if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
+                        setTanggapanInput('');
+                        setTanggapanModal({ isOpen: true, postId: String(id) });
+                      }}
+                      showTopComment={false}
+                      tanggapanLabel="Beri Tanggapan"
+                    />
                   )}
-
-                  {isTextOrAudio && postTanggapan.map((tanggapanItem) => (
-                    <div key={tanggapanItem.id} style={{ position: 'relative', width: '100%', marginTop: '-13px', padding: '0' }}>
-                      <PostCard
-                        post={tanggapanItem}
-                        currentUser={currentUser}
-                        counts={counts}
-                        myLikedPosts={myLikedPosts}
-                        myRepostedPosts={myRepostedPosts}
-                        mySavedPosts={mySavedPosts}
-                        followedUsers={followedUsers}
-                        mutualUsers={mutualUsers}
-                        animatingFollows={animatingFollows}
-                        animatingReposts={animatingReposts}
-                        isGloballyMuted={isGloballyMuted}
-                        poppingHeart={poppingHeart}
-                        activePreviewImage={activePreviewImage}
-                        likersMap={likersMap} 
-                        repostersMap={repostersMap}
-                        handleLike={handleLike}
-                        handleSave={handleSave}
-                        openRepostModal={(id, cid) => {
-                          if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
-                          if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
-                          else { setRepostNote(""); setRepostModal({ isOpen: true, postId: id, creatorId: cid }); }
-                        }}
-                        handleMediaClick={handleMediaClick}
-                        toggleMute={toggleMute}
-                        openShareOptions={openShareOptions}
-                        handleFollowToggle={handleFollowToggle}
-                        setActivePreviewImage={setActivePreviewImage}
-                        router={router}
-                        t={t}
-                        isExpanded={false}
-                        onToggleExpand={() => {}}
-                        onTanggapanClick={() => {
-                           if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-                           setTanggapanInput(`@${tanggapanItem.profiles?.username} `);
-                           setTanggapanModal({ isOpen: true, postId: String(p.id) });
-                        }}
-                        showTopComment={false} 
-                        tanggapanLabel="Beri Tanggapan"
-                      />
-                    </div>
-                  ))}
                 </div>
               );
             })}
           </div>
         )}
       </div>
-      
+
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         @keyframes popHeartAnim {
