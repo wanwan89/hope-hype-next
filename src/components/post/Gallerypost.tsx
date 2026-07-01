@@ -33,6 +33,11 @@ const getOptimizedImage = (url: string) => {
   return cleanUrl;
 };
 
+// ✅ Helper untuk mengecek apakah ID adalah UUID yang valid
+const isValidUUID = (id: string) => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+};
+
 // --- Sub Components ---
 const MemoizedSlider = React.memo(({ posts }: { posts: any[] }) => {
   const router = useRouter();
@@ -210,8 +215,14 @@ export default function Gallerypost() {
 
   useEffect(() => {
     if (!currentUser || allPosts.length === 0) return;
-    const newPostIdsToFetch = allPosts.map(p => p.id).filter(id => !fetchedPostsRef.current.has(id));
+    
+    // ✅ PERBAIKAN: Hanya loloskan ID yang merupakan UUID valid
+    const newPostIdsToFetch = allPosts
+      .map(p => String(p.id))
+      .filter(id => !fetchedPostsRef.current.has(id) && isValidUUID(id));
+      
     if (newPostIdsToFetch.length === 0) return;
+    
     newPostIdsToFetch.forEach(id => fetchedPostsRef.current.add(id));
 
     const fetchInteractions = async () => {
@@ -262,9 +273,11 @@ export default function Gallerypost() {
     fetchInteractions();
   }, [allPosts, currentUser]);
 
-  // ✅ Handler menggunakan UUID string langsung, tidak ada parseInt
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return router.push('/login');
+    // ✅ PERBAIKAN: Cegah request insert database jika postId bukan UUID valid
+    if (!isValidUUID(postId)) return;
+
     const isLiked = myLikedPostsRef.current.has(postId);
     setMyLikedPosts(prev => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
@@ -279,6 +292,8 @@ export default function Gallerypost() {
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return router.push('/login');
+    if (!isValidUUID(postId)) return;
+
     const isSaved = mySavedPostsRef.current.has(postId);
     setMySavedPosts(prev => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
@@ -290,6 +305,7 @@ export default function Gallerypost() {
 
   const openRepostModal = useCallback((postId: string, creatorId: string) => {
     if (!currentUserRef.current) return router.push('/login');
+    if (!isValidUUID(postId)) return;
     const alreadyReposted = myRepostedPostsRef.current.has(postId);
     setRepostNote("");
     setRepostModal({ isOpen: true, postId, creatorId, isUnrepost: alreadyReposted });

@@ -1,4 +1,3 @@
-
 // components/post/PostCardText.tsx
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import FollowButton from './FollowButton';
@@ -9,6 +8,11 @@ import PostTanggapanList from './PostTanggapanList';
 import { supabase } from '@/lib/supabase';
 import { formatRelativeTime } from '@/lib/helpers';
 import { getUserBadge } from '@/lib/ui-utils';
+
+// ✅ Helper untuk mengecek apakah ID adalah UUID yang valid
+const isValidUUID = (id: string) => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+};
 
 type Props = {
   post: any;
@@ -23,6 +27,9 @@ type Props = {
   animatingReposts: Set<string>;
   isGloballyMuted: boolean;
   poppingHeart: string | null;
+  // ✅ Menambahkan deklarasi prop yang terlewat untuk PostTanggapanList
+  likersMap?: Record<string, any[]>;
+  repostersMap?: Record<string, any[]>;
   handleLike: (postId: string, creatorId: string) => void;
   handleSave: (postId: string) => void;
   openRepostModal: (postId: string, creatorId: string) => void;
@@ -54,6 +61,8 @@ export default function PostCardText(props: Props) {
     animatingReposts,
     isGloballyMuted,
     poppingHeart,
+    likersMap = {},
+    repostersMap = {},
     handleLike,
     handleSave,
     openRepostModal,
@@ -118,7 +127,11 @@ export default function PostCardText(props: Props) {
             }
 
             const isRealPost = !postIdStr.startsWith('tanggapan_');
-            if (!hasViewedRef.current && isRealPost && postIdStr) {
+            // ✅ PERBAIKAN: Deteksi apakah postingan hanya berupa teks
+            const isTextOnly = !post.image_url && !post.video_url && !post.audio_src;
+            
+            // ✅ PERBAIKAN: Block view hitung jika ID tidak valid UUID ATAU postingan hanya berupa teks
+            if (!hasViewedRef.current && isRealPost && postIdStr && isValidUUID(postIdStr) && !isTextOnly) {
               hasViewedRef.current = true;
               supabase
                 .rpc('increment_post_view', { p_id: postIdStr })
@@ -140,14 +153,15 @@ export default function PostCardText(props: Props) {
     );
     observer.observe(card);
     return () => observer.disconnect();
-  }, [postIdStr]);
+  }, [postIdStr, post.image_url, post.video_url, post.audio_src]);
 
   // Fetch top comment
   useEffect(() => {
     let isMounted = true;
     const isRealPost = !postIdStr.startsWith('tanggapan_');
 
-    if (showTopComment && isRealPost && postIdStr) {
+    // ✅ Tambahkan filter validasi UUID agar komentar juga tidak error saat dipanggil
+    if (showTopComment && isRealPost && postIdStr && isValidUUID(postIdStr)) {
       const fetchTop = async () => {
         const { data, error } = await supabase
           .from('tanggapan')

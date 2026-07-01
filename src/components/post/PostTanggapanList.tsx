@@ -1,6 +1,6 @@
 // components/post/PostTanggapanList.tsx
 import React from 'react';
-import PostCardText from './PostCardText'; // sesuaikan path jika berbeda
+import PostCardText from './PostCardText';
 
 type Props = {
   tanggapan: any[];
@@ -15,17 +15,17 @@ type Props = {
   animatingReposts: Set<string>;
   isGloballyMuted: boolean;
   poppingHeart: string | null;
-  activePreviewImage: string | null;
-  likersMap: Record<string, any[]>;
-  repostersMap: Record<string, any[]>;
+  activePreviewImage?: string | null;
+  likersMap?: Record<string, any[]>;
+  repostersMap?: Record<string, any[]>;
   handleLike: (postId: string, creatorId: string) => void;
   handleSave: (postId: string) => void;
   openRepostModal: (postId: string, creatorId: string) => void;
-  handleMediaClick: (e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => void;
-  toggleMute: (e: React.MouseEvent) => void;
+  handleMediaClick?: (e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => void;
+  toggleMute: (e: React.MouseEvent, currentMedia?: any) => void;
   openShareOptions: (post: any, isOwner: boolean) => void;
   handleFollowToggle: (e: any, creatorId: string) => void;
-  setActivePreviewImage: (url: string | null) => void;
+  setActivePreviewImage?: (url: string | null) => void;
   router: any;
   t: any;
   parentPostId: string; // UUID post induk
@@ -59,7 +59,7 @@ export default function PostTanggapanList({
       
       {tanggapan.map((item) => (
         <div
-          key={item.id}
+          key={item.id || Math.random().toString()}
           style={{
             position: 'relative',
             width: '100%',
@@ -93,9 +93,9 @@ export default function PostTanggapanList({
             setActivePreviewImage={rest.setActivePreviewImage}
             router={rest.router}
             t={rest.t}
-            showTopComment={false}
+            showTopComment={false} // Disable top comment di dalam comment (mencegah nested loop/UI berantakan)
             tanggapanLabel="Balas"
-            tanggapan={[]}
+            tanggapan={[]} // Kosongkan agar tidak render List di dalam List secara infinite
             onTanggapanClick={(initialText: string, postId: string) => {
               // LOG 2: Mengecek apakah tombol balas ditekan
               console.log(`[PostTanggapanList] Tombol 'Balas' ditekan pada ID:`, item.id);
@@ -103,11 +103,11 @@ export default function PostTanggapanList({
               const mention = item.profiles?.username ? `@${item.profiles.username} ` : '';
               
               if (rest.onTanggapanClick) {
-                // LOG 3: Memastikan fungsi diteruskan kembali ke PostPage
-                console.log(`[PostTanggapanList] Meneruskan tanggapan ke PostPage. Parent: ${parentPostId}, Mention: ${mention}`);
+                // LOG 3: Memastikan fungsi diteruskan kembali ke PostPage / Parent
+                console.log(`[PostTanggapanList] Meneruskan tanggapan. Parent: ${parentPostId}, Mention: ${mention}`);
                 rest.onTanggapanClick(mention, parentPostId);
               } else {
-                // LOG 4: Muncul jika Props dari PostPage gagal diteruskan
+                // LOG 4: Muncul jika Props dari komponen atasnya gagal diteruskan
                 console.warn(`[PostTanggapanList] ERROR: Fungsi onTanggapanClick tidak ditemukan (undefined)`);
               }
             }}
