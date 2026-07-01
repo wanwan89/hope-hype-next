@@ -270,78 +270,46 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-// Fetching 1 tanggapan teratas (Most Recent/Latest)
-useEffect(() => {
-  let isMounted = true;
-  if (!isVideoPost && photoList.length === 0) {
-    const fetchTopTanggapan = async () => {
-      try {
-        // Ganti 'comments' menjadi 'tanggapan'
-        let query = supabase
-          .from('tanggapan')
-          .select(`
-            id,
-            content,
-            created_at,
-            profiles:user_id (
-              username,
-              full_name,
-              avatar_url,
-              role
-            )
-          `)
-          .eq('post_id', postIdStr)
-          .order('created_at', { ascending: false }); // Mengurutkan berdasarkan yang terbaru
-
-        if (currentUser?.id) {
-          query = query.neq('user_id', currentUser.id);
-        }
-
-        const { data, error } = await query.limit(1);
-
-        if (error) {
-          console.error("Gagal memuat tanggapan teratas:", error);
-          return;
-        }
-
-        if (isMounted && data && data.length > 0) {
-          setTopComment(data[0]);
-        }
-      } catch (err) {
-        console.error("Error fetching tanggapan:", err);
-      }
-    };
-
-    fetchTopTanggapan();
-  }
-  return () => { isMounted = false; };
-}, [postIdStr, isVideoPost, photoList.length, currentUser?.id]);
-
-          }
-
-          const { data, error } = await query.limit(1);
+  // Fetching 1 tanggapan teratas (hanya untuk postingan teks/audio)
+  useEffect(() => {
+    let isMounted = true;
+    if (!isVideoPost && photoList.length === 0) {
+      const fetchTopTanggapan = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('tanggapan')
+            .select(`
+              id,
+              content,
+              created_at,
+              profiles:user_id (
+                username,
+                full_name,
+                avatar_url,
+                role
+              )
+            `)
+            .eq('post_id', postIdStr)
+            .order('created_at', { ascending: false }) // terbaru
+            .limit(1);
 
           if (error) {
-            console.error("Gagal memuat tanggapan teratas:", error);
+            console.error("Gagal memuat tanggapan:", error);
             return;
           }
 
           if (isMounted && data && data.length > 0) {
             setTopComment(data[0]);
-          } else if (isMounted) {
-            setTopComment(null);
           }
         } catch (err) {
-          console.error("Error fetching comment:", err);
+          console.error("Error fetching tanggapan:", err);
         }
       };
 
-      fetchTopComment();
+      fetchTopTanggapan();
     }
-    return () => {
-      isMounted = false;
-    };
-  }, [postIdStr, isVideoPost, photoList.length, currentUser?.id]);
+    return () => { isMounted = false; };
+  }, [postIdStr, isVideoPost, photoList.length]);
 
   // Deteksi bio
   useEffect(() => {
@@ -535,7 +503,6 @@ useEffect(() => {
     [actuallyExpanded]
   );
 
-  // Ambil jumlah komentar untuk dipasang di button
   const commentCount = counts[postIdStr]?.comments || 0;
 
   // Optimasi Avatar untuk komentar teratas
@@ -1360,30 +1327,29 @@ useEffect(() => {
             />
           </div>
 
-          {/* Menampilkan 1 Tanggapan Teratas (Most Liked Comment) */}
+          {/* Menampilkan 1 Tanggapan Teratas (Tanpa likes) */}
           {topComment && (
             <div
               style={{
                 marginTop: '14px',
                 paddingTop: '14px',
                 borderTop: '1px dashed var(--border-card)',
-                position: 'relative',
-                zIndex: 2,
                 textAlign: 'left',
                 display: 'flex',
-                gap: '10px'
+                gap: '10px',
+                position: 'relative',
+                zIndex: 2
               }}
             >
               <img
                 src={optimizedCommentAvatar}
-                alt="Avatar Penanggap"
+                alt="Avatar"
                 style={{
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
                   objectFit: 'cover',
-                  background: 'var(--bg-main)',
-                  zIndex: 3
+                  background: 'var(--bg-main)'
                 }}
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
@@ -1395,24 +1361,17 @@ useEffect(() => {
                     • {formatRelativeTime(topComment.created_at)}
                   </span>
                 </div>
-                <p
-                  style={{
-                    margin: '2px 0 4px 0',
-                    fontSize: '13.5px',
-                    color: 'var(--text-main)',
-                    lineHeight: 1.4,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word'
-                  }}
-                >
+                <p style={{
+                  margin: '2px 0 4px 0',
+                  fontSize: '13.5px',
+                  color: 'var(--text-main)',
+                  lineHeight: 1.4,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }}>
                   {topComment.content}
                 </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '11px' }}>
-                  <span className="material-icons" style={{ fontSize: '14px', color: '#ff2e63' }}>
-                    favorite_border
-                  </span>
-                  <span>{topComment.likes || 0} suka</span>
-                </div>
+                {/* Bagian likes sengaja dihapus karena kolom tidak ada */}
               </div>
             </div>
           )}
