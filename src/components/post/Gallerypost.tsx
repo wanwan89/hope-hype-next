@@ -272,8 +272,7 @@ export default function Gallerypost() {
       if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
       else {
         const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id)
-          await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
       }
     } catch (err) { console.error(err); }
   }, [router]);
@@ -330,10 +329,7 @@ export default function Gallerypost() {
     setFollowedUsers(prev => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
     try {
       if (isFollowing) await supabase.from("followers").delete().match({ follower_id: currentUserRef.current.id, following_id: creatorId });
-      else {
-        await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId });
-        await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" });
-      }
+      else { await supabase.from("followers").insert({ follower_id: currentUserRef.current.id, following_id: creatorId }); await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "follow" }); }
     } catch (err) { console.error(err); }
   }, [router]);
 
@@ -349,12 +345,7 @@ export default function Gallerypost() {
     } else {
       lastTapRef.current[postId] = now;
       if (imageUrl) {
-        setTimeout(() => {
-          if (lastTapRef.current[postId] === now) {
-            setActivePreviewImage(imageUrl);
-            lastTapRef.current[postId] = 0;
-          }
-        }, 360);
+        setTimeout(() => { if (lastTapRef.current[postId] === now) { setActivePreviewImage(imageUrl); lastTapRef.current[postId] = 0; } }, 360);
       }
     }
   }, [handleLike, router]);
@@ -431,6 +422,7 @@ export default function Gallerypost() {
             onTanggapanClick={(postId) => {
               router.push(`/post?id=${postId}`);
             }}
+            // tidak set showTopComment dan tanggapanLabel -> default (rekomendasi + "X Tanggapan" / "Tanggapi")
           />
         </div>
       </div>

@@ -30,7 +30,6 @@ function PostContent() {
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
   
   const [counts, setCounts] = useState<Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>>({});
-  
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
@@ -73,11 +72,8 @@ function PostContent() {
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
   useEffect(() => {
-    if (postIdFromUrl) {
-      initializePage();
-    } else {
-      setIsLoading(false);
-    }
+    if (postIdFromUrl) initializePage();
+    else setIsLoading(false);
   }, [postIdFromUrl, source]);
 
   const initializePage = async () => {
@@ -99,11 +95,8 @@ function PostContent() {
       }
     }
 
-    if (source === 'profile') {
-      await loadProfileMode(user);
-    } else {
-      await loadSinglePost(postIdFromUrl!, user);
-    }
+    if (source === 'profile') await loadProfileMode(user);
+    else await loadSinglePost(postIdFromUrl!, user);
   };
 
   const loadProfileMode = async (user: any) => {
@@ -316,11 +309,8 @@ function PostContent() {
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(postId)) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
-      }
+      if (newSet.has(postId)) newSet.delete(postId);
+      else newSet.add(postId);
       return newSet;
     });
   }, []);
@@ -331,10 +321,8 @@ function PostContent() {
     if (currentUserRef.current.id === creatorId) return;
 
     const isFollowing = followedUsersRef.current.has(creatorId);
-    
     setAnimatingFollows((prev) => new Set(prev).add(creatorId));
     setTimeout(() => setAnimatingFollows((prev) => { const n = new Set(prev); n.delete(creatorId); return n; }), 200);
-
     setFollowedUsers((prev) => { const n = new Set(prev); isFollowing ? n.delete(creatorId) : n.add(creatorId); return n; });
 
     try {
@@ -461,11 +449,8 @@ function PostContent() {
 
   let headerTitle = "Detail Postingan";
   if (source === 'profile' && userPosts.length > 0) {
-    if (isMyOwnProfile) {
-       headerTitle = "Postingan Anda";
-    } else {
-       headerTitle = `Postingan ${profileUsername || userPosts[0].profiles?.username || 'User'}`;
-    }
+    if (isMyOwnProfile) headerTitle = "Postingan Anda";
+    else headerTitle = `Postingan ${profileUsername || userPosts[0].profiles?.username || 'User'}`;
   }
 
   return (
@@ -547,7 +532,6 @@ function PostContent() {
             {userPosts.map((p) => {
               const isTextOrAudio = !p.image_url && !p.video_url;
               const isExpanded = expandedPosts.has(p.id);
-              
               const postTanggapan = tanggapanMap[String(p.id)] || [];
 
               return (
@@ -603,6 +587,8 @@ function PostContent() {
                       setTanggapanInput('');
                       setTanggapanModal({ isOpen: true, postId: String(id) });
                     }}
+                    showTopComment={false}
+                    tanggapanLabel="Beri Tanggapan"
                   />
 
                   {isTextOrAudio && postTanggapan.length > 0 && (
@@ -649,6 +635,8 @@ function PostContent() {
                            setTanggapanInput('');
                            setTanggapanModal({ isOpen: true, postId: String(p.id) });
                         }}
+                        showTopComment={false}
+                        tanggapanLabel="Beri Tanggapan"
                       />
                     </div>
                   ))}

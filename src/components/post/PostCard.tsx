@@ -99,6 +99,8 @@ type PostCardProps = {
   isExpanded?: boolean;
   onToggleExpand?: (postId: string) => void;
   onTanggapanClick?: (postId: string) => void;
+  showTopComment?: boolean;
+  tanggapanLabel?: string;
 };
 
 const PostCard: React.FC<PostCardProps> = ({
@@ -111,62 +113,37 @@ const PostCard: React.FC<PostCardProps> = ({
   isExpanded = false,
   onToggleExpand = () => {},
   onTanggapanClick,
+  showTopComment = true,
+  tanggapanLabel,
 }) => {
   const postIdStr = String(post.id);
   const creatorIdStr = String(post.creator_id);
   const isOwner = currentUser && currentUser.id === post.creator_id;
 
   // --- Nilai turunan ---
-  const photoList = useMemo(
-    () => (post.image_url ? post.image_url.split(',') : []),
-    [post.image_url]
-  );
+  const photoList = useMemo(() => (post.image_url ? post.image_url.split(',') : []), [post.image_url]);
   const isVideoPost = !!post.video_url;
+  const badge = useMemo(() => getUserBadge(post.profiles?.role), [post.profiles?.role]);
 
-  const badge = useMemo(
-    () => getUserBadge(post.profiles?.role),
-    [post.profiles?.role]
-  );
-
-  const rawAvatarUrl =
-    post.profiles?.avatar_url ||
-    `https://ui-avatars.com/api/?name=${post.profiles?.username}`;
+  const rawAvatarUrl = post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.username}`;
   const optimizedAvatar = useMemo(() => {
-    if (rawAvatarUrl.includes('res.cloudinary.com') && !rawAvatarUrl.includes('f_auto')) {
-      return rawAvatarUrl.replace(
-        '/image/upload/',
-        '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/'
-      );
-    }
+    if (rawAvatarUrl.includes('res.cloudinary.com') && !rawAvatarUrl.includes('f_auto'))
+      return rawAvatarUrl.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
     return rawAvatarUrl;
   }, [rawAvatarUrl]);
 
-  const formattedDate = useMemo(
-    () => formatRelativeTime(post.created_at),
-    [post.created_at]
-  );
-
-  const optimizedPhotoUrls = useMemo(
-    () => photoList.map((url: string) => getOptimizedImage(url)),
-    [photoList]
-  );
+  const formattedDate = useMemo(() => formatRelativeTime(post.created_at), [post.created_at]);
+  const optimizedPhotoUrls = useMemo(() => photoList.map((url: string) => getOptimizedImage(url)), [photoList]);
 
   const likers = likersMap[postIdStr] || [];
   const reposters = repostersMap[postIdStr] || [];
-  const mutualLikers = useMemo(
-    () => likers.filter((l: any) => mutualUsers.has(String(l.id))),
-    [likers, mutualUsers]
-  );
-  const mutualReposters = useMemo(
-    () => reposters.filter((r: any) => mutualUsers.has(String(r.id))),
-    [reposters, mutualUsers]
-  );
+  const mutualLikers = useMemo(() => likers.filter((l: any) => mutualUsers.has(String(l.id))), [likers, mutualUsers]);
+  const mutualReposters = useMemo(() => reposters.filter((r: any) => mutualUsers.has(String(r.id))), [reposters, mutualUsers]);
 
   // --- Refs & state lokal ---
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-
   const hasViewedRef = useRef(false);
 
   const [showMoreButton, setShowMoreButton] = useState(false);
@@ -188,15 +165,14 @@ const PostCard: React.FC<PostCardProps> = ({
   const lastTapVideoRef = useRef<number>(0);
   const wasPlayingRef = useRef(false);
 
-  // State untuk menyimpan 1 tanggapan teratas
+  // Tanggapan teratas
   const [topComment, setTopComment] = useState<any>(null);
 
-  // --- 3. Observer video/audio ---
+  // --- Observer video/audio ---
   useEffect(() => {
     const media = mediaRef.current;
     const card = cardRef.current;
     if (!card) return;
-
     if (media) media.muted = isGloballyMuted;
 
     const observer = new IntersectionObserver(
@@ -210,14 +186,10 @@ const PostCard: React.FC<PostCardProps> = ({
                 media.play().catch(() => {});
               });
             }
-
-            document
-              .querySelectorAll('.post-video-element, .post-audio-element')
-              .forEach((el) => {
-                const mediaEl = el as HTMLMediaElement;
-                if (mediaEl !== media && !mediaEl.paused) mediaEl.pause();
-              });
-
+            document.querySelectorAll('.post-video-element, .post-audio-element').forEach((el) => {
+              const mediaEl = el as HTMLMediaElement;
+              if (mediaEl !== media && !mediaEl.paused) mediaEl.pause();
+            });
             if (!hasViewedRef.current && postIdStr) {
               hasViewedRef.current = true;
               const recordView = async () => {
@@ -225,13 +197,9 @@ const PostCard: React.FC<PostCardProps> = ({
                   const { error } = await supabase.rpc('increment_post_view', { p_id: postIdStr });
                   if (error) {
                     const { data } = await supabase.from('posts').select('views').eq('id', postIdStr).single();
-                    if (data) {
-                      await supabase.from('posts').update({ views: (data.views || 0) + 1 }).eq('id', postIdStr);
-                    }
+                    if (data) await supabase.from('posts').update({ views: (data.views || 0) + 1 }).eq('id', postIdStr);
                   }
-                } catch (err) {
-                  console.error("Gagal update view:", err);
-                }
+                } catch (err) { console.error("Gagal update view:", err); }
               };
               recordView();
             }
@@ -242,28 +210,22 @@ const PostCard: React.FC<PostCardProps> = ({
       },
       { threshold: 0.5 }
     );
-
     observer.observe(card);
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // --- Sinkronisasi status video ---
+  // Sinkronisasi video
   useEffect(() => {
     const video = mediaRef.current as HTMLVideoElement | null;
     if (!video || !isVideoPost) return;
-
-    const onTimeUpdate = () => {
-      if (!isSeeking) setVideoCurrentTime(video.currentTime);
-    };
+    const onTimeUpdate = () => { if (!isSeeking) setVideoCurrentTime(video.currentTime); };
     const onLoadedMetadata = () => setVideoDuration(video.duration);
     const onPlay = () => setIsVideoPlaying(true);
     const onPause = () => setIsVideoPlaying(false);
-
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
-
     return () => {
       video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
@@ -272,48 +234,28 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isVideoPost, isSeeking]);
 
-  // Fetching 1 tanggapan teratas (hanya untuk postingan teks/audio)
+  // Fetch 1 tanggapan teratas (jika diizinkan)
   useEffect(() => {
     let isMounted = true;
-    if (!isVideoPost && photoList.length === 0) {
+    if (showTopComment && !isVideoPost && photoList.length === 0) {
       const fetchTopTanggapan = async () => {
         try {
           const { data, error } = await supabase
             .from('tanggapan')
-            .select(`
-              id,
-              content,
-              created_at,
-              profiles:user_id (
-                username,
-                full_name,
-                avatar_url,
-                role
-              )
-            `)
+            .select(`id, content, created_at, profiles:user_id (username, full_name, avatar_url, role)`)
             .eq('post_id', postIdStr)
-            .order('created_at', { ascending: false }) // terbaru
+            .order('created_at', { ascending: false })
             .limit(1);
-
-          if (error) {
-            console.error("Gagal memuat tanggapan:", error);
-            return;
-          }
-
-          if (isMounted && data && data.length > 0) {
-            setTopComment(data[0]);
-          }
-        } catch (err) {
-          console.error("Error fetching tanggapan:", err);
-        }
+          if (error) { console.error("Gagal memuat tanggapan:", error); return; }
+          if (isMounted && data && data.length > 0) setTopComment(data[0]);
+        } catch (err) { console.error("Error fetching tanggapan:", err); }
       };
-
       fetchTopTanggapan();
     }
     return () => { isMounted = false; };
-  }, [postIdStr, isVideoPost, photoList.length]);
+  }, [postIdStr, isVideoPost, photoList.length, showTopComment]);
 
-  // Deteksi bio
+  // Deteksi overflow bio
   useEffect(() => {
     if (photoList.length > 0 || isVideoPost) {
       const raf = requestAnimationFrame(() => {
@@ -332,7 +274,6 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   }, [post.bio, actuallyExpanded, photoList.length, isVideoPost]);
 
-  // Cleanup timer
   useEffect(() => {
     return () => {
       if (playPauseTimerRef.current) clearTimeout(playPauseTimerRef.current);
@@ -340,36 +281,20 @@ const PostCard: React.FC<PostCardProps> = ({
     };
   }, []);
 
-  // Render bio
+  // Render bio dengan mention
   const renderBioWithMentions = useCallback(
     (text: string) => {
       if (!text) return null;
       return text.split(/(@\w+|#\w+)/g).map((part, i) => {
         if (part.startsWith('@')) {
           return (
-            <span
-              key={i}
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/data?id=${part.substring(1)}`);
-              }}
-              style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}
-            >
-              {part}
-            </span>
+            <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/data?id=${part.substring(1)}`); }}
+              style={{ color: '#1f3cff', fontWeight: 700, cursor: 'pointer' }}>{part}</span>
           );
         } else if (part.startsWith('#')) {
           return (
-            <span
-              key={i}
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/search?q=${encodeURIComponent(part)}`);
-              }}
-              style={{ color: 'var(--text-muted)', fontWeight: 400, cursor: 'pointer' }}
-            >
-              {part}
-            </span>
+            <span key={i} onClick={(e) => { e.stopPropagation(); router.push(`/search?q=${encodeURIComponent(part)}`); }}
+              style={{ color: 'var(--text-muted)', fontWeight: 400, cursor: 'pointer' }}>{part}</span>
           );
         }
         return <span key={i}>{part}</span>;
@@ -377,32 +302,21 @@ const PostCard: React.FC<PostCardProps> = ({
     },
     [router]
   );
+  const bioContent = useMemo(() => renderBioWithMentions(post.bio?.trim()), [post.bio, renderBioWithMentions]);
 
-  const bioContent = useMemo(
-    () => renderBioWithMentions(post.bio?.trim()),
-    [post.bio, renderBioWithMentions]
-  );
+  const handleToggleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); e.preventDefault();
+    setLocalExpanded((prev) => !prev);
+    onToggleExpand(postIdStr);
+  }, [onToggleExpand, postIdStr]);
 
-  const handleToggleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
-      setLocalExpanded((prev) => !prev);
-      onToggleExpand(postIdStr);
-    },
-    [onToggleExpand, postIdStr]
-  );
-
-  // Handler video seek
+  // Video controls
   const handleVideoSeekStart = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
     setIsSeeking(true);
     setIsBarVisible(true);
     const video = mediaRef.current as HTMLVideoElement | null;
-    if (video) {
-      wasPlayingRef.current = !video.paused;
-      video.pause();
-    }
+    if (video) { wasPlayingRef.current = !video.paused; video.pause(); }
   }, []);
 
   const handleVideoSeekChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -410,59 +324,36 @@ const PostCard: React.FC<PostCardProps> = ({
     const time = Number(e.target.value);
     setVideoCurrentTime(time);
     const video = mediaRef.current as HTMLVideoElement | null;
-    if (video) {
-      video.currentTime = time;
-    }
+    if (video) video.currentTime = time;
   }, []);
 
   const handleVideoSeekCommit = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
     setIsSeeking(false);
-    setTimeout(() => {
-      if (!isSeeking) setIsBarVisible(false);
-    }, 1500);
-
+    setTimeout(() => { if (!isSeeking) setIsBarVisible(false); }, 1500);
     const video = mediaRef.current as HTMLVideoElement | null;
-    if (video) {
-      video.currentTime = videoCurrentTime;
-      if (wasPlayingRef.current) {
-        video.play().catch(() => {});
-      }
-    }
+    if (video) { video.currentTime = videoCurrentTime; if (wasPlayingRef.current) video.play().catch(() => {}); }
   }, [videoCurrentTime, isSeeking]);
 
   const handleVideoClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const now = Date.now();
     const lastTap = lastTapVideoRef.current;
-
     if (now - lastTap < 500) {
       lastTapVideoRef.current = 0;
-      if (tapTimerRef.current) {
-        clearTimeout(tapTimerRef.current);
-        tapTimerRef.current = null;
-      }
+      if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
       setShowPlayPause(false);
-      if (playPauseTimerRef.current) {
-        clearTimeout(playPauseTimerRef.current);
-        playPauseTimerRef.current = null;
-      }
+      if (playPauseTimerRef.current) { clearTimeout(playPauseTimerRef.current); playPauseTimerRef.current = null; }
       handleMediaClick(e, postIdStr, creatorIdStr);
     } else {
       lastTapVideoRef.current = now;
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       tapTimerRef.current = setTimeout(() => {
         const video = mediaRef.current as HTMLVideoElement | null;
-        if (video) {
-          if (video.paused) video.play();
-          else video.pause();
-        }
+        if (video) { video.paused ? video.play() : video.pause(); }
         setShowPlayPause(true);
         if (playPauseTimerRef.current) clearTimeout(playPauseTimerRef.current);
-        playPauseTimerRef.current = setTimeout(() => {
-          setShowPlayPause(false);
-          playPauseTimerRef.current = null;
-        }, 1500);
+        playPauseTimerRef.current = setTimeout(() => { setShowPlayPause(false); playPauseTimerRef.current = null; }, 1500);
         tapTimerRef.current = null;
       }, 500);
     }
@@ -474,56 +365,50 @@ const PostCard: React.FC<PostCardProps> = ({
       window.requestAnimationFrame(() => {
         const target = e.target as HTMLDivElement;
         const index = Math.round(target.scrollLeft / target.offsetWidth);
-        if (index !== currentSlideRef.current) {
-          setCurrentSlide(index);
-          currentSlideRef.current = index;
-        }
+        if (index !== currentSlideRef.current) { setCurrentSlide(index); currentSlideRef.current = index; }
         ticking.current = false;
       });
       ticking.current = true;
     }
   }, []);
 
-  const cardStyle: React.CSSProperties = useMemo(
-    () => ({
-      overflow: actuallyExpanded ? 'visible' : 'hidden',
-      background: 'var(--bg-main)',
-      borderRadius: '0px',
-      padding: '0',
-      borderLeft: 'none',
-      borderRight: 'none',
-      borderTop: '1px solid var(--border-card)',
-      borderBottom: '1px solid var(--border-card)',
-      position: 'relative' as const,
-      width: '100%',
-      marginBottom: '12px',
-      boxSizing: 'border-box' as const,
-      boxShadow: 'none',
-      textAlign: 'left' as const,
-      zIndex: actuallyExpanded ? 50 : 1,
-    }),
-    [actuallyExpanded]
-  );
+  const cardStyle: React.CSSProperties = useMemo(() => ({
+    overflow: actuallyExpanded ? 'visible' : 'hidden',
+    background: 'var(--bg-main)',
+    borderRadius: '0px',
+    padding: '0',
+    borderLeft: 'none',
+    borderRight: 'none',
+    borderTop: '1px solid var(--border-card)',
+    borderBottom: '1px solid var(--border-card)',
+    position: 'relative' as const,
+    width: '100%',
+    marginBottom: '12px',
+    boxSizing: 'border-box' as const,
+    boxShadow: 'none',
+    textAlign: 'left' as const,
+    zIndex: actuallyExpanded ? 50 : 1,
+  }), [actuallyExpanded]);
 
   const commentCount = counts[postIdStr]?.tanggapan || 0;
 
-  // Optimasi Avatar untuk komentar teratas
+  // Avatar komentar teratas
   const rawCommentAvatar = topComment?.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${topComment?.profiles?.username || 'User'}`;
   const optimizedCommentAvatar = useMemo(() => {
-    if (rawCommentAvatar.includes('res.cloudinary.com') && !rawCommentAvatar.includes('f_auto')) {
+    if (rawCommentAvatar.includes('res.cloudinary.com') && !rawCommentAvatar.includes('f_auto'))
       return rawCommentAvatar.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
-    }
     return rawCommentAvatar;
   }, [rawCommentAvatar]);
+
+  const tanggapanButtonLabel = tanggapanLabel
+    ? tanggapanLabel
+    : (commentCount > 0 ? `${commentCount} Tanggapan` : 'Tanggapi');
 
   const handleTanggapanClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onTanggapanClick) {
-      onTanggapanClick(postIdStr);
-    } else {
-      router.push(`/post?id=${postIdStr}`);
-    }
+    if (onTanggapanClick) onTanggapanClick(postIdStr);
+    else router.push(`/post?id=${postIdStr}`);
   };
 
   // ====================== RENDER ======================
@@ -541,6 +426,7 @@ const PostCard: React.FC<PostCardProps> = ({
       }}
     >
       {(photoList.length > 0 || isVideoPost) ? (
+        // ====== BAGIAN MEDIA (FOTO/VIDEO) LENGKAP ======
         <>
           <div className="slider" style={{ position: 'relative' }}>
             <MusicMarquee post={post} isOverlay mediaRef={mediaRef} />
@@ -556,8 +442,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   transform: 'translate(-50%, -50%)',
                   color: '#ff2e63',
                   fontSize: '160px',
-                  animation:
-                    'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                  animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                   filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))',
                   zIndex: 9999,
                   pointerEvents: 'none',
@@ -593,10 +478,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     fontWeight: 'bold',
                   }}
                 >
-                  <span className="material-icons" style={{ fontSize: '12px' }}>
-                    videocam
-                  </span>{' '}
-                  Video
+                  <span className="material-icons" style={{ fontSize: '12px' }}>videocam</span> Video
                 </div>
               )}
               {photoList.length > 1 && !isVideoPost && (
@@ -614,12 +496,8 @@ const PostCard: React.FC<PostCardProps> = ({
                     fontWeight: 'bold',
                   }}
                 >
-                  <span className="material-icons" style={{ fontSize: '12px' }}>
-                    collections
-                  </span>
-                  <span>
-                    {currentSlide + 1}/{photoList.length}
-                  </span>
+                  <span className="material-icons" style={{ fontSize: '12px' }}>collections</span>
+                  <span>{currentSlide + 1}/{photoList.length}</span>
                 </div>
               )}
             </div>
@@ -910,9 +788,7 @@ const PostCard: React.FC<PostCardProps> = ({
               style={{
                 maxHeight: actuallyExpanded ? 'none' : 'auto',
                 overflowY: 'visible',
-                background: actuallyExpanded
-                  ? 'rgba(0,0,0,0.65)'
-                  : 'transparent',
+                background: actuallyExpanded ? 'rgba(0,0,0,0.65)' : 'transparent',
                 backdropFilter: actuallyExpanded ? 'blur(10px)' : 'none',
                 padding: actuallyExpanded ? '12px' : '0',
                 borderRadius: '12px',
@@ -1017,13 +893,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     border: '1px solid rgba(255,255,255,0.2)',
                   }}
                 >
-                  <span
-                    className="material-icons"
-                    style={{ fontSize: '12px', color: '#fff' }}
-                  >
-                    campaign
-                  </span>{' '}
-                  Iklan
+                  <span className="material-icons" style={{ fontSize: '12px', color: '#fff' }}>campaign</span> Iklan
                 </span>
               )}
             </div>
@@ -1149,13 +1019,7 @@ const PostCard: React.FC<PostCardProps> = ({
                           color: 'var(--text-main)',
                         }}
                       >
-                        <span
-                          className="material-icons"
-                          style={{ fontSize: '12px', color: '#1f3cff' }}
-                        >
-                          campaign
-                        </span>{' '}
-                        Iklan
+                        <span className="material-icons" style={{ fontSize: '12px', color: '#1f3cff' }}>campaign</span> Iklan
                       </span>
                     </>
                   )}
@@ -1195,8 +1059,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 transform: 'translate(-50%, -50%)',
                 color: '#ff2e63',
                 fontSize: '160px',
-                animation:
-                  'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                 filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))',
                 zIndex: 9999,
                 pointerEvents: 'none',
@@ -1323,7 +1186,7 @@ const PostCard: React.FC<PostCardProps> = ({
               <span className="material-icons" style={{ fontSize: '18px' }}>
                 chat_bubble_outline
               </span>
-              {commentCount > 0 ? commentCount : 'Tanggapi'}
+              {tanggapanButtonLabel}
             </button>
             <EngagementButtons
               postId={postIdStr}
@@ -1339,47 +1202,15 @@ const PostCard: React.FC<PostCardProps> = ({
             />
           </div>
 
-          {/* Menampilkan 1 Tanggapan Teratas dengan garis thread */}
-          {topComment && (
-            <div
-              style={{
-                position: 'relative',
-                marginTop: '14px',
-                paddingTop: '14px',
-              }}
-            >
-              {/* Garis vertikal thread */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '20px',
-                  top: '0',
-                  bottom: '0',
-                  width: '2px',
-                  backgroundColor: 'var(--border-card)',
-                  zIndex: 0,
-                }}
-              />
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '10px',
-                  position: 'relative',
-                  zIndex: 2,
-                  paddingLeft: '8px',
-                }}
-              >
+          {/* 1 Tanggapan teratas dengan garis thread (hanya jika showTopComment true) */}
+          {showTopComment && topComment && (
+            <div style={{ position: 'relative', marginTop: '14px', paddingTop: '14px' }}>
+              <div style={{ position: 'absolute', left: '20px', top: '0', bottom: '0', width: '2px', backgroundColor: 'var(--border-card)', zIndex: 0 }} />
+              <div style={{ display: 'flex', gap: '10px', position: 'relative', zIndex: 2, paddingLeft: '8px' }}>
                 <img
                   src={optimizedCommentAvatar}
                   alt="Avatar"
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    background: 'var(--bg-main)',
-                    flexShrink: 0,
-                  }}
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', background: 'var(--bg-main)', flexShrink: 0 }}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1390,16 +1221,7 @@ const PostCard: React.FC<PostCardProps> = ({
                       • {formatRelativeTime(topComment.created_at)}
                     </span>
                   </div>
-                  <p
-                    style={{
-                      margin: '2px 0 4px 0',
-                      fontSize: '13.5px',
-                      color: 'var(--text-main)',
-                      lineHeight: 1.4,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
-                  >
+                  <p style={{ margin: '2px 0 4px 0', fontSize: '13.5px', color: 'var(--text-main)', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {topComment.content}
                   </p>
                 </div>
