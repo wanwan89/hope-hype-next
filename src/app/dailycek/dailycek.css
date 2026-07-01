@@ -3,7 +3,7 @@
 .mission-wrapper { 
   background: var(--bg-main); 
   color: var(--text-main); 
-  font-family: 'Poppins', sans-serif; 
+  /* 🔥 HAPUS: font-family: 'Poppins', sans-serif; */
 
   position: fixed; 
   inset: 0;
@@ -38,14 +38,13 @@
 /* --- HEADER (GELAP DI DARK MODE) --- */
 .mission-header { 
   flex-shrink: 0;
-  background: var(--bg-main);   /* 🔥 ganti dari --bg-card agar di dark benar-benar gelap */
+  background: var(--bg-main);
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
   padding: 10px 16px; 
   padding-top: calc(10px + env(safe-area-inset-top));
   border-bottom: 1px solid var(--border-card);
-  /* TIDAK ADA BOX-SHADOW */
 }
 
 .back-btn {
@@ -106,7 +105,6 @@
   padding: 1.1rem; 
   border: none;
   color: white;
-  /* TIDAK ADA BOX-SHADOW */
 }
 
 /* 🔥 AREA SCROLL UTAMA */
@@ -134,7 +132,6 @@
   border-radius: 16px; 
   padding: 1.1rem; 
   border: 1px solid var(--border-card);
-  /* box-shadow dihapus */
 }
 
 /* --- STREAK DAYS --- */
@@ -160,12 +157,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Hari aktif – tanpa shadow */
 .day-card.active { 
   border-color: #f59e0b; 
   background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.02)); 
   transform: translateY(-2px); 
-  /* box-shadow dihapus */
 }
 
 .day-card.done { 
@@ -181,20 +176,17 @@
   border-radius: 50%; width: 18px; height: 18px; 
   font-size: 10px; font-weight: 800;
   display: flex; align-items: center; justify-content: center; 
-  /* box-shadow dihapus */
 }
 
 .day-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
 .day-reward { font-size: 0.85rem; font-weight: 800; color: var(--text-main); }
 
-/* Tombol klaim streak – tanpa shadow */
 .claim-main-btn { 
   width: 100%; margin-top: 0.5rem; 
   background: linear-gradient(135deg, #f59e0b, #d97706); 
   color: #fff; border: none; padding: 14px; 
   border-radius: 12px; font-size: 0.95rem; 
   font-weight: 800; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-  /* box-shadow dihapus */
   -webkit-tap-highlight-color: transparent;
 }
 .claim-main-btn:active { transform: scale(0.97); }
@@ -218,7 +210,6 @@
   margin: 0 0.8rem 1rem; 
   border-radius: 16px; 
   border: 1px solid var(--border-card);
-  /* box-shadow dihapus */
   overflow: hidden; 
 }
 
@@ -265,11 +256,9 @@
 }
 .m-btn:active { background: var(--bg-input); transform: scale(0.95); }
 
-/* Tombol klaim misi – tanpa shadow */
 .m-btn.btn-klaim { 
   background: #f59e0b; 
   color: white; border: none; 
-  /* box-shadow dihapus */
 }
 .m-btn.btn-klaim:active { transform: scale(0.92); }
 

@@ -6,7 +6,7 @@
    Semua warna diambil dari globals.css */
 
 .voice-lobby-container {
-  font-family: 'Poppins', sans-serif;
+  /* HAPUS: font-family: 'Poppins', sans-serif; */
   width: 100%;
   min-height: 100%;
   max-width: 480px;
@@ -68,7 +68,7 @@
 .voice-lobby-container .hero-banner {
   margin: 12px 16px;
   padding: 18px;
-  background: var(--primary-bg);        /* ✅ latar biru tetap */
+  background: var(--primary-bg);
   border-radius: 18px;
   color: white;
   box-shadow: none;
@@ -108,7 +108,7 @@
   transition: all 0.2s ease;
 }
 .voice-lobby-container .voice-tab-item.active {
-  background: var(--primary-bg);       /* ✅ latar biru */
+  background: var(--primary-bg);
   color: white;
   box-shadow: none;
 }
@@ -130,7 +130,7 @@
 .voice-lobby-container .room-card:active { transform: scale(0.98); }
 .voice-lobby-container .room-thumb {
   width: 42px; height: 42px; border-radius: 12px;
-  background: var(--primary-bg);        /* ✅ biru */
+  background: var(--primary-bg);
   color: white; display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; font-size: 18px;
 }
@@ -162,7 +162,7 @@
   border-radius: 24px; padding: 24px; width: 85%; max-width: 320px;
   box-shadow: none;
   animation: vlModalPopUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  font-family: 'Poppins', sans-serif;
+  /* HAPUS: font-family: 'Poppins', sans-serif; */
   border: 1px solid var(--border-card);
 }
 
@@ -209,7 +209,7 @@
   background: var(--bg-secondary); color: var(--text-muted);
 }
 .voice-lobby-container .voice-btn-confirm {
-  background: var(--primary-bg);       /* ✅ biru */
+  background: var(--primary-bg);
   color: white;
   box-shadow: none;
 }
@@ -221,7 +221,7 @@
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction: column; justify-content: flex-end;
   z-index: 10003; opacity: 0; pointer-events: none; transition: opacity 0.3s;
-  font-family: 'Poppins', sans-serif;
+  /* HAPUS: font-family: 'Poppins', sans-serif; */
 }
 .voice-lobby-container .voice-bottom-sheet.active { opacity: 1; pointer-events: auto; }
 
@@ -292,7 +292,7 @@
 
 .voice-lobby-container #buy-custom-coin-btn {
   height: 38px; padding: 0 20px; border: none; border-radius: 12px;
-  background: var(--primary-bg);      /* ✅ biru */
+  background: var(--primary-bg);
   color: white; font-size: 13px; font-weight: 800; cursor: pointer; align-self: flex-start;
   transition: opacity 0.2s;
 }

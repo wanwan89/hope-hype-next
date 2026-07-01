@@ -12,7 +12,7 @@
   padding: 16px;
   padding-top: calc(16px + env(safe-area-inset-top));
   box-sizing: border-box;
-  font-family: 'Poppins', sans-serif;
+  /* 🔥 HAPUS: font-family: 'Poppins', sans-serif; */
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 

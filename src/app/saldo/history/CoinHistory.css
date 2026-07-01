@@ -11,7 +11,7 @@
   min-height: 100%;               /* ikuti tinggi konten */
   background: var(--bg-main);     /* dari global */
   color: var(--text-main);
-  font-family: 'Poppins', sans-serif;
+  /* 🔥 HAPUS: font-family: 'Poppins', sans-serif; */
   display: flex;
   flex-direction: column;
   transition: background-color 0.3s ease, color 0.3s ease;

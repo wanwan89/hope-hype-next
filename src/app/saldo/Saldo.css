@@ -11,7 +11,7 @@
   flex-direction: column;
   background: var(--bg-main);     /* dari global */
   /* Tidak perlu padding-bottom karena sudah ditangani .main-content */
-  font-family: 'Poppins', sans-serif;
+  /* 🔥 HAPUS: font-family: 'Poppins', sans-serif; */
   transition: background-color 0.3s ease, color 0.3s ease;
   overscroll-behavior: none;
 }
@@ -195,7 +195,6 @@
   justify-content: center;
   background: var(--bg-secondary); /* dari global */
 }
-/* Warna ikon koin diatur langsung oleh SVG, jadi tidak perlu CSS terpisah */
 
 .saldo-asset-text h4 {
   margin: 0;
