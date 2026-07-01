@@ -8,7 +8,6 @@ import { sendPushAndAppNotif } from '@/lib/notif';
 import PostCard from '@/components/post/PostCard';
 import RepostModal from '@/components/post/RepostModal';
 import ImagePreview from '@/components/post/ImagePreview';
-// [IMPORT DITAMBAHKAN]: Pastikan file EngagementButton.tsx ada di folder components/post
 import EngagementButton from '@/components/post/EngagementButton';
 
 function PostContent() {
@@ -35,6 +34,9 @@ function PostContent() {
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
+  
+  // State Baru untuk Menyimpan Tanggapan/Komentar
+  const [commentsMap, setCommentsMap] = useState<Record<string, any[]>>({});
 
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
@@ -174,20 +176,50 @@ function PostContent() {
     const pid = String(postId);
     const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
-      supabase.from('comments').select('id', { count: 'exact' }).eq('post_id', postId),
+      // Mengambil data tanggapan asli beserta profil pengirim tanggapan (diurutkan dari yang terlama)
+      supabase.from('comments')
+        .select('id, post_id, user_id, content, comment_text, text, created_at, profiles:user_id(full_name, username, role, avatar_url)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true }),
       supabase.from('reposts').select('user_id, note, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
       supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
     ]);
 
-    setCounts(prev => ({
-      ...prev,
-      [pid]: {
-        likes: likesRes.data?.length || 0,
-        comments: commentsRes.count || 0,
-        reposts: repostsRes.data?.length || 0,
-        saves: (savesRes.data && savesRes.data[0]?.count) || 0,
-      }
-    }));
+    // Transformasi data tanggapan agar memiliki properti yang sama seperti objek post biasa
+    const transformedComments = commentsRes.data?.map((c: any) => ({
+      id: `comment-${c.id}`, // Beri prefix string agar tidak bentrok dengan ID post utama
+      real_comment_id: c.id,
+      post_id: c.post_id,
+      creator_id: c.user_id,
+      bio: c.content || c.comment_text || c.text || '', // Fallback deteksi teks tanggapan
+      created_at: c.created_at,
+      profiles: c.profiles,
+      image_url: null,
+      video_url: null,
+      audio_src: null,
+    })) || [];
+
+    setCommentsMap(prev => ({ ...prev, [pid]: transformedComments }));
+
+    setCounts(prev => {
+      const baseCounts = {
+        ...prev,
+        [pid]: {
+          likes: likesRes.data?.length || 0,
+          comments: transformedComments.length,
+          reposts: repostsRes.data?.length || 0,
+          saves: (savesRes.data && savesRes.data[0]?.count) || 0,
+        }
+      };
+
+      // Berikan mapping count default 0 untuk kartu tanggapan agar komponen child tidak melempar nilai NaN/error
+      transformedComments.forEach((c: any) => {
+        baseCounts[c.id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
+      });
+
+      return baseCounts;
+    });
+
     setLikersMap(prev => ({ ...prev, [pid]: likesRes.data?.map(l => l.profiles) || [] }));
     setRepostersMap(prev => ({ ...prev, [pid]: repostsRes.data?.map(r => ({ ...r.profiles, note: r.note })) || [] }));
 
@@ -210,15 +242,11 @@ function PostContent() {
       const scrollToPost = () => {
         const targetPost = document.getElementById(`post-wrapper-${postIdFromUrl}`);
         if (targetPost) {
-          // Ganti 'start' menjadi 'center' agar posisinya tepat di tengah layar
           targetPost.scrollIntoView({ behavior: 'auto', block: 'center' });
         }
       };
 
-      // Timeout 1: Eksekusi setelah DOM dasar selesai
       const timer1 = setTimeout(scrollToPost, 150);
-
-      // Timeout 2: Retry setelah layout stabil dan gambar/video selesai di-load
       const timer2 = setTimeout(scrollToPost, 600);
 
       return () => {
@@ -266,6 +294,10 @@ function PostContent() {
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    
+    // Cegah interaksi melempar error SQL jika dipicu dari kartu tanggapan
+    if (String(postId).startsWith('comment-')) return;
+
     const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
 
@@ -310,6 +342,8 @@ function PostContent() {
 
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (String(postId).startsWith('comment-')) return;
+
     const numericPostId = parseInt(postId);
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
@@ -336,6 +370,8 @@ function PostContent() {
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
+    if (String(postId).startsWith('comment-')) return;
+
     const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
 
@@ -409,12 +445,15 @@ function PostContent() {
               width: '100%',
               display: 'flex',
               flexDirection: 'column',
-              gap: '20px' /* Memberi sedikit jarak bernapas antar postingan */
+              gap: '0px' // Diubah ke 0px agar alur garis menyambung rapat antar komponen thread
             }}
           >
             {userPosts.map((p) => {
               const isTextOrAudio = !p.image_url && !p.video_url;
               const isExpanded = expandedPosts.has(p.id);
+              
+              // Ambil tanggapan khusus untuk postingan saat ini
+              const postComments = commentsMap[String(p.id)] || [];
 
               return (
                 <div 
@@ -426,6 +465,24 @@ function PostContent() {
                     padding: isTextOrAudio ? '0 12px' : '0'
                   }}
                 >
+                  {/* GARIS VERTIKAL PENGHUBUNG THREAD (Hanya muncul di postingan teks & jika ada tanggapan) */}
+                  {isTextOrAudio && postComments.length > 0 && (
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        left: '48px', // Posisi center pas di bawah foto avatar utama (12px outer + 15px inner + 21px half-avatar)
+                        top: '70px',  // Dimulai dari batas bawah avatar utama
+                        bottom: '50px', // Berakhir tepat di batas tengah/avatar tanggapan paling akhir
+                        width: '2px',
+                        backgroundColor: 'var(--border-card)',
+                        zIndex: 10,
+                        pointerEvents: 'none',
+                        opacity: 0.8
+                      }}
+                    />
+                  )}
+
+                  {/* POSTINGAN UTAMA */}
                   <PostCard
                     post={p}
                     currentUser={currentUser}
@@ -459,6 +516,49 @@ function PostContent() {
                     isExpanded={isExpanded}
                     onToggleExpand={handleToggleExpand}
                   />
+
+                  {/* AREA TANGGAPAN USER LAIN (RENDERING BERGAYA THREAD TWITTER) */}
+                  {isTextOrAudio && postComments.map((comment) => (
+                    <div 
+                      key={comment.id}
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        marginTop: '-13px', // Menarik posisi ke atas menempel kartu utama menghilangkan margin pemisah
+                        padding: '0'
+                      }}
+                    >
+                      <PostCard
+                        post={comment}
+                        currentUser={currentUser}
+                        counts={counts}
+                        myLikedPosts={myLikedPosts}
+                        myRepostedPosts={myRepostedPosts}
+                        mySavedPosts={mySavedPosts}
+                        followedUsers={followedUsers}
+                        mutualUsers={mutualUsers}
+                        animatingFollows={animatingFollows}
+                        animatingReposts={animatingReposts}
+                        isGloballyMuted={isGloballyMuted}
+                        poppingHeart={poppingHeart}
+                        activePreviewImage={activePreviewImage}
+                        likersMap={likersMap} 
+                        repostersMap={repostersMap}
+                        handleLike={handleLike}
+                        handleSave={handleSave}
+                        openRepostModal={() => {}} // Nonaktifkan sejenak fitur modal repos di level tanggapan teks
+                        handleMediaClick={handleMediaClick}
+                        toggleMute={toggleMute}
+                        openShareOptions={openShareOptions}
+                        handleFollowToggle={handleFollowToggle}
+                        setActivePreviewImage={setActivePreviewImage}
+                        router={router}
+                        t={t}
+                        isExpanded={false}
+                        onToggleExpand={() => {}}
+                      />
+                    </div>
+                  ))}
                 </div>
               );
             })}

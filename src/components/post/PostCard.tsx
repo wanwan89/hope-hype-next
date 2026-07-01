@@ -621,7 +621,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     scrollSnapAlign: 'start',
                     overflow: 'hidden',
                     position: 'relative',
-                    background: '#000', // 👈 FIX 1: Diubah ke hitam pekat (#000) agar area kosong berwarna hitam
+                    background: '#000',
                     cursor: 'default',
                     transform: 'translateZ(0)',
                   }}
@@ -660,12 +660,12 @@ const PostCard: React.FC<PostCardProps> = ({
                     style={{
                       width: '100%',
                       height: '100%',
-                      objectFit: 'contain', // 👈 FIX 2: Diubah dari 'cover' ke 'contain' agar bentuk video tidak terpotong penuh
-                      objectPosition: 'center', // 👈 FIX 3: Diubah ke 'center' agar video ditaruh pas di tengah container secara presisi
+                      objectFit: 'contain',
+                      objectPosition: 'center',
                       pointerEvents: 'none',
                       opacity: videoLoaded ? 1 : 0,
                       transition: 'opacity 0.3s',
-                      backgroundColor: '#000' // 👈 FIX 4: Ditambahkan background internal hitam cadangan
+                      backgroundColor: '#000'
                     }}
                   />
 
@@ -1222,24 +1222,33 @@ const PostCard: React.FC<PostCardProps> = ({
               borderTop: '1px solid var(--border-card)',
               marginTop: '4px',
               paddingTop: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => router.push(`/post?id=${postIdStr}`)}
+              onClick={() => router.push(`/post?id=${postIdStr}&action=comment`)}
               className="btn-press"
               style={{
                 fontSize: '13px',
-                color: 'var(--text-muted)',
-                background: 'transparent',
+                color: '#1f3cff',
+                background: 'rgba(31, 60, 255, 0.1)',
                 border: 'none',
-                fontWeight: 600,
-                display: 'inline-block',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
                 cursor: 'pointer',
-                padding: 0,
+                padding: '6px 14px',
+                borderRadius: '20px',
               }}
             >
-              {t('view_detail')}
+              <span className="material-icons" style={{ fontSize: '15px' }}>
+                chat_bubble_outline
+              </span>
+              Tanggapi
             </button>
             <EngagementButtons
               postId={postIdStr}
