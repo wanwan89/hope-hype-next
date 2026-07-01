@@ -97,7 +97,8 @@ export default function Gallerypost() {
   const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const lastTapRef = useRef<Record<string, number>>({});
 
-  const [counts, setCounts] = useState<Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>>({});
+  // ✅ PERBAIKAN: Menambahkan 'comments: number' di tipe state agar tidak error
+  const [counts, setCounts] = useState<Record<string, { likes: number; tanggapan: number; reposts: number; saves: number; comments: number }>>({});
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
 
@@ -213,10 +214,10 @@ export default function Gallerypost() {
     fetchSuggestedPosts();
   }, []);
 
+  // ✅ PERBAIKAN: useEffect terbaru yang kamu berikan
   useEffect(() => {
     if (!currentUser || allPosts.length === 0) return;
     
-    // ✅ PERBAIKAN: Hanya loloskan ID yang merupakan UUID valid
     const newPostIdsToFetch = allPosts
       .map(p => String(p.id))
       .filter(id => !fetchedPostsRef.current.has(id) && isValidUUID(id));
@@ -227,27 +228,35 @@ export default function Gallerypost() {
 
     const fetchInteractions = async () => {
       try {
-        const [likesRes, tanggapanRes, repostsRes, savesRes] = await Promise.all([
+        // 1. Fetch data interaksi (termasuk comments)
+        const [likesRes, tanggapanRes, repostsRes, savesRes, commentsRes] = await Promise.all([
           supabase.from("likes").select("post_id, user_id, profiles:user_id(id, username, avatar_url)").in("post_id", newPostIdsToFetch),
           supabase.from("tanggapan").select("post_id").in("post_id", newPostIdsToFetch),
           supabase.from("reposts").select("post_id, user_id, note, profiles:user_id(id, username, avatar_url)").in("post_id", newPostIdsToFetch),
           supabase.rpc('get_bookmark_counts', { post_ids: newPostIdsToFetch }),
+          supabase.from("comments").select("post_id").in("post_id", newPostIdsToFetch) // ✅ Fetch comments
         ]);
 
         const newCounts: any = {};
         const newLikersMap: any = {};
         const newRepostersMap: any = {};
+        
+        // Inisialisasi awal
         newPostIdsToFetch.forEach(id => {
-          newCounts[id] = { likes: 0, tanggapan: 0, reposts: 0, saves: 0 };
+          newCounts[id] = { likes: 0, comments: 0, tanggapan: 0, reposts: 0, saves: 0 };
           newLikersMap[id] = [];
           newRepostersMap[id] = [];
         });
 
+        // 2. Mapping data
         likesRes.data?.forEach(l => {
           if (newCounts[l.post_id]) { newCounts[l.post_id].likes++; newLikersMap[l.post_id].push(l.profiles); }
         });
         tanggapanRes.data?.forEach(c => {
           if (newCounts[c.post_id]) newCounts[c.post_id].tanggapan++;
+        });
+        commentsRes.data?.forEach(c => {
+          if (newCounts[c.post_id]) newCounts[c.post_id].comments++; // ✅ Hitung jumlah comments
         });
         repostsRes.data?.forEach(r => {
           if (newCounts[r.post_id]) { newCounts[r.post_id].reposts++; newRepostersMap[r.post_id].push({ ...r.profiles, note: r.note }); }
@@ -260,6 +269,7 @@ export default function Gallerypost() {
         setLikersMap(prev => ({ ...prev, ...newLikersMap }));
         setRepostersMap(prev => ({ ...prev, ...newRepostersMap }));
 
+        // 3. Status user (like/repost/save)
         const [myLikes, myReposts, mySaves] = await Promise.all([
           supabase.from("likes").select("post_id").eq("user_id", currentUser.id).in("post_id", newPostIdsToFetch),
           supabase.from("reposts").select("post_id").eq("user_id", currentUser.id).in("post_id", newPostIdsToFetch),
@@ -268,6 +278,7 @@ export default function Gallerypost() {
         setMyLikedPosts(prev => { const n = new Set(prev); myLikes.data?.forEach(l => n.add(String(l.post_id))); return n; });
         setMyRepostedPosts(prev => { const n = new Set(prev); myReposts.data?.forEach(r => n.add(String(r.post_id))); return n; });
         setMySavedPosts(prev => { const n = new Set(prev); mySaves.data?.forEach(s => n.add(String(s.post_id))); return n; });
+        
       } catch (err) { console.error("Failed to load interactions", err); }
     };
     fetchInteractions();
