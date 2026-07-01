@@ -1,64 +1,65 @@
-/* CommentModal.css */
+/* CommentModal.css - Full Fix */
 /* --- OVERLAY MODAL --- */
 #commentModal {
-  position: fixed; 
-  inset: 0; 
-  background: var(--modal-overlay); 
-  display: flex; 
-  align-items: flex-end; 
+  position: fixed;
+  inset: 0;
+  background: var(--modal-overlay);
+  display: flex;
+  align-items: flex-end;
   justify-content: center;
-  z-index: 99999; 
-  opacity: 0; 
-  visibility: hidden; 
+  z-index: 99999;
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 #commentModal.active {
-  opacity: 1; 
-  visibility: visible; 
+  opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
 /* --- KOTAK KOMENTAR (SLIDE UP) --- */
 .comment-box {
-  width: 100%; 
-  max-width: 600px; 
-  height: 80vh; 
-  background: var(--bg-modal); 
+  width: 100%;
+  max-width: 600px;
+  height: 80vh;
+  background: var(--bg-modal);
   border-radius: 20px 20px 0 0;
-  overflow: hidden; 
-  display: flex; 
+  overflow: hidden;
+  display: flex;
   flex-direction: column;
-  transform: translateY(100%); 
+  transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   box-shadow: 0 -5px 25px rgba(0,0,0,0.3);
-  pointer-events: auto; 
+  pointer-events: auto;
 }
 #commentModal.active .comment-box { transform: translateY(0); }
 
 /* GARIS DRAG DI ATAS MODAL */
 .modal-drag-indicator {
-  width: 40px; 
-  height: 4px; 
-  background: rgba(255,255,255,0.2); 
-  border-radius: 10px; 
+  width: 40px;
+  height: 4px;
+  background: var(--text-main);
+  opacity: 0.2;
+  border-radius: 10px;
   margin: 12px auto 4px;
 }
 
 /* --- HEADER --- */
 .comment-header {
-  color: var(--text-main); 
-  text-align: center; 
-  font-weight: 800; 
+  color: var(--text-main);
+  text-align: center;
+  font-weight: 800;
   font-size: 16px;
-  padding: 8px 16px 15px; 
+  padding: 8px 16px 15px;
   border-bottom: 1px solid var(--border-card);
 }
 
 /* --- LIST KOMENTAR --- */
 .comment-list {
-  flex: 1; 
-  overflow-y: auto; 
+  flex: 1;
+  overflow-y: auto;
   padding: 15px 18px;
 }
 
@@ -177,25 +178,36 @@
   margin-top: 2px;
 }
 
-/* --- SISTEM GARIS (THREAD LINES) --- */
+/* --- SISTEM GARIS (THREAD LINES) -> PUTIH DI DARK, HITAM DI LIGHT --- */
 .view-replies-btn {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 12px;
   color: var(--text-muted); font-size: 12px; font-weight: 800; 
   cursor: pointer; user-select: none;
 }
-.btn-line { width: 24px; height: 1.5px; background: var(--border-card); display: inline-block; }
+.btn-line { 
+  width: 24px; height: 1.5px; 
+  background: var(--text-main); /* ✅ ikuti tema */
+  opacity: 0.5;
+  display: inline-block; 
+}
 
 .reply-group { position: relative; }
 .thread-line {
   position: absolute; left: -24px; top: -15px; bottom: 15px;
-  width: 1.5px; background: var(--border-card); opacity: 0.5; z-index: 1;
+  width: 1.5px; 
+  background: var(--text-main); /* ✅ putih di dark, hitam di light */
+  opacity: 0.5;
+  z-index: 1;
 }
 
 .comment-item-wrap.reply { position: relative; margin-top: 14px; }
 .reply-curve {
   position: absolute; left: -24px; top: 16px;
-  width: 16px; height: 1.5px; background: var(--border-card); opacity: 0.5; z-index: 1;
+  width: 16px; height: 1.5px; 
+  background: var(--text-main); /* ✅ ikuti tema */
+  opacity: 0.5;
+  z-index: 1;
 }
 
 /* --- AREA INPUT BAWAH --- */
@@ -219,7 +231,7 @@
   font-family: inherit;
 }
 .comment-input:focus {
-  border-color: var(--primary); 
+  border-color: var(--primary-bg); /* ✅ biru aksen */
   background: var(--bg-modal); 
   box-shadow: 0 0 0 4px var(--primary-soft);
 }
@@ -257,9 +269,7 @@
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   z-index: 100003; border-top: 1px solid var(--border-card);
 }
-.c-action-sheet.open {
-  transform: translateY(0);
-}
+.c-action-sheet.open { transform: translateY(0); }
 
 .c-drag-handle { 
   width: 40px; height: 5px; background: var(--border-card); 
