@@ -33,7 +33,9 @@ function PostContent() {
   const [mutualUsers, setMutualUsers] = useState<Set<string>>(new Set());
   const [animatingFollows, setAnimatingFollows] = useState<Set<string>>(new Set());
 
-  const [counts, setCounts] = useState<Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>>({});
+  // ✅ FIX 1: Tambahkan 'comments' ke dalam tipe state counts
+  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number; tanggapan: number; reposts: number; saves: number }>>({});
+  
   const [animatingReposts, setAnimatingReposts] = useState<Set<string>>(new Set());
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
@@ -193,14 +195,16 @@ function PostContent() {
 
   const fetchPostInteractions = async (postId: string | number, user: any) => {
     const pid = String(postId);
-    const [likesRes, tanggapanRes, repostsRes, savesRes] = await Promise.all([
+    // ✅ FIX 2: Tambahkan fetch untuk tabel 'comments' agar kita bisa menghitung length (jumlah) komentar
+    const [likesRes, tanggapanRes, repostsRes, savesRes, commentsRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
       supabase.from('tanggapan')
         .select('id, post_id, user_id, content, created_at, profiles:user_id(full_name, username, role, avatar_url)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true }),
       supabase.from('reposts').select('user_id, note, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
-      supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
+      supabase.rpc('get_bookmark_counts', { post_ids: [postId] }),
+      supabase.from('comments').select('id').eq('post_id', postId) // Fetch jumlah komentar!
     ]);
 
     const tanggapanIds = tanggapanRes.data?.map((t: any) => t.id) || [];
@@ -243,11 +247,13 @@ function PostContent() {
 
     setTanggapanMap(prev => ({ ...prev, [pid]: transformedTanggapan }));
 
+    // ✅ FIX 3: Masukkan data comments ke dalam objek counts
     setCounts(prev => {
       const baseCounts = {
         ...prev,
         [pid]: {
           likes: likesRes.data?.length || 0,
+          comments: commentsRes.data?.length || 0, // Hitung length dari commentsRes
           tanggapan: transformedTanggapan.length,
           reposts: repostsRes.data?.length || 0,
           saves: (savesRes.data && savesRes.data[0]?.count) || 0,
@@ -258,6 +264,7 @@ function PostContent() {
         const realId = t.real_tanggapan_id;
         baseCounts[t.id] = {
           likes: tLikesData.filter(l => l.tanggapan_id === realId).length,
+          comments: 0, // Tanggapan biasanya tidak punya child 'comments'
           tanggapan: 0,
           reposts: tRepostsData.filter(r => r.tanggapan_id === realId).length,
           saves: tSavesData.filter(s => s.tanggapan_id === realId).length
@@ -356,13 +363,14 @@ function PostContent() {
           [targetParentPost]: [...(prev[targetParentPost] || []), newTanggapan]
         }));
 
+        // ✅ FIX 4: Tambahkan property comments juga ketika membuat item baru agar Typescript aman
         setCounts(prev => ({
           ...prev,
           [targetParentPost]: {
             ...prev[targetParentPost],
             tanggapan: (prev[targetParentPost]?.tanggapan || 0) + 1
           },
-          [newTanggapan.id]: { likes: 0, tanggapan: 0, reposts: 0, saves: 0 }
+          [newTanggapan.id]: { likes: 0, comments: 0, tanggapan: 0, reposts: 0, saves: 0 }
         }));
 
         const postOwner = userPosts.find(p => String(p.id) === targetParentPost)?.creator_id;
@@ -670,7 +678,6 @@ function PostContent() {
                       router={router}
                       t={t}
                       showTopComment={false}
-                      // ✅ Dihapus: tanggapanLabel="Beri Tanggapan" (agar angkanya selalu keluar)
                       tanggapan={postTanggapan}
                       onTanggapanClick={(initialText, parentId) => {
                         if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
@@ -710,7 +717,6 @@ function PostContent() {
                         onToggleExpand={handleToggleExpand}
                         onTanggapanClick={commonHandlers.onTanggapanClick}
                         showTopComment={false}
-                        // ✅ Dihapus: tanggapanLabel="Beri Tanggapan" (agar angkanya selalu keluar)
                       />
                       {postTanggapan.length > 0 && (
                         <PostTanggapanList
