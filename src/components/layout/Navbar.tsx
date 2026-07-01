@@ -6,6 +6,8 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Home, Bell, MessageCircle, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
+// 🔥 Import Capacitor untuk deteksi platform
+import { Capacitor } from '@capacitor/core';
 
 // Komponen Custom SVG untuk Voice
 const CustomVoiceIcon = ({ size = 24, color = '#000000', style }: any) => (
@@ -52,10 +54,8 @@ function NavbarContent() {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const [animatingIcon, setAnimatingIcon] = useState<string | null>(null);
 
-  // 🔥 State: deteksi BioModal terbuka
   const [isBioModalOpen, setIsBioModalOpen] = useState(false);
 
-  // Dengarkan event dari BioModal
   useEffect(() => {
     const handler = (e: Event) => {
       const customEvent = e as CustomEvent<{ isOpen: boolean }>;
@@ -81,7 +81,6 @@ function NavbarContent() {
 
   const hasVoiceId = searchParams ? searchParams.get('id') !== null : false;
 
-  // 🔥 Perbarui isHiddenPage
   const isHiddenPage = [
     '/login', '/dailycek', '/settings', '/vip', '/contact',
     '/create', '/search', '/saldo', '/story',
@@ -329,20 +328,25 @@ function NavbarContent() {
       return;
     }
 
-    // 🔥 FITUR REFRESH TAB AKTIF (Klik 2 Kali) SUDAH KEMBALI & ANTI-GLITCH
+    // 🔥 FITUR REFRESH Klik 2 Kali, DIJAMIN JALAN DI ANDROID & PWA!
     if (isActive) {
       e.preventDefault();
-      
-      // Nyalakan animasi spinner dulu
       setAnimatingIcon(item.name);
       
-      // Gunakan router.refresh() Next.js untuk muat ulang data, aman tanpa window.location.reload()
-      router.refresh();
+      const platform = Capacitor.getPlatform();
+      
+      if (platform === 'android' || platform === 'ios') {
+        // Di App Native (Capacitor), pakai router.refresh() halus agar TIDAK glitch!
+        router.refresh();
+      } else {
+        // Di PWA/Web Browser, pakai reload beneran agar terasa di-refresh!
+        window.location.reload();
+      }
 
       // Scroll mulus ke atas
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Matikan animasi spinner setelah 800ms
+      // Matikan spinner setelah beberapa saat
       setTimeout(() => setAnimatingIcon(null), 800);
       return;
     }

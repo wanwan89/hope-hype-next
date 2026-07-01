@@ -13,7 +13,7 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { StatusBar, Style } from '@capacitor/status-bar';
-// 🔥 TAMBAHAN: Import Navigation Bar Plugin yang sudah berhasil diinstall
+// 🔥 Import plugin navbar
 import { NavigationBar } from '@capgo/capacitor-navigation-bar';
 
 import "./globals.css";
@@ -130,6 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         metaTheme.setAttribute('name', 'theme-color');
         document.head.appendChild(metaTheme);
       }
+      // 🔥 Update Warna Navbar PWA otomatis sesuai tema
       metaTheme.setAttribute('content', isDark ? '#0a0a0a' : '#ffffff');
 
       if (platform === 'android' || platform === 'ios') {
@@ -138,14 +139,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (platform === 'android') {
           await StatusBar.setBackgroundColor({ color: isDark ? '#0a0a0a' : '#ffffff' });
           
-          // 🔥 LOGIKA NAVIGATION BAR BAWAH (Otomatis Berubah Sesuai Tema!)
+          // 🔥 LOGIKA NAVIGATION BAR BAWAH (Berubah di Android)
           try {
-            // Ubah warna background navbar (Putih saat Light, Hitam saat Dark)
             await NavigationBar.setColor({
               color: isDark ? '#0a0a0a' : '#ffffff'
             });
-            // Ubah warna icon tombol navigasi (Hitam saat Light, Putih saat Dark)
-            // Plugin @capgo/capacitor-navigation-bar menggunakan 'dark: true' untuk icon putih
             await NavigationBar.setDark({ dark: isDark });
           } catch (navErr) {
             console.warn("Navbar sync error:", navErr);
