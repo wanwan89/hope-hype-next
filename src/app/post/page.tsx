@@ -14,7 +14,9 @@ function PostContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const postIdFromUrl = searchParams.get('id');
+  // FIX: Bersihkan postId jika yang masuk dari URL secara tidak sengaja adalah ID tanggapan (misal share link dari komentar)
+  const rawPostId = searchParams.get('id');
+  const postIdFromUrl = rawPostId?.startsWith('tanggapan-') ? rawPostId.replace('tanggapan-', '') : rawPostId;
   const source = searchParams.get('from'); 
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -341,7 +343,6 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
-  // --- MEMPERBAIKI LIKE UNTUK TANGGAPAN ---
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
@@ -353,7 +354,6 @@ function PostContent() {
     setCounts((prev) => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
 
     try {
-      // Pastikan tabel "tanggapan_likes" ada di Supabase kamu, atau ubah namanya sesuai struktur DB-mu
       const tableName = isTanggapan ? "tanggapan_likes" : "likes";
       const idColumn = isTanggapan ? "tanggapan_id" : "post_id";
 
@@ -368,7 +368,6 @@ function PostContent() {
     } catch (err) {}
   }, []);
 
-  // --- MEMPERBAIKI REPOST UNTUK TANGGAPAN ---
   const handleConfirmRepost = useCallback(async (postId: string, creatorId: string, isUnrepost: boolean = false) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
@@ -401,7 +400,6 @@ function PostContent() {
     } catch (err) {}
   }, [repostNote]);
 
-  // --- MEMPERBAIKI SAVE UNTUK TANGGAPAN ---
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
 
@@ -424,7 +422,6 @@ function PostContent() {
       }
     } catch (err) {}
   }, []);
-
 
   const handleMediaClick = useCallback((e: React.MouseEvent, postId: string, creatorId: string, imageUrl?: string) => {
     const now = Date.now();
@@ -460,9 +457,21 @@ function PostContent() {
     });
   }, []);
 
+  // FIX: Modifikasi agar Share URL selalu mengarah ke Parent Post ketika tanggapan di-share
   const openShareOptions = useCallback((postToShare: any, isOwner: boolean) => {
     if (window.openGlobalShare) {
-      window.openGlobalShare(`${window.location.origin}/post?id=${postToShare.id}`, "Postingan HypeTalk", "Lihat karya keren ini di HypeTalk!", postToShare.profiles?.username || "User", postToShare.id, isOwner, postToShare.is_private || false);
+      const isTanggapan = String(postToShare.id).startsWith('tanggapan-');
+      const shareId = isTanggapan ? postToShare.post_id : postToShare.id;
+      
+      window.openGlobalShare(
+        `${window.location.origin}/post?id=${shareId}`, 
+        "Postingan HypeTalk", 
+        "Lihat karya keren ini di HypeTalk!", 
+        postToShare.profiles?.username || "User", 
+        shareId, 
+        isOwner, 
+        postToShare.is_private || false
+      );
     }
   }, []);
 
@@ -639,7 +648,6 @@ function PostContent() {
                         repostersMap={repostersMap}
                         handleLike={handleLike}
                         handleSave={handleSave}
-                        // FIx: Berikan fungsi repot yang benar pada loop tanggapan
                         openRepostModal={(id, cid) => {
                           if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
                           if (myRepostedPosts.has(id)) handleConfirmRepost(id, cid, true);
@@ -654,7 +662,6 @@ function PostContent() {
                         t={t}
                         isExpanded={false}
                         onToggleExpand={() => {}}
-                        // FIX: Membalas komentar otomatis mengisi username pengguna
                         onTanggapanClick={() => {
                            if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent('openLogin'));
                            setTanggapanInput(`@${tanggapanItem.profiles?.username} `);
