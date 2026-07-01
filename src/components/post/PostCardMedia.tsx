@@ -1,3 +1,4 @@
+// components/post/PostCardMedia.tsx
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import MusicMarquee from './MusicMarquee';
 import FloatingBubbles from './FloatingBubbles';
@@ -6,7 +7,7 @@ import EngagementButtons from './EngagementButtons';
 import { getOptimizedImage } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 
-// Sub-komponen CarouselImageItem (sama persis)
+// Sub-komponen CarouselImageItem
 const CarouselImageItem = ({
   url,
   index,
@@ -59,7 +60,8 @@ const CarouselImageItem = ({
 type Props = {
   post: any;
   currentUser: any;
-  counts: Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>;
+  // ✅ FIX TIPE DATA (Sama dengan PostCardText)
+  counts: Record<string, { likes: number; tanggapan?: number; comments?: number; reposts: number; saves: number }>;
   myLikedPosts: Set<string>;
   myRepostedPosts: Set<string>;
   mySavedPosts: Set<string>;
@@ -99,14 +101,12 @@ export default function PostCardMedia(props: Props) {
   const isOwner = currentUser && currentUser.id === post.creator_id;
   const photoList = useMemo(() => (post.image_url ? post.image_url.split(',') : []), [post.image_url]);
   const isVideoPost = !!post.video_url;
-  const badge = useMemo(() => import('@/lib/ui-utils').then(m => m.getUserBadge(post.profiles?.role)), [post.profiles?.role]);
-
   const [badgeHtml, setBadgeHtml] = useState('');
+  
   useEffect(() => {
     import('@/lib/ui-utils').then(m => setBadgeHtml(m.getUserBadge(post.profiles?.role)));
   }, [post.profiles?.role]);
 
-  const formattedDate = useMemo(() => import('@/lib/helpers').then(m => m.formatRelativeTime(post.created_at)), [post.created_at]);
   const [dateStr, setDateStr] = useState('');
   useEffect(() => {
     import('@/lib/helpers').then(m => setDateStr(m.formatRelativeTime(post.created_at)));
@@ -291,7 +291,6 @@ export default function PostCardMedia(props: Props) {
         {poppingHeart?.startsWith(postIdStr) && (
           <span key={poppingHeart} className="material-icons" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ff2e63', fontSize: '160px', animation: 'popHeartAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))', zIndex: 9999, pointerEvents: 'none' }}>favorite</span>
         )}
-        {/* badges & mute button */}
         <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 2, display: 'flex', gap: '6px' }}>
           {isVideoPost && <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}><span className="material-icons" style={{ fontSize: '12px' }}>videocam</span> Video</div>}
           {photoList.length > 1 && !isVideoPost && <div style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: 'white', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}><span className="material-icons" style={{ fontSize: '12px' }}>collections</span> {currentSlide + 1}/{photoList.length}</div>}
@@ -301,7 +300,7 @@ export default function PostCardMedia(props: Props) {
             <span className="material-icons" style={{ fontSize: '18px' }}>{isGloballyMuted ? 'volume_off' : 'volume_up'}</span>
           </button>
         )}
-        <FloatingBubbles likers={[]} reposters={[]} /> {/* disederhanakan, Anda bisa tambahkan logic mutual */}
+        <FloatingBubbles likers={[]} reposters={[]} />
         <div className="photo-carousel" onScroll={handleCarouselScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', width: '100%' }}>
           {isVideoPost ? (
             <div className="carousel-item" style={{ aspectRatio: '2 / 3', width: '100%', flexShrink: 0, scrollSnapAlign: 'start', overflow: 'hidden', position: 'relative', background: '#000' }}>
@@ -352,6 +351,8 @@ export default function PostCardMedia(props: Props) {
 
         <div className="actions" style={{ pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => router.push(`/post?id=${postIdStr}`)} className="primary btn-press" style={{ display: 'inline-block', border: 'none', background: '#1f3cff', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>{t('view_detail')}</button>
+          
+          {/* ✅ DATA INI YANG DILEMPAR KE ENGAGEMENT BUTTONS */}
           <EngagementButtons postId={postIdStr} creatorId={creatorIdStr} counts={counts} mySavedPosts={mySavedPosts} myRepostedPosts={myRepostedPosts} myLikedPosts={myLikedPosts} animatingReposts={animatingReposts} handleSave={handleSave} openRepostModal={openRepostModal} handleLike={handleLike} />
         </div>
       </div>

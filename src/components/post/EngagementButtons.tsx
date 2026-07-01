@@ -119,7 +119,7 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
         </span>
       </button>
 
-      {/* Comment (Komentar) */}
+            {/* Comment (Komentar) - FIXED */}
       <button
         className="icon-btn comment-toggle btn-press"
         data-post={postId}
@@ -131,10 +131,11 @@ const EngagementButtons: React.FC<EngagementButtonsProps> = ({
           <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
         </svg>
         <span className="comment-count" style={{ color: 'var(--text-main)', fontSize: '13px', fontWeight: 600 }}>
-          {/* Murni baca comments saja */}
-          {counts[postId]?.comments || 0}
+          {/* ✅ PERUBAHAN DI SINI: Memastikan data diambil dari tanggapan ATAU comments */}
+          {counts[postId]?.tanggapan ?? counts[postId]?.comments ?? 0}
         </span>
       </button>
+
     </div>
   );
 };

@@ -17,7 +17,8 @@ const isValidUUID = (id: string) => {
 type Props = {
   post: any;
   currentUser: any;
-  counts: Record<string, { likes: number; tanggapan: number; reposts: number; saves: number }>;
+  // ✅ FIX TIPE DATA: Menambahkan 'comments' sebagai backup jika parent mengirim 'comments' alih-alih 'tanggapan'
+  counts: Record<string, { likes: number; tanggapan?: number; comments?: number; reposts: number; saves: number }>;
   myLikedPosts: Set<string>;
   myRepostedPosts: Set<string>;
   mySavedPosts: Set<string>;
@@ -98,7 +99,6 @@ export default function PostCardText(props: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const hasViewedRef = useRef(false);
 
-  // Sync isGloballyMuted status to Ref to prevent IntersectionObserver race conditions
   const isMutedRef = useRef(isGloballyMuted);
   useEffect(() => {
     isMutedRef.current = isGloballyMuted;
@@ -116,7 +116,6 @@ export default function PostCardText(props: Props) {
           if (entry.isIntersecting) {
             if (audio) {
               audio.muted = isMutedRef.current;
-              // Mengamankan logika bentrok suara, jeda audio/video lain ketika audio ini unmuted & intersect
               if (!isMutedRef.current) {
                 document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
                   if (el !== audio) el.pause();
@@ -126,10 +125,8 @@ export default function PostCardText(props: Props) {
             }
 
             const isRealPost = !postIdStr.startsWith('tanggapan_');
-            // ✅ Deteksi apakah postingan hanya berupa teks
             const isTextOnly = !post.image_url && !post.video_url && !post.audio_src;
             
-            // ✅ Block view hitung jika ID tidak valid UUID ATAU postingan hanya berupa teks
             if (!hasViewedRef.current && isRealPost && postIdStr && isValidUUID(postIdStr) && !isTextOnly) {
               hasViewedRef.current = true;
               supabase
@@ -154,12 +151,10 @@ export default function PostCardText(props: Props) {
     return () => observer.disconnect();
   }, [postIdStr, post.image_url, post.video_url, post.audio_src]);
 
-  // Fetch top comment
   useEffect(() => {
     let isMounted = true;
     const isRealPost = !postIdStr.startsWith('tanggapan_');
 
-    // ✅ Tambahkan filter validasi UUID agar komentar juga tidak error saat dipanggil
     if (showTopComment && isRealPost && postIdStr && isValidUUID(postIdStr)) {
       const fetchTop = async () => {
         const { data, error } = await supabase
@@ -177,8 +172,8 @@ export default function PostCardText(props: Props) {
     };
   }, [postIdStr, showTopComment]);
 
-  const commentCount = counts[postIdStr]?.tanggapan || 0;
-  // ✅ FIX: Prioritaskan format "X Tanggapan" untuk memunculkan angkanya secara eksplisit
+  // ✅ AMAN: Mengambil angka tanggapan/comments dari prop counts
+  const commentCount = counts[postIdStr]?.tanggapan ?? counts[postIdStr]?.comments ?? 0;
   const tanggapanButtonLabel = tanggapanLabel || `${commentCount} Tanggapan`;
 
   const handleTanggapanClick = (e: React.MouseEvent) => {
@@ -201,10 +196,8 @@ export default function PostCardText(props: Props) {
     }
 
     if (onTanggapanClick) {
-      // Buka modal di halaman detail
       onTanggapanClick('', postIdStr);
     } else if (postIdStr) {
-      // Jika berada di feed / belum di detail page, pindah ke halaman detail postingan 
       router.push(`/post?id=${postIdStr}`);
     } else {
       console.warn('Invalid post ID for navigation:', postIdStr);
