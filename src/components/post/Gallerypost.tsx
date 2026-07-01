@@ -262,30 +262,29 @@ export default function Gallerypost() {
     fetchInteractions();
   }, [allPosts, currentUser]);
 
+  // ✅ Handler menggunakan UUID string langsung, tidak ada parseInt
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return router.push('/login');
-    const numericPostId = parseInt(postId);
     const isLiked = myLikedPostsRef.current.has(postId);
     setMyLikedPosts(prev => { const n = new Set(prev); isLiked ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], likes: Math.max(0, (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)) } }));
     try {
-      if (isLiked) await supabase.from("likes").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      if (isLiked) await supabase.from("likes").delete().match({ post_id: postId, user_id: currentUserRef.current.id });
       else {
-        const { error } = await supabase.from("likes").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
-        if (!error && creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
+        await supabase.from("likes").insert({ post_id: postId, user_id: currentUserRef.current.id });
+        if (creatorId !== currentUserRef.current.id) await sendPushAndAppNotif({ senderId: currentUserRef.current.id, receiverId: creatorId, type: "like", postId });
       }
     } catch (err) { console.error(err); }
   }, [router]);
 
   const handleSave = useCallback(async (postId: string) => {
     if (!currentUserRef.current) return router.push('/login');
-    const numericPostId = parseInt(postId);
     const isSaved = mySavedPostsRef.current.has(postId);
     setMySavedPosts(prev => { const n = new Set(prev); isSaved ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], saves: Math.max(0, (prev[postId]?.saves || 0) + (isSaved ? -1 : 1)) } }));
     try {
-      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
-      else await supabase.from("bookmarks").insert({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      if (isSaved) await supabase.from("bookmarks").delete().match({ post_id: postId, user_id: currentUserRef.current.id });
+      else await supabase.from("bookmarks").insert({ post_id: postId, user_id: currentUserRef.current.id });
     } catch (err) { console.error(err); }
   }, [router]);
 
@@ -298,8 +297,7 @@ export default function Gallerypost() {
 
   const handleConfirmRepost = useCallback(async () => {
     if (!repostModal || !currentUserRef.current) return;
-    const { postId, creatorId, isUnrepost } = repostModal;
-    const numericPostId = parseInt(postId);
+    const { postId, isUnrepost } = repostModal;
     const finalNote = repostNote.trim().substring(0, 15);
     setRepostModal(null);
     setAnimatingReposts(prev => new Set(prev).add(postId));
@@ -308,13 +306,9 @@ export default function Gallerypost() {
     setMyRepostedPosts(prev => { const n = new Set(prev); isUnrepost ? n.delete(postId) : n.add(postId); return n; });
     setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) + (isUnrepost ? -1 : 1)) } }));
     try {
-      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: numericPostId, user_id: currentUserRef.current.id });
+      if (isUnrepost) await supabase.from("reposts").delete().match({ post_id: postId, user_id: currentUserRef.current.id });
       else {
-        const { error } = await supabase.from("reposts").insert({ post_id: numericPostId, user_id: currentUserRef.current.id, note: finalNote });
-        if (error) {
-          setMyRepostedPosts(prev => { const n = new Set(prev); wasReposted ? n.add(postId) : n.delete(postId); return n; });
-          setCounts(prev => ({ ...prev, [postId]: { ...prev[postId], reposts: Math.max(0, (prev[postId]?.reposts || 0) - 1) } }));
-        }
+        await supabase.from("reposts").insert({ post_id: postId, user_id: currentUserRef.current.id, note: finalNote });
       }
     } catch (err) { console.error(err); }
   }, [repostModal, repostNote]);
@@ -422,7 +416,6 @@ export default function Gallerypost() {
             onTanggapanClick={(postId) => {
               router.push(`/post?id=${postId}`);
             }}
-            // tidak set showTopComment dan tanggapanLabel -> default (rekomendasi + "X Tanggapan" / "Tanggapi")
           />
         </div>
       </div>
