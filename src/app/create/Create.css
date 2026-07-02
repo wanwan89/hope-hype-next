@@ -236,7 +236,7 @@
 /* --- UPLOAD AREA --- */
 .post-upload-area {
   min-height: 200px;
-  border: 2px dashed var(--border-card);
+  border: 2px solid var(--border-card); 
   border-radius: 16px;
   background: var(--bg-card);
   display: flex;
@@ -246,10 +246,15 @@
   overflow: hidden;
   position: relative;
   transition: 0.2s;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.post-upload-area:hover {
-  border-color: var(--primary-bg);    /* aksen biru */
+.post-upload-area:hover,
+.post-upload-area:focus,
+.post-upload-area:active {
+  border-color: var(--border-card);
+  background: var(--bg-secondary); 
 }
 
 .post-upload-placeholder {

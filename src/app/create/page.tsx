@@ -103,7 +103,6 @@ function CreatePostContent() {
   const captionInputRef = useRef<HTMLTextAreaElement>(null);
   const MAX_VIDEO_CLIP = 60;
 
-  // --- VALIDASI ENVIRONMENT ---
   useEffect(() => {
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
       showNotif(
@@ -114,7 +113,6 @@ function CreatePostContent() {
     }
   }, [CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET]);
 
-  // Load draft jika ada
   useEffect(() => {
     if (!draftId) return;
     (async () => {
@@ -140,7 +138,6 @@ function CreatePostContent() {
     })();
   }, [draftId]);
 
-  // Cek role business
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -151,7 +148,6 @@ function CreatePostContent() {
     })();
   }, []);
 
-  // Suggestion mention/hashtag
   useEffect(() => {
     if (showPopup === 'none') return;
     const fetchSuggestions = async () => {
@@ -179,7 +175,6 @@ function CreatePostContent() {
     return () => clearTimeout(t);
   }, [searchQuery, showPopup]);
 
-  // Music search
   useEffect(() => {
     if (!searchMusic.trim()) { setMusicResults([]); return; }
     const timer = setTimeout(async () => {
@@ -194,7 +189,6 @@ function CreatePostContent() {
     return () => clearTimeout(timer);
   }, [searchMusic]);
 
-  // --- HANDLER ---
   const handleClose = () => { audioRef.current?.pause(); router.back(); };
   const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
@@ -232,7 +226,6 @@ function CreatePostContent() {
     captionInputRef.current.focus();
   };
 
-  // --- IMAGE CROP ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -295,7 +288,6 @@ function CreatePostContent() {
     setPreviewUrls(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // --- VIDEO ---
   const generateVideoThumbnails = async (url: string, dur: number) => {
     const video = document.createElement('video');
     video.src = url; video.muted = true; video.playsInline = true;
@@ -323,7 +315,6 @@ function CreatePostContent() {
     setVideoThumbnails([]);
     setExistingVideoUrl(null);
     setExistingImageUrl(null);
-    // Reset crop & rasio ketika video baru
     setVideoCropX(0);
     setVideoCropY(0);
     setVideoZoom(1);
@@ -352,6 +343,7 @@ function CreatePostContent() {
     else { videoRef.current.play(); setIsVideoPlaying(true); }
   };
 
+  // ✅ PERBAIKAN BUG CAPTURE CANVAS
   const captureFrameAndSave = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -370,6 +362,7 @@ function CreatePostContent() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
   
+    // 1. Isi background dengan warna hitam solid terlebih dahulu
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, targetWidth, targetHeight);
   
@@ -378,9 +371,22 @@ function CreatePostContent() {
     ctx.rotate((videoRotation * Math.PI) / 180);
     ctx.scale(videoZoom, videoZoom);
     
-    const drawW = targetWidth;
-    const drawH = (video.videoHeight / video.videoWidth) * targetWidth;
-    ctx.drawImage(video, -targetWidth / 2 + videoCropX, -targetHeight / 2 + videoCropY, drawW, drawH);
+    // 2. Kalkulasi Dimensi untuk mensimulasikan "object-fit: contain" di Canvas
+    const videoAspect = video.videoWidth / video.videoHeight;
+    let drawW, drawH;
+    
+    if (videoAspect > targetAspect) {
+      // Jika video lebih lebar dibanding rasio target (contoh: video 16:9 di frame 1:1)
+      drawW = targetWidth;
+      drawH = targetWidth / videoAspect;
+    } else {
+      // Jika video lebih tinggi dibanding rasio target (contoh: video 9:16 di frame 1:1)
+      drawH = targetHeight;
+      drawW = targetHeight * videoAspect;
+    }
+  
+    // Gambar video agar pas di tengah canvas dan tidak terpotong (menyisakan bar hitam)
+    ctx.drawImage(video, -drawW / 2 + videoCropX, -drawH / 2 + videoCropY, drawW, drawH);
     ctx.restore();
   
     canvas.toBlob(blob => {
@@ -417,7 +423,6 @@ function CreatePostContent() {
     }
   };
 
-  // --- UPLOAD PROGRESS DISPATCHER ---
   const updateGlobalProgress = (progress: number, type: string = 'post') => {
     window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: { progress, type } }));
     localStorage.setItem('uploadProgress', String(progress));
@@ -449,7 +454,7 @@ function CreatePostContent() {
       
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && (!cancelFlag || !cancelFlag.current)) {
-          const prog = Math.round((e.loaded / e.total) * 50); // Karena cloud max 50% sisanya supabase
+          const prog = Math.round((e.loaded / e.total) * 50); 
           updateGlobalProgress(prog, uploadType);
         }
       };
@@ -490,7 +495,6 @@ function CreatePostContent() {
     });
   };
 
-  // --- SUBMIT DENGAN SISTEM CANCEL ---
   const submitPostAction = async (isDraft: boolean = false) => {
     if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
       return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
@@ -530,14 +534,12 @@ function CreatePostContent() {
     updateGlobalProgress(0, uploadType);
     window.dispatchEvent(new CustomEvent('postUploadStart', { detail: { type: uploadType } }));
 
-    // Bawa ke beranda secara optimis (background task)
     if (!isDraft) router.push('/');
     else router.back();
 
     const activeXhrs: XMLHttpRequest[] = [];
     const cancelFlag = { current: false };
 
-    // Listener Batal Upload (dipanggil dari komponen Header Navbar)
     const handleCancel = () => {
       cancelFlag.current = true;
       activeXhrs.forEach(xhr => xhr.abort());
@@ -553,7 +555,6 @@ function CreatePostContent() {
       }
       
       const myUserId = session.user.id;
-
       const tags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
       if (tags.length > 0) {
         for (const tg of tags) await supabase.from('hashtags').upsert({ tag: tg });
@@ -562,11 +563,8 @@ function CreatePostContent() {
       let finalImageUrl: string | null = existingImageUrl;
       let finalVideoUrl: string | null = existingVideoUrl;
 
-      // PROSES CLOUDINARY IMAGES
       if (postType === 'image' && croppedImages.length > 0) {
         const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image', activeXhrs, cancelFlag, uploadType)));
-        
-        // Hentikan script jika proses dibatalkan di tengah jalan
         if (cancelFlag.current) return;
         
         if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
@@ -578,8 +576,6 @@ function CreatePostContent() {
         finalImageUrl = results.map(r => r.secure_url).join(',');
         updateGlobalProgress(50, uploadType);
       }
-      
-      // PROSES CLOUDINARY VIDEO
       else if (postType === 'video' && rawVideoFile && coverBlob) {
         const coverRes = await uploadToCloudinary(coverBlob, 'image', activeXhrs, cancelFlag, uploadType);
         if (cancelFlag.current) return;
@@ -602,20 +598,18 @@ function CreatePostContent() {
         const vidRes = await uploadToCloudinary(rawVideoFile, 'video', activeXhrs, cancelFlag, uploadType);
         if (cancelFlag.current) return;
 
+        // ✅ PERBAIKAN BUG CLOUDINARY: c_pad, b_black (contain/padding hitam) BUKAN c_fill (crop)
         finalVideoUrl = vidRes.secure_url.replace(
           '/upload/',
-          `/upload/${rotParam}c_fill,ar_${clRatio}/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
+          `/upload/${rotParam}c_pad,b_black,ar_${clRatio}/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
         );
         updateGlobalProgress(50, uploadType);
       }
 
-      // Pastikan tidak melanjutkan update Supabase bila batal
       if (cancelFlag.current) return;
-      
       updateGlobalProgress(70, uploadType);
       let newPostData = null;
 
-      // PROSES DATABASE SUPABASE
       if (destination === "story") {
         const { data } = await supabase.from("stories").insert({
           creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
@@ -675,7 +669,6 @@ function CreatePostContent() {
 
     } catch (err: any) {
       if (err?.message === "ABORTED") {
-        // Jika eror dari ABORTED, abaikan saja karena notif pembatalan sudah di-handle di UI navbar (home).
         console.log("Upload telah dibatalkan secara damai.");
       } else {
         console.error(err);
@@ -687,13 +680,11 @@ function CreatePostContent() {
         showNotif(msg, "error");
       }
     } finally {
-      // Pastikan listener pembersih dibuang
       window.removeEventListener('postUploadCancel', handleCancel);
       setIsSubmitting(false);
     }
   };
 
-  // ==================== RENDER ====================
   return (
     <div className="create-page-wrapper">
       {step === 'edit' && (

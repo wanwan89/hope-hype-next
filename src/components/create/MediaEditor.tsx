@@ -30,7 +30,6 @@ interface MediaEditorProps {
   videoThumbnails: string[];
   MAX_VIDEO_CLIP: number;
   
-  // NEW: Props untuk Aspect Ratio Video
   videoAspectRatio?: string; 
   setVideoAspectRatio?: (ratio: string) => void;
 
@@ -75,8 +74,8 @@ export default function MediaEditor({
   videoRotation = 0,
   videoThumbnails,
   MAX_VIDEO_CLIP,
-  videoAspectRatio = '2/3', // Default ke Vertikal
-  setVideoAspectRatio,      // Fungsi pengubah rasio
+  videoAspectRatio = '2/3',
+  setVideoAspectRatio,
   videoRef,
   canvasRef,
   setCrop,
@@ -103,7 +102,6 @@ export default function MediaEditor({
 }: MediaEditorProps) {
   const [activeTab, setActiveTab] = useState<'trim' | 'cover' | 'crop' | 'format'>('trim');
   
-  // Local state fallback jika parent belum mengirim setVideoAspectRatio
   const [localRatio, setLocalRatio] = useState<string>(videoAspectRatio);
   const activeRatio = setVideoAspectRatio ? videoAspectRatio : localRatio;
   
@@ -174,48 +172,54 @@ export default function MediaEditor({
               onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
           </div>
         ) : postType === 'video' && rawVideoUrl ? (
+          // ✅ PERBAIKAN CSS FRAME VIDEO (Agar tidak terpotong kelebaran/ketinggian)
           <div style={{
             width: '100%', 
-            aspectRatio: activeRatio, // Menggunakan prop rasio yang dikirim
-            position: 'relative', 
+            height: '100%',
+            maxHeight: '100%', 
+            maxWidth: '100%',
             display: 'flex',
             alignItems: 'center', 
-            justifyContent: 'center',
-            backgroundColor: '#000', 
-            overflow: 'hidden'
+            justifyContent: 'center'
           }}>
-            <video 
-              ref={videoRef} 
-              src={rawVideoUrl} 
-              playsInline 
-              muted={!isVideoPlaying} 
-              loop
-              onLoadedMetadata={handleVideoLoadedMetadata}
-              style={{
-                width: '100%', 
-                height: '100%',
-                // objectFit: 'contain' akan otomatis mengikuti aspect-ratio container
-                objectFit: 'contain', 
-                transform: `translate(${videoCropX}px, ${videoCropY}px) scale(${videoZoom}) rotate(${videoRotation}deg)`,
-                transition: 'transform 0.1s ease'
-              }} 
-            />
-            
-            {/* Canvas disembunyikan untuk keperluan capture frame */}
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              maxHeight: '100%',
+              aspectRatio: activeRatio,
+              backgroundColor: '#000',
+              overflow: 'hidden'
+            }}>
+              <video 
+                ref={videoRef} 
+                src={rawVideoUrl} 
+                playsInline 
+                muted={!isVideoPlaying} 
+                loop
+                onLoadedMetadata={handleVideoLoadedMetadata}
+                style={{
+                  width: '100%', 
+                  height: '100%',
+                  objectFit: 'contain', // Menjaga video tetap masuk dan mengisi area yg kosong dgn hitam
+                  transform: `translate(${videoCropX}px, ${videoCropY}px) scale(${videoZoom}) rotate(${videoRotation}deg)`,
+                  transition: 'transform 0.1s ease'
+                }} 
+              />
+              
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-            {/* Play Overlay */}
-            {!isVideoPlaying && (
-              <div onClick={togglePlayVideo} style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', zIndex: 10
-              }}>
-                <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: 16, borderRadius: '50%' }}>
-                  <span className="material-icons" style={{ fontSize: 40, color: '#fff' }}>play_arrow</span>
+              {!isVideoPlaying && (
+                <div onClick={togglePlayVideo} style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 10
+                }}>
+                  <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: 16, borderRadius: '50%' }}>
+                    <span className="material-icons" style={{ fontSize: 40, color: '#fff' }}>play_arrow</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : null}
       </div>
@@ -418,7 +422,6 @@ export default function MediaEditor({
   );
 }
 
-// Komponen tombol tab kecil
 function TabButton({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{

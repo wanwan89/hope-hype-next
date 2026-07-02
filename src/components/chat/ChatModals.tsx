@@ -155,14 +155,14 @@ export default function ChatModals({
                 exit={{ opacity: 0 }}
                 style={{
                   position: 'fixed', inset: 0, zIndex: 9999999,
-                  background: 'rgba(0, 0, 0, 0.6)', // Backdrop redup
+                  background: 'rgba(0, 0, 0, 0.6)',
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
                   padding: '20px'
                 }}
               >
                 <div style={{
-                  background: 'var(--bg-panel)', // Menyesuaikan Dark/Light Mode
+                  background: 'var(--bg-panel)',
                   padding: '32px',
                   borderRadius: '24px',
                   display: 'flex',
@@ -237,7 +237,7 @@ export default function ChatModals({
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 style={{
-                  position: 'fixed', inset: 0, background: 'var(--bg-main)',
+                  position: 'fixed', inset: 0, background: '#000000', // Ubah juga pembungkus utamanya jadi hitam biar serasi
                   zIndex: 9999999, display: 'flex', flexDirection: 'column',
                 }}
               >
@@ -348,10 +348,11 @@ export default function ChatModals({
                 {/* Footer & Input Caption */}
                 <div style={{
                   flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
-                  background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)',
+                  background: '#000000', // Diubah menjadi hitam
+                  borderTop: '1px solid #333',
                   display: 'flex', gap: '10px', alignItems: 'flex-end',
                 }}>
-                  <div style={{ flex: 1, background: 'var(--bg-secondary)', borderRadius: '20px' }}>
+                  <div style={{ flex: 1, background: '#1c1c1c', borderRadius: '20px' }}>
                     <textarea
                       placeholder={images.length > 1 ? `Keterangan untuk foto ke-${currentIndex + 1}...` : "Tambahkan keterangan..."}
                       value={currentMedia?.caption || ''}
@@ -363,7 +364,8 @@ export default function ChatModals({
                       rows={1}
                       style={{
                         width: '100%', padding: '10px 14px', fontSize: '15px',
-                        color: 'var(--text-main)', background: 'transparent',
+                        color: '#ffffff', // Tulisan jadi putih
+                        background: 'transparent',
                         border: 'none', outline: 'none', resize: 'none',
                       }}
                       disabled={isCropping}
@@ -378,7 +380,10 @@ export default function ChatModals({
                       cursor: 'pointer', flexShrink: 0,
                     }}
                   >
-                    <span className="material-icons">send</span>
+                    {/* SVG Icon Kirim Baru */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                      <path fill="currentColor" fillRule="evenodd" d="M2.345 2.245a1 1 0 0 1 1.102-.14l18 9a1 1 0 0 1 0 1.79l-18 9a1 1 0 0 1-1.396-1.211L4.613 13H10a1 1 0 1 0 0-2H4.613L2.05 3.316a1 1 0 0 1 .294-1.071z" clipRule="evenodd"/>
+                    </svg>
                   </button>
                 </div>
               </motion.div>
