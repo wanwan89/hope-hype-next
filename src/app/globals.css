@@ -287,4 +287,56 @@ select,
   background-image: linear-gradient(var(--bg-main), var(--bg-main)), var(--accent-story);
   background-origin: padding-box, border-box; background-clip: padding-box, border-box;
 }
-.story-ring .default-avatar .material-icons { font-size: 32px !important; color: var(--text-muted) !important; }
+.story-ring .default-avatar .material-icons { font-size: 32px !important; color: var(--text-muted) !important; } 
+ /* =============================================================
+   FULL FIX: HILANGKAN BORDER PUTUS-PUTUS (FOCUS RING) DI SEMUA ELEMEN
+   ============================================================= */
+
+/* 1. Matikan outline untuk SEMUA elemen dalam state fokus */
+*:focus,
+*:focus-visible,
+*:focus-within {
+  outline: none !important;
+}
+
+/* 2. Khusus input, textarea, dan area yang sering diklik */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible,
+[contenteditable="true"]:focus,
+[contenteditable="true"]:focus-visible,
+.post-textarea:focus,
+.post-textarea:focus-visible,
+.music-search-input:focus,
+.music-search-input:focus-visible,
+.post-upload-area:focus,
+.post-upload-area:focus-visible,
+.post-upload-area:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 3. Pastikan area upload tetap memakai border dashed yang kamu mau,
+   bukan outline atau border lain saat fokus */
+.post-upload-area:focus,
+.post-upload-area:focus-visible,
+.post-upload-area:active {
+  border: 2px dashed var(--border-card);
+}
+
+/* 4. Untuk input file yang tersembunyi (penyebab focus ring tidak terlihat) */
+input[type="file"]:focus,
+input[type="file"]:focus-visible {
+  outline: none !important;
+}
+
+/* 5. Opsional: jika masih ada border putus-putus di tombol saat diklik */
+button:focus,
+button:focus-visible,
+a:focus,
+a:focus-visible {
+  outline: none !important;
+}
