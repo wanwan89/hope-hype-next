@@ -9,9 +9,7 @@ import Lottie from 'lottie-react';
 import playAnimation from '@/assets/lottie/play.json'; 
 import { motion, AnimatePresence } from 'framer-motion'; 
 
-// 🔥 GANTI: Import RefreshableWrapper langsung ke sini
 import RefreshableWrapper from '@/components/RefreshableWrapper';
-
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ProfileInfo from '@/components/profiles/ProfileInfo';
 import ProfileTabs from '@/components/profiles/ProfileTabs';
@@ -55,6 +53,8 @@ function ProfileContent() {
   const [activeTab, setActiveTab] = useState<'post' | 'private' | 'like' | 'repost' | 'simpan'>('post');
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  
+  // Modal & UI States
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -125,126 +125,122 @@ function ProfileContent() {
     return () => { isComponentActive = false; };
   }, [activeTab, profile, isMounted, blockStatus, isFollowing, isFollowedBy]);
 
+  // 🔥 OPTIMIZED: Fetching profil dan statistik secara paralel
   const loadProfile = async (isComponentActive: boolean = true) => {
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const currentUserId = authData?.user?.id || null;
-      if (!isComponentActive) return;
-      setMyId(currentUserId);
+      // 1. Ambil Auth & Profil secara paralel jika memungkinkan (mengurangi waktu tunggu)
+      const authPromise = supabase.auth.getUser();
+      let profilePromise;
 
-      let query = supabase.from('profiles').select('*');
-      if (urlId) query = query.eq('id', urlId);
-      else if (urlUser) query = query.eq('username', urlUser);
-      else if (currentUserId) query = query.eq('id', currentUserId);
-      else {
-        if (isComponentActive) setNeedsLogin(true);
-        return; 
+      if (urlId) {
+        profilePromise = supabase.from('profiles').select('*').eq('id', urlId).single();
+      } else if (urlUser) {
+        profilePromise = supabase.from('profiles').select('*').eq('username', urlUser).single();
       }
 
-      const { data: profData, error } = await query.single();
-      if (error || !profData) return;
-      if (!isComponentActive) return;
+      let currentUserId = null;
+      let profData = null;
 
-      if (currentUserId && currentUserId !== profData.id) {
-        const { data: myBlock } = await supabase
-          .from('blocked_users')
-          .select('id')
-          .match({ blocker_id: currentUserId, blocked_id: profData.id })
-          .maybeSingle();
-        if (myBlock && isComponentActive) setBlockStatus('blocked_by_me');
-
-        const { data: theirBlock } = await supabase
-          .from('blocked_users')
-          .select('id')
-          .match({ blocker_id: profData.id, blocked_id: currentUserId })
-          .maybeSingle();
-        if (theirBlock && isComponentActive) setBlockStatus('blocking_me');
-      }
-
-      if (isComponentActive) {
-        setProfile(profData);
-        setEditData({
-          full_name: profData.full_name || '',
-          username: profData.username || '',
-          bio: profData.bio || '',
-          avatar_url: profData.avatar_url || '',
-          website: profData.website || ''
-        });
-        setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
-      }
-
-      const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: stories } = await supabase
-        .from('stories')
-        .select('id')
-        .eq('creator_id', profData.id)
-        .gte('created_at', timeLimit)
-        .order('created_at', { ascending: true })
-        .limit(1);
-
-      if (isComponentActive) {
-        if (stories && stories.length > 0) {
-          setHasStory(true);
-          setStoryIdToGo(String(stories[0].id));
+      if (profilePromise) {
+        const [authRes, profRes] = await Promise.all([authPromise, profilePromise]);
+        currentUserId = authRes.data?.user?.id || null;
+        profData = profRes.data;
+      } else {
+        const authRes = await authPromise;
+        currentUserId = authRes.data?.user?.id || null;
+        if (currentUserId) {
+          const profRes = await supabase.from('profiles').select('*').eq('id', currentUserId).single();
+          profData = profRes.data;
         } else {
-          setHasStory(false);
-          setStoryIdToGo(null);
+          if (isComponentActive) setNeedsLogin(true);
+          return;
         }
       }
 
-      if (blockStatus === 'none') {
-        updateStats(profData.id, currentUserId, isComponentActive);
+      if (!profData || !isComponentActive) return;
+      setMyId(currentUserId);
+
+      // 2. Siapkan semua query lanjutan untuk dijalankan BERSAMAAN (Promise.all)
+      const targetId = profData.id;
+      const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
+      const parallelTasks: Promise<any>[] = [
+        // Index 0: Cek Story
+        supabase.from('stories').select('id').eq('creator_id', targetId).gte('created_at', timeLimit).order('created_at', { ascending: true }).limit(1),
+        // Index 1: Jumlah Followers
+        supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', targetId),
+        // Index 2: Jumlah Following
+        supabase.from('followers').select('id', { count: 'exact', head: true }).eq('follower_id', targetId),
+        // Index 3: Kalkulasi Likes (Fungsi Async Langsung)
+        (async () => {
+          const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', targetId);
+          if (!myPosts || myPosts.length === 0) return 0;
+          const { count } = await supabase.from('likes').select('id', { count: 'exact', head: true }).in('post_id', myPosts.map(p => p.id));
+          return count || 0;
+        })()
+      ];
+
+      // Jika melihat profil orang lain, tambahkan pengecekan relasi ke antrean paralel
+      let fetchOffset = 4;
+      if (currentUserId && currentUserId !== targetId) {
+        parallelTasks.push(supabase.from('blocked_users').select('id').match({ blocker_id: currentUserId, blocked_id: targetId }).maybeSingle()); // 4: Blocked by me
+        parallelTasks.push(supabase.from('blocked_users').select('id').match({ blocker_id: targetId, blocked_id: currentUserId }).maybeSingle()); // 5: Blocking me
+        parallelTasks.push(supabase.from('followers').select('id').match({ follower_id: currentUserId, following_id: targetId }).maybeSingle()); // 6: isFollowing
+        parallelTasks.push(supabase.from('followers').select('id').match({ follower_id: targetId, following_id: currentUserId }).maybeSingle()); // 7: isFollowedBy
       }
+
+      // 🔥 EKSEKUSI SEMUA QUERY SEKALIGUS
+      const results = await Promise.all(parallelTasks);
+      if (!isComponentActive) return;
+
+      const stories = results[0].data;
+      const followersCount = results[1].count || 0;
+      const followingCount = results[2].count || 0;
+      const totalLikes = results[3];
+
+      let newBlockStatus: 'none' | 'blocked_by_me' | 'blocking_me' = 'none';
+      let isF = false;
+      let isFB = false;
+
+      if (currentUserId && currentUserId !== targetId) {
+        if (results[fetchOffset].data) newBlockStatus = 'blocked_by_me';
+        else if (results[fetchOffset + 1].data) newBlockStatus = 'blocking_me';
+        isF = !!results[fetchOffset + 2].data;
+        isFB = !!results[fetchOffset + 3].data;
+      }
+
+      // 3. Update State Sekaligus
+      setProfile(profData);
+      setEditData({
+        full_name: profData.full_name || '',
+        username: profData.username || '',
+        bio: profData.bio || '',
+        avatar_url: profData.avatar_url || '',
+        website: profData.website || ''
+      });
+      setPreviewUrl(profData.avatar_url || '/asets/png/profile.webp');
+      
+      if (stories && stories.length > 0) {
+        setHasStory(true);
+        setStoryIdToGo(String(stories[0].id));
+      } else {
+        setHasStory(false);
+        setStoryIdToGo(null);
+      }
+
+      setBlockStatus(newBlockStatus);
+      if (newBlockStatus === 'none') {
+        setStats({ followers: followersCount, following: followingCount, likes: totalLikes });
+        setIsFollowing(isF);
+        setIsFollowedBy(isFB);
+      }
+
     } catch (err) {
       console.error("Load Profile Error:", err);
     }
   };
 
-  const updateStats = async (targetId: string, currentUserId: string | null, isComponentActive: boolean) => {
-    try {
-      const { count: fers } = await supabase
-        .from('followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('following_id', targetId);
-      const { count: fing } = await supabase
-        .from('followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', targetId);
-
-      const { data: myPosts } = await supabase.from('posts').select('id').eq('creator_id', targetId);
-      let totalLikes = 0;
-      if (myPosts && myPosts.length > 0) {
-        const { count: lks } = await supabase
-          .from('likes')
-          .select('*', { count: 'exact', head: true })
-          .in('post_id', myPosts.map(p => p.id));
-        totalLikes = lks || 0;
-      }
-
-      if (isComponentActive) {
-        setStats({ followers: fers || 0, following: fing || 0, likes: totalLikes });
-      }
-
-      if (currentUserId && currentUserId !== targetId) {
-        const { data: isF } = await supabase
-          .from('followers')
-          .select('id')
-          .match({ follower_id: currentUserId, following_id: targetId })
-          .maybeSingle();
-        if (isComponentActive) setIsFollowing(!!isF);
-
-        const { data: isFB } = await supabase
-          .from('followers')
-          .select('id')
-          .match({ follower_id: targetId, following_id: currentUserId })
-          .maybeSingle();
-        if (isComponentActive) setIsFollowedBy(!!isFB);
-      }
-    } catch (e) {
-      console.error("Stats Error:", e);
-    }
-  };
-
+  // 🔥 OPTIMIZED: Menggabungkan request jika memungkinkan di Tab Post
   const loadPostsTab = async (type: string, isComponentActive: boolean = true) => {
     if (!profile) return;
     const isMe = myId === profile.id;
@@ -266,61 +262,29 @@ function ProfileContent() {
     try {
       if (type === 'post') {
         if (isMe) {
-          const { data: drafts } = await supabase
-            .from('posts')
-            .select('id, image_url, video_url, views, status, is_pinned')
-            .eq('creator_id', profile.id)
-            .eq('status', 'draft')
-            .order('created_at', { ascending: false });
-          const { data: approveds } = await supabase
-            .from('posts')
-            .select('id, image_url, video_url, views, status, is_pinned')
-            .eq('creator_id', profile.id)
-            .eq('status', 'approved')
-            .eq('is_private', false)
-            .order('created_at', { ascending: false });
-          if (isComponentActive) setPosts([...(drafts || []), ...(approveds || [])]);
+          // Paralel fetch Drafts dan Approved Post
+          const [draftsRes, approvedsRes] = await Promise.all([
+            supabase.from('posts').select('id, image_url, video_url, views, status, is_pinned').eq('creator_id', profile.id).eq('status', 'draft').order('created_at', { ascending: false }),
+            supabase.from('posts').select('id, image_url, video_url, views, status, is_pinned').eq('creator_id', profile.id).eq('status', 'approved').eq('is_private', false).order('created_at', { ascending: false })
+          ]);
+          if (isComponentActive) setPosts([...(draftsRes.data || []), ...(approvedsRes.data || [])]);
         } else {
-          const { data, error } = await supabase
-            .from('posts')
-            .select('id, image_url, video_url, views, status, is_pinned')
-            .eq('creator_id', profile.id)
-            .eq('status', 'approved')
-            .eq('is_private', false)
-            .order('created_at', { ascending: false });
-          if (data && !error && isComponentActive) setPosts(data);
+          const { data } = await supabase.from('posts').select('id, image_url, video_url, views, status, is_pinned').eq('creator_id', profile.id).eq('status', 'approved').eq('is_private', false).order('created_at', { ascending: false });
+          if (isComponentActive && data) setPosts(data);
         }
       } else if (type === 'private') {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('id, image_url, video_url, views, status, is_pinned')
-          .eq('creator_id', profile.id)
-          .eq('is_private', true)
-          .order('created_at', { ascending: false });
-        if (data && !error && isComponentActive) setPosts(data);
+        const { data } = await supabase.from('posts').select('id, image_url, video_url, views, status, is_pinned').eq('creator_id', profile.id).eq('is_private', true).order('created_at', { ascending: false });
+        if (isComponentActive && data) setPosts(data);
       } else {
-        let tableName = '';
-        if (type === 'simpan') tableName = 'bookmarks';
-        else if (type === 'repost') tableName = 'reposts';
-        else if (type === 'like') tableName = 'likes';
-
-        if (tableName) {
-          const { data: relData, error: relError } = await supabase
-            .from(tableName)
-            .select('post_id')
-            .eq('user_id', profile.id)
-            .order('created_at', { ascending: false });
-
-          if (relData && relData.length > 0 && !relError) {
-            const postIds = relData.map((r: any) => r.post_id).filter(Boolean);
-            if (postIds.length > 0) {
-              const { data: pData, error: pError } = await supabase
-                .from('posts')
-                .select('id, image_url, video_url, views, status, is_pinned')
-                .in('id', postIds)
-                .order('created_at', { ascending: false });
-              if (pData && !pError && isComponentActive) setPosts(pData);
-            }
+        let tableName = type === 'simpan' ? 'bookmarks' : (type === 'repost' ? 'reposts' : 'likes');
+        
+        const { data: relData } = await supabase.from(tableName).select('post_id').eq('user_id', profile.id).order('created_at', { ascending: false });
+        
+        if (relData && relData.length > 0) {
+          const postIds = relData.map((r: any) => r.post_id).filter(Boolean);
+          if (postIds.length > 0) {
+            const { data: pData } = await supabase.from('posts').select('id, image_url, video_url, views, status, is_pinned').in('id', postIds).order('created_at', { ascending: false });
+            if (isComponentActive && pData) setPosts(pData);
           }
         }
       }
@@ -336,24 +300,17 @@ function ProfileContent() {
   // ==========================================
   const handlePostClick = (postId: string, status: string) => {
     if (!postId) return;
-    if (status === 'draft') {
-      router.push(`/create?draft_id=${postId}`);
-    } else {
-      router.push(`/post?creator_id=${profile?.id}&id=${postId}#post-${postId}`);
-    }
+    if (status === 'draft') router.push(`/create?draft_id=${postId}`);
+    else router.push(`/post?creator_id=${profile?.id}&id=${postId}#post-${postId}`);
   };
 
   const handleAvatarClick = () => {
-    if (hasStory && storyIdToGo) {
-      router.push(`/story/view?id=${storyIdToGo}`);
-    } else {
-      showNotif("Belum ada story terbaru", "info");
-    }
+    if (hasStory && storyIdToGo) router.push(`/story/view?id=${storyIdToGo}`);
+    else showNotif("Belum ada story terbaru", "info");
   };
 
   const handleGoToChat = () => {
-    if (!profile?.id) return;
-    router.push(`/hypetalk/room?from=${profile.id}`);
+    if (profile?.id) router.push(`/hypetalk/room?from=${profile.id}`);
   };
 
   const handleOpenFollowModal = async (type: 'followers' | 'following') => {
@@ -370,10 +327,7 @@ function ProfileContent() {
 
       if (idList && idList.length > 0) {
         const userIds = idList.map((item: any) => item[targetCol]);
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url, role')
-          .in('id', userIds);
+        const { data: profilesData } = await supabase.from('profiles').select('id, username, avatar_url, role').in('id', userIds);
         setFollowList(profilesData || []);
       }
     } catch (err) {
@@ -387,9 +341,8 @@ function ProfileContent() {
     const url = window.location.href;
     const title = `Profil ${profile?.username}`;
     setIsSidebarOpen(false);
-    if (window.openGlobalShare) {
-      window.openGlobalShare(url, title, undefined, profile?.username);
-    } else {
+    if (window.openGlobalShare) window.openGlobalShare(url, title, undefined, profile?.username);
+    else {
       navigator.clipboard.writeText(url);
       showNotif(t('link_copied', 'Link disalin!'), "success");
     }
@@ -415,6 +368,7 @@ function ProfileContent() {
         avatar_url: finalAvatarUrl || profile.avatar_url,
         website: editData.website
       }).eq("id", myId);
+      
       showNotif(t('profile_updated', 'Profil diperbarui!'), "success");
       setIsEditModalOpen(false);
       setTimeout(() => location.reload(), 800);
@@ -448,9 +402,11 @@ function ProfileContent() {
     if (confirm(`Yakin ingin memblokir ${profile.username}?`)) {
       try {
         setIsActionSheetOpen(false);
-        await supabase.from('followers').delete().match({ follower_id: myId, following_id: profile.id });
-        await supabase.from('followers').delete().match({ follower_id: profile.id, following_id: myId });
-        await supabase.from('blocked_users').insert([{ blocker_id: myId, blocked_id: profile.id }]);
+        await Promise.all([
+          supabase.from('followers').delete().match({ follower_id: myId, following_id: profile.id }),
+          supabase.from('followers').delete().match({ follower_id: profile.id, following_id: myId }),
+          supabase.from('blocked_users').insert([{ blocker_id: myId, blocked_id: profile.id }])
+        ]);
         showNotif('Pengguna berhasil diblokir.', 'success');
         setBlockStatus('blocked_by_me');
       } catch (e: any) {
@@ -484,32 +440,14 @@ function ProfileContent() {
         <button
           onClick={() => router.push('/login')} 
           style={{
-            width: '100%',
-            maxWidth: '280px',
-            background: '#1f3cff',
-            color: 'white',
-            border: 'none',
-            padding: '14px 0',
-            borderRadius: '14px',
-            fontWeight: 'bold',
-            fontSize: '16px',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-            overflow: 'hidden', 
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
+            width: '100%', maxWidth: '280px', background: '#1f3cff', color: 'white', border: 'none',
+            padding: '14px 0', borderRadius: '14px', fontWeight: 'bold', fontSize: '16px',
+            cursor: 'pointer', transition: 'background 0.2s', overflow: 'hidden', display: 'flex',
+            justifyContent: 'center', alignItems: 'center'
           }}
         >
           <AnimatePresence mode="wait">
-            <motion.span
-              key={authText}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              style={{ display: 'inline-block' }}
-            >
+            <motion.span key={authText} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ duration: 0.3 }} style={{ display: 'inline-block' }}>
               {authText}
             </motion.span>
           </AnimatePresence>
@@ -518,7 +456,7 @@ function ProfileContent() {
     );
   }
 
-  if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)' }}></div>;
+  if (!isMounted || !profile) return <div className="profile-page-container" style={{ backgroundColor: 'var(--bg-main)', height: '100dvh' }}></div>;
 
   const isMe = myId === profile.id;
   const isMutual = isFollowing && isFollowedBy;
@@ -550,11 +488,7 @@ function ProfileContent() {
   }
 
   return (
-    // 🔥 PENGATURAN FLEXBOX: Membuat container menjadi 100vh dan tidak bisa discroll secara keseluruhan
-    <div 
-      className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`} 
-      style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}
-    >
+    <div className={`profile-page-container ${isEditModalOpen || isFollowModalOpen ? 'noscroll' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       <style>{`
         .avatar-container { margin: 0 auto 12px; display: flex; justify-content: center; align-items: center; }
         .story-ring, .normal-ring { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
@@ -581,129 +515,31 @@ function ProfileContent() {
         .drag-handle { width: 40px; height: 5px; background: var(--border-card); border-radius: 10px; margin: 0 auto 5px; }
         .close-icon { color: var(--text-muted); cursor: pointer; }
         .noscroll { overflow: hidden !important; touch-action: none; }
-        
-        /* 🔥 PENGATURAN BARU: Menghapus border line pada ProfileHeader (secara paksa/global di komponen ini saja) */
-        header, .profile-header, [class*="header"], [class*="Header"] {
-          border-bottom: none !important;
-          box-shadow: none !important;
-        }
+        header, .profile-header, [class*="header"], [class*="Header"] { border-bottom: none !important; box-shadow: none !important; }
       `}</style>
 
-      {/* 🔥 AREA STATIS (Header, Profil Info, Tabs): Dibungkus div dengan flexShrink: 0 agar tidak ikut ter-scroll */}
       <div style={{ flexShrink: 0, zIndex: 10, background: 'var(--bg-main)' }}>
-        
-        {/* 🔥 PENGGUNAAN PROFILE HEADER FULL FIX 🔥 */}
-        <ProfileHeader
-          isMe={isMe}
-          username={profile.username}
-          isPrivate={profile.is_private}
-          onBack={() => router.back()}
-          onMenuClick={() => isMe ? setIsSidebarOpen(true) : setIsActionSheetOpen(true)}
-          onEditClick={() => setIsEditModalOpen(true)}
-          onShareClick={handleShareProfile}
-        />
-
+        <ProfileHeader isMe={isMe} username={profile.username} isPrivate={profile.is_private} onBack={() => router.back()} onMenuClick={() => isMe ? setIsSidebarOpen(true) : setIsActionSheetOpen(true)} onEditClick={() => setIsEditModalOpen(true)} onShareClick={handleShareProfile} />
         <div className="profile-top-section">
-          <ProfileInfo
-            profile={profile}
-            stats={stats}
-            isMe={isMe}
-            isFollowing={isFollowing}
-            isMutual={isMutual}
-            hasStory={hasStory}
-            storyIdToGo={storyIdToGo}
-            onAvatarClick={handleAvatarClick}
-            onChat={handleGoToChat}
-            onToggleFollow={toggleFollow}
-            onEdit={isMe ? undefined : () => setIsEditModalOpen(true)}
-            onShare={isMe ? undefined : handleShareProfile}
-            onOpenActionSheet={() => setIsActionSheetOpen(true)}
-            onOpenFollowers={() => handleOpenFollowModal('followers')}
-            onOpenFollowing={() => handleOpenFollowModal('following')}
-            t={t}
-          />
-
+          <ProfileInfo profile={profile} stats={stats} isMe={isMe} isFollowing={isFollowing} isMutual={isMutual} hasStory={hasStory} storyIdToGo={storyIdToGo} onAvatarClick={handleAvatarClick} onChat={handleGoToChat} onToggleFollow={toggleFollow} onEdit={isMe ? undefined : () => setIsEditModalOpen(true)} onShare={isMe ? undefined : handleShareProfile} onOpenActionSheet={() => setIsActionSheetOpen(true)} onOpenFollowers={() => handleOpenFollowModal('followers')} onOpenFollowing={() => handleOpenFollowModal('following')} t={t} />
           {(!profile.is_private || isMe || isMutual) && (
-            <ProfileTabs
-              isMe={isMe}
-              isMutual={isMutual}
-              profile={profile}
-              activeTab={activeTab}
-              onTabChange={(tab) => setActiveTab(tab as any)}
-              t={t}
-            />
+            <ProfileTabs isMe={isMe} isMutual={isMutual} profile={profile} activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as any)} t={t} />
           )}
         </div>
       </div>
 
-      {/* 🔥 AREA SCROLL DINAMIS (Postingan): Hanya bagian ini yang dapat di-scroll dan menggunakan pull-to-refresh */}
       <div style={{ flex: 1, overflowY: 'auto', overscrollBehaviorY: 'none', position: 'relative' }}>
         <RefreshableWrapper onRefresh={refetch}>
           <div className="post-grid-container" style={{ minHeight: '100%', paddingBottom: '20px' }}>
-            <PostGrid
-              posts={posts}
-              isLoadingPosts={isLoadingPosts}
-              isMe={isMe}
-              isMutual={isMutual}
-              profile={profile}
-              activeTab={activeTab}
-              onPostClick={handlePostClick}
-              t={t}
-            />
+            <PostGrid posts={posts} isLoadingPosts={isLoadingPosts} isMe={isMe} isMutual={isMutual} profile={profile} activeTab={activeTab} onPostClick={handlePostClick} t={t} />
           </div>
         </RefreshableWrapper>
       </div>
 
-      {/* Komponen Modal dan Sidebar */}
-      {isMe && (
-        <SidebarMenu
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          t={t}
-          onShare={handleShareProfile}
-        />
-      )}
-
-      <EditProfileModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        editData={editData}
-        setEditData={setEditData}
-        selectedFile={selectedFile}
-        setSelectedFile={setSelectedFile}
-        previewUrl={previewUrl}
-        setPreviewUrl={setPreviewUrl}
-        isSaving={isSaving}
-        onSave={handleSaveSettings}
-        fileInputRef={fileInputRef}
-        t={t}
-      />
-
-      <FollowModal
-        isOpen={isFollowModalOpen}
-        type={followModalType}
-        list={followList}
-        isLoading={isFollowLoading}
-        onClose={() => setIsFollowModalOpen(false)}
-        onUserClick={(userId) => {
-          setIsFollowModalOpen(false);
-          router.push(`/data?id=${userId}`);
-        }}
-        t={t}
-      />
-
-      <ActionSheet
-        isOpen={isActionSheetOpen}
-        isMutual={isMutual} 
-        onClose={() => setIsActionSheetOpen(false)}
-        onSetNickname={() => {
-          setIsActionSheetOpen(false);
-          showNotif("Fitur ganti nama panggilan segera hadir!", "info");
-        }}
-        onReport={handleReportUser}
-        onBlock={handleBlockUser}
-      />
-
+      {isMe && <SidebarMenu isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} t={t} onShare={handleShareProfile} />}
+      <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editData={editData} setEditData={setEditData} selectedFile={selectedFile} setSelectedFile={setSelectedFile} previewUrl={previewUrl} setPreviewUrl={setPreviewUrl} isSaving={isSaving} onSave={handleSaveSettings} fileInputRef={fileInputRef} t={t} />
+      <FollowModal isOpen={isFollowModalOpen} type={followModalType} list={followList} isLoading={isFollowLoading} onClose={() => setIsFollowModalOpen(false)} onUserClick={(userId) => { setIsFollowModalOpen(false); router.push(`/data?id=${userId}`); }} t={t} />
+      <ActionSheet isOpen={isActionSheetOpen} isMutual={isMutual} onClose={() => setIsActionSheetOpen(false)} onSetNickname={() => { setIsActionSheetOpen(false); showNotif("Fitur ganti nama panggilan segera hadir!", "info"); }} onReport={handleReportUser} onBlock={handleBlockUser} />
     </div>
   );
 }
