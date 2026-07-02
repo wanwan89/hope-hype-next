@@ -9,8 +9,8 @@ import FloatingBubbles from './FloatingBubbles';
 import { getUserBadge } from '@/lib/ui-utils';
 import { formatRelativeTime, getOptimizedImage } from '@/lib/helpers';
 
-// --- Sub-Komponen untuk mengatasi pelanggaran Hook di dalam .map() ---
-const CarouselImageItem = ({
+// --- Sub-Komponen Dioptimasi dengan React.memo ---
+const CarouselImageItem = React.memo(({
   url,
   index,
   onClick,
@@ -67,7 +67,9 @@ const CarouselImageItem = ({
       />
     </div>
   );
-};
+});
+
+CarouselImageItem.displayName = 'CarouselImageItem';
 
 // --- Tipe Props ---
 type PostCardProps = {
@@ -100,7 +102,7 @@ type PostCardProps = {
   onToggleExpand?: (postId: string) => void;
 };
 
-const PostCard: React.FC<PostCardProps> = ({
+const PostCardComponent: React.FC<PostCardProps> = ({
   post, currentUser, counts, myLikedPosts, myRepostedPosts, mySavedPosts,
   followedUsers, mutualUsers, animatingFollows, animatingReposts,
   isGloballyMuted, poppingHeart, activePreviewImage, likersMap, repostersMap,
@@ -149,8 +151,9 @@ const PostCard: React.FC<PostCardProps> = ({
     [photoList]
   );
 
-  const likers = likersMap[postIdStr] || [];
-  const reposters = repostersMap[postIdStr] || [];
+  const likers = useMemo(() => likersMap[postIdStr] || [], [likersMap, postIdStr]);
+  const reposters = useMemo(() => repostersMap[postIdStr] || [], [repostersMap, postIdStr]);
+  
   const mutualLikers = useMemo(
     () => likers.filter((l: any) => mutualUsers.has(String(l.id))),
     [likers, mutualUsers]
@@ -162,8 +165,12 @@ const PostCard: React.FC<PostCardProps> = ({
 
   // --- 2. Refs dan state lokal ---
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
-  const captionRef = useRef<HTMLDivElement | HTMLParagraphElement>(null);
+  const captionRef = useRef<HTMLParagraphElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  
+  // OPTIMASI: Ref untuk progress bar agar tidak re-render komponen
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const progressInputRef = useRef<HTMLInputElement>(null);
 
   const hasViewedRef = useRef(false);
 
@@ -175,9 +182,10 @@ const PostCard: React.FC<PostCardProps> = ({
   const actuallyExpanded = isExpanded || localExpanded;
 
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
-  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
-  const [isSeeking, setIsSeeking] = useState(false);
+  
+  // HAPUS videoCurrentTime state, ganti dengan ref untuk menghindari re-render
+  const isSeekingRef = useRef(false); 
 
   const [showPlayPause, setShowPlayPause] = useState(false);
   const [isBarVisible, setIsBarVisible] = useState(false);
@@ -206,6 +214,7 @@ const PostCard: React.FC<PostCardProps> = ({
               });
             }
 
+            // Hentikan video lain (Bisa juga dioptimasi via Context di masa depan)
             document
               .querySelectorAll('.post-video-element, .post-audio-element')
               .forEach((el) => {
@@ -225,7 +234,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     }
                   }
                 } catch (err) {
-                  console.error("Gagal update view:", err);
+                  // silent fail
                 }
               };
               recordView();
@@ -242,15 +251,28 @@ const PostCard: React.FC<PostCardProps> = ({
     return () => observer.disconnect();
   }, [isGloballyMuted, postIdStr]);
 
-  // --- Sinkronisasi status video ---
+  // --- Sinkronisasi status video (Dioptimasi tanpa State Update berlebihan) ---
   useEffect(() => {
     const video = mediaRef.current as HTMLVideoElement | null;
     if (!video || !isVideoPost) return;
 
     const onTimeUpdate = () => {
-      if (!isSeeking) setVideoCurrentTime(video.currentTime);
+      // OPTIMASI: Update UI progress bar langsung ke DOM, TANPA Memicu Re-render
+      if (!isSeekingRef.current && progressBarRef.current && video.duration) {
+        const pct = (video.currentTime / video.duration) * 100;
+        progressBarRef.current.style.width = `${pct}%`;
+        if (progressInputRef.current) {
+          progressInputRef.current.value = String(video.currentTime);
+        }
+      }
     };
-    const onLoadedMetadata = () => setVideoDuration(video.duration);
+    
+    const onLoadedMetadata = () => {
+      setVideoDuration(video.duration);
+      if (progressInputRef.current) {
+        progressInputRef.current.max = String(video.duration);
+      }
+    };
     const onPlay = () => setIsVideoPlaying(true);
     const onPause = () => setIsVideoPlaying(false);
 
@@ -265,7 +287,7 @@ const PostCard: React.FC<PostCardProps> = ({
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
     };
-  }, [isVideoPost, isSeeking]);
+  }, [isVideoPost]); // Tidak butuh dep isSeeking lagi karena pake ref
 
   // Deteksi bio
   useEffect(() => {
@@ -347,10 +369,10 @@ const PostCard: React.FC<PostCardProps> = ({
     [onToggleExpand, postIdStr]
   );
 
-  // Handler video seek
+  // Handler video seek (Dioptimasi tanpa State)
   const handleVideoSeekStart = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
-    setIsSeeking(true);
+    isSeekingRef.current = true;
     setIsBarVisible(true);
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
@@ -362,28 +384,31 @@ const PostCard: React.FC<PostCardProps> = ({
   const handleVideoSeekChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
     const time = Number(e.target.value);
-    setVideoCurrentTime(time);
     const video = mediaRef.current as HTMLVideoElement | null;
+    
+    // Update DOM Langsung
     if (video) {
       video.currentTime = time;
     }
-  }, []);
+    if (progressBarRef.current && videoDuration) {
+      progressBarRef.current.style.width = `${(time / videoDuration) * 100}%`;
+    }
+  }, [videoDuration]);
 
   const handleVideoSeekCommit = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
-    setIsSeeking(false);
+    isSeekingRef.current = false;
     setTimeout(() => {
-      if (!isSeeking) setIsBarVisible(false);
+      if (!isSeekingRef.current) setIsBarVisible(false);
     }, 1500);
 
     const video = mediaRef.current as HTMLVideoElement | null;
     if (video) {
-      video.currentTime = videoCurrentTime;
       if (wasPlayingRef.current) {
         video.play().catch(() => {});
       }
     }
-  }, [videoCurrentTime, isSeeking]);
+  }, []);
 
   const handleVideoClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -692,7 +717,7 @@ const PostCard: React.FC<PostCardProps> = ({
                     </div>
                   )}
 
-                  {/* Progress Bar */}
+                  {/* Progress Bar (DOM Ref Updated) */}
                   <div
                     style={{
                       position: 'absolute',
@@ -705,33 +730,37 @@ const PostCard: React.FC<PostCardProps> = ({
                       alignItems: 'flex-end'
                     }}
                     onPointerEnter={() => setIsBarVisible(true)}
-                    onPointerLeave={() => { if (!isSeeking) setIsBarVisible(false); }}
+                    onPointerLeave={() => { if (!isSeekingRef.current) setIsBarVisible(false); }}
                   >
                     <div style={{
                       position: 'absolute',
                       bottom: 0,
                       left: 0,
                       width: '100%',
-                      height: isBarVisible || isSeeking ? '6px' : '2px',
+                      height: isBarVisible || isSeekingRef.current ? '6px' : '2px',
                       background: 'rgba(255,255,255,0.3)',
                       transition: 'height 0.2s',
                       pointerEvents: 'none'
                     }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${(videoCurrentTime / (videoDuration || 1)) * 100}%`,
-                        background: '#1f3cff',
-                        transition: isSeeking ? 'none' : 'width 0.1s linear'
-                      }} />
+                      <div 
+                        ref={progressBarRef}
+                        style={{
+                          height: '100%',
+                          width: '0%', // Updated via JS Reference
+                          background: '#1f3cff',
+                          transition: isSeekingRef.current ? 'none' : 'width 0.1s linear'
+                        }} 
+                      />
                     </div>
 
                     {videoLoaded && (
                       <input
+                        ref={progressInputRef}
                         type="range"
                         min={0}
                         max={videoDuration || 1}
                         step="0.001"
-                        value={videoCurrentTime}
+                        defaultValue={0}
                         onMouseDown={handleVideoSeekStart}
                         onTouchStart={handleVideoSeekStart}
                         onChange={handleVideoSeekChange}
@@ -857,7 +886,7 @@ const PostCard: React.FC<PostCardProps> = ({
               }}
             >
               <p
-                ref={captionRef as React.RefObject<HTMLParagraphElement>}
+                ref={captionRef}
                 style={{
                   fontSize: '14.5px',
                   color: 'var(--text-main)',
@@ -1259,4 +1288,32 @@ const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
-export default PostCard;
+// --- CUSTOM COMPARATOR UNTUK MENCEGAH RE-RENDER DI LIST ---
+function arePropsEqual(prevProps: PostCardProps, nextProps: PostCardProps) {
+  const postId = String(prevProps.post.id);
+  
+  // Hanya re-render jika data/state yang bersinggungan LANGSUNG dengan postingan ini berubah
+  return (
+    prevProps.post === nextProps.post &&
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.isGloballyMuted === nextProps.isGloballyMuted &&
+    prevProps.activePreviewImage === nextProps.activePreviewImage &&
+    
+    // Cek Interaksi (hanya jika postId ini ada/tidak ada di set baru)
+    prevProps.myLikedPosts.has(postId) === nextProps.myLikedPosts.has(postId) &&
+    prevProps.mySavedPosts.has(postId) === nextProps.mySavedPosts.has(postId) &&
+    prevProps.myRepostedPosts.has(postId) === nextProps.myRepostedPosts.has(postId) &&
+    
+    // Cek animasi atau hati
+    (prevProps.poppingHeart?.startsWith(postId) === nextProps.poppingHeart?.startsWith(postId)) &&
+    prevProps.animatingFollows.has(String(prevProps.post.creator_id)) === nextProps.animatingFollows.has(String(prevProps.post.creator_id)) &&
+    
+    // Cek Counts Spesifik
+    prevProps.counts[postId]?.likes === nextProps.counts[postId]?.likes &&
+    prevProps.counts[postId]?.comments === nextProps.counts[postId]?.comments &&
+    prevProps.counts[postId]?.reposts === nextProps.counts[postId]?.reposts
+  );
+}
+
+// Export yang sudah di-memo
+export default React.memo(PostCardComponent, arePropsEqual);

@@ -23,11 +23,12 @@ function shuffleArray(array: any[]) {
   return shuffled;
 }
 
+// Optimasi pengambilan gambar (Menambahkan AVIF dan eco quality untuk performa)
 const getOptimizedImage = (url: string) => {
   if (!url) return '';
   let cleanUrl = url.trim();
   if (cleanUrl.includes('res.cloudinary.com') && !cleanUrl.includes('f_auto')) {
-    return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_800/');
+    return cleanUrl.replace('/image/upload/', '/image/upload/f_auto,q_auto:eco,w_800/');
   }
   return cleanUrl;
 };
@@ -48,6 +49,7 @@ const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: an
         scrollSnapType: 'x mandatory', 
         paddingBottom: '5px', 
         willChange: 'transform',
+        transform: 'translateZ(0)', // Memaksa GPU Acceleration
         WebkitOverflowScrolling: 'touch',
         overscrollBehaviorX: 'contain'
       }}>
@@ -60,7 +62,9 @@ const MemoizedSlider = React.memo(({ posts, router }: { posts: any[], router: an
               style={{
                 minWidth: '150px', maxWidth: '150px', background: 'var(--bg-card)', borderRadius: '14px',
                 overflow: 'hidden', border: '1px solid var(--border-card)', scrollSnapAlign: 'start',
-                cursor: 'pointer', display: 'flex', flexDirection: 'column'
+                cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                transform: 'translateZ(0)', // GPU Acceleration per item
+                contentVisibility: 'auto' // Menunda rendering elemen kompleks saat di luar layar
               }}
             >
               <div style={{ width: '100%', height: '160px', background: 'var(--bg-secondary)', position: 'relative' }}>
@@ -95,7 +99,6 @@ export default function Gallerypost() {
   const router = useRouter();
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
@@ -118,12 +121,7 @@ export default function Gallerypost() {
   const [currentCategory, setCurrentCategory] = useState("fyp");
   const [isGloballyMuted, setIsGloballyMuted] = useState(true);
 
-  const [repostModal, setRepostModal] = useState<{
-    isOpen: boolean;
-    postId: string;
-    creatorId: string;
-    isUnrepost: boolean;
-  } | null>(null);
+  const [repostModal, setRepostModal] = useState<{ isOpen: boolean; postId: string; creatorId: string; isUnrepost: boolean; } | null>(null);
   const [repostNote, setRepostNote] = useState("");
 
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
@@ -143,16 +141,7 @@ export default function Gallerypost() {
   useEffect(() => { mySavedPostsRef.current = mySavedPosts; }, [mySavedPosts]);
   useEffect(() => { followedUsersRef.current = followedUsers; }, [followedUsers]);
 
-  const {
-    allPosts,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    refetch,
-  } = useFeed(currentCategory, currentUser, mutualUsers);
-  
+  const { allPosts, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } = useFeed(currentCategory, currentUser, mutualUsers);
   useGlobalRefresh(refetch);
 
   useEffect(() => {
@@ -169,9 +158,7 @@ export default function Gallerypost() {
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    
     virtuosoRef.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' });
-
     await refetch();
     await new Promise(resolve => setTimeout(resolve, 800));
   };
@@ -189,37 +176,27 @@ export default function Gallerypost() {
       const { postId, newCount } = e.detail;
       setCounts(prev => ({
         ...prev,
-        [postId]: {
-          ...prev[postId],
-          comments: newCount,
-        },
+        [postId]: { ...prev[postId], comments: newCount },
       }));
     };
-
     window.addEventListener('commentCountUpdated', handler as EventListener);
     return () => window.removeEventListener('commentCountUpdated', handler as EventListener);
   }, []);
 
+  // DIOPTIMALKAN: Mencegah manipulasi DOM berat yang membuat lag
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const forceUnmuteGlobal = () => {
       if (isGloballyMuted) {
-        setIsGloballyMuted(false);
-        document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-          el.muted = false;
-          if (el.paused) el.play().catch(() => {});
-        });
+        setIsGloballyMuted(false); 
+        // Dihapus: document.querySelectorAll().forEach(...) 
+        // React State isGloballyMuted akan otomatis memperbarui `<video>` / `<audio>` di PostCard
       }
     };
 
     const handleVolumeKey = (e: KeyboardEvent) => {
-      if (
-        e.key === 'AudioVolumeUp' || 
-        e.code === 'AudioVolumeUp' || 
-        e.keyCode === 24 || 
-        e.keyCode === 175   
-      ) {
+      if (e.key === 'AudioVolumeUp' || e.code === 'AudioVolumeUp' || e.keyCode === 24 || e.keyCode === 175) {
         forceUnmuteGlobal();
       }
     };
@@ -276,12 +253,8 @@ export default function Gallerypost() {
           .eq('is_private', false)
           .neq('image_url', null)
           .limit(20);
-        if (data) {
-          setSuggestedPosts(shuffleArray(data).slice(0, 6));
-        }
-      } catch (err) {
-        console.error(err);
-      }
+        if (data) setSuggestedPosts(shuffleArray(data).slice(0, 6));
+      } catch (err) { console.error(err); }
     };
     fetchSuggestedPosts();
   }, []);
@@ -447,14 +420,8 @@ export default function Gallerypost() {
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsGloballyMuted(prev => {
-      const next = !prev;
-      document.querySelectorAll(".post-audio-element, .post-video-element").forEach((el: any) => {
-        el.muted = next;
-        if (!next && el.paused) el.play().catch(() => { });
-      });
-      return next;
-    });
+    // Dihapus manipulasi DOM manual, React akan mengalirkan `isGloballyMuted` ke semua PostCard
+    setIsGloballyMuted(prev => !prev);
   }, []);
 
   const openShareOptions = useCallback((post: any, isOwner: boolean) => {
@@ -484,7 +451,7 @@ export default function Gallerypost() {
     const isTextOrAudio = !post.image_url && !post.video_url;
 
     return (
-      <div key={post.id} style={{ display: 'flex', flexDirection: 'column' }}>
+      <div key={post.id} style={{ display: 'flex', flexDirection: 'column', contentVisibility: 'auto' }}>
         {index === 3 && <MemoizedSlider posts={suggestedPosts} router={router} />}
         {index === 7 && <MemoizedSuggested myId={currentUser?.id} followedUsers={followedUsers} />}
         <div className={isTextOrAudio ? "text-post-card-wp" : "media-post-card-wp"}>
@@ -596,9 +563,9 @@ export default function Gallerypost() {
             useWindowScroll={!scrollParent}
             customScrollParent={scrollParent}
             data={allPosts}
+            computeItemKey={(index, item) => item.id} // DIOPTIMALKAN: Melacak Node secara efisien
             endReached={loadMore}
-            overscan={{ main: 600, reverse: 600 }}
-            increaseViewportBy={{ top: 400, bottom: 400 }}
+            overscan={200} // DIOPTIMALKAN: Menghindari beban rendering off-screen berlebih (sebelumnya 600 terlalu berat untuk gambar/video)
             itemContent={renderItem}
             components={{
               Footer: () => (
