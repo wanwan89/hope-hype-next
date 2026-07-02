@@ -7,7 +7,6 @@ import { Copy, X, Send, Lock, Unlock, MessageSquareOff, MessageSquare, Trash2, T
 import { supabase } from '@/lib/supabase';
 import './GlobalShareModal.css';
 
-// 🔥 IMPORT CUSTOM CONFIRM HOOK KAMU DI SINI
 import { useConfirm } from '@/components/ConfirmProvider'; 
 
 declare global {
@@ -27,7 +26,6 @@ declare global {
 export default function GlobalShareModal() {
   const { t } = useTranslation();
   
-  // 🔥 INISIALISASI HOOK
   const { confirm } = useConfirm();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +54,6 @@ export default function GlobalShareModal() {
     setTimeout(() => {
       setIsOpen(false);
       setIsClosing(false);
-      // 🔥 FIX 1: Reset semua state saat ditutup agar data postingan tidak bocor/nyangkut ke postingan berikutnya
       setMutuals([]);
       setShareData({ url: '', title: '', text: '', postId: '', isOwner: false, isPrivate: false });
       setPostSettings({ isPinned: false, commentsDisabled: false });
@@ -65,8 +62,6 @@ export default function GlobalShareModal() {
 
   useEffect(() => {
     window.openGlobalShare = (url, title, text, name, postId, isOwner, isPrivate) => {
-      // 🔥 FIX 2: Penentuan URL Dinamis. 
-      // Jika URL kosong tapi ada postId, arahkan ke route spesifik post tersebut.
       let finalUrl = url;
       if (!finalUrl) {
         finalUrl = postId ? `${window.location.origin}/post/${postId}` : window.location.href;
@@ -228,14 +223,9 @@ export default function GlobalShareModal() {
     }
   };
 
-  // 🔥 PERUBAHAN UTAMA DI SINI
   const deletePost = async () => {
     if (!shareData.postId) return;
-
-    // Menutup modal share opsional, jika kamu ingin saat dialog konfirmasi muncul, modal share tertutup
-    // closeModal(); 
     
-    // Panggil custom confirm yang mengembalikan Promise<boolean>
     const isConfirmed = await confirm("Yakin ingin menghapus postingan ini secara permanen?");
     
     if (isConfirmed) {
@@ -246,7 +236,11 @@ export default function GlobalShareModal() {
         showNotif("Postingan berhasil dihapus", "success");
         closeModal();
         
-        setTimeout(() => window.location.reload(), 400); 
+        // FIX: Pindahkan pengguna ke Home daripada me-reload halaman post yang baru saja dihapus 
+        // sehingga terhindar dari glitch halaman kosong
+        setTimeout(() => {
+          window.location.href = '/'; 
+        }, 400); 
       } catch (err) {
         showNotif("Gagal menghapus postingan", "error");
       }
@@ -266,6 +260,16 @@ export default function GlobalShareModal() {
   return (
     <>
       <style>{`
+        /* FIX: Tambahan styling untuk sheet-handle agar garis drag terlihat */
+        .sheet-handle {
+          width: 40px;
+          height: 5px;
+          background-color: var(--border-card, #ccc);
+          border-radius: 4px;
+          margin: 15px auto;
+          cursor: pointer;
+        }
+
         .g-scroll-row { display: flex; overflow-x: auto; gap: 16px; padding: 5px 20px 20px 20px; scrollbar-width: none; scroll-snap-type: x mandatory; }
         .g-scroll-row::-webkit-scrollbar { display: none; }
         .g-scroll-item { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 64px; scroll-snap-align: start; cursor: pointer; transition: transform 0.2s; }
@@ -286,7 +290,8 @@ export default function GlobalShareModal() {
 
       <div className={`global-share-overlay ${!isClosing ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
         <div className={`global-share-sheet ${!isClosing ? 'slide-up' : ''}`} style={{ padding: '0', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="sheet-handle" onClick={closeModal} style={{ margin: '15px auto' }}></div>
+          {/* Garis drag dipanggil di sini */}
+          <div className="sheet-handle" onClick={closeModal}></div>
           
           <div className="share-header" style={{ padding: '0 20px 15px 20px' }}>
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Bagikan</h3>
@@ -331,7 +336,6 @@ export default function GlobalShareModal() {
                 <div className="g-section-title" style={{ color: '#1f3cff' }}>Alat Kreator</div>
                 <div className="g-scroll-row">
                   
-                  {/* Sematkan */}
                   <div className="g-scroll-item" onClick={togglePin}>
                     <div className={`g-icon-circle ${postSettings.isPinned ? 'copy' : ''}`}>
                       <Pin size={24} />
@@ -339,7 +343,6 @@ export default function GlobalShareModal() {
                     <span className="g-item-name">{postSettings.isPinned ? 'Lepas Sematan' : 'Sematkan'}</span>
                   </div>
 
-                  {/* Privasi */}
                   <div className="g-scroll-item" onClick={togglePrivacy}>
                     <div className="g-icon-circle">
                       {shareData.isPrivate ? <Lock size={24} /> : <Unlock size={24} />}
@@ -347,7 +350,6 @@ export default function GlobalShareModal() {
                     <span className="g-item-name">{shareData.isPrivate ? 'Buka Privat' : 'Privat Post'}</span>
                   </div>
 
-                  {/* Komentar */}
                   <div className="g-scroll-item" onClick={toggleComments}>
                     <div className={`g-icon-circle ${postSettings.commentsDisabled ? 'danger' : ''}`}>
                       {postSettings.commentsDisabled ? <MessageSquareOff size={24} /> : <MessageSquare size={24} />}
@@ -357,7 +359,6 @@ export default function GlobalShareModal() {
                     </span>
                   </div>
 
-                  {/* Hapus */}
                   <div className="g-scroll-item" onClick={deletePost}>
                     <div className="g-icon-circle danger"><Trash2 size={24} /></div>
                     <span className="g-item-name" style={{ color: '#ff4757' }}>Hapus</span>

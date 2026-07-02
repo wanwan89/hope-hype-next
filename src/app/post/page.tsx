@@ -35,7 +35,6 @@ function PostContent() {
   const [likersMap, setLikersMap] = useState<Record<string, any[]>>({});
   const [repostersMap, setRepostersMap] = useState<Record<string, any[]>>({});
   
-  // State Baru untuk Menyimpan Tanggapan/Komentar
   const [commentsMap, setCommentsMap] = useState<Record<string, any[]>>({});
 
   const [poppingHeart, setPoppingHeart] = useState<string | null>(null);
@@ -57,7 +56,6 @@ function PostContent() {
   const mySavedPostsRef = useRef(mySavedPosts);
   const followedUsersRef = useRef(followedUsers);
 
-  // Matikan Scroll Restoration Bawaan Browser Saat Refresh
   useEffect(() => {
     if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
@@ -80,7 +78,12 @@ function PostContent() {
   }, [postIdFromUrl, source]);
 
   const initializePage = async () => {
-    setIsLoading(true);
+    // FIX: Hanya panggil spinner penuh jika data postingan belum ada
+    // Ini mencegah halaman seolah-olah me-refresh/kedip saat berganti komentar
+    if (userPosts.length === 0) {
+      setIsLoading(true);
+    }
+    
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user || null;
     setCurrentUser(user);
@@ -176,22 +179,24 @@ function PostContent() {
     const pid = String(postId);
     const [likesRes, commentsRes, repostsRes, savesRes] = await Promise.all([
       supabase.from('likes').select('user_id, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
-      // Mengambil data tanggapan asli beserta profil pengirim tanggapan (diurutkan dari yang terlama)
+      
+      // FIX: Jangan query kolom yang tidak ada di Supabase (seperti comment_text / text) 
+      // Jika kolom tidak ada, Supabase melempar error dan data menjadi null. Gunakan 'content' saja.
       supabase.from('comments')
-        .select('id, post_id, user_id, content, comment_text, text, created_at, profiles:user_id(full_name, username, role, avatar_url)')
+        .select('id, post_id, user_id, content, created_at, profiles:user_id(full_name, username, role, avatar_url)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true }),
+        
       supabase.from('reposts').select('user_id, note, profiles:user_id(id, username, avatar_url)').eq('post_id', postId),
       supabase.rpc('get_bookmark_counts', { post_ids: [postId] })
     ]);
 
-    // Transformasi data tanggapan agar memiliki properti yang sama seperti objek post biasa
     const transformedComments = commentsRes.data?.map((c: any) => ({
-      id: `comment-${c.id}`, // Beri prefix string agar tidak bentrok dengan ID post utama
+      id: `comment-${c.id}`,
       real_comment_id: c.id,
       post_id: c.post_id,
       creator_id: c.user_id,
-      bio: c.content || c.comment_text || c.text || '', // Fallback deteksi teks tanggapan
+      bio: c.content || '', 
       created_at: c.created_at,
       profiles: c.profiles,
       image_url: null,
@@ -206,13 +211,12 @@ function PostContent() {
         ...prev,
         [pid]: {
           likes: likesRes.data?.length || 0,
-          comments: transformedComments.length,
+          comments: transformedComments.length, // Sekarang data tidak null, ini akan memunculkan angka
           reposts: repostsRes.data?.length || 0,
           saves: (savesRes.data && savesRes.data[0]?.count) || 0,
         }
       };
 
-      // Berikan mapping count default 0 untuk kartu tanggapan agar komponen child tidak melempar nilai NaN/error
       transformedComments.forEach((c: any) => {
         baseCounts[c.id] = { likes: 0, comments: 0, reposts: 0, saves: 0 };
       });
@@ -236,7 +240,6 @@ function PostContent() {
     }
   };
 
-  // Perbaikan Logika Auto-Scroll dengan Retry Mechanism untuk Lazy Load
   useEffect(() => {
     if (!isLoading && userPosts.length > 0 && postIdFromUrl) {
       const scrollToPost = () => {
@@ -245,25 +248,17 @@ function PostContent() {
           targetPost.scrollIntoView({ behavior: 'auto', block: 'center' });
         }
       };
-
       const timer1 = setTimeout(scrollToPost, 150);
       const timer2 = setTimeout(scrollToPost, 600);
-
-      return () => {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-      };
+      return () => { clearTimeout(timer1); clearTimeout(timer2); };
     }
   }, [isLoading, userPosts, postIdFromUrl]);
 
   const handleToggleExpand = useCallback((postId: string) => {
     setExpandedPosts(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(postId)) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
-      }
+      if (newSet.has(postId)) newSet.delete(postId);
+      else newSet.add(postId);
       return newSet;
     });
   }, []);
@@ -294,8 +289,6 @@ function PostContent() {
 
   const handleLike = useCallback(async (postId: string, creatorId: string) => {
     if (!currentUserRef.current) return window.dispatchEvent(new CustomEvent("openLogin"));
-    
-    // Cegah interaksi melempar error SQL jika dipicu dari kartu tanggapan
     if (String(postId).startsWith('comment-')) return;
 
     const numericPostId = parseInt(postId);
@@ -415,7 +408,6 @@ function PostContent() {
 
   return (
     <div style={{ background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', width: '100%' }}>
-      {/* HEADER */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-main)', borderBottom: '1px solid var(--border-card)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <span className="material-icons">arrow_back</span>
@@ -426,7 +418,6 @@ function PostContent() {
       <RepostModal isOpen={!!repostModal} postId={repostModal?.postId || ''} creatorId={repostModal?.creatorId || ''} note={repostNote} setNote={setRepostNote} onClose={() => setRepostModal(null)} onConfirm={() => { if (repostModal) handleConfirmRepost(repostModal.postId, repostModal.creatorId, false); }} />
       <ImagePreview imageUrl={activePreviewImage} onClose={() => setActivePreviewImage(null)} />
 
-      {/* GALLERY */}
       <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
@@ -438,51 +429,18 @@ function PostContent() {
             <h3>Postingan Tidak Ditemukan</h3>
           </div>
         ) : (
-          <div 
-            className="gallery" 
-            id="mainGallery" 
-            style={{ 
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0px' // Diubah ke 0px agar alur garis menyambung rapat antar komponen thread
-            }}
-          >
+          <div className="gallery" id="mainGallery" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0px' }}>
             {userPosts.map((p) => {
               const isTextOrAudio = !p.image_url && !p.video_url;
               const isExpanded = expandedPosts.has(p.id);
-              
-              // Ambil tanggapan khusus untuk postingan saat ini
               const postComments = commentsMap[String(p.id)] || [];
 
               return (
-                <div 
-                  key={p.id} 
-                  id={`post-wrapper-${p.id}`} 
-                  style={{ 
-                    position: 'relative',
-                    width: '100%',
-                    padding: isTextOrAudio ? '0 12px' : '0'
-                  }}
-                >
-                  {/* GARIS VERTIKAL PENGHUBUNG THREAD (Hanya muncul di postingan teks & jika ada tanggapan) */}
+                <div key={p.id} id={`post-wrapper-${p.id}`} style={{ position: 'relative', width: '100%', padding: isTextOrAudio ? '0 12px' : '0' }}>
                   {isTextOrAudio && postComments.length > 0 && (
-                    <div 
-                      style={{
-                        position: 'absolute',
-                        left: '48px', // Posisi center pas di bawah foto avatar utama (12px outer + 15px inner + 21px half-avatar)
-                        top: '70px',  // Dimulai dari batas bawah avatar utama
-                        bottom: '50px', // Berakhir tepat di batas tengah/avatar tanggapan paling akhir
-                        width: '2px',
-                        backgroundColor: 'var(--border-card)',
-                        zIndex: 10,
-                        pointerEvents: 'none',
-                        opacity: 0.8
-                      }}
-                    />
+                    <div style={{ position: 'absolute', left: '48px', top: '70px', bottom: '50px', width: '2px', backgroundColor: 'var(--border-card)', zIndex: 10, pointerEvents: 'none', opacity: 0.8 }} />
                   )}
 
-                  {/* POSTINGAN UTAMA */}
                   <PostCard
                     post={p}
                     currentUser={currentUser}
@@ -517,17 +475,8 @@ function PostContent() {
                     onToggleExpand={handleToggleExpand}
                   />
 
-                  {/* AREA TANGGAPAN USER LAIN (RENDERING BERGAYA THREAD TWITTER) */}
                   {isTextOrAudio && postComments.map((comment) => (
-                    <div 
-                      key={comment.id}
-                      style={{
-                        position: 'relative',
-                        width: '100%',
-                        marginTop: '-13px', // Menarik posisi ke atas menempel kartu utama menghilangkan margin pemisah
-                        padding: '0'
-                      }}
-                    >
+                    <div key={comment.id} style={{ position: 'relative', width: '100%', marginTop: '-13px', padding: '0' }}>
                       <PostCard
                         post={comment}
                         currentUser={currentUser}
@@ -546,7 +495,7 @@ function PostContent() {
                         repostersMap={repostersMap}
                         handleLike={handleLike}
                         handleSave={handleSave}
-                        openRepostModal={() => {}} // Nonaktifkan sejenak fitur modal repos di level tanggapan teks
+                        openRepostModal={() => {}}
                         handleMediaClick={handleMediaClick}
                         toggleMute={toggleMute}
                         openShareOptions={openShareOptions}
@@ -566,7 +515,6 @@ function PostContent() {
         )}
       </div>
       
-      {/* SUNTIKAN CSS GLOBAL */}
       <style>{`
         @keyframes pureSpin { 100% { transform: rotate(360deg); } }
         @keyframes popHeartAnim {
@@ -576,16 +524,13 @@ function PostContent() {
           70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
           100% { transform: translate(-50%, -60%) scale(0); opacity: 0; }
         }
-
         #mainGallery::-webkit-scrollbar { display: none; }
         #mainGallery { -ms-overflow-style: none; scrollbar-width: none; }
-
         .avatar, [class*="avatar"], .floating-bubbles img, .floating-bubbles div, .liker-bubble img, .reposter-bubble img {
           border-radius: 50% !important;
           aspect-ratio: 1 / 1 !important;
           object-fit: cover !important;
         }
-
         .see-more-btn {
           color: #1f3cff !important;
           cursor: pointer;
