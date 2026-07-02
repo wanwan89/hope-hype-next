@@ -67,12 +67,18 @@ export default function SearchWrapperpost() {
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
+        localStorage.removeItem('isUploading');
+        localStorage.removeItem('uploadProgress');
+        localStorage.removeItem('uploadType');
       }, 2000);
     };
 
     const handleUploadError = () => {
       setIsUploading(false);
       setUploadProgress(0);
+      localStorage.removeItem('isUploading');
+      localStorage.removeItem('uploadProgress');
+      localStorage.removeItem('uploadType');
     };
 
     window.addEventListener('postUploadStart', handleUploadStart);
@@ -95,7 +101,6 @@ export default function SearchWrapperpost() {
   const fetchStories = async () => {
     try {
       const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      // ✅ Ambil full_name dari profiles
       const { data } = await supabase
         .from('stories')
         .select('*, profiles(username, avatar_url, full_name)')
@@ -121,6 +126,20 @@ export default function SearchWrapperpost() {
       router.push(`/story/view?id=${sId}`);
       setTimeout(() => setAnimatingStoryId(null), 100);
     }, 500);
+  };
+
+  // ✅ Fungsi untuk membatalkan postingan
+  const handleCancelUpload = () => {
+    setIsUploading(false);
+    setUploadProgress(0);
+    
+    // Hapus dari localStorage
+    localStorage.removeItem('isUploading');
+    localStorage.removeItem('uploadProgress');
+    localStorage.removeItem('uploadType');
+
+    // Trigger event agar komponen pengirim tau harus membatalkan (Abort)
+    window.dispatchEvent(new CustomEvent('postUploadCancel', { detail: { type: uploadType } }));
   };
 
   if (!mounted || isHidden) return null;
@@ -184,7 +203,6 @@ export default function SearchWrapperpost() {
           />
         </div>
 
-        {/* ✅ Tombol "+" latar biru tetap */}
         <button
           type="button"
           className="add-post-btn"
@@ -242,7 +260,7 @@ export default function SearchWrapperpost() {
                       height: '16px',
                       borderRadius: '50%',
                       border: '2.5px solid var(--bg-input)',
-                      borderTopColor: 'var(--primary-bg)',  // ✅ biru tetap
+                      borderTopColor: 'var(--primary-bg)',
                       animation: 'spin 1s linear infinite',
                     }}
                   />
@@ -257,22 +275,47 @@ export default function SearchWrapperpost() {
                     check_circle
                   </span>
                 )}
+                {/* ✅ Teks Dinamis Berdasarkan Tipe Postingan (Story vs Post) */}
                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
                   {uploadProgress < 100
-                    ? `Mengunggah ${uploadType === 'story' ? 'cerita' : 'postingan'}...`
-                    : `${uploadType === 'story' ? 'Cerita' : 'Postingan'} berhasil diunggah`}
+                    ? `Mengunggah ${uploadType === 'story' ? 'Cerita' : 'Postingan'}...`
+                    : `${uploadType === 'story' ? 'Cerita' : 'Postingan'} berhasil diunggah!`}
                 </span>
               </div>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  color: uploadProgress < 100 ? 'var(--primary)' : '#00c853',
-                  transition: 'color 0.3s ease',
-                }}
-              >
-                {uploadProgress}%
-              </span>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: uploadProgress < 100 ? 'var(--primary)' : '#00c853',
+                    transition: 'color 0.3s ease',
+                  }}
+                >
+                  {uploadProgress}%
+                </span>
+
+                {/* ✅ Tombol X Batal Postingan */}
+                {uploadProgress < 100 && (
+                  <button
+                    onClick={handleCancelUpload}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '2px',
+                      color: 'var(--text-muted)',
+                      outline: 'none',
+                    }}
+                    title={`Batalkan ${uploadType === 'story' ? 'Cerita' : 'Postingan'}`}
+                  >
+                    <span className="material-icons" style={{ fontSize: '18px' }}>close</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div
@@ -288,7 +331,7 @@ export default function SearchWrapperpost() {
                 style={{
                   width: `${uploadProgress}%`,
                   height: '100%',
-                  background: uploadProgress < 100 ? 'var(--primary-bg)' : '#00c853',  // ✅ biru tetap
+                  background: uploadProgress < 100 ? 'var(--primary-bg)' : '#00c853',
                   borderRadius: '4px',
                   transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease',
                 }}
@@ -301,7 +344,6 @@ export default function SearchWrapperpost() {
       {stories.length > 0 && (
         <div className="stories-container" style={{ background: 'var(--bg-main)' }}>
           {stories.map((story) => {
-            // ✅ Gunakan full_name jika tersedia, fallback ke username
             const displayName = story.profiles?.full_name || story.profiles?.username || 'User';
             return (
               <div

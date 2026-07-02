@@ -70,11 +70,11 @@ function CreatePostContent() {
   const [videoThumbnails, setVideoThumbnails] = useState<string[]>([]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-  // *** NEW: Video crop & aspect ratio state ***
+  // Video crop & aspect ratio state
   const [videoCropX, setVideoCropX] = useState(0);
   const [videoCropY, setVideoCropY] = useState(0);
   const [videoZoom, setVideoZoom] = useState(1);
-  const [videoAspectRatio, setVideoAspectRatio] = useState<string>('2/3'); // ✅ State rasio video baru
+  const [videoAspectRatio, setVideoAspectRatio] = useState<string>('2/3');
 
   // Music
   const [searchMusic, setSearchMusic] = useState('');
@@ -327,7 +327,7 @@ function CreatePostContent() {
     setVideoCropX(0);
     setVideoCropY(0);
     setVideoZoom(1);
-    setVideoAspectRatio('2/3'); // ✅ Reset ke Vertikal Default
+    setVideoAspectRatio('2/3');
     setStep('edit');
   };
 
@@ -352,7 +352,6 @@ function CreatePostContent() {
     else { videoRef.current.play(); setIsVideoPlaying(true); }
   };
 
-  // CAPTURE FRAME + SAVE COVER (dengan rasio, crop & latar hitam)
   const captureFrameAndSave = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -360,7 +359,6 @@ function CreatePostContent() {
   
     setIsProcessingEdit(true);
   
-    // Ambil rasio dari state
     const [w, h] = videoAspectRatio.split('/').map(Number);
     const targetAspect = w / h;
     const targetWidth = 1080;
@@ -372,17 +370,14 @@ function CreatePostContent() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
   
-    // Isi latar hitam (Wajib)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, targetWidth, targetHeight);
   
-    // Gambar video dengan transformasi
     ctx.save();
     ctx.translate(targetWidth / 2, targetHeight / 2);
     ctx.rotate((videoRotation * Math.PI) / 180);
     ctx.scale(videoZoom, videoZoom);
     
-    // Hitung agar tetap di tengah dengan offset crop
     const drawW = targetWidth;
     const drawH = (video.videoHeight / video.videoWidth) * targetWidth;
     ctx.drawImage(video, -targetWidth / 2 + videoCropX, -targetHeight / 2 + videoCropY, drawW, drawH);
@@ -403,7 +398,7 @@ function CreatePostContent() {
     setCoverUrlPreview(null); setVideoThumbnails([]);
     setExistingVideoUrl(null); setExistingImageUrl(null);
     setVideoCropX(0); setVideoCropY(0); setVideoZoom(1);
-    setVideoAspectRatio('2/3'); // Reset rasio
+    setVideoAspectRatio('2/3');
     setStep('post');
   };
 
@@ -422,28 +417,48 @@ function CreatePostContent() {
     }
   };
 
-  // --- UPLOAD TO CLOUDINARY ---
-  const updateGlobalProgress = (progress: number) => {
-    window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: progress }));
+  // --- UPLOAD PROGRESS DISPATCHER ---
+  const updateGlobalProgress = (progress: number, type: string = 'post') => {
+    window.dispatchEvent(new CustomEvent('postUploadProgress', { detail: { progress, type } }));
     localStorage.setItem('uploadProgress', String(progress));
+    localStorage.setItem('uploadType', type);
   };
 
-  const uploadToCloudinary = (file: File | Blob, resourceType: 'image' | 'video' = 'image') => {
+  const uploadToCloudinary = (
+    file: File | Blob, 
+    resourceType: 'image' | 'video' = 'image', 
+    activeXhrs?: XMLHttpRequest[], 
+    cancelFlag?: { current: boolean },
+    uploadType: string = 'post'
+  ) => {
     return new Promise<any>((resolve, reject) => {
       if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-        reject('Konfigurasi Cloudinary tidak ditemukan. Pastikan file .env.local sudah diisi dengan benar.');
+        reject('Konfigurasi Cloudinary tidak ditemukan.');
         return;
       }
+      
       const fd = new FormData();
       const name = file instanceof File ? file.name : `upload_${Date.now()}.${resourceType === 'image' ? 'jpg' : 'mp4'}`;
       fd.append("file", file, name);
       fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      
       const xhr = new XMLHttpRequest();
+      if (activeXhrs) activeXhrs.push(xhr);
+
       xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+      
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) updateGlobalProgress(Math.round((e.loaded / e.total) * 50));
+        if (e.lengthComputable && (!cancelFlag || !cancelFlag.current)) {
+          const prog = Math.round((e.loaded / e.total) * 50); // Karena cloud max 50% sisanya supabase
+          updateGlobalProgress(prog, uploadType);
+        }
       };
+      
       xhr.onload = () => {
+        if (activeXhrs) {
+          const idx = activeXhrs.indexOf(xhr);
+          if (idx > -1) activeXhrs.splice(idx, 1);
+        }
         if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
         else {
           try {
@@ -454,12 +469,28 @@ function CreatePostContent() {
           }
         }
       };
-      xhr.onerror = () => reject("Jaringan bermasalah. Periksa koneksi internet.");
+      
+      xhr.onerror = () => {
+        if (activeXhrs) {
+          const idx = activeXhrs.indexOf(xhr);
+          if (idx > -1) activeXhrs.splice(idx, 1);
+        }
+        reject("Jaringan bermasalah. Periksa koneksi internet.");
+      };
+      
+      xhr.onabort = () => {
+        if (activeXhrs) {
+          const idx = activeXhrs.indexOf(xhr);
+          if (idx > -1) activeXhrs.splice(idx, 1);
+        }
+        reject(new Error("ABORTED"));
+      };
+      
       xhr.send(fd);
     });
   };
 
-  // --- SUBMIT ---
+  // --- SUBMIT DENGAN SISTEM CANCEL ---
   const submitPostAction = async (isDraft: boolean = false) => {
     if (postType === 'image' && croppedImages.length === 0 && !existingImageUrl && !caption.trim())
       return showNotif(t('alert_empty_post') || 'Postingan tidak boleh kosong', "warning");
@@ -493,20 +524,34 @@ function CreatePostContent() {
     }
 
     setIsSubmitting(true);
+    const uploadType = destination === 'story' ? 'story' : 'post';
     localStorage.setItem('isUploading', 'true');
-    updateGlobalProgress(0);
-    window.dispatchEvent(new CustomEvent('postUploadStart'));
+    localStorage.setItem('uploadType', uploadType);
+    updateGlobalProgress(0, uploadType);
+    window.dispatchEvent(new CustomEvent('postUploadStart', { detail: { type: uploadType } }));
 
+    // Bawa ke beranda secara optimis (background task)
     if (!isDraft) router.push('/');
     else router.back();
+
+    const activeXhrs: XMLHttpRequest[] = [];
+    const cancelFlag = { current: false };
+
+    // Listener Batal Upload (dipanggil dari komponen Header Navbar)
+    const handleCancel = () => {
+      cancelFlag.current = true;
+      activeXhrs.forEach(xhr => xhr.abort());
+    };
+    window.addEventListener('postUploadCancel', handleCancel);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        window.dispatchEvent(new CustomEvent('postUploadError'));
+        window.dispatchEvent(new CustomEvent('postUploadError', { detail: { type: uploadType } }));
         showNotif("Sesi habis, silakan login ulang.", "error");
         return;
       }
+      
       const myUserId = session.user.id;
 
       const tags = [...new Set((caption.match(/#[\w_]+/g) || []).map(t => t.toLowerCase()))];
@@ -517,22 +562,31 @@ function CreatePostContent() {
       let finalImageUrl: string | null = existingImageUrl;
       let finalVideoUrl: string | null = existingVideoUrl;
 
+      // PROSES CLOUDINARY IMAGES
       if (postType === 'image' && croppedImages.length > 0) {
-        const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image')));
+        const results = await Promise.all(croppedImages.map(b => uploadToCloudinary(b, 'image', activeXhrs, cancelFlag, uploadType)));
+        
+        // Hentikan script jika proses dibatalkan di tengah jalan
+        if (cancelFlag.current) return;
+        
         if (results.some(r => r.moderation?.[0]?.status === 'rejected')) {
           showNotif("Postingan ditolak! Konten sensitif.", "error");
-          window.dispatchEvent(new CustomEvent('postUploadError'));
+          window.dispatchEvent(new CustomEvent('postUploadError', { detail: { type: uploadType } }));
           localStorage.removeItem('isUploading');
           return;
         }
         finalImageUrl = results.map(r => r.secure_url).join(',');
-        updateGlobalProgress(50);
+        updateGlobalProgress(50, uploadType);
       }
+      
+      // PROSES CLOUDINARY VIDEO
       else if (postType === 'video' && rawVideoFile && coverBlob) {
-        const coverRes = await uploadToCloudinary(coverBlob, 'image');
+        const coverRes = await uploadToCloudinary(coverBlob, 'image', activeXhrs, cancelFlag, uploadType);
+        if (cancelFlag.current) return;
+
         if (coverRes.moderation?.[0]?.status === 'rejected') {
           showNotif("Video ditolak! Sampul sensitif.", "error");
-          window.dispatchEvent(new CustomEvent('postUploadError'));
+          window.dispatchEvent(new CustomEvent('postUploadError', { detail: { type: uploadType } }));
           localStorage.removeItem('isUploading');
           return;
         }
@@ -541,24 +595,27 @@ function CreatePostContent() {
         const clipEnd = videoEnd || Math.min(videoDuration, videoStart + MAX_VIDEO_CLIP);
         const rotParam = videoRotation !== 0 ? `a_${videoRotation},` : '';
         
-        // ✅ Format Ratio String untuk Cloudinary Transform (Format `16:9` bukan `16/9`)
         let clRatio = '2:3';
         if (videoAspectRatio === '1/1') clRatio = '1:1';
         else if (videoAspectRatio === '16/9') clRatio = '16:9';
 
-        const vidRes = await uploadToCloudinary(rawVideoFile, 'video');
-        
-        // ✅ Terapkan transformasi Cloudinary c_fill agar otomatis terpotong tanpa border hitam
+        const vidRes = await uploadToCloudinary(rawVideoFile, 'video', activeXhrs, cancelFlag, uploadType);
+        if (cancelFlag.current) return;
+
         finalVideoUrl = vidRes.secure_url.replace(
           '/upload/',
           `/upload/${rotParam}c_fill,ar_${clRatio}/so_${videoStart.toFixed(1)},eo_${clipEnd.toFixed(1)}/`
         );
-        updateGlobalProgress(50);
+        updateGlobalProgress(50, uploadType);
       }
 
-      updateGlobalProgress(70);
+      // Pastikan tidak melanjutkan update Supabase bila batal
+      if (cancelFlag.current) return;
+      
+      updateGlobalProgress(70, uploadType);
       let newPostData = null;
 
+      // PROSES DATABASE SUPABASE
       if (destination === "story") {
         const { data } = await supabase.from("stories").insert({
           creator_id: myUserId, image_url: finalImageUrl, video_url: finalVideoUrl,
@@ -588,7 +645,8 @@ function CreatePostContent() {
         }
       }
 
-      updateGlobalProgress(85);
+      if (cancelFlag.current) return;
+      updateGlobalProgress(85, uploadType);
 
       if (!isDraft && (newPostData?.id || destination === "story")) {
         const mentions = [...new Set((caption.match(/@(\w+)/g) || []).map(m => m.substring(1)))];
@@ -605,20 +663,32 @@ function CreatePostContent() {
         }
       }
 
-      updateGlobalProgress(100);
-      window.dispatchEvent(new CustomEvent('postUploadSuccess', { detail: newPostData }));
+      updateGlobalProgress(100, uploadType);
+      window.dispatchEvent(new CustomEvent('postUploadSuccess', { detail: { type: uploadType, data: newPostData } }));
+      
       localStorage.removeItem('isUploading');
       localStorage.removeItem('uploadProgress');
+      localStorage.removeItem('uploadType');
+      
       showNotif(isDraft ? "Draft tersimpan" : "Postingan berhasil!", "success");
       audioRef.current?.pause();
+
     } catch (err: any) {
-      console.error(err);
-      window.dispatchEvent(new CustomEvent('postUploadError'));
-      localStorage.removeItem('isUploading');
-      localStorage.removeItem('uploadProgress');
-      const msg = typeof err === 'string' ? err : err?.message || 'Gagal upload';
-      showNotif(msg, "error");
+      if (err?.message === "ABORTED") {
+        // Jika eror dari ABORTED, abaikan saja karena notif pembatalan sudah di-handle di UI navbar (home).
+        console.log("Upload telah dibatalkan secara damai.");
+      } else {
+        console.error(err);
+        window.dispatchEvent(new CustomEvent('postUploadError', { detail: { type: uploadType } }));
+        localStorage.removeItem('isUploading');
+        localStorage.removeItem('uploadProgress');
+        localStorage.removeItem('uploadType');
+        const msg = typeof err === 'string' ? err : err?.message || 'Gagal upload';
+        showNotif(msg, "error");
+      }
     } finally {
+      // Pastikan listener pembersih dibuang
+      window.removeEventListener('postUploadCancel', handleCancel);
       setIsSubmitting(false);
     }
   };
@@ -650,7 +720,6 @@ function CreatePostContent() {
           videoThumbnails={videoThumbnails}
           MAX_VIDEO_CLIP={MAX_VIDEO_CLIP}
           
-          // ✅ PASS PROPS ASPECT RATIO BARU
           videoAspectRatio={videoAspectRatio}
           setVideoAspectRatio={setVideoAspectRatio}
           

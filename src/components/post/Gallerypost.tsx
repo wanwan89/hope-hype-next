@@ -9,7 +9,7 @@ import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import ImagePreview from './ImagePreview';
 import SuggestedUsers from './SuggestedUsers';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { useFeed } from '@/hooks/useFeed';
 import RefreshableWrapper from '@/components/RefreshableWrapper';
 import './Gallery.css';
@@ -94,6 +94,8 @@ export default function Gallerypost() {
   const { t } = useTranslation();
   const router = useRouter();
 
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+
   const [currentUser, setCurrentUser] = useState<any>(null);
   const currentUserRef = useRef<any>(null);
 
@@ -162,6 +164,14 @@ export default function Gallerypost() {
   }, []);
 
   const handleRefresh = async () => {
+    if (scrollParent) {
+      scrollParent.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    virtuosoRef.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' });
+
     await refetch();
     await new Promise(resolve => setTimeout(resolve, 800));
   };
@@ -174,7 +184,6 @@ export default function Gallerypost() {
     }
   }, [refetch]);
 
-  // ==================== FIX: Listener untuk commentCountUpdated ====================
   useEffect(() => {
     const handler = (e: CustomEvent) => {
       const { postId, newCount } = e.detail;
@@ -583,6 +592,7 @@ export default function Gallerypost() {
       <RefreshableWrapper onRefresh={handleRefresh}>
         {isMounted && (
           <Virtuoso
+            ref={virtuosoRef}
             useWindowScroll={!scrollParent}
             customScrollParent={scrollParent}
             data={allPosts}
