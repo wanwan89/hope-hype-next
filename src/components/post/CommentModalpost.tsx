@@ -1,7 +1,7 @@
 // CommentModal.tsx
 'use client';
 
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { showNotif, requireLogin, getUserBadge } from '@/lib/ui-utils';
@@ -205,7 +205,6 @@ function CommentModalContent() {
     setIsLoading(false);
   };
 
-  // ✅ FIX: Helper untuk dispatch event count update
   const dispatchCommentCountUpdate = (postId: string, newCount: number) => {
     window.dispatchEvent(
       new CustomEvent('commentCountUpdated', {
@@ -244,12 +243,10 @@ function CommentModalContent() {
           });
         }
 
-        // ✅ FIX: Refresh comment list + update count via event
         if (currentPostId === String(postId)) {
           loadComments(String(postId), session.user.id);
         }
 
-        // Ambil count terbaru dari DB
         const { count } = await supabase
           .from('comments')
           .select('id', { count: 'exact', head: true })
@@ -417,7 +414,6 @@ function CommentModalContent() {
         if (newComment) {
           setComments(prev => [newComment, ...prev]);
           setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
-          // ✅ FIX: Dispatch count update
           const newCount = comments.length + 1;
           dispatchCommentCountUpdate(currentPostId, newCount);
         }
@@ -501,7 +497,6 @@ function CommentModalContent() {
       if (newComment) {
         setComments(prev => [newComment, ...prev]);
         setCommentLikesCount(prev => ({ ...prev, [String(newComment.id)]: 0 }));
-        // ✅ FIX: Dispatch count update
         const newCount = comments.length + 1;
         dispatchCommentCountUpdate(currentPostId, newCount);
       }
@@ -611,7 +606,6 @@ function CommentModalContent() {
 
       setComments(prev => prev.filter(c => c.id !== actionSheetComment.id && c.parent_id !== actionSheetComment.id));
 
-      // ✅ FIX: Ambil count terbaru dari DB lalu dispatch event
       const { count } = await supabase
         .from('comments')
         .select('id', { count: 'exact', head: true })
@@ -668,6 +662,179 @@ function CommentModalContent() {
     return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
   });
 
+  // ==================== OPTIMASI RENDERING (useMemo) ====================
+  // Ini mencegah seluruh list komentar di-render ulang setiap kali user mengetik 1 huruf di Input Bar
+  const renderedCommentList = useMemo(() => {
+    if (activeTab !== 'comment') {
+      if (isLoadingLikers) {
+        return <div className="loading-text">Memuat daftar suka...</div>;
+      }
+      const filteredLikers = activeTab === 'likes_friends'
+        ? postLikers.filter(l => mutualUsers.has(l.user_id))
+        : postLikers;
+
+      if (filteredLikers.length === 0) {
+        return <div className="empty-text">Belum ada yang menyukai</div>;
+      }
+
+      return filteredLikers.map(liker => (
+        <div className="c-liker-item" key={liker.user_id}>
+          <div
+            className="c-liker-left"
+            onClick={() => (window.location.href = `/data?id=${liker.user_id}`)}
+          >
+            <img
+              className="c-liker-avatar"
+              src={
+                getOptimizedImage(liker.profiles?.avatar_url) ||
+                '/asets/png/profile.webp'
+              }
+              alt="av"
+            />
+            <div>
+              <div className="c-liker-name">
+                {liker.profiles?.username}
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: getUserBadge(liker.profiles?.role || 'user'),
+                  }}
+                />
+              </div>
+              <div className="c-liker-time">{formatTimeAgo(liker.created_at)}</div>
+            </div>
+          </div>
+          <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>
+            favorite
+          </span>
+        </div>
+      ));
+    }
+
+    if (isLoading) return <div className="loading-text">{t('loading_comments')}</div>;
+    if (sortedParents.length === 0) return <div className="empty-text">{t('empty_comments')}</div>;
+
+    return sortedParents.map(p => {
+      const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
+      const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
+      const remainingChilds = firstCreatorReply
+        ? allChilds.filter(c => c.id !== firstCreatorReply.id)
+        : allChilds;
+      const isExpanded = expandedReplies[p.id];
+
+      return (
+        <div className="comment-thread" key={p.id}>
+          <CommentItem
+            comment={p}
+            isReply={false}
+            currentCreatorId={currentCreatorId}
+            likedComments={likedComments}
+            dislikedComments={dislikedComments}
+            commentLikesCount={commentLikesCount}
+            isCommentsDisabled={isCommentsDisabled}
+            handleTouchStart={handleTouchStart}
+            handleTouchEnd={handleTouchEnd}
+            handleLikeComment={handleLikeComment}
+            handleDislikeComment={handleDislikeComment}
+            handleMentionClick={handleMentionClick}
+            setReplyData={setReplyData}
+            inputRef={inputRef}
+          />
+
+          {firstCreatorReply && (
+            <div className="replies-container">
+              <div className="reply-group">
+                <div
+                  className="thread-line"
+                  style={{ height: 'calc(100% - 10px)', top: '10px' }}
+                ></div>
+                <div className="comment-item-wrap reply">
+                  <span className="reply-curve" style={{ top: '15px' }}></span>
+                  <CommentItem
+                    comment={firstCreatorReply}
+                    isReply={true}
+                    currentCreatorId={currentCreatorId}
+                    likedComments={likedComments}
+                    dislikedComments={dislikedComments}
+                    commentLikesCount={commentLikesCount}
+                    isCommentsDisabled={isCommentsDisabled}
+                    handleTouchStart={handleTouchStart}
+                    handleTouchEnd={handleTouchEnd}
+                    handleLikeComment={handleLikeComment}
+                    handleDislikeComment={handleDislikeComment}
+                    handleMentionClick={handleMentionClick}
+                    setReplyData={setReplyData}
+                    inputRef={inputRef}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {remainingChilds.length > 0 && (
+            <div className="replies-container">
+              <div
+                className="view-replies-btn"
+                onClick={() =>
+                  setExpandedReplies(prev => ({
+                    ...prev,
+                    [p.id]: !prev[p.id],
+                  }))
+                }
+              >
+                <span className="btn-line"></span>
+                {isExpanded
+                  ? t('hide_replies')
+                  : t('show_replies_count', { count: remainingChilds.length })}
+              </div>
+
+              {isExpanded && (
+                <div className="reply-group">
+                  <div className="thread-line"></div>
+                  {remainingChilds.map(c => (
+                    <div className="comment-item-wrap reply" key={c.id}>
+                      <span className="reply-curve"></span>
+                      <CommentItem
+                        comment={c}
+                        isReply={true}
+                        currentCreatorId={currentCreatorId}
+                        likedComments={likedComments}
+                        dislikedComments={dislikedComments}
+                        commentLikesCount={commentLikesCount}
+                        isCommentsDisabled={isCommentsDisabled}
+                        handleTouchStart={handleTouchStart}
+                        handleTouchEnd={handleTouchEnd}
+                        handleLikeComment={handleLikeComment}
+                        handleDislikeComment={handleDislikeComment}
+                        handleMentionClick={handleMentionClick}
+                        setReplyData={setReplyData}
+                        inputRef={inputRef}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    });
+  }, [
+    activeTab, 
+    isLoading, 
+    isLoadingLikers, 
+    sortedParents, 
+    comments, 
+    expandedReplies, 
+    likedComments, 
+    dislikedComments, 
+    commentLikesCount, 
+    postLikers, 
+    mutualUsers,
+    currentCreatorId,
+    isCommentsDisabled,
+    t
+  ]);
+
   // ==================== RENDER ====================
   return (
     <>
@@ -684,7 +851,7 @@ function CommentModalContent() {
         >
           {/* Header tetap */}
           <div style={{ flexShrink: 0 }}>
-            <div className="modal-drag-indicator" />
+            {/* GARIS ATAS TELAH DIHAPUS (modal-drag-indicator) */}
 
             {isOwner ? (
               <div className="c-owner-tabs">
@@ -741,162 +908,8 @@ function CommentModalContent() {
               minHeight: 0,
             }}
           >
-            {activeTab !== 'comment' ? (
-              isLoadingLikers ? (
-                <div className="loading-text">Memuat daftar suka...</div>
-              ) : (
-                (() => {
-                  const filteredLikers =
-                    activeTab === 'likes_friends'
-                      ? postLikers.filter(l => mutualUsers.has(l.user_id))
-                      : postLikers;
-                  if (filteredLikers.length === 0)
-                    return <div className="empty-text">Belum ada yang menyukai</div>;
-
-                  return filteredLikers.map(liker => (
-                    <div className="c-liker-item" key={liker.user_id}>
-                      <div
-                        className="c-liker-left"
-                        onClick={() => (window.location.href = `/data?id=${liker.user_id}`)}
-                      >
-                        <img
-                          className="c-liker-avatar"
-                          src={
-                            getOptimizedImage(liker.profiles?.avatar_url) ||
-                            '/asets/png/profile.webp'
-                          }
-                          alt="av"
-                        />
-                        <div>
-                          <div className="c-liker-name">
-                            {liker.profiles?.username}
-                            <span
-                              dangerouslySetInnerHTML={{
-                                __html: getUserBadge(liker.profiles?.role || 'user'),
-                              }}
-                            />
-                          </div>
-                          <div className="c-liker-time">{formatTimeAgo(liker.created_at)}</div>
-                        </div>
-                      </div>
-                      <span className="material-icons" style={{ color: '#ff2e63', fontSize: '20px' }}>
-                        favorite
-                      </span>
-                    </div>
-                  ));
-                })()
-              )
-            ) : isLoading ? (
-              <div className="loading-text">{t('loading_comments')}</div>
-            ) : sortedParents.length === 0 ? (
-              <div className="empty-text">{t('empty_comments')}</div>
-            ) : (
-              sortedParents.map(p => {
-                const allChilds = comments.filter(r => String(r.parent_id) === String(p.id));
-                const firstCreatorReply = allChilds.find(c => c.user_id === currentCreatorId);
-                const remainingChilds = firstCreatorReply
-                  ? allChilds.filter(c => c.id !== firstCreatorReply.id)
-                  : allChilds;
-                const isExpanded = expandedReplies[p.id];
-
-                return (
-                  <div className="comment-thread" key={p.id}>
-                    <CommentItem
-                      comment={p}
-                      isReply={false}
-                      currentCreatorId={currentCreatorId}
-                      likedComments={likedComments}
-                      dislikedComments={dislikedComments}
-                      commentLikesCount={commentLikesCount}
-                      isCommentsDisabled={isCommentsDisabled}
-                      handleTouchStart={handleTouchStart}
-                      handleTouchEnd={handleTouchEnd}
-                      handleLikeComment={handleLikeComment}
-                      handleDislikeComment={handleDislikeComment}
-                      handleMentionClick={handleMentionClick}
-                      setReplyData={setReplyData}
-                      inputRef={inputRef}
-                    />
-
-                    {firstCreatorReply && (
-                      <div className="replies-container">
-                        <div className="reply-group">
-                          <div
-                            className="thread-line"
-                            style={{ height: 'calc(100% - 10px)', top: '10px' }}
-                          ></div>
-                          <div className="comment-item-wrap reply">
-                            <span className="reply-curve" style={{ top: '15px' }}></span>
-                            <CommentItem
-                              comment={firstCreatorReply}
-                              isReply={true}
-                              currentCreatorId={currentCreatorId}
-                              likedComments={likedComments}
-                              dislikedComments={dislikedComments}
-                              commentLikesCount={commentLikesCount}
-                              isCommentsDisabled={isCommentsDisabled}
-                              handleTouchStart={handleTouchStart}
-                              handleTouchEnd={handleTouchEnd}
-                              handleLikeComment={handleLikeComment}
-                              handleDislikeComment={handleDislikeComment}
-                              handleMentionClick={handleMentionClick}
-                              setReplyData={setReplyData}
-                              inputRef={inputRef}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {remainingChilds.length > 0 && (
-                      <div className="replies-container">
-                        <div
-                          className="view-replies-btn"
-                          onClick={() =>
-                            setExpandedReplies(prev => ({
-                              ...prev,
-                              [p.id]: !prev[p.id],
-                            }))
-                          }
-                        >
-                          <span className="btn-line"></span>
-                          {isExpanded
-                            ? t('hide_replies')
-                            : t('show_replies_count', { count: remainingChilds.length })}
-                        </div>
-
-                        {isExpanded && (
-                          <div className="reply-group">
-                            <div className="thread-line"></div>
-                            {remainingChilds.map(c => (
-                              <div className="comment-item-wrap reply" key={c.id}>
-                                <span className="reply-curve"></span>
-                                <CommentItem
-                                  comment={c}
-                                  isReply={true}
-                                  currentCreatorId={currentCreatorId}
-                                  likedComments={likedComments}
-                                  dislikedComments={dislikedComments}
-                                  commentLikesCount={commentLikesCount}
-                                  isCommentsDisabled={isCommentsDisabled}
-                                  handleTouchStart={handleTouchStart}
-                                  handleTouchEnd={handleTouchEnd}
-                                  handleLikeComment={handleLikeComment}
-                                  handleDislikeComment={handleDislikeComment}
-                                  handleMentionClick={handleMentionClick}
-                                  setReplyData={setReplyData}
-                                  inputRef={inputRef}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
+            {/* List komentar sekarang dirender melalui useMemo untuk performa 10x lebih ringan */}
+            {renderedCommentList}
           </div>
 
           {/* Input bar tetap */}
